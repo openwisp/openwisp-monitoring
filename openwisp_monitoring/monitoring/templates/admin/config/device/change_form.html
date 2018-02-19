@@ -1,0 +1,21 @@
+{% extends "admin/config/change_form.html" %}
+{% load i18n static %}
+{% block after_field_sets %}
+{% if not add and graphs %}
+<div class="inline-group">
+    <fieldset class="module">
+        <h2>{% trans 'Monitoring Graphs' %}</h2>
+        {% for graph in graphs %}
+        <div class="inline-related">
+            <div id="graph-{{ forloop.counter }}"></div>
+            <script>
+                createGraph({{ graph.json|safe }},
+                            'graph-{{ forloop.counter }}',
+                            '{{ graph.description }}');
+            </script>
+        </div>
+        {% endfor %}
+    </fieldset>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,37 @@
+language: python
+sudo: false
+cache: pip
+
+addons:
+  apt:
+    packages:
+      - sqlite3
+      - gdal-bin
+      - libproj-dev
+      - libgeos-dev
+      - libspatialite-dev
+
+python:
+  - "3.4"
+  - "2.7"
+
+branches:
+  only:
+    - master
+
+before_install:
+  - pip install -U pip wheel setuptools
+  - pip install --no-cache-dir -U -r requirements-test.txt
+  - ./runflake8
+  - ./runisort
+
+install:
+  - python setup.py -q develop
+  - if [[ $TRAVIS_PYTHON_VERSION == "2.7" ]]; then pip install git+git://github.com/tinio/pysqlite.git@extension-enabled#egg=pysqlite; fi
+
+script:
+  - coverage run --source=openwisp_monitoring runtests.py
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.4 ]]; then ./tests/manage.py makemigrations --dry-run | grep "No changes detected"; fi
+
+after_success:
+  coveralls
