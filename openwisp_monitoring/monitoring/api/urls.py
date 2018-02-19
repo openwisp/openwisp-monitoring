@@ -2,6 +2,8 @@ from django.conf.urls import url
 
 from . import views
 
+app_name = 'openwisp_monitoring.monitoring'
+
 urlpatterns = [
     url(r'^api/v1/monitoring/device/(?P<pk>[^/]+)/$',
         views.device_metric,

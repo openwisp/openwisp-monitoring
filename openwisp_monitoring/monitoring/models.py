@@ -201,7 +201,7 @@ class Metric(TimeStampedEditableModel):
 
 @python_2_unicode_compatible
 class Graph(TimeStampedEditableModel):
-    metric = models.ForeignKey(Metric)
+    metric = models.ForeignKey(Metric, on_delete=models.CASCADE)
     description = models.CharField(max_length=64, blank=True)
     query = models.TextField(blank=True)
 
@@ -285,7 +285,7 @@ class Threshold(TimeStampedEditableModel):
                     '({1} days)'.format(_SECONDS_MAX, int(_SECONDS_MAX / 60 / 60 / 24))
     _THRESHOLD_OPERATORS = (('<', _('less than')),
                             ('>', _('greater than')))
-    metric = models.OneToOneField(Metric)
+    metric = models.OneToOneField(Metric, on_delete=models.CASCADE)
     operator = models.CharField(max_length=1, choices=_THRESHOLD_OPERATORS)
     value = models.IntegerField(help_text=_('threshold value'))
     seconds = models.PositiveIntegerField(default=0,
