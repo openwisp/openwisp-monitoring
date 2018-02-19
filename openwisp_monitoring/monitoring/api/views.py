@@ -85,7 +85,7 @@ class DeviceMetricView(GenericAPIView):
         # it means the interface traffic counter is increasing
         # and to calculate the traffic performed since the last
         # measurement we have to calculate the difference
-        if value > previous_value:
+        if value >= previous_value:
             return value - previous_value
         # on the other side, if the current value is less than
         # the previous value, it means that the counter was restarted
