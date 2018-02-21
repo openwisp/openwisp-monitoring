@@ -4,9 +4,9 @@ from django.core import mail
 from django.test import TestCase
 from django.utils import timezone
 from notifications.models import Notification
+
 from openwisp_controller.config.models import Config, Device
 from openwisp_controller.config.tests import CreateConfigTemplateMixin
-
 from openwisp_users.models import OrganizationUser
 
 from . import TestMonitoringMixin

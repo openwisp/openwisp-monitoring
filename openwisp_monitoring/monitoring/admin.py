@@ -1,10 +1,10 @@
 from django.contrib import admin
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import ugettext_lazy as _
+
 from openwisp_controller.admin import AlwaysHasChangedMixin
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
 from openwisp_controller.config.models import Device
-
 from openwisp_users.admin import UserAdmin
 from openwisp_utils.admin import TimeReadonlyAdminMixin
 
