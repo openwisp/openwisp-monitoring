@@ -66,7 +66,7 @@ STATICFILES_FINDERS = [
     'openwisp_utils.staticfiles.DependencyFinder',
 ]
 
-MIDDLEWARE_CLASSES = [
+MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
