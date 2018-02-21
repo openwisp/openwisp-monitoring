@@ -112,10 +112,13 @@ class Metric(TimeStampedEditableModel):
         self.save()
         self._notify_users(level, verb, threshold)
 
-    def write(self, value, time=None, database=None, check=True):
+    def write(self, value, time=None, database=None, check=True, extra_values=None):
         """ write timeseries data """
+        values = {self.field_name: value}
+        if extra_values and isinstance(extra_values, dict):
+            values.update(extra_values)
         write(name=self.key,
-              values={self.field_name: value},
+              values=values,
               tags=self.tags,
               timestamp=time,
               database=database)
@@ -125,9 +128,12 @@ class Metric(TimeStampedEditableModel):
             return
         self.check_threshold(value, time)
 
-    def read(self, since=None, limit=1, order=None):
+    def read(self, since=None, limit=1, order=None, extra_fields=None):
         """ reads timeseries data """
-        q = 'SELECT {fields} FROM {key}'.format(fields=self.field_name, key=self.key)
+        fields = self.field_name
+        if extra_fields:
+            fields = ', '.join([fields] + extra_fields)
+        q = 'SELECT {fields} FROM {key}'.format(fields=fields, key=self.key)
         tags = self.tags
         conditions = []
         if since:

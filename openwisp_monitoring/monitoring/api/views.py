@@ -59,7 +59,10 @@ class DeviceMetricView(GenericAPIView):
                                                                key=ifname,
                                                                field_name=key,
                                                                name=name)
-                metric.write(self._calculate_traffic(metric, value))
+                increment = self._calculate_traffic(metric, value)
+                counter = '{0}_counter'.format(key)
+                # stores raw interface counter to calculate future increments
+                metric.write(increment, extra_values={counter: value})
                 if created:
                     self._create_traffic_graph(metric)
             if 'clients' not in interface:
@@ -76,17 +79,19 @@ class DeviceMetricView(GenericAPIView):
                 self._create_clients_graph(metric)
 
     def _calculate_traffic(self, metric, value):
-        # if no previous measurements, start from zero
-        points = metric.read(limit=1, order='time DESC')
-        previous_value = 0
+        counter_field = '{0}_counter'.format(metric.field_name)
+        # if no previous counter present, start from zero
+        previous_counter = 0
+        # get previous counters
+        points = metric.read(limit=1, order='time DESC', extra_fields=[counter_field])
         if points:
-            previous_value = points[0][metric.field_name]
+            previous_counter = points[0][counter_field]
         # if current value is higher than previous value,
         # it means the interface traffic counter is increasing
         # and to calculate the traffic performed since the last
         # measurement we have to calculate the difference
-        if value >= previous_value:
-            return value - previous_value
+        if value >= previous_counter:
+            return value - previous_counter
         # on the other side, if the current value is less than
         # the previous value, it means that the counter was restarted
         # (eg: reboot, configuration reload), so we keep the whole amount

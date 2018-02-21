@@ -2,6 +2,7 @@ import json
 
 from django.test import TestCase
 from django.urls import reverse
+
 from openwisp_controller.config.models import Config, Device
 from openwisp_controller.config.tests import CreateConfigTemplateMixin
 
@@ -217,3 +218,71 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
                                    object_id=d.pk)
             points = m.read(limit=10, order='time DESC')
             self.assertEqual(len(points), len(iface['clients'].keys()) * 2)
+
+    def test_200_multiple_measurements(self):
+        self.test_200_create()
+        self.assertEqual(Device.objects.count(), 1)
+        d = Device.objects.first()
+        data2 = self._data()
+        data2['interfaces'][0]['statistics']['rx_bytes'] = 100000000
+        data2['interfaces'][0]['statistics']['tx_bytes'] = 400000000
+        data2['interfaces'][1]['statistics']['rx_bytes'] = 1000000000
+        data2['interfaces'][1]['statistics']['tx_bytes'] = 2000000000
+        r = self._post_data(d.id, d.key, data2)
+        data3 = self._data()
+        data3['interfaces'][0]['statistics']['rx_bytes'] = 300000000
+        data3['interfaces'][0]['statistics']['tx_bytes'] = 500000000
+        data3['interfaces'][1]['statistics']['rx_bytes'] = 0
+        data3['interfaces'][1]['statistics']['tx_bytes'] = 0
+        r = self._post_data(d.id, d.key, data3)
+        data4 = self._data()
+        data4['interfaces'][0]['statistics']['rx_bytes'] = 600000000
+        data4['interfaces'][0]['statistics']['tx_bytes'] = 1200000000
+        data4['interfaces'][1]['statistics']['rx_bytes'] = 500000000
+        data4['interfaces'][1]['statistics']['tx_bytes'] = 1000000000
+        r = self._post_data(d.id, d.key, data4)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(Metric.objects.count(), 6)
+        self.assertEqual(Graph.objects.count(), 4)
+        expected = {'wlan0': {'rx_bytes': 6000, 'tx_bytes': 10000},
+                    'wlan1': {'rx_bytes': 2993, 'tx_bytes': 4587}}
+        # wlan0 rx_bytes
+        m = Metric.objects.get(key='wlan0', field_name='rx_bytes', object_id=d.pk)
+        points = m.read(limit=10, order='time DESC')
+        self.assertEqual(len(points), 4)
+        expected = [300000000, 200000000, 99999676, 324]
+        for i, point in enumerate(points):
+            self.assertEqual(point['rx_bytes'], expected[i])
+        # wlan0 tx_bytes
+        m = Metric.objects.get(key='wlan0', field_name='tx_bytes', object_id=d.pk)
+        points = m.read(limit=10, order='time DESC')
+        self.assertEqual(len(points), 4)
+        expected = [700000000, 100000000, 399999855, 145]
+        for i, point in enumerate(points):
+            self.assertEqual(point['tx_bytes'], expected[i])
+        g = m.graph_set.first()
+        data = g.read()
+        # expected download wlan0
+        self.assertEqual(data['graphs'][0][1][-1], 1.2)
+        # expected upload wlan0
+        self.assertEqual(data['graphs'][1][1][-1], 0.6)
+        # wlan1 rx_bytes
+        m = Metric.objects.get(key='wlan1', field_name='rx_bytes', object_id=d.pk)
+        points = m.read(limit=10, order='time DESC')
+        self.assertEqual(len(points), 4)
+        expected = [500000000, 0, 999999174, 826]
+        for i, point in enumerate(points):
+            self.assertEqual(point['rx_bytes'], expected[i])
+        # wlan1 tx_bytes
+        m = Metric.objects.get(key='wlan1', field_name='tx_bytes', object_id=d.pk)
+        points = m.read(limit=10, order='time DESC')
+        self.assertEqual(len(points), 4)
+        expected = [1000000000, 0, 1999997725, 2275]
+        for i, point in enumerate(points):
+            self.assertEqual(point['tx_bytes'], expected[i])
+        g = m.graph_set.first()
+        data = g.read()
+        # expected download wlan1
+        self.assertEqual(data['graphs'][0][1][-1], 3.0)
+        # expected upload wlan1
+        self.assertEqual(data['graphs'][1][1][-1], 1.5)
