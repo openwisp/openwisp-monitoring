@@ -59,7 +59,7 @@ class DeviceMetricView(GenericAPIView):
                                                                key=ifname,
                                                                field_name=key,
                                                                name=name)
-                increment = self._calculate_traffic(metric, value)
+                increment = self._calculate_increment(metric, value)
                 counter = '{0}_counter'.format(key)
                 # stores raw interface counter to calculate future increments
                 metric.write(increment, extra_values={counter: value})
@@ -78,14 +78,18 @@ class DeviceMetricView(GenericAPIView):
             if created:
                 self._create_clients_graph(metric)
 
-    def _calculate_traffic(self, metric, value):
+    def _calculate_increment(self, metric, value):
+        """
+        compares value with previously stored counter and
+        calculates the increment of the value (which is returned)
+        """
         counter_field = '{0}_counter'.format(metric.field_name)
-        # if no previous counter present, start from zero
+        # if no previous measurements present, counter will start from zero
         previous_counter = 0
         # get previous counters
         points = metric.read(limit=1, order='time DESC', extra_fields=[counter_field])
         if points:
-            previous_counter = points[0][counter_field]
+            previous_counter = points[0].get(counter_field, 0)
         # if current value is higher than previous value,
         # it means the interface traffic counter is increasing
         # and to calculate the traffic performed since the last
@@ -100,7 +104,7 @@ class DeviceMetricView(GenericAPIView):
 
     def _create_traffic_graph(self, metric):
         """
-        create traffic graphs if necessary
+        create "daily traffic (GB)" graph
         """
         if metric.field_name != 'tx_bytes':
             return
@@ -114,6 +118,9 @@ class DeviceMetricView(GenericAPIView):
         graph.save()
 
     def _create_clients_graph(self, metric):
+        """
+        creates "daily wifi associations" graph
+        """
         graph = Graph(metric=metric,
                       description=_('{0} daily wifi associations').format(metric.key),
                       query="SELECT COUNT(DISTINCT({field_name})) AS value FROM {key} "
