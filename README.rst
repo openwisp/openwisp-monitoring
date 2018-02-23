@@ -25,6 +25,7 @@ Follow the setup instructions of `openwisp-controller
         ...
         # openwisp monitoring
         'openwisp_monitoring.monitoring',
+        'openwisp_monitoring.device',
         'notifications'
     ]
 

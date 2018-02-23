@@ -9,8 +9,8 @@ from rest_framework.response import Response
 
 from openwisp_controller.config.models import Device
 
-from ..models import Graph, Metric
-from .schema import schema
+from ...monitoring.models import Graph, Metric
+from ..schema import schema
 
 
 class DevicePermission(BasePermission):

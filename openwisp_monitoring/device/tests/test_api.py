@@ -6,8 +6,8 @@ from django.urls import reverse
 from openwisp_controller.config.models import Config, Device
 from openwisp_controller.config.tests import CreateConfigTemplateMixin
 
-from . import TestMonitoringMixin
-from ..models import Graph, Metric
+from ...monitoring.models import Graph, Metric
+from ...monitoring.tests import TestMonitoringMixin
 
 
 class TestDeviceApi(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):

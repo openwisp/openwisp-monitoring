@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'channels',
     # monitoring
     'openwisp_monitoring.monitoring',
+    'openwisp_monitoring.device',
     'notifications'
 ]
 

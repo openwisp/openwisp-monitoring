@@ -5,7 +5,7 @@ url_metadata = [
     # openwisp_monitoring.monitoring
     {
         'regexp': r'^',
-        'app': 'openwisp_monitoring.monitoring',
+        'app': 'openwisp_monitoring.device',
         'include': {
             'module': '{app}.api.urls',
             'namespace': 'monitoring'
