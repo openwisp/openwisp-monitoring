@@ -19,7 +19,7 @@ def get_db():
     )
 
 
-def query(query, params={}, epoch=None,
+def query(query, params=None, epoch=None,
           expected_response_code=200, database=None):
     """ Wrapper around ``InfluxDBClient.query()`` """
     db = get_db()
@@ -27,7 +27,7 @@ def query(query, params={}, epoch=None,
     return db.query(query, params, epoch, expected_response_code, database=database)
 
 
-def write(name, values, tags={}, timestamp=None, database=None):
+def write(name, values, tags=None, timestamp=None, database=None):
     """ Method to be called via threading module. """
     point = {
         'measurement': name,
