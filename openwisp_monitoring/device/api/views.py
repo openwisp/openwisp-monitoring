@@ -23,7 +23,7 @@ class DeviceMetricView(GenericAPIView):
     serializer_class = serializers.Serializer
     permission_classes = [DevicePermission]
     schema = schema
-    statistics = ['rx_bytes', 'tx_bytes']
+    statistics_stored = ['rx_bytes', 'tx_bytes']
 
     def post(self, request, pk):
         self.instance = self.get_object()
@@ -62,6 +62,8 @@ class DeviceMetricView(GenericAPIView):
         for interface in data.get('interfaces', []):
             ifname = interface['name']
             for key, value in interface.get('statistics', {}).items():
+                if key not in self.statistics_stored:
+                    continue
                 name = '{0} {1}'.format(ifname, key)
                 metric, created = Metric.objects.get_or_create(object_id=pk,
                                                                content_type=ct,

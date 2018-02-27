@@ -37,7 +37,11 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
                     'name': 'wlan0',
                     'statistics': {
                         'rx_bytes': 324,
-                        'tx_bytes': 145
+                        'tx_bytes': 145,
+                        'collisions': 0,
+                        'multicast': 0,
+                        'rx_dropped': 0,
+                        'tx_dropped': 0,
                     },
                     'clients': {
                         '00:ee:ad:34:f5:3b': {
@@ -59,7 +63,11 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
                     'name': 'wlan1',
                     'statistics': {
                         'rx_bytes': 826,
-                        'tx_bytes': 2275
+                        'tx_bytes': 2275,
+                        'collisions': 0,
+                        'multicast': 0,
+                        'rx_dropped': 0,
+                        'tx_dropped': 0,
                     },
                     'clients': {
                         '11:dd:ce:53:d1:5a': {
