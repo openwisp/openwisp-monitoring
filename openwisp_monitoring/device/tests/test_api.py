@@ -6,12 +6,12 @@ from django.urls import reverse
 from openwisp_controller.config.models import Config, Device
 from openwisp_controller.config.tests import CreateConfigTemplateMixin
 
+from . import TestDeviceMonitoringMixin
 from ...monitoring.models import Graph, Metric
-from ...monitoring.tests import TestMonitoringMixin
 from ..models import DeviceData
 
 
-class TestDeviceApi(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
+class TestDeviceApi(CreateConfigTemplateMixin, TestDeviceMonitoringMixin, TestCase):
     """
     Tests API (device metric collection)
     """

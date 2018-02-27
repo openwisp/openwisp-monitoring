@@ -6,11 +6,14 @@ from django.test import TestCase
 from openwisp_controller.config.models import Config, Device
 from openwisp_controller.config.tests import CreateConfigTemplateMixin
 
-from ...monitoring.tests import TestMonitoringMixin
+from . import TestDeviceMonitoringMixin
+from .. import settings as app_settings
+from ...monitoring.utils import get_db
 from ..models import DeviceData
+from ..utils import SHORT_RP
 
 
-class TestModels(TestMonitoringMixin,
+class TestModels(TestDeviceMonitoringMixin,
                  CreateConfigTemplateMixin,
                  TestCase):
     """
@@ -176,3 +179,11 @@ class TestModels(TestMonitoringMixin,
         self.assertIsNone(dd.data)
         dd = DeviceData(data=self._sample_data)
         self.assertEqual(dd.data, self._sample_data)
+
+    def test_retention_policy(self):
+        rp = get_db().get_list_retention_policies()
+        self.assertEqual(len(rp), 2)
+        self.assertEqual(rp[1]['name'], SHORT_RP)
+        self.assertEqual(rp[1]['default'], False)
+        duration = app_settings.SHORT_RETENTION_POLICY
+        self.assertEqual(rp[1]['duration'], duration)

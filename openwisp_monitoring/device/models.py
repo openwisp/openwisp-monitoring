@@ -8,6 +8,7 @@ from openwisp_controller.config.models import Device
 
 from ..monitoring.utils import query, write
 from .schema import schema
+from .utils import SHORT_RP
 
 
 class DeviceData(Device):
@@ -29,8 +30,8 @@ class DeviceData(Device):
         """
         if self.__data:
             return self.__data
-        q = "SELECT data FROM {0} WHERE pk = '{1}' " \
-            "ORDER BY time DESC LIMIT 1".format(self.__key, self.pk)
+        q = "SELECT data FROM {0}.{1} WHERE pk = '{2}' " \
+            "ORDER BY time DESC LIMIT 1".format(SHORT_RP, self.__key, self.pk)
         points = list(query(q).get_points())
         if not points:
             return None
@@ -64,7 +65,8 @@ class DeviceData(Device):
         write(name=self.__key,
               values={'data': self.json()},
               tags={'pk': self.pk},
-              timestamp=time)
+              timestamp=time,
+              retention_policy=SHORT_RP)
 
     def json(self, *args, **kwargs):
         return json.dumps(self.data, *args, **kwargs)

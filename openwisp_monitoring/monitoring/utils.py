@@ -27,7 +27,8 @@ def query(query, params=None, epoch=None,
     return db.query(query, params, epoch, expected_response_code, database=database)
 
 
-def write(name, values, tags=None, timestamp=None, database=None):
+def write(name, values, tags=None, timestamp=None,
+          database=None, retention_policy=None):
     """ Method to be called via threading module. """
     point = {
         'measurement': name,
@@ -40,7 +41,8 @@ def write(name, values, tags=None, timestamp=None, database=None):
         point['time'] = timestamp
     try:
         get_db().write({'points': [point]},
-                       {'db': database or settings.INFLUXDB_DATABASE})
+                       {'db': database or settings.INFLUXDB_DATABASE,
+                        'rp': retention_policy})
     except Exception as e:
         raise e
 

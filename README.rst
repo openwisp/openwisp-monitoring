@@ -53,6 +53,24 @@ Follow the setup instructions of `openwisp-controller
 
     urlpatterns += staticfiles_urlpatterns()
 
+Settings
+--------
+
+``OPENWISP_MONITORING_SHORT_RETENTION_POLICY``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``str``     |
++--------------+-------------+
+| **default**: | ``24h0m0s`` |
++--------------+-------------+
+
+The default retention policy used to store raw device data.
+
+This data is only used to assess the recent status of devices, keeping
+it for a long time would not add much benefit and would cost a lot more
+in terms of disk space.
+
 Installing for development
 --------------------------
 
