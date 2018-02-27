@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.utils.translation import ugettext_lazy as _
@@ -25,6 +27,7 @@ class DeviceMetricView(GenericAPIView):
 
     def post(self, request, pk):
         self.instance = self.get_object()
+        self._init_previous_data()
         self.instance.data = request.data
         # validate incoming data
         try:
@@ -34,6 +37,19 @@ class DeviceMetricView(GenericAPIView):
         # write data
         self._write(request, self.instance.pk)
         return Response(None)
+
+    def _init_previous_data(self):
+        """
+        makes NetJSON interfaces of previous
+        snapshots more easy to access
+        """
+        data = self.instance.data or {}
+        if data:
+            data = deepcopy(data)
+            data['interfaces_dict'] = {}
+        for interface in data.get('interfaces', []):
+            data['interfaces_dict'][interface['name']] = interface
+        self._previous_data = data
 
     def _write(self, request, pk):
         """
@@ -52,10 +68,8 @@ class DeviceMetricView(GenericAPIView):
                                                                key=ifname,
                                                                field_name=key,
                                                                name=name)
-                increment = self._calculate_increment(metric, value)
-                counter = '{0}_counter'.format(key)
-                # stores raw interface counter to calculate future increments
-                metric.write(increment, extra_values={counter: value})
+                increment = self._calculate_increment(ifname, key, value)
+                metric.write(increment)
                 if created:
                     self._create_traffic_graph(metric)
             if 'clients' not in interface:
@@ -71,18 +85,18 @@ class DeviceMetricView(GenericAPIView):
             if created:
                 self._create_clients_graph(metric)
 
-    def _calculate_increment(self, metric, value):
+    def _calculate_increment(self, ifname, stat, value):
         """
         compares value with previously stored counter and
         calculates the increment of the value (which is returned)
         """
-        counter_field = '{0}_counter'.format(metric.field_name)
-        # if no previous measurements present, counter will start from zero
-        previous_counter = 0
         # get previous counters
-        points = metric.read(limit=1, order='time DESC', extra_fields=[counter_field])
-        if points:
-            previous_counter = points[0].get(counter_field, 0)
+        data = self._previous_data
+        try:
+            previous_counter = data['interfaces_dict'][ifname]['statistics'][stat]
+        except KeyError:
+            # if no previous measurements present, counter will start from zero
+            previous_counter = 0
         # if current value is higher than previous value,
         # it means the interface traffic counter is increasing
         # and to calculate the traffic performed since the last
