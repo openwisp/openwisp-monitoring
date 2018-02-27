@@ -74,7 +74,11 @@ class DeviceMetricView(GenericAPIView):
                 metric.write(increment)
                 if created:
                     self._create_traffic_graph(metric)
-            if 'clients' not in interface:
+            try:
+                clients = interface['wireless']['clients']
+            except KeyError:
+                continue
+            if not isinstance(clients, list):
                 continue
             name = '{0} wifi clients'.format(ifname)
             metric, created = Metric.objects.get_or_create(object_id=pk,
@@ -82,8 +86,10 @@ class DeviceMetricView(GenericAPIView):
                                                            key=ifname,
                                                            field_name='clients',
                                                            name=name)
-            for client in interface.get('clients', {}).keys():
-                metric.write(client)
+            for client in clients:
+                if 'mac' not in client:
+                    continue
+                metric.write(client['mac'])
             if created:
                 self._create_clients_graph(metric)
 

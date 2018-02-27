@@ -43,20 +43,31 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
                         'rx_dropped': 0,
                         'tx_dropped': 0,
                     },
-                    'clients': {
-                        '00:ee:ad:34:f5:3b': {
-                            'wps': False,
-                            'wds': False,
-                            'ht': True,
-                            'preauth': False,
-                            'assoc': True,
-                            'authorized': True,
-                            'vht': False,
-                            'wmm': True,
-                            'aid': 1,
-                            'mfp': False,
-                            'auth': True
-                        }
+                    'wireless': {
+                        'frequency': 2437,
+                        'mode': 'access_point',
+                        'signal': -29,
+                        'tx_power': 6,
+                        'channel': 6,
+                        'ssid': 'testnet',
+                        'noise': -95,
+                        'country': 'US',
+                        'clients': [
+                            {
+                                'mac': '00:ee:ad:34:f5:3b',
+                                'wps': False,
+                                'wds': False,
+                                'ht': True,
+                                'preauth': False,
+                                'assoc': True,
+                                'authorized': True,
+                                'vht': False,
+                                'wmm': True,
+                                'aid': 1,
+                                'mfp': False,
+                                'auth': True
+                            }
+                        ]
                     }
                 },
                 {
@@ -69,37 +80,76 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
                         'rx_dropped': 0,
                         'tx_dropped': 0,
                     },
-                    'clients': {
-                        '11:dd:ce:53:d1:5a': {
-                            'wps': False,
-                            'wds': False,
-                            'ht': True,
-                            'preauth': False,
-                            'assoc': True,
-                            'authorized': True,
-                            'vht': False,
-                            'wmm': True,
-                            'aid': 1,
-                            'mfp': False,
-                            'auth': True
-                        },
-                        '12:d3:be:63:d1:5a': {
-                            'wps': False,
-                            'wds': False,
-                            'ht': True,
-                            'preauth': False,
-                            'assoc': True,
-                            'authorized': True,
-                            'vht': False,
-                            'wmm': True,
-                            'aid': 1,
-                            'mfp': False,
-                            'auth': True
-                        }
-                    }
+                    'wireless': {
+                        'frequency': 2437,
+                        'mode': 'access_point',
+                        'signal': -29,
+                        'tx_power': 6,
+                        'channel': 6,
+                        'ssid': 'testnet',
+                        'noise': -95,
+                        'country': 'US',
+                        'clients': [
+                            {
+                                'mac': 'b0:e1:7e:30:16:44',
+                                'wps': False,
+                                'wds': False,
+                                'ht': True,
+                                'preauth': False,
+                                'assoc': True,
+                                'authorized': True,
+                                'vht': False,
+                                'wmm': True,
+                                'aid': 1,
+                                'mfp': False,
+                                'auth': True
+                            },
+                            {
+                                'mac': 'c0:ee:fb:34:f5:4b',
+                                'wps': False,
+                                'wds': False,
+                                'ht': True,
+                                'preauth': False,
+                                'assoc': True,
+                                'authorized': True,
+                                'vht': False,
+                                'wmm': True,
+                                'aid': 1,
+                                'mfp': False,
+                                'auth': True
+                            }
+                        ],
+                    },
                 }
             ]
         }
+
+    _garbage_data = {
+        'type': 'DeviceMonitoring',
+        'interfaces': [
+            {
+                'name': 'garbage1',
+                'wireless': {
+                    'clients': {},
+                },
+            },
+            {
+                'name': 'garbage2',
+                'wireless': {
+                    'clients': [
+                        {'what?': 'mac missing'}
+                    ],
+                },
+            },
+            {
+                'name': 'garbage3',
+                'wireless': {},
+            },
+            {
+                'name': 'garbage4'
+            }
+        ]
+    }
 
     def test_404(self):
         r = self._post_data(self.device_model().pk, '123', self._data())
@@ -170,7 +220,7 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
             m = Metric.objects.get(key=ifname, field_name='clients',
                                    object_id=d.pk)
             points = m.read(limit=10, order='time DESC')
-            self.assertEqual(len(points), len(iface['clients'].keys()))
+            self.assertEqual(len(points), len(iface['wireless']['clients']))
 
     def test_200_traffic_counter_incremented(self):
         self.test_200_create()
@@ -201,7 +251,7 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
             m = Metric.objects.get(key=ifname, field_name='clients',
                                    object_id=d.pk)
             points = m.read(limit=10, order='time DESC')
-            self.assertEqual(len(points), len(iface['clients'].keys()) * 2)
+            self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
     def test_200_traffic_counter_reset(self):
         self.test_200_create()
@@ -232,7 +282,7 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
             m = Metric.objects.get(key=ifname, field_name='clients',
                                    object_id=d.pk)
             points = m.read(limit=10, order='time DESC')
-            self.assertEqual(len(points), len(iface['clients'].keys()) * 2)
+            self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
     def test_200_multiple_measurements(self):
         self.test_200_create()
@@ -303,3 +353,11 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
         self.assertEqual(data['graphs'][0][1][-1], 3.0)
         # expected upload wlan1
         self.assertEqual(data['graphs'][1][1][-1], 1.5)
+
+    def test_garbage_data(self):
+        o = self._create_org()
+        d = self._create_device(organization=o)
+        r = self._post_data(d.id, d.key, self._garbage_data)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(Metric.objects.count(), 1)
+        self.assertEqual(Graph.objects.count(), 1)
