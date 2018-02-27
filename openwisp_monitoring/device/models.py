@@ -1,55 +1,70 @@
 import json
-import collections
-from copy import deepcopy
 
 from django.core.exceptions import ValidationError
-from django.db import models
-from django.utils.translation import ugettext_lazy as _
-from jsonfield import JSONField
-
-from openwisp_utils.base import TimeStampedEditableModel
-
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError as SchemaError
 
+from openwisp_controller.config.models import Device
+
+from ..monitoring.utils import query, write
 from .schema import schema
 
 
-class DeviceDynamicData(TimeStampedEditableModel):
-    """
-    stores device information that changes over time
-    this information will be either received or retrieved
-    from the network device itself
-    """
-    device = models.OneToOneField('config.Device',
-                                  on_delete=models.CASCADE,
-                                  related_name='dynamic_data')
-    data = JSONField(_('data'),
-                     default=dict,
-                     help_text=_('dynamic device data in NetJSON DeviceMonitoring format'),
-                     load_kwargs={'object_pairs_hook': collections.OrderedDict},
-                     dump_kwargs={'indent': 4})
+class DeviceData(Device):
     schema = schema
+    __data = None
+    __key = 'device_data'
 
-    def clean(self):
+    class Meta:
+        proxy = True
+
+    def __init__(self, *args, **kwargs):
+        self.data = kwargs.pop('data', None)
+        return super(DeviceData, self).__init__(*args, **kwargs)
+
+    @property
+    def data(self):
         """
-        validate data field according
-        to NetJSON DeviceMonitoring schema
+        retrieves last data snapshot from influxdb
+        """
+        if self.__data:
+            return self.__data
+        q = "SELECT data FROM {0} WHERE pk = '{1}' " \
+            "ORDER BY time DESC LIMIT 1".format(self.__key, self.pk)
+        points = list(query(q).get_points())
+        if not points:
+            return None
+        return json.loads(points[0]['data'])
+
+    @data.setter
+    def data(self, data):
+        """
+        sets data
+        """
+        self.__data = data
+
+    def validate_data(self):
+        """
+        validate data according to NetJSON DeviceMonitoring schema
         """
         try:
-            validate(self._netjson, self.schema)
+            validate(self.data, self.schema)
         except SchemaError as e:
             path = [str(el) for el in e.path]
             trigger = '/'.join(path)
             message = 'Invalid data in "#/{0}", '\
                       'validator says:\n\n{1}'.format(trigger, e.message)
-            raise ValidationError({'data': message})
+            raise ValidationError(message)
 
-    @property
-    def _netjson(self):
-        data = deepcopy(self.data)
-        data.update({'type': 'DeviceMonitoring'})
-        return data
+    def save_data(self, time=None):
+        """
+        validates and saves data to influxdb
+        """
+        self.validate_data()
+        write(name=self.__key,
+              values={'data': self.json()},
+              tags={'pk': self.pk},
+              timestamp=time)
 
     def json(self, *args, **kwargs):
-        return json.dumps(self._netjson, *args, **kwargs)
+        return json.dumps(self.data, *args, **kwargs)

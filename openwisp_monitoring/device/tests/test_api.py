@@ -8,6 +8,7 @@ from openwisp_controller.config.tests import CreateConfigTemplateMixin
 
 from ...monitoring.models import Graph, Metric
 from ...monitoring.tests import TestMonitoringMixin
+from ..models import DeviceData
 
 
 class TestDeviceApi(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
@@ -143,6 +144,8 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
         data = self._data()
         r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 200)
+        dd = DeviceData(pk=d.pk)
+        self.assertDictEqual(dd.data, data)
         self.assertEqual(Metric.objects.count(), 6)
         self.assertEqual(Graph.objects.count(), 4)
         if_dict = {'wlan0': data['interfaces'][0],
@@ -172,6 +175,8 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
         data2['interfaces'][1]['statistics']['tx_bytes'] = 4567
         r = self._post_data(d.id, d.key, data2)
         self.assertEqual(r.status_code, 200)
+        dd = DeviceData(pk=d.pk)
+        self.assertDictEqual(dd.data, data2)
         self.assertEqual(Metric.objects.count(), 6)
         self.assertEqual(Graph.objects.count(), 4)
         if_dict = {'wlan0': data2['interfaces'][0],
@@ -201,6 +206,8 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
         data2['interfaces'][1]['statistics']['tx_bytes'] = 120
         r = self._post_data(d.id, d.key, data2)
         self.assertEqual(r.status_code, 200)
+        dd = DeviceData(pk=d.pk)
+        self.assertDictEqual(dd.data, data2)
         self.assertEqual(Metric.objects.count(), 6)
         self.assertEqual(Graph.objects.count(), 4)
         if_dict = {'wlan0': data2['interfaces'][0],
@@ -242,6 +249,8 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
         data4['interfaces'][1]['statistics']['tx_bytes'] = 1000000000
         r = self._post_data(d.id, d.key, data4)
         self.assertEqual(r.status_code, 200)
+        dd = DeviceData(pk=d.pk)
+        self.assertDictEqual(dd.data, data4)
         self.assertEqual(Metric.objects.count(), 6)
         self.assertEqual(Graph.objects.count(), 4)
         expected = {'wlan0': {'rx_bytes': 6000, 'tx_bytes': 10000},

@@ -1,15 +1,13 @@
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.utils.translation import ugettext_lazy as _
-from jsonschema import validate
-from jsonschema.exceptions import ValidationError as SchemaError
 from rest_framework import serializers, status
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
-from openwisp_controller.config.models import Device
-
 from ...monitoring.models import Graph, Metric
+from ..models import DeviceData
 from ..schema import schema
 
 
@@ -19,7 +17,7 @@ class DevicePermission(BasePermission):
 
 
 class DeviceMetricView(GenericAPIView):
-    queryset = Device.objects.all()
+    queryset = DeviceData.objects.all()
     serializer_class = serializers.Serializer
     permission_classes = [DevicePermission]
     schema = schema
@@ -27,29 +25,24 @@ class DeviceMetricView(GenericAPIView):
 
     def post(self, request, pk):
         self.instance = self.get_object()
+        self.instance.data = request.data
         # validate incoming data
         try:
-            self.validate(request.data)
-        except SchemaError as e:
+            self.instance.validate_data()
+        except ValidationError as e:
             return Response(e.message, status=status.HTTP_400_BAD_REQUEST)
         # write data
         self._write(request, self.instance.pk)
         return Response(None)
 
-    def validate(self, data):
-        """
-        validate incoming data according
-        to NetJSON DeviceMonitoring schema
-        """
-        validate(data, self.schema)
-
     def _write(self, request, pk):
         """
         write metrics to database
         """
-        data = request.data
-        ct = ContentType.objects.get(model=self.instance.__class__.__name__.lower(),
-                                     app_label=self.instance._meta.app_label)
+        # saves raw device data
+        self.instance.save_data()
+        data = self.instance.data
+        ct = ContentType.objects.get(model='device', app_label='config')
         for interface in data.get('interfaces', []):
             ifname = interface['name']
             for key, value in interface.get('statistics', {}).items():
