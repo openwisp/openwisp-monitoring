@@ -1,6 +1,16 @@
 {% extends "admin/config/change_form.html" %}
 {% load i18n static %}
 {% block after_field_sets %}
+{% if not add and device_data %}
+<div class="inline-group">
+    <fieldset class="module">
+        <h2>{% trans 'Device Information' %}</h2>
+        <div class="inline-related">
+            <pre>{{ device_data }}</pre>
+        </div>
+    </fieldset>
+</div>
+{% endif %}
 {% if not add and graphs %}
 <div class="inline-group">
     <fieldset class="module">

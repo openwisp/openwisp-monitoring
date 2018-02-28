@@ -1,5 +1,6 @@
 import json
 
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
@@ -361,3 +362,29 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestDeviceMonitoringMixin, TestCa
         self.assertEqual(r.status_code, 200)
         self.assertEqual(Metric.objects.count(), 1)
         self.assertEqual(Graph.objects.count(), 1)
+
+    # testing admin here is more convenient because
+    # we already have the code that creates test data
+
+    def _login_admin(self):
+        User = get_user_model()
+        u = User.objects.create_superuser('admin', 'admin', 'test@test.com')
+        self.client.force_login(u)
+
+    def test_device_admin(self):
+        self.test_200_multiple_measurements()
+        d = Device.objects.first()
+        url = reverse('admin:config_device_change', args=[d.pk])
+        self._login_admin()
+        r = self.client.get(url)
+        self.assertContains(r, 'Device Information')
+        self.assertContains(r, 'Monitoring Graph')
+
+    def test_device_admin_empty(self):
+        o = self._create_org()
+        d = self._create_device(organization=o)
+        url = reverse('admin:config_device_change', args=[d.pk])
+        self._login_admin()
+        r = self.client.get(url)
+        self.assertNotContains(r, 'Device Information')
+        self.assertNotContains(r, 'Monitoring Graph')
