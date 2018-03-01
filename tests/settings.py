@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     # monitoring
     'openwisp_monitoring.monitoring',
     'openwisp_monitoring.device',
+    'openwisp_monitoring.check',
     'notifications'
 ]
 

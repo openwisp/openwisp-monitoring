@@ -1,6 +1,5 @@
 from datetime import timedelta
 
-from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
@@ -9,7 +8,6 @@ from . import TestMonitoringMixin
 from ..models import Metric
 from ..utils import query, write
 
-User = get_user_model()
 start_time = timezone.now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
 
