@@ -1,10 +1,6 @@
 import json
 
 from django.core.exceptions import ValidationError
-from django.test import TestCase
-
-from openwisp_controller.config.models import Config, Device
-from openwisp_controller.config.tests import CreateConfigTemplateMixin
 
 from . import TestDeviceMonitoringMixin
 from .. import settings as app_settings
@@ -13,14 +9,10 @@ from ..models import DeviceData
 from ..utils import SHORT_RP
 
 
-class TestModels(TestDeviceMonitoringMixin,
-                 CreateConfigTemplateMixin,
-                 TestCase):
+class TestModels(TestDeviceMonitoringMixin):
     """
     Test openwisp_monitoring.device.models
     """
-    device_model = Device
-    config_model = Config
     _sample_data = {
         "type": "DeviceMonitoring",
         "general": {

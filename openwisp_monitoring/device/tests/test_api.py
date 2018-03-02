@@ -1,24 +1,17 @@
 import json
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
 from django.urls import reverse
-
-from openwisp_controller.config.models import Config, Device
-from openwisp_controller.config.tests import CreateConfigTemplateMixin
 
 from . import TestDeviceMonitoringMixin
 from ...monitoring.models import Graph, Metric
 from ..models import DeviceData
 
 
-class TestDeviceApi(CreateConfigTemplateMixin, TestDeviceMonitoringMixin, TestCase):
+class TestDeviceApi(TestDeviceMonitoringMixin):
     """
     Tests API (device metric collection)
     """
-    device_model = Device
-    config_model = Config
-
     def _url(self, pk, key=None):
         url = reverse('monitoring:api_device_metric', args=[pk])
         if key:
@@ -225,8 +218,8 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestDeviceMonitoringMixin, TestCa
 
     def test_200_traffic_counter_incremented(self):
         self.test_200_create()
-        self.assertEqual(Device.objects.count(), 1)
-        d = Device.objects.first()
+        self.assertEqual(self.device_model.objects.count(), 1)
+        d = self.device_model.objects.first()
         data2 = self._data()
         data2['interfaces'][0]['statistics']['rx_bytes'] = 983
         data2['interfaces'][0]['statistics']['tx_bytes'] = 1567
@@ -256,8 +249,8 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestDeviceMonitoringMixin, TestCa
 
     def test_200_traffic_counter_reset(self):
         self.test_200_create()
-        self.assertEqual(Device.objects.count(), 1)
-        d = Device.objects.first()
+        self.assertEqual(self.device_model.objects.count(), 1)
+        d = self.device_model.objects.first()
         data2 = self._data()
         data2['interfaces'][0]['statistics']['rx_bytes'] = 50
         data2['interfaces'][0]['statistics']['tx_bytes'] = 20
@@ -287,8 +280,8 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestDeviceMonitoringMixin, TestCa
 
     def test_200_multiple_measurements(self):
         self.test_200_create()
-        self.assertEqual(Device.objects.count(), 1)
-        d = Device.objects.first()
+        self.assertEqual(self.device_model.objects.count(), 1)
+        d = self.device_model.objects.first()
         data2 = self._data()
         data2['interfaces'][0]['statistics']['rx_bytes'] = 100000000
         data2['interfaces'][0]['statistics']['tx_bytes'] = 400000000
@@ -373,7 +366,7 @@ class TestDeviceApi(CreateConfigTemplateMixin, TestDeviceMonitoringMixin, TestCa
 
     def test_device_admin(self):
         self.test_200_multiple_measurements()
-        d = Device.objects.first()
+        d = self.device_model.objects.first()
         url = reverse('admin:config_device_change', args=[d.pk])
         self._login_admin()
         r = self.client.get(url)
