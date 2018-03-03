@@ -1,12 +1,12 @@
-from django.test import TestCase
+from django.core.exceptions import ValidationError
 
-from ...monitoring.tests import TestMonitoringMixin
+from ...device.tests import TestDeviceMonitoringMixin
 from ..classes import Ping
 from ..models import Check
 from ..settings import CHECK_CLASSES
 
 
-class TestModels(TestMonitoringMixin, TestCase):
+class TestModels(TestDeviceMonitoringMixin):
     _PING = CHECK_CLASSES[0][0]
 
     def test_check_str(self):
@@ -24,12 +24,23 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertEqual(c.check_class, Ping)
 
     def test_check_instance(self):
-        obj = self._create_user()
+        obj = self._create_device(organization=self._create_org())
         c = Check(name='Ping class check',
                   check=self._PING,
                   content_object=obj,
-                  params={'test': 'test'})
+                  params={})
         i = c.check_instance
         self.assertIsInstance(i, Ping)
         self.assertEqual(i.instance, obj)
         self.assertEqual(i.params, c.params)
+
+    def test_validation(self):
+        check = Check(name='Ping check',
+                      check=self._PING,
+                      params={})
+        try:
+            check.full_clean()
+        except ValidationError as e:
+            self.assertIn('device', str(e))
+        else:
+            self.fail('ValidationError not raised')

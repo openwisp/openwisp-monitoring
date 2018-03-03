@@ -37,11 +37,14 @@ class Check(TimeStampedEditableModel):
                        dump_kwargs={'indent': 4})
 
     def __str__(self):
-        obj = self.content_object
-        if not obj:
+        if not self.object_id or not self.content_type:
             return self.name
+        obj = self.content_object
         model_name = obj.__class__.__name__
         return '{0} ({1}: {2})'.format(self.name, model_name, obj)
+
+    def clean(self):
+        self.check_instance.validate()
 
     @cached_property
     def check_class(self):
@@ -56,5 +59,11 @@ class Check(TimeStampedEditableModel):
         returns check class instance
         """
         check_class = self.check_class
-        return check_class(instance=self.content_object,
+        return check_class(check=self,
                            params=self.params)
+
+    def perform_check(self):
+        """
+        initiates check instance and calls its check method
+        """
+        return self.check_instance.check()
