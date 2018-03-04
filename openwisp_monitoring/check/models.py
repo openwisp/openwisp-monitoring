@@ -62,8 +62,8 @@ class Check(TimeStampedEditableModel):
         return check_class(check=self,
                            params=self.params)
 
-    def perform_check(self):
+    def perform_check(self, store=True):
         """
         initiates check instance and calls its check method
         """
-        return self.check_instance.check()
+        return self.check_instance.check(store=True)

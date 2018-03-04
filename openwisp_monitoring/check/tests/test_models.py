@@ -31,7 +31,7 @@ class TestModels(TestDeviceMonitoringMixin):
                   params={})
         i = c.check_instance
         self.assertIsInstance(i, Ping)
-        self.assertEqual(i.instance, obj)
+        self.assertEqual(i.related_object, obj)
         self.assertEqual(i.params, c.params)
 
     def test_validation(self):

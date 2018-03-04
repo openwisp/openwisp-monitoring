@@ -2,6 +2,7 @@ import mock
 from django.core.exceptions import ValidationError
 
 from ...device.tests import TestDeviceMonitoringMixin
+from ...monitoring.models import Graph, Metric, Threshold
 from ..classes import Ping
 from ..exceptions import OperationalError
 from ..models import Check
@@ -16,6 +17,8 @@ class TestPing(TestDeviceMonitoringMixin):
         '', bytes("fping: option requires an argument -- 'z'",
                   encoding='utf8')
     )
+    _FPING_OUTPUT = ('', bytes('10.40.0.1 : xmt/rcv/%loss = 5/5/0%, '
+                               'min/avg/max = 0.04/0.08/0.15', 'utf8'))
 
     def test_check_ping_no_params(self):
         config = self._create_config(organization=self._create_org())
@@ -25,7 +28,7 @@ class TestPing(TestDeviceMonitoringMixin):
                       check=self._PING,
                       content_object=config.device,
                       params={})
-        result = check.perform_check()
+        result = check.perform_check(store=False)
         for key in self._RESULT_KEYS:
             self.assertIn(key, result)
         self.assertEqual(result['reachable'], 1)
@@ -44,7 +47,7 @@ class TestPing(TestDeviceMonitoringMixin):
                               'interval': 10,
                               'bytes': 10,
                               'timeout': 50})
-        result = check.perform_check()
+        result = check.perform_check(store=False)
         for key in self._RESULT_KEYS:
             self.assertIn(key, result)
         self.assertEqual(result['reachable'], 1)
@@ -60,7 +63,7 @@ class TestPing(TestDeviceMonitoringMixin):
                       check=self._PING,
                       content_object=config.device,
                       params={'timeout': 50, 'count': 3})
-        result = check.perform_check()
+        result = check.perform_check(store=False)
         for key in self._RESULT_KEYS[0:2]:
             self.assertIn(key, result)
         self.assertFalse(result['reachable'], 0)
@@ -75,7 +78,7 @@ class TestPing(TestDeviceMonitoringMixin):
                       content_object=config.device,
                       params={'timeout': 50, 'count': 3})
         try:
-            check.perform_check()
+            check.perform_check(store=False)
         except OperationalError as e:
             self.assertIn('Unrecognized fping output:', str(e))
         else:
@@ -88,7 +91,7 @@ class TestPing(TestDeviceMonitoringMixin):
                       content_object=d,
                       params={})
         try:
-            check.perform_check()
+            check.perform_check(store=False)
         except OperationalError as e:
             self.assertIn('ip address', str(e))
         except Exception as e:
@@ -104,7 +107,7 @@ class TestPing(TestDeviceMonitoringMixin):
                       content_object=config.device,
                       params={})
         try:
-            check.perform_check()
+            check.perform_check(store=False)
         except OperationalError as e:
             self.assertIn('ip address', str(e))
         except Exception as e:
@@ -156,3 +159,32 @@ class TestPing(TestDeviceMonitoringMixin):
                 self.assertIn('Invalid param', str(e))
             else:
                 self.fail('ValidationError not raised')
+
+    @mock.patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
+    def test_store_result(self, mocked_method):
+        config = self._create_config(organization=self._create_org())
+        config.last_ip = '10.40.0.1'
+        config.save()
+        check = Check(name='Ping check',
+                      check=self._PING,
+                      content_object=config.device,
+                      params={})
+        check.full_clean()
+        check.save()
+        self.assertEqual(Metric.objects.count(), 0)
+        self.assertEqual(Graph.objects.count(), 0)
+        self.assertEqual(Threshold.objects.count(), 0)
+        result = check.perform_check()
+        self.assertEqual(Metric.objects.count(), 1)
+        self.assertEqual(Graph.objects.count(), 3)
+        self.assertEqual(Threshold.objects.count(), 1)
+        m = Metric.objects.first()
+        self.assertEqual(m.content_object, config.device)
+        self.assertEqual(m.key, 'ping')
+        points = m.read(limit=None, extra_fields=list(result.keys()))
+        self.assertEqual(len(points), 1)
+        self.assertEqual(points[0]['reachable'], result['reachable'])
+        self.assertEqual(points[0]['loss'], result['loss'])
+        self.assertEqual(points[0]['rtt_min'], result['rtt_min'])
+        self.assertEqual(points[0]['rtt_avg'], result['rtt_avg'])
+        self.assertEqual(points[0]['rtt_max'], result['rtt_max'])

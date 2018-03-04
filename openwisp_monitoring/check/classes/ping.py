@@ -1,11 +1,13 @@
 import subprocess
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError as SchemaError
 
 from openwisp_controller.config.models import Device
 
+from ...monitoring.models import Graph, Metric, Threshold
 from ..exceptions import OperationalError
 
 
@@ -46,7 +48,8 @@ class Ping(object):
     }
 
     def __init__(self, check, params):
-        self.instance = check.content_object
+        self.check_instance = check
+        self.related_object = check.content_object
         self.params = params
 
     def validate(self):
@@ -55,7 +58,7 @@ class Ping(object):
 
     def validate_instance(self):
         # check instance is of type device
-        obj = self.instance
+        obj = self.related_object
         if not obj or not isinstance(obj, Device):
             message = 'A related device is required ' \
                       'to perform this operation'
@@ -73,7 +76,7 @@ class Ping(object):
             message = '{0}: {1}'.format(message, e.message)
             raise ValidationError({'params': message})
 
-    def check(self):
+    def check(self, store=True):
         count = self._get_param('count')
         interval = self._get_param('interval')
         bytes_ = self._get_param('bytes')
@@ -116,7 +119,18 @@ class Ping(object):
                 'rtt_avg': float(avg),
                 'rtt_max': float(max),
             })
+        if store:
+            self.store_result(result)
         return result
+
+    def store_result(self, result):
+        """
+        store result in the DB
+        """
+        metric = self._get_metric()
+        copied = result.copy()
+        reachable = copied.pop('reachable')
+        metric.write(reachable, extra_values=copied)
 
     def _get_param(self, param):
         """
@@ -129,7 +143,7 @@ class Ping(object):
         Figures out ip to use or fails raising OperationalError
         """
         try:
-            ip = self.instance.config.last_ip
+            ip = self.related_object.config.last_ip
             assert(ip is not None)
         except (ObjectDoesNotExist, AssertionError):
             raise OperationalError('Could not find a valid ip address')
@@ -143,3 +157,59 @@ class Ping(object):
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
         return p.communicate()
+
+    def _get_metric(self):
+        """
+        Gets or creates metric
+        """
+        check = self.check_instance
+        if check.object_id and check.content_type:
+            obj_id = check.object_id
+            ct = check.content_type
+        else:
+            obj_id = str(check.id)
+            ct = ContentType.objects.get(app_label=check._meta.app_label,
+                                         model=check.__class__.__name__.lower())
+        options = dict(name=check.name,
+                       object_id=obj_id,
+                       content_type=ct,
+                       field_name='reachable',
+                       key=self.__class__.__name__.lower())
+        metric, created = Metric.objects.get_or_create(**options)
+        if created:
+            self._create_threshold(metric)
+            self._create_graphs(metric)
+        return metric
+
+    def _create_threshold(self, metric):
+        t = Threshold(metric=metric,
+                      operator='<',
+                      value=1,
+                      seconds=0)
+        t.full_clean()
+        t.save()
+
+    def _create_graphs(self, metric):
+        """
+        Creates device graphs if necessary
+        """
+        graphs = [
+            {'description': 'Daily uptime (%)',
+             'query': "SELECT MEAN({field_name})*100 AS uptime FROM {key} WHERE "
+                      "time >= '{time}' AND content_type = '{content_type}' AND "
+                      "object_id = '{object_id}' GROUP BY time(1d) fill(0)"},
+            {'description': 'Daily packet loss (%)',
+             'query': "SELECT MEAN(loss) AS packet_loss FROM {key} WHERE "
+                      "time >= '{time}' AND content_type = '{content_type}' AND "
+                      "object_id = '{object_id}' GROUP BY time(1d) fill(0)"},
+            {'description': 'Daily RTT (ms)',
+             'query': "SELECT MEAN(rtt_avg) AS RTT_average, MEAN(rtt_max) AS "
+                      "RTT_max, MEAN(rtt_min) AS RTT_min FROM {key} WHERE "
+                      "time >= '{time}' AND content_type = '{content_type}' AND "
+                      "object_id = '{object_id}' GROUP BY time(1d) fill(0)"},
+        ]
+        for opts in graphs:
+            opts.update(metric=metric)
+            graph = Graph(**opts)
+            graph.full_clean()
+            graph.save()
