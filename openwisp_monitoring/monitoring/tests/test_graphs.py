@@ -141,5 +141,5 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         g.query = q
         g.save()
         data = g.read()
-        self.assertEqual(data['graphs'][0][0], m.field_name)
+        self.assertEqual(data['graphs'][0][0], m.field_name.replace('_', ' '))
         self.assertEqual(data['graphs'][0][1], [2, 2, 2, 2, 2, 2, 4])

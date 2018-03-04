@@ -267,14 +267,15 @@ class Graph(TimeStampedEditableModel):
             return False
         for point in points:
             for key, value in point.items():
-                if key == 'time':
+                label = key.replace('_', ' ')
+                if label == 'time':
                     continue
-                graphs.setdefault(key, [])
-                if decimal_places:
+                graphs.setdefault(label, [])
+                if decimal_places and isinstance(value, (int, float)):
                     value = round(value, decimal_places)
-                graphs[key].append(value)
+                graphs[label].append(value)
             time = datetime.fromtimestamp(point['time']) \
-                           .strftime('%Y-%m-%d')
+                           .strftime('%Y-%m-%d %H:%M')
             x.append(time)
         # transform data so its order is not random
         return {'x': x, 'graphs': sorted(graphs.items())}
