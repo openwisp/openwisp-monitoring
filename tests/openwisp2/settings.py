@@ -1,5 +1,6 @@
 import os
 import sys
+from datetime import timedelta
 
 TESTING = 'test' in sys.argv
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -54,7 +55,8 @@ INSTALLED_APPS = [
     'openwisp_monitoring.monitoring',
     'openwisp_monitoring.device',
     'openwisp_monitoring.check',
-    'notifications'
+    'notifications',
+    #'django_celery_beat',
 ]
 
 EXTENDED_APPS = ('django_netjsonconfig', 'django_x509', 'django_loci',)
@@ -78,7 +80,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'urls'
+ROOT_URLCONF = 'openwisp2.urls'
 
 CHANNEL_LAYERS = {
     'default': {
@@ -129,6 +131,22 @@ INFLUXDB_USER = 'root'
 INFLUXDB_PASSWORD = 'root'
 INFLUXDB_DATABASE = 'openwisp2'
 
+if not TESTING:
+    CELERY_BROKER_URL = 'redis://localhost/1'
+else:
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+    CELERY_BROKER_URL = 'memory://'
+
+CELERYBEAT_SCHEDULE = {
+    'run_checks': {
+        'task': 'openwisp_monitoring.check.tasks.run_checks',
+        'schedule': timedelta(minutes=5),
+        'args': None,
+        'relative': True
+    },
+}
+
 LOGGING = {
     'version': 1,
     'filters': {
@@ -144,15 +162,26 @@ LOGGING = {
         }
     },
     'loggers': {
+        'py.warnings': {
+            'handlers': ['console'],
+        },
         'django.db.backends': {
             'level': 'DEBUG',
             'handlers': ['console'],
-        }
+        },
+        'celery': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+        'celery.task': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
     }
 }
 
 # local settings must be imported before test runner otherwise they'll be ignored
 try:
-    from local_settings import *
+    from openwisp2.local_settings import *
 except ImportError:
     pass

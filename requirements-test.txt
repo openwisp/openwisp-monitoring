@@ -3,3 +3,4 @@ coveralls
 isort
 flake8
 mock
+redis>=2.10.6<2.11

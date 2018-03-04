@@ -26,6 +26,10 @@ Install Depdendencies
     sudo apt-get update && sudo apt-get install influxdb
     sudo systemctl start influxdb
 
+Install redis (you can use different celery broker if you want):
+
+    sudo apt-get install redis-server
+
 Install ``fping`` if you need to use the ping active check:
 
     sudo apt-get install fping
@@ -69,6 +73,20 @@ Follow the setup instructions of `openwisp-controller
     ]
 
     urlpatterns += staticfiles_urlpatterns()
+
+Configure celery:
+
+.. code-block:: python
+
+    # here we show how to configure celery with redis but you can
+    # use other brokers if you want, consult the celery docs
+    CELERY_BROKER_URL = 'redis://localhost/0'
+    CELERYBEAT_SCHEDULE = {
+        'run_checks': {
+            'task': 'openwisp_monitoring.check.tasks.run_check',
+            'schedule': timedelta(minutes=5),
+        },
+    }
 
 Settings
 --------
