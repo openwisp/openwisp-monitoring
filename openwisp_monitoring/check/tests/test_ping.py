@@ -1,16 +1,17 @@
 import mock
 from django.core.exceptions import ValidationError
 
+from .. import settings
+from ... import settings as monitoring_settings
 from ...device.tests import TestDeviceMonitoringMixin
 from ...monitoring.models import Graph, Metric, Threshold
 from ..classes import Ping
 from ..exceptions import OperationalError
 from ..models import Check
-from ..settings import CHECK_CLASSES
 
 
 class TestPing(TestDeviceMonitoringMixin):
-    _PING = CHECK_CLASSES[0][0]
+    _PING = settings.CHECK_CLASSES[0][0]
     _RESULT_KEYS = ['reachable', 'loss', 'rtt_min', 'rtt_avg', 'rtt_max']
     _RTT_KEYS = _RESULT_KEYS[-3:]
     _UNRECOGNIZED_OUTPUT = (
@@ -165,12 +166,8 @@ class TestPing(TestDeviceMonitoringMixin):
         config = self._create_config(organization=self._create_org())
         config.last_ip = '10.40.0.1'
         config.save()
-        check = Check(name='Ping check',
-                      check=self._PING,
-                      content_object=config.device,
-                      params={})
-        check.full_clean()
-        check.save()
+        # check created automatically by autoping
+        check = Check.objects.first()
         self.assertEqual(Metric.objects.count(), 0)
         self.assertEqual(Graph.objects.count(), 0)
         self.assertEqual(Threshold.objects.count(), 0)
@@ -188,3 +185,14 @@ class TestPing(TestDeviceMonitoringMixin):
         self.assertEqual(points[0]['rtt_min'], result['rtt_min'])
         self.assertEqual(points[0]['rtt_avg'], result['rtt_avg'])
         self.assertEqual(points[0]['rtt_max'], result['rtt_max'])
+
+    @mock.patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
+    @mock.patch.object(monitoring_settings, 'AUTO_GRAPHS', return_value=[])
+    def test_auto_graph_disabled(self, *args):
+        config = self._create_config(organization=self._create_org())
+        config.last_ip = '127.0.0.1'
+        config.save()
+        check = Check.objects.first()
+        self.assertEqual(Graph.objects.count(), 0)
+        check.perform_check()
+        self.assertEqual(Graph.objects.count(), 0)

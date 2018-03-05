@@ -8,6 +8,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
+from ... import settings as monitoring_settings
 from ...monitoring.models import Graph, Metric
 from ..models import DeviceData
 from ..schema import schema
@@ -121,7 +122,7 @@ class DeviceMetricView(GenericAPIView):
         """
         create "daily traffic (GB)" graph
         """
-        if metric.field_name != 'tx_bytes':
+        if (metric.field_name != 'tx_bytes' or 'traffic' not in monitoring_settings.AUTO_GRAPHS):
             return
         graph = Graph(metric=metric,
                       description=_('{0} daily traffic (GB)').format(metric.key),
@@ -136,6 +137,8 @@ class DeviceMetricView(GenericAPIView):
         """
         creates "daily wifi associations" graph
         """
+        if 'wifi_clients' not in monitoring_settings.AUTO_GRAPHS:
+            return
         graph = Graph(metric=metric,
                       description=_('{0} daily wifi associations').format(metric.key),
                       query="SELECT COUNT(DISTINCT({field_name})) AS value FROM {key} "

@@ -1,9 +1,11 @@
 import json
 
+import mock
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
 from . import TestDeviceMonitoringMixin
+from ... import settings as monitoring_settings
 from ...monitoring.models import Graph, Metric
 from ..models import DeviceData
 
@@ -355,6 +357,14 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(Metric.objects.count(), 1)
         self.assertEqual(Graph.objects.count(), 1)
+
+    @mock.patch.object(monitoring_settings, 'AUTO_GRAPHS', return_value=[])
+    def test_auto_graph_disabled(self, *args):
+        self.assertEqual(Graph.objects.count(), 0)
+        o = self._create_org()
+        d = self._create_device(organization=o)
+        self._post_data(d.id, d.key, self._data())
+        self.assertEqual(Graph.objects.count(), 0)
 
     # testing admin here is more convenient because
     # we already have the code that creates test data

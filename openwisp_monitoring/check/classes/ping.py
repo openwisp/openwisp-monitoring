@@ -7,6 +7,7 @@ from jsonschema.exceptions import ValidationError as SchemaError
 
 from openwisp_controller.config.models import Device
 
+from ... import settings as monitoring_settings
 from ...monitoring.models import Graph, Metric, Threshold
 from ..exceptions import OperationalError
 
@@ -194,21 +195,26 @@ class Ping(object):
         Creates device graphs if necessary
         """
         graphs = [
-            {'description': 'Daily uptime (%)',
+            {'label': 'uptime',
+             'description': 'Daily uptime (%)',
              'query': "SELECT MEAN({field_name})*100 AS uptime FROM {key} WHERE "
                       "time >= '{time}' AND content_type = '{content_type}' AND "
                       "object_id = '{object_id}' GROUP BY time(1d) fill(0)"},
-            {'description': 'Daily packet loss (%)',
+            {'label': 'packet_loss',
+             'description': 'Daily packet loss (%)',
              'query': "SELECT MEAN(loss) AS packet_loss FROM {key} WHERE "
                       "time >= '{time}' AND content_type = '{content_type}' AND "
                       "object_id = '{object_id}' GROUP BY time(1d) fill(0)"},
-            {'description': 'Daily RTT (ms)',
+            {'label': 'rtt',
+             'description': 'Daily RTT (ms)',
              'query': "SELECT MEAN(rtt_avg) AS RTT_average, MEAN(rtt_max) AS "
                       "RTT_max, MEAN(rtt_min) AS RTT_min FROM {key} WHERE "
                       "time >= '{time}' AND content_type = '{content_type}' AND "
                       "object_id = '{object_id}' GROUP BY time(1d) fill(0)"},
         ]
         for opts in graphs:
+            if opts.pop('label') not in monitoring_settings.AUTO_GRAPHS:
+                continue
             opts.update(metric=metric)
             graph = Graph(**opts)
             graph.full_clean()

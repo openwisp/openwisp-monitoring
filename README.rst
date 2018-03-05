@@ -117,6 +117,17 @@ in terms of disk space.
 
 Whether ping checks are created automatically for devices.
 
+``OPENWISP_MONITORING_AUTO_GRAPHS``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-----------------------------------------------------------------+
+| **type**:    | ``list``                                                        |
++--------------+-----------------------------------------------------------------+
+| **default**: | ``('traffic', 'wifi_clients', 'uptime', 'packet_loss', 'rtt')`` |
++--------------+-----------------------------------------------------------------+
+
+Automatically created graphs.
+
 Installing for development
 --------------------------
 
