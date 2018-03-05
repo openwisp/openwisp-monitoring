@@ -4,6 +4,7 @@ import json
 
 from celery import shared_task
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 
 from .models import Check
 
@@ -35,3 +36,26 @@ def perform_check(uuid):
     result = check.perform_check()
     if settings.DEBUG:  # pragma: nocover
         print(json.dumps(result, indent=4, sort_keys=True))
+
+
+@shared_task
+def auto_create_ping(sender, instance, created, **kwargs):
+    """
+    Called by openwisp_monitoring.check.models.auto_ping_receiver
+    """
+    ping_path = 'openwisp_monitoring.check.classes.Ping'
+    # create new check only if necessary
+    if (not created or
+        Check.objects.filter(object_id=instance.pk,
+                             content_type__model='device',
+                             check=ping_path)
+                     .count() > 0):
+        return
+    ct = ContentType.objects.get(app_label=sender._meta.app_label,
+                                 model=sender.__name__.lower())
+    check = Check(name='Ping',
+                  check=ping_path,
+                  content_type=ct,
+                  object_id=instance.id)
+    check.full_clean()
+    check.save()

@@ -3,7 +3,6 @@ from django.core import management
 
 from ...device.tests import TestDeviceMonitoringMixin
 from ..classes import Ping
-from ..models import Check
 from ..settings import CHECK_CLASSES
 from ..utils import run_checks_async
 
@@ -17,13 +16,7 @@ class TestUtils(TestDeviceMonitoringMixin):
         config = self._create_config(organization=self._create_org())
         config.last_ip = '10.40.0.1'
         config.save()
-        check = Check(name='Ping check',
-                      check=self._PING,
-                      content_object=config.device,
-                      params={})
-        check.full_clean()
-        check.save()
-        return check
+        # check is automatically created via django signal
 
     @mock.patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
     def test_run_checks_async_success(self, mocked_method):

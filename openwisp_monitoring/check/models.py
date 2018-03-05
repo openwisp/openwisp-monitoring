@@ -3,12 +3,14 @@ from collections import OrderedDict
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db.models.signals import post_save
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
 from django.utils.translation import ugettext_lazy as _
 from jsonfield import JSONField
 
+from openwisp_controller.config.models import Device
 from openwisp_utils.base import TimeStampedEditableModel
 
 from . import settings as app_settings
@@ -35,6 +37,9 @@ class Check(TimeStampedEditableModel):
                        help_text=_('parameters needed to perform the check'),
                        load_kwargs={'object_pairs_hook': OrderedDict},
                        dump_kwargs={'indent': 4})
+
+    class Meta:
+        unique_together = ('name', 'object_id', 'content_type')
 
     def __str__(self):
         if not self.object_id or not self.content_type:
@@ -67,3 +72,16 @@ class Check(TimeStampedEditableModel):
         initiates check instance and calls its check method
         """
         return self.check_instance.check(store=True)
+
+
+if app_settings.AUTO_PING:
+    from django.dispatch import receiver
+    from .tasks import auto_create_ping
+
+    @receiver(post_save, sender=Device, dispatch_uid='auto_ping')
+    def auto_ping_receiver(sender, instance, created, **kwargs):
+        """
+        Implements OPENWISP_MONITORING_AUTO_PING
+        The creation step is executed in the backround
+        """
+        auto_create_ping.delay(sender, instance, created, **kwargs)

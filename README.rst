@@ -106,6 +106,17 @@ This data is only used to assess the recent status of devices, keeping
 it for a long time would not add much benefit and would cost a lot more
 in terms of disk space.
 
+``OPENWISP_MONITORING_AUTO_PING``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``bool``    |
++--------------+-------------+
+| **default**: | ``True``    |
++--------------+-------------+
+
+Whether ping checks are created automatically for devices.
+
 Installing for development
 --------------------------
 
