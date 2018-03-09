@@ -1,6 +1,6 @@
-(function() {
+(function () {
     'use strict';
-    window.createGraph = function(data, id, title){
+    window.createGraph = function (data, id, title) {
         if (data === false) {
             alert(gettext('error while receiving data from server'));
             return;
@@ -13,6 +13,7 @@
                 name: data.graphs[i][0],
                 type: 'scatter',
                 mode: mode,
+                fill: 'tozeroy',
                 x: data.x,
                 y: data.graphs[i][1]
             });
