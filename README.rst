@@ -43,11 +43,28 @@ Follow the setup instructions of `openwisp-controller
 .. code-block:: python
 
     INSTALLED_APPS = [
-        ...
-        # openwisp monitoring
+        # django apps
+        # openwisp2 admin theme (must be loaded here)
+        'openwisp_utils.admin_theme',
+        # all-auth
+        'django.contrib.sites',
+        'allauth',
+        'allauth.account',
+        'allauth.socialaccount',
+        'django_extensions',
+        # openwisp2 modules
+        'openwisp_users',
+        'openwisp_controller.pki',
+        'openwisp_controller.config',
+        # monitoring
+        'notifications',
         'openwisp_monitoring.monitoring',
         'openwisp_monitoring.device',
-        'notifications'
+        'openwisp_monitoring.check',
+        # admin
+        'django.contrib.admin',
+        'django.forms',
+        # other dependencies ...
     ]
 
     INFLUXDB_USER = 'your influxdb user'
@@ -74,19 +91,78 @@ Follow the setup instructions of `openwisp-controller
 
     urlpatterns += staticfiles_urlpatterns()
 
-Configure celery:
+Add `apptemplates.Loader` to template loaders:
+
+.. code-block:: python
+
+    TEMPLATES = [
+        {
+            'BACKEND': 'django.template.backends.django.DjangoTemplates',
+            'DIRS': [os.path.join(os.path.dirname(BASE_DIR), 'templates')],
+            'OPTIONS': {
+                'loaders': [
+                    'apptemplates.Loader',
+                    'django.template.loaders.filesystem.Loader',
+                    'django.template.loaders.app_directories.Loader',
+                    'openwisp_utils.loaders.DependencyLoader',
+                ],
+                'context_processors': [
+                    'django.template.context_processors.debug',
+                    'django.template.context_processors.request',
+                    'django.contrib.auth.context_processors.auth',
+                    'django.contrib.messages.context_processors.messages',
+                ],
+            },
+        }
+    ]
+
+Configure caching (you may use a different cache storage if you want):
+
+.. code-block:: python
+
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': 'redis://localhost/0',
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            }
+        }
+    }
+
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+    SESSION_CACHE_ALIAS = 'default'
+
+Configure celery (you may use a different broker if you want):
 
 .. code-block:: python
 
     # here we show how to configure celery with redis but you can
     # use other brokers if you want, consult the celery docs
-    CELERY_BROKER_URL = 'redis://localhost/0'
+    CELERY_BROKER_URL = 'redis://localhost/1'
     CELERYBEAT_SCHEDULE = {
         'run_checks': {
             'task': 'openwisp_monitoring.check.tasks.run_check',
             'schedule': timedelta(minutes=5),
         },
     }
+
+    CELERYBEAT_SCHEDULE = {
+        'run_checks': {
+            'task': 'openwisp_monitoring.check.tasks.run_checks',
+            'schedule': timedelta(minutes=5),
+            'args': None,
+            'relative': True
+        },
+    }
+
+    INSTALLED_APPS.append('djcelery_email')
+    EMAIL_BACKEND = 'djcelery_email.backends.CeleryEmailBackend'
+
+If you decide to use redis (as shown in these examples),
+install the requierd python packages::
+
+    pip install redis django-redis
 
 Settings
 --------
@@ -167,6 +243,15 @@ Launch development server:
     ./manage.py runserver 0.0.0.0:8000
 
 You can access the admin interface at http://127.0.0.1:8000/admin/.
+
+Run celery and celery-beat with the following commands
+(separate terminal windows are needed):
+
+.. code-block:: shell
+
+    # (cd tests)
+    celery -A openwisp2 worker -l info
+    celery -A openwisp2 beat -l info
 
 Run tests with:
 

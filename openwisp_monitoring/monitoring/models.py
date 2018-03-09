@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.mail import send_mail
 from django.core.validators import MaxValueValidator
@@ -24,7 +25,7 @@ from notifications.models import Notification
 
 from openwisp_utils.base import TimeStampedEditableModel
 
-from .utils import query, write
+from .utils import NOTIFICATIONS_COUNT_CACHE_KEY, query, write
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -373,10 +374,15 @@ def create_notificationuser_settings(sender, instance, **kwargs):
         NotificationUser.objects.create(user=instance)
 
 
-@receiver(post_save, sender=Notification, dispatch_uid='send_email_notification')
-def send_email_notification(sender, instance, created, **kwargs):
-    if not created or not instance.recipient.notificationuser.email:
+@receiver(post_save, sender=Notification, dispatch_uid='notification_saved')
+def notification_saved(sender, instance, created, **kwargs):
+    # invalidate cache for user
+    cache.delete(NOTIFICATIONS_COUNT_CACHE_KEY.format(instance.recipient.pk))
+    # ensure we need to sending email or stop
+    if not created or (not instance.recipient.notificationuser.email or
+                       not instance.recipient.email):
         return
+    # send email
     subject = instance.data.get('email_subject') or instance.description[0:24]
     url = instance.data.get('url')
     description = instance.description

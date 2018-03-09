@@ -1,0 +1,8 @@
+{% extends "admin:admin/base.html" %}
+{% load i18n monitoring_notifications %}
+
+{% block userlinks %}
+    <a href="{% url 'admin:notifications_notification_changelist' %}">
+    {% trans 'Notifications' %}{% unread_notifications %}</a> /
+    {{ block.super }}
+{% endblock %}

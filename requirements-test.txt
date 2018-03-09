@@ -4,3 +4,4 @@ isort
 flake8
 mock
 redis>=2.10.6<2.11
+django-redis>=4.9.0,<5.0

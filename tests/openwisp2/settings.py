@@ -39,6 +39,11 @@ INSTALLED_APPS = [
     'openwisp_controller.pki',
     'openwisp_controller.config',
     'openwisp_controller.geo',
+    # monitoring
+    'notifications',
+    'openwisp_monitoring.monitoring',
+    'openwisp_monitoring.device',
+    'openwisp_monitoring.check',
     # admin
     'django.contrib.admin',
     'django.forms',
@@ -51,12 +56,6 @@ INSTALLED_APPS = [
     'rest_framework_gis',
     # channels
     'channels',
-    # monitoring
-    'openwisp_monitoring.monitoring',
-    'openwisp_monitoring.device',
-    'openwisp_monitoring.check',
-    'notifications',
-    #'django_celery_beat',
 ]
 
 EXTENDED_APPS = ('django_netjsonconfig', 'django_x509', 'django_loci',)
@@ -104,6 +103,7 @@ TEMPLATES = [
         'DIRS': [os.path.join(os.path.dirname(BASE_DIR), 'templates')],
         'OPTIONS': {
             'loaders': [
+                'apptemplates.Loader',
                 'django.template.loaders.filesystem.Loader',
                 'django.template.loaders.app_directories.Loader',
                 'openwisp_utils.loaders.DependencyLoader',
@@ -131,6 +131,19 @@ INFLUXDB_USER = 'root'
 INFLUXDB_PASSWORD = 'root'
 INFLUXDB_DATABASE = 'openwisp2'
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://localhost/0',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
+}
+
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+SESSION_CACHE_ALIAS = 'default'
+
 if not TESTING:
     CELERY_BROKER_URL = 'redis://localhost/1'
 else:
@@ -146,6 +159,9 @@ CELERYBEAT_SCHEDULE = {
         'relative': True
     },
 }
+
+INSTALLED_APPS.append('djcelery_email')
+EMAIL_BACKEND = 'djcelery_email.backends.CeleryEmailBackend'
 
 LOGGING = {
     'version': 1,
