@@ -25,7 +25,6 @@ class Check(TimeStampedEditableModel):
                                      null=True, blank=True)
     object_id = models.CharField(max_length=36, db_index=True, blank=True)
     content_object = GenericForeignKey('content_type', 'object_id')
-    # TODO: relation to metric
     check = models.CharField(_('check type'),
                              choices=app_settings.CHECK_CLASSES,
                              db_index=True,
@@ -84,4 +83,7 @@ if app_settings.AUTO_PING:
         Implements OPENWISP_MONITORING_AUTO_PING
         The creation step is executed in the backround
         """
-        auto_create_ping.delay(sender, instance, created, **kwargs)
+        auto_create_ping.delay(model=sender.__name__.lower(),
+                               app_label=sender._meta.app_label,
+                               object_id=str(instance.pk),
+                               created=created)

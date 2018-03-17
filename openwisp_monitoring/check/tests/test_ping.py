@@ -163,14 +163,16 @@ class TestPing(TestDeviceMonitoringMixin):
 
     @mock.patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
     def test_store_result(self, mocked_method):
+        self.assertEqual(Check.objects.count(), 0)
         config = self._create_config(organization=self._create_org())
         config.last_ip = '10.40.0.1'
         config.save()
         # check created automatically by autoping
-        check = Check.objects.first()
+        self.assertEqual(Check.objects.count(), 1)
         self.assertEqual(Metric.objects.count(), 0)
         self.assertEqual(Graph.objects.count(), 0)
         self.assertEqual(Threshold.objects.count(), 0)
+        check = Check.objects.first()
         result = check.perform_check()
         self.assertEqual(Metric.objects.count(), 1)
         self.assertEqual(Graph.objects.count(), 3)
