@@ -120,7 +120,7 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
             ]
         }
 
-    _garbage_data = {
+    _garbage_clients = {
         'type': 'DeviceMonitoring',
         'interfaces': [
             {
@@ -350,10 +350,11 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         # expected upload wlan1
         self.assertEqual(data['graphs'][1][1][-1], 1.5)
 
-    def test_garbage_data(self):
+    def test_garbage_clients(self):
         o = self._create_org()
         d = self._create_device(organization=o)
-        r = self._post_data(d.id, d.key, self._garbage_data)
+        r = self._post_data(d.id, d.key, self._garbage_clients)
+        # ignored
         self.assertEqual(r.status_code, 200)
         self.assertEqual(Metric.objects.count(), 1)
         self.assertEqual(Graph.objects.count(), 1)
