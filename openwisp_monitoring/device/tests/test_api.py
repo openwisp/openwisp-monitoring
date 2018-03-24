@@ -159,13 +159,6 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         r = self._post_data(d.id, 'WRONG', self._data())
         self.assertEqual(r.status_code, 403)
 
-    def test_405(self):
-        o = self._create_org()
-        d = self._create_device(organization=o)
-        r = self.client.get(self._url(d.pk, d.key),
-                            content_type='application/json')
-        self.assertEqual(r.status_code, 405)
-
     def test_400(self):
         o = self._create_org()
         d = self._create_device(organization=o)
@@ -280,7 +273,7 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
             points = m.read(limit=10, order='time DESC')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
-    def test_200_multiple_measurements(self):
+    def _create_multiple_measurements(self):
         self.test_200_create()
         self.assertEqual(self.device_model.objects.count(), 1)
         d = self.device_model.objects.first()
@@ -305,19 +298,23 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         self.assertEqual(r.status_code, 200)
         dd = DeviceData(pk=d.pk)
         self.assertDictEqual(dd.data, data4)
+        return dd
+
+    def test_200_multiple_measurements(self):
+        dd = self._create_multiple_measurements()
         self.assertEqual(Metric.objects.count(), 6)
         self.assertEqual(Graph.objects.count(), 4)
         expected = {'wlan0': {'rx_bytes': 6000, 'tx_bytes': 10000},
                     'wlan1': {'rx_bytes': 2993, 'tx_bytes': 4587}}
         # wlan0 rx_bytes
-        m = Metric.objects.get(key='wlan0', field_name='rx_bytes', object_id=d.pk)
+        m = Metric.objects.get(key='wlan0', field_name='rx_bytes', object_id=dd.pk)
         points = m.read(limit=10, order='time DESC')
         self.assertEqual(len(points), 4)
         expected = [300000000, 200000000, 99999676, 324]
         for i, point in enumerate(points):
             self.assertEqual(point['rx_bytes'], expected[i])
         # wlan0 tx_bytes
-        m = Metric.objects.get(key='wlan0', field_name='tx_bytes', object_id=d.pk)
+        m = Metric.objects.get(key='wlan0', field_name='tx_bytes', object_id=dd.pk)
         points = m.read(limit=10, order='time DESC')
         self.assertEqual(len(points), 4)
         expected = [700000000, 100000000, 399999855, 145]
@@ -330,14 +327,14 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         # expected upload wlan0
         self.assertEqual(data['graphs'][1][1][-1], 0.6)
         # wlan1 rx_bytes
-        m = Metric.objects.get(key='wlan1', field_name='rx_bytes', object_id=d.pk)
+        m = Metric.objects.get(key='wlan1', field_name='rx_bytes', object_id=dd.pk)
         points = m.read(limit=10, order='time DESC')
         self.assertEqual(len(points), 4)
         expected = [500000000, 0, 999999174, 826]
         for i, point in enumerate(points):
             self.assertEqual(point['rx_bytes'], expected[i])
         # wlan1 tx_bytes
-        m = Metric.objects.get(key='wlan1', field_name='tx_bytes', object_id=d.pk)
+        m = Metric.objects.get(key='wlan1', field_name='tx_bytes', object_id=dd.pk)
         points = m.read(limit=10, order='time DESC')
         self.assertEqual(len(points), 4)
         expected = [1000000000, 0, 1999997725, 2275]
@@ -367,6 +364,17 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         self._post_data(d.id, d.key, self._data())
         self.assertEqual(Graph.objects.count(), 0)
 
+    def test_get_device_metrics(self):
+        dd = self._create_multiple_measurements()
+        r = self.client.get(self._url(dd.pk, dd.key))
+        self.assertEqual(r.status_code, 200)
+        self.assertIsInstance(r.data, list)
+        self.assertEqual(len(r.data), 4)
+        for graph in r.data:
+            self.assertIn('graphs', graph)
+            self.assertIn('description', graph)
+            self.assertIn('x', graph)
+
     # testing admin here is more convenient because
     # we already have the code that creates test data
 
@@ -376,9 +384,8 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         self.client.force_login(u)
 
     def test_device_admin(self):
-        self.test_200_multiple_measurements()
-        d = self.device_model.objects.first()
-        url = reverse('admin:config_device_change', args=[d.pk])
+        dd = self._create_multiple_measurements()
+        url = reverse('admin:config_device_change', args=[dd.pk])
         self._login_admin()
         r = self.client.get(url)
         self.assertContains(r, 'Device Information')

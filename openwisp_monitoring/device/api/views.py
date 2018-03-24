@@ -20,11 +20,25 @@ class DevicePermission(BasePermission):
 
 
 class DeviceMetricView(GenericAPIView):
+    model = DeviceData
     queryset = DeviceData.objects.all()
     serializer_class = serializers.Serializer
     permission_classes = [DevicePermission]
     schema = schema
     statistics_stored = ['rx_bytes', 'tx_bytes']
+
+    def get(self, request, pk):
+        device_model = self.model.mro()[1]
+        ct = ContentType.objects.get(model=device_model.__name__.lower(),
+                                     app_label=device_model._meta.app_label)
+        graphs = Graph.objects.filter(metric__object_id=pk,
+                                      metric__content_type=ct)
+        data = []
+        for graph in graphs:
+            d = graph.read()
+            d['description'] = graph.description
+            data.append(d)
+        return Response(data)
 
     def post(self, request, pk):
         self.instance = self.get_object()
