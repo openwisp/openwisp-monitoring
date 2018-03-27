@@ -364,9 +364,10 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         self._post_data(d.id, d.key, self._data())
         self.assertEqual(Graph.objects.count(), 0)
 
-    def test_get_device_metrics(self):
+    def test_get_device_metrics_200(self):
         dd = self._create_multiple_measurements()
-        r = self.client.get(self._url(dd.pk, dd.key))
+        d = self.device_model.objects.get(pk=dd.pk)
+        r = self.client.get(self._url(d.pk, d.key))
         self.assertEqual(r.status_code, 200)
         self.assertIsInstance(r.data, list)
         self.assertEqual(len(r.data), 4)
@@ -374,6 +375,11 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
             self.assertIn('graphs', graph)
             self.assertIn('description', graph)
             self.assertIn('x', graph)
+
+    def test_get_device_metrics_403(self):
+        d = self._create_device(organization=self._create_org())
+        r = self.client.get(self._url(d.pk))
+        self.assertEqual(r.status_code, 403)
 
     # testing admin here is more convenient because
     # we already have the code that creates test data

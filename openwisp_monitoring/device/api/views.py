@@ -28,6 +28,7 @@ class DeviceMetricView(GenericAPIView):
     statistics_stored = ['rx_bytes', 'tx_bytes']
 
     def get(self, request, pk):
+        self.instance = self.get_object()
         device_model = self.model.mro()[1]
         ct = ContentType.objects.get(model=device_model.__name__.lower(),
                                      app_label=device_model._meta.app_label)
