@@ -381,6 +381,12 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         r = self.client.get(self._url(d.pk))
         self.assertEqual(r.status_code, 403)
 
+    def test_get_device_metrics_400(self):
+        d = self._create_device(organization=self._create_org())
+        url = '{0}&time=3w'.format(self._url(d.pk, d.key))
+        r = self.client.get(url)
+        self.assertEqual(r.status_code, 400)
+
     # testing admin here is more convenient because
     # we already have the code that creates test data
 

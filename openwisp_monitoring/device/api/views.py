@@ -34,9 +34,14 @@ class DeviceMetricView(GenericAPIView):
                                      app_label=device_model._meta.app_label)
         graphs = Graph.objects.filter(metric__object_id=pk,
                                       metric__content_type=ct)
+        # determine time range
+        time = request.query_params.get('time', Graph.DEFAUT_TIME)
+        if time not in Graph.GROUP_MAP.keys():
+            return Response({'detail': 'Time range not supported'}, status=400)
+        # get graphs and their data
         data = []
         for graph in graphs:
-            d = graph.read()
+            d = graph.read(time=time)
             d['description'] = graph.description
             data.append(d)
         return Response(data)

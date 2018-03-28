@@ -1,5 +1,5 @@
 import json
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -143,3 +143,26 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         data = g.read()
         self.assertEqual(data['graphs'][0][0], m.field_name.replace('_', ' '))
         self.assertEqual(data['graphs'][0][1], [2, 2, 2, 2, 2, 2, 4])
+
+    def test_get_query_1d(self):
+        g = self._create_graph(test_data=None)
+        g.query = g.query.replace('{field_name}', 'MEAN({field_name})')
+        g.save()
+        q = g.get_query(time='1d')
+        last24 = datetime.utcnow()
+        self.assertIn(str(last24)[0:14], q)
+        self.assertIn('group by time(4m)', q.lower())
+        self.assertNotIn('fill(', q.lower())
+
+    def test_query_30d(self):
+        g = self._create_graph(test_data=None)
+        q = "SELECT MEAN({field_name}) AS {field_name} FROM {key} " \
+            "WHERE time >= '{time}' AND content_type = '{content_type}' " \
+            "AND object_id = '{object_id}' GROUP BY time(5m) fill(0)"
+        g.query = q
+        g.save()
+        q = g.get_query(time='30d')
+        last30d = date.today() - timedelta(days=29)
+        self.assertIn(str(last30d)[0:10], q)
+        self.assertIn('group by time(24h)', q.lower())
+        self.assertIn('fill(0)', q.lower())

@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from datetime import date, datetime, timedelta
 
 from django.conf import settings
@@ -224,9 +225,25 @@ class Graph(TimeStampedEditableModel):
             self.query = self._default_query
         self._clean_query()
 
+    _FORBIDDEN = ['drop', 'create', 'delete', 'alter', 'into']
+    _AGGREGATE = [
+        'COUNT', 'DISTINCT', 'INTEGRAL', 'MEAN', 'MEDIAN', 'MODE',
+        'SPREAD', 'STDDEV', 'SUM', 'BOTTOM', 'FIRST', 'LAST', 'MAX',
+        'MIN', 'PERCENTILE', 'SAMPLE', 'TOP', 'CEILING', 'CUMULATIVE_SUM',
+        'DERIVATIVE', 'DIFFERENCE', 'ELAPSED', 'FLOOR', 'HISTOGRAM',
+        'MOVING_AVERAGE', 'NON_NEGATIVE_DERIVATIVE', 'HOLT_WINTERS'
+    ]
+    GROUP_MAP = {
+        '1d': '4m',
+        '3d': '12m',
+        '7d': '24h',
+        '30d': '24h',
+        '365d': '24h'
+    }
+    DEFAUT_TIME = '7d'
+
     def _clean_query(self):
-        forbidden = ['drop', 'create', 'delete', 'alter', 'into']
-        for word in forbidden:
+        for word in self._FORBIDDEN:
             if word in self.query.lower():
                 msg = _('the word "{0}" is not allowed').format(word.upper())
                 raise ValidationError({'query': msg})
@@ -245,24 +262,54 @@ class Graph(TimeStampedEditableModel):
                  " AND object_id = '{object_id}'"
         return q
 
-    def get_query(self, time=None):
-        if not time:
-            time = date.today() - timedelta(days=6)
+    def get_query(self, time=DEFAUT_TIME):
         m = self.metric
         params = dict(field_name=m.field_name,
                       key=m.key,
-                      time=str(time))
+                      time=self._get_time(time))
         if m.object_id:
             params.update({'content_type': m.content_type_key,
                            'object_id': m.object_id})
         q = self.query.format(**params)
+        q = self._group_by(q, time)
         return "{0} tz('{1}')".format(q, settings.TIME_ZONE)
 
-    def read(self, decimal_places=2):
+    def _get_time(self, time):
+        if not isinstance(time, str):
+            return str(time)
+        if time in self.GROUP_MAP.keys():
+            # subtract one day because we want to include
+            # the current day in the time range
+            days = int(time.strip('d')) - 1
+            base = datetime.utcnow() if days <= 3 else date.today()
+            time = str(base - timedelta(days=days))
+        return time
+
+    def _is_aggregate(self, q):
+        q = q.upper()
+        for word in self._AGGREGATE:
+            if word in q:
+                return True
+        return False
+
+    _group_by_regex = re.compile('GROUP BY time\(\w+\)', flags=re.IGNORECASE)
+
+    def _group_by(self, query, time):
+        if not self._is_aggregate(query):
+            return query
+        value = self.GROUP_MAP[time]
+        group_by = 'GROUP BY time({0})'.format(value)
+        if 'GROUP BY' not in query.upper():
+            query = '{0} {1}'.format(query, group_by)
+        else:
+            query = re.sub(self._group_by_regex, group_by, query)
+        return query
+
+    def read(self, decimal_places=2, time=DEFAUT_TIME):
         graphs = {}
         x = []
         try:
-            points = list(query(self.get_query(), epoch='s').get_points())
+            points = list(query(self.get_query(time=time), epoch='s').get_points())
         except InfluxDBClientError as e:
             logging.error(e, exc_info=True)
             return False
