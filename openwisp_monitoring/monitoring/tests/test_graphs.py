@@ -151,7 +151,7 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         q = g.get_query(time='1d')
         last24 = datetime.utcnow()
         self.assertIn(str(last24)[0:14], q)
-        self.assertIn('group by time(4m)', q.lower())
+        self.assertIn('group by time(10m)', q.lower())
         self.assertNotIn('fill(', q.lower())
 
     def test_query_30d(self):

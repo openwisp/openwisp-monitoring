@@ -234,7 +234,7 @@ class Graph(TimeStampedEditableModel):
         'MOVING_AVERAGE', 'NON_NEGATIVE_DERIVATIVE', 'HOLT_WINTERS'
     ]
     GROUP_MAP = {
-        '1d': '4m',
+        '1d': '10m',
         '3d': '12m',
         '7d': '24h',
         '30d': '24h',
