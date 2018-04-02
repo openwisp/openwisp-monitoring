@@ -140,12 +140,12 @@ class DeviceMetricView(GenericAPIView):
 
     def _create_traffic_graph(self, metric):
         """
-        create "daily traffic (GB)" graph
+        create "traffic (GB)" graph
         """
         if (metric.field_name != 'tx_bytes' or 'traffic' not in monitoring_settings.AUTO_GRAPHS):
             return
         graph = Graph(metric=metric,
-                      description=_('{0} daily traffic (GB)').format(metric.key),
+                      description=_('{0} traffic (GB)').format(metric.key),
                       query="SELECT SUM(tx_bytes) / 1000000000 AS download, "
                             "SUM(rx_bytes) / 1000000000 AS upload FROM {key} "
                             "WHERE time >= '{time}' AND content_type = '{content_type}' "
@@ -155,12 +155,12 @@ class DeviceMetricView(GenericAPIView):
 
     def _create_clients_graph(self, metric):
         """
-        creates "daily wifi associations" graph
+        creates "WiFi associations" graph
         """
         if 'wifi_clients' not in monitoring_settings.AUTO_GRAPHS:
             return
         graph = Graph(metric=metric,
-                      description=_('{0} daily wifi associations').format(metric.key),
+                      description=_('{0} WiFi associations').format(metric.key),
                       query="SELECT COUNT(DISTINCT({field_name})) AS value FROM {key} "
                             "WHERE time >= '{time}' AND content_type = '{content_type}' "
                             "AND object_id = '{object_id}' GROUP BY time(24h) fill(0)")
