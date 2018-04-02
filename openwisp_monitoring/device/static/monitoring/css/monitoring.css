@@ -1,0 +1,24 @@
+#ow-graph-container{ display: none }
+#ow-graph-time{
+  margin-top: 15px;
+  text-align: center
+}
+#ow-graph-time a{
+  display: inline-block;
+  margin: 0 2px;
+  color: #fff;
+  background-color: #666;
+  padding: 5px 15px;
+  text-decoration: none !important;
+  border-radius: 3px;
+  cursor: pointer;
+}
+#ow-graph-time a:hover{
+  background-color: #000
+}
+#ow-graph-time a.active{
+  background: transparent;
+  color: #666;
+  cursor: default;
+  border: 1px solid #666;
+}

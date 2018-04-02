@@ -402,12 +402,3 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         r = self.client.get(url)
         self.assertContains(r, 'Device Information')
         self.assertContains(r, 'Monitoring Graph')
-
-    def test_device_admin_empty(self):
-        o = self._create_org()
-        d = self._create_device(organization=o)
-        url = reverse('admin:config_device_change', args=[d.pk])
-        self._login_admin()
-        r = self.client.get(url)
-        self.assertNotContains(r, 'Device Information')
-        self.assertNotContains(r, 'Monitoring Graph')

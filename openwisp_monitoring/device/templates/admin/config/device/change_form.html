@@ -11,21 +11,55 @@
     </fieldset>
 </div>
 {% endif %}
-{% if not add and graphs %}
-<div class="inline-group">
+{% if not add %}
+<div class="inline-group" id="ow-graph-container">
     <fieldset class="module">
         <h2>{% trans 'Monitoring Graphs' %}</h2>
-        {% for graph in graphs %}
-        <div class="inline-related">
-            <div id="graph-{{ forloop.counter }}"></div>
-            <script>
-                createGraph({{ graph.json|safe }},
-                            'graph-{{ forloop.counter }}',
-                            '{{ graph.description }}');
-            </script>
+        <div id="ow-graph-time">
+          <a data-time="1d">1 {% trans 'day' %}</a>
+          <a data-time="3d">3 {% trans 'days' %}</a>
+          <a data-time="7d">1 {% trans 'week' %}</a>
+          <a data-time="30d">1 {% trans 'month' %}</a>
+          <a data-time="365d">1 {% trans 'year' %}</a>
         </div>
-        {% endfor %}
+        <div id="ow-graph-contents"></div>
     </fieldset>
 </div>
+<script>
+  django.jQuery(function($) {
+    var mainContainer = $('#ow-graph-container'),
+        graphContents = $('#ow-graph-contents'),
+        timeButtons = $('#ow-graph-time a'),
+        timeRangeKey = 'ow2-graph-time-range',
+        defaultTimeRange = localStorage.getItem(timeRangeKey) || '{{ default_time}}',
+        loadGraphs = function (time) {
+          var url = '{{ api_url }}?key={{ original.key }}&time=' + time;
+          $.getJSON(url).done(function (data) {
+            if (data.length) { mainContainer.show(); }
+            $.each(data, function (i, graph) {
+              var htmlId = 'graph-' + i,
+                  graphDiv = $('#' + htmlId);
+              if (!graphDiv.length) {
+                graphContents.append('<div id="' + htmlId + '"></div>');
+              }
+              createGraph(graph, htmlId, graph.description);
+            });
+          });
+        },
+        triggerClick = function() {
+          $('#ow-graph-time a[data-time=' + defaultTimeRange + ']').trigger('click');
+        };
+    timeButtons.click(function () {
+      var timeRange = $(this).attr('data-time');
+      loadGraphs(timeRange);
+      localStorage.setItem(timeRangeKey, timeRange);
+      timeButtons.removeClass('active');
+      $(this).addClass('active');
+    });
+    triggerClick();
+    // refresh every 2.5 minutes
+    setInterval(triggerClick, 1000 * 60 * 2.5);
+  });
+</script>
 {% endif %}
 {% endblock %}
