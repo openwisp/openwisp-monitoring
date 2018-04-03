@@ -196,17 +196,17 @@ class Ping(object):
         """
         graphs = [
             {'label': 'uptime',
-             'description': 'Daily uptime (%)',
+             'description': 'Uptime (%)',
              'query': "SELECT MEAN({field_name})*100 AS uptime FROM {key} WHERE "
                       "time >= '{time}' AND content_type = '{content_type}' AND "
                       "object_id = '{object_id}' GROUP BY time(1d) fill(0)"},
             {'label': 'packet_loss',
-             'description': 'Daily packet loss (%)',
+             'description': 'Packet loss (%)',
              'query': "SELECT MEAN(loss) AS packet_loss FROM {key} WHERE "
                       "time >= '{time}' AND content_type = '{content_type}' AND "
                       "object_id = '{object_id}' GROUP BY time(1d) fill(0)"},
             {'label': 'rtt',
-             'description': 'Daily RTT (ms)',
+             'description': 'Round Trip Time (ms)',
              'query': "SELECT MEAN(rtt_avg) AS RTT_average, MEAN(rtt_max) AS "
                       "RTT_max, MEAN(rtt_min) AS RTT_min FROM {key} WHERE "
                       "time >= '{time}' AND content_type = '{content_type}' AND "
