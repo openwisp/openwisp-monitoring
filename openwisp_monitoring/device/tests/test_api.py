@@ -376,6 +376,13 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
             self.assertIn('description', graph)
             self.assertIn('x', graph)
 
+    def test_get_device_metrics_1d(self):
+        dd = self._create_multiple_measurements()
+        d = self.device_model.objects.get(pk=dd.pk)
+        r = self.client.get('{0}&time=1d'.format(self._url(d.pk, d.key)))
+        self.assertEqual(r.status_code, 200)
+        self.assertIsInstance(r.data, list)
+
     def test_get_device_metrics_403(self):
         d = self._create_device(organization=self._create_org())
         r = self.client.get(self._url(d.pk))

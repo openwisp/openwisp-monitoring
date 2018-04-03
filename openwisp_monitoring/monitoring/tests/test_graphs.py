@@ -1,12 +1,14 @@
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils.timezone import now
+from influxdb.exceptions import InfluxDBClientError
 
 from . import TestMonitoringMixin
+from ..models import Graph
 
 
 class TestGraphs(TestMonitoringMixin, TestCase):
@@ -21,7 +23,7 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         self.assertIn('graphs', data)
         self.assertEqual(len(data['x']), 3)
         graphs = data['graphs']
-        self.assertEqual(graphs[0][0], key)
+        self.assertIn('%s (' % key, graphs[0][0])
         self.assertEqual(len(graphs[0][1]), 3)
         self.assertEqual(graphs[0][1], [3, 6, 9])
 
@@ -46,8 +48,8 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         self.assertIn('graphs', data)
         self.assertEqual(len(data['x']), 3)
         graphs = data['graphs']
-        self.assertEqual(graphs[0][0], f1)
-        self.assertEqual(graphs[1][0], f2)
+        self.assertIn(f1, graphs[0][0])
+        self.assertIn(f2, graphs[1][0])
         self.assertEqual(len(graphs[0][1]), 3)
         self.assertEqual(len(graphs[1][1]), 3)
         self.assertEqual(graphs[0][1], [3, 2, 1])
@@ -64,8 +66,8 @@ class TestGraphs(TestMonitoringMixin, TestCase):
     def test_read_bad_query(self):
         g = self._create_graph()
         g.query = 'BAD'
-        data = g.read()
-        self.assertEqual(data, False)
+        with self.assertRaises(InfluxDBClientError):
+            g.read()
 
     def test_save_bad_query(self):
         g = self._create_graph()
@@ -141,7 +143,7 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         g.query = q
         g.save()
         data = g.read()
-        self.assertEqual(data['graphs'][0][0], m.field_name.replace('_', ' '))
+        self.assertIn(m.field_name.replace('_', ' '), data['graphs'][0][0])
         self.assertEqual(data['graphs'][0][1], [2, 2, 2, 2, 2, 2, 4])
 
     def test_get_query_1d(self):
@@ -149,12 +151,12 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         g.query = g.query.replace('{field_name}', 'MEAN({field_name})')
         g.save()
         q = g.get_query(time='1d')
-        last24 = datetime.utcnow()
+        last24 = now() - timedelta(days=1)
         self.assertIn(str(last24)[0:14], q)
         self.assertIn('group by time(10m)', q.lower())
         self.assertNotIn('fill(', q.lower())
 
-    def test_query_30d(self):
+    def test_get_query_30d(self):
         g = self._create_graph(test_data=None)
         q = "SELECT MEAN({field_name}) AS {field_name} FROM {key} " \
             "WHERE time >= '{time}' AND content_type = '{content_type}' " \
@@ -162,7 +164,13 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         g.query = q
         g.save()
         q = g.get_query(time='30d')
-        last30d = date.today() - timedelta(days=29)
+        last30d = now() - timedelta(days=30)
         self.assertIn(str(last30d)[0:10], q)
         self.assertIn('group by time(24h)', q.lower())
         self.assertIn('fill(0)', q.lower())
+
+    def test_get_time(self):
+        g = Graph()
+        self.assertIn(str(date.today() - timedelta(days=29)), g._get_time('30d'))
+        self.assertIn(str(now() - timedelta(days=1))[0:10], g._get_time('1d'))
+        self.assertIn(str(now() - timedelta(days=3))[0:10], g._get_time('3d'))

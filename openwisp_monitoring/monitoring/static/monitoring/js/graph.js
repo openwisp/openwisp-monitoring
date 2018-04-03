@@ -6,7 +6,17 @@
             return;
         }
         var mode = data.x.length > 30 ? 'lines' : 'markers+lines',
-            layout = {title: title},
+            layout = {
+                title: title,
+                showlegend: true,
+                  legend: {
+                    orientation: 'h',
+                    xanchor: 'center',
+                    yanchor: 'top',
+                    y: -0.15,
+                    x: 0.5
+                }
+            },
             graphs = [];
         for (var i=0; i<data.graphs.length; i++) {
             graphs.push({
@@ -15,7 +25,8 @@
                 mode: mode,
                 fill: 'tozeroy',
                 x: data.x,
-                y: data.graphs[i][1]
+                y: data.graphs[i][1],
+                hoverinfo: 'x+y',
             });
         }
         Plotly.newPlot(id, graphs, layout);

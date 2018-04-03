@@ -262,7 +262,7 @@ class Graph(TimeStampedEditableModel):
                  " AND object_id = '{object_id}'"
         return q
 
-    def get_query(self, time=DEFAUT_TIME):
+    def get_query(self, time=DEFAUT_TIME, summary=False):
         m = self.metric
         params = dict(field_name=m.field_name,
                       key=m.key,
@@ -271,18 +271,22 @@ class Graph(TimeStampedEditableModel):
             params.update({'content_type': m.content_type_key,
                            'object_id': m.object_id})
         q = self.query.format(**params)
-        q = self._group_by(q, time)
+        q = self._group_by(q, time, strip=summary)
         return "{0} tz('{1}')".format(q, settings.TIME_ZONE)
 
     def _get_time(self, time):
         if not isinstance(time, str):
             return str(time)
         if time in self.GROUP_MAP.keys():
-            # subtract one day because we want to include
-            # the current day in the time range
-            days = int(time.strip('d')) - 1
-            base = datetime.utcnow() if days <= 3 else date.today()
-            time = str(base - timedelta(days=days))
+            days = int(time.strip('d'))
+            now = timezone.now()
+            if days > 3:
+                # subtract one day because we want to include
+                # the current day in the time range
+                # days -= 1
+                now = date(now.year, now.month, now.day)
+            # import ipdb; ipdb.set_trace()
+            time = str(now - timedelta(days=days))[0:19]
         return time
 
     def _is_aggregate(self, q):
@@ -294,11 +298,15 @@ class Graph(TimeStampedEditableModel):
 
     _group_by_regex = re.compile('GROUP BY time\(\w+\)', flags=re.IGNORECASE)
 
-    def _group_by(self, query, time):
+    def _group_by(self, query, time, strip=False):
         if not self._is_aggregate(query):
             return query
-        value = self.GROUP_MAP[time]
-        group_by = 'GROUP BY time({0})'.format(value)
+        if not strip:
+            value = self.GROUP_MAP[time]
+            group_by = 'GROUP BY time({0})'.format(value)
+        else:
+            # can be empty when getting summaries
+            group_by = ''
         if 'GROUP BY' not in query.upper():
             query = '{0} {1}'.format(query, group_by)
         else:
@@ -310,14 +318,19 @@ class Graph(TimeStampedEditableModel):
         x = []
         try:
             points = list(query(self.get_query(time=time), epoch='s').get_points())
+            summary = list(query(self.get_query(time=time, summary=True), epoch='s').get_points())
         except InfluxDBClientError as e:
             logging.error(e, exc_info=True)
-            return False
+            raise e
         for point in points:
             for key, value in point.items():
-                label = key.replace('_', ' ')
-                if label == 'time':
+                if key == 'time':
                     continue
+                label = key.replace('_', ' ')
+                # add summary to legend
+                if len(summary) > 0:
+                    summary_value = round(summary[0][key], decimal_places)
+                    label = '{0} ({1})'.format(label, summary_value)
                 graphs.setdefault(label, [])
                 if decimal_places and isinstance(value, (int, float)):
                     value = round(value, decimal_places)
