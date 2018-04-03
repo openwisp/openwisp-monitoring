@@ -16,11 +16,12 @@
     <fieldset class="module">
         <h2>{% trans 'Monitoring Graphs' %}</h2>
         <div id="ow-graph-time">
-          <a data-time="1d">1 {% trans 'day' %}</a>
-          <a data-time="3d">3 {% trans 'days' %}</a>
-          <a data-time="7d">1 {% trans 'week' %}</a>
-          <a data-time="30d">1 {% trans 'month' %}</a>
-          <a data-time="365d">1 {% trans 'year' %}</a>
+          <a class="time" data-time="1d">1 {% trans 'day' %}</a>
+          <a class="time" data-time="3d">3 {% trans 'days' %}</a>
+          <a class="time" data-time="7d">1 {% trans 'week' %}</a>
+          <a class="time" data-time="30d">1 {% trans 'month' %}</a>
+          <a class="time" data-time="365d">1 {% trans 'year' %}</a>
+          <a class="export">{% trans 'export data' %}</a>
         </div>
         <div id="ow-graph-contents"></div>
     </fieldset>
@@ -29,11 +30,12 @@
   django.jQuery(function($) {
     var mainContainer = $('#ow-graph-container'),
         graphContents = $('#ow-graph-contents'),
-        timeButtons = $('#ow-graph-time a'),
+        timeButtons = $('#ow-graph-time a.time'),
         timeRangeKey = 'ow2-graph-time-range',
         defaultTimeRange = localStorage.getItem(timeRangeKey) || '{{ default_time}}',
+        baseUrl = '{{ api_url }}?key={{ original.key }}&time=',
         loadGraphs = function (time) {
-          var url = '{{ api_url }}?key={{ original.key }}&time=' + time;
+          var url = baseUrl + time;
           $.getJSON(url).done(function (data) {
             if (data.graphs.length) { mainContainer.show(); }
             $.each(data.graphs, function (i, graph) {
@@ -59,6 +61,11 @@
     triggerClick();
     // refresh every 2.5 minutes
     setInterval(triggerClick, 1000 * 60 * 2.5);
+    // bind export button
+    $('#ow-graph-time a.export').click(function() {
+      var time = localStorage.getItem(timeRangeKey);
+      location.href = baseUrl + time + '&csv=1';
+    })
   });
 </script>
 {% endif %}

@@ -22,3 +22,9 @@
   cursor: default;
   border: 1px solid #666;
 }
+#ow-graph-time a.export{
+  background: rgba(0,0,0,0.32);
+}
+#ow-graph-time a.export:hover{
+  background: rgba(0,0,0,0.45);
+}
