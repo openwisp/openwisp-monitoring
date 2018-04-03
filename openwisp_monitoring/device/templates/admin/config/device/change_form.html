@@ -35,14 +35,14 @@
         loadGraphs = function (time) {
           var url = '{{ api_url }}?key={{ original.key }}&time=' + time;
           $.getJSON(url).done(function (data) {
-            if (data.length) { mainContainer.show(); }
-            $.each(data, function (i, graph) {
+            if (data.graphs.length) { mainContainer.show(); }
+            $.each(data.graphs, function (i, graph) {
               var htmlId = 'graph-' + i,
                   graphDiv = $('#' + htmlId);
               if (!graphDiv.length) {
                 graphContents.append('<div id="' + htmlId + '"></div>');
               }
-              createGraph(graph, htmlId, graph.description);
+              createGraph(graph, data.x, htmlId, graph.description);
             });
           });
         },

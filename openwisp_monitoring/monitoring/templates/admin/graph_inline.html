@@ -24,7 +24,7 @@
   <div class="form-row graph">
       <div id="graph-{{ forloop.counter }}"></div>
       <script>
-          createGraph({{ inline_admin_form.form.instance.json|safe }},
+          createGraph({{ inline_admin_form.form.instance.json|safe }}, null,
                       'graph-{{ forloop.counter }}');
       </script>
   </div>

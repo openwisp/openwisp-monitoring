@@ -20,9 +20,9 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         data = g.read()
         key = g.metric.field_name
         self.assertIn('x', data)
-        self.assertIn('graphs', data)
+        self.assertIn('traces', data)
         self.assertEqual(len(data['x']), 3)
-        graphs = data['graphs']
+        graphs = data['traces']
         self.assertEqual(graphs[0][0], key)
         self.assertEqual(len(graphs[0][1]), 3)
         self.assertEqual(graphs[0][1], [3, 6, 9])
@@ -45,9 +45,9 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         f1 = m1.field_name
         f2 = 'value2'
         self.assertIn('x', data)
-        self.assertIn('graphs', data)
+        self.assertIn('traces', data)
         self.assertEqual(len(data['x']), 3)
-        graphs = data['graphs']
+        graphs = data['traces']
         self.assertIn(f1, graphs[0][0])
         self.assertIn(f2, graphs[1][0])
         self.assertEqual(len(graphs[0][1]), 3)
@@ -59,8 +59,8 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         g = self._create_graph()
         data = g.read()
         # convert tuples to lists otherwise comparison will fail
-        for i, graph in enumerate(data['graphs']):
-            data['graphs'][i] = list(graph)
+        for i, graph in enumerate(data['traces']):
+            data['traces'][i] = list(graph)
         self.assertDictEqual(json.loads(g.json), data)
 
     def test_read_bad_query(self):
@@ -143,8 +143,8 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         g.query = q
         g.save()
         data = g.read()
-        self.assertEqual(data['graphs'][0][0], m.field_name)
-        self.assertEqual(data['graphs'][0][1], [2, 2, 2, 2, 2, 2, 4])
+        self.assertEqual(data['traces'][0][0], m.field_name)
+        self.assertEqual(data['traces'][0][1], [2, 2, 2, 2, 2, 2, 4])
 
     def test_get_query_1d(self):
         g = self._create_graph(test_data=None)

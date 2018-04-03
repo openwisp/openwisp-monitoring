@@ -1,11 +1,14 @@
 (function () {
     'use strict';
-    window.createGraph = function (data, id, title) {
+    window.createGraph = function (data, x, id, title) {
+        if (!x) {
+            x = data.x
+        }
         if (data === false) {
             alert(gettext('error while receiving data from server'));
             return;
         }
-        var mode = data.x.length > 30 ? 'lines' : 'markers+lines',
+        var mode = x.length > 30 ? 'lines' : 'markers+lines',
             layout = {
                 title: title,
                 showlegend: true,
@@ -18,9 +21,9 @@
                 }
             },
             graphs = [];
-        for (var i=0; i<data.graphs.length; i++) {
-            var key = data.graphs[i][0],
-                label = data.graphs[i][0].replace(/_/g, ' ');
+        for (var i=0; i<data.traces.length; i++) {
+            var key = data.traces[i][0],
+                label = data.traces[i][0].replace(/_/g, ' ');
             // add summary to label
             if (data.summary && typeof(data.summary[key]) !== undefined) {
                 label = label + ' (' + data.summary[key] + ')';
@@ -30,8 +33,8 @@
                 type: 'scatter',
                 mode: mode,
                 fill: 'tozeroy',
-                x: data.x,
-                y: data.graphs[i][1],
+                x: x,
+                y: data.traces[i][1],
                 hoverinfo: 'x+y',
             });
         }

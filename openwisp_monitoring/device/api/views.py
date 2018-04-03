@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from copy import deepcopy
 
 from django.contrib.contenttypes.models import ContentType
@@ -34,17 +35,22 @@ class DeviceMetricView(GenericAPIView):
                                      app_label=device_model._meta.app_label)
         graphs = Graph.objects.filter(metric__object_id=pk,
                                       metric__content_type=ct) \
-                              .order_by('description')
+                              .order_by('-description')
         # determine time range
         time = request.query_params.get('time', Graph.DEFAUT_TIME)
         if time not in Graph.GROUP_MAP.keys():
             return Response({'detail': 'Time range not supported'}, status=400)
         # get graphs and their data
-        data = []
+        data = OrderedDict({'graphs': []})
+        x_axys = True
         for graph in graphs:
-            d = graph.read(time=time)
-            d['description'] = graph.description
-            data.append(d)
+            g = graph.read(time=time, x_axys=x_axys)
+            # avoid repeating the x axys each time
+            if x_axys:
+                data['x'] = g.pop('x')
+                x_axys = False
+            g['description'] = graph.description
+            data['graphs'].append(g)
         return Response(data)
 
     def post(self, request, pk):

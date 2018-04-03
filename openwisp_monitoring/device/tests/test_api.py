@@ -323,9 +323,9 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         g = m.graph_set.first()
         data = g.read()
         # expected download wlan0
-        self.assertEqual(data['graphs'][0][1][-1], 1.2)
+        self.assertEqual(data['traces'][0][1][-1], 1.2)
         # expected upload wlan0
-        self.assertEqual(data['graphs'][1][1][-1], 0.6)
+        self.assertEqual(data['traces'][1][1][-1], 0.6)
         # wlan1 rx_bytes
         m = Metric.objects.get(key='wlan1', field_name='rx_bytes', object_id=dd.pk)
         points = m.read(limit=10, order='time DESC')
@@ -343,9 +343,9 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         g = m.graph_set.first()
         data = g.read()
         # expected download wlan1
-        self.assertEqual(data['graphs'][0][1][-1], 3.0)
+        self.assertEqual(data['traces'][0][1][-1], 3.0)
         # expected upload wlan1
-        self.assertEqual(data['graphs'][1][1][-1], 1.5)
+        self.assertEqual(data['traces'][1][1][-1], 1.5)
 
     def test_garbage_clients(self):
         o = self._create_org()
@@ -369,19 +369,19 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         d = self.device_model.objects.get(pk=dd.pk)
         r = self.client.get(self._url(d.pk, d.key))
         self.assertEqual(r.status_code, 200)
-        self.assertIsInstance(r.data, list)
-        self.assertEqual(len(r.data), 4)
-        for graph in r.data:
-            self.assertIn('graphs', graph)
+        self.assertIsInstance(r.data['graphs'], list)
+        self.assertEqual(len(r.data['graphs']), 4)
+        self.assertIn('x', r.data)
+        for graph in r.data['graphs']:
+            self.assertIn('traces', graph)
             self.assertIn('description', graph)
-            self.assertIn('x', graph)
 
     def test_get_device_metrics_1d(self):
         dd = self._create_multiple_measurements()
         d = self.device_model.objects.get(pk=dd.pk)
         r = self.client.get('{0}&time=1d'.format(self._url(d.pk, d.key)))
         self.assertEqual(r.status_code, 200)
-        self.assertIsInstance(r.data, list)
+        self.assertIsInstance(r.data['graphs'], list)
 
     def test_get_device_metrics_403(self):
         d = self._create_device(organization=self._create_org())

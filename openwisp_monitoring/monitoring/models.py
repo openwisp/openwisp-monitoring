@@ -313,9 +313,10 @@ class Graph(TimeStampedEditableModel):
             query = re.sub(self._group_by_regex, group_by, query)
         return query
 
-    def read(self, decimal_places=2, time=DEFAUT_TIME):
-        graphs = {}
-        x = []
+    def read(self, decimal_places=2, time=DEFAUT_TIME, x_axys=True):
+        traces = {}
+        if x_axys:
+            x = []
         try:
             points = list(query(self.get_query(time=time), epoch='s').get_points())
             summary = list(query(self.get_query(time=time, summary=True), epoch='s').get_points())
@@ -326,16 +327,19 @@ class Graph(TimeStampedEditableModel):
             for key, value in point.items():
                 if key == 'time':
                     continue
-                graphs.setdefault(key, [])
+                traces.setdefault(key, [])
                 if decimal_places and isinstance(value, (int, float)):
                     value = round(value, decimal_places)
-                graphs[key].append(value)
+                traces[key].append(value)
             time = datetime.fromtimestamp(point['time']) \
                            .strftime('%Y-%m-%d %H:%M')
-            x.append(time)
+            if x_axys:
+                x.append(time)
         # prepare result to be returned
         # (transform graph data so its order is not random)
-        result = {'x': x, 'graphs': sorted(graphs.items())}
+        result = {'traces': sorted(traces.items())}
+        if x_axys:
+            result['x'] = x
         # add summary
         if len(summary) > 0:
             result['summary'] = {}
