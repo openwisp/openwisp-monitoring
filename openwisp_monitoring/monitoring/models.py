@@ -349,9 +349,8 @@ class Graph(TimeStampedEditableModel):
                 result['summary'][key] = round(value, decimal_places)
         return result
 
-    @property
-    def json(self, **kwargs):
-        return json.dumps(self.read(), **kwargs)
+    def json(self, time=DEFAUT_TIME, **kwargs):
+        return json.dumps(self.read(time=time), **kwargs)
 
 
 class Threshold(TimeStampedEditableModel):

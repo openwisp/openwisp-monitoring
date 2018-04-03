@@ -61,7 +61,7 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         # convert tuples to lists otherwise comparison will fail
         for i, graph in enumerate(data['traces']):
             data['traces'][i] = list(graph)
-        self.assertDictEqual(json.loads(g.json), data)
+        self.assertDictEqual(json.loads(g.json()), data)
 
     def test_read_bad_query(self):
         g = self._create_graph()
