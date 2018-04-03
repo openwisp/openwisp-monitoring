@@ -167,7 +167,7 @@ class DeviceMetricView(GenericAPIView):
         if 'wifi_clients' not in monitoring_settings.AUTO_GRAPHS:
             return
         graph = Graph(metric=metric,
-                      description=_('{0} unique wifi clients').format(metric.key),
+                      description=_('{0} clients').format(metric.key),
                       query="SELECT COUNT(DISTINCT({field_name})) AS value FROM {key} "
                             "WHERE time >= '{time}' AND content_type = '{content_type}' "
                             "AND object_id = '{object_id}' GROUP BY time(24h) fill(0)")
