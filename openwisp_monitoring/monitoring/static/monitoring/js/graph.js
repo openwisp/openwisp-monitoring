@@ -19,8 +19,14 @@
             },
             graphs = [];
         for (var i=0; i<data.graphs.length; i++) {
+            var key = data.graphs[i][0],
+                label = data.graphs[i][0].replace(/_/g, ' ');
+            // add summary to label
+            if (data.summary && typeof(data.summary[key]) !== undefined) {
+                label = label + ' (' + data.summary[key] + ')';
+            }
             graphs.push({
-                name: data.graphs[i][0],
+                name: label,
                 type: 'scatter',
                 mode: mode,
                 fill: 'tozeroy',

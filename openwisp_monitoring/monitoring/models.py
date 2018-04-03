@@ -326,20 +326,24 @@ class Graph(TimeStampedEditableModel):
             for key, value in point.items():
                 if key == 'time':
                     continue
-                label = key.replace('_', ' ')
-                # add summary to legend
-                if len(summary) > 0:
-                    summary_value = round(summary[0][key], decimal_places)
-                    label = '{0} ({1})'.format(label, summary_value)
-                graphs.setdefault(label, [])
+                graphs.setdefault(key, [])
                 if decimal_places and isinstance(value, (int, float)):
                     value = round(value, decimal_places)
-                graphs[label].append(value)
+                graphs[key].append(value)
             time = datetime.fromtimestamp(point['time']) \
                            .strftime('%Y-%m-%d %H:%M')
             x.append(time)
-        # transform data so its order is not random
-        return {'x': x, 'graphs': sorted(graphs.items())}
+        # prepare result to be returned
+        # (transform graph data so its order is not random)
+        result = {'x': x, 'graphs': sorted(graphs.items())}
+        # add summary
+        if len(summary) > 0:
+            result['summary'] = {}
+            for key, value in summary[0].items():
+                if key == 'time':
+                    continue
+                result['summary'][key] = round(value, decimal_places)
+        return result
 
     @property
     def json(self, **kwargs):

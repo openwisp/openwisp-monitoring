@@ -23,7 +23,7 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         self.assertIn('graphs', data)
         self.assertEqual(len(data['x']), 3)
         graphs = data['graphs']
-        self.assertIn('%s (' % key, graphs[0][0])
+        self.assertEqual(graphs[0][0], key)
         self.assertEqual(len(graphs[0][1]), 3)
         self.assertEqual(graphs[0][1], [3, 6, 9])
 
@@ -143,7 +143,7 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         g.query = q
         g.save()
         data = g.read()
-        self.assertIn(m.field_name.replace('_', ' '), data['graphs'][0][0])
+        self.assertEqual(data['graphs'][0][0], m.field_name)
         self.assertEqual(data['graphs'][0][1], [2, 2, 2, 2, 2, 2, 4])
 
     def test_get_query_1d(self):
