@@ -33,7 +33,8 @@ class DeviceMetricView(GenericAPIView):
         ct = ContentType.objects.get(model=device_model.__name__.lower(),
                                      app_label=device_model._meta.app_label)
         graphs = Graph.objects.filter(metric__object_id=pk,
-                                      metric__content_type=ct)
+                                      metric__content_type=ct) \
+                              .order_by('description')
         # determine time range
         time = request.query_params.get('time', Graph.DEFAUT_TIME)
         if time not in Graph.GROUP_MAP.keys():
