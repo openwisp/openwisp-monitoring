@@ -394,6 +394,18 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         r = self.client.get(url)
         self.assertEqual(r.status_code, 400)
 
+    def test_get_device_metrics_csv(self):
+        dd = self._create_multiple_measurements()
+        d = self.device_model.objects.get(pk=dd.pk)
+        r = self.client.get('{0}&csv=1'.format(self._url(d.pk, d.key)))
+        self.assertEqual(r.get('Content-Disposition'), 'attachment; filename=data.csv')
+        self.assertEqual(r.get('Content-Type'), 'text/csv')
+        rows = r.content.decode('utf8').strip().split('\n')
+        header = rows[0].strip().split(',')
+        self.assertEqual(header, ['time', 'download', 'upload', 'value', 'download', 'upload', 'value'])
+        last_line = rows[-1].strip().split(',')
+        self.assertEqual(last_line, [last_line[0], '3', '1.5', '2', '1.2', '0.6', '1'])
+
     # testing admin here is more convenient because
     # we already have the code that creates test data
 

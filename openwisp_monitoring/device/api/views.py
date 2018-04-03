@@ -1,8 +1,11 @@
+import csv
 from collections import OrderedDict
 from copy import deepcopy
+from io import StringIO
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.http import HttpResponse
 from django.utils.translation import ugettext_lazy as _
 from rest_framework import serializers, status
 from rest_framework.generics import GenericAPIView
@@ -51,7 +54,29 @@ class DeviceMetricView(GenericAPIView):
                 x_axys = False
             g['description'] = graph.description
             data['graphs'].append(g)
+        if request.query_params.get('csv'):
+            response = HttpResponse(self._get_csv(data), content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename=data.csv'
+            return response
         return Response(data)
+
+    def _get_csv(self, data):
+        header = ['time']
+        columns = [data['x']]
+        for graph in data['graphs']:
+            for trace in graph['traces']:
+                header.append(trace[0])
+                columns.append(trace[1])
+        rows = [header]
+        for index, element in enumerate(data['x']):
+            row = []
+            for column in columns:
+                row.append(column[index])
+            rows.append(row)
+        # write CSV to in-memory file object
+        fileobj = StringIO()
+        csv.writer(fileobj).writerows(rows)
+        return fileobj.getvalue()
 
     def post(self, request, pk):
         self.instance = self.get_object()
