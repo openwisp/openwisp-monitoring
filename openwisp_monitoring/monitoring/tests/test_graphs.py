@@ -171,6 +171,6 @@ class TestGraphs(TestMonitoringMixin, TestCase):
 
     def test_get_time(self):
         g = Graph()
-        self.assertIn(str(date.today() - timedelta(days=29)), g._get_time('30d'))
+        self.assertIn(str(date.today() - timedelta(days=30)), g._get_time('30d'))
         self.assertIn(str(now() - timedelta(days=1))[0:10], g._get_time('1d'))
         self.assertIn(str(now() - timedelta(days=3))[0:10], g._get_time('3d'))

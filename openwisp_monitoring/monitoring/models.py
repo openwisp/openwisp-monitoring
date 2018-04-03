@@ -281,11 +281,11 @@ class Graph(TimeStampedEditableModel):
             days = int(time.strip('d'))
             now = timezone.now()
             if days > 3:
+                now = date(now.year, now.month, now.day)
+            if days is 7:
                 # subtract one day because we want to include
                 # the current day in the time range
-                # days -= 1
-                now = date(now.year, now.month, now.day)
-            # import ipdb; ipdb.set_trace()
+                days -= 1
             time = str(now - timedelta(days=days))[0:19]
         return time
 
