@@ -433,5 +433,5 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         url = reverse('admin:config_device_change', args=[dd.pk])
         self._login_admin()
         r = self.client.get(url)
-        self.assertContains(r, 'Device Information')
+        self.assertContains(r, 'Device Status')
         self.assertContains(r, 'Monitoring Graph')

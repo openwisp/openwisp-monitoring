@@ -2,11 +2,126 @@
 {% load i18n static %}
 {% block after_field_sets %}
 {% if not add and device_data %}
-<div class="inline-group">
+<div class="inline-group" id="ow-device-status">
     <fieldset class="module">
-        <h2>{% trans 'Device Information' %}</h2>
+        <h2>{% trans 'Device Status' %}</h2>
         <div class="inline-related">
-            <pre>{{ device_data }}</pre>
+            <fieldset class="module aligned">
+              {% if device_data.general %}
+              {% if device_data.general.local_time %}
+              <div class="form-row">
+                  <label>{% trans 'Local time' %}:</label>
+                  <div class="readonly">
+                      {{ device_data.general.local_time }}
+                  </div>
+              </div>
+              {% endif %}
+              {% if device_data.general.uptime %}
+              <div class="form-row">
+                  <label>{% trans 'Uptime' %}:</label>
+                  <div class="readonly">
+                      {{ device_data.general.uptime }}
+                  </div>
+              </div>
+              {% endif %}
+              {% endif %}
+              {% if device_data.resources %}
+              {% if device_data.resources.memory %}
+              <h2>{% trans 'RAM status' %}</h2>
+              <div class="form-row">
+                  <label>{% trans 'Total' %}:</label>
+                  <div class="readonly">
+                      {{ device_data.resources.memory.total }} MB
+                  </div>
+              </div>
+              <div class="form-row">
+                  <label>{% trans 'Free' %}:</label>
+                  <div class="readonly">
+                      {{ device_data.resources.memory.free }} MB
+                  </div>
+              </div>
+              <div class="form-row">
+                  <label>{% trans 'Buffered' %}:</label>
+                  <div class="readonly">
+                      {{ device_data.resources.memory.buffered }} MB
+                  </div>
+              </div>
+              <div class="form-row">
+                  <label>{% trans 'Shared' %}:</label>
+                  <div class="readonly">
+                      {{ device_data.resources.memory.shared }} MB
+                  </div>
+              </div>
+              {% endif %}
+              {% if device_data.resources.load %}
+              <div class="form-row">
+                  <label>{% trans 'Load average' %}:</label>
+                  <div class="readonly">
+                      {{ device_data.resources.load|join:", &nbsp;" }}
+                  </div>
+              </div>
+              {% endif %}
+              {% endif %}
+              {% if device_data.interfaces %}
+              {% for interface in device_data.interfaces %}
+              <div class="inline-group">
+                  <h2>{% trans 'Interface status' %}: {{ interface.name }}</h2>
+                  {% if interface.wireless %}
+                  <div class="form-row">
+                      <label>{% trans 'Mode' %}:</label>
+                      <div class="readonly">
+                          {{ interface.wireless.mode }}
+                      </div>
+                  </div>
+                  <div class="form-row">
+                      <label>{% trans 'SSID' %}:</label>
+                      <div class="readonly">
+                          {{ interface.wireless.ssid }}
+                      </div>
+                  </div>
+                  <div class="form-row">
+                      <label>{% trans 'Channel' %}:</label>
+                      <div class="readonly">
+                          {{ interface.wireless.channel }}
+                      </div>
+                  </div>
+                  <div class="form-row">
+                      <label>{% trans 'Frequency' %}:</label>
+                      <div class="readonly">
+                          {{ interface.wireless.frequency }} GHz
+                      </div>
+                  </div>
+                  <div class="form-row">
+                      <label>{% trans 'Transmission Power' %}:</label>
+                      <div class="readonly">
+                          {{ interface.wireless.tx_power }} dBm
+                      </div>
+                  </div>
+                  <div class="form-row">
+                      <label>{% trans 'Signal' %}:</label>
+                      <div class="readonly">
+                          {{ interface.wireless.signal }} dBm
+                      </div>
+                  </div>
+                  <div class="form-row">
+                      <label>{% trans 'Noise' %}:</label>
+                      <div class="readonly">
+                          {{ interface.wireless.noise }} dBm
+                      </div>
+                  </div>
+                  {% if interface.wireless.clients %}
+                  <div class="form-row">
+                      <label>{% trans 'Associated clients' %}:</label>
+                      <div class="readonly">
+                          {{ interface.wireless.clients|length }}
+                      </div>
+                  </div>
+                  {% endif %}
+                  {% endif %}
+              </div>
+              {% endfor %}
+              {% endif %}
+            </fieldset>
         </div>
     </fieldset>
 </div>

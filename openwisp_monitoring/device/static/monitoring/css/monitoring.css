@@ -28,3 +28,9 @@
 #ow-graph-time a.export:hover{
   background: rgba(0,0,0,0.45);
 }
+
+#ow-device-status .inline-related h2{
+  color: #333;
+  background-color: rgba(0, 0, 0, 0.05);
+  outline: 1px solid rgba(0, 0, 0, 0.3);
+}
