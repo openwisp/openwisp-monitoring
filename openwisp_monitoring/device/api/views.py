@@ -3,10 +3,13 @@ from collections import OrderedDict
 from copy import deepcopy
 from io import StringIO
 
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.utils.translation import ugettext_lazy as _
+from pytz import timezone as tz
+from pytz.exceptions import UnknownTimeZoneError
 from rest_framework import serializers, status
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import BasePermission
@@ -43,11 +46,17 @@ class DeviceMetricView(GenericAPIView):
         time = request.query_params.get('time', Graph.DEFAUT_TIME)
         if time not in Graph.GROUP_MAP.keys():
             return Response({'detail': 'Time range not supported'}, status=400)
+        # try to read timezone
+        timezone = request.query_params.get('timezone', settings.TIME_ZONE)
+        try:
+            tz(timezone)
+        except UnknownTimeZoneError:
+            return Response('Unkown Time Zone', status=400)
         # get graphs and their data
         data = OrderedDict({'graphs': []})
         x_axys = True
         for graph in graphs:
-            g = graph.read(time=time, x_axys=x_axys)
+            g = graph.read(time=time, x_axys=x_axys, timezone=timezone)
             # avoid repeating the x axys each time
             if x_axys:
                 data['x'] = g.pop('x')

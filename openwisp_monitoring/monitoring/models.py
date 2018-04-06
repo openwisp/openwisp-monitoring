@@ -23,6 +23,7 @@ from django.utils.timezone import make_aware
 from django.utils.translation import ugettext_lazy as _
 from influxdb.exceptions import InfluxDBClientError
 from notifications.models import Notification
+from pytz import timezone as tz
 
 from openwisp_utils.base import TimeStampedEditableModel
 
@@ -262,7 +263,7 @@ class Graph(TimeStampedEditableModel):
                  " AND object_id = '{object_id}'"
         return q
 
-    def get_query(self, time=DEFAUT_TIME, summary=False):
+    def get_query(self, time=DEFAUT_TIME, summary=False, timezone=settings.TIME_ZONE):
         m = self.metric
         params = dict(field_name=m.field_name,
                       key=m.key,
@@ -272,7 +273,7 @@ class Graph(TimeStampedEditableModel):
                            'object_id': m.object_id})
         q = self.query.format(**params)
         q = self._group_by(q, time, strip=summary)
-        return "{0} tz('{1}')".format(q, settings.TIME_ZONE)
+        return "{0} tz('{1}')".format(q, timezone)
 
     def _get_time(self, time):
         if not isinstance(time, str):
@@ -313,13 +314,15 @@ class Graph(TimeStampedEditableModel):
             query = re.sub(self._group_by_regex, group_by, query)
         return query
 
-    def read(self, decimal_places=2, time=DEFAUT_TIME, x_axys=True):
+    def read(self, decimal_places=2, time=DEFAUT_TIME, x_axys=True, timezone=settings.TIME_ZONE):
         traces = {}
         if x_axys:
             x = []
         try:
-            points = list(query(self.get_query(time=time), epoch='s').get_points())
-            summary = list(query(self.get_query(time=time, summary=True), epoch='s').get_points())
+            query_kwargs = dict(time=time, timezone=timezone)
+            points = list(query(self.get_query(**query_kwargs), epoch='s').get_points())
+            query_kwargs['summary'] = True
+            summary = list(query(self.get_query(**query_kwargs), epoch='s').get_points())
         except InfluxDBClientError as e:
             logging.error(e, exc_info=True)
             raise e
@@ -331,7 +334,7 @@ class Graph(TimeStampedEditableModel):
                 if decimal_places and isinstance(value, (int, float)):
                     value = round(value, decimal_places)
                 traces[key].append(value)
-            time = datetime.fromtimestamp(point['time']) \
+            time = datetime.fromtimestamp(point['time'], tz=tz(timezone)) \
                            .strftime('%Y-%m-%d %H:%M')
             if x_axys:
                 x.append(time)

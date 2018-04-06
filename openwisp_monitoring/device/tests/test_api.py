@@ -388,7 +388,7 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         r = self.client.get(self._url(d.pk))
         self.assertEqual(r.status_code, 403)
 
-    def test_get_device_metrics_400(self):
+    def test_get_device_metrics_400_bad_time_range(self):
         d = self._create_device(organization=self._create_org())
         url = '{0}&time=3w'.format(self._url(d.pk, d.key))
         r = self.client.get(url)
@@ -405,6 +405,20 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         self.assertEqual(header, ['time', 'download', 'upload', 'value', 'download', 'upload', 'value'])
         last_line = rows[-1].strip().split(',')
         self.assertEqual(last_line, [last_line[0], '3', '1.5', '2', '1.2', '0.6', '1'])
+
+    def test_get_device_metrics_400_bad_timezone(self):
+        dd = self._create_multiple_measurements()
+        d = self.device_model.objects.get(pk=dd.pk)
+        wrong_timezone_values = (
+            'wrong',
+            'America/Lima%27);%20DROP%20DATABASE%20test2;',
+            'Europe/Cazzuoli'
+        )
+        for tz_value in wrong_timezone_values:
+            url = '{0}&timezone={1}'.format(self._url(d.pk, d.key), tz_value)
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 400)
+            self.assertIn('Unkown Time Zone', r.data)
 
     # testing admin here is more convenient because
     # we already have the code that creates test data

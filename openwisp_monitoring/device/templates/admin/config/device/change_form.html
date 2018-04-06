@@ -51,6 +51,12 @@
         triggerClick = function() {
           $('#ow-graph-time a[data-time=' + defaultTimeRange + ']').trigger('click');
         };
+    // try adding the browser timezone to the querystring
+    try {
+      var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      baseUrl = baseUrl.replace('time=', 'timezone=' + timezone + '&time=');
+    // ignore failures (older browsers do not support this)
+    } catch (e) {}
     timeButtons.click(function () {
       var timeRange = $(this).attr('data-time');
       loadGraphs(timeRange);

@@ -88,7 +88,9 @@ class TestGraphs(TestMonitoringMixin, TestCase):
     def test_get_query(self):
         g = self._create_graph(test_data=False)
         m = g.metric
-        time = date.today() - timedelta(days=6)
+        now_ = now()
+        today = date(now_.year, now_.month, now_.day)
+        time = today - timedelta(days=6)
         expected = g.query.format(field_name=m.field_name,
                                   key=m.key,
                                   content_type=m.content_type_key,
@@ -172,6 +174,8 @@ class TestGraphs(TestMonitoringMixin, TestCase):
 
     def test_get_time(self):
         g = Graph()
-        self.assertIn(str(date.today() - timedelta(days=30)), g._get_time('30d'))
+        now_ = now()
+        today = date(now_.year, now_.month, now_.day)
+        self.assertIn(str(today - timedelta(days=30)), g._get_time('30d'))
         self.assertIn(str(now() - timedelta(days=1))[0:10], g._get_time('1d'))
         self.assertIn(str(now() - timedelta(days=3))[0:10], g._get_time('3d'))
