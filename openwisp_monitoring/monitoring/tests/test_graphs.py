@@ -142,9 +142,10 @@ class TestGraphs(TestMonitoringMixin, TestCase):
             "AND object_id = '{object_id}' GROUP BY time(24h)"
         g.query = q
         g.save()
-        data = g.read()
+        data = g.read(time='30d')
         self.assertEqual(data['traces'][0][0], m.field_name)
-        self.assertEqual(data['traces'][0][1], [2, 2, 2, 2, 2, 2, 4])
+        # last 10 days
+        self.assertEqual(data['traces'][0][1][-10:], [0, 2, 2, 2, 2, 2, 2, 2, 2, 4])
 
     def test_get_query_1d(self):
         g = self._create_graph(test_data=None)
