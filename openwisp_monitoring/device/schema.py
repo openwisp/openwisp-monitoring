@@ -33,7 +33,7 @@ schema = {
                 "load": {
                     "type": "array",
                     "items": {
-                        "type": "integer",
+                        "type": "number",
                         "minItems": 3,
                         "maxItems": 3
                     }
