@@ -13,7 +13,7 @@ from django.core.mail import send_mail
 from django.core.validators import MaxValueValidator
 from django.db import models
 from django.db.models import Q
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.urls import reverse
 from django.utils import timezone
@@ -444,10 +444,8 @@ def create_notificationuser_settings(sender, instance, **kwargs):
         NotificationUser.objects.create(user=instance)
 
 
-@receiver(post_save, sender=Notification, dispatch_uid='notification_saved')
-def notification_saved(sender, instance, created, **kwargs):
-    # invalidate cache for user
-    cache.delete(NOTIFICATIONS_COUNT_CACHE_KEY.format(instance.recipient.pk))
+@receiver(post_save, sender=Notification, dispatch_uid='send_email_notification')
+def send_email_notification(sender, instance, created, **kwargs):
     # ensure we need to sending email or stop
     if not created or (not instance.recipient.notificationuser.email or
                        not instance.recipient.email):
@@ -461,3 +459,10 @@ def notification_saved(sender, instance, created, **kwargs):
     send_mail(subject, description,
               settings.DEFAULT_FROM_EMAIL,
               [instance.recipient.email])
+
+
+@receiver(post_save, sender=Notification, dispatch_uid='clear_notification_cache_saved')
+@receiver(post_delete, sender=Notification, dispatch_uid='clear_notification_cache_deleted')
+def clear_notification_cache(sender, instance, **kwargs):
+    # invalidate cache for user
+    cache.delete(NOTIFICATIONS_COUNT_CACHE_KEY.format(instance.recipient.pk))

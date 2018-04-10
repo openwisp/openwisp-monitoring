@@ -68,7 +68,6 @@ class NotificationAdmin(admin.ModelAdmin):
     raw_id_fields = ('recipient', )
     list_display = ('description', 'unread', 'level', 'timesince')
     list_filter = ('level', 'unread', )
-    actions = None
     fieldsets = (
         (None, {
             'fields': ('timestamp', 'level', 'description', 'emailed',)
@@ -95,17 +94,19 @@ class NotificationAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
 
-    # Allow viewing objects but not actually changing them.
-    def has_change_permission(self, request, obj=None):
-        return (request.method in ['GET', 'HEAD'] and
-                super(NotificationAdmin, self).has_change_permission(request, obj))
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-    def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
+    def render_change_form(self, request, context, add=False, change=True, form_url='', obj=None):
         if obj and obj.unread:
             obj.unread = False
             obj.save()
-        return super(NotificationAdmin, self).render_change_form(request, context, add=False,
-                                                                 change=False, form_url='', obj=None)
+        # disable save buttons
+        context.update({
+            'add': False,
+            'has_add_permission': False,
+            'show_delete_link': True,
+            'show_save_as_new': False,
+            'show_save_and_add_another': False,
+            'show_save_and_continue': False,
+            'show_save': False
+        })
+        return super(NotificationAdmin, self).render_change_form(request, context, add=add,
+                                                                 change=change, form_url=form_url, obj=obj)
