@@ -459,6 +459,9 @@ def send_email_notification(sender, instance, created, **kwargs):
     send_mail(subject, description,
               settings.DEFAULT_FROM_EMAIL,
               [instance.recipient.email])
+    # flag as emailed
+    instance.emailed = True
+    instance.save()
 
 
 @receiver(post_save, sender=Notification, dispatch_uid='clear_notification_cache_saved')
