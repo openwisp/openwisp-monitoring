@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 @python_2_unicode_compatible
 class Metric(TimeStampedEditableModel):
-    # TODO: questo va spostato su Threshold molto probabilmente
+    # TODO: this probably should be moved to Threshold
     HEALTH_CHOICES = (('ok', _('ok')),
                       ('problem', _('problem')))
     health = models.CharField(max_length=8,
@@ -66,10 +66,39 @@ class Metric(TimeStampedEditableModel):
         if not self.key:
             self.key = self.codename
 
+    def full_clean(self, *args, **kwargs):
+        # clean up key before field validation
+        self.key = self._makekey(self.key)
+        return super(Metric, self).full_clean(*args, **kwargs)
+
+    @classmethod
+    def _get_or_create(cls, **kwargs):
+        """
+        like ``get_or_create`` method of django model managers
+        but with validation before creationg
+        """
+        if 'key' in kwargs:
+            kwargs['key'] = cls._makekey(kwargs['key'])
+        try:
+            metric = cls.objects.get(**kwargs)
+            created = False
+        except cls.DoesNotExist:
+            metric = cls(**kwargs)
+            metric.full_clean()
+            metric.save()
+            created = True
+        return metric, created
+
     @property
     def codename(self):
         """ identifier stored in timeseries db """
-        return slugify(self.name).replace('-', '_')
+        return self._makekey(self.name)
+
+    @staticmethod
+    def _makekey(value):
+        """ makes value suited for influxdb key """
+        value = value.replace('.', '_')
+        return slugify(value).replace('-', '_')
 
     @property
     def tags(self):
@@ -241,7 +270,7 @@ class Graph(TimeStampedEditableModel):
         '30d': '24h',
         '365d': '24h'
     }
-    DEFAUT_TIME = '7d'
+    DEFAULT_TIME = '7d'
 
     def _clean_query(self):
         for word in self._FORBIDDEN:
@@ -263,7 +292,7 @@ class Graph(TimeStampedEditableModel):
                  " AND object_id = '{object_id}'"
         return q
 
-    def get_query(self, time=DEFAUT_TIME, summary=False, timezone=settings.TIME_ZONE):
+    def get_query(self, time=DEFAULT_TIME, summary=False, timezone=settings.TIME_ZONE):
         m = self.metric
         params = dict(field_name=m.field_name,
                       key=m.key,
@@ -314,7 +343,7 @@ class Graph(TimeStampedEditableModel):
             query = re.sub(self._group_by_regex, group_by, query)
         return query
 
-    def read(self, decimal_places=2, time=DEFAUT_TIME, x_axys=True, timezone=settings.TIME_ZONE):
+    def read(self, decimal_places=2, time=DEFAULT_TIME, x_axys=True, timezone=settings.TIME_ZONE):
         traces = {}
         if x_axys:
             x = []
@@ -352,7 +381,7 @@ class Graph(TimeStampedEditableModel):
                 result['summary'][key] = round(value, decimal_places)
         return result
 
-    def json(self, time=DEFAUT_TIME, **kwargs):
+    def json(self, time=DEFAULT_TIME, **kwargs):
         return json.dumps(self.read(time=time), **kwargs)
 
 

@@ -1,4 +1,5 @@
 import csv
+import uuid
 from collections import OrderedDict
 from copy import deepcopy
 from io import StringIO
@@ -35,6 +36,11 @@ class DeviceMetricView(GenericAPIView):
     statistics_stored = ['rx_bytes', 'tx_bytes']
 
     def get(self, request, pk):
+        # ensure valid UUID
+        try:
+            pk = str(uuid.UUID(pk))
+        except ValueError:
+            return Response({'detail': 'not found'}, status=404)
         self.instance = self.get_object()
         device_model = self.model.mro()[1]
         ct = ContentType.objects.get(model=device_model.__name__.lower(),
@@ -43,7 +49,7 @@ class DeviceMetricView(GenericAPIView):
                                       metric__content_type=ct) \
                               .order_by('-description')
         # determine time range
-        time = request.query_params.get('time', Graph.DEFAUT_TIME)
+        time = request.query_params.get('time', Graph.DEFAULT_TIME)
         if time not in Graph.GROUP_MAP.keys():
             return Response({'detail': 'Time range not supported'}, status=400)
         # try to read timezone
@@ -58,7 +64,7 @@ class DeviceMetricView(GenericAPIView):
         for graph in graphs:
             g = graph.read(time=time, x_axys=x_axys, timezone=timezone)
             # avoid repeating the x axys each time
-            if x_axys:
+            if x_axys and g['x']:
                 data['x'] = g.pop('x')
                 x_axys = False
             g['description'] = graph.description
@@ -96,8 +102,11 @@ class DeviceMetricView(GenericAPIView):
             self.instance.validate_data()
         except ValidationError as e:
             return Response(e.message, status=status.HTTP_400_BAD_REQUEST)
-        # write data
-        self._write(request, self.instance.pk)
+        try:
+            # write data
+            self._write(request, self.instance.pk)
+        except ValidationError as e:
+            return Response(e.message_dict, status=status.HTTP_400_BAD_REQUEST)
         return Response(None)
 
     def _init_previous_data(self):
@@ -127,11 +136,11 @@ class DeviceMetricView(GenericAPIView):
                 if key not in self.statistics_stored:
                     continue
                 name = '{0} {1}'.format(ifname, key)
-                metric, created = Metric.objects.get_or_create(object_id=pk,
-                                                               content_type=ct,
-                                                               key=ifname,
-                                                               field_name=key,
-                                                               name=name)
+                metric, created = Metric._get_or_create(object_id=pk,
+                                                        content_type=ct,
+                                                        key=ifname,
+                                                        field_name=key,
+                                                        name=name)
                 increment = self._calculate_increment(ifname, key, value)
                 metric.write(increment)
                 if created:
@@ -143,11 +152,11 @@ class DeviceMetricView(GenericAPIView):
             if not isinstance(clients, list):
                 continue
             name = '{0} wifi clients'.format(ifname)
-            metric, created = Metric.objects.get_or_create(object_id=pk,
-                                                           content_type=ct,
-                                                           key=ifname,
-                                                           field_name='clients',
-                                                           name=name)
+            metric, created = Metric._get_or_create(object_id=pk,
+                                                    content_type=ct,
+                                                    key=ifname,
+                                                    field_name='clients',
+                                                    name=name)
             for client in clients:
                 if 'mac' not in client:
                     continue

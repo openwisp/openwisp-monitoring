@@ -29,12 +29,19 @@ class DeviceAdmin(BaseDeviceAdmin):
             MB = 1000000.0
             for key in data['resources']['memory'].keys():
                 data['resources']['memory'][key] /= MB
+        remove = []
         for interface in data.get('interfaces', []):
+            # don't show interfaces if they don't have any useful info
+            if len(interface.keys()) <= 2:
+                remove.append(interface)
+                continue
             # human readable mode
             interface['wireless']['mode'] = interface['wireless']['mode'].replace('_', ' ')
             # convert to GHz
             if 'wireless' in interface and 'frequency' in interface['wireless']:
                 interface['wireless']['frequency'] /= 1000
+        for interface in remove:
+            data['interfaces'].remove(interface)
         return data
 
     def get_extra_context(self, pk=None):
@@ -45,7 +52,7 @@ class DeviceAdmin(BaseDeviceAdmin):
             ctx.update({
                 'device_data': self.get_device_data(device_data.data),
                 'api_url': api_url,
-                'default_time': Graph.DEFAUT_TIME
+                'default_time': Graph.DEFAULT_TIME
             })
         return ctx
 

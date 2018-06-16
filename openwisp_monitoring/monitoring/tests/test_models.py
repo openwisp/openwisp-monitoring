@@ -23,6 +23,14 @@ class TestModels(TestMonitoringMixin, TestCase):
         m = Metric()
         self.assertEqual(m.codename, '')
 
+    def test_metric_key_contains_dash(self):
+        m = self._create_general_metric(key='br-lan')
+        self.assertEqual(m.key, 'br_lan')
+
+    def test_metric_key_contains_dot(self):
+        m = self._create_general_metric(key='eth0.2')
+        self.assertEqual(m.key, 'eth0_2')
+
     def test_object_metric_str(self):
         obj = self._create_user()
         om = self._create_object_metric(name='Logins', content_object=obj)
@@ -37,6 +45,15 @@ class TestModels(TestMonitoringMixin, TestCase):
     def test_object_key(self):
         om = self._create_object_metric()
         self.assertEqual(om.key, om.codename)
+
+    def test_cutom_get_or_create(self):
+        m, created = Metric._get_or_create(name='lan',
+                                           key='br-lan')
+        self.assertTrue(created)
+        m2, created = Metric._get_or_create(name='lan',
+                                            key='br-lan')
+        self.assertEqual(m.id, m2.id)
+        self.assertFalse(created)
 
     def test_write(self):
         write('test_write', dict(value=2), database=self.TEST_DB)
