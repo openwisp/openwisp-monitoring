@@ -31,7 +31,7 @@ install:
 
 script:
   - coverage run --source=openwisp_monitoring runtests.py
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.4 ]]; then ./tests/manage.py makemigrations --dry-run | grep "No changes detected"; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.4 ]]; then ./tests/manage.py makemigrations monitoring device check --dry-run | grep "No changes detected"; fi
 
 after_success:
   coveralls

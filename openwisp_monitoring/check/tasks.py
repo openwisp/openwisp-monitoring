@@ -16,7 +16,7 @@ def run_checks():
     and calls the ``perform_check`` task (defined below) for each of them.
 
     This allows to enqueue all the checks that need to be performed
-    and execute them in parallel with multiple worker if needed.
+    and execute them in parallel with multiple workers if needed.
     """
     iterator = Check.objects.filter(active=True) \
                             .only('id') \
