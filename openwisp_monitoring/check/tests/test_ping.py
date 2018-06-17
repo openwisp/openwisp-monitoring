@@ -35,7 +35,7 @@ class TestPing(TestDeviceMonitoringMixin):
         self.assertEqual(result['reachable'], 1)
         self.assertEqual(result['loss'], 0.0)
         for key in self._RTT_KEYS:
-            self.assertTrue(result[key] < 0.5)
+            self.assertTrue(result[key] < 1)
 
     def test_check_ping_params(self):
         config = self._create_config(organization=self._create_org())
