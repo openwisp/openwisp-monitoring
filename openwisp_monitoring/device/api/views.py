@@ -196,8 +196,8 @@ class DeviceMetricView(GenericAPIView):
             return
         graph = Graph(metric=metric,
                       description=_('{0} traffic (GB)').format(metric.key),
-                      query="SELECT SUM(tx_bytes) / 1000000000 AS download, "
-                            "SUM(rx_bytes) / 1000000000 AS upload FROM {key} "
+                      query="SELECT SUM(tx_bytes) / 1000000000 AS upload, "
+                            "SUM(rx_bytes) / 1000000000 AS download FROM {key} "
                             "WHERE time >= '{time}' AND content_type = '{content_type}' "
                             "AND object_id = '{object_id}' GROUP BY time(24h) fill(0)")
         graph.full_clean()
