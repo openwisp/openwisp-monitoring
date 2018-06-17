@@ -406,7 +406,15 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         self.assertEqual(r.get('Content-Type'), 'text/csv')
         rows = r.content.decode('utf8').strip().split('\n')
         header = rows[0].strip().split(',')
-        self.assertEqual(header, ['time', 'download', 'upload', 'value', 'download', 'upload', 'value'])
+        self.assertEqual(header, [
+            'time',
+            'download - wlan1 traffic (GB)',
+            'upload - wlan1 traffic (GB)',
+            'value',
+            'download - wlan0 traffic (GB)',
+            'upload - wlan0 traffic (GB)',
+            'value'
+        ])
         last_line = rows[-1].strip().split(',')
         self.assertEqual(last_line, [last_line[0], '3', '1.5', '2', '1.2', '0.6', '1'])
 

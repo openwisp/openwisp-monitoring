@@ -80,7 +80,7 @@ class DeviceMetricView(GenericAPIView):
         columns = [data['x']]
         for graph in data['graphs']:
             for trace in graph['traces']:
-                header.append(trace[0])
+                header.append(self._get_csv_header(graph, trace))
                 columns.append(trace[1])
         rows = [header]
         for index, element in enumerate(data['x']):
@@ -92,6 +92,12 @@ class DeviceMetricView(GenericAPIView):
         fileobj = StringIO()
         csv.writer(fileobj).writerows(rows)
         return fileobj.getvalue()
+
+    def _get_csv_header(self, graph, trace):
+        header = trace[0]
+        if header in ['download', 'upload']:
+            header = '{0} - {1}'.format(header, graph['description'])
+        return header
 
     def post(self, request, pk):
         self.instance = self.get_object()
