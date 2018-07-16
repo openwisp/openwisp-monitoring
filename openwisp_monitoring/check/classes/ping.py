@@ -143,11 +143,10 @@ class Ping(object):
         """
         Figures out ip to use or fails raising OperationalError
         """
-        try:
-            ip = self.related_object.config.last_ip
-            assert(ip is not None)
-        except (ObjectDoesNotExist, AssertionError):
-            raise OperationalError('Could not find a valid ip address')
+        device = self.related_object
+        ip = device.management_ip or device.last_ip
+        if ip is None:
+            raise OperationalError('Could not find a valid ip address to ping')
         return ip
 
     def _command(self, command):

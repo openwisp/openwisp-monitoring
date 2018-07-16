@@ -22,12 +22,12 @@ class TestPing(TestDeviceMonitoringMixin):
                                'min/avg/max = 0.04/0.08/0.15', 'utf8'))
 
     def test_check_ping_no_params(self):
-        config = self._create_config(organization=self._create_org())
+        device = self._create_device(organization=self._create_org())
         # will ping localhost
-        config.last_ip = '127.0.0.1'
+        device.management_ip = '127.0.0.1'
         check = Check(name='Ping check',
                       check=self._PING,
-                      content_object=config.device,
+                      content_object=device,
                       params={})
         result = check.perform_check(store=False)
         for key in self._RESULT_KEYS:
@@ -38,12 +38,12 @@ class TestPing(TestDeviceMonitoringMixin):
             self.assertTrue(result[key] < 1)
 
     def test_check_ping_params(self):
-        config = self._create_config(organization=self._create_org())
+        device = self._create_device(organization=self._create_org())
         # will ping localhost
-        config.last_ip = '127.0.0.1'
+        device.management_ip = '127.0.0.1'
         check = Check(name='Ping check',
                       check=self._PING,
-                      content_object=config.device,
+                      content_object=device,
                       params={'count': 2,
                               'interval': 10,
                               'bytes': 10,
@@ -57,12 +57,12 @@ class TestPing(TestDeviceMonitoringMixin):
             self.assertTrue(result[key] < 1)
 
     def test_check_ping_unreachable(self):
-        config = self._create_config(organization=self._create_org())
+        device = self._create_device(organization=self._create_org())
         # will hopefully ping an unexisting private address
-        config.last_ip = '192.168.255.255'
+        device.management_ip = '192.168.255.255'
         check = Check(name='Ping check',
                       check=self._PING,
-                      content_object=config.device,
+                      content_object=device,
                       params={'timeout': 50, 'count': 3})
         result = check.perform_check(store=False)
         for key in self._RESULT_KEYS[0:2]:
@@ -72,11 +72,11 @@ class TestPing(TestDeviceMonitoringMixin):
 
     @mock.patch.object(Ping, '_command', return_value=_UNRECOGNIZED_OUTPUT)
     def test_operational_error(self, _command):
-        config = self._create_config(organization=self._create_org())
-        config.last_ip = '127.0.0.1'
+        device = self._create_device(organization=self._create_org())
+        device.management_ip = '127.0.0.1'
         check = Check(name='Ping check',
                       check=self._PING,
-                      content_object=config.device,
+                      content_object=device,
                       params={'timeout': 50, 'count': 3})
         try:
             check.perform_check(store=False)
@@ -85,27 +85,11 @@ class TestPing(TestDeviceMonitoringMixin):
         else:
             self.fail('OperationalError not raised')
 
-    def test_device_has_no_config(self):
+    def test_device_has_no_ip(self):
         d = self._create_device(organization=self._create_org())
         check = Check(name='Ping check',
                       check=self._PING,
                       content_object=d,
-                      params={})
-        try:
-            check.perform_check(store=False)
-        except OperationalError as e:
-            self.assertIn('ip address', str(e))
-        except Exception as e:
-            self.fail('Expected OperationalError but '
-                      'got {0} instead'.format(e.__class__))
-        else:
-            self.fail('OperationalError not raised')
-
-    def test_config_has_no_last_ip(self):
-        config = self._create_config(organization=self._create_org())
-        check = Check(name='Ping check',
-                      check=self._PING,
-                      content_object=config.device,
                       params={})
         try:
             check.perform_check(store=False)
@@ -141,8 +125,8 @@ class TestPing(TestDeviceMonitoringMixin):
             self.fail('ValidationError not raised')
 
     def test_schema_violation(self):
-        config = self._create_config(organization=self._create_org())
-        config.last_ip = '127.0.0.1'
+        device = self._create_device(organization=self._create_org())
+        device.management_ip = '127.0.0.1'
         invalid_params = [
             {'count': 1}, {'interval': 9},
             {'bytes': 0}, {'timeout': 2},
@@ -152,7 +136,7 @@ class TestPing(TestDeviceMonitoringMixin):
         for params in invalid_params:
             check = Check(name='Ping check',
                           check=self._PING,
-                          content_object=config.device,
+                          content_object=device,
                           params=params)
             try:
                 check.check_instance.validate()
@@ -164,9 +148,9 @@ class TestPing(TestDeviceMonitoringMixin):
     @mock.patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
     def test_store_result(self, mocked_method):
         self.assertEqual(Check.objects.count(), 0)
-        config = self._create_config(organization=self._create_org())
-        config.last_ip = '10.40.0.1'
-        config.save()
+        device = self._create_device(organization=self._create_org())
+        device.management_ip = '10.40.0.1'
+        device.save()
         # check created automatically by autoping
         self.assertEqual(Check.objects.count(), 1)
         self.assertEqual(Metric.objects.count(), 0)
@@ -178,7 +162,7 @@ class TestPing(TestDeviceMonitoringMixin):
         self.assertEqual(Graph.objects.count(), 3)
         self.assertEqual(Threshold.objects.count(), 1)
         m = Metric.objects.first()
-        self.assertEqual(m.content_object, config.device)
+        self.assertEqual(m.content_object, device)
         self.assertEqual(m.key, 'ping')
         points = m.read(limit=None, extra_fields=list(result.keys()))
         self.assertEqual(len(points), 1)
@@ -191,9 +175,9 @@ class TestPing(TestDeviceMonitoringMixin):
     @mock.patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
     @mock.patch.object(monitoring_settings, 'AUTO_GRAPHS', return_value=[])
     def test_auto_graph_disabled(self, *args):
-        config = self._create_config(organization=self._create_org())
-        config.last_ip = '127.0.0.1'
-        config.save()
+        device = self._create_device(organization=self._create_org())
+        device.last_ip = '127.0.0.1'
+        device.save()
         check = Check.objects.first()
         self.assertEqual(Graph.objects.count(), 0)
         check.perform_check()

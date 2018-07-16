@@ -13,9 +13,9 @@ class TestUtils(TestDeviceMonitoringMixin):
                                'min/avg/max = 0.04/0.08/0.15', 'utf8'))
 
     def _create_check(self):
-        config = self._create_config(organization=self._create_org())
-        config.last_ip = '10.40.0.1'
-        config.save()
+        device = self._create_device(organization=self._create_org())
+        device.last_ip = '10.40.0.1'
+        device.save()
         # check is automatically created via django signal
 
     @mock.patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
