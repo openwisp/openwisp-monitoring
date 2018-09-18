@@ -44,12 +44,13 @@ def auto_create_ping(model, app_label, object_id, created):
     Called by openwisp_monitoring.check.models.auto_ping_receiver
     """
     ping_path = 'openwisp_monitoring.check.classes.Ping'
+    has_check = Check.objects.filter(
+        object_id=object_id,
+        content_type__model='device',
+        check=ping_path
+    ).count() > 0
     # create new check only if necessary
-    if (not created or
-        Check.objects.filter(object_id=object_id,
-                             content_type__model='device',
-                             check=ping_path)
-                     .count() > 0):
+    if has_check:
         return
     ct = ContentType.objects.get(app_label=app_label,
                                  model=model)
