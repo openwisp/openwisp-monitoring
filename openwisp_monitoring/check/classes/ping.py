@@ -1,7 +1,7 @@
 import subprocess
 
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ValidationError
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError as SchemaError
 
@@ -83,6 +83,8 @@ class Ping(object):
         bytes_ = self._get_param('bytes')
         timeout = self._get_param('timeout')
         ip = self._get_ip()
+        if not ip:
+            return
         command = [
             'fping',
             '-e',                # show elapsed (round-trip) time of packets
@@ -144,9 +146,10 @@ class Ping(object):
         Figures out ip to use or fails raising OperationalError
         """
         device = self.related_object
+        if not device:
+            self.check_instance.delete()
+            return None
         ip = device.management_ip or device.last_ip
-        if ip is None:
-            raise OperationalError('Could not find a valid ip address to ping')
         return ip
 
     def _command(self, command):
