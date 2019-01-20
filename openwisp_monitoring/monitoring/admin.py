@@ -2,9 +2,8 @@ from django.contrib import admin
 from django.utils.translation import ugettext_lazy as _
 from notifications.models import Notification
 
-from openwisp_controller.admin import AlwaysHasChangedMixin
 from openwisp_users.admin import UserAdmin
-from openwisp_utils.admin import TimeReadonlyAdminMixin
+from openwisp_utils.admin import AlwaysHasChangedMixin, TimeReadonlyAdminMixin
 
 from .models import Graph, Metric, NotificationUser, Threshold
 
