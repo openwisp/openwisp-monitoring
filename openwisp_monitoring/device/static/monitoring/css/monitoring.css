@@ -34,3 +34,12 @@
   background-color: rgba(0, 0, 0, 0.05);
   outline: 1px solid rgba(0, 0, 0, 0.3);
 }
+
+td.field-health_status,
+.field-health_status .readonly{
+  font-weight: bold;
+  text-transform: uppercase;
+}
+.health-ok{ color: green }
+.health-problem{ color: orange }
+.health-critical{ color: red }

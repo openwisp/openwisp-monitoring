@@ -5,8 +5,21 @@ from django.core.exceptions import ValidationError
 from . import TestDeviceMonitoringMixin
 from .. import settings as app_settings
 from ...monitoring.utils import get_db
-from ..models import DeviceData
+from ..models import DeviceData, DeviceMonitoring
 from ..utils import SHORT_RP
+from ..signals import health_status_changed
+
+from unittest import mock
+from contextlib import contextmanager
+
+
+@contextmanager
+def catch_signal(signal):
+    """ Catch django signal and return the mocked call. """
+    handler = mock.Mock()
+    signal.connect(handler)
+    yield handler
+    signal.disconnect(handler)
 
 
 class TestModels(TestDeviceMonitoringMixin):
@@ -179,3 +192,18 @@ class TestModels(TestDeviceMonitoringMixin):
         self.assertEqual(rp[1]['default'], False)
         duration = app_settings.SHORT_RETENTION_POLICY
         self.assertEqual(rp[1]['duration'], duration)
+
+    def test_status_changed(self):
+        d = self._create_device()
+        dm = DeviceMonitoring.objects.create(device=d)
+        # check signal
+        with catch_signal(health_status_changed) as handler:
+            dm.update_status('problem')
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'problem')
+        handler.assert_called_once_with(
+            instance=dm,
+            status='problem',
+            sender=DeviceMonitoring,
+            signal=health_status_changed,
+        )

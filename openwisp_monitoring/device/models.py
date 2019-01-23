@@ -1,13 +1,19 @@
 import json
 
 from django.core.exceptions import ValidationError
+from django.db import models
+from django.utils.translation import ugettext_lazy as _
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError as SchemaError
+from model_utils import Choices
+from model_utils.fields import StatusField
 
 from openwisp_controller.config.models import Device
+from openwisp_utils.base import TimeStampedEditableModel
 
 from ..monitoring.utils import query, write
 from .schema import schema
+from .signals import health_status_changed
 from .utils import SHORT_RP
 
 
@@ -70,3 +76,22 @@ class DeviceData(Device):
 
     def json(self, *args, **kwargs):
         return json.dumps(self.data, *args, **kwargs)
+
+
+class DeviceMonitoring(TimeStampedEditableModel):
+    device = models.OneToOneField('config.Device', on_delete=models.CASCADE,
+                                  related_name='monitoring')
+    STATUS = Choices('ok', 'problem', 'critical')
+    status = StatusField(_('health status'), db_index=True, help_text=_(
+        '"ok" means the device is operating normally; \n'
+        '"problem" problem means the device is having issues but it\'s still reachable; \n'
+        '"critical" means the device is not reachable;'
+    ))
+
+    def update_status(self, value):
+        self.status = value
+        self.full_clean()
+        self.save()
+        health_status_changed.send(sender=self.__class__,
+                                   instance=self,
+                                   status=value)

@@ -4,6 +4,7 @@ from dateutil.relativedelta import relativedelta
 from django.contrib import admin
 from django.contrib.admin.templatetags.admin_static import static
 from django.urls import reverse
+from django.utils.translation import ugettext_lazy as _
 from pytz import timezone as tz
 
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
@@ -56,10 +57,21 @@ class DeviceAdmin(BaseDeviceAdmin):
             })
         return ctx
 
+    def health_status(self, obj):
+        return obj.monitoring.status
 
-DeviceAdmin.Media.js += MetricAdmin.Media.js
+    health_status.short_description = _('health status')
+
+
+DeviceAdmin.Media.js += MetricAdmin.Media.js + ('monitoring/js/health.js',)
 DeviceAdmin.Media.css['all'] += (static('monitoring/css/monitoring.css'),)
-
+DeviceAdmin.list_display.insert(DeviceAdmin.list_display.index('config_status'),
+                                'health_status')
+DeviceAdmin.list_select_related += ('monitoring',)
+DeviceAdmin.list_filter.insert(1, 'monitoring__status',)
+DeviceAdmin.fields.insert(DeviceAdmin.fields.index('last_ip'),
+                          'health_status')
+DeviceAdmin.readonly_fields.append('health_status')
 
 admin.site.unregister(Device)
 admin.site.register(Device, DeviceAdmin)
