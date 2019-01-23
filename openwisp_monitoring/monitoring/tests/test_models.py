@@ -5,7 +5,9 @@ from django.test import TestCase
 from django.utils import timezone
 
 from . import TestMonitoringMixin
+from ...tests import catch_signal
 from ..models import Metric
+from ..signals import threshold_crossed
 from ..utils import query, write
 
 start_time = timezone.now()
@@ -175,3 +177,35 @@ class TestModels(TestMonitoringMixin, TestCase):
     def test_general_check_threshold_no_exception(self):
         m = self._create_general_metric()
         m.check_threshold(1)
+
+    def test_general_metric_signal_emitted(self):
+        m = self._create_general_metric(name='load')
+        t = self._create_threshold(metric=m,
+                                   operator='>',
+                                   value=90,
+                                   seconds=0)
+        with catch_signal(threshold_crossed) as handler:
+            m.check_threshold(91)
+        handler.assert_called_once_with(
+            threshold=t,
+            metric=m,
+            target=None,
+            sender=Metric,
+            signal=threshold_crossed,
+        )
+
+    def test_object_metric_signal_emitted(self):
+        om = self._create_object_metric()
+        t = self._create_threshold(metric=om,
+                                   operator='>',
+                                   value=90,
+                                   seconds=0)
+        with catch_signal(threshold_crossed) as handler:
+            om.check_threshold(91)
+        handler.assert_called_once_with(
+            threshold=t,
+            metric=om,
+            target=om.content_object,
+            sender=Metric,
+            signal=threshold_crossed,
+        )

@@ -5,21 +5,10 @@ from django.core.exceptions import ValidationError
 from . import TestDeviceMonitoringMixin
 from .. import settings as app_settings
 from ...monitoring.utils import get_db
+from ...tests import catch_signal
 from ..models import DeviceData, DeviceMonitoring
-from ..utils import SHORT_RP
 from ..signals import health_status_changed
-
-from unittest import mock
-from contextlib import contextmanager
-
-
-@contextmanager
-def catch_signal(signal):
-    """ Catch django signal and return the mocked call. """
-    handler = mock.Mock()
-    signal.connect(handler)
-    yield handler
-    signal.disconnect(handler)
+from ..utils import SHORT_RP
 
 
 class TestModels(TestDeviceMonitoringMixin):

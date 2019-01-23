@@ -27,6 +27,7 @@ from pytz import timezone as tz
 
 from openwisp_utils.base import TimeStampedEditableModel
 
+from .signals import threshold_crossed
 from .utils import NOTIFICATIONS_COUNT_CACHE_KEY, query, write
 
 User = get_user_model()
@@ -142,6 +143,10 @@ class Metric(TimeStampedEditableModel):
             level = 'info'
             verb = 'returned within threshold limit'
         self.save()
+        threshold_crossed.send(sender=self.__class__,
+                               threshold=threshold,
+                               metric=self,
+                               target=self.content_object)
         self._notify_users(level, verb, threshold)
 
     def write(self, value, time=None, database=None, check=True, extra_values=None):
