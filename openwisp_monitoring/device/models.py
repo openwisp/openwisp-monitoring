@@ -2,6 +2,7 @@ import json
 
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.dispatch import receiver
 from django.utils.translation import ugettext_lazy as _
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError as SchemaError
@@ -11,6 +12,8 @@ from model_utils.fields import StatusField
 from openwisp_controller.config.models import Device
 from openwisp_utils.base import TimeStampedEditableModel
 
+from ..monitoring.models import Metric
+from ..monitoring.signals import threshold_crossed
 from ..monitoring.utils import query, write
 from .schema import schema
 from .signals import health_status_changed
@@ -89,9 +92,59 @@ class DeviceMonitoring(TimeStampedEditableModel):
     ))
 
     def update_status(self, value):
+        # don't trigger save nor emit signal if status is not changing
+        if self.status == value:
+            return
         self.status = value
         self.full_clean()
         self.save()
         health_status_changed.send(sender=self.__class__,
                                    instance=self,
                                    status=value)
+
+    @property
+    def related_metrics(self):
+        return Metric.objects.select_related('content_type')\
+                             .filter(object_id=self.device_id,
+                                     content_type__model='device',
+                                     content_type__app_label='config')
+
+    @staticmethod
+    @receiver(threshold_crossed, dispatch_uid='threshold_crossed_receiver')
+    def threshold_crossed(sender, metric, threshold, target, **kwargs):
+        """
+        Changes the health status of a device when a threshold is crossed.
+        """
+        if not isinstance(target, DeviceMonitoring.device.field.related_model):
+            return
+        try:
+            monitoring = target.monitoring
+        except DeviceMonitoring.DoesNotExist:
+            monitoring = DeviceMonitoring.objects.create(device=target)
+        status = metric.health
+        related_status = 'ok'
+        for related_metric in monitoring.related_metrics.filter(health='problem'):
+            if monitoring.is_metric_critical(related_metric):
+                related_status = 'critical'
+                break
+            related_status = 'problem'
+        if metric.health == 'ok' and related_status == 'problem':
+            status = 'problem'
+        elif metric.health == 'ok' and related_status == 'critical':
+            status = 'critical'
+        elif metric.health == 'problem' and any([monitoring.is_metric_critical(metric),
+                                                 related_status == 'critical']):
+            status = 'critical'
+        monitoring.update_status(status)
+
+    @staticmethod
+    def is_metric_critical(metric):
+        # TODO: make this configurable
+        critical_metrics = [
+            {'key': 'ping', 'field_name': 'reachable'}
+        ]
+        for critical in critical_metrics:
+            if all([metric.key == critical['key'],
+                    metric.field_name == critical['field_name']]):
+                return True
+        return False

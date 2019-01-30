@@ -11,10 +11,7 @@ from ..signals import health_status_changed
 from ..utils import SHORT_RP
 
 
-class TestModels(TestDeviceMonitoringMixin):
-    """
-    Test openwisp_monitoring.device.models
-    """
+class BaseTestCase(TestDeviceMonitoringMixin):
     _sample_data = {
         "type": "DeviceMonitoring",
         "general": {
@@ -118,12 +115,17 @@ class TestModels(TestDeviceMonitoringMixin):
     def _create_device(self, **kwargs):
         if 'organization' not in kwargs:
             kwargs['organization'] = self._create_org()
-        return super(TestModels, self)._create_device(**kwargs)
+        return super()._create_device(**kwargs)
 
     def _create_device_data(self, **kwargs):
         d = self._create_device(**kwargs)
         return DeviceData(pk=d.pk)
 
+
+class TestDeviceData(BaseTestCase):
+    """
+    Test openwisp_monitoring.device.models.DeviceData
+    """
     def test_clean_data_ok(self):
         dd = self._create_device_data()
         dd.data = {'type': 'DeviceMonitoring', 'interfaces': []}
@@ -182,9 +184,38 @@ class TestModels(TestDeviceMonitoringMixin):
         duration = app_settings.SHORT_RETENTION_POLICY
         self.assertEqual(rp[1]['duration'], duration)
 
-    def test_status_changed(self):
+
+class TestDeviceMonitoring(BaseTestCase):
+    """
+    Test openwisp_monitoring.device.models.DeviceMonitoring
+    """
+    def _create_env(self):
         d = self._create_device()
         dm = DeviceMonitoring.objects.create(device=d)
+        ping = self._create_object_metric(name='ping',
+                                          key='ping',
+                                          field_name='reachable',
+                                          content_object=d)
+        self._create_threshold(metric=ping,
+                               operator='<',
+                               value=1,
+                               seconds=0)
+        load = self._create_object_metric(name='load',
+                                          content_object=d)
+        self._create_threshold(metric=load,
+                               operator='>',
+                               value=90,
+                               seconds=0)
+        process_count = self._create_object_metric(name='process_count',
+                                                   content_object=d)
+        self._create_threshold(metric=process_count,
+                               operator='>',
+                               value=20,
+                               seconds=0)
+        return dm, ping, load, process_count
+
+    def test_status_changed(self):
+        dm, ping, load, process_count = self._create_env()
         # check signal
         with catch_signal(health_status_changed) as handler:
             dm.update_status('problem')
@@ -196,3 +227,55 @@ class TestModels(TestDeviceMonitoringMixin):
             sender=DeviceMonitoring,
             signal=health_status_changed,
         )
+
+    def test_ok_critical_ok(self):
+        dm, ping, load, process_count = self._create_env()
+        self.assertEqual(dm.status, 'ok')
+        ping.check_threshold(0)
+        self.assertEqual(dm.status, 'critical')
+        ping.check_threshold(1)
+        self.assertEqual(dm.status, 'ok')
+
+    def test_ok_problem_ok(self):
+        dm, ping, load, process_count = self._create_env()
+        self.assertEqual(dm.status, 'ok')
+        load.check_threshold(100)
+        self.assertEqual(dm.status, 'problem')
+        load.check_threshold(20)
+        self.assertEqual(dm.status, 'ok')
+
+    def test_ok_problem_critical_problem_ok(self):
+        dm, ping, load, process_count = self._create_env()
+        self.assertEqual(dm.status, 'ok')
+        load.check_threshold(100)
+        self.assertEqual(dm.status, 'problem')
+        ping.check_threshold(0)
+        self.assertEqual(dm.status, 'critical')
+        ping.check_threshold(1)
+        self.assertEqual(dm.status, 'problem')
+        load.check_threshold(80)
+        self.assertEqual(dm.status, 'ok')
+
+    def test_ok_critical_critical_critical_ok(self):
+        dm, ping, load, process_count = self._create_env()
+        self.assertEqual(dm.status, 'ok')
+        ping.check_threshold(0)
+        self.assertEqual(dm.status, 'critical')
+        load.check_threshold(100)
+        self.assertEqual(dm.status, 'critical')
+        load.check_threshold(80)
+        self.assertEqual(dm.status, 'critical')
+        ping.check_threshold(1)
+        self.assertEqual(dm.status, 'ok')
+
+    def test_ok_problem_problem_problem_ok(self):
+        dm, ping, load, process_count = self._create_env()
+        self.assertEqual(dm.status, 'ok')
+        load.check_threshold(100)
+        self.assertEqual(dm.status, 'problem')
+        process_count.check_threshold(40)
+        self.assertEqual(dm.status, 'problem')
+        process_count.check_threshold(10)
+        self.assertEqual(dm.status, 'problem')
+        load.check_threshold(80)
+        self.assertEqual(dm.status, 'ok')
