@@ -88,7 +88,7 @@ class DeviceMonitoring(TimeStampedEditableModel):
     status = StatusField(_('health status'), db_index=True, help_text=_(
         '"ok" means the device is operating normally; \n'
         '"problem" problem means the device is having issues but it\'s still reachable; \n'
-        '"critical" means the device is not reachable;'
+        '"critical" means the device is not reachable or in critical conditions;'
     ))
 
     def update_status(self, value):
@@ -121,19 +121,19 @@ class DeviceMonitoring(TimeStampedEditableModel):
             monitoring = target.monitoring
         except DeviceMonitoring.DoesNotExist:
             monitoring = DeviceMonitoring.objects.create(device=target)
-        status = metric.health
+        status = 'ok' if metric.is_healthy else 'problem'
         related_status = 'ok'
-        for related_metric in monitoring.related_metrics.filter(health='problem'):
+        for related_metric in monitoring.related_metrics.filter(is_healthy=False):
             if monitoring.is_metric_critical(related_metric):
                 related_status = 'critical'
                 break
             related_status = 'problem'
-        if metric.health == 'ok' and related_status == 'problem':
+        if metric.is_healthy and related_status == 'problem':
             status = 'problem'
-        elif metric.health == 'ok' and related_status == 'critical':
+        elif metric.is_healthy and related_status == 'critical':
             status = 'critical'
-        elif metric.health == 'problem' and any([monitoring.is_metric_critical(metric),
-                                                 related_status == 'critical']):
+        elif not metric.is_healthy and any([monitoring.is_metric_critical(metric),
+                                            related_status == 'critical']):
             status = 'critical'
         monitoring.update_status(status)
 

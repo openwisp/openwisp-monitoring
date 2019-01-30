@@ -27,7 +27,10 @@ class Migration(migrations.Migration):
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, editable=False, verbose_name='created')),
                 ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, editable=False, verbose_name='modified')),
-                ('status', model_utils.fields.StatusField(choices=[('ok', 'ok'), ('problem', 'problem'), ('critical', 'critical')], default='ok', db_index=True, help_text='"ok" means the device is operating normally; \n"problem" problem means the device is having issues but it\'s still reachable; \n"critical" means the device is not reachable;', max_length=100, no_check_for_status=True, verbose_name='health status')),
+                ('status', model_utils.fields.StatusField(choices=[('ok', 'ok'), ('problem', 'problem'), ('critical', 'critical')], default='ok', db_index=True,
+                                                          help_text='"ok" means the device is operating normally; \n"problem" problem means the device is having issues '
+                                                                    'but it\'s still reachable; \n"critical" means the device is not reachable or in critical conditions;',
+                                                          max_length=100, no_check_for_status=True, verbose_name='health status')),
                 ('device', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='monitoring', to='config.Device')),
             ],
             options={

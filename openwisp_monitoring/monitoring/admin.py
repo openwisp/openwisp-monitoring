@@ -23,7 +23,7 @@ class GraphInline(admin.StackedInline):
 @admin.register(Metric)
 class MetricAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
     list_display = ('__str__', 'created', 'modified')
-    readonly_fields = ['health']
+    readonly_fields = ['is_healthy']
     search_fields = ['name']
     save_on_top = True
     inlines = [GraphInline, ThresholdInline]

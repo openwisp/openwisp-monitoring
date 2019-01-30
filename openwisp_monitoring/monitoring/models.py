@@ -36,12 +36,6 @@ logger = logging.getLogger(__name__)
 
 @python_2_unicode_compatible
 class Metric(TimeStampedEditableModel):
-    # TODO: this probably should be moved to Threshold
-    HEALTH_CHOICES = (('ok', _('ok')),
-                      ('problem', _('problem')))
-    health = models.CharField(max_length=8,
-                              choices=HEALTH_CHOICES,
-                              default=HEALTH_CHOICES[0][0])
     name = models.CharField(max_length=64)
     description = models.TextField(blank=True)
     key = models.SlugField(max_length=64,
@@ -52,6 +46,7 @@ class Metric(TimeStampedEditableModel):
                                      null=True, blank=True)
     object_id = models.CharField(max_length=36, db_index=True, blank=True)
     content_object = GenericForeignKey('content_type', 'object_id')
+    is_healthy = models.BooleanField(default=True, db_index=True)
 
     class Meta:
         unique_together = ('key', 'field_name', 'content_type', 'object_id')
@@ -127,19 +122,18 @@ class Metric(TimeStampedEditableModel):
         except ObjectDoesNotExist:
             return
         crossed = threshold._is_crossed_by(value, time)
-        health_ok = self.health == 'ok'
-        # don't notify is situation hasn't changed
-        if (not crossed and health_ok) or \
-           (crossed and not health_ok):
+        # situation has not changed
+        if (not crossed and self.is_healthy) or \
+           (crossed and not self.is_healthy):
             return
-        # problem!
-        elif crossed and health_ok:
-            self.health = 'problem'
+        # problem: not within threshold limit
+        elif crossed and self.is_healthy:
+            self.is_healthy = False
             level = 'warning'
             verb = 'crossed threshold limit'
-        # back to normal
-        elif not crossed and not health_ok:
-            self.health = 'ok'
+        # ok: returned within threshold limit
+        elif not crossed and not self.is_healthy:
+            self.is_healthy = True
             level = 'info'
             verb = 'returned within threshold limit'
         self.save()
@@ -227,10 +221,10 @@ class Metric(TimeStampedEditableModel):
         verb = opts['verb']
         target = opts.get('target')
         metric = str(self).capitalize()
-        status = 'PROBLEM' if self.health == 'problem' else 'RECOVERY'
+        status = 'PROBLEM' if not self.is_healthy else 'RECOVERY'
         info = ''
         t = self.threshold
-        if self.health == 'problem':
+        if not self.is_healthy:
             info = ' ({0} {1})'.format(t.get_operator_display(), t.value)
         desc = 'Metric "{metric}" {verb}{info}.'.format(status=status, metric=metric,
                                                         verb=verb, info=info)
