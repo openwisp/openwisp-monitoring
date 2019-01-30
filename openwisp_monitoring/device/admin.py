@@ -68,7 +68,7 @@ DeviceAdmin.Media.css['all'] += (static('monitoring/css/monitoring.css'),)
 DeviceAdmin.list_display.insert(DeviceAdmin.list_display.index('config_status'),
                                 'health_status')
 DeviceAdmin.list_select_related += ('monitoring',)
-DeviceAdmin.list_filter.insert(1, 'monitoring__status',)
+DeviceAdmin.list_filter.insert(0, 'monitoring__status',)
 DeviceAdmin.fields.insert(DeviceAdmin.fields.index('last_ip'),
                           'health_status')
 DeviceAdmin.readonly_fields.append('health_status')
