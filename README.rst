@@ -204,6 +204,21 @@ Whether ping checks are created automatically for devices.
 
 Automatically created graphs.
 
+``OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-----------------------------------------------------------------+
+| **type**:    | ``list``                                                        |
++--------------+-----------------------------------------------------------------+
+| **default**: | ``[{'key': 'ping', 'field_name': 'reachable'}]``                |
++--------------+-----------------------------------------------------------------+
+
+Device metrics that are considered critical: when a threshold related to
+one of this type of metric is crossed, the health status of the device related
+to the metric moves into ``CRITICAL``.
+
+By default, if devices are not reachable by ping they are flagged as ``CRITICAL``.
+
 Installing for development
 --------------------------
 

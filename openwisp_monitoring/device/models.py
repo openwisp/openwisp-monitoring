@@ -18,6 +18,7 @@ from ..monitoring.utils import query, write
 from .schema import schema
 from .signals import health_status_changed
 from .utils import SHORT_RP
+from . import settings as app_settings
 
 
 class DeviceData(Device):
@@ -139,11 +140,7 @@ class DeviceMonitoring(TimeStampedEditableModel):
 
     @staticmethod
     def is_metric_critical(metric):
-        # TODO: make this configurable
-        critical_metrics = [
-            {'key': 'ping', 'field_name': 'reachable'}
-        ]
-        for critical in critical_metrics:
+        for critical in app_settings.CRITICAL_DEVICE_METRICS:
             if all([metric.key == critical['key'],
                     metric.field_name == critical['field_name']]):
                 return True
