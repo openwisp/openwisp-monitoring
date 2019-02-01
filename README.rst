@@ -164,6 +164,35 @@ install the requierd python packages::
 
     pip install redis django-redis
 
+Device Health Status
+--------------------
+
+The possible values for the health status field (``DeviceMonitoring.status``)
+are explained below.
+
+``OK``
+~~~~~~
+
+Everything is working normally.
+
+``PROBLEM``
+~~~~~~~~~~~
+
+One of the metrics has a value which is not in the expected range
+(threshold value crossed).
+
+Example: CPU usage should be less than 90% but current value is at 95%.
+
+``CRITICAL``
+~~~~~~~~~~~~
+
+One of the metrics defined in ``OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS``
+has a value which is not in the expected range
+(threshold value crossed).
+
+Example: ping is by default a critical metric which is expected to be always 1
+(reachable).
+
 Settings
 --------
 
