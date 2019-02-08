@@ -2,6 +2,7 @@ import json
 
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.translation import ugettext_lazy as _
 from jsonschema import validate
@@ -12,13 +13,13 @@ from model_utils.fields import StatusField
 from openwisp_controller.config.models import Device
 from openwisp_utils.base import TimeStampedEditableModel
 
+from . import settings as app_settings
 from ..monitoring.models import Metric
 from ..monitoring.signals import threshold_crossed
 from ..monitoring.utils import query, write
 from .schema import schema
 from .signals import health_status_changed
 from .utils import SHORT_RP
-from . import settings as app_settings
 
 
 class DeviceData(Device):
@@ -145,3 +146,9 @@ class DeviceMonitoring(TimeStampedEditableModel):
                     metric.field_name == critical['field_name']]):
                 return True
         return False
+
+
+@receiver(post_save, sender=Device, dispatch_uid='create_device_monitoring')
+def device_monitoring_receiver(sender, instance, created, **kwargs):
+    if created:
+        DeviceMonitoring.objects.create(device=instance)

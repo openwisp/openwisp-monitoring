@@ -191,7 +191,7 @@ class TestDeviceMonitoring(BaseTestCase):
     """
     def _create_env(self):
         d = self._create_device()
-        dm = DeviceMonitoring.objects.create(device=d)
+        dm = d.monitoring
         ping = self._create_object_metric(name='ping',
                                           key='ping',
                                           field_name='reachable',
