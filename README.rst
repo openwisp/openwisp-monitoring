@@ -237,7 +237,7 @@ Automatically created graphs.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +--------------+-----------------------------------------------------------------+
-| **type**:    | ``list``                                                        |
+| **type**:    | ``list`` of ``dict`` objects                                    |
 +--------------+-----------------------------------------------------------------+
 | **default**: | ``[{'key': 'ping', 'field_name': 'reachable'}]``                |
 +--------------+-----------------------------------------------------------------+
@@ -247,6 +247,27 @@ one of this type of metric is crossed, the health status of the device related
 to the metric moves into ``CRITICAL``.
 
 By default, if devices are not reachable by ping they are flagged as ``CRITICAL``.
+
+``OPENWISP_MONITORING_HEALTH_STATUS_LABELS``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-----------------------------------------------------------------+
+| **type**:    | ``dict``                                                        |
++--------------+-----------------------------------------------------------------+
+| **default**: | ``{'ok': 'ok', 'problem': 'problem', 'critical': 'critical'}``  |
++--------------+-----------------------------------------------------------------+
+
+This setting allows to change the health status labels, for example, if we
+want to use ``online`` instead of ``ok`` and ``offline`` instead of ``critical``,
+you can use the following configuration:
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_HEALTH_STATUS_LABELS = {
+        'ok': 'online',
+        'problem': 'problem',
+        'critical': 'offline'
+    }
 
 Installing for development
 --------------------------

@@ -4,6 +4,8 @@ from dateutil.relativedelta import relativedelta
 from django.contrib import admin
 from django.contrib.admin.templatetags.admin_static import static
 from django.urls import reverse
+from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from pytz import timezone as tz
 
@@ -12,7 +14,7 @@ from openwisp_controller.config.models import Device
 
 from ..monitoring.admin import MetricAdmin
 from ..monitoring.models import Graph
-from .models import DeviceData
+from .models import DeviceData, DeviceMonitoring
 
 
 class DeviceAdmin(BaseDeviceAdmin):
@@ -58,12 +60,26 @@ class DeviceAdmin(BaseDeviceAdmin):
         return ctx
 
     def health_status(self, obj):
-        return obj.monitoring.status
+        return format_html(
+            mark_safe('<span class="health-{0}">{1}</span>'),
+            obj.monitoring.status,
+            obj.monitoring.get_status_display()
+        )
 
     health_status.short_description = _('health status')
 
+    def get_form(self, request, obj=None, **kwargs):
+        """
+        Adds the help_text of DeviceMonitoring.status field
+        """
+        health_status = DeviceMonitoring._meta.get_field('status').help_text
+        kwargs.update({'help_texts': {
+            'health_status': health_status.replace('\n', '<br>')
+        }})
+        return super().get_form(request, obj, **kwargs)
 
-DeviceAdmin.Media.js += MetricAdmin.Media.js + ('monitoring/js/health.js',)
+
+DeviceAdmin.Media.js += MetricAdmin.Media.js
 DeviceAdmin.Media.css['all'] += (static('monitoring/css/monitoring.css'),)
 DeviceAdmin.list_display.insert(DeviceAdmin.list_display.index('config_status'),
                                 'health_status')

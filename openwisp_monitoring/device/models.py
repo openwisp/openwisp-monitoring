@@ -86,12 +86,18 @@ class DeviceData(Device):
 class DeviceMonitoring(TimeStampedEditableModel):
     device = models.OneToOneField('config.Device', on_delete=models.CASCADE,
                                   related_name='monitoring')
-    STATUS = Choices('ok', 'problem', 'critical')
+    STATUS = Choices(
+        ('ok', _(app_settings.HEALTH_STATUS_LABELS['ok'])),
+        ('problem', _(app_settings.HEALTH_STATUS_LABELS['problem'])),
+        ('critical', _(app_settings.HEALTH_STATUS_LABELS['critical']))
+    )
     status = StatusField(_('health status'), db_index=True, help_text=_(
-        '"ok" means the device is operating normally; \n'
-        '"problem" problem means the device is having issues but it\'s still reachable; \n'
-        '"critical" means the device is not reachable or in critical conditions;'
-    ))
+        '"{0}" means the device is operating normally; \n'
+        '"{1}" problem means the device is having issues but it\'s still reachable; \n'
+        '"{2}" means the device is not reachable or in critical conditions;'
+    ).format(app_settings.HEALTH_STATUS_LABELS['ok'],
+             app_settings.HEALTH_STATUS_LABELS['problem'],
+             app_settings.HEALTH_STATUS_LABELS['critical']))
 
     def update_status(self, value):
         # don't trigger save nor emit signal if status is not changing

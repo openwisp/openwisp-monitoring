@@ -5,9 +5,24 @@ SHORT_RETENTION_POLICY = getattr(settings, 'OPENWISP_MONITORING_SHORT_RETENTION_
 CRITICAL_DEVICE_METRICS = getattr(settings, 'OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS', [
     {'key': 'ping', 'field_name': 'reachable'}
 ])
+HEALTH_STATUS_LABELS = getattr(settings, 'OPENWISP_MONITORING_HEALTH_STATUS_LABELS', {
+    'ok': 'ok',
+    'problem': 'problem',
+    'critical': 'critical'
+})
 
-for item in CRITICAL_DEVICE_METRICS:
+for item in CRITICAL_DEVICE_METRICS:  # pragma: no-cover
     if not all(['key' in item, 'field_name' in item]):
         raise ImproperlyConfigured(
             'OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS contains invalid items'
         )
+
+try:
+    assert 'ok' in HEALTH_STATUS_LABELS
+    assert 'problem' in HEALTH_STATUS_LABELS
+    assert 'critical' in HEALTH_STATUS_LABELS
+except AssertionError:  # pragma: no-cover
+    raise ImproperlyConfigured(
+        'OPENWISP_MONITORING_HEALTH_STATUS_LABELS must contain the following '
+        'keys: ok, problem, critical'
+    )
