@@ -379,7 +379,9 @@ class Graph(TimeStampedEditableModel):
             for key, value in summary[0].items():
                 if key == 'time':
                     continue
-                result['summary'][key] = round(value, decimal_places)
+                if value:
+                    value = round(value, decimal_places)
+                result['summary'][key] = value
         return result
 
     def json(self, time=DEFAULT_TIME, **kwargs):
