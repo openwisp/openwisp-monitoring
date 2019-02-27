@@ -301,6 +301,8 @@ class Graph(TimeStampedEditableModel):
                            'object_id': m.object_id})
         q = self.query.format(**params)
         q = self._group_by(q, time, strip=summary)
+        if summary:
+            q = '{0} LIMIT 1'.format(q)
         return "{0} tz('{1}')".format(q, timezone)
 
     def _get_time(self, time):
