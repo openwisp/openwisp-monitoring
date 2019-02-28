@@ -179,3 +179,8 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         self.assertIn(str(today - timedelta(days=30)), g._get_time('30d'))
         self.assertIn(str(now() - timedelta(days=1))[0:10], g._get_time('1d'))
         self.assertIn(str(now() - timedelta(days=3))[0:10], g._get_time('3d'))
+
+    def test_is_aggregate_bug(self):
+        m = self._create_object_metric(name='summary_avg')
+        g = Graph(metric=m)
+        self.assertFalse(g._is_aggregate(g.query))

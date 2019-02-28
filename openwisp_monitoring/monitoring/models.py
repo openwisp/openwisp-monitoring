@@ -323,7 +323,7 @@ class Graph(TimeStampedEditableModel):
     def _is_aggregate(self, q):
         q = q.upper()
         for word in self._AGGREGATE:
-            if word in q:
+            if '{}('.format(word) in q:
                 return True
         return False
 
