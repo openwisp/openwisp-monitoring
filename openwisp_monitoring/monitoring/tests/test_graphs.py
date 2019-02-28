@@ -58,6 +58,33 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         data = g.read()
         self.assertEqual(data['summary'], {'value': None})
 
+    def test_read_summary_top_fields(self):
+        m = self._create_object_metric(name='applications')
+        g = self._create_graph(metric=m, test_data=False,
+                               top_fields=2)
+        g.query = g.query.replace(
+            '{field_name}', '{fields|MEAN}'
+        )
+        m.write(0,
+                extra_values={'google': 150.00000001,
+                              'facebook': 0.00911111,
+                              'reddit': 0.0},
+                time=now() - timedelta(days=2))
+        m.write(0,
+                extra_values={'google': 200.00000001,
+                              'facebook': 0.00611111,
+                              'reddit': 0.0},
+                time=now() - timedelta(days=1))
+        m.write(0,
+                extra_values={'google': 250.00000001,
+                              'facebook': 0.00311111,
+                              'reddit': 0.0},
+                time=now() - timedelta(days=0))
+        data = g.read()
+        self.assertEqual(data['summary'],
+                         {'google': 200.0,
+                          'facebook': 0.0061})
+
     def test_read_multiple(self):
         g = self._create_graph(test_data=None)
         m1 = g.metric
@@ -211,7 +238,50 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         self.assertIn(str(now() - timedelta(days=1))[0:10], g._get_time('1d'))
         self.assertIn(str(now() - timedelta(days=3))[0:10], g._get_time('3d'))
 
+    def test_get_query_fields(self):
+        g = self._create_graph(test_data=None)
+        g.query = g.query.replace('{field_name}', '{fields}')
+        g.save()
+        q = g.get_query(fields=['ssh', 'http2', 'http1'])
+        self.assertIn('SELECT ssh, http2, http1 FROM', q)
+
+    def test_get_query_fields_function(self):
+        g = self._create_graph(test_data=None)
+        g.query = g.query.replace('{field_name}', '{fields|MEAN}')
+        g.save()
+        q = g.get_query(fields=['ssh', 'http2', 'apple-music'])
+        expected = 'SELECT MEAN("ssh") AS ssh, ' \
+                   'MEAN("http2") AS http2, ' \
+                   'MEAN("apple-music") AS apple_music FROM'
+        self.assertIn(expected, q)
+
+    def test_get_custom_query(self):
+        g = self._create_graph(test_data=None)
+        custom_q = g._default_query.replace('{field_name}', '{fields}')
+        q = g.get_query(query=custom_q, fields=['SUM(*)'])
+        self.assertIn('SELECT SUM(*) FROM', q)
+
+    def test_get_top_fields(self):
+        g = self._create_graph(test_data=None,
+                               top_fields=3)
+        g.metric.write(None, extra_values={
+            'http2': 100,
+            'ssh': 90,
+            'udp': 80,
+            'spdy': 70
+        })
+        self.assertEqual(g._get_top_fields(number=3),
+                         ['http2', 'ssh', 'udp'])
+
     def test_is_aggregate_bug(self):
         m = self._create_object_metric(name='summary_avg')
         g = Graph(metric=m)
         self.assertFalse(g._is_aggregate(g.query))
+
+    def test_is_aggregate_fields_function(self):
+        m = self._create_object_metric(name='is_aggregate_func')
+        g = Graph(metric=m)
+        g.query = g._default_query.replace(
+            '{field_name}', '{fields|MEAN}'
+        )
+        self.assertTrue(g._is_aggregate(g.query))

@@ -1,6 +1,8 @@
 import json
 import logging
+import operator
 import re
+from collections import OrderedDict
 from datetime import date, datetime, timedelta
 
 from django.conf import settings
@@ -71,7 +73,7 @@ class Metric(TimeStampedEditableModel):
     def _get_or_create(cls, **kwargs):
         """
         like ``get_or_create`` method of django model managers
-        but with validation before creationg
+        but with validation before creation
         """
         if 'key' in kwargs:
             kwargs['key'] = cls._makekey(kwargs['key'])
@@ -162,8 +164,10 @@ class Metric(TimeStampedEditableModel):
     def read(self, since=None, limit=1, order=None, extra_fields=None):
         """ reads timeseries data """
         fields = self.field_name
-        if extra_fields:
+        if extra_fields and extra_fields != '*':
             fields = ', '.join([fields] + extra_fields)
+        elif extra_fields == '*':
+            fields = '*'
         q = 'SELECT {fields} FROM {key}'.format(fields=fields, key=self.key)
         tags = self.tags
         conditions = []
@@ -238,9 +242,23 @@ class Metric(TimeStampedEditableModel):
 
 @python_2_unicode_compatible
 class Graph(TimeStampedEditableModel):
+    TYPES = (
+        ('line', _('Line')),
+        ('histogram', _('Histogram')),
+    )
     metric = models.ForeignKey(Metric, on_delete=models.CASCADE)
     description = models.CharField(max_length=64, blank=True)
     query = models.TextField(blank=True)
+    type = models.CharField(_('chart type'),
+                            max_length=16,
+                            choices=TYPES,
+                            default=TYPES[0][0])
+    top_fields = models.PositiveIntegerField(
+        _('top fields'),
+        help_text=_('substitutes {fields} in the query with the top N fields, '
+                    'a value of zero disables this feature'),
+        default=0
+    )
 
     def __str__(self):
         return self.description or self.metric.name
@@ -291,19 +309,50 @@ class Graph(TimeStampedEditableModel):
                  " AND object_id = '{object_id}'"
         return q
 
-    def get_query(self, time=DEFAULT_TIME, summary=False, timezone=settings.TIME_ZONE):
+    _fields_regex = re.compile(r'\{fields\|\w+\}',
+                               flags=re.IGNORECASE)
+
+    def get_query(self, time=DEFAULT_TIME, summary=False,
+                  fields=None, query=None,
+                  timezone=settings.TIME_ZONE):
         m = self.metric
+        query = query or self.query
         params = dict(field_name=m.field_name,
                       key=m.key,
                       time=self._get_time(time))
         if m.object_id:
             params.update({'content_type': m.content_type_key,
                            'object_id': m.object_id})
-        q = self.query.format(**params)
-        q = self._group_by(q, time, strip=summary)
+        query = self._fields(fields, query)
+        query = query.format(**params)
+        query = self._group_by(query, time, strip=summary)
         if summary:
-            q = '{0} LIMIT 1'.format(q)
-        return "{0} tz('{1}')".format(q, timezone)
+            query = '{0} LIMIT 1'.format(query)
+        return "{0} tz('{1}')".format(query, timezone)
+
+    def _fields(self, fields, query):
+        """
+        support substitution of {fields|<FUNCTION_NAME>}
+        with <FUNCTION_NAME>(field1) as field1,
+             <FUNCTION_NAME>(field2) as field2
+        """
+        matches = re.findall(self._fields_regex, query)
+        if not matches and not fields:
+            return query
+        elif matches and not fields:
+            fields = [self.metric.field_name]
+        if fields and matches:
+            function = matches[0].split('|')[1].replace('}', '')
+            fields = [
+                '{0}("{1}") / 1000000000 AS {2}'.format(function, f, f.replace('-', '_'))
+                for f in fields
+            ]
+            fields_key = matches[0]
+        else:
+            fields_key = '{fields}'
+        if fields:
+            selected_fields = ', '.join(fields)
+        return query.replace(fields_key, selected_fields)
 
     def _get_time(self, time):
         if not isinstance(time, str):
@@ -323,11 +372,12 @@ class Graph(TimeStampedEditableModel):
     def _is_aggregate(self, q):
         q = q.upper()
         for word in self._AGGREGATE:
-            if '{}('.format(word) in q:
+            if any(['%s(' % word in q, '|%s}' % word in q]):
                 return True
         return False
 
-    _group_by_regex = re.compile('GROUP BY time\(\w+\)', flags=re.IGNORECASE)
+    _group_by_regex = re.compile(r'GROUP BY time\(\w+\)',
+                                 flags=re.IGNORECASE)
 
     def _group_by(self, query, time, strip=False):
         if not self._is_aggregate(query):
@@ -344,15 +394,51 @@ class Graph(TimeStampedEditableModel):
             query = re.sub(self._group_by_regex, group_by, query)
         return query
 
+    def _get_top_fields(self, number, time=DEFAULT_TIME,
+                        timezone=settings.TIME_ZONE):
+        """
+        Returns list of top ``number`` of fields (highes sum) of a
+        measurement in the specified time range (descending order).
+        """
+        q = self._default_query.replace('{field_name}', '{fields}')
+        q = self.get_query(query=q,
+                           summary=True,
+                           fields=['SUM(*)'],
+                           time=time,
+                           timezone=timezone)
+        res = list(query(q, epoch='s').get_points())[0]
+        res = {key: value for key, value in res.items()
+               if value is not None}
+        sorted_dict = OrderedDict(
+            sorted(res.items(),
+                   key=operator.itemgetter(1))
+        )
+        # TODO: remove this!
+        if 'sum_total' in sorted_dict:
+            del sorted_dict['sum_total']
+        del sorted_dict['time']
+        keys = list(sorted_dict.keys())
+        keys.reverse()
+        top = keys[0:number]
+        return [item.replace('sum_', '') for item in top]
+
     def read(self, decimal_places=2, time=DEFAULT_TIME, x_axys=True, timezone=settings.TIME_ZONE):
         traces = {}
         if x_axys:
             x = []
         try:
             query_kwargs = dict(time=time, timezone=timezone)
-            points = list(query(self.get_query(**query_kwargs), epoch='s').get_points())
-            query_kwargs['summary'] = True
-            summary = list(query(self.get_query(**query_kwargs), epoch='s').get_points())
+            if self.top_fields:
+                fields = self._get_top_fields(self.top_fields)
+                data_query = self.get_query(fields=fields, **query_kwargs)
+                summary_query = self.get_query(fields=fields,
+                                               summary=True,
+                                               **query_kwargs)
+            else:
+                data_query = self.get_query(**query_kwargs)
+                summary_query = self.get_query(summary=True, **query_kwargs)
+            points = list(query(data_query, epoch='s').get_points())
+            summary = list(query(summary_query, epoch='s').get_points())
         except InfluxDBClientError as e:
             logging.error(e, exc_info=True)
             raise e
@@ -362,7 +448,7 @@ class Graph(TimeStampedEditableModel):
                     continue
                 traces.setdefault(key, [])
                 if decimal_places and isinstance(value, (int, float)):
-                    value = round(value, decimal_places)
+                    value = self._round(value, decimal_places)
                 traces[key].append(value)
             time = datetime.fromtimestamp(point['time'], tz=tz(timezone)) \
                            .strftime('%Y-%m-%d %H:%M')
@@ -382,12 +468,22 @@ class Graph(TimeStampedEditableModel):
                 if not self._is_aggregate(self.query):
                     value = None
                 elif value:
-                    value = round(value, decimal_places)
+                    value = self._round(value, decimal_places)
                 result['summary'][key] = value
         return result
 
     def json(self, time=DEFAULT_TIME, **kwargs):
         return json.dumps(self.read(time=time), **kwargs)
+
+    @staticmethod
+    def _round(value, decimal_places):
+        """
+        rounds value if it makes sense
+        """
+        control = 1.0 / 10 ** decimal_places
+        if value < control:
+            decimal_places += 2
+        return round(value, decimal_places)
 
 
 class Threshold(TimeStampedEditableModel):
