@@ -27,6 +27,37 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         self.assertEqual(len(graphs[0][1]), 3)
         self.assertEqual(graphs[0][1], [3, 6, 9])
 
+    def test_read_summary_avg(self):
+        m = self._create_object_metric(name='summary_avg')
+        g = self._create_graph(metric=m, test_data=False)
+        g.query = g.query.replace(
+            '{field_name}', 'MEAN({field_name}) AS {field_name}'
+        )
+        g.save()
+        m.write(1, time=now() - timedelta(days=2))
+        m.write(2, time=now() - timedelta(days=1))
+        m.write(3, time=now())
+        data = g.read()
+        self.assertEqual(data['summary'], {'value': 2})
+
+    def test_read_summary_sum(self):
+        m = self._create_object_metric(name='summary_sum')
+        g = self._create_graph(metric=m, test_data=False)
+        g.query = g.query.replace(
+            '{field_name}', 'SUM({field_name}) AS {field_name}'
+        )
+        m.write(5, time=now() - timedelta(days=2))
+        m.write(4, time=now() - timedelta(days=1))
+        m.write(1, time=now())
+        data = g.read()
+        self.assertEqual(data['summary'], {'value': 10})
+
+    def test_read_summary_not_aggregate(self):
+        m = self._create_object_metric(name='summary_hidden')
+        g = self._create_graph(metric=m)
+        data = g.read()
+        self.assertEqual(data['summary'], {'value': None})
+
     def test_read_multiple(self):
         g = self._create_graph(test_data=None)
         m1 = g.metric

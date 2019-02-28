@@ -379,7 +379,9 @@ class Graph(TimeStampedEditableModel):
             for key, value in summary[0].items():
                 if key == 'time':
                     continue
-                if value:
+                if not self._is_aggregate(self.query):
+                    value = None
+                elif value:
                     value = round(value, decimal_places)
                 result['summary'][key] = value
         return result

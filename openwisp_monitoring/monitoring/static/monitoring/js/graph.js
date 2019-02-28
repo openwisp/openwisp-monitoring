@@ -25,7 +25,7 @@
             var key = data.traces[i][0],
                 label = data.traces[i][0].replace(/_/g, ' ');
             // add summary to label
-            if (data.summary && typeof(data.summary[key]) !== undefined) {
+            if (data.summary && typeof(data.summary[key]) !== undefined && data.summary[key]) {
                 label = label + ' (' + data.summary[key] + ')';
             }
             graphs.push({
