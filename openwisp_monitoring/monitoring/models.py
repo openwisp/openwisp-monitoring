@@ -294,11 +294,12 @@ class Graph(TimeStampedEditableModel):
             if word in self.query.lower():
                 msg = _('the word "{0}" is not allowed').format(word.upper())
                 raise ValidationError({'query': msg})
-        # try query
         try:
             query(self.get_query())
         except InfluxDBClientError as e:
             raise ValidationError({'query': e})
+        except KeyError as e:
+            raise ValidationError({'query': 'invalid expression; "%s"' % e})
 
     @property
     def _default_query(self):
@@ -309,8 +310,10 @@ class Graph(TimeStampedEditableModel):
                  " AND object_id = '{object_id}'"
         return q
 
-    _fields_regex = re.compile(r'\{fields\|\w+\}',
-                               flags=re.IGNORECASE)
+    _fields_regex = re.compile(
+        r'(?P<group>\{fields\|(?P<func>\w+)(?:\|(?P<op>.*?))?\})',
+        flags=re.IGNORECASE
+    )
 
     def get_query(self, time=DEFAULT_TIME, summary=False,
                   fields=None, query=None,
@@ -332,27 +335,39 @@ class Graph(TimeStampedEditableModel):
 
     def _fields(self, fields, query):
         """
-        support substitution of {fields|<FUNCTION_NAME>}
-        with <FUNCTION_NAME>(field1) as field1,
-             <FUNCTION_NAME>(field2) as field2
+        support substitution of {fields|<FUNCTION_NAME>|<OPERATION>}
+        with <FUNCTION_NAME>(field1) AS field1 <OPERATION>,
+             <FUNCTION_NAME>(field2) AS field2 <OPERATION>
         """
-        matches = re.findall(self._fields_regex, query)
+        matches = re.search(self._fields_regex, query)
         if not matches and not fields:
             return query
         elif matches and not fields:
+            groups = matches.groupdict()
+            fields_key = groups.get('group')
             fields = [self.metric.field_name]
         if fields and matches:
-            function = matches[0].split('|')[1].replace('}', '')
-            fields = [
-                '{0}("{1}") / 1000000000 AS {2}'.format(function, f, f.replace('-', '_'))
-                for f in fields
-            ]
-            fields_key = matches[0]
+            groups = matches.groupdict()
+            function = groups['func']  # required
+            operation = groups.get('op')  # optional
+            fields = [self.__transform_field(f, function, operation)
+                      for f in fields]
+            fields_key = groups.get('group')
         else:
             fields_key = '{fields}'
         if fields:
             selected_fields = ', '.join(fields)
         return query.replace(fields_key, selected_fields)
+
+    def __transform_field(self, field, function, operation=None):
+        if operation:
+            operation = ' {}'.format(operation)
+        else:
+            operation = ''
+        return '{0}("{1}"){3} AS {2}'.format(function,
+                                             field,
+                                             field.replace('-', '_'),
+                                             operation)
 
     def _get_time(self, time):
         if not isinstance(time, str):
@@ -372,7 +387,9 @@ class Graph(TimeStampedEditableModel):
     def _is_aggregate(self, q):
         q = q.upper()
         for word in self._AGGREGATE:
-            if any(['%s(' % word in q, '|%s}' % word in q]):
+            if any(['%s(' % word in q,
+                    '|%s}' % word in q,
+                    '|%s|' % word in q]):
                 return True
         return False
 
@@ -382,7 +399,7 @@ class Graph(TimeStampedEditableModel):
     def _group_by(self, query, time, strip=False):
         if not self._is_aggregate(query):
             return query
-        if not strip:
+        if not strip and not self.type == 'histogram':
             value = self.GROUP_MAP[time]
             group_by = 'GROUP BY time({0})'.format(value)
         else:
@@ -473,7 +490,11 @@ class Graph(TimeStampedEditableModel):
         return result
 
     def json(self, time=DEFAULT_TIME, **kwargs):
-        return json.dumps(self.read(time=time), **kwargs)
+        try:
+            return json.dumps(self.read(time=time), **kwargs)
+        except KeyError:
+            # TODO: this should be improved
+            pass
 
     @staticmethod
     def _round(value, decimal_places):

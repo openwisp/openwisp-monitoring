@@ -25,7 +25,8 @@
       <div id="graph-{{ forloop.counter }}"></div>
       <script>
           createGraph({{ inline_admin_form.form.instance.json|safe }}, null,
-                      'graph-{{ forloop.counter }}');
+                      'graph-{{ forloop.counter }}', null,
+                      '{{ inline_admin_form.form.instance.type }}');
       </script>
   </div>
   {% endif %}

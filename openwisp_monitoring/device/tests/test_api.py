@@ -273,8 +273,9 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
             points = m.read(limit=10, order='time DESC')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
-    def _create_multiple_measurements(self):
-        self.test_200_create()
+    def _create_multiple_measurements(self, create=True):
+        if create:
+            self.test_200_create()
         self.assertEqual(self.device_model.objects.count(), 1)
         d = self.device_model.objects.first()
         data2 = self._data()
@@ -375,6 +376,22 @@ class TestDeviceApi(TestDeviceMonitoringMixin):
         for graph in r.data['graphs']:
             self.assertIn('traces', graph)
             self.assertIn('description', graph)
+            self.assertIn('type', graph)
+
+    def test_get_device_metrics_histogram_ignore_x(self):
+        o = self._create_org()
+        d = self._create_device(organization=o)
+        m = self._create_object_metric(content_object=d,
+                                       name='applications')
+        g = self._create_graph(metric=m,
+                               type='histogram',
+                               description='zxw histogram')
+        g.query = g.query.replace('{field_name}', 'SUM({field_name})')
+        g.save()
+        self._create_multiple_measurements(create=False)
+        r = self.client.get(self._url(d.pk.hex, d.key))
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(len(r.data['x']) > 50)
 
     def test_get_device_metrics_1d(self):
         dd = self._create_multiple_measurements()

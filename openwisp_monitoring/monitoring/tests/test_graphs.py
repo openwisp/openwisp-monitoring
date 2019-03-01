@@ -85,6 +85,40 @@ class TestGraphs(TestMonitoringMixin, TestCase):
                          {'google': 200.0,
                           'facebook': 0.0061})
 
+    def test_read_summary_top_fields_acid(self):
+        m = self._create_object_metric(name='applications')
+        g = self._create_graph(metric=m, test_data=False,
+                               top_fields=2)
+        g.query = g.query.replace(
+            '{field_name}', '{fields|MEAN}'
+        )
+        m.write(0,
+                extra_values={'google': 0.0,
+                              'facebook': 6000.0,
+                              'reddit': 0.0},
+                time=now() - timedelta(days=3))
+        m.write(0,
+                extra_values={'google': 150000000.0,
+                              'facebook': 90000000.0,
+                              'reddit': 1000.0},
+                time=now() - timedelta(days=2))
+        m.write(0,
+                extra_values={'google': 200000000.0,
+                              'facebook': 60000000.0,
+                              'reddit': 0.0},
+                time=now() - timedelta(days=1))
+        m.write(0,
+                extra_values={'google': 0.0,
+                              'facebook': 6000.0,
+                              'reddit': 0.0},
+                time=now() - timedelta(days=0))
+        data = g.read()
+        self.assertEqual(data['summary'],
+                         {'google': 87500000,
+                          'facebook': 37503000})
+        self.assertEqual(g._get_top_fields(2),
+                         ['google', 'facebook'])
+
     def test_read_multiple(self):
         g = self._create_graph(test_data=None)
         m1 = g.metric
@@ -255,6 +289,16 @@ class TestGraphs(TestMonitoringMixin, TestCase):
                    'MEAN("apple-music") AS apple_music FROM'
         self.assertIn(expected, q)
 
+    def test_get_query_fields_function_math(self):
+        g = self._create_graph(test_data=None)
+        g.query = g.query.replace('{field_name}', '{fields|MEAN|/ 10}')
+        g.save()
+        q = g.get_query(fields=['ssh', 'http2', 'apple-music'])
+        expected = 'SELECT MEAN("ssh") / 10 AS ssh, ' \
+                   'MEAN("http2") / 10 AS http2, ' \
+                   'MEAN("apple-music") / 10 AS apple_music FROM'
+        self.assertIn(expected, q)
+
     def test_get_custom_query(self):
         g = self._create_graph(test_data=None)
         custom_q = g._default_query.replace('{field_name}', '{fields}')
@@ -285,3 +329,18 @@ class TestGraphs(TestMonitoringMixin, TestCase):
             '{field_name}', '{fields|MEAN}'
         )
         self.assertTrue(g._is_aggregate(g.query))
+
+    def test_query_histogram(self):
+        m = self._create_object_metric(name='histogram')
+        m.write(None, extra_values={
+            'http2': 100,
+            'ssh': 90,
+            'udp': 80,
+            'spdy': 70
+        })
+        q = "SELECT {fields|SUM|/ 1} FROM {key} WHERE " \
+            "time >= '{time}' AND content_type = '{content_type}' " \
+            "AND object_id = '{object_id}'"
+        g = Graph(metric=m, query=q, type='histogram')
+        g.full_clean()
+        self.assertNotIn('GROUP BY time', g.get_query())

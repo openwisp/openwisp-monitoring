@@ -64,10 +64,11 @@ class DeviceMetricView(GenericAPIView):
         for graph in graphs:
             g = graph.read(time=time, x_axys=x_axys, timezone=timezone)
             # avoid repeating the x axys each time
-            if x_axys and g['x']:
+            if x_axys and g['x'] and graph.type != 'histogram':
                 data['x'] = g.pop('x')
                 x_axys = False
             g['description'] = graph.description
+            g['type'] = graph.type
             data['graphs'].append(g)
         if request.query_params.get('csv'):
             response = HttpResponse(self._get_csv(data), content_type='text/csv')

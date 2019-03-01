@@ -160,7 +160,7 @@
               if (!graphDiv.length) {
                 graphContents.append('<div id="' + htmlId + '"></div>');
               }
-              createGraph(graph, data.x, htmlId, graph.description);
+              createGraph(graph, data.x, htmlId, graph.description, graph.type);
             });
           });
         },
