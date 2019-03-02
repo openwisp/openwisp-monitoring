@@ -83,6 +83,10 @@ if app_settings.AUTO_PING:
         Implements OPENWISP_MONITORING_AUTO_PING
         The creation step is executed in the backround
         """
+        # we need to skip this otherwise this task will be executed
+        # every time the configuration is requested via checksum
+        if not created:
+            return
         auto_create_ping.delay(model=sender.__name__.lower(),
                                app_label=sender._meta.app_label,
                                object_id=str(instance.pk),
