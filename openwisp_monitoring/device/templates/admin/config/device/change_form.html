@@ -148,10 +148,14 @@
         graphContents = $('#ow-graph-contents'),
         timeButtons = $('#ow-graph-time a.time'),
         timeRangeKey = 'ow2-graph-time-range',
-        defaultTimeRange = localStorage.getItem(timeRangeKey) || '{{ default_time}}',
+        defaultTimeRange = localStorage.getItem(timeRangeKey) || '{{ default_time }}',
         baseUrl = '{{ api_url }}?key={{ original.key }}&time=',
-        loadGraphs = function (time) {
+        loadingOverlay = $('#loading-overlay'),
+        loadGraphs = function (time, showLoading) {
           var url = baseUrl + time;
+          if (showLoading) {
+            loadingOverlay.show();
+          }
           $.getJSON(url).done(function (data) {
             if (data.graphs.length) { mainContainer.show(); }
             $.each(data.graphs, function (i, graph) {
@@ -162,10 +166,12 @@
               }
               createGraph(graph, data.x, htmlId, graph.description, graph.type);
             });
+            if (showLoading) { loadingOverlay.fadeOut(200); }
           });
         },
         triggerClick = function() {
-          $('#ow-graph-time a[data-time=' + defaultTimeRange + ']').trigger('click');
+          $('#ow-graph-time a[data-time=' + localStorage.getItem(timeRangeKey) + ']')
+            .trigger('click');
         };
     // try adding the browser timezone to the querystring
     try {
@@ -175,14 +181,25 @@
     } catch (e) {}
     timeButtons.click(function () {
       var timeRange = $(this).attr('data-time');
-      loadGraphs(timeRange);
+      loadGraphs(timeRange, true);
       localStorage.setItem(timeRangeKey, timeRange);
       timeButtons.removeClass('active');
       $(this).addClass('active');
+      // refresh every 2.5 minutes
+      clearInterval(window.owGraphRefresh);
+      window.owGraphRefresh = setInterval(loadGraphs,
+                                          1000 * 60 * 2.5,
+                                          timeRange,
+                                          false);
     });
-    triggerClick();
-    // refresh every 2.5 minutes
-    setInterval(triggerClick, 1000 * 60 * 2.5);
+    // load graphs only when tab is shown
+    $(document).on('tabshown', function(e){
+      if (e.tabId === '#ow-graph-container') {
+        triggerClick();
+      } else {
+        clearInterval(window.owGraphRefresh);
+      }
+    });
     // bind export button
     $('#ow-graph-time a.export').click(function() {
       var time = localStorage.getItem(timeRangeKey);
