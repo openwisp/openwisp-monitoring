@@ -1,10 +1,10 @@
 import mock
 from django.core.exceptions import ValidationError
 
-from .. import settings
 from ... import settings as monitoring_settings
 from ...device.tests import TestDeviceMonitoringMixin
 from ...monitoring.models import Graph, Metric, Threshold
+from .. import settings
 from ..classes import Ping
 from ..exceptions import OperationalError
 from ..models import Check

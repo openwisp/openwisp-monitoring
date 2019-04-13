@@ -3,8 +3,8 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
-from . import TestMonitoringMixin
 from ..utils import NOTIFICATIONS_COUNT_CACHE_KEY
+from . import TestMonitoringMixin
 
 
 class TestAdminNotifications(TestMonitoringMixin, TestCase):

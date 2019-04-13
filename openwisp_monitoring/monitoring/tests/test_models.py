@@ -4,11 +4,11 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
 
-from . import TestMonitoringMixin
 from ...tests import catch_signal
 from ..models import Metric
 from ..signals import threshold_crossed
 from ..utils import query, write
+from . import TestMonitoringMixin
 
 start_time = timezone.now()
 ten_minutes_ago = start_time - timedelta(minutes=10)

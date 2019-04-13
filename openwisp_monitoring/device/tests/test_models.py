@@ -2,13 +2,13 @@ import json
 
 from django.core.exceptions import ValidationError
 
-from . import TestDeviceMonitoringMixin
-from .. import settings as app_settings
 from ...monitoring.utils import get_db
 from ...tests import catch_signal
+from .. import settings as app_settings
 from ..models import DeviceData, DeviceMonitoring
 from ..signals import health_status_changed
 from ..utils import SHORT_RP
+from . import TestDeviceMonitoringMixin
 
 
 class BaseTestCase(TestDeviceMonitoringMixin):

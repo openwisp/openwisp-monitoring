@@ -13,10 +13,10 @@ from model_utils.fields import StatusField
 from openwisp_controller.config.models import Device
 from openwisp_utils.base import TimeStampedEditableModel
 
-from . import settings as app_settings
 from ..monitoring.models import Metric
 from ..monitoring.signals import threshold_crossed
 from ..monitoring.utils import query, write
+from . import settings as app_settings
 from .schema import schema
 from .signals import health_status_changed
 from .utils import SHORT_RP
