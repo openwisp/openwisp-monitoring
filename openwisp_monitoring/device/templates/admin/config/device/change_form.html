@@ -167,6 +167,9 @@
               createGraph(graph, data.x, htmlId, graph.description, graph.type);
             });
             if (showLoading) { loadingOverlay.fadeOut(200); }
+          }).fail(function (){
+            if (showLoading) { loadingOverlay.fadeOut(200); }
+            alert('Something went wrong while loading the graphs');
           });
         },
         triggerClick = function() {
