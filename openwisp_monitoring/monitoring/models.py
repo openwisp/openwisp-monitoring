@@ -423,7 +423,10 @@ class Graph(TimeStampedEditableModel):
                            fields=['SUM(*)'],
                            time=time,
                            timezone=timezone)
-        res = list(query(q, epoch='s').get_points())[0]
+        res = list(query(q, epoch='s').get_points())
+        if not res:
+            return []
+        res = res[0]
         res = {key: value for key, value in res.items()
                if value is not None}
         sorted_dict = OrderedDict(
