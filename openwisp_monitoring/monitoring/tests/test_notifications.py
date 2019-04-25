@@ -360,6 +360,7 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         self.assertEqual(mail.outbox[0].subject, n.data.get('email_subject'))
         self.assertIn(n.description, mail.outbox[0].body)
         self.assertIn(n.data.get('url'), mail.outbox[0].body)
+        self.assertIn('https://', n.data.get('url'))
 
     def test_email_disabled(self):
         admin = self._create_admin()

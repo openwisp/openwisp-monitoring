@@ -9,6 +9,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.sites.models import Site
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.mail import send_mail
@@ -237,7 +238,11 @@ class Metric(TimeStampedEditableModel):
             'email_subject': '[{status}] {metric}'.format(status=status, metric=metric)
         }
         if target and target.__class__.__name__.lower() == 'device':
-            opts['data']['url'] = reverse('admin:config_device_change', args=[target.pk])
+            current_site = Site.objects.get_current()
+            base_url = 'https://{}'.format(current_site.domain)
+            device_url = reverse('admin:config_device_change',
+                                 args=[target.pk])
+            opts['data']['url'] = '{}{}'.format(base_url, device_url)
 
 
 @python_2_unicode_compatible
