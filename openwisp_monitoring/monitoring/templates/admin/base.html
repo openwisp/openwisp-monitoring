@@ -1,8 +1,15 @@
 {% extends "admin:admin/base.html" %}
-{% load i18n monitoring_notifications %}
+{% load i18n static monitoring_notifications %}
+
+{% block extrastyle %}
+<link rel="stylesheet" type="text/css" href="{% static "admin/css/monitoring.css" %}" />
+{% endblock %}
 
 {% block userlinks %}
-    <a href="{% url 'admin:notifications_notification_changelist' %}">
-    {% trans 'Notifications' %}{% unread_notifications %}</a> /
-    {{ block.super }}
+    <a href="{% url 'admin:notifications_notification_changelist' %}"
+       id="monitoring-notifications">
+      <img class="bell-icon"
+           src="{% static "admin/images/bell.svg" %}" />
+      {% unread_notifications %}
+    </a>
 {% endblock %}

@@ -3,8 +3,8 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
-from ..utils import NOTIFICATIONS_COUNT_CACHE_KEY
 from . import TestMonitoringMixin
+from ..utils import NOTIFICATIONS_COUNT_CACHE_KEY
 
 
 class TestAdminNotifications(TestMonitoringMixin, TestCase):
@@ -22,8 +22,8 @@ class TestAdminNotifications(TestMonitoringMixin, TestCase):
 
     def _expected_output(self, count=0):
         if count > 0:
-            return 'font-weight:bold">({0})</span>'.format(count)
-        return 'Notifications</a> /'
+            return '<span>{0}</span>'.format(count)
+        return 'id="monitoring-notifications">'
 
     def test_zero_notifications(self):
         self._login_admin()

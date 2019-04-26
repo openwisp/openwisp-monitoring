@@ -26,7 +26,7 @@ def unread_notifications(context):
     count = get_notifications_count(context)
     output = ''
     if count:
-        output = """&nbsp;<span style="color: #ff9b9b;font-weight:bold">({0})</span>"""
+        output = '<span>{0}</span>'
         output = format_html(output.format(count))
     return output
 
