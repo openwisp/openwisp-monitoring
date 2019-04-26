@@ -4,10 +4,10 @@ import mock
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
+from . import TestDeviceMonitoringMixin
 from ... import settings as monitoring_settings
 from ...monitoring.models import Graph, Metric
 from ..models import DeviceData
-from . import TestDeviceMonitoringMixin
 
 
 class TestDeviceApi(TestDeviceMonitoringMixin):

@@ -7,8 +7,8 @@ from django.test import TestCase
 from django.utils.timezone import now
 from influxdb.exceptions import InfluxDBClientError
 
-from ..models import Graph
 from . import TestMonitoringMixin
+from ..models import Graph
 
 
 class TestGraphs(TestMonitoringMixin, TestCase):

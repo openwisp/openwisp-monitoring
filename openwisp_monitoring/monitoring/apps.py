@@ -1,4 +1,5 @@
 from django.apps import AppConfig
+from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 
 from .utils import create_database
