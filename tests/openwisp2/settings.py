@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     'openwisp_controller.geo',
     'openwisp_users',
     # monitoring
-    'notifications',
+    'openwisp_monitoring.notifications',
     'openwisp_monitoring.monitoring',
     'openwisp_monitoring.device',
     'openwisp_monitoring.check',

@@ -3,14 +3,15 @@ from datetime import timedelta
 from django.core import mail
 from django.test import TestCase
 from django.utils import timezone
-from notifications.models import Notification
+from swapper import load_model
 
 from openwisp_controller.config.models import Config, Device
 from openwisp_controller.config.tests import CreateConfigTemplateMixin
 from openwisp_users.models import OrganizationUser
 
-from . import TestMonitoringMixin
+from ...monitoring.tests import TestMonitoringMixin
 
+Notification = Notification = load_model('notifications', 'Notification')
 notification_queryset = Notification.objects.order_by('timestamp')
 start_time = timezone.now()
 ten_minutes_ago = start_time - timedelta(minutes=10)

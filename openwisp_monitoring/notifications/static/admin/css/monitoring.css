@@ -1,4 +1,4 @@
-#monitoring-notifications{
+#monitoring-notifications {
   float: right;
   display: block;
   padding: 0 20px;
@@ -18,7 +18,7 @@
     top: -1px;
 }
 
-#monitoring-notifications span{
+#monitoring-notifications span {
   position: absolute;
   top: 3px;
   right: 7px;
@@ -36,7 +36,7 @@
 }
 
 #monitoring-notifications:hover span,
-#monitoring-notifications:focus span{
+#monitoring-notifications:focus span {
   background-color: #d9553b;
 }
 

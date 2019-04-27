@@ -57,6 +57,3 @@ def create_database():
     if settings.INFLUXDB_DATABASE not in databases:
         db.create_database(settings.INFLUXDB_DATABASE)
         logger.info('Created inlfuxdb database {0}'.format(settings.INFLUXDB_DATABASE))
-
-
-NOTIFICATIONS_COUNT_CACHE_KEY = 'ow2-unread-notifications-{0}'

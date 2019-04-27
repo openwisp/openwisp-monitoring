@@ -1,10 +1,12 @@
+import swapper
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
-from . import TestMonitoringMixin
-from ..utils import NOTIFICATIONS_COUNT_CACHE_KEY
+from ...monitoring.tests import TestMonitoringMixin
+
+Notification = swapper.load_model('notifications', 'Notification')
 
 
 class TestAdminNotifications(TestMonitoringMixin, TestCase):
@@ -18,7 +20,7 @@ class TestAdminNotifications(TestMonitoringMixin, TestCase):
         return u
 
     _url = reverse('admin:notifications_notification_changelist')
-    _cache_key = NOTIFICATIONS_COUNT_CACHE_KEY
+    _cache_key = Notification.COUNT_CACHE_KEY
 
     def _expected_output(self, count=0):
         if count > 0:

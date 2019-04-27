@@ -10,14 +10,10 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
-from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.core.mail import send_mail
 from django.core.validators import MaxValueValidator
 from django.db import models
 from django.db.models import Q
-from django.db.models.signals import post_delete, post_save
-from django.dispatch import receiver
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.encoding import python_2_unicode_compatible
@@ -25,13 +21,13 @@ from django.utils.text import slugify
 from django.utils.timezone import make_aware
 from django.utils.translation import ugettext_lazy as _
 from influxdb.exceptions import InfluxDBClientError
-from notifications.models import Notification
 from pytz import timezone as tz
+from swapper import load_model
 
 from openwisp_utils.base import TimeStampedEditableModel
 
 from .signals import threshold_crossed
-from .utils import NOTIFICATIONS_COUNT_CACHE_KEY, query, write
+from .utils import query, write
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -216,6 +212,7 @@ class Metric(TimeStampedEditableModel):
         qs = User.objects.select_related('notificationuser') \
                          .order_by('date_joined') \
                          .filter(where)
+        Notification = load_model('notifications', 'Notification')
         for user in qs:
             n = Notification(**opts)
             n.recipient = user
@@ -570,61 +567,3 @@ class Threshold(TimeStampedEditableModel):
         if self._time_crossed(time):
             return True
         return False
-
-
-class NotificationUser(TimeStampedEditableModel):
-    _RECEIVE_HELP = 'note: non-superadmin users receive ' \
-                    'notifications only for organizations ' \
-                    'of which they are member of.'
-    user = models.OneToOneField(settings.AUTH_USER_MODEL,
-                                on_delete=models.CASCADE)
-    receive = models.BooleanField(_('receive notifications'),
-                                  default=True,
-                                  help_text=_(_RECEIVE_HELP))
-    email = models.BooleanField(_('email notifications'),
-                                default=True,
-                                help_text=_(_RECEIVE_HELP))
-
-    class Meta:
-        verbose_name = _('user notification settings')
-        verbose_name_plural = verbose_name
-
-    def save(self, *args, **kwargs):
-        if not self.receive:
-            self.email = self.receive
-        return super(NotificationUser, self).save(*args, **kwargs)
-
-
-@receiver(post_save, sender=User, dispatch_uid='create_notificationuser')
-def create_notificationuser_settings(sender, instance, **kwargs):
-    try:
-        instance.notificationuser
-    except ObjectDoesNotExist:
-        NotificationUser.objects.create(user=instance)
-
-
-@receiver(post_save, sender=Notification, dispatch_uid='send_email_notification')
-def send_email_notification(sender, instance, created, **kwargs):
-    # ensure we need to sending email or stop
-    if not created or (not instance.recipient.notificationuser.email or
-                       not instance.recipient.email):
-        return
-    # send email
-    subject = instance.data.get('email_subject') or instance.description[0:24]
-    url = instance.data.get('url')
-    description = instance.description
-    if url:
-        description += '\n\nFor more information see {0}.'.format(url)
-    send_mail(subject, description,
-              settings.DEFAULT_FROM_EMAIL,
-              [instance.recipient.email])
-    # flag as emailed
-    instance.emailed = True
-    instance.save()
-
-
-@receiver(post_save, sender=Notification, dispatch_uid='clear_notification_cache_saved')
-@receiver(post_delete, sender=Notification, dispatch_uid='clear_notification_cache_deleted')
-def clear_notification_cache(sender, instance, **kwargs):
-    # invalidate cache for user
-    cache.delete(NOTIFICATIONS_COUNT_CACHE_KEY.format(instance.recipient.pk))

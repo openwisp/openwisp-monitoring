@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.utils.timezone import now
-from notifications.models import Notification
+from swapper import load_model
 
 from openwisp_users.tests.utils import TestOrganizationMixin
 
@@ -11,7 +11,6 @@ from ..models import Graph, Metric, Threshold
 from ..utils import create_database, get_db, query
 
 User = get_user_model()
-notification_queryset = Notification.objects.order_by('timestamp')
 start_time = now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
 
