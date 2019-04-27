@@ -2,7 +2,6 @@ from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.utils.timezone import now
-from swapper import load_model
 
 from openwisp_users.tests.utils import TestOrganizationMixin
 
