@@ -35,6 +35,19 @@ class NotificationAdmin(admin.ModelAdmin):
     read.boolean = True
     read.short_description = _('read')
 
+    actions = ['mark_as_read']
+
+    def mark_as_read(self, request, queryset):
+        result = queryset.filter(unread=True).update(unread=False)
+        if result == 1:
+            bit = '1 notification was'
+        else:
+            bit = '{0} notifications were'.format(result)
+        message = '{0} marked as read.'.format(bit)
+        self.message_user(request, _(message))
+
+    mark_as_read.short_description = _('Mark selected notifications as read')
+
     def get_queryset(self, request):
         return self.model.objects.filter(recipient=request.user)
 

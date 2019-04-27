@@ -1,15 +1,27 @@
 import swapper
+from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
 from ...monitoring.tests import TestMonitoringMixin
+from ..admin import NotificationAdmin
+from .test_helpers import MessagingRequest
 
 Notification = swapper.load_model('notifications', 'Notification')
 
 
-class TestAdminNotifications(TestMonitoringMixin, TestCase):
+class MockSuperUser:
+    def has_perm(self, perm):
+        return True
+
+
+request = MessagingRequest()
+request.user = MockSuperUser()
+
+
+class TestAdmin(TestMonitoringMixin, TestCase):
     """
     Tests notifications in admin
     """
@@ -55,3 +67,21 @@ class TestAdminNotifications(TestMonitoringMixin, TestCase):
         self.assertIsNone(cache.get(cache_key))
         self.client.get(self._url)
         self.assertEqual(cache.get(cache_key), 1)
+
+    def test_mark_as_read_action(self):
+        self._create_admin()
+        m = self._create_general_metric(name='load')
+        self._create_threshold(metric=m,
+                               operator='>',
+                               value=90,
+                               seconds=0)
+        m.write(99)
+        self.assertFalse(m.is_healthy)
+        self.assertEqual(Notification.objects.count(), 1)
+        site = AdminSite()
+        ma = NotificationAdmin(Notification, site)
+        qs = Notification.objects.all()
+        ma.mark_as_read(request, qs)
+        m = list(request.get_messages())
+        self.assertEqual(len(m), 1)
+        self.assertEqual(str(m[0]), '1 notification was marked as read.')
