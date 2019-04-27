@@ -16,6 +16,10 @@ class MockSuperUser:
     def has_perm(self, perm):
         return True
 
+    @property
+    def pk(self):
+        return 1
+
 
 request = MessagingRequest()
 request.user = MockSuperUser()

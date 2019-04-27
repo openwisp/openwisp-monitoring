@@ -23,6 +23,11 @@ class Notification(UUIDModel, AbstractNotification):
     def __str__(self):
         return self.timesince()
 
+    @classmethod
+    def invalidate_cache(cls, user):
+        """ invalidate cache for user """
+        cache.delete(cls.COUNT_CACHE_KEY.format(user.pk))
+
 
 class NotificationUser(TimeStampedEditableModel):
     _RECEIVE_HELP = 'note: non-superadmin users receive ' \
@@ -81,5 +86,4 @@ def send_email_notification(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Notification, dispatch_uid='clear_notification_cache_saved')
 @receiver(post_delete, sender=Notification, dispatch_uid='clear_notification_cache_deleted')
 def clear_notification_cache(sender, instance, **kwargs):
-    # invalidate cache for user
-    cache.delete(Notification.COUNT_CACHE_KEY.format(instance.recipient.pk))
+    Notification.invalidate_cache(instance.recipient)

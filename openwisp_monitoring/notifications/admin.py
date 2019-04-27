@@ -45,6 +45,7 @@ class NotificationAdmin(admin.ModelAdmin):
             bit = '{0} notifications were'.format(result)
         message = '{0} marked as read.'.format(bit)
         self.message_user(request, _(message))
+        Notification.invalidate_cache(request.user)
 
     mark_as_read.short_description = _('Mark selected notifications as read')
 
