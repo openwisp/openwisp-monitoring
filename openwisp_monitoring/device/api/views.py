@@ -80,6 +80,9 @@ class DeviceMetricView(GenericAPIView):
         header = ['time']
         columns = [data['x']]
         for graph in data['graphs']:
+            # TODO: add way to export data for histogram charts
+            if graph['type'] == 'histogram':
+                continue
             for trace in graph['traces']:
                 header.append(self._get_csv_header(graph, trace))
                 columns.append(trace[1])
