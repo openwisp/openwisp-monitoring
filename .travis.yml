@@ -1,5 +1,4 @@
 language: python
-sudo: false
 cache: pip
 
 addons:
@@ -12,8 +11,7 @@ addons:
       - libspatialite-dev
 
 python:
-  - "3.4"
-  - "2.7"
+  - "3.6"
 
 branches:
   only:
@@ -27,11 +25,10 @@ before_install:
 
 install:
   - python setup.py -q develop
-  - if [[ $TRAVIS_PYTHON_VERSION == "2.7" ]]; then pip install git+git://github.com/tinio/pysqlite.git@extension-enabled#egg=pysqlite; fi
 
 script:
   - coverage run --source=openwisp_monitoring runtests.py
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.4 ]]; then ./tests/manage.py makemigrations monitoring device check --dry-run | grep "No changes detected"; fi
+  ./tests/manage.py makemigrations monitoring device check --dry-run | grep "No changes detected";
 
 after_success:
   coveralls

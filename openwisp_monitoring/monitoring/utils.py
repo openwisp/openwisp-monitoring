@@ -24,7 +24,10 @@ def query(query, params=None, epoch=None,
     """ Wrapper around ``InfluxDBClient.query()`` """
     db = get_db()
     database = database or settings.INFLUXDB_DATABASE
-    return db.query(query, params, epoch, expected_response_code, database=database)
+    return db.query(query, params,
+                    epoch=epoch,
+                    expected_response_code=expected_response_code,
+                    database=database)
 
 
 def write(name, values, tags=None, timestamp=None,

@@ -2,7 +2,6 @@ from datetime import datetime
 
 from dateutil.relativedelta import relativedelta
 from django.contrib import admin
-from django.contrib.admin.templatetags.admin_static import static
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -80,7 +79,6 @@ class DeviceAdmin(BaseDeviceAdmin):
 
 
 DeviceAdmin.Media.js += MetricAdmin.Media.js
-DeviceAdmin.Media.css['all'] += (static('monitoring/css/monitoring.css'),)
 DeviceAdmin.list_display.insert(DeviceAdmin.list_display.index('config_status'),
                                 'health_status')
 DeviceAdmin.list_select_related += ('monitoring',)

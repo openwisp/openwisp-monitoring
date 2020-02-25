@@ -4,7 +4,6 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models.signals import post_save
-from django.utils.encoding import python_2_unicode_compatible
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
 from django.utils.translation import ugettext_lazy as _
@@ -16,7 +15,6 @@ from openwisp_utils.base import TimeStampedEditableModel
 from . import settings as app_settings
 
 
-@python_2_unicode_compatible
 class Check(TimeStampedEditableModel):
     name = models.CharField(max_length=64, db_index=True)
     active = models.BooleanField(default=True, db_index=True)

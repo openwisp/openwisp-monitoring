@@ -16,7 +16,6 @@ from django.db import models
 from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.encoding import python_2_unicode_compatible
 from django.utils.text import slugify
 from django.utils.timezone import make_aware
 from django.utils.translation import ugettext_lazy as _
@@ -33,7 +32,6 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
-@python_2_unicode_compatible
 class Metric(TimeStampedEditableModel):
     name = models.CharField(max_length=64)
     description = models.TextField(blank=True)
@@ -242,7 +240,6 @@ class Metric(TimeStampedEditableModel):
             opts['data']['url'] = '{}{}'.format(base_url, device_url)
 
 
-@python_2_unicode_compatible
 class Graph(TimeStampedEditableModel):
     TYPES = (
         ('line', _('Line')),
@@ -379,7 +376,7 @@ class Graph(TimeStampedEditableModel):
             now = timezone.now()
             if days > 3:
                 now = date(now.year, now.month, now.day)
-            if days is 7:
+            if days == 7:
                 # subtract one day because we want to include
                 # the current day in the time range
                 days -= 1
@@ -542,7 +539,7 @@ class Threshold(TimeStampedEditableModel):
             raise ValueError('Supplied value type not suppported')
         if not value_crossed:
             return False
-        if value_crossed and self.seconds is 0:
+        if value_crossed and self.seconds == 0:
             return True
         if time is None:
             # retrieves latest measurements up to the maximum

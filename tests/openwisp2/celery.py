@@ -14,5 +14,6 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # don't ask me why this needs to be done
 # but without it celery-beat won't work
+# TODO: fixme
 if hasattr(settings, 'CELERYBEAT_SCHEDULE'):
     app.conf.CELERYBEAT_SCHEDULE = settings.CELERYBEAT_SCHEDULE

@@ -1,5 +1,5 @@
-from . import settings as app_settings
 from ..monitoring.utils import get_db
+from . import settings as app_settings
 
 SHORT_RP = 'short'
 
