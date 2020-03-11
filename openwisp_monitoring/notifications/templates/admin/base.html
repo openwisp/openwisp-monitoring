@@ -2,14 +2,15 @@
 {% load i18n static openwisp_notifications %}
 
 {% block extrastyle %}
-<link rel="stylesheet" type="text/css" href="{% static "admin/css/monitoring.css" %}" />
+{{ super }}
+<link rel="stylesheet" type="text/css" href="{% static "notifications/css/notifications.css" %}" />
 {% endblock %}
 
 {% block userlinks %}
     <a href="{% url 'admin:notifications_notification_changelist' %}"
        id="monitoring-notifications">
       <img class="bell-icon"
-           src="{% static "admin/images/bell.svg" %}" />
+           src="{% static "notifications/images/bell.svg" %}" />
       {% unread_notifications %}
     </a>
 {% endblock %}

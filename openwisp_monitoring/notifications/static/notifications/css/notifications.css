@@ -56,3 +56,12 @@
     right: 113px;
   }
 }
+
+#notification_form .label{ font-weight: bold }
+#notification_form .form-row.field-data{ display: none }
+#notification_form .target { margin: 13px 0 8px }
+#notification_form .target .button {
+    color: #fff;
+    padding: 8px 15px;
+    text-decoration: none;
+}

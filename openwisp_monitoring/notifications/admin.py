@@ -26,8 +26,7 @@ class NotificationAdmin(admin.ModelAdmin):
     )
 
     class Media:
-        js = ('notifications/js/admin.js',)
-        css = {'all': ('notifications/css/admin.css',)}
+        js = ('notifications/js/notifications.js',)
 
     def read(self, instance):
         return not instance.unread
