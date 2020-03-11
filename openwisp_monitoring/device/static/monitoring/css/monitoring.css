@@ -1,4 +1,3 @@
-#ow-graph-container{ display: none }
 #ow-graph-time{
   margin-top: 15px;
   text-align: center
@@ -27,6 +26,10 @@
 }
 #ow-graph-time a.export:hover{
   background: rgba(0,0,0,0.45);
+}
+#ow-graph-fallback{
+  display: none;
+  border: 0 none;
 }
 
 #ow-device-status .inline-related h2{

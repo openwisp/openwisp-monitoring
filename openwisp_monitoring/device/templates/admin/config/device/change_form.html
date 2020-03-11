@@ -140,12 +140,16 @@
           <a class="export">{% trans 'export data' %}</a>
         </div>
         <div id="ow-graph-contents"></div>
+        <div id="ow-graph-fallback" class="form-row">
+            {% trans 'No graphs to show at the moment' %}.
+        </div>
     </fieldset>
 </div>
 <script>
   django.jQuery(function($) {
-    var mainContainer = $('#ow-graph-container'),
-        graphContents = $('#ow-graph-contents'),
+    var graphContents = $('#ow-graph-contents'),
+        fallback = $('#ow-graph-fallback'),
+        timeButtonsContainer = $('#ow-graph-time'),
         timeButtons = $('#ow-graph-time a.time'),
         timeRangeKey = 'ow2-graph-time-range',
         defaultTimeRange = localStorage.getItem(timeRangeKey) || '{{ default_time }}',
@@ -157,7 +161,13 @@
             loadingOverlay.show();
           }
           $.getJSON(url).done(function (data) {
-            if (data.graphs.length) { mainContainer.show(); }
+            if (data.graphs.length) {
+                timeButtonsContainer.show();
+                fallback.hide();
+            } else {
+                timeButtonsContainer.hide();
+                fallback.show()
+            }
             $.each(data.graphs, function (i, graph) {
               var htmlId = 'graph-' + i,
                   graphDiv = $('#' + htmlId);
@@ -203,6 +213,12 @@
         clearInterval(window.owGraphRefresh);
       }
     });
+    if (window.location.hash == '#ow-graph-container') {
+        $.event.trigger({
+          type: 'tabshown',
+          tabId: window.location.hash,
+        });
+    }
     // bind export button
     $('#ow-graph-time a.export').click(function() {
       var time = localStorage.getItem(timeRangeKey);
