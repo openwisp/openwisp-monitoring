@@ -72,6 +72,7 @@ class Check(TimeStampedEditableModel):
 
 
 if app_settings.AUTO_PING:
+    from django.db import transaction
     from django.dispatch import receiver
     from .tasks import auto_create_ping
 
@@ -85,7 +86,12 @@ if app_settings.AUTO_PING:
         # every time the configuration is requested via checksum
         if not created:
             return
-        auto_create_ping.delay(model=sender.__name__.lower(),
-                               app_label=sender._meta.app_label,
-                               object_id=str(instance.pk),
-                               created=created)
+        with transaction.atomic():
+            transaction.on_commit(
+                lambda: auto_create_ping.delay(
+                    model=sender.__name__.lower(),
+                    app_label=sender._meta.app_label,
+                    object_id=str(instance.pk),
+                    created=created
+                )
+            )

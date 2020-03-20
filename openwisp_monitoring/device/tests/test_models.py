@@ -8,10 +8,10 @@ from .. import settings as app_settings
 from ..models import DeviceData, DeviceMonitoring
 from ..signals import health_status_changed
 from ..utils import SHORT_RP
-from . import TestDeviceMonitoringMixin
+from . import DeviceMonitoringTestCase
 
 
-class BaseTestCase(TestDeviceMonitoringMixin):
+class BaseTestCase(DeviceMonitoringTestCase):
     _sample_data = {
         "type": "DeviceMonitoring",
         "general": {

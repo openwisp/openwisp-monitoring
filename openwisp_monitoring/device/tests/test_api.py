@@ -7,10 +7,10 @@ from django.urls import reverse
 from ... import settings as monitoring_settings
 from ...monitoring.models import Graph, Metric
 from ..models import DeviceData
-from . import TestDeviceMonitoringMixin
+from . import DeviceMonitoringTestCase
 
 
-class TestDeviceApi(TestDeviceMonitoringMixin):
+class TestDeviceApi(DeviceMonitoringTestCase):
     """
     Tests API (device metric collection)
     """

@@ -1,5 +1,6 @@
 import mock
 from django.core.exceptions import ValidationError
+from django.test import TransactionTestCase
 
 from ... import settings as monitoring_settings
 from ...device.tests import TestDeviceMonitoringMixin
@@ -10,7 +11,7 @@ from ..exceptions import OperationalError
 from ..models import Check
 
 
-class TestPing(TestDeviceMonitoringMixin):
+class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
     _PING = settings.CHECK_CLASSES[0][0]
     _RESULT_KEYS = ['reachable', 'loss', 'rtt_min', 'rtt_avg', 'rtt_max']
     _RTT_KEYS = _RESULT_KEYS[-3:]

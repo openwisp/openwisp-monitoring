@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.test import TransactionTestCase
 
 from ...device.tests import TestDeviceMonitoringMixin
 from ..classes import Ping
@@ -6,7 +7,7 @@ from ..models import Check
 from ..settings import CHECK_CLASSES
 
 
-class TestModels(TestDeviceMonitoringMixin):
+class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
     _PING = CHECK_CLASSES[0][0]
 
     def test_check_str(self):

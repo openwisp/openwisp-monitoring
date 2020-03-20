@@ -8,8 +8,7 @@ from ..utils import manage_short_retention_policy
 
 
 class TestDeviceMonitoringMixin(CreateConfigTemplateMixin,
-                                TestMonitoringMixin,
-                                TestCase):
+                                TestMonitoringMixin):
     device_model = Device
     config_model = Config
 
@@ -17,3 +16,7 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin,
     def setUpClass(cls):
         super(TestDeviceMonitoringMixin, cls).setUpClass()
         manage_short_retention_policy()
+
+
+class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
+    pass

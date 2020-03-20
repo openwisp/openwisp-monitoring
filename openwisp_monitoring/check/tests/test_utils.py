@@ -1,5 +1,6 @@
 import mock
 from django.core import management
+from django.test import TransactionTestCase
 
 from ...device.tests import TestDeviceMonitoringMixin
 from ..classes import Ping
@@ -7,7 +8,7 @@ from ..settings import CHECK_CLASSES
 from ..utils import run_checks_async
 
 
-class TestUtils(TestDeviceMonitoringMixin):
+class TestUtils(TestDeviceMonitoringMixin, TransactionTestCase):
     _PING = CHECK_CLASSES[0][0]
     _FPING_OUTPUT = ('', bytes('10.40.0.1 : xmt/rcv/%loss = 5/5/0%, '
                                'min/avg/max = 0.04/0.08/0.15', 'utf8'))
