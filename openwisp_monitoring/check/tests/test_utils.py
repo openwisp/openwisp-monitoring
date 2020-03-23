@@ -1,4 +1,5 @@
-import mock
+from unittest.mock import patch
+
 from django.core import management
 from django.test import TransactionTestCase
 
@@ -19,12 +20,12 @@ class TestUtils(TestDeviceMonitoringMixin, TransactionTestCase):
         device.save()
         # check is automatically created via django signal
 
-    @mock.patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
+    @patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
     def test_run_checks_async_success(self, mocked_method):
         self._create_check()
         run_checks_async()
 
-    @mock.patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
+    @patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
     def test_management_command(self, mocked_method):
         self._create_check()
         management.call_command('run_checks')

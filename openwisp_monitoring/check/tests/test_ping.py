@@ -1,4 +1,5 @@
-import mock
+from unittest.mock import patch
+
 from django.core.exceptions import ValidationError
 from django.test import TransactionTestCase
 
@@ -71,7 +72,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertFalse(result['reachable'], 0)
         self.assertEqual(result['loss'], 100.0)
 
-    @mock.patch.object(Ping, '_command', return_value=_UNRECOGNIZED_OUTPUT)
+    @patch.object(Ping, '_command', return_value=_UNRECOGNIZED_OUTPUT)
     def test_operational_error(self, _command):
         device = self._create_device(organization=self._create_org())
         device.management_ip = '127.0.0.1'
@@ -163,7 +164,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
             else:
                 self.fail('ValidationError not raised')
 
-    @mock.patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
+    @patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
     def test_store_result(self, mocked_method):
         self.assertEqual(Check.objects.count(), 0)
         device = self._create_device(organization=self._create_org())
@@ -190,8 +191,8 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(points[0]['rtt_avg'], result['rtt_avg'])
         self.assertEqual(points[0]['rtt_max'], result['rtt_max'])
 
-    @mock.patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
-    @mock.patch.object(monitoring_settings, 'AUTO_GRAPHS', return_value=[])
+    @patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
+    @patch.object(monitoring_settings, 'AUTO_GRAPHS', return_value=[])
     def test_auto_graph_disabled(self, *args):
         device = self._create_device(organization=self._create_org())
         device.last_ip = '127.0.0.1'
