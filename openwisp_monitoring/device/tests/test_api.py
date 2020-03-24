@@ -1,6 +1,6 @@
 import json
+from unittest.mock import patch
 
-import mock
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
@@ -357,7 +357,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(Metric.objects.count(), 1)
         self.assertEqual(Graph.objects.count(), 1)
 
-    @mock.patch.object(monitoring_settings, 'AUTO_GRAPHS', return_value=[])
+    @patch.object(monitoring_settings, 'AUTO_GRAPHS', return_value=[])
     def test_auto_graph_disabled(self, *args):
         self.assertEqual(Graph.objects.count(), 0)
         o = self._create_org()
