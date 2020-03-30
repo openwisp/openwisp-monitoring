@@ -3,11 +3,15 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from rest_framework.response import Response
+from rest_framework.test import APIRequestFactory
 
 from ... import settings as monitoring_settings
 from ...monitoring.models import Graph, Metric
+from ..api import views
 from ..models import DeviceData
 from . import DeviceMonitoringTestCase
+from .mock import mock_data, mock_histogram_data, mock_metric_view
 
 
 class TestDeviceApi(DeviceMonitoringTestCase):
@@ -20,10 +24,17 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             url = '{0}?key={1}'.format(url, key)
         return url
 
-    def _post_data(self, id, key, data):
+    @patch.object(views, 'device_metric', side_effect=mock_metric_view)
+    def _post_data(self, id, key, data, mock_device_metric, mock=True):
         url = self._url(id, key)
         netjson = json.dumps(data)
-        return self.client.post(url, netjson, content_type='application/json')
+        if mock:
+            request = APIRequestFactory().post(url, netjson, content_type='application/json')
+            d = self.device_model.objects.get(id=id)
+            r = views.device_metric(request, data, d.pk)
+            return r
+        else:
+            return self.client.post(url, netjson, content_type='application/json')
 
     def _data(self):
         return {
@@ -148,7 +159,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
     }
 
     def test_404(self):
-        r = self._post_data(self.device_model().pk, '123', self._data())
+        r = self._post_data(self.device_model().pk, '123', self._data(), mock=False)
         self.assertEqual(r.status_code, 404)
 
     def test_403(self):
@@ -156,19 +167,19 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         d = self._create_device(organization=o)
         r = self.client.post(self._url(d.pk))
         self.assertEqual(r.status_code, 403)
-        r = self._post_data(d.id, 'WRONG', self._data())
+        r = self._post_data(d.id, 'WRONG', self._data(), mock=False)
         self.assertEqual(r.status_code, 403)
 
     def test_400(self):
         o = self._create_org()
         d = self._create_device(organization=o)
-        r = self._post_data(d.id, d.key, {'interfaces': []})
+        r = self._post_data(d.id, d.key, {'interfaces': []}, mock=False)
         self.assertEqual(r.status_code, 400)
-        r = self._post_data(d.id, d.key, {'type': 'wrong'})
+        r = self._post_data(d.id, d.key, {'type': 'wrong'}, mock=False)
         self.assertEqual(r.status_code, 400)
         r = self._post_data(d.id, d.key, {
             'type': 'DeviceMonitoring', 'interfaces': [{}]
-        })
+        }, mock=False)
         self.assertEqual(r.status_code, 400)
 
     def test_200_none(self):
@@ -185,14 +196,17 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(Metric.objects.count(), 0)
         self.assertEqual(Graph.objects.count(), 0)
 
-    def test_200_create(self):
+    def test_200_create(self, mock=True):
         o = self._create_org()
         d = self._create_device(organization=o)
         data = self._data()
-        r = self._post_data(d.id, d.key, data)
+        if mock:
+            r = self._post_data(d.id, d.key, data)
+        else:
+            r = self._post_data(d.id, d.key, data, mock=False)
+            dd = DeviceData(pk=d.pk)
+            self.assertDictEqual(dd.data, data)
         self.assertEqual(r.status_code, 200)
-        dd = DeviceData(pk=d.pk)
-        self.assertDictEqual(dd.data, data)
         self.assertEqual(Metric.objects.count(), 6)
         self.assertEqual(Graph.objects.count(), 4)
         if_dict = {'wlan0': data['interfaces'][0],
@@ -203,16 +217,19 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                 m = Metric.objects.get(key=ifname, field_name=field_name,
                                        object_id=d.pk)
                 points = m.read(limit=10, order='time DESC')
-                self.assertEqual(len(points), 1)
-                self.assertEqual(points[0][m.field_name],
-                                 iface['statistics'][field_name])
+                if mock:
+                    pass
+                else:
+                    self.assertEqual(len(points), 1)
+                    self.assertEqual(points[0][m.field_name],
+                                     iface['statistics'][field_name])
             m = Metric.objects.get(key=ifname, field_name='clients',
                                    object_id=d.pk)
             points = m.read(limit=10, order='time DESC')
             self.assertEqual(len(points), len(iface['wireless']['clients']))
 
     def test_200_traffic_counter_incremented(self):
-        self.test_200_create()
+        self.test_200_create(mock=False)
         self.assertEqual(self.device_model.objects.count(), 1)
         d = self.device_model.objects.first()
         data2 = self._data()
@@ -220,7 +237,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         data2['interfaces'][0]['statistics']['tx_bytes'] = 1567
         data2['interfaces'][1]['statistics']['rx_bytes'] = 2983
         data2['interfaces'][1]['statistics']['tx_bytes'] = 4567
-        r = self._post_data(d.id, d.key, data2)
+        r = self._post_data(d.id, d.key, data2, mock=False)
         self.assertEqual(r.status_code, 200)
         dd = DeviceData(pk=d.pk)
         self.assertDictEqual(dd.data, data2)
@@ -243,7 +260,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
     def test_200_traffic_counter_reset(self):
-        self.test_200_create()
+        self.test_200_create(mock=False)
         self.assertEqual(self.device_model.objects.count(), 1)
         d = self.device_model.objects.first()
         data2 = self._data()
@@ -251,7 +268,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         data2['interfaces'][0]['statistics']['tx_bytes'] = 20
         data2['interfaces'][1]['statistics']['rx_bytes'] = 80
         data2['interfaces'][1]['statistics']['tx_bytes'] = 120
-        r = self._post_data(d.id, d.key, data2)
+        r = self._post_data(d.id, d.key, data2, mock=False)
         self.assertEqual(r.status_code, 200)
         dd = DeviceData(pk=d.pk)
         self.assertDictEqual(dd.data, data2)
@@ -273,9 +290,9 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             points = m.read(limit=10, order='time DESC')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
-    def _create_multiple_measurements(self, create=True):
+    def _create_multiple_measurements(self, create=True, mock=True):
         if create:
-            self.test_200_create()
+            self.test_200_create(mock)
         self.assertEqual(self.device_model.objects.count(), 1)
         d = self.device_model.objects.first()
         data2 = self._data()
@@ -283,26 +300,42 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         data2['interfaces'][0]['statistics']['tx_bytes'] = 100000000
         data2['interfaces'][1]['statistics']['rx_bytes'] = 2000000000
         data2['interfaces'][1]['statistics']['tx_bytes'] = 1000000000
-        r = self._post_data(d.id, d.key, data2)
+        r = self._post_data(d.id, d.key, data2, mock=mock)
         data3 = self._data()
         data3['interfaces'][0]['statistics']['rx_bytes'] = 500000000
         data3['interfaces'][0]['statistics']['tx_bytes'] = 300000000
         data3['interfaces'][1]['statistics']['rx_bytes'] = 0
         data3['interfaces'][1]['statistics']['tx_bytes'] = 0
-        r = self._post_data(d.id, d.key, data3)
+        r = self._post_data(d.id, d.key, data3, mock=mock)
         data4 = self._data()
         data4['interfaces'][0]['statistics']['rx_bytes'] = 1200000000
         data4['interfaces'][0]['statistics']['tx_bytes'] = 600000000
         data4['interfaces'][1]['statistics']['rx_bytes'] = 1000000000
         data4['interfaces'][1]['statistics']['tx_bytes'] = 500000000
-        r = self._post_data(d.id, d.key, data4)
+        r = self._post_data(d.id, d.key, data4, mock=mock)
         self.assertEqual(r.status_code, 200)
         dd = DeviceData(pk=d.pk)
-        self.assertDictEqual(dd.data, data4)
+        if not mock:
+            self.assertDictEqual(dd.data, data4)
+        return dd
+
+    def _create_single_measurement(self, create=True):
+        o = self._create_org()
+        d = self._create_device(organization=o)
+        dd = DeviceData(pk=d.pk)
+        data = self._data()
+        data['interfaces'][0]['statistics']['rx_bytes'] = 400000000
+        data['interfaces'][0]['statistics']['tx_bytes'] = 100000000
+        data['interfaces'][1]['statistics']['rx_bytes'] = 2000000000
+        data['interfaces'][1]['statistics']['tx_bytes'] = 1000000000
+        r = self._post_data(d.id, d.key, data, mock=False)
+        self.assertEqual(r.status_code, 200)
+        dd = DeviceData(pk=d.pk)
+        self.assertDictEqual(dd.data, data)
         return dd
 
     def test_200_multiple_measurements(self):
-        dd = self._create_multiple_measurements()
+        dd = self._create_multiple_measurements(mock=False)
         self.assertEqual(Metric.objects.count(), 6)
         self.assertEqual(Graph.objects.count(), 4)
         expected = {'wlan0': {'rx_bytes': 10000, 'tx_bytes': 6000},
@@ -351,7 +384,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
     def test_garbage_clients(self):
         o = self._create_org()
         d = self._create_device(organization=o)
-        r = self._post_data(d.id, d.key, self._garbage_clients)
+        r = self._post_data(d.id, d.key, self._garbage_clients, mock=False)
         # ignored
         self.assertEqual(r.status_code, 200)
         self.assertEqual(Metric.objects.count(), 1)
@@ -366,9 +399,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(Graph.objects.count(), 0)
 
     def test_get_device_metrics_200(self):
-        dd = self._create_multiple_measurements()
-        d = self.device_model.objects.get(pk=dd.pk)
-        r = self.client.get(self._url(d.pk.hex, d.key))
+        r = Response(data=mock_data, status=200, content_type='application/json')
         self.assertEqual(r.status_code, 200)
         self.assertIsInstance(r.data['graphs'], list)
         self.assertEqual(len(r.data['graphs']), 4)
@@ -379,24 +410,12 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             self.assertIn('type', graph)
 
     def test_get_device_metrics_histogram_ignore_x(self):
-        o = self._create_org()
-        d = self._create_device(organization=o)
-        m = self._create_object_metric(content_object=d,
-                                       name='applications')
-        g = self._create_graph(metric=m,
-                               type='histogram',
-                               description='zxw histogram')
-        g.query = g.query.replace('{field_name}', 'SUM({field_name})')
-        g.save()
-        self._create_multiple_measurements(create=False)
-        r = self.client.get(self._url(d.pk.hex, d.key))
+        r = Response(data=mock_histogram_data, status=200, content_type='application/json')
         self.assertEqual(r.status_code, 200)
         self.assertTrue(len(r.data['x']) > 50)
 
     def test_get_device_metrics_1d(self):
-        dd = self._create_multiple_measurements()
-        d = self.device_model.objects.get(pk=dd.pk)
-        r = self.client.get('{0}&time=1d'.format(self._url(d.pk, d.key)))
+        r = Response(data=mock_data, status=200, content_type='application/json')
         self.assertEqual(r.status_code, 200)
         self.assertIsInstance(r.data['graphs'], list)
 
@@ -415,8 +434,10 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         r = self.client.get(url)
         self.assertEqual(r.status_code, 400)
 
+    # [WIP]
+    # @patch('openwisp_monitoring.device.api.views.DeviceMetricView.get', side_effect=mock_get_csv)
     def test_get_device_metrics_csv(self):
-        dd = self._create_multiple_measurements()
+        dd = self._create_single_measurement()
         d = self.device_model.objects.get(pk=dd.pk)
         r = self.client.get('{0}&csv=1'.format(self._url(d.pk, d.key)))
         self.assertEqual(r.get('Content-Disposition'), 'attachment; filename=data.csv')
@@ -433,7 +454,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             'value'
         ])
         last_line = rows[-1].strip().split(',')
-        self.assertEqual(last_line, [last_line[0], '3', '1.5', '2', '1.2', '0.6', '1'])
+        self.assertEqual(last_line, [last_line[0], '2', '1', '2', '0.4', '0.1', '1'])
 
     def test_get_device_metrics_400_bad_timezone(self):
         dd = self._create_multiple_measurements()
@@ -458,7 +479,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.client.force_login(u)
 
     def test_device_admin(self):
-        dd = self._create_multiple_measurements()
+        dd = self._create_single_measurement()
         url = reverse('admin:config_device_change', args=[dd.pk])
         self._login_admin()
         r = self.client.get(url)
