@@ -6,6 +6,7 @@ import django.utils.timezone
 import jsonfield.fields
 import model_utils.fields
 import uuid
+import collections
 
 
 class Migration(migrations.Migration):
@@ -28,7 +29,7 @@ class Migration(migrations.Migration):
                 ('description', models.TextField(blank=True, help_text='Notes')),
                 ('object_id', models.CharField(blank=True, db_index=True, max_length=36)),
                 ('check', models.CharField(choices=[('openwisp_monitoring.check.classes.Ping', 'Ping')], db_index=True, help_text='Select check type', max_length=128, verbose_name='check type')),
-                ('params', jsonfield.fields.JSONField(blank=True, default=dict, help_text='parameters needed to perform the check', verbose_name='parameters')),
+                ('params', jsonfield.fields.JSONField(blank=True, default=dict, dump_kwargs={'indent': 4}, help_text='parameters needed to perform the check', load_kwargs={'object_pairs_hook': collections.OrderedDict}, verbose_name='parameters')),
                 ('content_type', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='contenttypes.ContentType')),
             ],
             options={
