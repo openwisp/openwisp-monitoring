@@ -25,7 +25,7 @@ from swapper import load_model
 
 from openwisp_utils.base import TimeStampedEditableModel
 
-from .signals import threshold_crossed
+from .signals import post_metric_write, pre_metric_write, threshold_crossed
 from .utils import query, write
 
 User = get_user_model()
@@ -145,11 +145,16 @@ class Metric(TimeStampedEditableModel):
         values = {self.field_name: value}
         if extra_values and isinstance(extra_values, dict):
             values.update(extra_values)
+        signal_kwargs = dict(sender=self.__class__,
+                             metric=self,
+                             values=values)
+        pre_metric_write.send(**signal_kwargs)
         write(name=self.key,
               values=values,
               tags=self.tags,
               timestamp=time,
               database=database)
+        post_metric_write.send(**signal_kwargs)
         # check can be disabled,
         # mostly for automated testing and debugging purposes
         if not check:

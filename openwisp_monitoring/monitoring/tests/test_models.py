@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from ...tests import catch_signal
 from ..models import Metric
-from ..signals import threshold_crossed
+from ..signals import post_metric_write, pre_metric_write, threshold_crossed
 from ..utils import query, write
 from . import TestMonitoringMixin
 
@@ -209,3 +209,25 @@ class TestModels(TestMonitoringMixin, TestCase):
             sender=Metric,
             signal=threshold_crossed,
         )
+
+    def test_metric_pre_write_signals_emitted(self):
+        om = self._create_object_metric()
+        with catch_signal(pre_metric_write) as handler:
+            om.write(3)
+            handler.assert_called_once_with(
+                sender=Metric,
+                metric=om,
+                values={om.field_name: 3},
+                signal=pre_metric_write
+            )
+
+    def test_metric_post_write_signals_emitted(self):
+        om = self._create_object_metric()
+        with catch_signal(post_metric_write) as handler:
+            om.write(3)
+            handler.assert_called_once_with(
+                sender=Metric,
+                metric=om,
+                values={om.field_name: 3},
+                signal=post_metric_write
+            )
