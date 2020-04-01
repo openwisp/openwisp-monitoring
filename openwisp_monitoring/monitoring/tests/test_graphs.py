@@ -226,11 +226,11 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         g = self._create_graph(metric=m, test_data=False)
         for n in range(0, 9):
             m.write('00:16:3e:00:00:00', time=now() - timedelta(days=n))
-            m.write('00:23:4b:00:00:00', time=now() - timedelta(days=n, seconds=1))
+            m.write('00:23:4b:00:00:00', time=now() - timedelta(days=n, seconds=10))
         m.write('00:16:3e:00:00:00', time=now() - timedelta(days=2))
         m.write('00:16:3e:00:00:00', time=now() - timedelta(days=4))
-        m.write('00:23:4a:00:00:00')
-        m.write('00:14:5c:00:00:00')
+        m.write('00:23:4a:00:00:00', time=now())
+        m.write('00:14:5c:00:00:00', time=now() - timedelta(seconds=10))
         q = "SELECT COUNT(DISTINCT({field_name})) AS {field_name} FROM {key} " \
             "WHERE time >= '{time}' AND content_type = '{content_type}' " \
             "AND object_id = '{object_id}' GROUP BY time(24h)"
