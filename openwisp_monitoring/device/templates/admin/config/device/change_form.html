@@ -183,8 +183,8 @@
           });
         },
         triggerClick = function() {
-          $('#ow-graph-time a[data-time=' + localStorage.getItem(timeRangeKey) + ']')
-            .trigger('click');
+          var range = localStorage.getItem(timeRangeKey) || defaultTimeRange;
+          $('#ow-graph-time a[data-time=' + range + ']').trigger('click');
         };
     // try adding the browser timezone to the querystring
     try {
