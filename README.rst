@@ -170,6 +170,13 @@ Device Health Status
 The possible values for the health status field (``DeviceMonitoring.status``)
 are explained below.
 
+``UNKNOWN``
+~~~~~~~~~~~
+
+Whenever a new device is created it will have ``UNKNOWN`` as it's default Heath Status.
+
+It implies that the system doesn't know whether the device is reachable yet.
+
 ``OK``
 ~~~~~~
 
@@ -251,11 +258,11 @@ By default, if devices are not reachable by ping they are flagged as ``CRITICAL`
 ``OPENWISP_MONITORING_HEALTH_STATUS_LABELS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-+--------------+-----------------------------------------------------------------+
-| **type**:    | ``dict``                                                        |
-+--------------+-----------------------------------------------------------------+
-| **default**: | ``{'ok': 'ok', 'problem': 'problem', 'critical': 'critical'}``  |
-+--------------+-----------------------------------------------------------------+
++--------------+--------------------------------------------------------------------------------------+
+| **type**:    | ``dict``                                                                             |
++--------------+--------------------------------------------------------------------------------------+
+| **default**: | ``{'unknown': 'unknown', 'ok': 'ok', 'problem': 'problem', 'critical': 'critical'}`` |
++--------------+--------------------------------------------------------------------------------------+
 
 This setting allows to change the health status labels, for example, if we
 want to use ``online`` instead of ``ok`` and ``offline`` instead of ``critical``,

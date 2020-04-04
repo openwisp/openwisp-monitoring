@@ -43,6 +43,7 @@ td.field-health_status,
   font-weight: bold;
   text-transform: uppercase;
 }
+.health-unknown{ color: grey }
 .health-ok{ color: green }
 .health-problem{ color: orange }
 .health-critical{ color: red }
