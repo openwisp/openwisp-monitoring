@@ -1,6 +1,12 @@
 openwisp-monitoring
 ===================
 
+.. image:: https://travis-ci.com/openwsip/openwisp-monitoring.svg?branch=master
+    :target: https://travis-ci.com/openwisp/openwisp-monitoring
+
+.. image:: https://coveralls.io/repos/github/openwisp/openwisp-monitoring/badge.svg?branch=master
+    :target: https://coveralls.io/github/openwisp/openwisp-monitoring?branch=master
+
 ------------
 
 OpenWISP 2 monitoring module (Work in progress).
