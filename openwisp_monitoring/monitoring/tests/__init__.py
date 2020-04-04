@@ -32,7 +32,10 @@ class TestMonitoringMixin(TestOrganizationMixin):
         query('DROP SERIES FROM /.*/')
 
     def _create_general_metric(self, **kwargs):
-        opts = {'name': 'test_metric'}
+        opts = {
+            'name': 'test_metric',
+            'is_healthy': True  # backward compatibility with old tests
+        }
         opts.update(kwargs)
         m = Metric(**opts)
         m.full_clean()
@@ -43,6 +46,8 @@ class TestMonitoringMixin(TestOrganizationMixin):
         opts = kwargs.copy()
         if 'content_object' not in opts:
             opts['content_object'] = self._create_user()
+        if 'is_healthy' not in kwargs:
+            kwargs['is_healthy'] = True  # backward compatibility with old tests
         return self._create_general_metric(**opts)
 
     def _create_threshold(self, **kwargs):

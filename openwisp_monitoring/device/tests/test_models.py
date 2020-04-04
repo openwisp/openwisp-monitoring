@@ -192,6 +192,8 @@ class TestDeviceMonitoring(BaseTestCase):
     def _create_env(self):
         d = self._create_device()
         dm = d.monitoring
+        dm.status = 'ok'
+        dm.save()
         ping = self._create_object_metric(name='ping',
                                           key='ping',
                                           field_name='reachable',
@@ -230,7 +232,7 @@ class TestDeviceMonitoring(BaseTestCase):
 
     def test_ok_critical_ok(self):
         dm, ping, load, process_count = self._create_env()
-        self.assertEqual(dm.status, 'unknown')
+        self.assertEqual(dm.status, 'ok')
         ping.check_threshold(0)
         self.assertEqual(dm.status, 'critical')
         ping.check_threshold(1)
@@ -238,7 +240,7 @@ class TestDeviceMonitoring(BaseTestCase):
 
     def test_ok_problem_ok(self):
         dm, ping, load, process_count = self._create_env()
-        self.assertEqual(dm.status, 'unknown')
+        self.assertEqual(dm.status, 'ok')
         load.check_threshold(100)
         self.assertEqual(dm.status, 'problem')
         load.check_threshold(20)
@@ -246,7 +248,7 @@ class TestDeviceMonitoring(BaseTestCase):
 
     def test_ok_problem_critical_problem_ok(self):
         dm, ping, load, process_count = self._create_env()
-        self.assertEqual(dm.status, 'unknown')
+        self.assertEqual(dm.status, 'ok')
         load.check_threshold(100)
         self.assertEqual(dm.status, 'problem')
         ping.check_threshold(0)
@@ -258,7 +260,7 @@ class TestDeviceMonitoring(BaseTestCase):
 
     def test_ok_critical_critical_critical_ok(self):
         dm, ping, load, process_count = self._create_env()
-        self.assertEqual(dm.status, 'unknown')
+        self.assertEqual(dm.status, 'ok')
         ping.check_threshold(0)
         self.assertEqual(dm.status, 'critical')
         load.check_threshold(100)
@@ -270,7 +272,7 @@ class TestDeviceMonitoring(BaseTestCase):
 
     def test_ok_problem_problem_problem_ok(self):
         dm, ping, load, process_count = self._create_env()
-        self.assertEqual(dm.status, 'unknown')
+        self.assertEqual(dm.status, 'ok')
         load.check_threshold(100)
         self.assertEqual(dm.status, 'problem')
         process_count.check_threshold(40)
@@ -278,4 +280,44 @@ class TestDeviceMonitoring(BaseTestCase):
         process_count.check_threshold(10)
         self.assertEqual(dm.status, 'problem')
         load.check_threshold(80)
+        self.assertEqual(dm.status, 'ok')
+
+    def _set_env_unknown(self, load, process_count, ping, dm):
+        dm.status = 'unknown'
+        dm.save()
+        ping.is_healthy = None
+        load.save()
+        load.is_healthy = None
+        ping.save()
+        process_count.is_healthy = None
+        process_count.save()
+
+    def test_unknown_ok(self):
+        dm, ping, load, process_count = self._create_env()
+        self._set_env_unknown(load, process_count, ping, dm)
+        load.delete()
+        process_count.delete()
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'unknown')
+        ping.write(1)
+        self.assertEqual(dm.status, 'ok')
+
+    def test_unknown_critical(self):
+        dm, ping, load, process_count = self._create_env()
+        self._set_env_unknown(load, process_count, ping, dm)
+        load.delete()
+        process_count.delete()
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'unknown')
+        ping.write(0)
+        self.assertEqual(dm.status, 'critical')
+
+    def test_unknown_problem_ok(self):
+        dm, ping, load, process_count = self._create_env()
+        self._set_env_unknown(load, process_count, ping, dm)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'unknown')
+        load.check_threshold(100)
+        self.assertEqual(dm.status, 'problem')
+        load.check_threshold(20)
         self.assertEqual(dm.status, 'ok')
