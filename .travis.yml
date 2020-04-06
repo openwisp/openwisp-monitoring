@@ -1,34 +1,59 @@
 language: python
+sudo: false
+dist: bionic
+
 cache: pip
+
+python:
+  - "3.6"
+  - "3.7"
+
+env:
+  - DJANGO="django>=2.2,<3.0"
+  - DJANGO="django>=3.0,<3.1"
 
 addons:
   apt:
     packages:
       - sqlite3
+      - fping
       - gdal-bin
       - libproj-dev
       - libgeos-dev
       - libspatialite-dev
+      - spatialite-bin
+      - libsqlite3-mod-spatialite
 
-python:
-  - "3.6"
+services:
+  - docker
+  - redis-server
 
 branches:
   only:
     - master
 
 before_install:
+  - docker run -d --name influxdb -p 8086:8086 influxdb
+  - docker exec -it influxdb influx -execute 'CREATE DATABASE openwisp2'
+  # TODO: this is temporary, remove it when openwisp-utils-0.4.5 is released
+  - pip install https://github.com/openwisp/openwisp-utils/tarball/master
   - pip install -U pip wheel setuptools
-  - pip install --no-cache-dir -U -r requirements-test.txt
-  - ./runflake8
-  - ./runisort
+  - pip install -U -r requirements-test.txt
 
 install:
-  - python setup.py -q develop
+  - pip install $DJANGO
+  - pip install -e .
 
 script:
+  - |
+    openwisp-utils-qa-checks \
+          --migration-path \
+          "./openwisp_monitoring/check/migrations \
+          ./openwisp_monitoring/device/migrations \
+          ./openwisp_monitoring/monitoring/migrations \
+          ./openwisp_monitoring/notifications/migrations" \
+          --migration-module "check device_monitoring monitoring notifications"
   - coverage run --source=openwisp_monitoring runtests.py
-  ./tests/manage.py makemigrations monitoring device check --dry-run | grep "No changes detected";
 
 after_success:
   coveralls
