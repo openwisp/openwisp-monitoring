@@ -45,14 +45,7 @@ install:
   - pip install -e .
 
 script:
-  - |
-    openwisp-utils-qa-checks \
-          --migration-path \
-          "./openwisp_monitoring/check/migrations \
-          ./openwisp_monitoring/device/migrations \
-          ./openwisp_monitoring/monitoring/migrations \
-          ./openwisp_monitoring/notifications/migrations" \
-          --migration-module "check device_monitoring monitoring notifications"
+  - ./run-qa-checks
   - coverage run --source=openwisp_monitoring runtests.py
 
 after_success:
