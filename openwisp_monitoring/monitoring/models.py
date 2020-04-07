@@ -35,12 +35,13 @@ logger = logging.getLogger(__name__)
 class Metric(TimeStampedEditableModel):
     name = models.CharField(max_length=64)
     description = models.TextField(blank=True)
-    key = models.SlugField(max_length=64,
-                           blank=True,
-                           help_text=_('leave blank to determine automatically'))
+    key = models.SlugField(
+        max_length=64, blank=True, help_text=_('leave blank to determine automatically')
+    )
     field_name = models.CharField(max_length=16, default='value')
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE,
-                                     null=True, blank=True)
+    content_type = models.ForeignKey(
+        ContentType, on_delete=models.CASCADE, null=True, blank=True
+    )
     object_id = models.CharField(max_length=36, db_index=True, blank=True)
     content_object = GenericForeignKey('content_type', 'object_id')
     # NULL means the health has yet to be assessed
@@ -99,7 +100,7 @@ class Metric(TimeStampedEditableModel):
         if self.content_type and self.object_id:
             return {
                 'content_type': self.content_type_key,
-                'object_id': str(self.object_id)
+                'object_id': str(self.object_id),
             }
         return {}
 
@@ -121,8 +122,7 @@ class Metric(TimeStampedEditableModel):
             return
         crossed = threshold._is_crossed_by(value, time)
         # situation has not changed
-        if (not crossed and self.is_healthy) or \
-           (crossed and self.is_healthy is False):
+        if (not crossed and self.is_healthy) or (crossed and self.is_healthy is False):
             return
         # problem: not within threshold limit
         elif crossed and self.is_healthy in [True, None]:
@@ -135,10 +135,12 @@ class Metric(TimeStampedEditableModel):
             level = 'info'
             verb = 'returned within threshold limit'
         self.save()
-        threshold_crossed.send(sender=self.__class__,
-                               threshold=threshold,
-                               metric=self,
-                               target=self.content_object)
+        threshold_crossed.send(
+            sender=self.__class__,
+            threshold=threshold,
+            metric=self,
+            target=self.content_object,
+        )
         self._notify_users(level, verb, threshold)
 
     def write(self, value, time=None, database=None, check=True, extra_values=None):
@@ -146,15 +148,15 @@ class Metric(TimeStampedEditableModel):
         values = {self.field_name: value}
         if extra_values and isinstance(extra_values, dict):
             values.update(extra_values)
-        signal_kwargs = dict(sender=self.__class__,
-                             metric=self,
-                             values=values)
+        signal_kwargs = dict(sender=self.__class__, metric=self, values=values)
         pre_metric_write.send(**signal_kwargs)
-        write(name=self.key,
-              values=values,
-              tags=self.tags,
-              timestamp=time,
-              database=database)
+        write(
+            name=self.key,
+            values=values,
+            tags=self.tags,
+            timestamp=time,
+            database=database,
+        )
         post_metric_write.send(**signal_kwargs)
         # check can be disabled,
         # mostly for automated testing and debugging purposes
@@ -175,8 +177,9 @@ class Metric(TimeStampedEditableModel):
         if since:
             conditions.append("time >= {0}".format(since))
         if tags:
-            conditions.append(' AND '.join(["{0} = '{1}'".format(*tag)
-                                            for tag in tags.items()]))
+            conditions.append(
+                ' AND '.join(["{0} = '{1}'".format(*tag) for tag in tags.items()])
+            )
         if conditions:
             conditions = 'WHERE %s' % ' AND '.join(conditions)
             q = '{0} {1}'.format(q, conditions)
@@ -188,10 +191,7 @@ class Metric(TimeStampedEditableModel):
 
     def _notify_users(self, level, verb, threshold):
         """ creates notifications for users """
-        opts = dict(actor=self,
-                    level=level,
-                    verb=verb,
-                    action_object=threshold)
+        opts = dict(actor=self, level=level, verb=verb, action_object=threshold)
         if self.content_object is None:
             opts['actor'] = self
             target_org = None
@@ -204,18 +204,17 @@ class Metric(TimeStampedEditableModel):
         # if target_org is specified, retrieve also
         # staff users that are member of the org
         if target_org:
-            where = (
-                where | (
-                    Q(is_staff=True) &
-                    Q(openwisp_users_organization=target_org)
-                )
+            where = where | (
+                Q(is_staff=True) & Q(openwisp_users_organization=target_org)
             )
         # only retrieve users which have the receive flag active
         where = where & Q(notificationuser__receive=True)
         # perform query
-        qs = User.objects.select_related('notificationuser') \
-                         .order_by('date_joined') \
-                         .filter(where)
+        qs = (
+            User.objects.select_related('notificationuser')
+            .order_by('date_joined')
+            .filter(where)
+        )
         Notification = load_model('notifications', 'Notification')
         for user in qs:
             n = Notification(**opts)
@@ -232,8 +231,9 @@ class Metric(TimeStampedEditableModel):
         t = self.threshold
         if not self.is_healthy:
             info = ' ({0} {1})'.format(t.get_operator_display(), t.value)
-        desc = 'Metric "{metric}" {verb}{info}.'.format(status=status, metric=metric,
-                                                        verb=verb, info=info)
+        desc = 'Metric "{metric}" {verb}{info}.'.format(
+            status=status, metric=metric, verb=verb, info=info
+        )
         opts['description'] = desc
         opts['data'] = {
             'email_subject': '[{status}] {metric}'.format(status=status, metric=metric)
@@ -241,8 +241,7 @@ class Metric(TimeStampedEditableModel):
         if target and target.__class__.__name__.lower() == 'device':
             current_site = Site.objects.get_current()
             base_url = 'https://{}'.format(current_site.domain)
-            device_url = reverse('admin:config_device_change',
-                                 args=[target.pk])
+            device_url = reverse('admin:config_device_change', args=[target.pk])
             opts['data']['url'] = '{}{}'.format(base_url, device_url)
 
 
@@ -254,15 +253,16 @@ class Graph(TimeStampedEditableModel):
     metric = models.ForeignKey(Metric, on_delete=models.CASCADE)
     description = models.CharField(max_length=64, blank=True)
     query = models.TextField(blank=True)
-    type = models.CharField(_('chart type'),
-                            max_length=16,
-                            choices=TYPES,
-                            default=TYPES[0][0])
+    type = models.CharField(
+        _('chart type'), max_length=16, choices=TYPES, default=TYPES[0][0]
+    )
     top_fields = models.PositiveIntegerField(
         _('top fields'),
-        help_text=_('substitutes {fields} in the query with the top N fields, '
-                    'a value of zero disables this feature'),
-        default=0
+        help_text=_(
+            'substitutes {fields} in the query with the top N fields, '
+            'a value of zero disables this feature'
+        ),
+        default=0,
     )
 
     def __str__(self):
@@ -279,19 +279,35 @@ class Graph(TimeStampedEditableModel):
 
     _FORBIDDEN = ['drop', 'create', 'delete', 'alter', 'into']
     _AGGREGATE = [
-        'COUNT', 'DISTINCT', 'INTEGRAL', 'MEAN', 'MEDIAN', 'MODE',
-        'SPREAD', 'STDDEV', 'SUM', 'BOTTOM', 'FIRST', 'LAST', 'MAX',
-        'MIN', 'PERCENTILE', 'SAMPLE', 'TOP', 'CEILING', 'CUMULATIVE_SUM',
-        'DERIVATIVE', 'DIFFERENCE', 'ELAPSED', 'FLOOR', 'HISTOGRAM',
-        'MOVING_AVERAGE', 'NON_NEGATIVE_DERIVATIVE', 'HOLT_WINTERS'
+        'COUNT',
+        'DISTINCT',
+        'INTEGRAL',
+        'MEAN',
+        'MEDIAN',
+        'MODE',
+        'SPREAD',
+        'STDDEV',
+        'SUM',
+        'BOTTOM',
+        'FIRST',
+        'LAST',
+        'MAX',
+        'MIN',
+        'PERCENTILE',
+        'SAMPLE',
+        'TOP',
+        'CEILING',
+        'CUMULATIVE_SUM',
+        'DERIVATIVE',
+        'DIFFERENCE',
+        'ELAPSED',
+        'FLOOR',
+        'HISTOGRAM',
+        'MOVING_AVERAGE',
+        'NON_NEGATIVE_DERIVATIVE',
+        'HOLT_WINTERS',
     ]
-    GROUP_MAP = {
-        '1d': '10m',
-        '3d': '20m',
-        '7d': '1h',
-        '30d': '24h',
-        '365d': '24h'
-    }
+    GROUP_MAP = {'1d': '10m', '3d': '20m', '7d': '1h', '30d': '24h', '365d': '24h'}
     DEFAULT_TIME = '7d'
 
     def _clean_query(self):
@@ -308,29 +324,30 @@ class Graph(TimeStampedEditableModel):
 
     @property
     def _default_query(self):
-        q = "SELECT {field_name} FROM {key} WHERE " \
-            "time >= '{time}'"
+        q = "SELECT {field_name} FROM {key} WHERE " "time >= '{time}'"
         if self.metric.object_id:
-            q += " AND content_type = '{content_type}'" \
-                 " AND object_id = '{object_id}'"
+            q += " AND content_type = '{content_type}'" " AND object_id = '{object_id}'"
         return q
 
     _fields_regex = re.compile(
-        r'(?P<group>\{fields\|(?P<func>\w+)(?:\|(?P<op>.*?))?\})',
-        flags=re.IGNORECASE
+        r'(?P<group>\{fields\|(?P<func>\w+)(?:\|(?P<op>.*?))?\})', flags=re.IGNORECASE
     )
 
-    def get_query(self, time=DEFAULT_TIME, summary=False,
-                  fields=None, query=None,
-                  timezone=settings.TIME_ZONE):
+    def get_query(
+        self,
+        time=DEFAULT_TIME,
+        summary=False,
+        fields=None,
+        query=None,
+        timezone=settings.TIME_ZONE,
+    ):
         m = self.metric
         query = query or self.query
-        params = dict(field_name=m.field_name,
-                      key=m.key,
-                      time=self._get_time(time))
+        params = dict(field_name=m.field_name, key=m.key, time=self._get_time(time))
         if m.object_id:
-            params.update({'content_type': m.content_type_key,
-                           'object_id': m.object_id})
+            params.update(
+                {'content_type': m.content_type_key, 'object_id': m.object_id}
+            )
         query = self._fields(fields, query)
         query = query.format(**params)
         query = self._group_by(query, time, strip=summary)
@@ -355,8 +372,7 @@ class Graph(TimeStampedEditableModel):
             groups = matches.groupdict()
             function = groups['func']  # required
             operation = groups.get('op')  # optional
-            fields = [self.__transform_field(f, function, operation)
-                      for f in fields]
+            fields = [self.__transform_field(f, function, operation) for f in fields]
             fields_key = groups.get('group')
         else:
             fields_key = '{fields}'
@@ -369,10 +385,9 @@ class Graph(TimeStampedEditableModel):
             operation = ' {}'.format(operation)
         else:
             operation = ''
-        return '{0}("{1}"){3} AS {2}'.format(function,
-                                             field,
-                                             field.replace('-', '_'),
-                                             operation)
+        return '{0}("{1}"){3} AS {2}'.format(
+            function, field, field.replace('-', '_'), operation
+        )
 
     def _get_time(self, time):
         if not isinstance(time, str):
@@ -392,14 +407,11 @@ class Graph(TimeStampedEditableModel):
     def _is_aggregate(self, q):
         q = q.upper()
         for word in self._AGGREGATE:
-            if any(['%s(' % word in q,
-                    '|%s}' % word in q,
-                    '|%s|' % word in q]):
+            if any(['%s(' % word in q, '|%s}' % word in q, '|%s|' % word in q]):
                 return True
         return False
 
-    _group_by_regex = re.compile(r'GROUP BY time\(\w+\)',
-                                 flags=re.IGNORECASE)
+    _group_by_regex = re.compile(r'GROUP BY time\(\w+\)', flags=re.IGNORECASE)
 
     def _group_by(self, query, time, strip=False):
         if not self._is_aggregate(query):
@@ -416,28 +428,21 @@ class Graph(TimeStampedEditableModel):
             query = re.sub(self._group_by_regex, group_by, query)
         return query
 
-    def _get_top_fields(self, number, time=DEFAULT_TIME,
-                        timezone=settings.TIME_ZONE):
+    def _get_top_fields(self, number, time=DEFAULT_TIME, timezone=settings.TIME_ZONE):
         """
         Returns list of top ``number`` of fields (highes sum) of a
         measurement in the specified time range (descending order).
         """
         q = self._default_query.replace('{field_name}', '{fields}')
-        q = self.get_query(query=q,
-                           summary=True,
-                           fields=['SUM(*)'],
-                           time=time,
-                           timezone=timezone)
+        q = self.get_query(
+            query=q, summary=True, fields=['SUM(*)'], time=time, timezone=timezone
+        )
         res = list(query(q, epoch='s').get_points())
         if not res:
             return []
         res = res[0]
-        res = {key: value for key, value in res.items()
-               if value is not None}
-        sorted_dict = OrderedDict(
-            sorted(res.items(),
-                   key=operator.itemgetter(1))
-        )
+        res = {key: value for key, value in res.items() if value is not None}
+        sorted_dict = OrderedDict(sorted(res.items(), key=operator.itemgetter(1)))
         # TODO: remove this!
         if 'sum_total' in sorted_dict:
             del sorted_dict['sum_total']
@@ -447,7 +452,13 @@ class Graph(TimeStampedEditableModel):
         top = keys[0:number]
         return [item.replace('sum_', '') for item in top]
 
-    def read(self, decimal_places=2, time=DEFAULT_TIME, x_axys=True, timezone=settings.TIME_ZONE):
+    def read(
+        self,
+        decimal_places=2,
+        time=DEFAULT_TIME,
+        x_axys=True,
+        timezone=settings.TIME_ZONE,
+    ):
         traces = {}
         if x_axys:
             x = []
@@ -456,9 +467,9 @@ class Graph(TimeStampedEditableModel):
             if self.top_fields:
                 fields = self._get_top_fields(self.top_fields)
                 data_query = self.get_query(fields=fields, **query_kwargs)
-                summary_query = self.get_query(fields=fields,
-                                               summary=True,
-                                               **query_kwargs)
+                summary_query = self.get_query(
+                    fields=fields, summary=True, **query_kwargs
+                )
             else:
                 data_query = self.get_query(**query_kwargs)
                 summary_query = self.get_query(summary=True, **query_kwargs)
@@ -475,8 +486,9 @@ class Graph(TimeStampedEditableModel):
                 if decimal_places and isinstance(value, (int, float)):
                     value = self._round(value, decimal_places)
                 traces[key].append(value)
-            time = datetime.fromtimestamp(point['time'], tz=tz(timezone)) \
-                           .strftime('%Y-%m-%d %H:%M')
+            time = datetime.fromtimestamp(point['time'], tz=tz(timezone)).strftime(
+                '%Y-%m-%d %H:%M'
+            )
             if x_axys:
                 x.append(time)
         # prepare result to be returned
@@ -517,17 +529,18 @@ class Graph(TimeStampedEditableModel):
 
 class Threshold(TimeStampedEditableModel):
     _SECONDS_MAX = 60 * 60 * 24 * 7  # 7 days
-    _SECONDS_HELP = 'for how long should the threshold value be crossed before ' \
-                    'triggering an alert? The maximum allowed is {0} seconds ' \
-                    '({1} days)'.format(_SECONDS_MAX, int(_SECONDS_MAX / 60 / 60 / 24))
-    _THRESHOLD_OPERATORS = (('<', _('less than')),
-                            ('>', _('greater than')))
+    _SECONDS_HELP = (
+        'for how long should the threshold value be crossed before '
+        'triggering an alert? The maximum allowed is {0} seconds '
+        '({1} days)'.format(_SECONDS_MAX, int(_SECONDS_MAX / 60 / 60 / 24))
+    )
+    _THRESHOLD_OPERATORS = (('<', _('less than')), ('>', _('greater than')))
     metric = models.OneToOneField(Metric, on_delete=models.CASCADE)
     operator = models.CharField(max_length=1, choices=_THRESHOLD_OPERATORS)
     value = models.IntegerField(help_text=_('threshold value'))
-    seconds = models.PositiveIntegerField(default=0,
-                                          validators=[MaxValueValidator(604800)],
-                                          help_text=_(_SECONDS_HELP))
+    seconds = models.PositiveIntegerField(
+        default=0, validators=[MaxValueValidator(604800)], help_text=_(_SECONDS_HELP)
+    )
 
     def _value_crossed(self, current_value):
         threshold_value = self.value
@@ -560,7 +573,9 @@ class Threshold(TimeStampedEditableModel):
                     continue
                 if not self._value_crossed(point[self.metric.field_name]):
                     return False
-                if self._time_crossed(make_aware(datetime.fromtimestamp(point['time']))):
+                if self._time_crossed(
+                    make_aware(datetime.fromtimestamp(point['time']))
+                ):
                     return True
                 # if threshold value is crossed but threshold time is not
                 # keep iterating (explicit continue statement added

@@ -19,21 +19,26 @@ class Check(TimeStampedEditableModel):
     name = models.CharField(max_length=64, db_index=True)
     active = models.BooleanField(default=True, db_index=True)
     description = models.TextField(blank=True, help_text=_('Notes'))
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE,
-                                     null=True, blank=True)
+    content_type = models.ForeignKey(
+        ContentType, on_delete=models.CASCADE, null=True, blank=True
+    )
     object_id = models.CharField(max_length=36, db_index=True, blank=True)
     content_object = GenericForeignKey('content_type', 'object_id')
-    check = models.CharField(_('check type'),
-                             choices=app_settings.CHECK_CLASSES,
-                             db_index=True,
-                             max_length=128,
-                             help_text=_('Select check type'))
-    params = JSONField(_('parameters'),
-                       default=dict,
-                       blank=True,
-                       help_text=_('parameters needed to perform the check'),
-                       load_kwargs={'object_pairs_hook': OrderedDict},
-                       dump_kwargs={'indent': 4})
+    check = models.CharField(
+        _('check type'),
+        choices=app_settings.CHECK_CLASSES,
+        db_index=True,
+        max_length=128,
+        help_text=_('Select check type'),
+    )
+    params = JSONField(
+        _('parameters'),
+        default=dict,
+        blank=True,
+        help_text=_('parameters needed to perform the check'),
+        load_kwargs={'object_pairs_hook': OrderedDict},
+        dump_kwargs={'indent': 4},
+    )
 
     class Meta:
         unique_together = ('name', 'object_id', 'content_type')
@@ -61,8 +66,7 @@ class Check(TimeStampedEditableModel):
         returns check class instance
         """
         check_class = self.check_class
-        return check_class(check=self,
-                           params=self.params)
+        return check_class(check=self, params=self.params)
 
     def perform_check(self, store=True):
         """
@@ -92,6 +96,6 @@ if app_settings.AUTO_PING:
                     model=sender.__name__.lower(),
                     app_label=sender._meta.app_label,
                     object_id=str(instance.pk),
-                    created=created
+                    created=created,
                 )
             )

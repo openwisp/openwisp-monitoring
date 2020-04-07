@@ -17,23 +17,26 @@ def create_default_groups(apps, schema_editor):
         operator = group.objects.create(name='Operator')
     else:
         operator = operator.first()
-    
+
     admin = group.objects.filter(name='Administrator')
     if admin.count() == 0:
         admin = group.objects.create(name='Administrator')
     else:
         admin = admin.first()
     permissions = [
-        Permission.objects.get(content_type__app_label='notifications',
-                                             codename='add_notification').pk,
-        Permission.objects.get(content_type__app_label='notifications',
-                                             codename='change_notification').pk,
-        Permission.objects.get(content_type__app_label='notifications',
-                                             codename='delete_notification').pk
+        Permission.objects.get(
+            content_type__app_label='notifications', codename='add_notification'
+        ).pk,
+        Permission.objects.get(
+            content_type__app_label='notifications', codename='change_notification'
+        ).pk,
+        Permission.objects.get(
+            content_type__app_label='notifications', codename='delete_notification'
+        ).pk,
     ]
     permissions += operator.permissions.all()
     operator.permissions.set(permissions)
-    
+
     permissions += admin.permissions.all()
     admin.permissions.set(permissions)
 
@@ -42,8 +45,9 @@ class Migration(migrations.Migration):
     dependencies = [
         ('notifications', '0002_notification_users'),
     ]
-    
+
     operations = [
-        migrations.RunPython(create_default_groups,
-                                    reverse_code=migrations.RunPython.noop),
+        migrations.RunPython(
+            create_default_groups, reverse_code=migrations.RunPython.noop
+        ),
     ]

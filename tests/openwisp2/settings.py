@@ -58,7 +58,11 @@ INSTALLED_APPS = [
     'channels',
 ]
 
-EXTENDED_APPS = ('django_netjsonconfig', 'django_x509', 'django_loci',)
+EXTENDED_APPS = (
+    'django_netjsonconfig',
+    'django_x509',
+    'django_loci',
+)
 
 AUTH_USER_MODEL = 'openwisp_users.User'
 SITE_ID = '1'
@@ -83,9 +87,7 @@ ROOT_URLCONF = 'openwisp2.urls'
 
 ASGI_APPLICATION = 'openwisp_controller.geo.channels.routing.channel_routing'
 CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer'
-    },
+    'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'},
 }
 
 TIME_ZONE = 'Europe/Rome'
@@ -114,7 +116,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'openwisp_utils.admin_theme.context_processor.menu_items',
-                'openwisp_utils.admin_theme.context_processor.admin_theme_settings'
+                'openwisp_utils.admin_theme.context_processor.admin_theme_settings',
             ],
         },
     }
@@ -137,9 +139,7 @@ CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': 'redis://localhost/0',
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        }
+        'OPTIONS': {'CLIENT_CLASS': 'django_redis.client.DefaultClient',},
     }
 }
 
@@ -158,7 +158,7 @@ CELERYBEAT_SCHEDULE = {
         'task': 'openwisp_monitoring.check.tasks.run_checks',
         'schedule': timedelta(minutes=5),
         'args': None,
-        'relative': True
+        'relative': True,
     },
 }
 
@@ -167,11 +167,7 @@ EMAIL_BACKEND = 'djcelery_email.backends.CeleryEmailBackend'
 
 LOGGING = {
     'version': 1,
-    'filters': {
-        'require_debug_true': {
-            '()': 'django.utils.log.RequireDebugTrue',
-        }
-    },
+    'filters': {'require_debug_true': {'()': 'django.utils.log.RequireDebugTrue',}},
     'handlers': {
         'console': {
             'level': 'DEBUG',
@@ -180,18 +176,10 @@ LOGGING = {
         }
     },
     'loggers': {
-        'py.warnings': {
-            'handlers': ['console'],
-        },
-        'celery': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-        },
-        'celery.task': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-        },
-    }
+        'py.warnings': {'handlers': ['console'],},
+        'celery': {'handlers': ['console'], 'level': 'DEBUG',},
+        'celery.task': {'handlers': ['console'], 'level': 'DEBUG',},
+    },
 }
 
 # local settings must be imported before test runner otherwise they'll be ignored

@@ -14,6 +14,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
     """
     Tests API (device metric collection)
     """
+
     def _url(self, pk, key=None):
         url = reverse('monitoring:api_device_metric', args=[pk])
         if key:
@@ -61,10 +62,10 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                                 'wmm': True,
                                 'aid': 1,
                                 'mfp': False,
-                                'auth': True
+                                'auth': True,
                             }
-                        ]
-                    }
+                        ],
+                    },
                 },
                 {
                     'name': 'wlan1',
@@ -98,7 +99,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                                 'wmm': True,
                                 'aid': 1,
                                 'mfp': False,
-                                'auth': True
+                                'auth': True,
                             },
                             {
                                 'mac': 'c0:ee:fb:34:f5:4b',
@@ -112,39 +113,22 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                                 'wmm': True,
                                 'aid': 1,
                                 'mfp': False,
-                                'auth': True
-                            }
+                                'auth': True,
+                            },
                         ],
                     },
-                }
-            ]
+                },
+            ],
         }
 
     _garbage_clients = {
         'type': 'DeviceMonitoring',
         'interfaces': [
-            {
-                'name': 'garbage1',
-                'wireless': {
-                    'clients': {},
-                },
-            },
-            {
-                'name': 'garbage2',
-                'wireless': {
-                    'clients': [
-                        {'what?': 'mac missing'}
-                    ],
-                },
-            },
-            {
-                'name': 'garbage3',
-                'wireless': {},
-            },
-            {
-                'name': 'garbage4'
-            }
-        ]
+            {'name': 'garbage1', 'wireless': {'clients': {},},},
+            {'name': 'garbage2', 'wireless': {'clients': [{'what?': 'mac missing'}],},},
+            {'name': 'garbage3', 'wireless': {},},
+            {'name': 'garbage4'},
+        ],
     }
 
     def test_404(self):
@@ -166,9 +150,9 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(r.status_code, 400)
         r = self._post_data(d.id, d.key, {'type': 'wrong'})
         self.assertEqual(r.status_code, 400)
-        r = self._post_data(d.id, d.key, {
-            'type': 'DeviceMonitoring', 'interfaces': [{}]
-        })
+        r = self._post_data(
+            d.id, d.key, {'type': 'DeviceMonitoring', 'interfaces': [{}]}
+        )
         self.assertEqual(r.status_code, 400)
 
     def test_200_none(self):
@@ -195,19 +179,19 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertDictEqual(dd.data, data)
         self.assertEqual(Metric.objects.count(), 6)
         self.assertEqual(Graph.objects.count(), 4)
-        if_dict = {'wlan0': data['interfaces'][0],
-                   'wlan1': data['interfaces'][1]}
+        if_dict = {'wlan0': data['interfaces'][0], 'wlan1': data['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
             for field_name in ['rx_bytes', 'tx_bytes']:
-                m = Metric.objects.get(key=ifname, field_name=field_name,
-                                       object_id=d.pk)
+                m = Metric.objects.get(
+                    key=ifname, field_name=field_name, object_id=d.pk
+                )
                 points = m.read(limit=10, order='time DESC')
                 self.assertEqual(len(points), 1)
-                self.assertEqual(points[0][m.field_name],
-                                 iface['statistics'][field_name])
-            m = Metric.objects.get(key=ifname, field_name='clients',
-                                   object_id=d.pk)
+                self.assertEqual(
+                    points[0][m.field_name], iface['statistics'][field_name]
+                )
+            m = Metric.objects.get(key=ifname, field_name='clients', object_id=d.pk)
             points = m.read(limit=10, order='time DESC')
             self.assertEqual(len(points), len(iface['wireless']['clients']))
 
@@ -226,19 +210,18 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertDictEqual(dd.data, data2)
         self.assertEqual(Metric.objects.count(), 6)
         self.assertEqual(Graph.objects.count(), 4)
-        if_dict = {'wlan0': data2['interfaces'][0],
-                   'wlan1': data2['interfaces'][1]}
+        if_dict = {'wlan0': data2['interfaces'][0], 'wlan1': data2['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
             for field_name in ['rx_bytes', 'tx_bytes']:
-                m = Metric.objects.get(key=ifname, field_name=field_name,
-                                       object_id=d.pk)
+                m = Metric.objects.get(
+                    key=ifname, field_name=field_name, object_id=d.pk
+                )
                 points = m.read(limit=10, order='time DESC')
                 self.assertEqual(len(points), 2)
                 expected = iface['statistics'][field_name] - points[1][m.field_name]
                 self.assertEqual(points[0][m.field_name], expected)
-            m = Metric.objects.get(key=ifname, field_name='clients',
-                                   object_id=d.pk)
+            m = Metric.objects.get(key=ifname, field_name='clients', object_id=d.pk)
             points = m.read(limit=10, order='time DESC')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
@@ -257,19 +240,18 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertDictEqual(dd.data, data2)
         self.assertEqual(Metric.objects.count(), 6)
         self.assertEqual(Graph.objects.count(), 4)
-        if_dict = {'wlan0': data2['interfaces'][0],
-                   'wlan1': data2['interfaces'][1]}
+        if_dict = {'wlan0': data2['interfaces'][0], 'wlan1': data2['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
             for field_name in ['rx_bytes', 'tx_bytes']:
-                m = Metric.objects.get(key=ifname, field_name=field_name,
-                                       object_id=d.pk)
+                m = Metric.objects.get(
+                    key=ifname, field_name=field_name, object_id=d.pk
+                )
                 points = m.read(limit=10, order='time DESC')
                 self.assertEqual(len(points), 2)
                 expected = iface['statistics'][field_name]
                 self.assertEqual(points[0][m.field_name], expected)
-            m = Metric.objects.get(key=ifname, field_name='clients',
-                                   object_id=d.pk)
+            m = Metric.objects.get(key=ifname, field_name='clients', object_id=d.pk)
             points = m.read(limit=10, order='time DESC')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
@@ -305,8 +287,10 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         dd = self._create_multiple_measurements()
         self.assertEqual(Metric.objects.count(), 6)
         self.assertEqual(Graph.objects.count(), 4)
-        expected = {'wlan0': {'rx_bytes': 10000, 'tx_bytes': 6000},
-                    'wlan1': {'rx_bytes': 4587, 'tx_bytes': 2993}}
+        expected = {
+            'wlan0': {'rx_bytes': 10000, 'tx_bytes': 6000},
+            'wlan1': {'rx_bytes': 4587, 'tx_bytes': 2993},
+        }
         # wlan0 rx_bytes
         m = Metric.objects.get(key='wlan0', field_name='rx_bytes', object_id=dd.pk)
         points = m.read(limit=10, order='time DESC')
@@ -381,11 +365,8 @@ class TestDeviceApi(DeviceMonitoringTestCase):
     def test_get_device_metrics_histogram_ignore_x(self):
         o = self._create_org()
         d = self._create_device(organization=o)
-        m = self._create_object_metric(content_object=d,
-                                       name='applications')
-        g = self._create_graph(metric=m,
-                               type='histogram',
-                               description='zxw histogram')
+        m = self._create_object_metric(content_object=d, name='applications')
+        g = self._create_graph(metric=m, type='histogram', description='zxw histogram')
         g.query = g.query.replace('{field_name}', 'SUM({field_name})')
         g.save()
         self._create_multiple_measurements(create=False)
@@ -423,15 +404,18 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(r.get('Content-Type'), 'text/csv')
         rows = r.content.decode('utf8').strip().split('\n')
         header = rows[0].strip().split(',')
-        self.assertEqual(header, [
-            'time',
-            'download - wlan1 traffic (GB)',
-            'upload - wlan1 traffic (GB)',
-            'value',
-            'download - wlan0 traffic (GB)',
-            'upload - wlan0 traffic (GB)',
-            'value'
-        ])
+        self.assertEqual(
+            header,
+            [
+                'time',
+                'download - wlan1 traffic (GB)',
+                'upload - wlan1 traffic (GB)',
+                'value',
+                'download - wlan0 traffic (GB)',
+                'upload - wlan0 traffic (GB)',
+                'value',
+            ],
+        )
         last_line = rows[-1].strip().split(',')
         self.assertEqual(last_line, [last_line[0], '3', '1.5', '2', '1.2', '0.6', '1'])
 
@@ -441,7 +425,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         wrong_timezone_values = (
             'wrong',
             'America/Lima%27);%20DROP%20DATABASE%20test2;',
-            'Europe/Cazzuoli'
+            'Europe/Cazzuoli',
         )
         for tz_value in wrong_timezone_values:
             url = '{0}&timezone={1}'.format(self._url(d.pk, d.key), tz_value)

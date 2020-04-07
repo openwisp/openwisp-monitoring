@@ -29,30 +29,69 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='DeviceMonitoring',
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('created', model_utils.fields.AutoCreatedField(default=django.utils.timezone.now, editable=False, verbose_name='created')),
-                ('modified', model_utils.fields.AutoLastModifiedField(default=django.utils.timezone.now, editable=False, verbose_name='modified')),
-                ('status', model_utils.fields.StatusField(
-                    choices=[
-                        ('unknown', _(app_settings.HEALTH_STATUS_LABELS['unknown'])),
-                        ('ok', _(app_settings.HEALTH_STATUS_LABELS['ok'])),
-                        ('problem', _(app_settings.HEALTH_STATUS_LABELS['problem'])),
-                        ('critical', _(app_settings.HEALTH_STATUS_LABELS['critical']))
-                    ],
-                    default='unknown', db_index=True,
-                    help_text=DeviceMonitoring._meta.get_field('status').help_text,
-                    max_length=100,
-                    no_check_for_status=True,
-                    verbose_name='health status'
-                )),
-                ('device', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='monitoring', to='config.Device')),
+                (
+                    'id',
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    'created',
+                    model_utils.fields.AutoCreatedField(
+                        default=django.utils.timezone.now,
+                        editable=False,
+                        verbose_name='created',
+                    ),
+                ),
+                (
+                    'modified',
+                    model_utils.fields.AutoLastModifiedField(
+                        default=django.utils.timezone.now,
+                        editable=False,
+                        verbose_name='modified',
+                    ),
+                ),
+                (
+                    'status',
+                    model_utils.fields.StatusField(
+                        choices=[
+                            (
+                                'unknown',
+                                _(app_settings.HEALTH_STATUS_LABELS['unknown']),
+                            ),
+                            ('ok', _(app_settings.HEALTH_STATUS_LABELS['ok'])),
+                            (
+                                'problem',
+                                _(app_settings.HEALTH_STATUS_LABELS['problem']),
+                            ),
+                            (
+                                'critical',
+                                _(app_settings.HEALTH_STATUS_LABELS['critical']),
+                            ),
+                        ],
+                        default='unknown',
+                        db_index=True,
+                        help_text=DeviceMonitoring._meta.get_field('status').help_text,
+                        max_length=100,
+                        no_check_for_status=True,
+                        verbose_name='health status',
+                    ),
+                ),
+                (
+                    'device',
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='monitoring',
+                        to='config.Device',
+                    ),
+                ),
             ],
-            options={
-                'abstract': False,
-            },
+            options={'abstract': False,},
         ),
         migrations.RunPython(
-            create_device_monitoring,
-            reverse_code=migrations.RunPython.noop
+            create_device_monitoring, reverse_code=migrations.RunPython.noop
         ),
     ]

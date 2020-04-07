@@ -24,8 +24,5 @@ class Migration(migrations.Migration):
             field=models.BooleanField(db_index=True, default=True),
         ),
         migrations.RunPython(forward, reverse_code=backward),
-        migrations.RemoveField(
-            model_name='metric',
-            name='health',
-        ),
+        migrations.RemoveField(model_name='metric', name='health',),
     ]

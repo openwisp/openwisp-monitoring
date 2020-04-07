@@ -17,20 +17,24 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
     _RESULT_KEYS = ['reachable', 'loss', 'rtt_min', 'rtt_avg', 'rtt_max']
     _RTT_KEYS = _RESULT_KEYS[-3:]
     _UNRECOGNIZED_OUTPUT = (
-        '', bytes("fping: option requires an argument -- 'z'",
-                  encoding='utf8')
+        '',
+        bytes("fping: option requires an argument -- 'z'", encoding='utf8'),
     )
-    _FPING_OUTPUT = ('', bytes('10.40.0.1 : xmt/rcv/%loss = 5/5/0%, '
-                               'min/avg/max = 0.04/0.08/0.15', 'utf8'))
+    _FPING_OUTPUT = (
+        '',
+        bytes(
+            '10.40.0.1 : xmt/rcv/%loss = 5/5/0%, ' 'min/avg/max = 0.04/0.08/0.15',
+            'utf8',
+        ),
+    )
 
     def test_check_ping_no_params(self):
         device = self._create_device(organization=self._create_org())
         # will ping localhost
         device.management_ip = '127.0.0.1'
-        check = Check(name='Ping check',
-                      check=self._PING,
-                      content_object=device,
-                      params={})
+        check = Check(
+            name='Ping check', check=self._PING, content_object=device, params={}
+        )
         result = check.perform_check(store=False)
         for key in self._RESULT_KEYS:
             self.assertIn(key, result)
@@ -43,13 +47,12 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         device = self._create_device(organization=self._create_org())
         # will ping localhost
         device.management_ip = '127.0.0.1'
-        check = Check(name='Ping check',
-                      check=self._PING,
-                      content_object=device,
-                      params={'count': 2,
-                              'interval': 10,
-                              'bytes': 10,
-                              'timeout': 50})
+        check = Check(
+            name='Ping check',
+            check=self._PING,
+            content_object=device,
+            params={'count': 2, 'interval': 10, 'bytes': 10, 'timeout': 50},
+        )
         result = check.perform_check(store=False)
         for key in self._RESULT_KEYS:
             self.assertIn(key, result)
@@ -62,10 +65,12 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         device = self._create_device(organization=self._create_org())
         # will hopefully ping an unexisting private address
         device.management_ip = '192.168.255.255'
-        check = Check(name='Ping check',
-                      check=self._PING,
-                      content_object=device,
-                      params={'timeout': 50, 'count': 3})
+        check = Check(
+            name='Ping check',
+            check=self._PING,
+            content_object=device,
+            params={'timeout': 50, 'count': 3},
+        )
         result = check.perform_check(store=False)
         for key in self._RESULT_KEYS[0:2]:
             self.assertIn(key, result)
@@ -76,10 +81,12 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
     def test_operational_error(self, _command):
         device = self._create_device(organization=self._create_org())
         device.management_ip = '127.0.0.1'
-        check = Check(name='Ping check',
-                      check=self._PING,
-                      content_object=device,
-                      params={'timeout': 50, 'count': 3})
+        check = Check(
+            name='Ping check',
+            check=self._PING,
+            content_object=device,
+            params={'timeout': 50, 'count': 3},
+        )
         try:
             check.perform_check(store=False)
         except OperationalError as e:
@@ -89,10 +96,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
 
     def test_device_has_no_ip(self):
         d = self._create_device(organization=self._create_org())
-        check = Check(name='Ping check',
-                      check=self._PING,
-                      content_object=d,
-                      params={})
+        check = Check(name='Ping check', check=self._PING, content_object=d, params={})
         # nothing bad should happen
         result = check.perform_check(store=False)
         self.assertIsNone(result)
@@ -101,10 +105,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         d = self._create_device(organization=self._create_org())
         d.management_ip = '10.40.0.1'
         d.save()
-        check = Check(name='Ping check',
-                      check=self._PING,
-                      content_object=d,
-                      params={})
+        check = Check(name='Ping check', check=self._PING, content_object=d, params={})
         check.full_clean()
         check.save()
         # dev = d
@@ -121,9 +122,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
             self.fail('check was not deleted')
 
     def test_content_object_none(self):
-        check = Check(name='Ping check',
-                      check=self._PING,
-                      params={})
+        check = Check(name='Ping check', check=self._PING, params={})
         try:
             check.check_instance.validate()
         except ValidationError as e:
@@ -132,10 +131,12 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
             self.fail('ValidationError not raised')
 
     def test_content_object_not_device(self):
-        check = Check(name='Ping check',
-                      check=self._PING,
-                      content_object=self._create_user(),
-                      params={})
+        check = Check(
+            name='Ping check',
+            check=self._PING,
+            content_object=self._create_user(),
+            params={},
+        )
         try:
             check.check_instance.validate()
         except ValidationError as e:
@@ -147,16 +148,21 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         device = self._create_device(organization=self._create_org())
         device.management_ip = '127.0.0.1'
         invalid_params = [
-            {'count': 1}, {'interval': 9},
-            {'bytes': 0}, {'timeout': 2},
-            {'count': 'ciao'}, {'wrong': True},
-            {'bytes': 999999, 'count': 99}
+            {'count': 1},
+            {'interval': 9},
+            {'bytes': 0},
+            {'timeout': 2},
+            {'count': 'ciao'},
+            {'wrong': True},
+            {'bytes': 999999, 'count': 99},
         ]
         for params in invalid_params:
-            check = Check(name='Ping check',
-                          check=self._PING,
-                          content_object=device,
-                          params=params)
+            check = Check(
+                name='Ping check',
+                check=self._PING,
+                content_object=device,
+                params=params,
+            )
             try:
                 check.check_instance.validate()
             except ValidationError as e:

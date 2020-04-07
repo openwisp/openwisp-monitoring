@@ -24,10 +24,7 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
     def test_general_check_threshold_crossed_immediate(self):
         admin = self._create_admin()
         m = self._create_general_metric(name='load')
-        self._create_threshold(metric=m,
-                               operator='>',
-                               value=90,
-                               seconds=0)
+        self._create_threshold(metric=m, operator='>', value=90, seconds=0)
         m.write(99)
         self.assertFalse(m.is_healthy)
         self.assertEqual(Notification.objects.count(), 1)
@@ -57,10 +54,7 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
     def test_general_check_threshold_crossed_deferred(self):
         admin = self._create_admin()
         m = self._create_general_metric(name='load')
-        self._create_threshold(metric=m,
-                               operator='>',
-                               value=90,
-                               seconds=60)
+        self._create_threshold(metric=m, operator='>', value=90, seconds=60)
         m.write(99, time=ten_minutes_ago)
         self.assertFalse(m.is_healthy)
         self.assertEqual(Notification.objects.count(), 1)
@@ -73,10 +67,7 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
     def test_general_check_threshold_deferred_not_crossed(self):
         self._create_admin()
         m = self._create_general_metric(name='load')
-        self._create_threshold(metric=m,
-                               operator='>',
-                               value=90,
-                               seconds=60)
+        self._create_threshold(metric=m, operator='>', value=90, seconds=60)
         m.write(99)
         self.assertTrue(m.is_healthy)
         self.assertEqual(Notification.objects.count(), 0)
@@ -91,16 +82,12 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         """
         admin = self._create_admin()
         m = self._create_general_metric(name='load')
-        self._create_threshold(metric=m,
-                               operator='>',
-                               value=90,
-                               seconds=61)
+        self._create_threshold(metric=m, operator='>', value=90, seconds=61)
         m.write(89, time=ten_minutes_ago)
         self.assertTrue(m.is_healthy)
         self.assertEqual(Notification.objects.count(), 0)
         # this write won't trigger a notification
-        m.write(91, time=ten_minutes_ago,
-                check=False)
+        m.write(91, time=ten_minutes_ago, check=False)
         self.assertEqual(Notification.objects.count(), 0)
         # this one will
         m.write(92)
@@ -132,10 +119,7 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
     def test_object_check_threshold_crossed_immediate(self):
         admin = self._create_admin()
         om = self._create_object_metric(name='load')
-        t = self._create_threshold(metric=om,
-                                   operator='>',
-                                   value=90,
-                                   seconds=0)
+        t = self._create_threshold(metric=om, operator='>', value=90, seconds=0)
         om.write(99)
         self.assertFalse(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 1)
@@ -167,10 +151,7 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
     def test_object_check_threshold_crossed_deferred(self):
         admin = self._create_admin()
         om = self._create_object_metric(name='load')
-        t = self._create_threshold(metric=om,
-                                   operator='>',
-                                   value=90,
-                                   seconds=60)
+        t = self._create_threshold(metric=om, operator='>', value=90, seconds=60)
         om.write(99, time=ten_minutes_ago)
         self.assertFalse(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 1)
@@ -184,10 +165,7 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
     def test_object_check_threshold_deferred_not_crossed(self):
         self._create_admin()
         om = self._create_object_metric(name='load')
-        self._create_threshold(metric=om,
-                               operator='>',
-                               value=90,
-                               seconds=60)
+        self._create_threshold(metric=om, operator='>', value=90, seconds=60)
         om.write(99)
         self.assertTrue(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 0)
@@ -195,10 +173,7 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
     def test_object_check_threshold_crossed_for_long_time(self):
         admin = self._create_admin()
         om = self._create_object_metric(name='load')
-        t = self._create_threshold(metric=om,
-                                   operator='>',
-                                   value=90,
-                                   seconds=61)
+        t = self._create_threshold(metric=om, operator='>', value=90, seconds=61)
         om.write(89, time=ten_minutes_ago)
         self.assertEqual(Notification.objects.count(), 0)
         om.write(91, time=ten_minutes_ago, check=False)
@@ -234,23 +209,21 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
     def test_general_metric_multiple_notifications(self):
         testorg = self._create_org()
         admin = self._create_admin()
-        staff = self._create_user(username='staff',
-                                  email='staff@staff.com',
-                                  password='staff',
-                                  is_staff=True)
-        self._create_user(username='staff-lone',
-                          email='staff-lone@staff.com',
-                          password='staff',
-                          is_staff=True)
+        staff = self._create_user(
+            username='staff', email='staff@staff.com', password='staff', is_staff=True
+        )
+        self._create_user(
+            username='staff-lone',
+            email='staff-lone@staff.com',
+            password='staff',
+            is_staff=True,
+        )
         user = self._create_user(is_staff=False)
         OrganizationUser.objects.create(user=user, organization=testorg)
         OrganizationUser.objects.create(user=staff, organization=testorg)
         self.assertIsNotNone(staff.notificationuser)
         m = self._create_general_metric(name='load')
-        t = self._create_threshold(metric=m,
-                                   operator='>',
-                                   value=90,
-                                   seconds=61)
+        t = self._create_threshold(metric=m, operator='>', value=90, seconds=61)
         m._notify_users(level='info', verb='test', threshold=t)
         self.assertEqual(Notification.objects.count(), 1)
         n = notification_queryset.first()
@@ -266,24 +239,22 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
     def test_object_metric_multiple_notifications(self):
         testorg = self._create_org()
         admin = self._create_admin()
-        staff = self._create_user(username='staff',
-                                  email='staff@staff.com',
-                                  password='staff',
-                                  is_staff=True)
-        self._create_user(username='staff-lone',
-                          email='staff-lone@staff.com',
-                          password='staff',
-                          is_staff=True)
+        staff = self._create_user(
+            username='staff', email='staff@staff.com', password='staff', is_staff=True
+        )
+        self._create_user(
+            username='staff-lone',
+            email='staff-lone@staff.com',
+            password='staff',
+            is_staff=True,
+        )
         user = self._create_user(is_staff=False)
         OrganizationUser.objects.create(user=user, organization=testorg)
         OrganizationUser.objects.create(user=staff, organization=testorg)
         self.assertIsNotNone(staff.notificationuser)
         d = self._create_device(organization=testorg)
         om = self._create_object_metric(name='load', content_object=d)
-        t = self._create_threshold(metric=om,
-                                   operator='>',
-                                   value=90,
-                                   seconds=61)
+        t = self._create_threshold(metric=om, operator='>', value=90, seconds=61)
         om._notify_users(level='info', verb='test', threshold=t)
         self.assertEqual(Notification.objects.count(), 2)
         n = notification_queryset.first()
@@ -306,23 +277,21 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
     def test_object_metric_multiple_notifications_no_org(self):
         testorg = self._create_org()
         admin = self._create_admin()
-        staff = self._create_user(username='staff',
-                                  email='staff@staff.com',
-                                  password='staff',
-                                  is_staff=True)
-        self._create_user(username='staff-lone',
-                          email='staff-lone@staff.com',
-                          password='staff',
-                          is_staff=True)
+        staff = self._create_user(
+            username='staff', email='staff@staff.com', password='staff', is_staff=True
+        )
+        self._create_user(
+            username='staff-lone',
+            email='staff-lone@staff.com',
+            password='staff',
+            is_staff=True,
+        )
         user = self._create_user(is_staff=False)
         OrganizationUser.objects.create(user=user, organization=testorg)
         OrganizationUser.objects.create(user=staff, organization=testorg)
         self.assertIsNotNone(staff.notificationuser)
         om = self._create_object_metric(name='logins', content_object=user)
-        t = self._create_threshold(metric=om,
-                                   operator='>',
-                                   value=90,
-                                   seconds=0)
+        t = self._create_threshold(metric=om, operator='>', value=90, seconds=0)
         om._notify_users(level='info', verb='test', threshold=t)
         self.assertEqual(Notification.objects.count(), 1)
         n = notification_queryset.first()
@@ -336,10 +305,7 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
     def _create_notification(self):
         d = self._create_device(organization=self._create_org())
         m = self._create_object_metric(name='load', content_object=d)
-        self._create_threshold(metric=m,
-                               operator='>',
-                               value=90,
-                               seconds=0)
+        self._create_threshold(metric=m, operator='>', value=90, seconds=0)
         m.write(99)
 
     def test_superuser_notifications_disabled(self):

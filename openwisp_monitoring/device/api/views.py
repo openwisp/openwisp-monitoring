@@ -43,11 +43,12 @@ class DeviceMetricView(GenericAPIView):
             return Response({'detail': 'not found'}, status=404)
         self.instance = self.get_object()
         device_model = self.model.mro()[1]
-        ct = ContentType.objects.get(model=device_model.__name__.lower(),
-                                     app_label=device_model._meta.app_label)
-        graphs = Graph.objects.filter(metric__object_id=pk,
-                                      metric__content_type=ct) \
-                              .order_by('-description')
+        ct = ContentType.objects.get(
+            model=device_model.__name__.lower(), app_label=device_model._meta.app_label
+        )
+        graphs = Graph.objects.filter(
+            metric__object_id=pk, metric__content_type=ct
+        ).order_by('-description')
         # determine time range
         time = request.query_params.get('time', Graph.DEFAULT_TIME)
         if time not in Graph.GROUP_MAP.keys():
@@ -146,11 +147,9 @@ class DeviceMetricView(GenericAPIView):
                 if key not in self.statistics_stored:
                     continue
                 name = '{0} {1}'.format(ifname, key)
-                metric, created = Metric._get_or_create(object_id=pk,
-                                                        content_type=ct,
-                                                        key=ifname,
-                                                        field_name=key,
-                                                        name=name)
+                metric, created = Metric._get_or_create(
+                    object_id=pk, content_type=ct, key=ifname, field_name=key, name=name
+                )
                 increment = self._calculate_increment(ifname, key, value)
                 metric.write(increment)
                 if created:
@@ -162,11 +161,13 @@ class DeviceMetricView(GenericAPIView):
             if not isinstance(clients, list):
                 continue
             name = '{0} wifi clients'.format(ifname)
-            metric, created = Metric._get_or_create(object_id=pk,
-                                                    content_type=ct,
-                                                    key=ifname,
-                                                    field_name='clients',
-                                                    name=name)
+            metric, created = Metric._get_or_create(
+                object_id=pk,
+                content_type=ct,
+                key=ifname,
+                field_name='clients',
+                name=name,
+            )
             for client in clients:
                 if 'mac' not in client:
                     continue
@@ -202,14 +203,19 @@ class DeviceMetricView(GenericAPIView):
         """
         create "traffic (GB)" graph
         """
-        if (metric.field_name != 'tx_bytes' or 'traffic' not in monitoring_settings.AUTO_GRAPHS):
+        if (
+            metric.field_name != 'tx_bytes'
+            or 'traffic' not in monitoring_settings.AUTO_GRAPHS
+        ):
             return
-        graph = Graph(metric=metric,
-                      description=_('{0} traffic (GB)').format(metric.key),
-                      query="SELECT SUM(tx_bytes) / 1000000000 AS upload, "
-                            "SUM(rx_bytes) / 1000000000 AS download FROM {key} "
-                            "WHERE time >= '{time}' AND content_type = '{content_type}' "
-                            "AND object_id = '{object_id}' GROUP BY time(24h) fill(0)")
+        graph = Graph(
+            metric=metric,
+            description=_('{0} traffic (GB)').format(metric.key),
+            query="SELECT SUM(tx_bytes) / 1000000000 AS upload, "
+            "SUM(rx_bytes) / 1000000000 AS download FROM {key} "
+            "WHERE time >= '{time}' AND content_type = '{content_type}' "
+            "AND object_id = '{object_id}' GROUP BY time(24h) fill(0)",
+        )
         graph.full_clean()
         graph.save()
 
@@ -219,11 +225,13 @@ class DeviceMetricView(GenericAPIView):
         """
         if 'wifi_clients' not in monitoring_settings.AUTO_GRAPHS:
             return
-        graph = Graph(metric=metric,
-                      description=_('{0} clients').format(metric.key),
-                      query="SELECT COUNT(DISTINCT({field_name})) AS value FROM {key} "
-                            "WHERE time >= '{time}' AND content_type = '{content_type}' "
-                            "AND object_id = '{object_id}' GROUP BY time(24h) fill(0)")
+        graph = Graph(
+            metric=metric,
+            description=_('{0} clients').format(metric.key),
+            query="SELECT COUNT(DISTINCT({field_name})) AS value FROM {key} "
+            "WHERE time >= '{time}' AND content_type = '{content_type}' "
+            "AND object_id = '{object_id}' GROUP BY time(24h) fill(0)",
+        )
         graph.full_clean()
         graph.save()
 

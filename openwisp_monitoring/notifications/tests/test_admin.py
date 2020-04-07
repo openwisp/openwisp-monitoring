@@ -29,6 +29,7 @@ class TestAdmin(TestMonitoringMixin, TestCase):
     """
     Tests notifications in admin
     """
+
     def _login_admin(self):
         User = get_user_model()
         u = User.objects.create_superuser('admin', 'admin', 'test@test.com')
@@ -75,10 +76,7 @@ class TestAdmin(TestMonitoringMixin, TestCase):
     def test_mark_as_read_action(self):
         self._create_admin()
         m = self._create_general_metric(name='load')
-        self._create_threshold(metric=m,
-                               operator='>',
-                               value=90,
-                               seconds=0)
+        self._create_threshold(metric=m, operator='>', value=90, seconds=0)
         m.write(99)
         self.assertFalse(m.is_healthy)
         self.assertEqual(Notification.objects.count(), 1)

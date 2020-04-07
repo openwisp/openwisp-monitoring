@@ -10,11 +10,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='notificationuser',
-            name='user',
-        ),
-        migrations.DeleteModel(
-            name='NotificationUser',
-        ),
+        migrations.RemoveField(model_name='notificationuser', name='user',),
+        migrations.DeleteModel(name='NotificationUser',),
     ]

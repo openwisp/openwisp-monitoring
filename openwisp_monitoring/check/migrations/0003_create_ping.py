@@ -7,20 +7,23 @@ def create_device_ping(apps, schema_editor):
     if AUTO_PING:
         Device = apps.get_model('config', 'Device')
         for device in Device.objects.all():
-            auto_create_ping(model=Device.__name__.lower(),
-                            app_label=Device._meta.app_label,
-                            object_id=str(device.pk),
-                            created=True)
+            auto_create_ping(
+                model=Device.__name__.lower(),
+                app_label=Device._meta.app_label,
+                object_id=str(device.pk),
+                created=True,
+            )
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
         ('check', '0002_check_unique_together'),
-        ('config', '0026_hardware_id_not_unique')
+        ('config', '0026_hardware_id_not_unique'),
     ]
 
     operations = [
-        migrations.RunPython(create_device_ping,
-                             reverse_code=migrations.RunPython.noop),
+        migrations.RunPython(
+            create_device_ping, reverse_code=migrations.RunPython.noop
+        ),
     ]

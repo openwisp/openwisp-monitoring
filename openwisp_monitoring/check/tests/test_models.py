@@ -26,19 +26,16 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
 
     def test_check_instance(self):
         obj = self._create_device(organization=self._create_org())
-        c = Check(name='Ping class check',
-                  check=self._PING,
-                  content_object=obj,
-                  params={})
+        c = Check(
+            name='Ping class check', check=self._PING, content_object=obj, params={}
+        )
         i = c.check_instance
         self.assertIsInstance(i, Ping)
         self.assertEqual(i.related_object, obj)
         self.assertEqual(i.params, c.params)
 
     def test_validation(self):
-        check = Check(name='Ping check',
-                      check=self._PING,
-                      params={})
+        check = Check(name='Ping check', check=self._PING, params={})
         try:
             check.full_clean()
         except ValidationError as e:

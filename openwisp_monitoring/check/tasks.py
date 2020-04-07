@@ -18,10 +18,7 @@ def run_checks():
     This allows to enqueue all the checks that need to be performed
     and execute them in parallel with multiple workers if needed.
     """
-    iterator = Check.objects.filter(active=True) \
-                            .only('id') \
-                            .values('id') \
-                            .iterator()
+    iterator = Check.objects.filter(active=True).only('id').values('id').iterator()
     for check in iterator:
         perform_check.delay(check['id'])
 
@@ -44,19 +41,16 @@ def auto_create_ping(model, app_label, object_id, created):
     Called by openwisp_monitoring.check.models.auto_ping_receiver
     """
     ping_path = 'openwisp_monitoring.check.classes.Ping'
-    has_check = Check.objects.filter(
-        object_id=object_id,
-        content_type__model='device',
-        check=ping_path
-    ).count() > 0
+    has_check = (
+        Check.objects.filter(
+            object_id=object_id, content_type__model='device', check=ping_path
+        ).count()
+        > 0
+    )
     # create new check only if necessary
     if has_check:
         return
-    ct = ContentType.objects.get(app_label=app_label,
-                                 model=model)
-    check = Check(name='Ping',
-                  check=ping_path,
-                  content_type=ct,
-                  object_id=object_id)
+    ct = ContentType.objects.get(app_label=app_label, model=model)
+    check = Check(name='Ping', check=ping_path, content_type=ct, object_id=object_id)
     check.full_clean()
     check.save()

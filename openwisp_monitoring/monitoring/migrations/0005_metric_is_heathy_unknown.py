@@ -13,6 +13,8 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='metric',
             name='is_healthy',
-            field=models.BooleanField(db_index=True, default=None, null=True, blank=True),
+            field=models.BooleanField(
+                db_index=True, default=None, null=True, blank=True
+            ),
         ),
     ]

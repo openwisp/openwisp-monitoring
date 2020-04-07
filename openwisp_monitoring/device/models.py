@@ -41,8 +41,10 @@ class DeviceData(Device):
         """
         if self.__data:
             return self.__data
-        q = "SELECT data FROM {0}.{1} WHERE pk = '{2}' " \
+        q = (
+            "SELECT data FROM {0}.{1} WHERE pk = '{2}' "
             "ORDER BY time DESC LIMIT 1".format(SHORT_RP, self.__key, self.pk)
+        )
         points = list(query(q).get_points())
         if not points:
             return None
@@ -64,8 +66,9 @@ class DeviceData(Device):
         except SchemaError as e:
             path = [str(el) for el in e.path]
             trigger = '/'.join(path)
-            message = 'Invalid data in "#/{0}", '\
-                      'validator says:\n\n{1}'.format(trigger, e.message)
+            message = 'Invalid data in "#/{0}", ' 'validator says:\n\n{1}'.format(
+                trigger, e.message
+            )
             raise ValidationError(message)
 
     def save_data(self, time=None):
@@ -73,34 +76,43 @@ class DeviceData(Device):
         validates and saves data to influxdb
         """
         self.validate_data()
-        write(name=self.__key,
-              values={'data': self.json()},
-              tags={'pk': self.pk},
-              timestamp=time,
-              retention_policy=SHORT_RP)
+        write(
+            name=self.__key,
+            values={'data': self.json()},
+            tags={'pk': self.pk},
+            timestamp=time,
+            retention_policy=SHORT_RP,
+        )
 
     def json(self, *args, **kwargs):
         return json.dumps(self.data, *args, **kwargs)
 
 
 class DeviceMonitoring(TimeStampedEditableModel):
-    device = models.OneToOneField('config.Device', on_delete=models.CASCADE,
-                                  related_name='monitoring')
+    device = models.OneToOneField(
+        'config.Device', on_delete=models.CASCADE, related_name='monitoring'
+    )
     STATUS = Choices(
         ('unknown', _(app_settings.HEALTH_STATUS_LABELS['unknown'])),
         ('ok', _(app_settings.HEALTH_STATUS_LABELS['ok'])),
         ('problem', _(app_settings.HEALTH_STATUS_LABELS['problem'])),
-        ('critical', _(app_settings.HEALTH_STATUS_LABELS['critical']))
+        ('critical', _(app_settings.HEALTH_STATUS_LABELS['critical'])),
     )
-    status = StatusField(_('health status'), db_index=True, help_text=_(
-        '"{0}" means the device has been recently added; \n'
-        '"{1}" means the device is operating normally; \n'
-        '"{2}" means the device is having issues but it\'s still reachable; \n'
-        '"{3}" means the device is not reachable or in critical conditions;'
-    ).format(app_settings.HEALTH_STATUS_LABELS['unknown'],
-             app_settings.HEALTH_STATUS_LABELS['ok'],
-             app_settings.HEALTH_STATUS_LABELS['problem'],
-             app_settings.HEALTH_STATUS_LABELS['critical']))
+    status = StatusField(
+        _('health status'),
+        db_index=True,
+        help_text=_(
+            '"{0}" means the device has been recently added; \n'
+            '"{1}" means the device is operating normally; \n'
+            '"{2}" means the device is having issues but it\'s still reachable; \n'
+            '"{3}" means the device is not reachable or in critical conditions;'
+        ).format(
+            app_settings.HEALTH_STATUS_LABELS['unknown'],
+            app_settings.HEALTH_STATUS_LABELS['ok'],
+            app_settings.HEALTH_STATUS_LABELS['problem'],
+            app_settings.HEALTH_STATUS_LABELS['critical'],
+        ),
+    )
 
     def update_status(self, value):
         # don't trigger save nor emit signal if status is not changing
@@ -109,16 +121,15 @@ class DeviceMonitoring(TimeStampedEditableModel):
         self.status = value
         self.full_clean()
         self.save()
-        health_status_changed.send(sender=self.__class__,
-                                   instance=self,
-                                   status=value)
+        health_status_changed.send(sender=self.__class__, instance=self, status=value)
 
     @property
     def related_metrics(self):
-        return Metric.objects.select_related('content_type')\
-                             .filter(object_id=self.device_id,
-                                     content_type__model='device',
-                                     content_type__app_label='config')
+        return Metric.objects.select_related('content_type').filter(
+            object_id=self.device_id,
+            content_type__model='device',
+            content_type__app_label='config',
+        )
 
     @staticmethod
     @receiver(threshold_crossed, dispatch_uid='threshold_crossed_receiver')
@@ -143,16 +154,21 @@ class DeviceMonitoring(TimeStampedEditableModel):
             status = 'problem'
         elif metric.is_healthy and related_status == 'critical':
             status = 'critical'
-        elif not metric.is_healthy and any([monitoring.is_metric_critical(metric),
-                                            related_status == 'critical']):
+        elif not metric.is_healthy and any(
+            [monitoring.is_metric_critical(metric), related_status == 'critical']
+        ):
             status = 'critical'
         monitoring.update_status(status)
 
     @staticmethod
     def is_metric_critical(metric):
         for critical in app_settings.CRITICAL_DEVICE_METRICS:
-            if all([metric.key == critical['key'],
-                    metric.field_name == critical['field_name']]):
+            if all(
+                [
+                    metric.key == critical['key'],
+                    metric.field_name == critical['field_name'],
+                ]
+            ):
                 return True
         return False
 

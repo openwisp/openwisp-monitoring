@@ -19,9 +19,6 @@ def manage_short_retention_policy():
             duration_changed = policy['duration']
             break
     if not exists:
-        db.create_retention_policy(name=SHORT_RP,
-                                   duration=duration,
-                                   replication=1)
+        db.create_retention_policy(name=SHORT_RP, duration=duration, replication=1)
     elif exists and duration_changed:
-        db.alter_retention_policy(name=SHORT_RP,
-                                  duration=duration)
+        db.alter_retention_policy(name=SHORT_RP, duration=duration)

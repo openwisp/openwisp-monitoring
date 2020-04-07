@@ -17,24 +17,17 @@ class BaseTestCase(DeviceMonitoringTestCase):
         "general": {
             "hostname": "10-BA-00-FF-E1-9B",
             "local_time": 1519645078,
-            "uptime": 1519645078
+            "uptime": 1519645078,
         },
         "resources": {
-            "load": [
-                10144,
-                15456,
-                6624
-            ],
+            "load": [10144, 15456, 6624],
             "memory": {
                 "buffered": 3334144,
                 "free": 79429632,
                 "shared": 102400,
-                "total": 128430080
+                "total": 128430080,
             },
-            "swap": {
-                "free": 0,
-                "total": 0
-            }
+            "swap": {"free": 0, "total": 0},
         },
         "interfaces": [
             {
@@ -62,14 +55,14 @@ class BaseTestCase(DeviceMonitoringTestCase):
                     "tx_fifo_errors": 0,
                     "tx_heartbeat_errors": 0,
                     "tx_packets": 7,
-                    "tx_window_errors": 0
+                    "tx_window_errors": 0,
                 },
                 "wireless": {
                     "channel": 1,
                     "clients": {},
                     "country": "US",
-                    "tx_power": 6
-                }
+                    "tx_power": 6,
+                },
             },
             {
                 "name": "wlan1",
@@ -96,7 +89,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
                     "tx_fifo_errors": 0,
                     "tx_heartbeat_errors": 0,
                     "tx_packets": 293,
-                    "tx_window_errors": 0
+                    "tx_window_errors": 0,
                 },
                 "wireless": {
                     "channel": 1,
@@ -106,10 +99,10 @@ class BaseTestCase(DeviceMonitoringTestCase):
                     "mode": "access_point",
                     "noise": -95,
                     "ssid": "testnet",
-                    "tx_power": 6
-                }
-            }
-        ]
+                    "tx_power": 6,
+                },
+            },
+        ],
     }
 
     def _create_device(self, **kwargs):
@@ -126,6 +119,7 @@ class TestDeviceData(BaseTestCase):
     """
     Test openwisp_monitoring.device.models.DeviceData
     """
+
     def test_clean_data_ok(self):
         dd = self._create_device_data()
         dd.data = {'type': 'DeviceMonitoring', 'interfaces': []}
@@ -189,31 +183,22 @@ class TestDeviceMonitoring(BaseTestCase):
     """
     Test openwisp_monitoring.device.models.DeviceMonitoring
     """
+
     def _create_env(self):
         d = self._create_device()
         dm = d.monitoring
         dm.status = 'ok'
         dm.save()
-        ping = self._create_object_metric(name='ping',
-                                          key='ping',
-                                          field_name='reachable',
-                                          content_object=d)
-        self._create_threshold(metric=ping,
-                               operator='<',
-                               value=1,
-                               seconds=0)
-        load = self._create_object_metric(name='load',
-                                          content_object=d)
-        self._create_threshold(metric=load,
-                               operator='>',
-                               value=90,
-                               seconds=0)
-        process_count = self._create_object_metric(name='process_count',
-                                                   content_object=d)
-        self._create_threshold(metric=process_count,
-                               operator='>',
-                               value=20,
-                               seconds=0)
+        ping = self._create_object_metric(
+            name='ping', key='ping', field_name='reachable', content_object=d
+        )
+        self._create_threshold(metric=ping, operator='<', value=1, seconds=0)
+        load = self._create_object_metric(name='load', content_object=d)
+        self._create_threshold(metric=load, operator='>', value=90, seconds=0)
+        process_count = self._create_object_metric(
+            name='process_count', content_object=d
+        )
+        self._create_threshold(metric=process_count, operator='>', value=20, seconds=0)
         return dm, ping, load, process_count
 
     def test_status_changed(self):

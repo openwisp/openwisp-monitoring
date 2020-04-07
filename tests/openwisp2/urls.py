@@ -12,7 +12,7 @@ urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'', include('openwisp_controller.urls')),
     url(r'', include('openwisp_monitoring.urls')),
-    url(r'^$', redirect_view, name='index')
+    url(r'^$', redirect_view, name='index'),
 ]
 
 urlpatterns += staticfiles_urlpatterns()
@@ -20,4 +20,5 @@ urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG and 'debug_toolbar' in settings.INSTALLED_APPS:
     import debug_toolbar
+
     urlpatterns.append(url(r'^__debug__/', include(debug_toolbar.urls)))

@@ -13,6 +13,4 @@ class MonitoringConfig(AppConfig):
     def ready(self):
         # create influxdb database if doesn't exist yet
         create_database()
-        setattr(settings,
-                'OPENWISP_ADMIN_SHOW_USERLINKS_BLOCK',
-                True)
+        setattr(settings, 'OPENWISP_ADMIN_SHOW_USERLINKS_BLOCK', True)

@@ -49,11 +49,9 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertEqual(om.key, om.codename)
 
     def test_cutom_get_or_create(self):
-        m, created = Metric._get_or_create(name='lan',
-                                           key='br-lan')
+        m, created = Metric._get_or_create(name='lan', key='br-lan')
         self.assertTrue(created)
-        m2, created = Metric._get_or_create(name='lan',
-                                            key='br-lan')
+        m2, created = Metric._get_or_create(name='lan', key='br-lan')
         self.assertEqual(m.id, m2.id)
         self.assertFalse(created)
 
@@ -72,19 +70,21 @@ class TestModels(TestMonitoringMixin, TestCase):
         om = self._create_object_metric()
         om.write(3)
         content_type = '.'.join(om.content_type.natural_key())
-        q = "select * from test_metric WHERE object_id = '{0}'" \
+        q = (
+            "select * from test_metric WHERE object_id = '{0}'"
             " AND content_type = '{1}'".format(om.object_id, content_type)
+        )
         measurement = list(query(q).get_points())[0]
         self.assertEqual(measurement['value'], 3)
 
     def test_general_same_key_different_fields(self):
-        down = self._create_general_metric(name='traffic (download)',
-                                           key='traffic',
-                                           field_name='download')
+        down = self._create_general_metric(
+            name='traffic (download)', key='traffic', field_name='download'
+        )
         down.write(200)
-        up = self._create_general_metric(name='traffic (upload)',
-                                         key='traffic',
-                                         field_name='upload')
+        up = self._create_general_metric(
+            name='traffic (upload)', key='traffic', field_name='upload'
+        )
         up.write(100)
         measurement = list(query('select download from traffic').get_points())[0]
         self.assertEqual(measurement['download'], 200)
@@ -93,23 +93,31 @@ class TestModels(TestMonitoringMixin, TestCase):
 
     def test_object_same_key_different_fields(self):
         user = self._create_user()
-        user_down = self._create_object_metric(name='traffic (download)',
-                                               key='traffic',
-                                               field_name='download',
-                                               content_object=user)
+        user_down = self._create_object_metric(
+            name='traffic (download)',
+            key='traffic',
+            field_name='download',
+            content_object=user,
+        )
         user_down.write(200)
-        user_up = self._create_object_metric(name='traffic (upload)',
-                                             key='traffic',
-                                             field_name='upload',
-                                             content_object=user)
+        user_up = self._create_object_metric(
+            name='traffic (upload)',
+            key='traffic',
+            field_name='upload',
+            content_object=user,
+        )
         user_up.write(100)
         content_type = '.'.join(user_down.content_type.natural_key())
-        q = "select download from traffic WHERE object_id = '{0}'" \
+        q = (
+            "select download from traffic WHERE object_id = '{0}'"
             " AND content_type = '{1}'".format(user_down.object_id, content_type)
+        )
         measurement = list(query(q).get_points())[0]
         self.assertEqual(measurement['download'], 200)
-        q = "select upload from traffic WHERE object_id = '{0}'" \
+        q = (
+            "select upload from traffic WHERE object_id = '{0}'"
             " AND content_type = '{1}'".format(user_up.object_id, content_type)
+        )
         measurement = list(query(q).get_points())[0]
         self.assertEqual(measurement['upload'], 100)
 
@@ -130,10 +138,7 @@ class TestModels(TestMonitoringMixin, TestCase):
     def test_threshold_max_seconds(self):
         m = self._create_general_metric(name='load')
         try:
-            self._create_threshold(metric=m,
-                                   operator='>',
-                                   value=90,
-                                   seconds=9999999)
+            self._create_threshold(metric=m, operator='>', value=90, seconds=9999999)
         except ValidationError as e:
             self.assertIn('seconds', e.message_dict)
         else:
@@ -141,19 +146,13 @@ class TestModels(TestMonitoringMixin, TestCase):
 
     def test_threshold_is_crossed_error(self):
         m = self._create_general_metric(name='load')
-        t = self._create_threshold(metric=m,
-                                   operator='>',
-                                   value=90,
-                                   seconds=0)
+        t = self._create_threshold(metric=m, operator='>', value=90, seconds=0)
         with self.assertRaises(ValueError):
             t._is_crossed_by(t, start_time)
 
     def test_threshold_is_crossed_immediate(self):
         m = self._create_general_metric(name='load')
-        t = self._create_threshold(metric=m,
-                                   operator='>',
-                                   value=90,
-                                   seconds=0)
+        t = self._create_threshold(metric=m, operator='>', value=90, seconds=0)
         self.assertFalse(t._is_crossed_by(80, start_time))
         self.assertTrue(t._is_crossed_by(91, start_time))
         self.assertTrue(t._is_crossed_by(100, start_time))
@@ -165,10 +164,7 @@ class TestModels(TestMonitoringMixin, TestCase):
 
     def test_threshold_is_crossed_deferred(self):
         m = self._create_general_metric(name='load')
-        t = self._create_threshold(metric=m,
-                                   operator='>',
-                                   value=90,
-                                   seconds=60 * 9)
+        t = self._create_threshold(metric=m, operator='>', value=90, seconds=60 * 9)
         self.assertFalse(t._is_crossed_by(95, start_time))
         self.assertTrue(t._is_crossed_by(95, ten_minutes_ago))
         self.assertFalse(t._is_crossed_by(80, start_time))
@@ -180,26 +176,16 @@ class TestModels(TestMonitoringMixin, TestCase):
 
     def test_general_metric_signal_emitted(self):
         m = self._create_general_metric(name='load')
-        t = self._create_threshold(metric=m,
-                                   operator='>',
-                                   value=90,
-                                   seconds=0)
+        t = self._create_threshold(metric=m, operator='>', value=90, seconds=0)
         with catch_signal(threshold_crossed) as handler:
             m.check_threshold(91)
         handler.assert_called_once_with(
-            threshold=t,
-            metric=m,
-            target=None,
-            sender=Metric,
-            signal=threshold_crossed,
+            threshold=t, metric=m, target=None, sender=Metric, signal=threshold_crossed,
         )
 
     def test_object_metric_signal_emitted(self):
         om = self._create_object_metric()
-        t = self._create_threshold(metric=om,
-                                   operator='>',
-                                   value=90,
-                                   seconds=0)
+        t = self._create_threshold(metric=om, operator='>', value=90, seconds=0)
         with catch_signal(threshold_crossed) as handler:
             om.check_threshold(91)
         handler.assert_called_once_with(
@@ -218,7 +204,7 @@ class TestModels(TestMonitoringMixin, TestCase):
                 sender=Metric,
                 metric=om,
                 values={om.field_name: 3},
-                signal=pre_metric_write
+                signal=pre_metric_write,
             )
 
     def test_metric_post_write_signals_emitted(self):
@@ -229,5 +215,5 @@ class TestModels(TestMonitoringMixin, TestCase):
                 sender=Metric,
                 metric=om,
                 values={om.field_name: 3},
-                signal=post_metric_write
+                signal=post_metric_write,
             )

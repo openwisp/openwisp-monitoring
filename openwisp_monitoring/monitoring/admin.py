@@ -26,19 +26,16 @@ class MetricAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
     save_on_top = True
     inlines = [GraphInline, ThresholdInline]
     fieldsets = (
-        (None, {
-            'fields': ('name', 'description', 'content_type', 'object_id',)
-        }),
-        (_('Advanced options'), {
-            'classes': ('collapse',),
-            'fields': ('key', 'field_name'),
-        }),
+        (None, {'fields': ('name', 'description', 'content_type', 'object_id',)}),
+        (
+            _('Advanced options'),
+            {'classes': ('collapse',), 'fields': ('key', 'field_name'),},
+        ),
     )
 
     class Media:
         css = {'all': ('monitoring/css/monitoring.css',)}
-        js = ('monitoring/js/plotly.min.js',
-              'monitoring/js/graph.js')
+        js = ('monitoring/js/plotly.min.js', 'monitoring/js/graph.js')
 
 
 @admin.register(Threshold)

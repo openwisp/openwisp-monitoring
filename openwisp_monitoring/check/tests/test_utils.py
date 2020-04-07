@@ -11,8 +11,13 @@ from ..utils import run_checks_async
 
 class TestUtils(TestDeviceMonitoringMixin, TransactionTestCase):
     _PING = CHECK_CLASSES[0][0]
-    _FPING_OUTPUT = ('', bytes('10.40.0.1 : xmt/rcv/%loss = 5/5/0%, '
-                               'min/avg/max = 0.04/0.08/0.15', 'utf8'))
+    _FPING_OUTPUT = (
+        '',
+        bytes(
+            '10.40.0.1 : xmt/rcv/%loss = 5/5/0%, ' 'min/avg/max = 0.04/0.08/0.15',
+            'utf8',
+        ),
+    )
 
     def _create_check(self):
         device = self._create_device(organization=self._create_org())

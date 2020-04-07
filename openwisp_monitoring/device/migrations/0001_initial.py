@@ -14,12 +14,8 @@ class Migration(migrations.Migration):
     operations = [
         migrations.CreateModel(
             name='DeviceData',
-            fields=[
-            ],
-            options={
-                'indexes': [],
-                'proxy': True,
-            },
+            fields=[],
+            options={'indexes': [], 'proxy': True,},
             bases=('config.device',),
         ),
     ]

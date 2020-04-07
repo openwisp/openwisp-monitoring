@@ -13,11 +13,20 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='graph',
             name='type',
-            field=models.CharField(choices=[('line', 'Line'), ('histogram', 'Histogram')], default='line', max_length=16, verbose_name='chart type'),
+            field=models.CharField(
+                choices=[('line', 'Line'), ('histogram', 'Histogram')],
+                default='line',
+                max_length=16,
+                verbose_name='chart type',
+            ),
         ),
         migrations.AddField(
             model_name='graph',
             name='top_fields',
-            field=models.PositiveIntegerField(default=0, help_text='substitutes {fields} in the query with the top N fields, a value of zero disables this feature', verbose_name='top fields'),
+            field=models.PositiveIntegerField(
+                default=0,
+                help_text='substitutes {fields} in the query with the top N fields, a value of zero disables this feature',
+                verbose_name='top fields',
+            ),
         ),
     ]

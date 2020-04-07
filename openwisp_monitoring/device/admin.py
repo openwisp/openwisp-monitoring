@@ -22,10 +22,14 @@ class DeviceAdmin(BaseDeviceAdmin):
             return None
         if 'general' in data and 'local_time' in data['general']:
             local_time = data['general']['local_time']
-            data['general']['local_time'] = datetime.fromtimestamp(local_time, tz=tz('UTC'))
+            data['general']['local_time'] = datetime.fromtimestamp(
+                local_time, tz=tz('UTC')
+            )
         if 'general' in data and 'uptime' in data['general']:
             uptime = '{0.days} days, {0.hours} hours and {0.minutes} minutes'
-            data['general']['uptime'] = uptime.format(relativedelta(seconds=data['general']['uptime']))
+            data['general']['uptime'] = uptime.format(
+                relativedelta(seconds=data['general']['uptime'])
+            )
         if 'resources' in data and 'memory' in data['resources']:
             # convert bytes to megabytes
             MB = 1000000.0
@@ -38,7 +42,9 @@ class DeviceAdmin(BaseDeviceAdmin):
                 remove.append(interface)
                 continue
             # human readable mode
-            interface['wireless']['mode'] = interface['wireless']['mode'].replace('_', ' ')
+            interface['wireless']['mode'] = interface['wireless']['mode'].replace(
+                '_', ' '
+            )
             # convert to GHz
             if 'wireless' in interface and 'frequency' in interface['wireless']:
                 interface['wireless']['frequency'] /= 1000
@@ -51,18 +57,20 @@ class DeviceAdmin(BaseDeviceAdmin):
         if pk:
             device_data = DeviceData(pk=pk)
             api_url = reverse('monitoring:api_device_metric', args=[pk])
-            ctx.update({
-                'device_data': self.get_device_data(device_data.data),
-                'api_url': api_url,
-                'default_time': Graph.DEFAULT_TIME
-            })
+            ctx.update(
+                {
+                    'device_data': self.get_device_data(device_data.data),
+                    'api_url': api_url,
+                    'default_time': Graph.DEFAULT_TIME,
+                }
+            )
         return ctx
 
     def health_status(self, obj):
         return format_html(
             mark_safe('<span class="health-{0}">{1}</span>'),
             obj.monitoring.status,
-            obj.monitoring.get_status_display()
+            obj.monitoring.get_status_display(),
         )
 
     health_status.short_description = _('health status')
@@ -72,20 +80,22 @@ class DeviceAdmin(BaseDeviceAdmin):
         Adds the help_text of DeviceMonitoring.status field
         """
         health_status = DeviceMonitoring._meta.get_field('status').help_text
-        kwargs.update({'help_texts': {
-            'health_status': health_status.replace('\n', '<br>')
-        }})
+        kwargs.update(
+            {'help_texts': {'health_status': health_status.replace('\n', '<br>')}}
+        )
         return super().get_form(request, obj, **kwargs)
 
 
 DeviceAdmin.Media.js += MetricAdmin.Media.js
 DeviceAdmin.Media.css['all'] += MetricAdmin.Media.css['all']
-DeviceAdmin.list_display.insert(DeviceAdmin.list_display.index('config_status'),
-                                'health_status')
+DeviceAdmin.list_display.insert(
+    DeviceAdmin.list_display.index('config_status'), 'health_status'
+)
 DeviceAdmin.list_select_related += ('monitoring',)
-DeviceAdmin.list_filter.insert(0, 'monitoring__status',)
-DeviceAdmin.fields.insert(DeviceAdmin.fields.index('last_ip'),
-                          'health_status')
+DeviceAdmin.list_filter.insert(
+    0, 'monitoring__status',
+)
+DeviceAdmin.fields.insert(DeviceAdmin.fields.index('last_ip'), 'health_status')
 DeviceAdmin.readonly_fields.append('health_status')
 
 admin.site.unregister(Device)

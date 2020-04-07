@@ -7,8 +7,7 @@ from ...monitoring.tests import TestMonitoringMixin
 from ..utils import manage_short_retention_policy
 
 
-class TestDeviceMonitoringMixin(CreateConfigTemplateMixin,
-                                TestMonitoringMixin):
+class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
     device_model = Device
     config_model = Config
 
