@@ -1,7 +1,7 @@
 openwisp-monitoring
 ===================
 
-.. image:: https://travis-ci.org/github/openwisp/openwisp-monitoring.svg?branch=master
+.. image:: https://api.travis-ci.org/openwisp/openwisp-monitoring.svg?branch=master
     :target: https://travis-ci.org/github/openwisp/openwisp-monitoring
 
 .. image:: https://coveralls.io/repos/github/openwisp/openwisp-monitoring/badge.svg?branch=master
