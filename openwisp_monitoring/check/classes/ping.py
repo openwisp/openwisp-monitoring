@@ -109,7 +109,7 @@ class Ping(object):
         }
         if result['reachable']:
             result.update(
-                {'rtt_min': float(min), 'rtt_avg': float(avg), 'rtt_max': float(max),}
+                {'rtt_min': float(min), 'rtt_avg': float(avg), 'rtt_max': float(max)}
             )
         if store:
             self.store_result(result)

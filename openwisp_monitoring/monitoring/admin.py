@@ -29,7 +29,7 @@ class MetricAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
         (None, {'fields': ('name', 'description', 'content_type', 'object_id',)}),
         (
             _('Advanced options'),
-            {'classes': ('collapse',), 'fields': ('key', 'field_name'),},
+            {'classes': ('collapse',), 'fields': ('key', 'field_name')},
         ),
     )
 

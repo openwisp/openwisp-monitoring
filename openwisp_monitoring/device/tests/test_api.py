@@ -124,9 +124,9 @@ class TestDeviceApi(DeviceMonitoringTestCase):
     _garbage_clients = {
         'type': 'DeviceMonitoring',
         'interfaces': [
-            {'name': 'garbage1', 'wireless': {'clients': {},},},
-            {'name': 'garbage2', 'wireless': {'clients': [{'what?': 'mac missing'}],},},
-            {'name': 'garbage3', 'wireless': {},},
+            {'name': 'garbage1', 'wireless': {'clients': {}}},
+            {'name': 'garbage2', 'wireless': {'clients': [{'what?': 'mac missing'}]}},
+            {'name': 'garbage3', 'wireless': {}},
             {'name': 'garbage4'},
         ],
     }
