@@ -33,6 +33,7 @@ branches:
 
 before_install:
   - docker run -d --name influxdb -p 8086:8086 influxdb
+  - sleep 3
   - docker exec -it influxdb influx -execute 'CREATE DATABASE openwisp2'
   - pip install -U pip wheel setuptools
   - pip install -U -r requirements-test.txt
