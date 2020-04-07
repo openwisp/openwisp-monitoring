@@ -1,5 +1,4 @@
 language: python
-sudo: false
 dist: bionic
 
 cache: pip
@@ -35,8 +34,6 @@ branches:
 before_install:
   - docker run -d --name influxdb -p 8086:8086 influxdb
   - docker exec -it influxdb influx -execute 'CREATE DATABASE openwisp2'
-  # TODO: this is temporary, remove it when openwisp-utils-0.4.5 is released
-  - pip install https://github.com/openwisp/openwisp-utils/tarball/master
   - pip install -U pip wheel setuptools
   - pip install -U -r requirements-test.txt
 
