@@ -2,8 +2,9 @@ import json
 
 from django.core.exceptions import ValidationError
 
+from openwisp_utils.tests import catch_signal
+
 from ...monitoring.utils import get_db
-from ...tests import catch_signal
 from .. import settings as app_settings
 from ..models import DeviceData, DeviceMonitoring
 from ..signals import health_status_changed
