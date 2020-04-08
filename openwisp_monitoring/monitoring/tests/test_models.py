@@ -4,7 +4,8 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
 
-from ...tests import catch_signal
+from openwisp_utils.tests import catch_signal
+
 from ..models import Metric
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
 from ..utils import query, write
