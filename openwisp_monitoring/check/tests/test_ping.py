@@ -101,26 +101,6 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         result = check.perform_check(store=False)
         self.assertIsNone(result)
 
-    def test_device_deleted(self):
-        d = self._create_device(organization=self._create_org())
-        d.management_ip = '10.40.0.1'
-        d.save()
-        check = Check(name='Ping check', check=self._PING, content_object=d, params={})
-        check.full_clean()
-        check.save()
-        # dev = d
-        # import ipdb; ipdb.set_trace()
-        d.delete()
-        check = Check.objects.get(pk=check.pk)
-        result = check.perform_check(store=False)
-        self.assertIsNone(result)
-        try:
-            check.refresh_from_db()
-        except Check.DoesNotExist:
-            pass
-        else:
-            self.fail('check was not deleted')
-
     def test_content_object_none(self):
         check = Check(name='Ping check', check=self._PING, params={})
         try:
