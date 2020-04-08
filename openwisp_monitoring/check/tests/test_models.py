@@ -50,3 +50,10 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         c = Check.objects.first()
         self.assertEqual(c.content_object, d)
         self.assertIn('Ping', c.check)
+
+    def test_device_deleted(self):
+        self.assertEqual(Check.objects.count(), 0)
+        d = self._create_device(organization=self._create_org())
+        self.assertEqual(Check.objects.count(), 1)
+        d.delete()
+        self.assertEqual(Check.objects.count(), 0)

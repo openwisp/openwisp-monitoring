@@ -1,6 +1,6 @@
 import json
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
 from openwisp_utils.tests import catch_signal
 
@@ -178,6 +178,20 @@ class TestDeviceData(BaseTestCase):
         self.assertEqual(rp[1]['default'], False)
         duration = app_settings.SHORT_RETENTION_POLICY
         self.assertEqual(rp[1]['duration'], duration)
+
+    def test_device_deleted(self):
+        d = self._create_device()
+        metric = self._create_object_metric(name='test',
+                                            content_object=d,)
+        metric.full_clean()
+        metric.save()
+        d.delete()
+        try:
+            metric.refresh_from_db()
+        except ObjectDoesNotExist:
+            pass
+        else:
+            self.fail('metric was not deleted')
 
 
 class TestDeviceMonitoring(BaseTestCase):

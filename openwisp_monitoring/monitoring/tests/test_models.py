@@ -49,7 +49,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         om = self._create_object_metric()
         self.assertEqual(om.key, om.codename)
 
-    def test_cutom_get_or_create(self):
+    def test_custom_get_or_create(self):
         m, created = Metric._get_or_create(name='lan', key='br-lan')
         self.assertTrue(created)
         m2, created = Metric._get_or_create(name='lan', key='br-lan')

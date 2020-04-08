@@ -135,9 +135,6 @@ class Ping(object):
         Figures out ip to use or fails raising OperationalError
         """
         device = self.related_object
-        if not device:
-            self.check_instance.delete()
-            return None
         ip = device.management_ip or device.last_ip
         return ip
 
