@@ -4,6 +4,7 @@ from django.db.models.signals import post_delete
 from django.utils.translation import ugettext_lazy as _
 from django_netjsonconfig.signals import checksum_requested
 
+from ..monitoring.utils import notify_users
 from . import settings as app_settings
 from .signals import device_metrics_received, health_status_changed
 from .utils import get_device_recovery_cache_key, manage_short_retention_policy
@@ -16,6 +17,7 @@ class DeviceMonitoringConfig(AppConfig):
 
     def ready(self):
         manage_short_retention_policy()
+        self.connect_is_working_changed()
         self.connect_device_post_delete()
         self.device_recovery_detection()
 
@@ -69,7 +71,46 @@ class DeviceMonitoringConfig(AppConfig):
 
     @classmethod
     def trigger_device_recovery_checks(cls, instance, **kwargs):
-        from .tasks import trigger_device_recovery
+        from .tasks import trigger_device_checks
 
         if cache.get(get_device_recovery_cache_key(device=instance)):
-            trigger_device_recovery.delay(pk=instance.pk)
+            trigger_device_checks.delay(pk=instance.pk)
+
+    @classmethod
+    def connect_is_working_changed(self):
+        from openwisp_controller.connection.models import DeviceConnection
+        from openwisp_controller.connection.signals import is_working_changed
+
+        is_working_changed.connect(
+            self.is_working_changed_receiver,
+            sender=DeviceConnection,
+            dispatch_uid='is_working_changed_monitoring',
+        )
+
+    @classmethod
+    def is_working_changed_receiver(cls, instance, is_working, **kwargs):
+        from ..check.models import Check
+        from .tasks import trigger_device_checks
+
+        device = instance.device
+        device_monitoring = device.monitoring
+        initial_status = device_monitoring.status
+        status = 'ok' if is_working else 'problem'
+        if not is_working:
+            # Create a related notification explaining why it's not working
+            desc = instance.failure_reason
+            opts = dict(
+                actor=device, level='warning', verb='not working', description=desc
+            )
+            if initial_status == 'ok':
+                trigger_device_checks.delay(pk=device.pk)
+        else:
+            # create a notification that device is working
+            opts = dict(actor=device, level='info', verb='connected successfully')
+            # if checks exist trigger them else, set status as 'ok'
+            if Check.objects.filter(object_id=instance.device.pk).exists():
+                trigger_device_checks.delay(pk=device.pk)
+            else:
+                device_monitoring.update_status(status)
+        opts['data'] = {'email_subject': f'[{status.upper()}] {device}'}
+        notify_users(opts)

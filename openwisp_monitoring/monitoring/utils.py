@@ -1,7 +1,10 @@
 import logging
 from datetime import datetime
 
+from django.contrib.auth import get_user_model
+from django.db.models import Q
 from influxdb import client
+from swapper import load_model
 
 from . import settings
 
@@ -60,3 +63,27 @@ def create_database():
     if settings.INFLUXDB_DATABASE not in databases:
         db.create_database(settings.INFLUXDB_DATABASE)
         logger.info(f'Created influxdb database {settings.INFLUXDB_DATABASE}')
+
+
+def notify_users(opts, target_org=None):
+    """ creates notifications for users """
+    # retrieve superusers
+    where = Q(is_superuser=True)
+    # if target_org is specified, retrieve also
+    # staff users that are member of the org
+    if target_org:
+        where = where | (Q(is_staff=True) & Q(openwisp_users_organization=target_org))
+    # only retrieve users which have the receive flag active
+    where = where & Q(notificationuser__receive=True)
+    # perform query
+    User = get_user_model()
+    qs = (
+        User.objects.select_related('notificationuser')
+        .order_by('date_joined')
+        .filter(where)
+    )
+    Notification = load_model('notifications', 'Notification')
+    for user in qs:
+        n = Notification(recipient=user, **opts)
+        n.full_clean()
+        n.save()

@@ -39,6 +39,8 @@ before_install:
 
 install:
   - pip install -e .
+  # To be removed after new release of openwisp-controller
+  - pip install --upgrade https://github.com/openwisp/openwisp-controller/tarball/master
   # Until release of django-netjsonconfig 0.12.0
   - pip install --upgrade https://github.com/openwisp/django-netjsonconfig/tarball/master
   # temporary: remove when openwisp-utils 0.5.0 is released

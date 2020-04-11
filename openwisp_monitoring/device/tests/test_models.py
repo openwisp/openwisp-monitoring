@@ -1,9 +1,13 @@
 import json
+from unittest.mock import patch
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from swapper import load_model
 
+from openwisp_controller.connection.models import Credentials, DeviceConnection
 from openwisp_utils.tests import catch_signal
 
+from ...check.models import Check
 from ...monitoring.utils import get_db
 from .. import settings as app_settings
 from ..models import DeviceData, DeviceMonitoring
@@ -351,3 +355,54 @@ class TestDeviceMonitoring(BaseTestCase):
         self.assertEqual(dm.status, 'problem')
         load.check_threshold(20)
         self.assertEqual(dm.status, 'ok')
+
+    def test_device_connection_change(self):
+        admin = self._create_admin()
+        Notification = load_model('notifications', 'Notification')
+        d = self._create_device()
+        dm = d.monitoring
+        dm.status = 'unknown'
+        dm.save()
+        c = Credentials.objects.create()
+        dc = DeviceConnection.objects.create(credentials=c, device=d)
+        dc.is_working = True
+        dc.save()
+        self.assertEqual(dm.status, 'ok')
+        n = Notification.objects.get(level='info')
+        self.assertEqual(n.verb, 'connected successfully')
+        self.assertEqual(n.actor, d)
+        dc.is_working = False
+        dc.save()
+        # self.assertEqual(dm.status, 'problem')
+        n = Notification.objects.get(level='warning')
+        self.assertEqual(n.verb, 'not working')
+        self.assertEqual(n.actor, d)
+        self.assertEqual(n.recipient, admin)
+
+    @patch('openwisp_monitoring.check.models.Check.perform_check')
+    def test_is_working_false_true(self, mocked_call):
+        d = self._create_device()
+        dm = d.monitoring
+        dm.status = 'unknown'
+        dm.save()
+        ping_path = 'openwisp_monitoring.check.classes.Ping'
+        Check.objects.create(name='Check', content_object=d, check=ping_path)
+        c = Credentials.objects.create()
+        dc = DeviceConnection.objects.create(credentials=c, device=d)
+        dc.is_working = True
+        dc.save()
+        mocked_call.assert_called_once()
+
+    @patch('openwisp_monitoring.check.models.Check.perform_check')
+    def test_is_working_true_false(self, mocked_call):
+        d = self._create_device()
+        dm = d.monitoring
+        dm.status = 'ok'
+        dm.save()
+        ping_path = 'openwisp_monitoring.check.classes.Ping'
+        Check.objects.create(name='Check', content_object=d, check=ping_path)
+        c = Credentials.objects.create()
+        dc = DeviceConnection.objects.create(credentials=c, device=d)
+        dc.is_working = False
+        dc.save()
+        mocked_call.assert_called_once()
