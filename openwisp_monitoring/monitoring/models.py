@@ -6,14 +6,12 @@ from collections import OrderedDict
 from datetime import date, datetime, timedelta
 
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import models
-from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
@@ -21,14 +19,12 @@ from django.utils.timezone import make_aware
 from django.utils.translation import ugettext_lazy as _
 from influxdb.exceptions import InfluxDBClientError
 from pytz import timezone as tz
-from swapper import load_model
 
 from openwisp_utils.base import TimeStampedEditableModel
 
 from .signals import post_metric_write, pre_metric_write, threshold_crossed
-from .utils import query, write
+from .utils import notify_users, query, write
 
-User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
@@ -199,28 +195,7 @@ class Metric(TimeStampedEditableModel):
             opts['target'] = self.content_object
             target_org = getattr(opts['target'], 'organization_id', None)
         self._set_extra_notification_opts(opts)
-        # retrieve superusers
-        where = Q(is_superuser=True)
-        # if target_org is specified, retrieve also
-        # staff users that are member of the org
-        if target_org:
-            where = where | (
-                Q(is_staff=True) & Q(openwisp_users_organization=target_org)
-            )
-        # only retrieve users which have the receive flag active
-        where = where & Q(notificationuser__receive=True)
-        # perform query
-        qs = (
-            User.objects.select_related('notificationuser')
-            .order_by('date_joined')
-            .filter(where)
-        )
-        Notification = load_model('notifications', 'Notification')
-        for user in qs:
-            n = Notification(**opts)
-            n.recipient = user
-            n.full_clean()
-            n.save()
+        notify_users(opts, target_org)
 
     def _set_extra_notification_opts(self, opts):
         verb = opts['verb']
