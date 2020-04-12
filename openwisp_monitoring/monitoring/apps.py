@@ -1,6 +1,9 @@
+from time import sleep
+
 from django.apps import AppConfig
 from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
+from requests.exceptions import ConnectionError
 
 from .utils import create_database
 
@@ -11,6 +14,23 @@ class MonitoringConfig(AppConfig):
     verbose_name = _('Network Monitoring')
 
     def ready(self):
-        # create influxdb database if doesn't exist yet
-        create_database()
+        self.create_database()
         setattr(settings, 'OPENWISP_ADMIN_SHOW_USERLINKS_BLOCK', True)
+
+    def create_database(self):
+        # create influxdb database if doesn't exist yet
+        for attempt_number in range(5):
+            try:
+                create_database()
+                break
+            except ConnectionError as e:
+                self.warn_and_delay(attempt_number + 1)
+                if attempt_number == 4:
+                    raise e
+
+    def warn_and_delay(self, attempt_number):
+        print(
+            'Got error while connecting to timeseries DB. '
+            f'Retrying again in 3 seconds. Attempt {attempt_number} out of 5'
+        )
+        sleep(3)

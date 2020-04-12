@@ -59,4 +59,4 @@ def create_database():
     # if database does not exists, create it
     if settings.INFLUXDB_DATABASE not in databases:
         db.create_database(settings.INFLUXDB_DATABASE)
-        logger.info('Created inlfuxdb database {0}'.format(settings.INFLUXDB_DATABASE))
+        logger.info(f'Created influxdb database {settings.INFLUXDB_DATABASE}')
