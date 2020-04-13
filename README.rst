@@ -302,6 +302,37 @@ If the devices are connecting to your OpenWISP instance using a shared layer2
 network, hence the OpenWSP server can reach the devices using the ``last_ip``
 field, you can set this to ``False``.
 
+``OPENWISP_MONITORING_DEVICE_RECOVERY_DETECTION``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``bool``    |
++--------------+-------------+
+| **default**: | ``True``    |
++--------------+-------------+
+
+The setting allows to detect recoveries as soon as they happen thus making
+the monitoring system faster.
+
+Signals
+-------
+
+``device_metrics_received``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Path**: ``openwisp_monitoring.device.signals.device_metrics_received``
+
+**Arguments**:
+
+- ``instance``: instance of ``Device`` whose metrics have been received
+- ``request``: the HTTP request object
+
+This signal is emitted when device metrics are received via the ``DeviceMetric`` view.
+
+The signal is emitted just before a successful response is returned,
+it is not sent if the response was not successful.
+
+
 Installing for development
 --------------------------
 

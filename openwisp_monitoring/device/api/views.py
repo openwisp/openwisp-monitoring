@@ -20,6 +20,7 @@ from ... import settings as monitoring_settings
 from ...monitoring.models import Graph, Metric
 from ..models import DeviceData
 from ..schema import schema
+from ..signals import device_metrics_received
 
 
 class DevicePermission(BasePermission):
@@ -118,6 +119,9 @@ class DeviceMetricView(GenericAPIView):
             self._write(request, self.instance.pk)
         except ValidationError as e:
             return Response(e.message_dict, status=status.HTTP_400_BAD_REQUEST)
+        device_metrics_received.send(
+            sender=self.model, instance=self.instance, request=request
+        )
         return Response(None)
 
     def _init_previous_data(self):

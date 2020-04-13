@@ -16,6 +16,11 @@ HEALTH_STATUS_LABELS = getattr(
 )
 MANAGEMENT_IP_ONLY = getattr(settings, 'OPENWISP_MONITORING_MANAGEMENT_IP_ONLY', True)
 
+# Triggers spontaneous recovery of device based on corresponding signals
+DEVICE_RECOVERY_DETECTION = getattr(
+    settings, 'OPENWISP_MONITORING_DEVICE_RECOVERY_DETECTION', True
+)
+
 for item in CRITICAL_DEVICE_METRICS:  # pragma: no-cover
     if not all(['key' in item, 'field_name' in item]):
         raise ImproperlyConfigured(

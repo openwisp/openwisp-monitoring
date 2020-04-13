@@ -1,10 +1,12 @@
-import json
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
+from openwisp_utils.tests import catch_signal
+
 from ... import settings as monitoring_settings
+from ...device.signals import device_metrics_received
 from ...monitoring.models import Graph, Metric
 from ..models import DeviceData
 from . import DeviceMonitoringTestCase
@@ -14,122 +16,6 @@ class TestDeviceApi(DeviceMonitoringTestCase):
     """
     Tests API (device metric collection)
     """
-
-    def _url(self, pk, key=None):
-        url = reverse('monitoring:api_device_metric', args=[pk])
-        if key:
-            url = '{0}?key={1}'.format(url, key)
-        return url
-
-    def _post_data(self, id, key, data):
-        url = self._url(id, key)
-        netjson = json.dumps(data)
-        return self.client.post(url, netjson, content_type='application/json')
-
-    def _data(self):
-        return {
-            'type': 'DeviceMonitoring',
-            'interfaces': [
-                {
-                    'name': 'wlan0',
-                    'statistics': {
-                        'rx_bytes': 324,
-                        'tx_bytes': 145,
-                        'collisions': 0,
-                        'multicast': 0,
-                        'rx_dropped': 0,
-                        'tx_dropped': 0,
-                    },
-                    'wireless': {
-                        'frequency': 2437,
-                        'mode': 'access_point',
-                        'signal': -29,
-                        'tx_power': 6,
-                        'channel': 6,
-                        'ssid': 'testnet',
-                        'noise': -95,
-                        'country': 'US',
-                        'clients': [
-                            {
-                                'mac': '00:ee:ad:34:f5:3b',
-                                'wps': False,
-                                'wds': False,
-                                'ht': True,
-                                'preauth': False,
-                                'assoc': True,
-                                'authorized': True,
-                                'vht': False,
-                                'wmm': True,
-                                'aid': 1,
-                                'mfp': False,
-                                'auth': True,
-                            }
-                        ],
-                    },
-                },
-                {
-                    'name': 'wlan1',
-                    'statistics': {
-                        'rx_bytes': 2275,
-                        'tx_bytes': 826,
-                        'collisions': 0,
-                        'multicast': 0,
-                        'rx_dropped': 0,
-                        'tx_dropped': 0,
-                    },
-                    'wireless': {
-                        'frequency': 2437,
-                        'mode': 'access_point',
-                        'signal': -29,
-                        'tx_power': 6,
-                        'channel': 6,
-                        'ssid': 'testnet',
-                        'noise': -95,
-                        'country': 'US',
-                        'clients': [
-                            {
-                                'mac': 'b0:e1:7e:30:16:44',
-                                'wps': False,
-                                'wds': False,
-                                'ht': True,
-                                'preauth': False,
-                                'assoc': True,
-                                'authorized': True,
-                                'vht': False,
-                                'wmm': True,
-                                'aid': 1,
-                                'mfp': False,
-                                'auth': True,
-                            },
-                            {
-                                'mac': 'c0:ee:fb:34:f5:4b',
-                                'wps': False,
-                                'wds': False,
-                                'ht': True,
-                                'preauth': False,
-                                'assoc': True,
-                                'authorized': True,
-                                'vht': False,
-                                'wmm': True,
-                                'aid': 1,
-                                'mfp': False,
-                                'auth': True,
-                            },
-                        ],
-                    },
-                },
-            ],
-        }
-
-    _garbage_clients = {
-        'type': 'DeviceMonitoring',
-        'interfaces': [
-            {'name': 'garbage1', 'wireless': {'clients': {}}},
-            {'name': 'garbage2', 'wireless': {'clients': [{'what?': 'mac missing'}]}},
-            {'name': 'garbage3', 'wireless': {}},
-            {'name': 'garbage4'},
-        ],
-    }
 
     def test_404(self):
         r = self._post_data(self.device_model().pk, '123', self._data())
@@ -432,6 +318,23 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             r = self.client.get(url)
             self.assertEqual(r.status_code, 400)
             self.assertIn('Unkown Time Zone', r.data)
+
+    def test_device_metrics_received_signal(self):
+        d = self._create_device(organization=self._create_org())
+        dd = DeviceData(name='test-device', pk=d.pk)
+        data = self._data()
+        self._create_object_metric(
+            name='ping', key='ping', field_name='reachable', content_object=d
+        )
+        with catch_signal(device_metrics_received) as handler:
+            response = self._post_data(d.id, d.key, data)
+        request = response.renderer_context['request']
+        handler.assert_called_once_with(
+            instance=dd,
+            request=request,
+            sender=DeviceData,
+            signal=device_metrics_received,
+        )
 
     # testing admin here is more convenient because
     # we already have the code that creates test data
