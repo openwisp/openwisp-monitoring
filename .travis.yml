@@ -36,11 +36,13 @@ before_install:
   - sleep 3
   - docker exec -it influxdb influx -execute 'CREATE DATABASE openwisp2'
   - pip install -U pip wheel setuptools
+  - pip install $DJANGO
   - pip install -U -r requirements-test.txt
 
 install:
-  - pip install $DJANGO
   - pip install -e .
+  # temporary: remove when openwisp-utils 0.5.0 is released
+  - pip install -U https://github.com/openwisp/openwisp-utils/tarball/master#egg=openwisp_utils[qa]
 
 script:
   - ./run-qa-checks

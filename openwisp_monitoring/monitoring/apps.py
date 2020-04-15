@@ -16,15 +16,19 @@ class MonitoringConfig(AppConfig):
         create_database()
         setattr(settings, 'OPENWISP_ADMIN_SHOW_USERLINKS_BLOCK', True)
         from ..device.models import Device
-        post_delete.connect(self.delete_related_metric,
-                            sender=Device,
-                            dispatch_uid='delete_related_metric')
+
+        post_delete.connect(
+            self.delete_related_metric,
+            sender=Device,
+            dispatch_uid='delete_related_metric',
+        )
 
     @classmethod
     def delete_related_metric(cls, instance, **kwargs):
         from .models import Metric
+
         Metric.objects.filter(
             object_id=instance.pk,
             content_type__app_label=instance._meta.app_label,
-            content_type__model=instance._meta.model_name
+            content_type__model=instance._meta.model_name,
         ).delete()

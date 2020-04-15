@@ -181,8 +181,7 @@ class TestDeviceData(BaseTestCase):
 
     def test_device_deleted(self):
         d = self._create_device()
-        metric = self._create_object_metric(name='test',
-                                            content_object=d,)
+        metric = self._create_object_metric(name='test', content_object=d,)
         metric.full_clean()
         metric.save()
         d.delete()
