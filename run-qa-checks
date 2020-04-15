@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 openwisp-utils-qa-checks \
   --migration-path "./openwisp_monitoring/check/migrations \
                     ./openwisp_monitoring/device/migrations \
