@@ -23,4 +23,8 @@ class MonitoringConfig(AppConfig):
     @classmethod
     def delete_related_metric(cls, instance, **kwargs):
         from .models import Metric
-        Metric.objects.filter(object_id=instance.pk).delete()
+        Metric.objects.filter(
+            object_id=instance.pk,
+            content_type__app_label=instance._meta.app_label,
+            content_type__model=instance._meta.model_name
+        ).delete()
