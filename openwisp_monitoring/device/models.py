@@ -1,5 +1,6 @@
 import json
 
+from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import post_save
@@ -26,6 +27,9 @@ class DeviceData(Device):
     schema = schema
     __data = None
     __key = 'device_data'
+
+    checks = GenericRelation('check.Check')
+    metrics = GenericRelation('monitoring.Metric')
 
     class Meta:
         proxy = True
