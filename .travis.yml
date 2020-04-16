@@ -32,8 +32,7 @@ branches:
     - master
 
 before_install:
-  - docker run -d --name influxdb -p 8086:8086 influxdb
-  - docker exec -it influxdb influx -execute 'CREATE DATABASE openwisp2'
+  - docker run -d --name influxdb -e INFLUXDB_DB=openwisp2 -p 8086:8086 influxdb:alpine
   - pip install -U pip wheel setuptools
   - pip install $DJANGO
   - pip install -U -r requirements-test.txt

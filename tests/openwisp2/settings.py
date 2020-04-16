@@ -131,8 +131,8 @@ ACCOUNT_LOGOUT_REDIRECT_URL = LOGIN_REDIRECT_URL
 # during development only
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-INFLUXDB_USER = 'root'
-INFLUXDB_PASSWORD = 'root'
+INFLUXDB_USER = 'openwisp'
+INFLUXDB_PASSWORD = 'openwisp'
 INFLUXDB_DATABASE = 'openwisp2'
 
 CACHES = {
