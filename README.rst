@@ -19,28 +19,31 @@ OpenWISP 2 monitoring module (Work in progress).
 
 ------------
 
-Install Depdendencies
----------------------
+Install Dependencies
+--------------------
 
-`Install influxdb <https://docs.influxdata.com/influxdb/v1.4/introduction/installation/>`_ eg:
+We use InfluxDB to store metrics and Redis as celery broker (you can use a different
+broker if you want). The recommended way for development is running them using Docker
+so you will need to `install docker and docker-compose <https://docs.docker.com/engine/install/>`_
+beforehand.
+
+In case you prefer not to use Docker you can `install InfluxDB <https://docs.influxdata.com/influxdb/v1.8/introduction/install/>`_
+and Redis from your repositories, but keep in mind that the version packaged by your distribution may be different.
+
+Install spatialite and sqlite:
 
 .. code-block:: shell
 
-    curl -sL https://repos.influxdata.com/influxdb.key | sudo apt-key add -
-    source /etc/lsb-release
-    echo "deb https://repos.influxdata.com/${DISTRIB_ID,,} ${DISTRIB_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/influxdb.list
-    sudo apt-get update && sudo apt-get install influxdb
-    sudo systemctl start influxdb
+    sudo apt-get install sqlite3 libsqlite3-dev openssl libssl-dev
+    sudo apt-get install gdal-bin libproj-dev libgeos-dev libspatialite-dev
 
-Install redis (you can use different celery broker if you want):
+Optionally, install ``fping`` if you need to use the ping active check:
 
-    sudo apt-get install redis-server
+.. code-block:: shell
 
-Install ``fping`` if you need to use the ping active check:
+    sudo apt install -y fping
 
-    sudo apt-get install fping
-
-Setup (integrate in an existing django project)
+Setup (integrate in an existing Django project)
 -----------------------------------------------
 
 Follow the setup instructions of `openwisp-controller
@@ -73,8 +76,9 @@ Follow the setup instructions of `openwisp-controller
         # other dependencies ...
     ]
 
-    INFLUXDB_USER = 'your influxdb user'
-    INFLUXDB_PASSWORD = 'your influxdb password'
+    # Make sure you change them in production
+    INFLUXDB_USER = 'openwisp'
+    INFLUXDB_PASSWORD = 'openwisp'
     INFLUXDB_DATABASE = 'openwisp2'
 
 ``urls.py``:
@@ -285,13 +289,6 @@ you can use the following configuration:
 Installing for development
 --------------------------
 
-Install spatialite and sqlite:
-
-.. code-block:: shell
-
-    sudo apt-get install sqlite3 libsqlite3-dev openssl libssl-dev
-    sudo apt-get install gdal-bin libproj-dev libgeos-dev libspatialite-dev
-
 Install your forked repo:
 
 .. code-block:: shell
@@ -306,7 +303,13 @@ Install test requirements:
 
     pip install -r requirements-test.txt
 
-Create database:
+Start Redis and InfluxDB using docker-compose:
+
+.. code-block:: shell
+
+    docker-compose up -d
+
+Create the Django database:
 
 .. code-block:: shell
 
