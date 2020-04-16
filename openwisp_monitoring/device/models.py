@@ -1,5 +1,7 @@
 import json
+from datetime import datetime
 
+from dateutil.relativedelta import relativedelta
 from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -10,6 +12,7 @@ from jsonschema import validate
 from jsonschema.exceptions import ValidationError as SchemaError
 from model_utils import Choices
 from model_utils.fields import StatusField
+from pytz import timezone as tz
 
 from openwisp_controller.config.models import Device
 from openwisp_utils.base import TimeStampedEditableModel
@@ -37,6 +40,43 @@ class DeviceData(Device):
     def __init__(self, *args, **kwargs):
         self.data = kwargs.pop('data', None)
         return super(DeviceData, self).__init__(*args, **kwargs)
+
+    @property
+    def data_user_friendly(self):
+        if not self.data:
+            return None
+        data = self.data
+        if 'general' in data and 'local_time' in data['general']:
+            local_time = data['general']['local_time']
+            data['general']['local_time'] = datetime.fromtimestamp(
+                local_time, tz=tz('UTC')
+            )
+        if 'general' in data and 'uptime' in data['general']:
+            uptime = '{0.days} days, {0.hours} hours and {0.minutes} minutes'
+            data['general']['uptime'] = uptime.format(
+                relativedelta(seconds=data['general']['uptime'])
+            )
+        if 'resources' in data and 'memory' in data['resources']:
+            # convert bytes to megabytes
+            MB = 1000000.0
+            for key in data['resources']['memory'].keys():
+                data['resources']['memory'][key] /= MB
+        remove = []
+        for interface in data.get('interfaces', []):
+            # don't show interfaces if they don't have any useful info
+            if len(interface.keys()) <= 2:
+                remove.append(interface)
+                continue
+            # human readable mode
+            interface['wireless']['mode'] = interface['wireless']['mode'].replace(
+                '_', ' '
+            )
+            # convert to GHz
+            if 'wireless' in interface and 'frequency' in interface['wireless']:
+                interface['wireless']['frequency'] /= 1000
+        for interface in remove:
+            data['interfaces'].remove(interface)
+        return data
 
     @property
     def data(self):
