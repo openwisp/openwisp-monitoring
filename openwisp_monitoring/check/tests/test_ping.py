@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.test import TransactionTestCase
 
 from ... import settings as monitoring_settings
+from ...device.models import DeviceMonitoring
 from ...device.tests import TestDeviceMonitoringMixin
 from ...monitoring.models import Graph, Metric, Threshold
 from .. import settings
@@ -100,6 +101,38 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         # nothing bad should happen
         result = check.perform_check(store=False)
         self.assertIsNone(result)
+
+    def test_device_has_no_ip_with_ok_status(self):
+        """
+        Test when device has no ip and health status is ok
+        with ping in OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS
+        """
+        d = self._create_device(organization=self._create_org())
+        device_monitored = DeviceMonitoring.objects.get(device__pk=d.pk)
+        device_monitored.status = 'ok'
+        device_monitored.save()
+        check = Check(name='Ping check', check=self._PING, content_object=d, params={})
+        # nothing bad chould happen
+        result = check.perform_check(store=False)
+        device_monitored.refresh_from_db()
+        self.assertIsNone(result)
+        self.assertEqual(device_monitored.status, 'critical')
+
+    def test_device_has_no_ip_with_problem_status(self):
+        """
+        Test when device has no ip and health status is problem
+        with ping in OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS
+        """
+        d = self._create_device(organization=self._create_org())
+        device_monitored = DeviceMonitoring.objects.get(device__pk=d.pk)
+        device_monitored.status = 'problem'
+        device_monitored.save()
+        check = Check(name='Ping check', check=self._PING, content_object=d, params={})
+        # nothing bad chould happen
+        result = check.perform_check(store=False)
+        device_monitored.refresh_from_db()
+        self.assertIsNone(result)
+        self.assertEqual(device_monitored.status, 'critical')
 
     def test_content_object_none(self):
         check = Check(name='Ping check', check=self._PING, params={})
