@@ -3,8 +3,8 @@ from django.core.cache import cache
 from django.db.models.signals import post_delete
 from django.utils.translation import ugettext_lazy as _
 from django_netjsonconfig.signals import checksum_requested
+from openwisp_notifications.signals import notify
 
-from ..monitoring.utils import notify_users
 from . import settings as app_settings
 from .signals import device_metrics_received, health_status_changed
 from .utils import get_device_recovery_cache_key, manage_short_retention_policy
@@ -100,17 +100,23 @@ class DeviceMonitoringConfig(AppConfig):
             # Create a related notification explaining why it's not working
             desc = instance.failure_reason
             opts = dict(
-                actor=device, level='warning', verb='not working', description=desc
+                sender=device, level='warning', verb='not working', description=desc
             )
             if initial_status == 'ok':
                 trigger_device_checks.delay(pk=device.pk)
         else:
             # create a notification that device is working
-            opts = dict(actor=device, level='info', verb='connected successfully')
+            desc = f'{device} has connected successfully.'
+            opts = dict(
+                sender=device,
+                level='info',
+                verb='connected successfully',
+                description=desc,
+            )
             # if checks exist trigger them else, set status as 'ok'
             if Check.objects.filter(object_id=instance.device.pk).exists():
                 trigger_device_checks.delay(pk=device.pk)
             else:
                 device_monitoring.update_status(status)
         opts['data'] = {'email_subject': f'[{status.upper()}] {device}'}
-        notify_users(opts)
+        notify.send(**opts)

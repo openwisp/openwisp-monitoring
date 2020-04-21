@@ -477,7 +477,7 @@ class TestDeviceMonitoring(BaseTestCase):
 
     def test_device_connection_change(self):
         admin = self._create_admin()
-        Notification = load_model('notifications', 'Notification')
+        Notification = load_model('openwisp_notifications', 'Notification')
         d = self._create_device()
         dm = d.monitoring
         dm.status = 'unknown'
