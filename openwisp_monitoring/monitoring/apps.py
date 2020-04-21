@@ -12,6 +12,8 @@ class MonitoringConfig(AppConfig):
     name = 'openwisp_monitoring.monitoring'
     label = 'monitoring'
     verbose_name = _('Network Monitoring')
+    max_retries = 5
+    retry_delay = 3
 
     def ready(self):
         self.create_database()
@@ -19,18 +21,18 @@ class MonitoringConfig(AppConfig):
 
     def create_database(self):
         # create influxdb database if doesn't exist yet
-        for attempt_number in range(5):
+        for attempt_number in range(1, self.max_retries + 1):
             try:
                 create_database()
-                break
+                return
             except ConnectionError as e:
-                self.warn_and_delay(attempt_number + 1)
-                if attempt_number == 4:
+                self.warn_and_delay(attempt_number)
+                if attempt_number == self.max_retries:
                     raise e
 
     def warn_and_delay(self, attempt_number):
         print(
             'Got error while connecting to timeseries DB. '
-            f'Retrying again in 3 seconds. Attempt {attempt_number} out of 5'
+            f'Retrying again in 3 seconds (attempt n. {attempt_number} out of 5).'
         )
-        sleep(3)
+        sleep(self.retry_delay)
