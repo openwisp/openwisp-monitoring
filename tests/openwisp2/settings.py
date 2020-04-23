@@ -162,8 +162,7 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
-INSTALLED_APPS.append('djcelery_email')
-EMAIL_BACKEND = 'djcelery_email.backends.CeleryEmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 LOGGING = {
     'version': 1,
