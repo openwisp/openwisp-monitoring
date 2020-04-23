@@ -327,11 +327,11 @@ Signals
 - ``instance``: instance of ``Device`` whose metrics have been received
 - ``request``: the HTTP request object
 
-This signal is emitted when device metrics are received via the ``DeviceMetric`` view.
+This signal is emitted when device metrics are received to the ``DeviceMetric``
+view (only when using HTTP POST).
 
 The signal is emitted just before a successful response is returned,
 it is not sent if the response was not successful.
-
 
 Installing for development
 --------------------------
