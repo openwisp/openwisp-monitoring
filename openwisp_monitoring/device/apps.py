@@ -29,10 +29,10 @@ class DeviceMonitoringConfig(AppConfig):
         )
 
     def device_recovery_detection(self):
-        from openwisp_controller.config.models import Device
-        from .models import DeviceData, DeviceMonitoring
-
         if app_settings.DEVICE_RECOVERY_DETECTION:
+            from openwisp_controller.config.models import Device
+            from .models import DeviceData, DeviceMonitoring
+
             health_status_changed.connect(
                 self.manage_device_recovery_cache_key, sender=DeviceMonitoring
             )
