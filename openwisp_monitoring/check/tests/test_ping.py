@@ -4,7 +4,6 @@ from django.core.exceptions import ValidationError
 from django.test import TransactionTestCase
 
 from ... import settings as monitoring_settings
-from ...device.models import DeviceMonitoring
 from ...device.tests import TestDeviceMonitoringMixin
 from ...monitoring.models import Graph, Metric, Threshold
 from .. import settings
@@ -95,44 +94,47 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         else:
             self.fail('OperationalError not raised')
 
-    def test_device_has_no_ip(self):
-        d = self._create_device(organization=self._create_org())
-        check = Check(name='Ping check', check=self._PING, content_object=d, params={})
-        # nothing bad should happen
-        result = check.perform_check(store=False)
-        self.assertIsNone(result)
+    def _check_no_ip_case(self, status, management_ip_only=False):
+        device = self._create_device(
+            organization=self._create_org(), last_ip='127.0.0.1'
+        )
+        device.monitoring.update_status(status)
+        check = Check(
+            name='Ping check', check=self._PING, content_object=device, params={}
+        )
+        result = check.perform_check(store=True)
+        if not management_ip_only:
+            if status != 'unknown':
+                expected_result = {'reachable': 0, 'loss': 100}
+                expected_status = 'critical'
+                expected_metrics_count = 1
+            else:
+                expected_result = None
+                expected_status = status
+                expected_metrics_count = 0
+            self.assertEqual(result, expected_result)
+        else:
+            expected_status = 'ok'
+            expected_metrics_count = 1
+        device.monitoring.refresh_from_db()
+        self.assertEqual(device.monitoring.status, expected_status)
+        self.assertEqual(Metric.objects.count(), expected_metrics_count)
 
-    def test_device_has_no_ip_with_ok_status(self):
-        """
-        Test when device has no ip and health status is ok
-        with ping in OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS
-        """
-        d = self._create_device(organization=self._create_org())
-        device_monitored = DeviceMonitoring.objects.get(device__pk=d.pk)
-        device_monitored.status = 'ok'
-        device_monitored.save()
-        check = Check(name='Ping check', check=self._PING, content_object=d, params={})
-        # nothing bad chould happen
-        result = check.perform_check(store=False)
-        device_monitored.refresh_from_db()
-        self.assertIsNone(result)
-        self.assertEqual(device_monitored.status, 'critical')
+    def test_device_without_ip_unknown_status(self):
+        self._check_no_ip_case('unknown')
 
-    def test_device_has_no_ip_with_problem_status(self):
-        """
-        Test when device has no ip and health status is problem
-        with ping in OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS
-        """
-        d = self._create_device(organization=self._create_org())
-        device_monitored = DeviceMonitoring.objects.get(device__pk=d.pk)
-        device_monitored.status = 'problem'
-        device_monitored.save()
-        check = Check(name='Ping check', check=self._PING, content_object=d, params={})
-        # nothing bad chould happen
-        result = check.perform_check(store=False)
-        device_monitored.refresh_from_db()
-        self.assertIsNone(result)
-        self.assertEqual(device_monitored.status, 'critical')
+    def test_device_without_ip_ok_status(self):
+        self._check_no_ip_case('ok')
+
+    def test_device_without_ip_problem_status(self):
+        self._check_no_ip_case('problem')
+
+    def test_device_without_ip_critical_status(self):
+        self._check_no_ip_case('critical')
+
+    @patch('openwisp_monitoring.device.settings.MANAGEMENT_IP_ONLY', False)
+    def test_device_with_last_ip_unknown_status(self):
+        self._check_no_ip_case('unknown', management_ip_only=True)
 
     def test_content_object_none(self):
         check = Check(name='Ping check', check=self._PING, params={})

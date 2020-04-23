@@ -14,6 +14,7 @@ HEALTH_STATUS_LABELS = getattr(
     'OPENWISP_MONITORING_HEALTH_STATUS_LABELS',
     {'unknown': 'unknown', 'ok': 'ok', 'problem': 'problem', 'critical': 'critical'},
 )
+MANAGEMENT_IP_ONLY = getattr(settings, 'OPENWISP_MONITORING_MANAGEMENT_IP_ONLY', True)
 
 for item in CRITICAL_DEVICE_METRICS:  # pragma: no-cover
     if not all(['key' in item, 'field_name' in item]):

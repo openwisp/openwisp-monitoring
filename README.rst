@@ -282,6 +282,22 @@ you can use the following configuration:
         'critical': 'offline'
     }
 
+``OPENWISP_MONITORING_MANAGEMENT_IP_ONLY``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``bool``    |
++--------------+-------------+
+| **default**: | ``True``    |
++--------------+-------------+
+
+By default, only the management IP will be used to perform active checks to
+the devices.
+
+If the devices are connecting to your OpenWISP instance using a shared layer2
+network, hence the OpenWSP server can reach the devices using the ``last_ip``
+field, you can set this to ``False``.
+
 Installing for development
 --------------------------
 

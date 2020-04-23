@@ -8,8 +8,7 @@ from jsonschema.exceptions import ValidationError as SchemaError
 from openwisp_controller.config.models import Device
 
 from ... import settings as monitoring_settings
-from ...device import settings as device_settings
-from ...device.models import DeviceMonitoring
+from ...device import settings as device_app_settings
 from ...monitoring.models import Graph, Metric, Threshold
 from ..exceptions import OperationalError
 
@@ -78,16 +77,17 @@ class Ping(object):
         bytes_ = self._get_param('bytes')
         timeout = self._get_param('timeout')
         ip = self._get_ip()
+        #  if the device has no available IP
         if not ip:
-            device_monitored = DeviceMonitoring.objects.get(
-                device__pk=self.related_object.pk
-            )
-            if (
-                device_monitored.status in ['ok', 'problem']
-                and device_settings.CRITICAL_DEVICE_METRICS[0]['key'] == 'ping'
-            ):
-                self.store_result({'reachable': 0, 'loss': 100})
-            return
+            monitoring = self.related_object.monitoring
+            # device not known yet, ignore
+            if monitoring.status == 'unknown':
+                return
+            # device is known, simulate down
+            result = {'reachable': 0, 'loss': 100.0}
+            if store:
+                self.store_result(result)
+            return result
         command = [
             'fping',
             '-e',  # show elapsed (round-trip) time of packets
@@ -145,7 +145,9 @@ class Ping(object):
         Figures out ip to use or fails raising OperationalError
         """
         device = self.related_object
-        ip = device.management_ip or device.last_ip
+        ip = device.management_ip
+        if not ip and not device_app_settings.MANAGEMENT_IP_ONLY:
+            ip = device.last_ip
         return ip
 
     def _command(self, command):
