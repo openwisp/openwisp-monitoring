@@ -150,19 +150,10 @@ Configure celery (you may use a different broker if you want):
     # here we show how to configure celery with redis but you can
     # use other brokers if you want, consult the celery docs
     CELERY_BROKER_URL = 'redis://localhost/1'
-    CELERYBEAT_SCHEDULE = {
+    CELERY_BEAT_SCHEDULE = {
         'run_checks': {
             'task': 'openwisp_monitoring.check.tasks.run_check',
             'schedule': timedelta(minutes=5),
-        },
-    }
-
-    CELERYBEAT_SCHEDULE = {
-        'run_checks': {
-            'task': 'openwisp_monitoring.check.tasks.run_checks',
-            'schedule': timedelta(minutes=5),
-            'args': None,
-            'relative': True
         },
     }
 
