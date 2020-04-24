@@ -5,7 +5,6 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ValidationError
-from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.translation import ugettext_lazy as _
@@ -15,16 +14,14 @@ from mac_vendor_lookup import MacLookup
 from model_utils import Choices
 from model_utils.fields import StatusField
 from pytz import timezone as tz
+from swapper import swappable_setting
 
 from openwisp_controller.config.models import Device
-from openwisp_utils.base import TimeStampedEditableModel
 
-from ..monitoring.models import Metric
 from ..monitoring.signals import threshold_crossed
 from ..monitoring.utils import query, write
-from . import settings as app_settings
+from .base.models import AbstractDeviceMonitoring
 from .schema import schema
-from .signals import health_status_changed
 from .utils import SHORT_RP
 
 mac_lookup = MacLookup()
@@ -177,48 +174,10 @@ class DeviceData(Device):
         return json.dumps(self.data, *args, **kwargs)
 
 
-class DeviceMonitoring(TimeStampedEditableModel):
-    device = models.OneToOneField(
-        'config.Device', on_delete=models.CASCADE, related_name='monitoring'
-    )
-    STATUS = Choices(
-        ('unknown', _(app_settings.HEALTH_STATUS_LABELS['unknown'])),
-        ('ok', _(app_settings.HEALTH_STATUS_LABELS['ok'])),
-        ('problem', _(app_settings.HEALTH_STATUS_LABELS['problem'])),
-        ('critical', _(app_settings.HEALTH_STATUS_LABELS['critical'])),
-    )
-    status = StatusField(
-        _('health status'),
-        db_index=True,
-        help_text=_(
-            '"{0}" means the device has been recently added; \n'
-            '"{1}" means the device is operating normally; \n'
-            '"{2}" means the device is having issues but it\'s still reachable; \n'
-            '"{3}" means the device is not reachable or in critical conditions;'
-        ).format(
-            app_settings.HEALTH_STATUS_LABELS['unknown'],
-            app_settings.HEALTH_STATUS_LABELS['ok'],
-            app_settings.HEALTH_STATUS_LABELS['problem'],
-            app_settings.HEALTH_STATUS_LABELS['critical'],
-        ),
-    )
-
-    def update_status(self, value):
-        # don't trigger save nor emit signal if status is not changing
-        if self.status == value:
-            return
-        self.status = value
-        self.full_clean()
-        self.save()
-        health_status_changed.send(sender=self.__class__, instance=self, status=value)
-
-    @property
-    def related_metrics(self):
-        return Metric.objects.select_related('content_type').filter(
-            object_id=self.device_id,
-            content_type__model='device',
-            content_type__app_label='config',
-        )
+class DeviceMonitoring(AbstractDeviceMonitoring):
+    class Meta(AbstractDeviceMonitoring.Meta):
+        abstract = False
+        swappable = swappable_setting('device_monitoring', 'DeviceMonitoring')
 
     @staticmethod
     @receiver(threshold_crossed, dispatch_uid='threshold_crossed_receiver')
@@ -248,18 +207,6 @@ class DeviceMonitoring(TimeStampedEditableModel):
         ):
             status = 'critical'
         monitoring.update_status(status)
-
-    @staticmethod
-    def is_metric_critical(metric):
-        for critical in app_settings.CRITICAL_DEVICE_METRICS:
-            if all(
-                [
-                    metric.key == critical['key'],
-                    metric.field_name == critical['field_name'],
-                ]
-            ):
-                return True
-        return False
 
 
 @receiver(post_save, sender=Device, dispatch_uid='create_device_monitoring')

@@ -3,8 +3,7 @@ import json
 from celery import shared_task
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
-
-from .models import Check
+from swapper import load_model
 
 
 @shared_task
@@ -16,6 +15,7 @@ def run_checks():
     This allows to enqueue all the checks that need to be performed
     and execute them in parallel with multiple workers if needed.
     """
+    Check = load_model('check', 'Check')
     iterator = Check.objects.filter(active=True).only('id').values('id').iterator()
     for check in iterator:
         perform_check.delay(check['id'])
@@ -27,6 +27,7 @@ def perform_check(uuid):
     Retrieves check according to the passed UUID
     and calls ``check.perform_check()``
     """
+    Check = load_model('check', 'Check')
     check = Check.objects.get(pk=uuid)
     result = check.perform_check()
     if settings.DEBUG:  # pragma: nocover
@@ -38,6 +39,7 @@ def auto_create_ping(model, app_label, object_id, created):
     """
     Called by openwisp_monitoring.check.models.auto_ping_receiver
     """
+    Check = load_model('check', 'Check')
     ping_path = 'openwisp_monitoring.check.classes.Ping'
     has_check = (
         Check.objects.filter(
