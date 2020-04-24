@@ -1,13 +1,16 @@
 import json
 from datetime import date, timedelta
+from unittest import skipIf
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils.timezone import now
+from swapper import is_swapped, load_model
 
-from ..models import Graph
 from . import TestMonitoringMixin
+
+Graph = load_model('monitoring', 'Graph')
 
 
 class TestGraphs(TestMonitoringMixin, TestCase):
@@ -210,6 +213,7 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         g = self._create_graph(test_data=False)
         self.assertEqual(g.description, 'Dummy chart for testing purposes.')
 
+    @skipIf(is_swapped('monitoring', 'Metric'), 'Running tests on sample_app')
     def test_wifi_hostapd(self):
         m = self._create_object_metric(
             name='wifi associations', key='hostapd', field_name='mac_address'

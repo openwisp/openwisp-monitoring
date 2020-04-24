@@ -15,11 +15,11 @@ from mac_vendor_lookup import MacLookup
 from model_utils import Choices
 from model_utils.fields import StatusField
 from pytz import timezone as tz
+from swapper import is_swapped, load_model
 
 from openwisp_controller.config.models import Device
 from openwisp_utils.base import TimeStampedEditableModel
 
-from ..monitoring.models import Metric
 from ..monitoring.signals import threshold_crossed
 from ..monitoring.utils import query, write
 from . import settings as app_settings
@@ -36,15 +36,21 @@ class DeviceData(Device):
     __key = 'device_data'
     __data_timestamp = None
 
-    checks = GenericRelation('check.Check')
-    metrics = GenericRelation('monitoring.Metric')
+    if is_swapped('check', 'Check'):
+        checks = GenericRelation(is_swapped('check', 'Check'))
+    else:
+        checks = GenericRelation('check.Check')
+    if is_swapped('monitoring', 'Metric'):
+        metrics = GenericRelation(is_swapped('monitoring', 'Metric'))
+    else:
+        metrics = GenericRelation('monitoring.Metric')
 
     class Meta:
         proxy = True
 
     def __init__(self, *args, **kwargs):
         self.data = kwargs.pop('data', None)
-        return super(DeviceData, self).__init__(*args, **kwargs)
+        return super().__init__(*args, **kwargs)
 
     @property
     def data_user_friendly(self):
@@ -218,6 +224,7 @@ class DeviceMonitoring(TimeStampedEditableModel):
 
     @property
     def related_metrics(self):
+        Metric = load_model('monitoring', 'Metric')
         return Metric.objects.select_related('content_type').filter(
             object_id=self.device_id,
             content_type__model='device',

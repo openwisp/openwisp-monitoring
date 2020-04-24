@@ -2,14 +2,18 @@ from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
 from django.test import TransactionTestCase
+from swapper import load_model
 
 from ... import settings as monitoring_settings
 from ...device.tests import TestDeviceMonitoringMixin
-from ...monitoring.models import Graph, Metric, Threshold
 from .. import settings
 from ..classes import Ping
 from ..exceptions import OperationalError
-from ..models import Check
+
+Graph = load_model('monitoring', 'Graph')
+Threshold = load_model('monitoring', 'Threshold')
+Metric = load_model('monitoring', 'Metric')
+Check = load_model('check', 'Check')
 
 
 class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):

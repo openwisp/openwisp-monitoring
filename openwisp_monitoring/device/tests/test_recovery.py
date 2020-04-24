@@ -1,17 +1,20 @@
+from unittest import skipIf
 from unittest.mock import patch
 
 from django.apps import apps
 from django.core.cache import cache
 from django.urls import reverse
+from swapper import is_swapped, load_model
 
-from ...check.models import Check
 from ...check.tasks import auto_create_ping
-from ...monitoring.models import Metric
-from ..models import DeviceMonitoring
 from ..signals import health_status_changed
 from ..tasks import trigger_device_checks
 from ..utils import get_device_recovery_cache_key
 from . import DeviceMonitoringTestCase
+
+Check = load_model('check', 'Check')
+DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+Metric = load_model('monitoring', 'Metric')
 
 
 class TestRecovery(DeviceMonitoringTestCase):
@@ -26,6 +29,7 @@ class TestRecovery(DeviceMonitoringTestCase):
         dm.save()
         return dm
 
+    @skipIf(is_swapped('monitoring', 'Metric'), 'Running tests on sample_app')
     def test_trigger_device_recovery_task(self):
         d = self._create_device(organization=self._create_org())
         d.management_ip = '10.40.0.5'
@@ -44,6 +48,7 @@ class TestRecovery(DeviceMonitoringTestCase):
             self._post_data(d.id, d.key, data)
         mock.assert_called_once()
 
+    @skipIf(is_swapped('monitoring', 'Metric'), 'Running tests on sample_app')
     def test_device_recovery_cache_key_not_set(self):
         device_monitoring_app = apps.get_app_config('device_monitoring')
         health_status_changed.disconnect(

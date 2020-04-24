@@ -3,16 +3,17 @@ from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
+from swapper import load_model
 
 from openwisp_utils.tests import catch_signal
 
-from ..models import Metric
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
 from ..utils import query, write
 from . import TestMonitoringMixin
 
 start_time = timezone.now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
+Metric = load_model('monitoring', 'Metric')
 
 
 class TestModels(TestMonitoringMixin, TestCase):

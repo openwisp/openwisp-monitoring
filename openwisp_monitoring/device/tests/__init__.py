@@ -16,7 +16,7 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
 
     @classmethod
     def setUpClass(cls):
-        super(TestDeviceMonitoringMixin, cls).setUpClass()
+        super().setUpClass()
         manage_short_retention_policy()
 
 

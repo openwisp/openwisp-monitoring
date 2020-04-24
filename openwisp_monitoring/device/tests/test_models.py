@@ -1,21 +1,23 @@
-import copy
 import json
 from copy import deepcopy
+from unittest import skipIf
 from unittest.mock import patch
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from swapper import load_model
+from swapper import is_swapped, load_model
 
 from openwisp_controller.connection.models import Credentials, DeviceConnection
 from openwisp_utils.tests import catch_signal
 
-from ...check.models import Check
 from ...monitoring.utils import get_db
 from .. import settings as app_settings
-from ..models import DeviceData, DeviceMonitoring
+from ..models import DeviceData
 from ..signals import health_status_changed
 from ..utils import SHORT_RP
 from . import DeviceMonitoringTestCase
+
+Check = load_model('check', 'Check')
+DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 
 
 class BaseTestCase(DeviceMonitoringTestCase):
@@ -238,7 +240,7 @@ class TestDeviceData(BaseTestCase):
     def test_validate_neighbors_data(self):
         dd = self._create_device_data()
         try:
-            dd.data = self._sample_data
+            dd.data = deepcopy(self._sample_data)
             dd.data["neighbors"][0]["ip_address"] = "invalid"
             dd.validate_data()
         except ValidationError as e:
@@ -321,7 +323,7 @@ class TestDeviceData(BaseTestCase):
 
     def test_bad_address_fail(self):
         dd = self._create_device_data()
-        data = copy.deepcopy(self._sample_data)
+        data = deepcopy(self._sample_data)
         data['interfaces'][1]['addresses'][0]['address'] = '123'
         try:
             dd.data = data
@@ -508,6 +510,7 @@ class TestDeviceMonitoring(BaseTestCase):
         self.assertEqual(n.actor, d)
         self.assertEqual(n.recipient, admin)
 
+    @skipIf(is_swapped('check', 'Check'), 'Running tests on sample_app')
     @patch('openwisp_monitoring.check.models.Check.perform_check')
     def test_is_working_false_true(self, mocked_call):
         d = self._create_device()
@@ -522,6 +525,7 @@ class TestDeviceMonitoring(BaseTestCase):
         dc.save()
         mocked_call.assert_called_once()
 
+    @skipIf(is_swapped('check', 'Check'), 'Running tests on sample_app')
     @patch('openwisp_monitoring.check.models.Check.perform_check')
     def test_is_working_true_false(self, mocked_call):
         d = self._create_device()

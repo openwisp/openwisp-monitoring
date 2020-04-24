@@ -50,7 +50,8 @@ install:
 
 script:
   - ./run-qa-checks
-  - coverage run --source=openwisp_monitoring runtests.py
+  - SAMPLE_APP=1 coverage run --source=openwisp_monitoring runtests.py
+  - coverage run -a --source=openwisp_monitoring runtests.py
 
 after_success:
   coveralls

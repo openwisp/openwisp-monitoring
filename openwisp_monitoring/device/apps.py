@@ -4,6 +4,7 @@ from django.db.models.signals import post_delete
 from django.utils.translation import ugettext_lazy as _
 from django_netjsonconfig.signals import checksum_requested
 from openwisp_notifications.signals import notify
+from swapper import load_model
 
 from . import settings as app_settings
 from .signals import device_metrics_received, health_status_changed
@@ -33,8 +34,9 @@ class DeviceMonitoringConfig(AppConfig):
     def device_recovery_detection(self):
         if app_settings.DEVICE_RECOVERY_DETECTION:
             from openwisp_controller.config.models import Device
-            from .models import DeviceData, DeviceMonitoring
 
+            DeviceData = load_model('device_monitoring', 'DeviceData')
+            DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
             health_status_changed.connect(
                 self.manage_device_recovery_cache_key, sender=DeviceMonitoring
             )
@@ -51,8 +53,7 @@ class DeviceMonitoringConfig(AppConfig):
 
     @classmethod
     def device_post_delete_receiver(cls, instance, **kwargs):
-        from ..device.models import DeviceData
-
+        DeviceData = load_model('device_monitoring', 'DeviceData')
         instance.__class__ = DeviceData
         instance.checks.all().delete()
         instance.metrics.all().delete()
@@ -89,9 +90,9 @@ class DeviceMonitoringConfig(AppConfig):
 
     @classmethod
     def is_working_changed_receiver(cls, instance, is_working, **kwargs):
-        from ..check.models import Check
         from .tasks import trigger_device_checks
 
+        Check = load_model('check', 'Check')
         device = instance.device
         device_monitoring = device.monitoring
         initial_status = device_monitoring.status

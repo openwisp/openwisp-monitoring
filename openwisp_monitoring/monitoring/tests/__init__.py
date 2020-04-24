@@ -2,16 +2,19 @@ from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.utils.timezone import now
+from swapper import load_model
 
 from openwisp_users.tests.utils import TestOrganizationMixin
 
 from .. import settings as app_settings
-from ..models import Graph, Metric, Threshold
 from ..utils import create_database, get_db, query
 
 User = get_user_model()
 start_time = now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
+Graph = load_model('monitoring', 'Graph')
+Metric = load_model('monitoring', 'Metric')
+Threshold = load_model('monitoring', 'Threshold')
 
 
 class TestMonitoringMixin(TestOrganizationMixin):

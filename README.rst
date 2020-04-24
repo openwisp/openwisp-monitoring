@@ -477,4 +477,328 @@ Run tests with:
 
 .. code-block:: shell
 
+    # run qa checks
+    ./run-qa-checks
+
+    # standard tests
     ./runtests.py
+
+    # tests for the sample app
+    SAMPLE_APP=1 ./runtests.py --keepdb --failfast
+
+When running the last line of the previous example, the environment variable
+``SAMPLE_APP`` activates the sample apps in ``/tests/openwisp2/``
+which are simple django apps that extend ``openwisp-monitoring`` with
+the sole purpose of testing its extensibility, for more information regarding
+this concept, read the following section.
+
+Extending openwisp-monitoring
+-----------------------------
+
+One of the core values of the OpenWISP project is `Software Reusability <http://openwisp.io/docs/general/values.html#software-reusability-means-long-term-sustainability>`_,
+for this reason *openwisp-monitoring* provides a set of base classes
+which can be imported, extended and reused to create derivative apps.
+
+In order to implement your custom version of *openwisp-monitoring*,
+you need to perform the steps described in the rest of this section.
+
+When in doubt, the code in the `test project <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/>`_
+and the ``sample apps`` namely `sample_check <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_check/>`_,
+`sample_monitoring <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_monitoring/>`_, `sample_device_monitoring <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_device_monitoring/>`_
+will guide you in the correct direction:
+just replicate and adapt that code to get a basic derivative of
+*openwisp-monitoring* working.
+
+**Premise**: if you plan on using a customized version of this module,
+we suggest to start with it since the beginning, because migrating your data
+from the default module to your extended version may be time consuming.
+
+1. Initialize your custom module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The first thing you need to do in order to extend any *openwisp-monitoring* app is create
+a new django app which will contain your custom version of that *openwisp-monitoring* app.
+
+In the following example, we show it for ``check`` app and it can be done similarly for ``monitoring`` app
+
+A django app is nothing more than a
+`python package <https://docs.python.org/3/tutorial/modules.html#packages>`_
+(a directory of python scripts), in the following examples we'll call this django app
+``mycheck``, but you can name it how you want::
+
+    django-admin startapp mycheck
+
+Keep in mind that the command mentioned above must be called from a directory
+which is available in your `PYTHON_PATH <https://docs.python.org/3/using/cmdline.html#envvar-PYTHONPATH>`_
+so that you can then import the result into your project.
+
+Now you need to add ``mycheck`` to ``INSTALLED_APPS`` in your ``settings.py``,
+ensuring also that ``openwisp_monitoring.check`` has been removed:
+
+.. code-block:: python
+
+    INSTALLED_APPS = [
+        # ... other apps ...
+        # 'openwisp_monitoring.check',      <-- comment out or delete this line
+        'openwisp_monitoring.device',       <-- do not remove the device app
+        'mycheck'
+    ]
+
+For more information about how to work with django projects and django apps,
+please refer to the `django documentation <https://docs.djangoproject.com/en/dev/intro/tutorial01/>`_.
+
+2. Install ``openwisp-monitoring``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Install (and add to the requirement of your project) *openwisp-monitoring*::
+
+    pip install --U https://github.com/openwisp/openwisp-controller/tarball/master
+
+3. Add ``EXTENDED_APPS``
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Add the following to your ``settings.py``:
+
+.. code-block:: python
+
+    EXTENDED_APPS = ['monitoring', 'check']
+
+4. Add ``openwisp_utils.staticfiles.DependencyFinder``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Add ``openwisp_utils.staticfiles.DependencyFinder`` to
+``STATICFILES_FINDERS`` in your ``settings.py``:
+
+.. code-block:: python
+
+    STATICFILES_FINDERS = [
+        'django.contrib.staticfiles.finders.FileSystemFinder',
+        'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+        'openwisp_utils.staticfiles.DependencyFinder',
+    ]
+
+5. Add ``openwisp_utils.loaders.DependencyLoader``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Add ``openwisp_utils.loaders.DependencyLoader`` to ``TEMPLATES`` in your ``settings.py``:
+
+.. code-block:: python
+
+    TEMPLATES = [
+        {
+            'BACKEND': 'django.template.backends.django.DjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    'django.template.loaders.filesystem.Loader',
+                    'django.template.loaders.app_directories.Loader',
+                    'openwisp_utils.loaders.DependencyLoader',
+                ],
+                'context_processors': [
+                    'django.template.context_processors.debug',
+                    'django.template.context_processors.request',
+                    'django.contrib.auth.context_processors.auth',
+                    'django.contrib.messages.context_processors.messages',
+                ],
+            },
+        }
+    ]
+
+6. Inherit the AppConfig class
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Please refer to the following files in the sample app of the test project:
+
+- `sample_check/__init__.py <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_check/__init__.py>`_.
+- `sample_check/apps.py <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_check/apps.py>`_.
+- `sample_monitoring/__init__.py <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_monitoring/__init__.py>`_.
+- `sample_monitoring/apps.py <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_monitoring/apps.py>`_.
+- `sample_device_monitoring/__init__.py <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_device_monitoring/__init__.py>`_.
+- `sample_device_monitoring/apps.py <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_device_monitoring/apps.py>`_.
+
+For more information regarding the concept of ``AppConfig`` please refer to
+the `"Applications" section in the django documentation <https://docs.djangoproject.com/en/dev/ref/applications/>`_.
+
+7. Create your custom models
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To extend ``check`` app, refer to `sample_check models.py file <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_check/models.py>`_.
+
+To extend ``monitoring`` app, refer to `sample_monitoring models.py file <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_monitoring/models.py>`_.
+
+To extend ``device_monitoring`` app, refer to `sample_device_monitoring models.py file <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_device_monitoring/models.py>`_.
+
+**Note**:
+
+1. For doubts regarding how to use, extend or develop models please refer to
+the `"Models" section in the django documentation <https://docs.djangoproject.com/en/dev/topics/db/models/>`_.
+
+2. In order to extend ``device_monitoring`` app's models make use of `proxy models <https://docs.djangoproject.com/en/dev/topics/db/models/#proxy-models>`_.
+
+8. Add swapper configurations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Add the following to your ``settings.py``:
+
+.. code-block:: python
+
+    # Setting models for swapper module
+    # For extending ``check`` app
+    CHECK_CHECK_MODEL = 'YOUR_MODULE_NAME.Check'
+    # For extending ``monitoring`` app
+    MONITORING_GRAPH_MODEL = 'YOUR_MODULE_NAME.Graph'
+    MONITORING_METRIC_MODEL = 'YOUR_MODULE_NAME.Metric'
+    MONITORING_THRESHOLD_MODEL = 'YOUR_MODULE_NAME.Threshold'
+
+Substitute ``<YOUR_MODULE_NAME>`` with your actual django app name
+(also known as ``app_label``).
+
+9. Create database migrations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Create and apply database migrations::
+
+    ./manage.py makemigrations
+    ./manage.py migrate
+
+For more information, refer to the
+`"Migrations" section in the django documentation <https://docs.djangoproject.com/en/dev/topics/migrations/>`_.
+
+10. Create your custom admin
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To extend ``check`` app, refer to `sample_check admin.py file <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_check/admin.py>`_.
+
+To extend ``monitoring`` app, refer to `sample_monitoring admin.py file <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_monitoring/admin.py>`_.
+
+To extend ``device_monitoring`` app, refer to `sample_device_monitoring admin.py file <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_device_monitoring/admin.py>`_.
+
+To introduce changes to the admin, you can do it in the two ways described below.
+
+**Note**: for doubts regarding how the django admin works, or how it can be customized,
+please refer to `"The django admin site" section in the django documentation <https://docs.djangoproject.com/en/dev/ref/contrib/admin/>`_.
+
+1. Monkey patching
+##################
+
+If the changes you need to add are relatively small, you can resort to monkey patching.
+
+For example, for ``check`` app you can do it as:
+
+.. code-block:: python
+
+    from openwispmonitoring.check.admin import CheckAdmin
+    
+    CheckAdmin.list_display.insert(1, 'my_custom_field')
+    CheckAdmin.ordering = ['-my_custom_field']
+
+2. Inheriting admin classes
+###########################
+
+If you need to introduce significant changes and/or you don't want to resort to
+monkey patching, you can proceed as follows:
+
+.. code-block:: python
+
+    from django.contrib import admin
+
+    from openwisp_monitoring.check.admin import CheckAdmin as BaseCheckAdmin
+    from swapper import load_model
+
+    Check = load_model('Check')
+
+    admin.site.unregister(Check)
+
+    @admin.register(Check)
+    class CheckAdmin(BaseCheckAdmin):
+        # add your changes here
+
+11. Create root URL configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Please refer to the `urls.py <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/urls.py>`_
+file in the test project.
+
+For more information about URL configuration in django, please refer to the
+`"URL dispatcher" section in the django documentation <https://docs.djangoproject.com/en/dev/topics/http/urls/>`_.
+
+12. Create celery.py
+~~~~~~~~~~~~~~~~~~~~
+
+Please refer to the `celery.py <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/celery.py>`_
+file in the test project.
+
+For more information about the usage of celery in django, please refer to the
+`"First steps with Django" section in the celery documentation <https://docs.celeryproject.org/en/master/django/first-steps-with-django.html>`_.
+
+13. Import the automated tests
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When developing a custom application based on this module, it's a good idea
+to import and run the base tests too, so that you can be sure the changes you're introducing
+are not breaking some of the existing features of openwisp-monitoring.
+
+In case you need to add breaking changes, you can overwrite the tests defined
+in the base classes to test your own behavior.
+
+For, extending ``check`` app see the `tests of sample_check app <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/sample_check/tests.py>`_
+to find out how to do this.
+
+For, extending ``device_monitoring`` app see the `tests of sample_device_monitoring app <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/sample_device_monitoring/tests.py>`_
+to find out how to do this.
+
+For, extending ``monitoring`` app see the `tests of sample_monitoring app <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/sample_monitoring/tests.py>`_
+to find out how to do this.
+
+Other base classes that can be inherited and extended
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**The following steps are not required and are intended for more advanced customization.**
+
+``DeviceMetricView``
+####################
+
+This view is responsible for displaying ``Monitoring Graphs`` and ``Device Status`` primarily.
+
+The full python path is: ``openwisp_monitoring.device.api.views.DeviceMetricView``.
+
+If you want to extend this view, you will have to perform the additional steps below.
+
+**Step 1. Import and extend view:**
+
+.. code-block:: python
+
+    # mydevice/api/views.py
+    from openwisp_monitoring.device.api.views import (
+        DeviceMetricView as BaseDeviceMetricView
+    )
+
+    class DeviceMetricView(BaseDeviceMetricView):
+        # add your customizations here ...
+        pass
+
+**Step 2: remove the following line from your root ``urls.py`` file:**
+
+.. code-block:: python
+
+    url(
+        r'^api/v1/monitoring/device/(?P<pk>[^/]+)/$',
+        views.device_metric,
+        name='api_device_metric',
+    ),
+
+**Step 3: add an URL route pointing to your custom view in ``urls.py`` file:**
+
+.. code-block:: python
+
+    # urls.py
+    from mydevice.api.views import DeviceMetricView
+
+    urlpatterns = [
+        # ... other URLs
+        url(r'^(?P<path>.*)$', DeviceMetricView.as_view(), name='api_device_metric',),
+    ]
+
+Contributing
+------------
+
+Please refer to the `OpenWISP contributing guidelines <http://openwisp.io/docs/developer/contributing.html>`_.

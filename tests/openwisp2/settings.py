@@ -61,11 +61,11 @@ INSTALLED_APPS = [
     'channels',
 ]
 
-EXTENDED_APPS = (
+EXTENDED_APPS = [
     'django_netjsonconfig',
     'django_x509',
     'django_loci',
-)
+]
 
 AUTH_USER_MODEL = 'openwisp_users.User'
 SITE_ID = '1'
@@ -290,6 +290,21 @@ LOGGING = {
         'celery.task': {'handlers': ['console'], 'level': 'DEBUG',},
     },
 }
+
+if os.environ.get('SAMPLE_APP', False):
+    for app in [
+        'openwisp_monitoring.monitoring',
+        'openwisp_monitoring.check',
+    ]:
+        INSTALLED_APPS.remove(app)
+        EXTENDED_APPS.append(app)
+    INSTALLED_APPS.append('openwisp2.sample_device_monitoring')
+    INSTALLED_APPS.append('openwisp2.sample_monitoring')
+    INSTALLED_APPS.append('openwisp2.sample_check')
+    CHECK_CHECK_MODEL = 'sample_check.Check'
+    MONITORING_GRAPH_MODEL = 'sample_monitoring.Graph'
+    MONITORING_METRIC_MODEL = 'sample_monitoring.Metric'
+    MONITORING_THRESHOLD_MODEL = 'sample_monitoring.Threshold'
 
 # local settings must be imported before test runner otherwise they'll be ignored
 try:

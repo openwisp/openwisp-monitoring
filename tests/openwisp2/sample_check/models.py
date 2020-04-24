@@ -1,6 +1,5 @@
+from openwisp_monitoring.check.base.models import AbstractCheck
 from swapper import swappable_setting
-
-from .base.models import AbstractCheck
 
 
 class Check(AbstractCheck):

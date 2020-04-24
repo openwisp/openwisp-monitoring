@@ -1,10 +1,12 @@
 import io
 from contextlib import redirect_stdout
+from unittest import skipIf
 from unittest.mock import patch
 
 from django.apps import apps
 from django.test import TestCase
 from requests.exceptions import ConnectionError
+from swapper import is_swapped
 
 from ..utils import get_db
 
@@ -13,6 +15,7 @@ def mock_create_database(self, db):
     raise ConnectionError
 
 
+@skipIf(is_swapped('monitoring', 'Metric'), 'Running tests on sample_app')
 class TestDatabase(TestCase):
     @patch('openwisp_monitoring.monitoring.settings.INFLUXDB_DATABASE', 'test_db')
     @patch('openwisp_monitoring.monitoring.apps.MonitoringConfig.warn_and_delay')

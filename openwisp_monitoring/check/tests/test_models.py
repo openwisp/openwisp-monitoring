@@ -1,10 +1,12 @@
 from django.core.exceptions import ValidationError
 from django.test import TransactionTestCase
+from swapper import load_model
 
 from ...device.tests import TestDeviceMonitoringMixin
 from ..classes import Ping
-from ..models import Check
 from ..settings import CHECK_CLASSES
+
+Check = load_model('check', 'Check')
 
 
 class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):

@@ -3,22 +3,29 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
+from swapper import is_swapped, load_model, split
 
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
 from openwisp_controller.config.models import Device
 
 from ..monitoring.admin import MetricAdmin
-from ..monitoring.models import Graph
 from . import settings as app_settings
-from .models import DeviceData, DeviceMonitoring
+
+DeviceData = load_model('device_monitoring', 'DeviceData')
+DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+Graph = load_model('monitoring', 'Graph')
 
 
 class DeviceAdmin(BaseDeviceAdmin):
     def get_extra_context(self, pk=None):
-        ctx = super(DeviceAdmin, self).get_extra_context(pk)
+        ctx = super().get_extra_context(pk)
         if pk:
             device_data = DeviceData(pk=pk)
-            api_url = reverse('monitoring:api_device_metric', args=[pk])
+            if is_swapped('monitoring', 'Metric'):
+                monitoring_app = split(is_swapped('monitoring', 'Metric'))[0]
+            else:
+                monitoring_app = 'monitoring'
+            api_url = reverse(f'{monitoring_app}:api_device_metric', args=[pk])
             ctx.update(
                 {
                     'device_data': device_data.data_user_friendly,
