@@ -1,8 +1,10 @@
+from django import forms
 from django.contrib import admin
 from django.utils.translation import ugettext_lazy as _
 
 from openwisp_utils.admin import TimeReadonlyAdminMixin
 
+from . import settings as app_settings
 from .models import Graph, Metric, Threshold
 
 
@@ -11,11 +13,20 @@ class ThresholdInline(TimeReadonlyAdminMixin, admin.StackedInline):
     extra = 0
 
 
+class GraphChangeForm(forms.ModelForm):
+    query = forms.ChoiceField(choices=app_settings.QUERY)
+
+    class Meta:
+        model = Graph
+        exclude = ['created', 'modified']
+
+
 class GraphInline(admin.StackedInline):
     model = Graph
+    form = GraphChangeForm
     extra = 0
     template = 'admin/graph_inline.html'
-    exclude = ['created', 'modified']
+    # exclude = ['created', 'modified']
 
 
 @admin.register(Metric)

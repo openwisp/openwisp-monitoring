@@ -314,6 +314,28 @@ field, you can set this to ``False``.
 The setting allows to detect recoveries as soon as they happen thus making
 the monitoring system faster.
 
+``OPENWISP_MONITORING_CUSTOM_QUERY``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+--------------------------------------------------------------------------------------+
+| **type**:    | ``tuple``                                                                            |
++--------------+--------------------------------------------------------------------------------------+
+| **default**: | ``(( [WIP] ))``                                                                      |
++--------------+--------------------------------------------------------------------------------------+
+
+This setting allows to add custom ``QUERY`` in ``Chart``, for example, if you
+want to add a query to drop your database it can be done in the following manner:
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_CUSTOM_QUERY = (
+        ('DROP DATABASE openwisp2', 'Drop Database'),
+    )
+
+You can provide parameters to the ``Query`` by inputing them in ``Query Parameters``
+and providing space between them as below:
+    Query Parameters : <parameter1> <parameter2> <parameter3> ...
+
 Signals
 -------
 

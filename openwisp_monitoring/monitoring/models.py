@@ -253,6 +253,10 @@ class Graph(TimeStampedEditableModel):
     metric = models.ForeignKey(Metric, on_delete=models.CASCADE)
     description = models.CharField(max_length=64, blank=True)
     query = models.TextField(blank=True)
+    # The reason I am storing it in database is to ease if the user wants to modify the paramenters
+    query_parameters = models.CharField(
+        _('Query Parameters'), blank=True, null=True, max_length=64
+    )
     type = models.CharField(
         _('chart type'), max_length=16, choices=TYPES, default=TYPES[0][0]
     )
@@ -269,12 +273,17 @@ class Graph(TimeStampedEditableModel):
         return self.description or self.metric.name
 
     def clean(self):
+        # print(self.__dict__)
         if not self.metric:
             return
         if not self.description:
             self.description = self.metric.name
         if not self.query:
             self.query = self._default_query
+        if self.query_parameters:
+            query_parameters = str(self.query_parameters).split(' ')
+            for parameter in query_parameters:
+                self.query = re.sub(r'{.*?}', parameter, self.query, 1)
         self._clean_query()
 
     _FORBIDDEN = ['drop', 'create', 'delete', 'alter', 'into']

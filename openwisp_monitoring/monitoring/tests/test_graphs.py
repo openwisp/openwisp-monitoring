@@ -350,3 +350,9 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         g = Graph(metric=m, query=q, type='histogram')
         g.full_clean()
         self.assertNotIn('GROUP BY time', g.get_query())
+
+    def test_query_parameter(self):
+        m = self._create_object_metric(name='histogram')
+        g = Graph(metric=m, query_parameters='{fields|MEAN}', type='histogram')
+        g.full_clean()
+        self.assertIn('{fields|MEAN}', g.query)
