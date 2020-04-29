@@ -36,7 +36,7 @@ class Ping(object):
             'bytes': {'type': 'integer', 'default': 56, 'minimum': 1, 'maximum': 65508},
             'timeout': {
                 'type': 'integer',
-                'default': 500,
+                'default': 800,
                 'minimum': 5,
                 # arbitrary chosen to avoid slowing down the queue
                 'timeout': 1500,
