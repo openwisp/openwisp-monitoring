@@ -23,14 +23,14 @@ class Ping(object):
                 'type': 'integer',
                 'default': 5,
                 'minimum': 2,
-                # arbitrary chosen to avoid slowing down the queue
+                # chosen to avoid slowing down the queue
                 'maximum': 20,
             },
             'interval': {
                 'type': 'integer',
                 'default': 25,
                 'minimum': 10,
-                # arbitrary chosen to avoid slowing down the queue
+                # chosen to avoid slowing down the queue
                 'maximum': 1000,
             },
             'bytes': {'type': 'integer', 'default': 56, 'minimum': 1, 'maximum': 65508},
@@ -39,7 +39,7 @@ class Ping(object):
                 'default': 800,
                 'minimum': 5,
                 # arbitrary chosen to avoid slowing down the queue
-                'timeout': 1500,
+                'maximum': 1500,
             },
         },
     }
