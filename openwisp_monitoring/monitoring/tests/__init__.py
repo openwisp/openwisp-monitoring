@@ -57,14 +57,14 @@ class TestMonitoringMixin(TestOrganizationMixin):
         return t
 
     def _create_graph(
-        self, metric=None, test_data=True, type='line', top_fields=0, description=None
+        self, metric=None, test_data=True, configuration='dummy',
     ):
         m = metric or self._create_object_metric()
         if test_data:
             m.write(3, time=now() - timedelta(days=2))
             m.write(6, time=now() - timedelta(days=1))
             m.write(9, time=now())
-        g = Graph(metric=m, type=type, top_fields=top_fields, description=description)
+        g = Graph(metric=m, configuration=configuration,)
         g.full_clean()
         g.save()
         return g

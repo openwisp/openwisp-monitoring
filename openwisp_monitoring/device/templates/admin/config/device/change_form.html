@@ -174,7 +174,7 @@
               if (!graphDiv.length) {
                 graphContents.append('<div id="' + htmlId + '"></div>');
               }
-              createGraph(graph, data.x, htmlId, graph.description, graph.type);
+              createGraph(graph, data.x, htmlId, graph.title, graph.type);
             });
             if (showLoading) { loadingOverlay.fadeOut(200); }
           }).fail(function (){

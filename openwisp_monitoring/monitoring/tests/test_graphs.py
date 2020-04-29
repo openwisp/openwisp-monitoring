@@ -5,7 +5,6 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils.timezone import now
-from influxdb.exceptions import InfluxDBClientError
 
 from ..models import Graph
 from . import TestMonitoringMixin
@@ -30,9 +29,7 @@ class TestGraphs(TestMonitoringMixin, TestCase):
 
     def test_read_summary_avg(self):
         m = self._create_object_metric(name='summary_avg')
-        g = self._create_graph(metric=m, test_data=False)
-        g.query = g.query.replace('{field_name}', 'MEAN({field_name}) AS {field_name}')
-        g.save()
+        g = self._create_graph(metric=m, test_data=False, configuration='mean_test')
         m.write(1, time=now() - timedelta(days=2))
         m.write(2, time=now() - timedelta(days=1))
         m.write(3, time=now())
@@ -41,8 +38,7 @@ class TestGraphs(TestMonitoringMixin, TestCase):
 
     def test_read_summary_sum(self):
         m = self._create_object_metric(name='summary_sum')
-        g = self._create_graph(metric=m, test_data=False)
-        g.query = g.query.replace('{field_name}', 'SUM({field_name}) AS {field_name}')
+        g = self._create_graph(metric=m, test_data=False, configuration='sum_test')
         m.write(5, time=now() - timedelta(days=2))
         m.write(4, time=now() - timedelta(days=1))
         m.write(1, time=now())
@@ -57,8 +53,9 @@ class TestGraphs(TestMonitoringMixin, TestCase):
 
     def test_read_summary_top_fields(self):
         m = self._create_object_metric(name='applications')
-        g = self._create_graph(metric=m, test_data=False, top_fields=2)
-        g.query = g.query.replace('{field_name}', '{fields|MEAN}')
+        g = self._create_graph(
+            metric=m, test_data=False, configuration='top_fields_mean'
+        )
         m.write(
             0,
             extra_values={
@@ -91,8 +88,9 @@ class TestGraphs(TestMonitoringMixin, TestCase):
 
     def test_read_summary_top_fields_acid(self):
         m = self._create_object_metric(name='applications')
-        g = self._create_graph(metric=m, test_data=False, top_fields=2)
-        g.query = g.query.replace('{field_name}', '{fields|MEAN}')
+        g = self._create_graph(
+            metric=m, test_data=False, configuration='top_fields_mean'
+        )
         m.write(
             0,
             extra_values={'google': 0.0, 'facebook': 6000.0, 'reddit': 0.0},
@@ -122,7 +120,7 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         self.assertEqual(g._get_top_fields(2), ['google', 'facebook'])
 
     def test_read_multiple(self):
-        g = self._create_graph(test_data=None)
+        g = self._create_graph(test_data=None, configuration='multiple_test')
         m1 = g.metric
         m2 = self._create_object_metric(
             name='test metric 2',
@@ -135,8 +133,6 @@ class TestGraphs(TestMonitoringMixin, TestCase):
             time = now_ - timedelta(days=n)
             m1.write(n + 1, time=time)
             m2.write(n + 2, time=time)
-        g.query = g.query.replace('{field_name}', '{field_name}, value2')
-        g.save()
         data = g.read()
         f1 = m1.field_name
         f2 = 'value2'
@@ -160,18 +156,11 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         self.assertDictEqual(json.loads(g.json()), data)
 
     def test_read_bad_query(self):
-        g = self._create_graph()
-        g.query = 'BAD'
-        with self.assertRaises(InfluxDBClientError):
-            g.read()
-
-    def test_save_bad_query(self):
-        g = self._create_graph()
-        g.query = 'BAD'
         try:
-            g.full_clean()
+            self._create_graph(configuration='bad_test')
         except ValidationError as e:
-            self.assertIn('query', e.message_dict)
+            self.assertIn('configuration', e.message_dict)
+            self.assertIn('error parsing query: found BAD', str(e.message_dict))
         else:
             self.fail('ValidationError not raised')
 
@@ -210,28 +199,22 @@ class TestGraphs(TestMonitoringMixin, TestCase):
             'SELECT * INTO metric2 FROM test_metric',
         ]
         for q in queries:
-            g.query = q
             try:
-                g.full_clean()
+                g._is_query_allowed(q)
             except ValidationError as e:
-                self.assertIn('query', e.message_dict)
+                self.assertIn('configuration', e.message_dict)
             else:
                 self.fail('ValidationError not raised')
 
     def test_description(self):
         g = self._create_graph(test_data=False)
-        self.assertEqual(g.description, g.metric.name)
-        g.description = 'test'
-        g.full_clean()
-        g.save()
-        g.refresh_from_db()
-        self.assertEqual(g.description, 'test')
+        self.assertEqual(g.description, 'Dummy chart for testing purposes.')
 
     def test_wifi_hostapd(self):
         m = self._create_object_metric(
             name='wifi associations', key='hostapd', field_name='mac_address'
         )
-        g = self._create_graph(metric=m, test_data=False)
+        g = self._create_graph(metric=m, test_data=False, configuration='wifi_clients')
         for n in range(0, 9):
             m.write('00:16:3e:00:00:00', time=now() - timedelta(days=n))
             m.write('00:23:4b:00:00:00', time=now() - timedelta(days=n, seconds=1))
@@ -239,37 +222,21 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         m.write('00:16:3e:00:00:00', time=now() - timedelta(days=4))
         m.write('00:23:4a:00:00:00')
         m.write('00:14:5c:00:00:00')
-        q = (
-            "SELECT COUNT(DISTINCT({field_name})) AS {field_name} FROM {key} "
-            "WHERE time >= '{time}' AND content_type = '{content_type}' "
-            "AND object_id = '{object_id}' GROUP BY time(24h)"
-        )
-        g.query = q
         g.save()
         data = g.read(time='30d')
-        self.assertEqual(data['traces'][0][0], m.field_name)
+        self.assertEqual(data['traces'][0][0], 'wifi_clients')
         # last 10 days
         self.assertEqual(data['traces'][0][1][-10:], [0, 2, 2, 2, 2, 2, 2, 2, 2, 4])
 
     def test_get_query_1d(self):
-        g = self._create_graph(test_data=None)
-        g.query = g.query.replace('{field_name}', 'MEAN({field_name})')
-        g.save()
+        g = self._create_graph(test_data=None, configuration='uptime')
         q = g.get_query(time='1d')
         last24 = now() - timedelta(days=1)
         self.assertIn(str(last24)[0:14], q)
         self.assertIn('group by time(10m)', q.lower())
-        self.assertNotIn('fill(', q.lower())
 
     def test_get_query_30d(self):
-        g = self._create_graph(test_data=None)
-        q = (
-            "SELECT MEAN({field_name}) AS {field_name} FROM {key} "
-            "WHERE time >= '{time}' AND content_type = '{content_type}' "
-            "AND object_id = '{object_id}' GROUP BY time(5m) fill(0)"
-        )
-        g.query = q
-        g.save()
+        g = self._create_graph(test_data=None, configuration='uptime')
         q = g.get_query(time='30d')
         last30d = now() - timedelta(days=30)
         self.assertIn(str(last30d)[0:10], q)
@@ -284,34 +251,13 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         self.assertIn(str(now() - timedelta(days=1))[0:10], g._get_time('1d'))
         self.assertIn(str(now() - timedelta(days=3))[0:10], g._get_time('3d'))
 
-    def test_get_query_fields(self):
-        g = self._create_graph(test_data=None)
-        g.query = g.query.replace('{field_name}', '{fields}')
-        g.save()
-        q = g.get_query(fields=['ssh', 'http2', 'http1'])
-        self.assertIn('SELECT ssh, http2, http1 FROM', q)
-
     def test_get_query_fields_function(self):
-        g = self._create_graph(test_data=None)
-        g.query = g.query.replace('{field_name}', '{fields|MEAN}')
-        g.save()
+        g = self._create_graph(test_data=None, configuration='histogram')
         q = g.get_query(fields=['ssh', 'http2', 'apple-music'])
         expected = (
-            'SELECT MEAN("ssh") AS ssh, '
-            'MEAN("http2") AS http2, '
-            'MEAN("apple-music") AS apple_music FROM'
-        )
-        self.assertIn(expected, q)
-
-    def test_get_query_fields_function_math(self):
-        g = self._create_graph(test_data=None)
-        g.query = g.query.replace('{field_name}', '{fields|MEAN|/ 10}')
-        g.save()
-        q = g.get_query(fields=['ssh', 'http2', 'apple-music'])
-        expected = (
-            'SELECT MEAN("ssh") / 10 AS ssh, '
-            'MEAN("http2") / 10 AS http2, '
-            'MEAN("apple-music") / 10 AS apple_music FROM'
+            'SELECT SUM("ssh") / 1 AS ssh, '
+            'SUM("http2") / 1 AS http2, '
+            'SUM("apple-music") / 1 AS apple_music FROM'
         )
         self.assertIn(expected, q)
 
@@ -322,7 +268,7 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         self.assertIn('SELECT SUM(*) FROM', q)
 
     def test_get_top_fields(self):
-        g = self._create_graph(test_data=None, top_fields=3)
+        g = self._create_graph(test_data=None, configuration='histogram')
         g.metric.write(
             None, extra_values={'http2': 100, 'ssh': 90, 'udp': 80, 'spdy': 70}
         )
@@ -330,23 +276,18 @@ class TestGraphs(TestMonitoringMixin, TestCase):
 
     def test_is_aggregate_bug(self):
         m = self._create_object_metric(name='summary_avg')
-        g = Graph(metric=m)
+        g = Graph(metric=m, configuration='dummy')
         self.assertFalse(g._is_aggregate(g.query))
 
     def test_is_aggregate_fields_function(self):
         m = self._create_object_metric(name='is_aggregate_func')
-        g = Graph(metric=m)
-        g.query = g._default_query.replace('{field_name}', '{fields|MEAN}')
+        g = Graph(metric=m, configuration='uptime')
         self.assertTrue(g._is_aggregate(g.query))
 
     def test_query_histogram(self):
         m = self._create_object_metric(name='histogram')
         m.write(None, extra_values={'http2': 100, 'ssh': 90, 'udp': 80, 'spdy': 70})
-        q = (
-            "SELECT {fields|SUM|/ 1} FROM {key} WHERE "
-            "time >= '{time}' AND content_type = '{content_type}' "
-            "AND object_id = '{object_id}'"
-        )
-        g = Graph(metric=m, query=q, type='histogram')
+        g = Graph(metric=m, configuration='histogram')
         g.full_clean()
+        g.save()
         self.assertNotIn('GROUP BY time', g.get_query())

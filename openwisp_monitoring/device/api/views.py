@@ -8,7 +8,6 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
-from django.utils.translation import ugettext_lazy as _
 from pytz import timezone as tz
 from pytz.exceptions import UnknownTimeZoneError
 from rest_framework import serializers, status
@@ -49,7 +48,7 @@ class DeviceMetricView(GenericAPIView):
         )
         graphs = Graph.objects.filter(
             metric__object_id=pk, metric__content_type=ct
-        ).order_by('-description')
+        ).select_related('metric')
         # determine time range
         time = request.query_params.get('time', Graph.DEFAULT_TIME)
         if time not in Graph.GROUP_MAP.keys():
@@ -60,23 +59,36 @@ class DeviceMetricView(GenericAPIView):
             tz(timezone)
         except UnknownTimeZoneError:
             return Response('Unkown Time Zone', status=400)
-        # get graphs and their data
-        data = OrderedDict({'graphs': []})
-        x_axys = True
-        for graph in graphs:
-            g = graph.read(time=time, x_axys=x_axys, timezone=timezone)
-            # avoid repeating the x axys each time
-            if x_axys and g['x'] and graph.type != 'histogram':
-                data['x'] = g.pop('x')
-                x_axys = False
-            g['description'] = graph.description
-            g['type'] = graph.type
-            data['graphs'].append(g)
+        # prepare response data
+        data = self._get_graphs_data(graphs, time, timezone)
+        # csv export has a different response
         if request.query_params.get('csv'):
             response = HttpResponse(self._get_csv(data), content_type='text/csv')
             response['Content-Disposition'] = 'attachment; filename=data.csv'
             return response
         return Response(data)
+
+    def _get_graphs_data(self, graphs, time, timezone):
+        graph_map = {}
+        x_axys = True
+        data = OrderedDict({'graphs': []})
+        for graph in graphs:
+            # prepare graph dict
+            graph_dict = graph.read(time=time, x_axys=x_axys, timezone=timezone)
+            graph_dict['description'] = graph.description
+            graph_dict['title'] = graph.title.format(metric=graph.metric)
+            graph_dict['type'] = graph.type
+            # get x axys (only once)
+            if x_axys and graph_dict['x'] and graph.type != 'histogram':
+                data['x'] = graph_dict.pop('x')
+                x_axys = False
+            # prepare to sort the items according to
+            # the order in the chart configuration
+            key = f'{graph.order} {graph_dict["title"]}'
+            graph_map[key] = graph_dict
+        # add sorted graph list to graph data
+        data['graphs'] = list(OrderedDict(sorted(graph_map.items())).values())
+        return data
 
     def _get_csv(self, data):
         header = ['time']
@@ -101,9 +113,7 @@ class DeviceMetricView(GenericAPIView):
 
     def _get_csv_header(self, graph, trace):
         header = trace[0]
-        if header in ['download', 'upload']:
-            header = '{0} - {1}'.format(header, graph['description'])
-        return header
+        return f'{header} - {graph["title"]}'
 
     def post(self, request, pk):
         self.instance = self.get_object()
@@ -212,14 +222,7 @@ class DeviceMetricView(GenericAPIView):
             or 'traffic' not in monitoring_settings.AUTO_GRAPHS
         ):
             return
-        graph = Graph(
-            metric=metric,
-            description=_('{0} traffic (GB)').format(metric.key),
-            query="SELECT SUM(tx_bytes) / 1000000000 AS upload, "
-            "SUM(rx_bytes) / 1000000000 AS download FROM {key} "
-            "WHERE time >= '{time}' AND content_type = '{content_type}' "
-            "AND object_id = '{object_id}' GROUP BY time(24h) fill(0)",
-        )
+        graph = Graph(metric=metric, configuration='traffic',)
         graph.full_clean()
         graph.save()
 
@@ -229,13 +232,7 @@ class DeviceMetricView(GenericAPIView):
         """
         if 'wifi_clients' not in monitoring_settings.AUTO_GRAPHS:
             return
-        graph = Graph(
-            metric=metric,
-            description=_('{0} clients').format(metric.key),
-            query="SELECT COUNT(DISTINCT({field_name})) AS value FROM {key} "
-            "WHERE time >= '{time}' AND content_type = '{content_type}' "
-            "AND object_id = '{object_id}' GROUP BY time(24h) fill(0)",
-        )
+        graph = Graph(metric=metric, configuration='wifi_clients',)
         graph.full_clean()
         graph.save()
 

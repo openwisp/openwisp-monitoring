@@ -25,6 +25,7 @@ from swapper import load_model
 
 from openwisp_utils.base import TimeStampedEditableModel
 
+from .charts import get_chart_configuration, get_chart_configuration_choices
 from .signals import post_metric_write, pre_metric_write, threshold_crossed
 from .utils import query, write
 
@@ -246,35 +247,18 @@ class Metric(TimeStampedEditableModel):
 
 
 class Graph(TimeStampedEditableModel):
-    TYPES = (
-        ('line', _('Line')),
-        ('histogram', _('Histogram')),
-    )
+    CHARTS = get_chart_configuration()
     metric = models.ForeignKey(Metric, on_delete=models.CASCADE)
-    description = models.CharField(max_length=64, blank=True)
-    query = models.TextField(blank=True)
-    type = models.CharField(
-        _('chart type'), max_length=16, choices=TYPES, default=TYPES[0][0]
-    )
-    top_fields = models.PositiveIntegerField(
-        _('top fields'),
-        help_text=_(
-            'substitutes {fields} in the query with the top N fields, '
-            'a value of zero disables this feature'
-        ),
-        default=0,
+    configuration = models.CharField(
+        max_length=16, null=True, choices=get_chart_configuration_choices()
     )
 
     def __str__(self):
-        return self.description or self.metric.name
+        return self.title or self.metric.name
 
     def clean(self):
         if not self.metric:
             return
-        if not self.description:
-            self.description = self.metric.name
-        if not self.query:
-            self.query = self._default_query
         self._clean_query()
 
     _FORBIDDEN = ['drop', 'create', 'delete', 'alter', 'into']
@@ -310,23 +294,62 @@ class Graph(TimeStampedEditableModel):
     GROUP_MAP = {'1d': '10m', '3d': '20m', '7d': '1h', '30d': '24h', '365d': '24h'}
     DEFAULT_TIME = '7d'
 
-    def _clean_query(self):
-        for word in self._FORBIDDEN:
-            if word in self.query.lower():
+    @classmethod
+    def _is_query_allowed(cls, query):
+        for word in cls._FORBIDDEN:
+            if word in query.lower():
                 msg = _('the word "{0}" is not allowed').format(word.upper())
-                raise ValidationError({'query': msg})
+                raise ValidationError({'configuration': msg})
+
+    def _clean_query(self):
+        self._is_query_allowed(self.query)
         try:
             query(self.get_query())
         except InfluxDBClientError as e:
-            raise ValidationError({'query': e})
+            raise ValidationError({'configuration': e})
         except KeyError as e:
-            raise ValidationError({'query': 'invalid expression; "%s"' % e})
+            raise ValidationError({'configuration': 'invalid expression; "%s"' % e})
+
+    @property
+    def config_dict(self):
+        if not self.configuration:
+            raise ValueError(
+                'configuration needs to be defined in order to access this property'
+            )
+        return self.CHARTS[self.configuration]
+
+    @property
+    def description(self):
+        return self.config_dict['description']
+
+    @property
+    def title(self):
+        return self.config_dict['title']
+
+    @property
+    def type(self):
+        return self.config_dict['type']
+
+    @property
+    def order(self):
+        return self.config_dict['order']
+
+    @property
+    def query(self):
+        query = self.config_dict['query']
+        if query:
+            return query['influxdb']
+        return self._default_query
+
+    @property
+    def top_fields(self):
+        return self.CHARTS[self.configuration].get('top_fields', None)
 
     @property
     def _default_query(self):
-        q = "SELECT {field_name} FROM {key} WHERE " "time >= '{time}'"
+        q = "SELECT {field_name} FROM {key} WHERE time >= '{time}'"
         if self.metric.object_id:
-            q += " AND content_type = '{content_type}'" " AND object_id = '{object_id}'"
+            q += " AND content_type = '{content_type}' AND object_id = '{object_id}'"
         return q
 
     _fields_regex = re.compile(

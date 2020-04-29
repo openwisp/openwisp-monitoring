@@ -165,6 +165,106 @@ CELERY_BEAT_SCHEDULE = {
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 CELERY_EMAIL_BACKEND = EMAIL_BACKEND
 
+# this custom chart configuration is used for automated testing purposes
+OPENWISP_MONITORING_CHARTS = {
+    'histogram': {
+        'type': 'histogram',
+        'title': 'Histogram',
+        'description': 'Histogram',
+        'top_fields': 2,
+        'order': 999,
+        'query': {
+            'influxdb': (
+                "SELECT {fields|SUM|/ 1} FROM {key} "
+                "WHERE time >= '{time}' AND content_type = "
+                "'{content_type}' AND object_id = '{object_id}'"
+            )
+        },
+    },
+    'dummy': {
+        'type': 'line',
+        'title': 'Dummy chart',
+        'description': 'Dummy chart for testing purposes.',
+        'unit': 'candies',
+        'order': 999,
+        'query': None,
+    },
+    'bad_test': {
+        'type': 'line',
+        'title': 'Bugged chart for testing purposes',
+        'description': 'Bugged chart for testing purposes.',
+        'unit': 'bugs',
+        'order': 999,
+        'query': {'influxdb': "BAD"},
+    },
+    'default': {
+        'type': 'line',
+        'title': 'Default query for testing purposes',
+        'description': 'Default query for testing purposes',
+        'unit': 'n.',
+        'order': 999,
+        'query': {
+            'influxdb': (
+                "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND "
+                "content_type = '{content_type}' AND object_id = '{object_id}'"
+            )
+        },
+    },
+    'multiple_test': {
+        'type': 'line',
+        'title': 'For testing purposes',
+        'description': 'For testing purposes',
+        'unit': 'n.',
+        'order': 999,
+        'query': {
+            'influxdb': (
+                "SELECT {field_name}, value2 FROM {key} WHERE time >= '{time}' AND "
+                "content_type = '{content_type}' AND object_id = '{object_id}'"
+            )
+        },
+    },
+    'mean_test': {
+        'type': 'line',
+        'title': 'For testing purposes',
+        'description': 'For testing purposes',
+        'unit': 'n.',
+        'order': 999,
+        'query': {
+            'influxdb': (
+                "SELECT MEAN({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
+                "content_type = '{content_type}' AND object_id = '{object_id}'"
+            )
+        },
+    },
+    'sum_test': {
+        'type': 'line',
+        'title': 'For testing purposes',
+        'description': 'For testing purposes',
+        'unit': 'n.',
+        'order': 999,
+        'query': {
+            'influxdb': (
+                "SELECT SUM({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
+                "content_type = '{content_type}' AND object_id = '{object_id}'"
+            )
+        },
+    },
+    'top_fields_mean': {
+        'type': 'histogram',
+        'title': 'For testing purposes',
+        'description': 'For testing purposes',
+        'top_fields': 2,
+        'order': 999,
+        'query': {
+            'influxdb': (
+                "SELECT {fields|MEAN} FROM {key} "
+                "WHERE time >= '{time}' AND content_type = "
+                "'{content_type}' AND object_id = '{object_id}'"
+            )
+        },
+    },
+}
+
 LOGGING = {
     'version': 1,
     'filters': {'require_debug_true': {'()': 'django.utils.log.RequireDebugTrue',}},

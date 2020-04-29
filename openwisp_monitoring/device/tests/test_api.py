@@ -243,18 +243,23 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertIsInstance(r.data['graphs'], list)
         self.assertEqual(len(r.data['graphs']), 4)
         self.assertIn('x', r.data)
-        for graph in r.data['graphs']:
+        graphs = r.data['graphs']
+        for graph in graphs:
             self.assertIn('traces', graph)
+            self.assertIn('title', graph)
             self.assertIn('description', graph)
             self.assertIn('type', graph)
+        # test order
+        self.assertEqual(graphs[0]['title'], 'wlan0 wifi clients')
+        self.assertEqual(graphs[1]['title'], 'wlan1 wifi clients')
+        self.assertEqual(graphs[2]['title'], 'wlan0 traffic')
+        self.assertEqual(graphs[3]['title'], 'wlan1 traffic')
 
     def test_get_device_metrics_histogram_ignore_x(self):
         o = self._create_org()
         d = self._create_device(organization=o)
         m = self._create_object_metric(content_object=d, name='applications')
-        g = self._create_graph(metric=m, type='histogram', description='zxw histogram')
-        g.query = g.query.replace('{field_name}', 'SUM({field_name})')
-        g.save()
+        self._create_graph(metric=m, configuration='histogram')
         self._create_multiple_measurements(create=False)
         r = self.client.get(self._url(d.pk.hex, d.key))
         self.assertEqual(r.status_code, 200)
@@ -294,16 +299,16 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             header,
             [
                 'time',
-                'download - wlan1 traffic (GB)',
-                'upload - wlan1 traffic (GB)',
-                'value',
-                'download - wlan0 traffic (GB)',
-                'upload - wlan0 traffic (GB)',
-                'value',
+                'wifi_clients - wlan0 wifi clients',
+                'wifi_clients - wlan1 wifi clients',
+                'download - wlan0 traffic',
+                'upload - wlan0 traffic',
+                'download - wlan1 traffic',
+                'upload - wlan1 traffic',
             ],
         )
         last_line = rows[-1].strip().split(',')
-        self.assertEqual(last_line, [last_line[0], '3', '1.5', '2', '1.2', '0.6', '1'])
+        self.assertEqual(last_line, [last_line[0], '1', '2', '1.2', '0.6', '3', '1.5'])
 
     def test_get_device_metrics_400_bad_timezone(self):
         dd = self._create_multiple_measurements()

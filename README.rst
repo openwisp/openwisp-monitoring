@@ -308,6 +308,65 @@ or to send monitoring metrics).
 
 This feature is enabled by default.
 
+``OPENWISP_MONITORING_CHARTS``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``dict``    |
++--------------+-------------+
+| **default**: | ``{}``      |
++--------------+-------------+
+
+This setting allows to define additional charts or to override
+the default chart configuration defined in
+``openwisp_monitoring.monitoring.charts.DEFAULT_CHARTS``.
+
+For example, if you want to change the traffic graph to show
+MB (megabytes) instead of GB (Gigabytes) you can use:
+
+.. code-block:: python
+
+    from django.utils.translation import ugettext_lazy as _
+
+    OPENWISP_MONITORING_CHARTS = {
+        'traffic': {
+            'unit': _('MB'),
+            'query': {
+                'influxdb': (
+                    "SELECT SUM(tx_bytes) / 1000000 AS upload, "
+                    "SUM(rx_bytes) / 1000000 AS download FROM {key} "
+                    "WHERE time >= '{time}' AND content_type = '{content_type}' "
+                    "AND object_id = '{object_id}' GROUP BY time(1d) fill(0)"
+                )
+            },
+        }
+    }
+
+Or if you want to define a new graph configuration, which you can then
+call in your custom code (eg: a custom check class), you can do so as follows:
+
+.. code-block:: python
+
+    from django.utils.translation import ugettext_lazy as _
+
+    OPENWISP_MONITORING_CHARTS = {
+        'ram': {
+            'type': 'line',
+            'title': 'RAM usage',
+            'description': 'RAM usage',
+            'unit': 'bytes',
+            'order': 100,
+            'query': {
+                'influxdb': (
+                    "SELECT MEAN(total) AS total, MEAN(free) AS free, "
+                    "MEAN(buffered) AS buffered FROM {key} WHERE time >= '{time}' AND "
+                    "content_type = '{content_type}' AND object_id = '{object_id}' "
+                    "GROUP BY time(1d) fill(0)"
+                )
+            },
+        }
+    }
+
 Signals
 -------
 
