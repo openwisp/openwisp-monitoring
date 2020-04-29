@@ -163,6 +163,7 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+CELERY_EMAIL_BACKEND = EMAIL_BACKEND
 
 LOGGING = {
     'version': 1,
