@@ -63,6 +63,27 @@
               </div>
               {% endif %}
               {% endif %}
+              {% if device_data.arp_table %}
+              <h2>{% trans 'ARP table' %}</h2>
+              <table>
+                <thead>
+                    <tr>
+                        <th>{% trans 'IP Address' %}</th>
+                        <th>{% trans 'MAC Address' %}</th>
+                        <th>{% trans 'Interface' %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for arp_entry in device_data.arp_table %}
+                    <tr>
+                        <td>{{ arp_entry.ip_address }}</td>
+                        <td>{{ arp_entry.mac_address }}</td>
+                        <td>{{ arp_entry.interface }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+              </table>
+              {% endif %}
               {% if device_data.interfaces %}
               {% for interface in device_data.interfaces %}
               <div class="inline-group">

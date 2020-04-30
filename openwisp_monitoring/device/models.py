@@ -8,7 +8,7 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.translation import ugettext_lazy as _
-from jsonschema import validate
+from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
 from model_utils import Choices
 from model_utils.fields import StatusField
@@ -106,7 +106,7 @@ class DeviceData(Device):
         validate data according to NetJSON DeviceMonitoring schema
         """
         try:
-            validate(self.data, self.schema)
+            validate(self.data, self.schema, format_checker=draft7_format_checker)
         except SchemaError as e:
             path = [str(el) for el in e.path]
             trigger = '/'.join(path)
