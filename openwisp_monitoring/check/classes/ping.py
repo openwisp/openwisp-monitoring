@@ -2,7 +2,7 @@ import subprocess
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from jsonschema import validate
+from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
 
 from openwisp_controller.config.models import Device
@@ -62,7 +62,7 @@ class Ping(object):
 
     def validate_params(self):
         try:
-            validate(self.params, self.schema)
+            validate(self.params, self.schema, format_checker=draft7_format_checker)
         except SchemaError as e:
             message = 'Invalid param'
             path = '/'.join(e.path)

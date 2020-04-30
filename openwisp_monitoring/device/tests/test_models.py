@@ -104,6 +104,25 @@ class BaseTestCase(DeviceMonitoringTestCase):
                 },
             },
         ],
+        "arp_table": [
+            {
+                "ip_address": "fe80::9683:c4ff:fe02:c2bf",
+                "mac_address": "00:11:55:aa:dd:0a",
+                "interface": "eth2",
+                "state": "REACHABLE",
+            },
+            {
+                "ip_address": "192.168.56.1",
+                "mac_address": "0a:01:03:40:13:37",
+                "interface": "br-mng",
+                "state": "STALE",
+            },
+            {
+                "ip_address": "192.168.56.2",
+                "mac_address": "0a:01:03:40:13:38",
+                "interface": "br-mng",
+            },
+        ],
     }
 
     def _create_device(self, **kwargs):
@@ -139,6 +158,18 @@ class TestDeviceData(BaseTestCase):
         except ValidationError as e:
             self.assertIn('Invalid data in', e.message)
             self.assertIn('"#/interfaces/0"', e.message)
+        else:
+            self.fail('ValidationError not raised')
+
+    def test_validate_arp_data(self):
+        dd = self._create_device_data()
+        try:
+            dd.data = self._sample_data
+            dd.data["arp_table"][0]["ip_address"] = "invalid"
+            dd.validate_data()
+        except ValidationError as e:
+            self.assertIn('Invalid data in', e.message)
+            self.assertIn("is not a 'ipv4'", e.message)
         else:
             self.fail('ValidationError not raised')
 
