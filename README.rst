@@ -302,8 +302,11 @@ field, you can set this to ``False``.
 | **default**: | ``True``    |
 +--------------+-------------+
 
-The setting allows to detect recoveries as soon as they happen thus making
-the monitoring system faster.
+When device recovery detection is enabled, recoveries are discovered as soon as
+a device contacts the openwisp system again (eg: to get the configuration checksum
+or to send monitoring metrics).
+
+This feature is enabled by default.
 
 Signals
 -------
