@@ -53,6 +53,6 @@
             }
             graphs.push(options);
         }
-        Plotly.newPlot(id, graphs, layout);
+        Plotly.newPlot(id, graphs, layout, {responsive: true});
     };
 }());
