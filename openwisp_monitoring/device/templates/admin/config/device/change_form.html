@@ -120,6 +120,28 @@
                   {% endif %}
                   {% endif %}
               </div>
+              {% if interface.addresses %}
+              <table class="device-addresses">
+                  <thead>
+                      <tr>
+                          <th>{% trans 'Address' %}</th>
+                          <th>{% trans 'Mask' %}</th> 
+                          <th>{% trans 'DHCP client ?' %}</th>
+                      </tr>
+                  </thead>
+                  {% for address in interface.addresses %}
+                  <tr>
+                      <td>{{ address.address }}</td>
+                      <td>{{ address.mask }}</td>
+                      {% if address.proto == "static" %}
+                          <td class="static">{% trans 'No' %}</td>
+                      {% else %}
+                          <td class="dhcp">{% trans 'Yes' %}</td>
+                      {% endif %}
+                  </tr>
+                  {% endfor %}
+              </table>
+              {% endif %}
               {% endfor %}
               {% endif %}
               {% if device_data.neighbors %}

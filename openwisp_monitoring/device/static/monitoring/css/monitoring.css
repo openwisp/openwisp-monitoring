@@ -167,3 +167,11 @@ td.field-health_status,
 #ow-graph-container b{
     background-color: #000 !important;
 }
+
+table.device-addresses {
+  margin-top: 20px;
+}
+
+table.device-addresses td.dhcp {
+  background-color: lightgray;
+}
