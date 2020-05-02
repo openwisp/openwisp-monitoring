@@ -18,7 +18,7 @@ DEFAULT_CHARTS = {
             'influxdb': (
                 "SELECT MEAN({field_name})*100 AS uptime FROM {key} WHERE "
                 "time >= '{time}' AND content_type = '{content_type}' AND "
-                "object_id = '{object_id}' GROUP BY time(1d) fill(0)"
+                "object_id = '{object_id}' GROUP BY time(1d)"
             )
         },
     },
@@ -35,7 +35,7 @@ DEFAULT_CHARTS = {
             'influxdb': (
                 "SELECT MEAN(loss) AS packet_loss FROM {key} WHERE "
                 "time >= '{time}' AND content_type = '{content_type}' AND "
-                "object_id = '{object_id}' GROUP BY time(1d) fill(0)"
+                "object_id = '{object_id}' GROUP BY time(1d)"
             )
         },
     },
@@ -52,7 +52,7 @@ DEFAULT_CHARTS = {
                 "SELECT MEAN(rtt_avg) AS RTT_average, MEAN(rtt_max) AS "
                 "RTT_max, MEAN(rtt_min) AS RTT_min FROM {key} WHERE "
                 "time >= '{time}' AND content_type = '{content_type}' AND "
-                "object_id = '{object_id}' GROUP BY time(1d) fill(0)"
+                "object_id = '{object_id}' GROUP BY time(1d)"
             )
         },
     },
@@ -69,7 +69,7 @@ DEFAULT_CHARTS = {
             'influxdb': (
                 "SELECT COUNT(DISTINCT({field_name})) AS wifi_clients FROM {key} "
                 "WHERE time >= '{time}' AND content_type = '{content_type}' "
-                "AND object_id = '{object_id}' GROUP BY time(1d) fill(0)"
+                "AND object_id = '{object_id}' GROUP BY time(1d)"
             )
         },
     },
@@ -88,7 +88,7 @@ DEFAULT_CHARTS = {
                 "SELECT SUM(tx_bytes) / 1000000000 AS upload, "
                 "SUM(rx_bytes) / 1000000000 AS download FROM {key} "
                 "WHERE time >= '{time}' AND content_type = '{content_type}' "
-                "AND object_id = '{object_id}' GROUP BY time(1d) fill(0)"
+                "AND object_id = '{object_id}' GROUP BY time(1d)"
             )
         },
     },

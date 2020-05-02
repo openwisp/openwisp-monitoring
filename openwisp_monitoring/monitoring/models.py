@@ -341,6 +341,10 @@ class Graph(TimeStampedEditableModel):
         return self.config_dict['order']
 
     @property
+    def unit(self):
+        return self.config_dict.get('unit')
+
+    @property
     def query(self):
         query = self.config_dict['query']
         if query:

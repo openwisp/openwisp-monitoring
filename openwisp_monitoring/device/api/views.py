@@ -78,6 +78,7 @@ class DeviceMetricView(GenericAPIView):
             graph_dict['description'] = graph.description
             graph_dict['title'] = graph.title.format(metric=graph.metric)
             graph_dict['type'] = graph.type
+            graph_dict['unit'] = graph.unit
             # get x axys (only once)
             if x_axys and graph_dict['x'] and graph.type != 'histogram':
                 data['x'] = graph_dict.pop('x')

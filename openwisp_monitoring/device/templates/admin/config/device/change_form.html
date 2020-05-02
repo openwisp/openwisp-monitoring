@@ -172,7 +172,10 @@
               var htmlId = 'graph-' + i,
                   graphDiv = $('#' + htmlId);
               if (!graphDiv.length) {
-                graphContents.append('<div id="' + htmlId + '"></div>');
+                graphContents.append(
+                    '<div id="' + htmlId + '" class="ow-chart">' +
+                    '<div class="js-plotly-plot"></div></div>'
+                );
               }
               createGraph(graph, data.x, htmlId, graph.title, graph.type);
             });

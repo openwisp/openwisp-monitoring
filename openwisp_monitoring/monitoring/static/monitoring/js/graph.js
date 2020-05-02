@@ -23,15 +23,18 @@
                   b: 15,
                   t: 20,
                   pad: 4
-                }
+                },
+                height: 350,
             },
             graphs = [],
-            el = document.getElementById(id),
-            container = $(el),
+            container = $('#' + id),
+            plotlyContainer = container.find('.js-plotly-plot').get(0),
             typeMap = {
                 'line': 'scatter',
                 'histogram': 'histogram'
             },
+            notApplicable = gettext('N/A'),
+            unit = data.unit,
             help, tooltip, heading;
         for (var i=0; i<data.traces.length; i++) {
             var key = data.traces[i][0],
@@ -45,12 +48,14 @@
                 label = label + ' (' + data.summary[key] + ')';
             }
             var options = {
-                name: label,
-                type: typeMap[type],
-                mode: mode,
-                y: data.traces[i][1],
-                fill: 'tozeroy',
-            };
+                    name: label,
+                    type: typeMap[type],
+                    mode: mode,
+                    fill: 'tozeroy',
+                    hovertemplate: [],
+                    y: []
+                },
+                yValuesRaw = data.traces[i][1];
             if (type == 'line') {
                 options['x'] = x;
                 options['hoverinfo'] = 'x+y';
@@ -60,10 +65,22 @@
                 options['hoverinfo'] = 'skip';
                 options['histfunc'] = 'sum';
             }
+
+            for (var c=0; c<yValuesRaw.length; c++) {
+                var val = yValuesRaw[c],
+                    hovertemplate = '%{y} ' + unit + '<extra>' + label + '</extra>';
+                if (val === null) {
+                    val = 0;
+                    hovertemplate = notApplicable + '<extra></extra>';
+                }
+                options.y.push(val);
+                options.hovertemplate.push(hovertemplate);
+            }
+
             graphs.push(options);
         }
 
-        Plotly.newPlot(el, graphs, layout, {responsive: true});
+        Plotly.newPlot(plotlyContainer, graphs, layout, {responsive: true});
 
         // do not add heading, help and tooltip if already done
         // or if there's not title and description to show

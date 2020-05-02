@@ -249,6 +249,9 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             self.assertIn('title', graph)
             self.assertIn('description', graph)
             self.assertIn('type', graph)
+            self.assertIn('summary', graph)
+            self.assertIsInstance(graph['summary'], dict)
+            self.assertIn('unit', graph)
         # test order
         self.assertEqual(graphs[0]['title'], 'WiFi clients: wlan0')
         self.assertEqual(graphs[1]['title'], 'WiFi clients: wlan1')
