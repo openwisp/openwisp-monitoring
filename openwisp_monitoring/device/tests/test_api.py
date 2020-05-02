@@ -250,10 +250,10 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             self.assertIn('description', graph)
             self.assertIn('type', graph)
         # test order
-        self.assertEqual(graphs[0]['title'], 'wlan0 wifi clients')
-        self.assertEqual(graphs[1]['title'], 'wlan1 wifi clients')
-        self.assertEqual(graphs[2]['title'], 'wlan0 traffic')
-        self.assertEqual(graphs[3]['title'], 'wlan1 traffic')
+        self.assertEqual(graphs[0]['title'], 'WiFi clients: wlan0')
+        self.assertEqual(graphs[1]['title'], 'WiFi clients: wlan1')
+        self.assertEqual(graphs[2]['title'], 'Traffic: wlan0')
+        self.assertEqual(graphs[3]['title'], 'Traffic: wlan1')
 
     def test_get_device_metrics_histogram_ignore_x(self):
         o = self._create_org()
@@ -299,12 +299,12 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             header,
             [
                 'time',
-                'wifi_clients - wlan0 wifi clients',
-                'wifi_clients - wlan1 wifi clients',
-                'download - wlan0 traffic',
-                'upload - wlan0 traffic',
-                'download - wlan1 traffic',
-                'upload - wlan1 traffic',
+                'wifi_clients - WiFi clients: wlan0',
+                'wifi_clients - WiFi clients: wlan1',
+                'download - Traffic: wlan0',
+                'upload - Traffic: wlan0',
+                'download - Traffic: wlan1',
+                'upload - Traffic: wlan1',
             ],
         )
         last_line = rows[-1].strip().split(',')

@@ -47,3 +47,63 @@ td.field-health_status,
 .health-ok{ color: green }
 .health-problem{ color: orange }
 .health-critical{ color: red }
+
+#ow-graph-contents > div {
+    position: relative;
+}
+
+.chart-help {
+    display: inline-block;
+    width: 22px;
+    height: 21px;
+    text-indent: -9999px;
+    background: url(../../admin/img/icon-unknown.svg) 0 0 no-repeat;
+    background-size: 80%;
+    background-position: 50% 50%;
+    opacity: 0.6;
+    cursor: pointer;
+    margin-left: 3px;
+}
+.chart-help:hover,
+.chart-help:active,
+.chart-help:focus,
+.chart-help.active {
+    opacity: 1
+}
+
+.tooltip {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    padding: 15px !important;
+    /* min-width: 40%; */
+    max-width: 500px;
+    line-height: 1.6em;
+    border-radius: 4px;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    display: none;
+    font-size: 1.2em
+}
+
+.graph-heading {
+    margin: 0;
+    font-size: 2em;
+    text-align: center;
+    font-size: 1.22em;
+    font-weight: normal;
+    color: #434B62;
+}
+
+.js-plotly-plot {
+    margin-top: 1.5em;
+    padding-top: 1.5em;
+    border-top: 1px dotted rgba(0, 0, 0, 0.2);
+}
+.js-plotly-plot:first-child{
+    border: 0 none;
+    padding-top: 0;
+    margin-top: 2.25em;
+}

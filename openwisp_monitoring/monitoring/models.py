@@ -254,7 +254,7 @@ class Graph(TimeStampedEditableModel):
     )
 
     def __str__(self):
-        return self.title or self.metric.name
+        return str(self.label) or self.metric.name
 
     def clean(self):
         if not self.metric:
@@ -319,8 +319,14 @@ class Graph(TimeStampedEditableModel):
         return self.CHARTS[self.configuration]
 
     @property
+    def label(self):
+        label = self.config_dict.get('label')
+        if not label:
+            return self.title
+
+    @property
     def description(self):
-        return self.config_dict['description']
+        return self.config_dict['description'].format(metric=self.metric)
 
     @property
     def title(self):

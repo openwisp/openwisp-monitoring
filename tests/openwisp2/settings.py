@@ -212,7 +212,7 @@ OPENWISP_MONITORING_CHARTS = {
     },
     'multiple_test': {
         'type': 'line',
-        'title': 'For testing purposes',
+        'title': 'Multiple test',
         'description': 'For testing purposes',
         'unit': 'n.',
         'order': 999,
@@ -225,7 +225,7 @@ OPENWISP_MONITORING_CHARTS = {
     },
     'mean_test': {
         'type': 'line',
-        'title': 'For testing purposes',
+        'title': 'Mean test',
         'description': 'For testing purposes',
         'unit': 'n.',
         'order': 999,
@@ -238,7 +238,7 @@ OPENWISP_MONITORING_CHARTS = {
     },
     'sum_test': {
         'type': 'line',
-        'title': 'For testing purposes',
+        'title': 'Sum test',
         'description': 'For testing purposes',
         'unit': 'n.',
         'order': 999,
@@ -251,7 +251,7 @@ OPENWISP_MONITORING_CHARTS = {
     },
     'top_fields_mean': {
         'type': 'histogram',
-        'title': 'For testing purposes',
+        'title': 'Top fields mean test',
         'description': 'For testing purposes',
         'top_fields': 2,
         'order': 999,

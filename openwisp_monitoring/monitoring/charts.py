@@ -8,9 +8,9 @@ DEFAULT_CHARTS = {
         'type': 'line',
         'title': _('Uptime'),
         'description': _(
-            '100% means reachable, 0% means unreachable, a value in between '
-            'indicates the average reachability in the period observed.'
-            'Obtained with the fping linux program.'
+            'A value of 100% means reachable, 0% means unreachable, values in '
+            'between 0% and 100% indicate the average reachability in the '
+            'period observed. Obtained with the fping linux program.'
         ),
         'unit': '%',
         'order': 100,
@@ -26,7 +26,7 @@ DEFAULT_CHARTS = {
         'type': 'line',
         'title': _('Packet loss'),
         'description': _(
-            'Indicates the percentage of lost packets observed in ICMP probes '
+            'Indicates the percentage of lost packets observed in ICMP probes. '
             'Obtained with the fping linux program.'
         ),
         'unit': '%',
@@ -42,7 +42,9 @@ DEFAULT_CHARTS = {
     'rtt': {
         'type': 'line',
         'title': _('Round Trip Time'),
-        'description': _('Round trip time of ICMP probes.'),
+        'description': _(
+            'Round trip time observed in ICMP probes, measuered in milliseconds.'
+        ),
         'unit': _('ms'),
         'order': 102,
         'query': {
@@ -56,8 +58,11 @@ DEFAULT_CHARTS = {
     },
     'wifi_clients': {
         'type': 'line',
-        'title': _('{metric.key} wifi clients'),
-        'description': _('WiFi clients associated to {metric.key}.'),
+        'label': _('WiFi clients'),
+        'title': _('WiFi clients: {metric.key}'),
+        'description': _(
+            'WiFi clients associated to the wireless interface "{metric.key}".'
+        ),
         'unit': _('wifi clients'),
         'order': 110,
         'query': {
@@ -70,9 +75,11 @@ DEFAULT_CHARTS = {
     },
     'traffic': {
         'type': 'line',
-        'title': _('{metric.key} traffic'),
+        'title': _('Traffic: {metric.key}'),
+        'label': _('Traffic'),
         'description': _(
-            'Network traffic (download and upload) on interface {metric.key}.'
+            'Network traffic, download and upload, measured on '
+            'the interface "{metric.key}", measured in GB.'
         ),
         'unit': _('GB'),
         'order': 111,
@@ -125,5 +132,6 @@ def get_chart_configuration_choices():
     charts = get_chart_configuration()
     choices = []
     for key in sorted(charts.keys()):
-        choices.append((key, charts[key]['title']))
+        label = charts[key].get('label', charts[key]['title'])
+        choices.append((key, label))
     return choices
