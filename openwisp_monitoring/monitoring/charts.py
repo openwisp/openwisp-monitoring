@@ -5,7 +5,7 @@ from . import settings as app_settings
 
 DEFAULT_CHARTS = {
     'uptime': {
-        'type': 'line',
+        'type': 'bar',
         'title': _('Uptime'),
         'description': _(
             'A value of 100% means reachable, 0% means unreachable, values in '
@@ -24,7 +24,7 @@ DEFAULT_CHARTS = {
         },
     },
     'packet_loss': {
-        'type': 'line',
+        'type': 'bar',
         'title': _('Packet loss'),
         'description': _(
             'Indicates the percentage of lost packets observed in ICMP probes. '
@@ -42,7 +42,7 @@ DEFAULT_CHARTS = {
         },
     },
     'rtt': {
-        'type': 'line',
+        'type': 'scatter',
         'title': _('Round Trip Time'),
         'description': _(
             'Round trip time observed in ICMP probes, measuered in milliseconds.'
@@ -64,7 +64,7 @@ DEFAULT_CHARTS = {
         },
     },
     'wifi_clients': {
-        'type': 'line',
+        'type': 'bar',
         'label': _('WiFi clients'),
         'title': _('WiFi clients: {metric.key}'),
         'description': _(
@@ -82,14 +82,14 @@ DEFAULT_CHARTS = {
         },
     },
     'traffic': {
-        'type': 'line',
+        'type': 'scatter',
         'title': _('Traffic: {metric.key}'),
         'label': _('Traffic'),
         'description': _(
             'Network traffic, download and upload, measured on '
             'the interface "{metric.key}", measured in GB.'
         ),
-        'summary_labels': [_('Total upload traffic'), _('Total download traffic'),],
+        'summary_labels': [_('Total upload traffic'), _('Total download traffic')],
         'unit': f' {_("GB")}',
         'order': 111,
         'query': {
@@ -102,7 +102,7 @@ DEFAULT_CHARTS = {
         },
     },
     'qoe': {
-        'type': 'line',
+        'type': 'scatter',
         'title': _('Quality of Experience'),
         'description': _(
             'The Quality of Experience (QoE) score rates '

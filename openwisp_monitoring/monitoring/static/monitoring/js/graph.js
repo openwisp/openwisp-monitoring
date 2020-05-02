@@ -16,7 +16,7 @@
                     y: -0.15,
                     x: 0.5,
                 },
-                xaxis: {visible: type == 'line'},
+                xaxis: {visible: type != 'histogram'},
                 margin: {
                   l: 50,
                   r: 50,
@@ -24,38 +24,37 @@
                   t: 20,
                   pad: 4
                 },
-                height: 350,
+                height: 350
             },
             graphs = [],
             container = $('#' + id),
             plotlyContainer = container.find('.js-plotly-plot').get(0),
-            typeMap = {
-                'line': 'scatter',
-                'histogram': 'histogram'
-            },
             notApplicable = gettext('N/A'),
             unit = data.unit,
             labels = [],
             summaryLabels = [],
             help, tooltip, heading;
+        if (data.colors) {
+            layout.colorway = data.colors;
+        }
         for (var i=0; i<data.traces.length; i++) {
             var key = data.traces[i][0],
                 label = data.traces[i][0].replace(/_/g, ' ');
             summaryLabels.push([key, data.summary_labels[i]])
             var options = {
                     name: label,
-                    type: typeMap[type],
+                    type: type,
                     mode: mode,
                     fill: 'tozeroy',
                     hovertemplate: [],
                     y: []
                 },
                 yValuesRaw = data.traces[i][1];
-            if (type == 'line') {
+            if (type != 'histogram') {
                 options['x'] = x;
                 options['hoverinfo'] = 'x+y';
             }
-            else if (type == 'histogram') {
+            else {
                 options['x'] = [0];
                 options['hoverinfo'] = 'skip';
                 options['histfunc'] = 'sum';
@@ -82,7 +81,6 @@
         if (container.find('h3.graph-heading').length || !data.title) {
             return;
         }
-
         // add summary
         if (data.summary && type != 'histogram') {
             // $.each(summaryLabels, function(i, el){
@@ -91,13 +89,11 @@
                     key = el[0],
                     label = el[1],
                     summary, summaryText;
-                console.log(label);
                 summaryText = `${label}: ${data.summary[key]}${data.unit}`;
                 container.prepend('<p class="summary" title="test!"></p>');
                 container.find('.summary').eq(0).text(summaryText);
             };
         }
-
         // add heading
         container.prepend('<h3 class="graph-heading"></h3>');
         heading = container.find('.graph-heading');
