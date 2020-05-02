@@ -367,6 +367,16 @@ call in your custom code (eg: a custom check class), you can do so as follows:
         }
     }
 
+Change the colors of a graph:
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_CHARTS = {
+        'traffic': {
+            'colors': ['#000000', '#cccccc']
+        }
+    }
+
 Signals
 -------
 

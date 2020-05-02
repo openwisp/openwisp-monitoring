@@ -1,7 +1,19 @@
 from django.utils.translation import ugettext_lazy as _
-from netjsonconfig.utils import merge_config
 
 from . import settings as app_settings
+
+DEFAULT_COLORS = [
+    '#1f77b4',  # muted blue
+    '#ff7f0e',  # safety orange
+    '#2ca02c',  # cooked asparagus green
+    '#d62728',  # brick red
+    '#9467bd',  # muted purple
+    '#8c564b',  # chestnut brown
+    '#e377c2',  # raspberry yogurt pink
+    '#7f7f7f',  # middle gray
+    '#bcbd22',  # curry yellow-green
+    '#17becf',  # blue-teal
+]
 
 DEFAULT_CHARTS = {
     'uptime': {
@@ -15,6 +27,7 @@ DEFAULT_CHARTS = {
         'summary_labels': [_('Average uptime')],
         'unit': '%',
         'order': 100,
+        'colors': [DEFAULT_COLORS[2]],
         'query': {
             'influxdb': (
                 "SELECT MEAN({field_name})*100 AS uptime FROM {key} WHERE "
@@ -32,6 +45,7 @@ DEFAULT_CHARTS = {
         ),
         'summary_labels': [_('Average packet loss')],
         'unit': '%',
+        'colors': [DEFAULT_COLORS[3]],
         'order': 101,
         'query': {
             'influxdb': (
@@ -122,8 +136,19 @@ DEFAULT_CHARTS = {
 }
 
 
+def deep_merge_dicts(dict1, dict2):
+    result = dict2.copy()
+    for key, value in dict1.items():
+        if isinstance(value, dict):
+            node = result.get(key, {})
+            result[key] = deep_merge_dicts(node, value)
+        else:
+            result[key] = value
+    return result
+
+
 def get_chart_configuration():
-    charts = merge_config(DEFAULT_CHARTS, app_settings.ADDITIONAL_CHARTS)
+    charts = deep_merge_dicts(DEFAULT_CHARTS, app_settings.ADDITIONAL_CHARTS)
     # ensure configuration is not broken
     for key, options in charts.items():
         assert 'type' in options

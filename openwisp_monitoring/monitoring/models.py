@@ -345,6 +345,10 @@ class Graph(TimeStampedEditableModel):
         return self.config_dict['order']
 
     @property
+    def colors(self):
+        return self.config_dict.get('colors')
+
+    @property
     def unit(self):
         return self.config_dict.get('unit')
 
