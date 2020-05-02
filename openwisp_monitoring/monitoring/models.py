@@ -319,6 +319,10 @@ class Graph(TimeStampedEditableModel):
         return self.CHARTS[self.configuration]
 
     @property
+    def type(self):
+        return self.config_dict['type']
+
+    @property
     def label(self):
         label = self.config_dict.get('label')
         if not label:
@@ -333,8 +337,8 @@ class Graph(TimeStampedEditableModel):
         return self.config_dict['title']
 
     @property
-    def type(self):
-        return self.config_dict['type']
+    def summary_labels(self):
+        return self.config_dict.get('summary_labels')
 
     @property
     def order(self):

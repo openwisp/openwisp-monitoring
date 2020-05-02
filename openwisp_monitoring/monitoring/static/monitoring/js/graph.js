@@ -35,18 +35,13 @@
             },
             notApplicable = gettext('N/A'),
             unit = data.unit,
+            labels = [],
+            summaryLabels = [],
             help, tooltip, heading;
         for (var i=0; i<data.traces.length; i++) {
             var key = data.traces[i][0],
                 label = data.traces[i][0].replace(/_/g, ' ');
-            // add summary to label
-            if (
-              data.summary &&
-              typeof(data.summary[key]) !== undefined &&
-              data.summary[key] !== null && type == 'line'
-            ) {
-                label = label + ' (' + data.summary[key] + ')';
-            }
+            summaryLabels.push([key, data.summary_labels[i]])
             var options = {
                     name: label,
                     type: typeMap[type],
@@ -68,7 +63,7 @@
 
             for (var c=0; c<yValuesRaw.length; c++) {
                 var val = yValuesRaw[c],
-                    hovertemplate = '%{y} ' + unit + '<extra>' + label + '</extra>';
+                    hovertemplate = '%{y}' + unit + '<extra>' + label + '</extra>';
                 if (val === null) {
                     val = 0;
                     hovertemplate = notApplicable + '<extra></extra>';
@@ -87,6 +82,22 @@
         if (container.find('h3.graph-heading').length || !data.title) {
             return;
         }
+
+        // add summary
+        if (data.summary && type != 'histogram') {
+            // $.each(summaryLabels, function(i, el){
+            for (var i=summaryLabels.length-1; i>=0; i--) {
+                var el = summaryLabels[i],
+                    key = el[0],
+                    label = el[1],
+                    summary, summaryText;
+                console.log(label);
+                summaryText = `${label}: ${data.summary[key]}${data.unit}`;
+                container.prepend('<p class="summary" title="test!"></p>');
+                container.find('.summary').eq(0).text(summaryText);
+            };
+        }
+
         // add heading
         container.prepend('<h3 class="graph-heading"></h3>');
         heading = container.find('.graph-heading');

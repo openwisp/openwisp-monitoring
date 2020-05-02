@@ -12,6 +12,7 @@ DEFAULT_CHARTS = {
             'between 0% and 100% indicate the average reachability in the '
             'period observed. Obtained with the fping linux program.'
         ),
+        'summary_labels': [_('Average uptime')],
         'unit': '%',
         'order': 100,
         'query': {
@@ -29,6 +30,7 @@ DEFAULT_CHARTS = {
             'Indicates the percentage of lost packets observed in ICMP probes. '
             'Obtained with the fping linux program.'
         ),
+        'summary_labels': [_('Average packet loss')],
         'unit': '%',
         'order': 101,
         'query': {
@@ -45,7 +47,12 @@ DEFAULT_CHARTS = {
         'description': _(
             'Round trip time observed in ICMP probes, measuered in milliseconds.'
         ),
-        'unit': _('ms'),
+        'summary_labels': [
+            _('Average RTT'),
+            _('Average Max RTT'),
+            _('Average Min RTT'),
+        ],
+        'unit': f' {_("ms")}',
         'order': 102,
         'query': {
             'influxdb': (
@@ -63,7 +70,8 @@ DEFAULT_CHARTS = {
         'description': _(
             'WiFi clients associated to the wireless interface "{metric.key}".'
         ),
-        'unit': _('wifi clients'),
+        'summary_labels': [_('Total WiFi clients')],
+        'unit': f' {_("wifi clients")}',
         'order': 110,
         'query': {
             'influxdb': (
@@ -81,7 +89,8 @@ DEFAULT_CHARTS = {
             'Network traffic, download and upload, measured on '
             'the interface "{metric.key}", measured in GB.'
         ),
-        'unit': _('GB'),
+        'summary_labels': [_('Total upload traffic'), _('Total download traffic'),],
+        'unit': f' {_("GB")}',
         'order': 111,
         'query': {
             'influxdb': (
@@ -95,7 +104,11 @@ DEFAULT_CHARTS = {
     'qoe': {
         'type': 'line',
         'title': _('Quality of Experience'),
-        'description': _('QoE score.'),
+        'description': _(
+            'The Quality of Experience (QoE) score rates '
+            'the quality of the internet connection.'
+        ),
+        'summary_labels': [_('Average QoE score')],
         'unit': _('%'),
         'order': 112,
         'query': {

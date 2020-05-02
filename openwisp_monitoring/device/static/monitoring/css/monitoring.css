@@ -106,3 +106,8 @@ td.field-health_status,
     padding-top: 0;
     margin-top: 2.25em;
 }
+
+.ow-chart .summary {
+    text-align: right;
+    margin: 0;
+}
