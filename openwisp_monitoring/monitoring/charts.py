@@ -137,8 +137,8 @@ DEFAULT_CHARTS = {
 
 
 def deep_merge_dicts(dict1, dict2):
-    result = dict2.copy()
-    for key, value in dict1.items():
+    result = dict1.copy()
+    for key, value in dict2.items():
         if isinstance(value, dict):
             node = result.get(key, {})
             result[key] = deep_merge_dicts(node, value)
