@@ -326,23 +326,25 @@ MB (megabytes) instead of GB (Gigabytes) you can use:
 
 .. code-block:: python
 
-    from django.utils.translation import ugettext_lazy as _
-
     OPENWISP_MONITORING_CHARTS = {
         'traffic': {
-            'unit': _('MB'),
+            'unit': ' MB',
+            'description': (
+                'Network traffic, download and upload, measured on '
+                'the interface "{metric.key}", measured in MB.'
+            ),
             'query': {
                 'influxdb': (
                     "SELECT SUM(tx_bytes) / 1000000 AS upload, "
                     "SUM(rx_bytes) / 1000000 AS download FROM {key} "
                     "WHERE time >= '{time}' AND content_type = '{content_type}' "
-                    "AND object_id = '{object_id}' GROUP BY time(1d) fill(0)"
+                    "AND object_id = '{object_id}' GROUP BY time(1d)"
                 )
             },
         }
     }
 
-Or if you want to define a new graph configuration, which you can then
+Or if you want to define a new chart configuration, which you can then
 call in your custom code (eg: a custom check class), you can do so as follows:
 
 .. code-block:: python
@@ -361,13 +363,13 @@ call in your custom code (eg: a custom check class), you can do so as follows:
                     "SELECT MEAN(total) AS total, MEAN(free) AS free, "
                     "MEAN(buffered) AS buffered FROM {key} WHERE time >= '{time}' AND "
                     "content_type = '{content_type}' AND object_id = '{object_id}' "
-                    "GROUP BY time(1d) fill(0)"
+                    "GROUP BY time(1d)"
                 )
             },
         }
     }
 
-Change the colors of a graph:
+In case you just want to change the colors used in a chart here's how to do it:
 
 .. code-block:: python
 
