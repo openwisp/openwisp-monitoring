@@ -27,7 +27,25 @@ DEFAULT_CHARTS = {
         'summary_labels': [_('Average uptime')],
         'unit': '%',
         'order': 100,
-        'colors': [DEFAULT_COLORS[2]],
+        'colorscale': {
+            'max': 100,
+            'min': 0,
+            'label': _('Reachable'),
+            'scale': [
+                [0, '#c13000'],
+                [0.33, '#ef7d2d'],
+                [0.66, '#deed0e'],
+                [1, '#7db201'],
+            ],
+            'map': [
+                [100, '#7db201', _('Reachable')],
+                [66, '#ef7d2d', _('Mostly reachable')],
+                [33, '#ef7d2d', _('Partly reachable')],
+                [1, '#c13000', _('Mostly unreachable')],
+                [None, '#c13000', _('Unreachable')],
+            ],
+            'fixed_value': 100,
+        },
         'query': {
             'influxdb': (
                 "SELECT MEAN({field_name})*100 AS uptime FROM {key} WHERE "
@@ -163,6 +181,11 @@ def get_chart_configuration():
             assert options['top_fields']
         else:
             assert 'unit' in options
+        if 'colorscale' in options:
+            assert 'max' in options['colorscale']
+            assert 'min' in options['colorscale']
+            assert 'label' in options['colorscale']
+            assert 'scale' in options['colorscale']
     return charts
 
 

@@ -295,7 +295,14 @@ class Graph(TimeStampedEditableModel):
         'NON_NEGATIVE_DERIVATIVE',
         'HOLT_WINTERS',
     ]
-    GROUP_MAP = {'1d': '10m', '3d': '20m', '7d': '1h', '30d': '24h', '365d': '24h'}
+    GROUP_MAP = {
+        '1d': '10m',
+        '1d': '10m',
+        '3d': '20m',
+        '7d': '1h',
+        '30d': '24h',
+        '365d': '24h',
+    }
     DEFAULT_TIME = '7d'
 
     @classmethod
@@ -355,6 +362,10 @@ class Graph(TimeStampedEditableModel):
             summary_length = len(self.summary_labels)
             return DEFAULT_COLORS[0:summary_length]
         return colors
+
+    @property
+    def colorscale(self):
+        return self.config_dict.get('colorscale')
 
     @property
     def unit(self):

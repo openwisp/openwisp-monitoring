@@ -51,21 +51,58 @@
                 },
                 yValuesRaw = data.traces[i][1];
             if (type != 'histogram') {
-                options['x'] = x;
-                options['hoverinfo'] = 'x+y';
+                options.x = x;
+                options.hoverinfo = 'x+y';
             }
             else {
-                options['x'] = [0];
-                options['hoverinfo'] = 'skip';
-                options['histfunc'] = 'sum';
+                options.x = [0];
+                options.hoverinfo = 'skip';
+                options.histfunc = 'sum';
+            }
+
+            if (data.colorscale) {
+                var config = data.colorscale,
+                    map = data.colorscale.map,
+                    fixedValue = data.colorscale.fixed_value;
+                options.marker = {
+                    cmax: config.max,
+                    cmin: config.min,
+                    colorbar: {title: config.label},
+                    colorscale: config.scale,
+                    color: []
+                }
             }
 
             for (var c=0; c<yValuesRaw.length; c++) {
                 var val = yValuesRaw[c],
-                    hovertemplate = '%{y}' + unit + '<extra>' + label + '</extra>';
+                    shownVal = val,
+                    desc = label,
+                    hovertemplate;
+                // if colorscale and map are supplied
+                if (data.colorscale && map) {
+                    var desc, color, controlVal, n;
+                    for (n in map) {
+                        controlVal = map[n][0];
+                        // console.log(val, controlVal);
+                        if (controlVal === null || val >= controlVal) {
+                            color = map[n][1];
+                            desc = map[n][2];
+                            break;
+                        }
+                    }
+                    // same bar length feature
+                    if (typeof(fixedValue) !== undefined && val !== null) {
+                        val = fixedValue
+                    }
+                    options.marker.color.push(color);
+                }
+                // prepare data shown in chart on hover
                 if (val === null) {
                     val = 0;
                     hovertemplate = notApplicable + '<extra></extra>';
+                }
+                else {
+                    hovertemplate = shownVal + unit + '<extra>' + desc + '</extra>';
                 }
                 options.y.push(val);
                 options.hovertemplate.push(hovertemplate);
