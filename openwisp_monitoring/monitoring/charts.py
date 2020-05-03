@@ -84,7 +84,7 @@ DEFAULT_CHARTS = {
         'description': _(
             'WiFi clients associated to the wireless interface "{metric.key}".'
         ),
-        'summary_labels': [_('Total WiFi clients')],
+        'summary_labels': [_('Total Unique WiFi clients')],
         'unit': '',
         'order': 110,
         'query': {
@@ -103,7 +103,7 @@ DEFAULT_CHARTS = {
             'Network traffic, download and upload, measured on '
             'the interface "{metric.key}", measured in GB.'
         ),
-        'summary_labels': [_('Total upload traffic'), _('Total download traffic')],
+        'summary_labels': [_('Total download traffic'), _('Total upload traffic')],
         'unit': f' {_("GB")}',
         'order': 111,
         'query': {
