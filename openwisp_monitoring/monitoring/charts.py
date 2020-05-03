@@ -85,7 +85,7 @@ DEFAULT_CHARTS = {
             'WiFi clients associated to the wireless interface "{metric.key}".'
         ),
         'summary_labels': [_('Total WiFi clients')],
-        'unit': f' {_("wifi clients")}',
+        'unit': '',
         'order': 110,
         'query': {
             'influxdb': (

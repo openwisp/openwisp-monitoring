@@ -84,14 +84,24 @@
         // add summary
         if (data.summary && type != 'histogram') {
             // $.each(summaryLabels, function(i, el){
-            for (var i=summaryLabels.length-1; i>=0; i--) {
+            for (var i=0; i<summaryLabels.length; i++) {
                 var el = summaryLabels[i],
                     key = el[0],
+                    traceLabel = key.replace(/_/g, ' '),
                     label = el[1],
-                    summary, summaryText;
-                summaryText = `${label}: ${data.summary[key]}${data.unit}`;
-                container.prepend('<p class="summary" title="test!"></p>');
-                container.find('.summary').eq(0).text(summaryText);
+                    percircleOptions = {progressBarColor: data.colors[i]};
+                if (unit === '%') {
+                    percircleOptions.percent = data.summary[key];
+                }
+                else {
+                    percircleOptions.text = data.summary[key] + data.unit;
+                    percircleOptions.percent = 75;
+                }
+                container.append(
+                    '<div class="small circle" title="' + label + '"></div>'
+                );
+                container.find('.circle').eq(-1)
+                         .percircle(percircleOptions);
             };
         }
         // add heading

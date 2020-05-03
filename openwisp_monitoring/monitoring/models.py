@@ -25,7 +25,11 @@ from swapper import load_model
 
 from openwisp_utils.base import TimeStampedEditableModel
 
-from .charts import get_chart_configuration, get_chart_configuration_choices
+from .charts import (
+    DEFAULT_COLORS,
+    get_chart_configuration,
+    get_chart_configuration_choices,
+)
 from .signals import post_metric_write, pre_metric_write, threshold_crossed
 from .utils import query, write
 
@@ -346,7 +350,11 @@ class Graph(TimeStampedEditableModel):
 
     @property
     def colors(self):
-        return self.config_dict.get('colors')
+        colors = self.config_dict.get('colors')
+        if not colors and self.summary_labels:
+            summary_length = len(self.summary_labels)
+            return DEFAULT_COLORS[0:summary_length]
+        return colors
 
     @property
     def unit(self):

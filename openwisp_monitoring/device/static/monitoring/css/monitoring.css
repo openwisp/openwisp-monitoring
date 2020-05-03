@@ -49,7 +49,7 @@ td.field-health_status,
 .health-critical{ color: red }
 
 #ow-graph-contents > div {
-    position: relative;
+    position: relative
 }
 
 .chart-help {
@@ -100,6 +100,7 @@ td.field-health_status,
     margin-top: 1.5em;
     padding-top: 1.5em;
     border-top: 1px dotted rgba(0, 0, 0, 0.2);
+    text-align: center;
 }
 .ow-chart:first-child{
     border: 0 none;
@@ -110,4 +111,16 @@ td.field-health_status,
 .ow-chart .summary {
     text-align: right;
     margin: 0;
+}
+
+.ow-chart .circle {
+    display: inline-block;
+    float: none;
+    margin: 0em 0.15em 0 0.15em;
+}
+
+#ow-graph-container .circle > span {
+    font-size: .15em;
+    letter-spacing: -0.5px;
+    color: rgba(0, 0, 0, 0.65);
 }
