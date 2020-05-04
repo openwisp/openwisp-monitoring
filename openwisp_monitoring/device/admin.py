@@ -48,9 +48,9 @@ class DeviceAdmin(BaseDeviceAdmin):
 
 
 DeviceAdmin.Media.js += MetricAdmin.Media.js + ('monitoring/js/percircle.js',)
-DeviceAdmin.Media.css['all'] += MetricAdmin.Media.css['all'] + (
+DeviceAdmin.Media.css['all'] += (
     'monitoring/css/percircle.css',
-)
+) + MetricAdmin.Media.css['all']
 
 DeviceAdmin.list_display.insert(
     DeviceAdmin.list_display.index('config_status'), 'health_status'

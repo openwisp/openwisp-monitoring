@@ -117,6 +117,18 @@ td.field-health_status,
     display: inline-block;
     float: none;
     margin: 0em 0.15em 0 0.15em;
+    background: rgba(0, 0, 0, 0.125);
+}
+
+#ow-graph-contents .percircle:hover > span {
+    transform: scale(1.15) translateY(-50%);
+    letter-spacing: -0.3px;
+}
+.percircle:hover:after {
+    transform: scale(1.05);
+}
+.percircle.small {
+    font-size: 90px;
 }
 
 .ow-chart .custom-legend {
@@ -137,8 +149,10 @@ td.field-health_status,
 
 #ow-graph-container .circle > span {
     font-size: .15em;
-    letter-spacing: -0.5px;
-    color: rgba(0, 0, 0, 0.65);
+    word-spacing: -0.75px;
+    color: rgba(0, 0, 0, 0.6) !important;
+    font-size: 13px;
+    font-weight: bold;
 }
 
 #ow-graph-container b{
