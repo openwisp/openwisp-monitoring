@@ -33,15 +33,13 @@ DEFAULT_CHARTS = {
             'label': _('Reachable'),
             'scale': [
                 [0, '#c13000'],
-                [0.33, '#ef7d2d'],
-                [0.66, '#deed0e'],
+                # [0.33, '#ef7d2d'],
+                [0.5, '#deed0e'],
                 [1, '#7db201'],
             ],
             'map': [
                 [100, '#7db201', _('Reachable')],
-                [66, '#ef7d2d', _('Mostly reachable')],
-                [33, '#ef7d2d', _('Partly reachable')],
-                [1, '#c13000', _('Mostly unreachable')],
+                [33, '#deed0e', _('Partly reachable')],
                 [None, '#c13000', _('Unreachable')],
             ],
             'fixed_value': 100,

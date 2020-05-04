@@ -119,8 +119,28 @@ td.field-health_status,
     margin: 0em 0.15em 0 0.15em;
 }
 
+.ow-chart .custom-legend {
+    margin: 0 0 1.5em;
+}
+.ow-chart .legend {
+    display: inline-block;
+    margin: 0 0.5em;
+    font-size: 13px;
+    cursor: default;
+}
+.ow-chart .legend span {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 2px;
+}
+
 #ow-graph-container .circle > span {
     font-size: .15em;
     letter-spacing: -0.5px;
     color: rgba(0, 0, 0, 0.65);
+}
+
+#ow-graph-container b{
+    background-color: #000 !important;
 }

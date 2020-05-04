@@ -71,8 +71,13 @@
                     colorscale: config.scale,
                     color: []
                 }
+                if (map) {
+                    layout.showlegend = false;
+                    layout.margin.b = 45;
+                }
             }
-
+            // adjust text to be displayed in Y values
+            // differentiate between values with zero and no values at all (N/A)
             for (var c=0; c<yValuesRaw.length; c++) {
                 var val = yValuesRaw[c],
                     shownVal = val,
@@ -83,7 +88,6 @@
                     var desc, color, controlVal, n;
                     for (n in map) {
                         controlVal = map[n][0];
-                        // console.log(val, controlVal);
                         if (controlVal === null || val >= controlVal) {
                             color = map[n][1];
                             desc = map[n][2];
@@ -118,9 +122,21 @@
         if (container.find('h3.graph-heading').length || !data.title) {
             return;
         }
+        // custom legends when using color map
+        if (data.colorscale && data.colorscale.map) {
+            container.append('<div class="custom-legend"></div>');
+            var map = data.colorscale.map,
+                customLegend = container.find('.custom-legend');
+            for (var i = map.length-1; i >= 0; i--) {
+                var color = map[i][1],
+                    label = map[i][2];
+                customLegend.append(
+                    '<div class="legend"><span style="background:' + color + '"></span> ' + label + '</div>'
+                );
+            }
+        }
         // add summary
         if (data.summary && type != 'histogram') {
-            // $.each(summaryLabels, function(i, el){
             for (var i=0; i<summaryLabels.length; i++) {
                 var el = summaryLabels[i],
                     key = el[0],
