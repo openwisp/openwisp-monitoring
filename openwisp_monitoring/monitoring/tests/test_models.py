@@ -20,6 +20,20 @@ class TestModels(TestMonitoringMixin, TestCase):
         m = Metric(name='Test metric')
         self.assertEqual(str(m), m.name)
 
+    def test_graph_str(self):
+        g = self._create_graph()
+        self.assertEqual(str(g), g.label)
+
+    def test_graph_no_valid_config(self):
+        g = self._create_graph()
+        g.configuration = 'invalid'
+        try:
+            g.full_clean()
+        except ValidationError as e:
+            self.assertIn('configuration', e.message_dict)
+        else:
+            self.fail()
+
     def test_general_codename(self):
         m = Metric(name='Test metric-(1)')
         self.assertEqual(m.codename, 'test_metric_1')

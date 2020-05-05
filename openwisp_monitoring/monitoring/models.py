@@ -262,8 +262,6 @@ class Graph(TimeStampedEditableModel):
         return str(self.label) or self.metric.name
 
     def clean(self):
-        if not self.metric:
-            return
         self._clean_query()
 
     _FORBIDDEN = ['drop', 'create', 'delete', 'alter', 'into']
@@ -314,13 +312,13 @@ class Graph(TimeStampedEditableModel):
                 raise ValidationError({'configuration': msg})
 
     def _clean_query(self):
-        self._is_query_allowed(self.query)
         try:
+            self._is_query_allowed(self.query)
             query(self.get_query())
         except InfluxDBClientError as e:
             raise ValidationError({'configuration': e})
-        except KeyError as e:
-            raise ValidationError({'configuration': 'invalid expression; "%s"' % e})
+        except InvalidChartConfigException as e:
+            raise ValidationError({'configuration': str(e)})
 
     @property
     def config_dict(self):
@@ -505,9 +503,6 @@ class Graph(TimeStampedEditableModel):
         res = res[0]
         res = {key: value for key, value in res.items() if value is not None}
         sorted_dict = OrderedDict(sorted(res.items(), key=operator.itemgetter(1)))
-        # TODO: remove this!
-        if 'sum_total' in sorted_dict:
-            del sorted_dict['sum_total']
         del sorted_dict['time']
         keys = list(sorted_dict.keys())
         keys.reverse()
