@@ -26,7 +26,7 @@ DEFAULT_CHARTS = {
         ),
         'summary_labels': [_('Average uptime')],
         'unit': '%',
-        'order': 100,
+        'order': 200,
         'colorscale': {
             'max': 100,
             'min': 0,
@@ -62,7 +62,7 @@ DEFAULT_CHARTS = {
         'summary_labels': [_('Average packet loss')],
         'unit': '%',
         'colors': [DEFAULT_COLORS[3]],
-        'order': 101,
+        'order': 210,
         'query': {
             'influxdb': (
                 "SELECT MEAN(loss) AS packet_loss FROM {key} WHERE "
@@ -83,7 +83,7 @@ DEFAULT_CHARTS = {
             _('Average Min RTT'),
         ],
         'unit': f' {_("ms")}',
-        'order': 102,
+        'order': 220,
         'query': {
             'influxdb': (
                 "SELECT MEAN(rtt_avg) AS RTT_average, MEAN(rtt_max) AS "
@@ -102,7 +102,7 @@ DEFAULT_CHARTS = {
         ),
         'summary_labels': [_('Total Unique WiFi clients')],
         'unit': '',
-        'order': 110,
+        'order': 230,
         'query': {
             'influxdb': (
                 "SELECT COUNT(DISTINCT({field_name})) AS wifi_clients FROM {key} "
@@ -121,7 +121,7 @@ DEFAULT_CHARTS = {
         ),
         'summary_labels': [_('Total download traffic'), _('Total upload traffic')],
         'unit': f' {_("GB")}',
-        'order': 111,
+        'order': 240,
         'query': {
             'influxdb': (
                 "SELECT SUM(tx_bytes) / 1000000000 AS upload, "
