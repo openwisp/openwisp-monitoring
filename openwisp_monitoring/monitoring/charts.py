@@ -131,24 +131,6 @@ DEFAULT_CHARTS = {
             )
         },
     },
-    'qoe': {
-        'type': 'scatter',
-        'title': _('Quality of Experience'),
-        'description': _(
-            'The Quality of Experience (QoE) score rates '
-            'the quality of the internet connection.'
-        ),
-        'summary_labels': [_('Average QoE score')],
-        'unit': _('%'),
-        'order': 112,
-        'query': {
-            'influxdb': (
-                "SELECT MEAN({field_name}) AS qoe FROM {key} "
-                "WHERE time >= '{time}' AND content_type = '{content_type}' "
-                "AND object_id = '{object_id}' GROUP BY time(1d)"
-            )
-        },
-    },
 }
 
 
