@@ -1,4 +1,5 @@
 import csv
+import logging
 import uuid
 from collections import OrderedDict
 from copy import deepcopy
@@ -16,10 +17,13 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
 from ... import settings as monitoring_settings
+from ...monitoring.exceptions import InvalidChartConfigException
 from ...monitoring.models import Graph, Metric
 from ..models import DeviceData
 from ..schema import schema
 from ..signals import device_metrics_received
+
+logger = logging.getLogger(__name__)
 
 
 class DevicePermission(BasePermission):
@@ -74,14 +78,18 @@ class DeviceMetricView(GenericAPIView):
         data = OrderedDict({'graphs': []})
         for graph in graphs:
             # prepare graph dict
-            graph_dict = graph.read(time=time, x_axys=x_axys, timezone=timezone)
-            graph_dict['description'] = graph.description
-            graph_dict['title'] = graph.title.format(metric=graph.metric)
-            graph_dict['type'] = graph.type
-            graph_dict['unit'] = graph.unit
-            graph_dict['summary_labels'] = graph.summary_labels
-            graph_dict['colors'] = graph.colors
-            graph_dict['colorscale'] = graph.colorscale
+            try:
+                graph_dict = graph.read(time=time, x_axys=x_axys, timezone=timezone)
+                graph_dict['description'] = graph.description
+                graph_dict['title'] = graph.title.format(metric=graph.metric)
+                graph_dict['type'] = graph.type
+                graph_dict['unit'] = graph.unit
+                graph_dict['summary_labels'] = graph.summary_labels
+                graph_dict['colors'] = graph.colors
+                graph_dict['colorscale'] = graph.colorscale
+            except InvalidChartConfigException:
+                logger.exception(f'Skipped graph for metric {graph.metric}')
+                continue
             # get x axys (only once)
             if x_axys and graph_dict['x'] and graph.type != 'histogram':
                 data['x'] = graph_dict.pop('x')

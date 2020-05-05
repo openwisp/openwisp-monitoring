@@ -1,0 +1,2 @@
+class InvalidChartConfigException(Exception):
+    pass

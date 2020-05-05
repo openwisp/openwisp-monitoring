@@ -30,6 +30,7 @@ from .charts import (
     get_chart_configuration,
     get_chart_configuration_choices,
 )
+from .exceptions import InvalidChartConfigException
 from .signals import post_metric_write, pre_metric_write, threshold_crossed
 from .utils import query, write
 
@@ -323,11 +324,12 @@ class Graph(TimeStampedEditableModel):
 
     @property
     def config_dict(self):
-        if not self.configuration:
-            raise ValueError(
-                'configuration needs to be defined in order to access this property'
+        try:
+            return self.CHARTS[self.configuration]
+        except KeyError:
+            raise InvalidChartConfigException(
+                f'Invalid chart configuration: "{self.configuration}"'
             )
-        return self.CHARTS[self.configuration]
 
     @property
     def type(self):
@@ -380,7 +382,7 @@ class Graph(TimeStampedEditableModel):
 
     @property
     def top_fields(self):
-        return self.CHARTS[self.configuration].get('top_fields', None)
+        return self.config_dict.get('top_fields', None)
 
     @property
     def _default_query(self):
