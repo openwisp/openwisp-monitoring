@@ -157,8 +157,6 @@ def get_chart_configuration():
         if options['query'] is not None:
             assert isinstance(options['query'], dict)
             assert 'influxdb' in options['query']
-        if options['type'] == 'histogram':
-            assert options['top_fields']
         else:
             assert 'unit' in options
         if 'colorscale' in options:
