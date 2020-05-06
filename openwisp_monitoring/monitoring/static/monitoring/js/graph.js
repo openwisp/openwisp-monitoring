@@ -57,7 +57,7 @@
         for (var i=0; i<data.traces.length; i++) {
             var key = data.traces[i][0],
                 label = data.traces[i][0].replace(/_/g, ' ');
-            summaryLabels.push([key, data.summary_labels[i]])
+            data.summary_labels && summaryLabels.push([key, data.summary_labels[i]]);
             var options = {
                     name: label,
                     type: type,
