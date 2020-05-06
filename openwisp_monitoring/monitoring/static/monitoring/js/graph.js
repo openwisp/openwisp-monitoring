@@ -37,6 +37,10 @@
         if (data.colors) {
             layout.colorway = data.colors;
         }
+        // hide yaxis in fixed value charts
+        if (data.colorscale && typeof(data.colorscale.fixed_value) !== undefined) {
+            layout.yaxis = {visible: false};
+        }
         // given a value, returns its color and description
         // according to the color map configuration of this chart
         function findInColorMap(value) {
