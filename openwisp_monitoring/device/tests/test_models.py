@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 
@@ -62,6 +63,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
                     "channel": 1,
                     "clients": {},
                     "country": "US",
+                    "mode": "access_point",
                     "tx_power": 6,
                 },
             },
@@ -191,6 +193,28 @@ class TestDeviceData(BaseTestCase):
             pass
         else:
             self.fail('metric was not deleted')
+
+    def test_device_data_time_stamp(self):
+        dd = self.test_save_data()
+        dd = DeviceData(pk=dd.pk)
+        dd.data
+        self.assertIsNotNone(dd.data_timestamp)
+
+    def test_local_time_update(self):
+        dd = deepcopy(self.test_save_data())
+        dd = DeviceData(pk=dd.pk)
+        data = dd.data_user_friendly
+        self.assertNotEqual(
+            data['general']['local_time'], self._sample_data['general']['local_time']
+        )
+
+    def test_uptime_update(self):
+        dd = deepcopy(self.test_save_data())
+        dd = DeviceData(pk=dd.pk)
+        data = dd.data_user_friendly
+        self.assertNotEqual(
+            data['general']['uptime'], self._sample_data['general']['uptime']
+        )
 
 
 class TestDeviceMonitoring(BaseTestCase):
