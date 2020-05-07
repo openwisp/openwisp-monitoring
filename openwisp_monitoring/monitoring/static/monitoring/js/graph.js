@@ -41,6 +41,9 @@
         if (data.colorscale && typeof(data.colorscale.fixed_value) !== undefined) {
             layout.yaxis = {visible: false};
         }
+        if (type === 'histogram') {
+            layout.hovermode = 'closest';
+        }
         // given a value, returns its color and description
         // according to the color map configuration of this chart
         function findInColorMap(value) {
@@ -71,13 +74,12 @@
                     y: []
                 },
                 yValuesRaw = data.traces[i][1];
-            if (type != 'histogram') {
+            if (type !== 'histogram') {
                 options.x = x;
                 options.hoverinfo = 'x+y';
             }
             else {
-                options.x = [0];
-                options.hoverinfo = 'skip';
+                options.x = [''];
                 options.histfunc = 'sum';
             }
 
