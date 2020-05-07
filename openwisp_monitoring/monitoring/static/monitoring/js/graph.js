@@ -24,7 +24,8 @@
                   t: 20,
                   pad: 4
                 },
-                height: 350
+                height: 350,
+                hovermode: 'x unified'
             },
             graphs = [],
             container = $('#' + id),
