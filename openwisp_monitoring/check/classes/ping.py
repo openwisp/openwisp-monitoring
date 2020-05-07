@@ -8,8 +8,8 @@ from jsonschema.exceptions import ValidationError as SchemaError
 from openwisp_controller.config.models import Device
 
 from ... import settings as monitoring_settings
-from ...device import settings as device_app_settings
 from ...monitoring.models import Graph, Metric, Threshold
+from .. import settings as app_settings
 from ..exceptions import OperationalError
 
 
@@ -146,7 +146,7 @@ class Ping(object):
         """
         device = self.related_object
         ip = device.management_ip
-        if not ip and not device_app_settings.MANAGEMENT_IP_ONLY:
+        if not ip and not app_settings.MANAGEMENT_IP_ONLY:
             ip = device.last_ip
         return ip
 

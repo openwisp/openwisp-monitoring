@@ -14,7 +14,6 @@ HEALTH_STATUS_LABELS = getattr(
     'OPENWISP_MONITORING_HEALTH_STATUS_LABELS',
     {'unknown': 'unknown', 'ok': 'ok', 'problem': 'problem', 'critical': 'critical'},
 )
-MANAGEMENT_IP_ONLY = getattr(settings, 'OPENWISP_MONITORING_MANAGEMENT_IP_ONLY', True)
 
 # Triggers spontaneous recovery of device based on corresponding signals
 DEVICE_RECOVERY_DETECTION = getattr(
