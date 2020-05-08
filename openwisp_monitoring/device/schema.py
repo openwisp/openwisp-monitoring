@@ -165,7 +165,7 @@ schema = {
                     "interface": {"type": "string"},
                     "state": {"type": "string"},
                 },
-                "required": ["ip_address", "mac_address", "interface"],
+                "required": ["ip_address", "interface"],
             },
         },
     },
