@@ -38,6 +38,15 @@
   outline: 1px solid rgba(0, 0, 0, 0.3);
 }
 
+#ow-device-status table{
+    width: 100%;
+    margin: 0;
+}
+#ow-device-status table th,
+#ow-device-status table td{
+    padding: 10px 1%;
+}
+
 td.field-health_status,
 .field-health_status .readonly{
   font-weight: bold;
