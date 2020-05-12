@@ -104,7 +104,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
                 },
             },
         ],
-        "arp_table": [
+        "neighbors": [
             {
                 "ip_address": "fe80::9683:c4ff:fe02:c2bf",
                 "mac_address": "00:11:55:aa:dd:0a",
@@ -165,7 +165,7 @@ class TestDeviceData(BaseTestCase):
         dd = self._create_device_data()
         try:
             dd.data = self._sample_data
-            dd.data["arp_table"][0]["ip_address"] = "invalid"
+            dd.data["neighbors"][0]["ip_address"] = "invalid"
             dd.validate_data()
         except ValidationError as e:
             self.assertIn('Invalid data in', e.message)

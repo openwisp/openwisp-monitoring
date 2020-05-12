@@ -148,7 +148,7 @@ schema = {
                 },
             },
         },
-        "arp_table": {
+        "neighbors": {
             "type": "array",
             "title": "ARP Table",
             "additionalItems": False,

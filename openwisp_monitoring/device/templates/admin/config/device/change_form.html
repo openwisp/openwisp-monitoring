@@ -63,7 +63,7 @@
               </div>
               {% endif %}
               {% endif %}
-              {% if device_data.arp_table %}
+              {% if device_data.neighbors %}
               <h2>{% trans 'ARP table' %}</h2>
               <table class="neighbours">
                   <thead>
@@ -75,7 +75,7 @@
                       </tr>
                   </thead>
                   <tbody>
-                      {% for arp_entry in device_data.arp_table %}
+                      {% for arp_entry in device_data.neighbors %}
                       <tr>
                           <td class="ip">{{ arp_entry.ip_address }}</td>
                           <td class="mac">{{ arp_entry.mac_address }}</td>
