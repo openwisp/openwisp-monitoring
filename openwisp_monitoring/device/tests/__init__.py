@@ -35,18 +35,12 @@ class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
     def _data(self):
         return {
             'type': 'DeviceMonitoring',
-            'general': {
-                'local_time': 1589026500,
-                'uptime': 8003,
-                'hostname': '08-00-27-04-8E-1C',
-            },
+            'general': {'local_time': 1589026500, 'uptime': 8003},
             'resources': {
                 'memory': {
                     'total': 249774080,
-                    'shared': 90112,
                     'free': 224497664,
                     'cached': 6774784,
-                    'available': 203497472,
                     'buffered': 974848,
                 },
                 'load': [0, 0, 0],
