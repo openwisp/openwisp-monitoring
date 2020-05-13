@@ -66,8 +66,8 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(r.status_code, 200)
         dd = DeviceData(pk=d.pk)
         self.assertDictEqual(dd.data, data)
-        self.assertEqual(Metric.objects.count(), 6)
-        self.assertEqual(Graph.objects.count(), 4)
+        self.assertEqual(Metric.objects.count(), 9)
+        self.assertEqual(Graph.objects.count(), 7)
         if_dict = {'wlan0': data['interfaces'][0], 'wlan1': data['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
@@ -97,8 +97,8 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(r.status_code, 200)
         dd = DeviceData(pk=d.pk)
         self.assertDictEqual(dd.data, data2)
-        self.assertEqual(Metric.objects.count(), 6)
-        self.assertEqual(Graph.objects.count(), 4)
+        self.assertEqual(Metric.objects.count(), 9)
+        self.assertEqual(Graph.objects.count(), 7)
         if_dict = {'wlan0': data2['interfaces'][0], 'wlan1': data2['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
@@ -127,8 +127,8 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(r.status_code, 200)
         dd = DeviceData(pk=d.pk)
         self.assertDictEqual(dd.data, data2)
-        self.assertEqual(Metric.objects.count(), 6)
-        self.assertEqual(Graph.objects.count(), 4)
+        self.assertEqual(Metric.objects.count(), 9)
+        self.assertEqual(Graph.objects.count(), 7)
         if_dict = {'wlan0': data2['interfaces'][0], 'wlan1': data2['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
@@ -174,8 +174,8 @@ class TestDeviceApi(DeviceMonitoringTestCase):
 
     def test_200_multiple_measurements(self):
         dd = self._create_multiple_measurements()
-        self.assertEqual(Metric.objects.count(), 6)
-        self.assertEqual(Graph.objects.count(), 4)
+        self.assertEqual(Metric.objects.count(), 9)
+        self.assertEqual(Graph.objects.count(), 7)
         expected = {
             'wlan0': {'rx_bytes': 10000, 'tx_bytes': 6000},
             'wlan1': {'rx_bytes': 4587, 'tx_bytes': 2993},
@@ -267,10 +267,11 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         r = self.client.get(self._url(d.pk.hex, d.key))
         self.assertEqual(r.status_code, 200)
         self.assertIsInstance(r.data['graphs'], list)
-        self.assertEqual(len(r.data['graphs']), 4)
+        self.assertEqual(len(r.data['graphs']), 7)
         self.assertIn('x', r.data)
         graphs = r.data['graphs']
         for graph in graphs:
+            # print(graph)
             self.assertIn('traces', graph)
             self.assertIn('title', graph)
             self.assertIn('description', graph)
@@ -340,10 +341,31 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                 'upload - Traffic: wlan0',
                 'download - Traffic: wlan1',
                 'upload - Traffic: wlan1',
+                'Buffered_Memory - Memory',
+                'Shared_Memory - Memory',
+                'Used_Memory - Memory',
+                'CPU_Load - CPU Load',
+                'Disk_Usage - Disk Usage',
             ],
         )
         last_line = rows[-1].strip().split(',')
-        self.assertEqual(last_line, [last_line[0], '1', '2', '1.2', '0.6', '3', '1.5'])
+        self.assertEqual(
+            last_line,
+            [
+                last_line[0],
+                '1',
+                '2',
+                '1.2',
+                '0.6',
+                '3',
+                '1.5',
+                '0.39',
+                '0.03',
+                '9.73',
+                '0',
+                '8.27',
+            ],
+        )
 
     def test_get_device_metrics_400_bad_timezone(self):
         dd = self._create_multiple_measurements()
@@ -417,7 +439,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
 
         self.test_200_create()
         d = DeviceData.objects.first()
-        self.assertEqual(Graph.objects.count(), 4)
+        self.assertEqual(Graph.objects.count(), 7)
         with redirect_stderr(StringIO()) as stderr:
             g1 = Graph.objects.first()
             g1.configuration = 'invalid'

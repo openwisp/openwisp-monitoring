@@ -58,3 +58,9 @@ DEVICE_RECOVERY_DETECTION = getattr(
 MAC_VENDOR_DETECTION = getattr(
     settings, 'OPENWISP_MONITORING_MAC_VENDOR_DETECTION', True
 )
+
+DEVICE_RESOURCES_THRESHOLDS = getattr(
+    settings,
+    'OPENWISP_MONITORING_DEVICE_RESOURCES_THRESHOLDS',
+    {'memory': 0.95, 'load': 0.90, 'disk': 0.80},
+)

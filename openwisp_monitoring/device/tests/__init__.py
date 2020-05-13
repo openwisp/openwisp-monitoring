@@ -37,13 +37,33 @@ class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
             'type': 'DeviceMonitoring',
             'general': {'local_time': 1589026500, 'uptime': 8003},
             'resources': {
+                'cpus': 1,
                 'memory': {
                     'total': 249774080,
+                    'shared': 86016,
                     'free': 224497664,
                     'cached': 6774784,
                     'buffered': 974848,
                 },
                 'load': [0, 0, 0],
+                'disk': [
+                    {
+                        'used_bytes': 18792,
+                        'available_bytes': 233984,
+                        'filesystem': '/dev/root',
+                        'mount_point': '/',
+                        'used_percent': 7,
+                        'size_bytes': 258016,
+                    },
+                    {
+                        'used_bytes': 3872,
+                        'available_bytes': 11916,
+                        'filesystem': '/dev/sda1',
+                        'mount_point': '/boot',
+                        'used_percent': 25,
+                        'size_bytes': 16112,
+                    },
+                ],
                 'swap': {'free': 0, 'total': 0},
             },
             'interfaces': [

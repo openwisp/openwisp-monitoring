@@ -131,6 +131,56 @@ DEFAULT_CHARTS = {
             )
         },
     },
+    'memory': {
+        'type': 'scatter',
+        'title': _('Memory'),
+        'label': _('Memory'),
+        'description': _('Displays percentage of device memory being used'),
+        'summary_labels': [_('Buffered Memory'), _('Shared Memory'), _('Used Memory')],
+        'unit': '%',
+        'order': 250,
+        'query': {
+            'influxdb': (
+                "SELECT 100*(1-((MEDIAN(free_memory)+MEDIAN(buffered_memory))/MEDIAN(total_memory))) "
+                "AS Used_Memory, 100*MEAN(buffered_memory)/MEAN(total_memory) AS Buffered_Memory, "
+                "100*MEAN(shared_memory)/MEAN(total_memory) AS Shared_Memory FROM {key} WHERE "
+                "time >= '{time}' AND content_type = '{content_type}' AND "
+                "object_id = '{object_id}' GROUP BY time(1d)"
+            )
+        },
+    },
+    'load': {
+        'type': 'scatter',
+        'title': _('CPU Load'),
+        'label': _('CPU Load'),
+        'description': _('Displays average CPU Load of the device'),
+        'summary_labels': [_('CPU Load')],
+        'unit': '%',
+        'order': 260,
+        'query': {
+            'influxdb': (
+                "SELECT 100*MEAN(load_1) AS CPU_Load FROM {key} WHERE "
+                "time >= '{time}' AND content_type = '{content_type}' AND "
+                "object_id = '{object_id}' GROUP BY time(1d)"
+            )
+        },
+    },
+    'disk': {
+        'type': 'scatter',
+        'title': _('Disk Usage'),
+        'label': _('Disk Usage'),
+        'description': _('Displays flash disk usage of the device'),
+        'summary_labels': [_('Disk Usage')],
+        'unit': '%',
+        'order': 270,
+        'query': {
+            'influxdb': (
+                "SELECT 100*MEAN(used_disk) AS Disk_Usage FROM {key} WHERE "
+                "time >= '{time}' AND content_type = '{content_type}' AND "
+                "object_id = '{object_id}' GROUP BY time(1d)"
+            )
+        },
+    },
 }
 
 
