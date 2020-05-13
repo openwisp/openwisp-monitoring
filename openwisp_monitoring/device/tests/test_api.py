@@ -218,14 +218,16 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         # expected upload wlan1
         self.assertEqual(data['traces'][1][1][-1], 1.5)
 
-    def test_garbage_clients(self):
-        o = self._create_org()
-        d = self._create_device(organization=o)
-        r = self._post_data(d.id, d.key, self._garbage_clients)
-        # ignored
+    def test_wifi_clients_admin(self):
+        self._login_admin()
+        d = self._create_device(organization=self._create_org())
+        data = self._data()
+        r = self._post_data(d.id, d.key, data)
+        url = reverse('admin:config_device_change', args=[d.id])
+        r1 = self.client.get(url, follow=True)
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(Metric.objects.count(), 1)
-        self.assertEqual(Graph.objects.count(), 1)
+        self.assertEqual(r1.status_code, 200)
+        self.assertContains(r1, '00:ee:ad:34:f5:3b')
 
     @patch.object(monitoring_settings, 'AUTO_GRAPHS', return_value=[])
     def test_auto_graph_disabled(self, *args):
