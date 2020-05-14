@@ -1,4 +1,5 @@
 import json
+from collections import OrderedDict
 from datetime import datetime
 
 from dateutil.relativedelta import relativedelta
@@ -61,13 +62,13 @@ class DeviceData(Device):
             MB = 1000000.0
             for key in data['resources']['memory'].keys():
                 data['resources']['memory'][key] /= MB
-        remove = []
+        # used for reordering interfaces
+        interface_dict = OrderedDict()
         for interface in data.get('interfaces', []):
             # don't show interfaces if they don't have any useful info
             if len(interface.keys()) <= 2:
-                remove.append(interface)
                 continue
-            # human readable mode
+            # human readable wireless  mode
             if 'wireless' in interface and 'mode' in interface['wireless']:
                 interface['wireless']['mode'] = interface['wireless']['mode'].replace(
                     '_', ' '
@@ -75,8 +76,10 @@ class DeviceData(Device):
             # convert to GHz
             if 'wireless' in interface and 'frequency' in interface['wireless']:
                 interface['wireless']['frequency'] /= 1000
-        for interface in remove:
-            data['interfaces'].remove(interface)
+            interface_dict[interface['name']] = interface
+        # reorder interfaces in alphabetical order
+        interface_dict = OrderedDict(sorted(interface_dict.items()))
+        data['interfaces'] = list(interface_dict.values())
         return data
 
     @property
