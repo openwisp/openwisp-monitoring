@@ -31,6 +31,7 @@ class DeviceData(Device):
     schema = schema
     __data = None
     __key = 'device_data'
+    __data_timestamp = None
 
     checks = GenericRelation('check.Check')
     metrics = GenericRelation('monitoring.Metric')
@@ -47,15 +48,18 @@ class DeviceData(Device):
         if not self.data:
             return None
         data = self.data
+        # slicing to eliminate the nanoseconds from timestamp
+        measured_at = datetime.strptime(self.data_timestamp[0:19], '%Y-%m-%dT%H:%M:%S')
+        time_elapsed = int((datetime.utcnow() - measured_at).total_seconds())
         if 'general' in data and 'local_time' in data['general']:
             local_time = data['general']['local_time']
             data['general']['local_time'] = datetime.fromtimestamp(
-                local_time, tz=tz('UTC')
+                local_time + time_elapsed, tz=tz('UTC')
             )
         if 'general' in data and 'uptime' in data['general']:
             uptime = '{0.days} days, {0.hours} hours and {0.minutes} minutes'
             data['general']['uptime'] = uptime.format(
-                relativedelta(seconds=data['general']['uptime'])
+                relativedelta(seconds=data['general']['uptime'] + time_elapsed)
             )
         if 'resources' in data and 'memory' in data['resources']:
             # convert bytes to megabytes
@@ -96,7 +100,12 @@ class DeviceData(Device):
         points = list(query(q).get_points())
         if not points:
             return None
+        self.__data_timestamp = points[0]['time']
         return json.loads(points[0]['data'])
+
+    @property
+    def data_timestamp(self):
+        return self.__data_timestamp
 
     @data.setter
     def data(self, data):
