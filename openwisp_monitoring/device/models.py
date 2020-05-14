@@ -100,12 +100,8 @@ class DeviceData(Device):
         points = list(query(q).get_points())
         if not points:
             return None
-        self.__data_timestamp = points[0]['time']
+        self.data_timestamp = points[0]['time']
         return json.loads(points[0]['data'])
-
-    @property
-    def data_timestamp(self):
-        return self.__data_timestamp
 
     @data.setter
     def data(self, data):
@@ -113,6 +109,20 @@ class DeviceData(Device):
         sets data
         """
         self.__data = data
+
+    @property
+    def data_timestamp(self):
+        """
+        retrieves timestamp at which the data was recorded
+        """
+        return self.__data_timestamp
+
+    @data_timestamp.setter
+    def data_timestamp(self, value):
+        """
+        sets the timestamp related to the data
+        """
+        self.__data_timestamp = value
 
     def validate_data(self):
         """
