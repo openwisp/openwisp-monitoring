@@ -119,29 +119,23 @@
                   </div>
                   {% endif %}
                   {% endif %}
-              </div>
-              {% if interface.addresses %}
-              <table class="device-addresses">
-                  <thead>
+                  {% if interface.addresses %}
+                  <table class="addresses">
+                      <thead>
+                          <tr>
+                              <th>{% trans 'Address' %} / {% trans 'Mask' %}</th>
+                              <th>{% trans 'Protocol' %}</th>
+                          </tr>
+                      </thead>
+                      {% for address in interface.addresses %}
                       <tr>
-                          <th>{% trans 'Address' %}</th>
-                          <th>{% trans 'Mask' %}</th> 
-                          <th>{% trans 'DHCP client ?' %}</th>
+                          <td class="address-mask">{{ address.address }} / {{ address.mask }}</td>
+                          <td class="proto">{{ address.proto }}</td>
                       </tr>
-                  </thead>
-                  {% for address in interface.addresses %}
-                  <tr>
-                      <td>{{ address.address }}</td>
-                      <td>{{ address.mask }}</td>
-                      {% if address.proto == "static" %}
-                          <td class="static">{% trans 'No' %}</td>
-                      {% else %}
-                          <td class="dhcp">{% trans 'Yes' %}</td>
-                      {% endif %}
-                  </tr>
-                  {% endfor %}
-              </table>
-              {% endif %}
+                      {% endfor %}
+                  </table>
+                  {% endif %}
+              </div>
               {% endfor %}
               {% endif %}
               {% if device_data.neighbors %}
