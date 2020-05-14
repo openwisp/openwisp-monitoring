@@ -243,18 +243,30 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertIsInstance(r.data['graphs'], list)
         self.assertEqual(len(r.data['graphs']), 4)
         self.assertIn('x', r.data)
-        for graph in r.data['graphs']:
+        graphs = r.data['graphs']
+        for graph in graphs:
             self.assertIn('traces', graph)
+            self.assertIn('title', graph)
             self.assertIn('description', graph)
             self.assertIn('type', graph)
+            self.assertIn('summary', graph)
+            self.assertIsInstance(graph['summary'], dict)
+            self.assertIn('summary_labels', graph)
+            self.assertIsInstance(graph['summary_labels'], list)
+            self.assertIn('unit', graph)
+            self.assertIn('colors', graph)
+            self.assertIn('colorscale', graph)
+        # test order
+        self.assertEqual(graphs[0]['title'], 'WiFi clients: wlan0')
+        self.assertEqual(graphs[1]['title'], 'WiFi clients: wlan1')
+        self.assertEqual(graphs[2]['title'], 'Traffic: wlan0')
+        self.assertEqual(graphs[3]['title'], 'Traffic: wlan1')
 
     def test_get_device_metrics_histogram_ignore_x(self):
         o = self._create_org()
         d = self._create_device(organization=o)
         m = self._create_object_metric(content_object=d, name='applications')
-        g = self._create_graph(metric=m, type='histogram', description='zxw histogram')
-        g.query = g.query.replace('{field_name}', 'SUM({field_name})')
-        g.save()
+        self._create_graph(metric=m, configuration='histogram')
         self._create_multiple_measurements(create=False)
         r = self.client.get(self._url(d.pk.hex, d.key))
         self.assertEqual(r.status_code, 200)
@@ -285,6 +297,8 @@ class TestDeviceApi(DeviceMonitoringTestCase):
     def test_get_device_metrics_csv(self):
         dd = self._create_multiple_measurements()
         d = self.device_model.objects.get(pk=dd.pk)
+        m = self._create_object_metric(content_object=d, name='applications')
+        self._create_graph(metric=m, configuration='histogram')
         r = self.client.get('{0}&csv=1'.format(self._url(d.pk, d.key)))
         self.assertEqual(r.get('Content-Disposition'), 'attachment; filename=data.csv')
         self.assertEqual(r.get('Content-Type'), 'text/csv')
@@ -294,16 +308,16 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             header,
             [
                 'time',
-                'download - wlan1 traffic (GB)',
-                'upload - wlan1 traffic (GB)',
-                'value',
-                'download - wlan0 traffic (GB)',
-                'upload - wlan0 traffic (GB)',
-                'value',
+                'wifi_clients - WiFi clients: wlan0',
+                'wifi_clients - WiFi clients: wlan1',
+                'download - Traffic: wlan0',
+                'upload - Traffic: wlan0',
+                'download - Traffic: wlan1',
+                'upload - Traffic: wlan1',
             ],
         )
         last_line = rows[-1].strip().split(',')
-        self.assertEqual(last_line, [last_line[0], '3', '1.5', '2', '1.2', '0.6', '1'])
+        self.assertEqual(last_line, [last_line[0], '1', '2', '1.2', '0.6', '3', '1.5'])
 
     def test_get_device_metrics_400_bad_timezone(self):
         dd = self._create_multiple_measurements()
@@ -351,3 +365,37 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         r = self.client.get(url)
         self.assertContains(r, 'Device Status')
         self.assertContains(r, 'Monitoring Graph')
+
+    def test_no_device_data(self):
+        d = self._create_device(organization=self._create_org())
+        url = reverse('admin:config_device_change', args=[d.pk])
+        self._login_admin()
+        self.client.get(url)
+
+    def test_remove_invalid_interface(self):
+        d = self._create_device(organization=self._create_org())
+        dd = DeviceData(name='test-device', pk=d.pk)
+        self._post_data(
+            d.id,
+            d.key,
+            {'type': 'DeviceMonitoring', 'interfaces': [{'name': 'br-lan'}]},
+        )
+        url = reverse('admin:config_device_change', args=[dd.pk])
+        self._login_admin()
+        self.client.get(url)
+
+    def test_invalid_graph_config(self):
+        # Tests if graph_config is invaid, then it is skipped and not failed
+        from io import StringIO
+        from contextlib import redirect_stderr
+
+        self.test_200_create()
+        d = DeviceData.objects.first()
+        self.assertEqual(Graph.objects.count(), 4)
+        with redirect_stderr(StringIO()) as stderr:
+            g1 = Graph.objects.first()
+            g1.configuration = 'invalid'
+            g1.save()
+            r = self.client.get(self._url(d.pk.hex, d.key))
+        self.assertIn('InvalidChartConfigException', stderr.getvalue())
+        self.assertEqual(r.status_code, 200)

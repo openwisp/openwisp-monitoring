@@ -35,7 +35,7 @@ class MetricAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
 
     class Media:
         css = {'all': ('monitoring/css/monitoring.css',)}
-        js = ('monitoring/js/plotly.min.js', 'monitoring/js/graph.js')
+        js = ('monitoring/js/plotly-cartesian.min.js', 'monitoring/js/graph.js')
 
 
 @admin.register(Threshold)

@@ -65,6 +65,7 @@ Follow the setup instructions of `openwisp-controller
         'openwisp_users',
         'openwisp_controller.pki',
         'openwisp_controller.config',
+        'openwisp_controller.connection',
         # monitoring
         'notifications',
         'openwisp_monitoring.monitoring',
@@ -302,8 +303,82 @@ field, you can set this to ``False``.
 | **default**: | ``True``    |
 +--------------+-------------+
 
-The setting allows to detect recoveries as soon as they happen thus making
-the monitoring system faster.
+When device recovery detection is enabled, recoveries are discovered as soon as
+a device contacts the openwisp system again (eg: to get the configuration checksum
+or to send monitoring metrics).
+
+This feature is enabled by default.
+
+``OPENWISP_MONITORING_CHARTS``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``dict``    |
++--------------+-------------+
+| **default**: | ``{}``      |
++--------------+-------------+
+
+This setting allows to define additional charts or to override
+the default chart configuration defined in
+``openwisp_monitoring.monitoring.charts.DEFAULT_CHARTS``.
+
+For example, if you want to change the traffic graph to show
+MB (megabytes) instead of GB (Gigabytes) you can use:
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_CHARTS = {
+        'traffic': {
+            'unit': ' MB',
+            'description': (
+                'Network traffic, download and upload, measured on '
+                'the interface "{metric.key}", measured in MB.'
+            ),
+            'query': {
+                'influxdb': (
+                    "SELECT SUM(tx_bytes) / 1000000 AS upload, "
+                    "SUM(rx_bytes) / 1000000 AS download FROM {key} "
+                    "WHERE time >= '{time}' AND content_type = '{content_type}' "
+                    "AND object_id = '{object_id}' GROUP BY time(1d)"
+                )
+            },
+        }
+    }
+
+Or if you want to define a new chart configuration, which you can then
+call in your custom code (eg: a custom check class), you can do so as follows:
+
+.. code-block:: python
+
+    from django.utils.translation import ugettext_lazy as _
+
+    OPENWISP_MONITORING_CHARTS = {
+        'ram': {
+            'type': 'line',
+            'title': 'RAM usage',
+            'description': 'RAM usage',
+            'unit': 'bytes',
+            'order': 100,
+            'query': {
+                'influxdb': (
+                    "SELECT MEAN(total) AS total, MEAN(free) AS free, "
+                    "MEAN(buffered) AS buffered FROM {key} WHERE time >= '{time}' AND "
+                    "content_type = '{content_type}' AND object_id = '{object_id}' "
+                    "GROUP BY time(1d)"
+                )
+            },
+        }
+    }
+
+In case you just want to change the colors used in a chart here's how to do it:
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_CHARTS = {
+        'traffic': {
+            'colors': ['#000000', '#cccccc']
+        }
+    }
 
 Signals
 -------

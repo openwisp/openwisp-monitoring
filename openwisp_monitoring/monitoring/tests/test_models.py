@@ -20,6 +20,20 @@ class TestModels(TestMonitoringMixin, TestCase):
         m = Metric(name='Test metric')
         self.assertEqual(str(m), m.name)
 
+    def test_graph_str(self):
+        g = self._create_graph()
+        self.assertEqual(str(g), g.label)
+
+    def test_graph_no_valid_config(self):
+        g = self._create_graph()
+        g.configuration = 'invalid'
+        try:
+            g.full_clean()
+        except ValidationError as e:
+            self.assertIn('configuration', e.message_dict)
+        else:
+            self.fail()
+
     def test_general_codename(self):
         m = Metric(name='Test metric-(1)')
         self.assertEqual(m.codename, 'test_metric_1')
@@ -134,6 +148,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         om = self._create_object_metric(name='load')
         om.write(50)
         om.write(3)
+        om.read(extra_fields='*')
         self.assertEqual(om.read()[0][om.field_name], 50)
 
     def test_threshold_max_seconds(self):
@@ -170,6 +185,14 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertTrue(t._is_crossed_by(95, ten_minutes_ago))
         self.assertFalse(t._is_crossed_by(80, start_time))
         self.assertFalse(t._is_crossed_by(80, ten_minutes_ago))
+
+    def test_threshold_is_crossed_deferred_2(self):
+        self._create_admin()
+        m = self._create_general_metric(name='load')
+        self._create_threshold(metric=m, operator='>', value=90, seconds=60)
+        m.write(60)
+        m.write(99)
+        self.assertTrue(m.is_healthy)
 
     def test_general_check_threshold_no_exception(self):
         m = self._create_general_metric()

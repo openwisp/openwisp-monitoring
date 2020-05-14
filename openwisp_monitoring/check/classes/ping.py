@@ -2,14 +2,14 @@ import subprocess
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from jsonschema import validate
+from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
 
 from openwisp_controller.config.models import Device
 
 from ... import settings as monitoring_settings
-from ...device import settings as device_app_settings
 from ...monitoring.models import Graph, Metric, Threshold
+from .. import settings as app_settings
 from ..exceptions import OperationalError
 
 
@@ -62,7 +62,7 @@ class Ping(object):
 
     def validate_params(self):
         try:
-            validate(self.params, self.schema)
+            validate(self.params, self.schema, format_checker=draft7_format_checker)
         except SchemaError as e:
             message = 'Invalid param'
             path = '/'.join(e.path)
@@ -146,7 +146,7 @@ class Ping(object):
         """
         device = self.related_object
         ip = device.management_ip
-        if not ip and not device_app_settings.MANAGEMENT_IP_ONLY:
+        if not ip and not app_settings.MANAGEMENT_IP_ONLY:
             ip = device.last_ip
         return ip
 
@@ -192,34 +192,10 @@ class Ping(object):
         """
         Creates device graphs if necessary
         """
-        graphs = [
-            {
-                'label': 'uptime',
-                'description': 'Uptime (%)',
-                'query': "SELECT MEAN({field_name})*100 AS uptime FROM {key} WHERE "
-                "time >= '{time}' AND content_type = '{content_type}' AND "
-                "object_id = '{object_id}' GROUP BY time(1d) fill(0)",
-            },
-            {
-                'label': 'packet_loss',
-                'description': 'Packet loss (%)',
-                'query': "SELECT MEAN(loss) AS packet_loss FROM {key} WHERE "
-                "time >= '{time}' AND content_type = '{content_type}' AND "
-                "object_id = '{object_id}' GROUP BY time(1d) fill(0)",
-            },
-            {
-                'label': 'rtt',
-                'description': 'Round Trip Time (ms)',
-                'query': "SELECT MEAN(rtt_avg) AS RTT_average, MEAN(rtt_max) AS "
-                "RTT_max, MEAN(rtt_min) AS RTT_min FROM {key} WHERE "
-                "time >= '{time}' AND content_type = '{content_type}' AND "
-                "object_id = '{object_id}' GROUP BY time(1d) fill(0)",
-            },
-        ]
-        for opts in graphs:
-            if opts.pop('label') not in monitoring_settings.AUTO_GRAPHS:
+        graphs = ['uptime', 'packet_loss', 'rtt']
+        for graph in graphs:
+            if graph not in monitoring_settings.AUTO_GRAPHS:
                 continue
-            opts.update(metric=metric)
-            graph = Graph(**opts)
+            graph = Graph(metric=metric, configuration=graph)
             graph.full_clean()
             graph.save()

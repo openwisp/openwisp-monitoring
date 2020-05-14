@@ -6,14 +6,12 @@ from collections import OrderedDict
 from datetime import date, datetime, timedelta
 
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import models
-from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
@@ -21,14 +19,18 @@ from django.utils.timezone import make_aware
 from django.utils.translation import ugettext_lazy as _
 from influxdb.exceptions import InfluxDBClientError
 from pytz import timezone as tz
-from swapper import load_model
 
 from openwisp_utils.base import TimeStampedEditableModel
 
+from .charts import (
+    DEFAULT_COLORS,
+    get_chart_configuration,
+    get_chart_configuration_choices,
+)
+from .exceptions import InvalidChartConfigException
 from .signals import post_metric_write, pre_metric_write, threshold_crossed
-from .utils import query, write
+from .utils import notify_users, query, write
 
-User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
@@ -199,28 +201,7 @@ class Metric(TimeStampedEditableModel):
             opts['target'] = self.content_object
             target_org = getattr(opts['target'], 'organization_id', None)
         self._set_extra_notification_opts(opts)
-        # retrieve superusers
-        where = Q(is_superuser=True)
-        # if target_org is specified, retrieve also
-        # staff users that are member of the org
-        if target_org:
-            where = where | (
-                Q(is_staff=True) & Q(openwisp_users_organization=target_org)
-            )
-        # only retrieve users which have the receive flag active
-        where = where & Q(notificationuser__receive=True)
-        # perform query
-        qs = (
-            User.objects.select_related('notificationuser')
-            .order_by('date_joined')
-            .filter(where)
-        )
-        Notification = load_model('notifications', 'Notification')
-        for user in qs:
-            n = Notification(**opts)
-            n.recipient = user
-            n.full_clean()
-            n.save()
+        notify_users(opts, target_org)
 
     def _set_extra_notification_opts(self, opts):
         verb = opts['verb']
@@ -246,35 +227,16 @@ class Metric(TimeStampedEditableModel):
 
 
 class Graph(TimeStampedEditableModel):
-    TYPES = (
-        ('line', _('Line')),
-        ('histogram', _('Histogram')),
-    )
+    CHARTS = get_chart_configuration()
     metric = models.ForeignKey(Metric, on_delete=models.CASCADE)
-    description = models.CharField(max_length=64, blank=True)
-    query = models.TextField(blank=True)
-    type = models.CharField(
-        _('chart type'), max_length=16, choices=TYPES, default=TYPES[0][0]
-    )
-    top_fields = models.PositiveIntegerField(
-        _('top fields'),
-        help_text=_(
-            'substitutes {fields} in the query with the top N fields, '
-            'a value of zero disables this feature'
-        ),
-        default=0,
+    configuration = models.CharField(
+        max_length=16, null=True, choices=get_chart_configuration_choices()
     )
 
     def __str__(self):
-        return self.description or self.metric.name
+        return str(self.label) or self.metric.name
 
     def clean(self):
-        if not self.metric:
-            return
-        if not self.description:
-            self.description = self.metric.name
-        if not self.query:
-            self.query = self._default_query
         self._clean_query()
 
     _FORBIDDEN = ['drop', 'create', 'delete', 'alter', 'into']
@@ -307,26 +269,99 @@ class Graph(TimeStampedEditableModel):
         'NON_NEGATIVE_DERIVATIVE',
         'HOLT_WINTERS',
     ]
-    GROUP_MAP = {'1d': '10m', '3d': '20m', '7d': '1h', '30d': '24h', '365d': '24h'}
+    GROUP_MAP = {
+        '1d': '10m',
+        '1d': '10m',
+        '3d': '20m',
+        '7d': '1h',
+        '30d': '24h',
+        '365d': '24h',
+    }
     DEFAULT_TIME = '7d'
 
-    def _clean_query(self):
-        for word in self._FORBIDDEN:
-            if word in self.query.lower():
+    @classmethod
+    def _is_query_allowed(cls, query):
+        for word in cls._FORBIDDEN:
+            if word in query.lower():
                 msg = _('the word "{0}" is not allowed').format(word.upper())
-                raise ValidationError({'query': msg})
+                raise ValidationError({'configuration': msg})
+
+    def _clean_query(self):
         try:
+            self._is_query_allowed(self.query)
             query(self.get_query())
         except InfluxDBClientError as e:
-            raise ValidationError({'query': e})
-        except KeyError as e:
-            raise ValidationError({'query': 'invalid expression; "%s"' % e})
+            raise ValidationError({'configuration': e})
+        except InvalidChartConfigException as e:
+            raise ValidationError({'configuration': str(e)})
+
+    @property
+    def config_dict(self):
+        try:
+            return self.CHARTS[self.configuration]
+        except KeyError:
+            raise InvalidChartConfigException(
+                f'Invalid chart configuration: "{self.configuration}"'
+            )
+
+    @property
+    def type(self):
+        return self.config_dict['type']
+
+    @property
+    def label(self):
+        label = self.config_dict.get('label')
+        if not label:
+            return self.title
+
+    @property
+    def description(self):
+        return self.config_dict['description'].format(metric=self.metric)
+
+    @property
+    def title(self):
+        return self.config_dict['title']
+
+    @property
+    def summary_labels(self):
+        return self.config_dict.get('summary_labels')
+
+    @property
+    def order(self):
+        return self.config_dict['order']
+
+    @property
+    def colors(self):
+        colors = self.config_dict.get('colors')
+        if not colors and self.summary_labels:
+            summary_length = len(self.summary_labels)
+            return DEFAULT_COLORS[0:summary_length]
+        return colors
+
+    @property
+    def colorscale(self):
+        return self.config_dict.get('colorscale')
+
+    @property
+    def unit(self):
+        return self.config_dict.get('unit')
+
+    @property
+    def query(self):
+        query = self.config_dict['query']
+        if query:
+            return query['influxdb']
+        return self._default_query
+
+    @property
+    def top_fields(self):
+        return self.config_dict.get('top_fields', None)
 
     @property
     def _default_query(self):
-        q = "SELECT {field_name} FROM {key} WHERE " "time >= '{time}'"
+        q = "SELECT {field_name} FROM {key} WHERE time >= '{time}'"
         if self.metric.object_id:
-            q += " AND content_type = '{content_type}'" " AND object_id = '{object_id}'"
+            q += " AND content_type = '{content_type}' AND object_id = '{object_id}'"
         return q
 
     _fields_regex = re.compile(
@@ -443,9 +478,6 @@ class Graph(TimeStampedEditableModel):
         res = res[0]
         res = {key: value for key, value in res.items() if value is not None}
         sorted_dict = OrderedDict(sorted(res.items(), key=operator.itemgetter(1)))
-        # TODO: remove this!
-        if 'sum_total' in sorted_dict:
-            del sorted_dict['sum_total']
         del sorted_dict['time']
         keys = list(sorted_dict.keys())
         keys.reverse()

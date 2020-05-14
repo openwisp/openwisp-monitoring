@@ -120,19 +120,23 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(device.monitoring.status, expected_status)
         self.assertEqual(Metric.objects.count(), expected_metrics_count)
 
+    @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', True)
     def test_device_without_ip_unknown_status(self):
         self._check_no_ip_case('unknown')
 
+    @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', True)
     def test_device_without_ip_ok_status(self):
         self._check_no_ip_case('ok')
 
+    @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', True)
     def test_device_without_ip_problem_status(self):
         self._check_no_ip_case('problem')
 
+    @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', True)
     def test_device_without_ip_critical_status(self):
         self._check_no_ip_case('critical')
 
-    @patch('openwisp_monitoring.device.settings.MANAGEMENT_IP_ONLY', False)
+    @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', False)
     def test_device_with_last_ip_unknown_status(self):
         self._check_no_ip_case('unknown', management_ip_only=True)
 

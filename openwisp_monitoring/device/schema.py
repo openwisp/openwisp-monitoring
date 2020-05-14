@@ -1,7 +1,10 @@
 # NetJSON DeviceMonitoring schema,
 # https://github.com/netjson/netjson/blob/master/schema/device-monitoring.json
 schema = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/netjson/netjson/master/schema/device-monitoring.json",
+    "title": "NetJSON Device Monitoring",
+    "description": "Monitoring information sent by a device.",
     "type": "object",
     "additionalProperties": True,
     "required": ["type"],
@@ -143,6 +146,26 @@ schema = {
                         },
                     },
                 },
+            },
+        },
+        "neighbors": {
+            "type": "array",
+            "title": "ARP Table",
+            "additionalItems": False,
+            "items": {
+                "type": "object",
+                "title": "ARP entry",
+                "additionalProperties": False,
+                "properties": {
+                    "ip_address": {
+                        "type": "string",
+                        "anyOf": [{"format": "ipv4"}, {"format": "ipv6"}],
+                    },
+                    "mac_address": {"type": "string"},
+                    "interface": {"type": "string"},
+                    "state": {"type": "string"},
+                },
+                "required": ["ip_address", "interface"],
             },
         },
     },
