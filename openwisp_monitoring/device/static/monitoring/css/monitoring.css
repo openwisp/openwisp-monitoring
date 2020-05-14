@@ -32,19 +32,39 @@
   border: 0 none;
 }
 
-#ow-device-status .inline-related h2{
+#ow-device-status > fieldset > .inline-related {
+  padding: 0 1px;
+}
+#ow-device-status h2{
   color: #333;
   background-color: rgba(0, 0, 0, 0.05);
   outline: 1px solid rgba(0, 0, 0, 0.3);
+  padding: 15px;
+}
+#ow-device-status .form-row,
+#ow-device-status table th,
+#ow-device-status table td{
+  padding: 15px 20px
+}
+
+#ow-device-status .form-row label,
+#ow-device-status .form-row div,
+#ow-device-status table td,
+#ow-device-status table th {
+  font-size: 13px;
+}
+#ow-device-status .form-row label {
+  padding-top: 2px;
+}
+
+#ow-device-status .inline-group{
+    margin-bottom: 0;
+    padding-top: 1px;
 }
 
 #ow-device-status table{
     width: 100%;
     margin: 0;
-}
-#ow-device-status table th,
-#ow-device-status table td{
-    padding: 10px 1%;
 }
 
 td.field-health_status,
@@ -167,3 +187,5 @@ td.field-health_status,
 #ow-graph-container b{
     background-color: #000 !important;
 }
+
+#ow-device-status table.addresses td{ width: 50% }

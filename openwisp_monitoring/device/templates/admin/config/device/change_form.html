@@ -119,6 +119,22 @@
                   </div>
                   {% endif %}
                   {% endif %}
+                  {% if interface.addresses %}
+                  <table class="addresses">
+                      <thead>
+                          <tr>
+                              <th>{% trans 'Address' %} / {% trans 'Mask' %}</th>
+                              <th>{% trans 'Protocol' %}</th>
+                          </tr>
+                      </thead>
+                      {% for address in interface.addresses %}
+                      <tr>
+                          <td class="address-mask">{{ address.address }} / {{ address.mask }}</td>
+                          <td class="proto">{{ address.proto }}</td>
+                      </tr>
+                      {% endfor %}
+                  </table>
+                  {% endif %}
               </div>
               {% endfor %}
               {% endif %}

@@ -1,3 +1,4 @@
+import copy
 import json
 from copy import deepcopy
 from unittest.mock import patch
@@ -108,6 +109,32 @@ class BaseTestCase(DeviceMonitoringTestCase):
                     "ssid": "testnet",
                     "tx_power": 6,
                 },
+                "addresses": [
+                    {
+                        "proto": "static",
+                        "family": "ipv4",
+                        "address": "192.168.1.1",
+                        "mask": 8,
+                    },
+                    {
+                        "proto": "dhcp",
+                        "family": "ipv4",
+                        "address": "10.0.0.4",
+                        "mask": 24,
+                    },
+                    {
+                        "proto": "static",
+                        "family": "ipv6",
+                        "address": "2001:3238:dfe1:ec63::fefb",
+                        "mask": 12,
+                    },
+                    {
+                        "proto": "dhcp",
+                        "family": "ipv6",
+                        "address": "fd46:9038:f983::1",
+                        "mask": 22,
+                    },
+                ],
             },
         ],
         "neighbors": [
@@ -250,6 +277,19 @@ class TestDeviceData(BaseTestCase):
         self.assertNotEqual(
             data['general']['uptime'], self._sample_data['general']['uptime']
         )
+
+    def test_bad_address_fail(self):
+        dd = self._create_device_data()
+        data = copy.deepcopy(self._sample_data)
+        data['interfaces'][1]['addresses'][0]['address'] = '123'
+        try:
+            dd.data = data
+            dd.validate_data()
+        except ValidationError as e:
+            self.assertIn('Invalid data in', e.message)
+            self.assertIn("'123\' is not a \'ipv4\'", e.message)
+        else:
+            self.fail('ValidationError not raised')
 
 
 class TestDeviceMonitoring(BaseTestCase):

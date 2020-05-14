@@ -145,6 +145,27 @@ schema = {
                             "tx_carrier_errors": {"type": "integer"},
                         },
                     },
+                    "addresses": {
+                        "type": "array",
+                        "title": "Addresses",
+                        "uniqueItems": True,
+                        "additionalItems": True,
+                        "items": {
+                            "additionalProperties": True,
+                            "title": "Address",
+                            "type": "object",
+                            "required": ["proto", "family", "address", "mask"],
+                            "properties": {
+                                "proto": {"type": "string"},
+                                "family": {"type": "string"},
+                                "address": {
+                                    "type": "string",
+                                    "anyOf": [{"format": "ipv4"}, {"format": "ipv6"}],
+                                },
+                                "mask": {"type": "integer"},
+                            },
+                        },
+                    },
                 },
             },
         },
