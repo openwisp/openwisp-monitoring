@@ -217,16 +217,37 @@ schema = {
                             },
                         },
                     },
+                    "addresses": {
+                        "type": "array",
+                        "title": "Addresses",
+                        "uniqueItems": True,
+                        "additionalItems": True,
+                        "items": {
+                            "additionalProperties": True,
+                            "title": "Address",
+                            "type": "object",
+                            "required": ["proto", "family", "address", "mask"],
+                            "properties": {
+                                "proto": {"type": "string"},
+                                "family": {"type": "string"},
+                                "address": {
+                                    "type": "string",
+                                    "anyOf": [{"format": "ipv4"}, {"format": "ipv6"}],
+                                },
+                                "mask": {"type": "integer"},
+                            },
+                        },
+                    },
                 },
             },
         },
-        "arp_table": {
+        "neighbors": {
             "type": "array",
-            "title": "ARP Table",
+            "title": "Neighbors",
             "additionalItems": False,
             "items": {
                 "type": "object",
-                "title": "ARP entry",
+                "title": "Neighbor",
                 "additionalProperties": False,
                 "properties": {
                     "ip_address": {
@@ -237,7 +258,7 @@ schema = {
                     "interface": {"type": "string"},
                     "state": {"type": "string"},
                 },
-                "required": ["ip_address", "mac_address", "interface"],
+                "required": ["ip_address", "interface"],
             },
         },
     },

@@ -299,6 +299,8 @@ class TestDeviceApi(DeviceMonitoringTestCase):
     def test_get_device_metrics_csv(self):
         dd = self._create_multiple_measurements()
         d = self.device_model.objects.get(pk=dd.pk)
+        m = self._create_object_metric(content_object=d, name='applications')
+        self._create_graph(metric=m, configuration='histogram')
         r = self.client.get('{0}&csv=1'.format(self._url(d.pk, d.key)))
         self.assertEqual(r.get('Content-Disposition'), 'attachment; filename=data.csv')
         self.assertEqual(r.get('Content-Type'), 'text/csv')
@@ -365,3 +367,37 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         r = self.client.get(url)
         self.assertContains(r, 'Device Status')
         self.assertContains(r, 'Monitoring Graph')
+
+    def test_no_device_data(self):
+        d = self._create_device(organization=self._create_org())
+        url = reverse('admin:config_device_change', args=[d.pk])
+        self._login_admin()
+        self.client.get(url)
+
+    def test_remove_invalid_interface(self):
+        d = self._create_device(organization=self._create_org())
+        dd = DeviceData(name='test-device', pk=d.pk)
+        self._post_data(
+            d.id,
+            d.key,
+            {'type': 'DeviceMonitoring', 'interfaces': [{'name': 'br-lan'}]},
+        )
+        url = reverse('admin:config_device_change', args=[dd.pk])
+        self._login_admin()
+        self.client.get(url)
+
+    def test_invalid_graph_config(self):
+        # Tests if graph_config is invaid, then it is skipped and not failed
+        from io import StringIO
+        from contextlib import redirect_stderr
+
+        self.test_200_create()
+        d = DeviceData.objects.first()
+        self.assertEqual(Graph.objects.count(), 4)
+        with redirect_stderr(StringIO()) as stderr:
+            g1 = Graph.objects.first()
+            g1.configuration = 'invalid'
+            g1.save()
+            r = self.client.get(self._url(d.pk.hex, d.key))
+        self.assertIn('InvalidChartConfigException', stderr.getvalue())
+        self.assertEqual(r.status_code, 200)

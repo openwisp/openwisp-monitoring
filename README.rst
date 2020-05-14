@@ -65,6 +65,7 @@ Follow the setup instructions of `openwisp-controller
         'openwisp_users',
         'openwisp_controller.pki',
         'openwisp_controller.config',
+        'openwisp_controller.connection',
         # monitoring
         'notifications',
         'openwisp_monitoring.monitoring',

@@ -290,3 +290,12 @@ class TestGraphs(TestMonitoringMixin, TestCase):
         g.full_clean()
         g.save()
         self.assertNotIn('GROUP BY time', g.get_query())
+
+    def test_bad_json_query_returns_none(self):
+        m = self._create_object_metric(
+            name='wifi associations', key='hostapd', field_name='mac_address'
+        )
+        g = self._create_graph(metric=m, test_data=False, configuration='wifi_clients')
+        m.write('00:14:5c:00:00:00')
+        g.save()
+        self.assertIsNone(g.json(time=1))

@@ -1,9 +1,15 @@
+import copy
 import json
+from copy import deepcopy
+from unittest.mock import patch
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from swapper import load_model
 
+from openwisp_controller.connection.models import Credentials, DeviceConnection
 from openwisp_utils.tests import catch_signal
 
+from ...check.models import Check
 from ...monitoring.utils import get_db
 from .. import settings as app_settings
 from ..models import DeviceData, DeviceMonitoring
@@ -61,6 +67,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
                 "wireless": {
                     "channel": 1,
                     "country": "US",
+                    "mode": "access_point",
                     "tx_power": 6,
                     "frequency": 5180,
                     "mode": "access_point",
@@ -142,9 +149,35 @@ class BaseTestCase(DeviceMonitoringTestCase):
                         },
                     ],
                 },
+                "addresses": [
+                    {
+                        "proto": "static",
+                        "family": "ipv4",
+                        "address": "192.168.1.1",
+                        "mask": 8,
+                    },
+                    {
+                        "proto": "dhcp",
+                        "family": "ipv4",
+                        "address": "10.0.0.4",
+                        "mask": 24,
+                    },
+                    {
+                        "proto": "static",
+                        "family": "ipv6",
+                        "address": "2001:3238:dfe1:ec63::fefb",
+                        "mask": 12,
+                    },
+                    {
+                        "proto": "dhcp",
+                        "family": "ipv6",
+                        "address": "fd46:9038:f983::1",
+                        "mask": 22,
+                    },
+                ],
             },
         ],
-        "arp_table": [
+        "neighbors": [
             {
                 "ip_address": "fe80::9683:c4ff:fe02:c2bf",
                 "mac_address": "00:11:55:aa:dd:0a",
@@ -205,7 +238,7 @@ class TestDeviceData(BaseTestCase):
         dd = self._create_device_data()
         try:
             dd.data = self._sample_data
-            dd.data["arp_table"][0]["ip_address"] = "invalid"
+            dd.data["neighbors"][0]["ip_address"] = "invalid"
             dd.validate_data()
         except ValidationError as e:
             self.assertIn('Invalid data in', e.message)
@@ -262,6 +295,41 @@ class TestDeviceData(BaseTestCase):
             pass
         else:
             self.fail('metric was not deleted')
+
+    def test_device_data_time_stamp(self):
+        dd = self.test_save_data()
+        dd = DeviceData(pk=dd.pk)
+        dd.data
+        self.assertIsNotNone(dd.data_timestamp)
+
+    def test_local_time_update(self):
+        dd = deepcopy(self.test_save_data())
+        dd = DeviceData(pk=dd.pk)
+        data = dd.data_user_friendly
+        self.assertNotEqual(
+            data['general']['local_time'], self._sample_data['general']['local_time']
+        )
+
+    def test_uptime_update(self):
+        dd = deepcopy(self.test_save_data())
+        dd = DeviceData(pk=dd.pk)
+        data = dd.data_user_friendly
+        self.assertNotEqual(
+            data['general']['uptime'], self._sample_data['general']['uptime']
+        )
+
+    def test_bad_address_fail(self):
+        dd = self._create_device_data()
+        data = copy.deepcopy(self._sample_data)
+        data['interfaces'][1]['addresses'][0]['address'] = '123'
+        try:
+            dd.data = data
+            dd.validate_data()
+        except ValidationError as e:
+            self.assertIn('Invalid data in', e.message)
+            self.assertIn("'123\' is not a \'ipv4\'", e.message)
+        else:
+            self.fail('ValidationError not raised')
 
 
 class TestDeviceMonitoring(BaseTestCase):
@@ -391,3 +459,53 @@ class TestDeviceMonitoring(BaseTestCase):
         self.assertEqual(dm.status, 'problem')
         load.check_threshold(20)
         self.assertEqual(dm.status, 'ok')
+
+    def test_device_connection_change(self):
+        admin = self._create_admin()
+        Notification = load_model('notifications', 'Notification')
+        d = self._create_device()
+        dm = d.monitoring
+        dm.status = 'unknown'
+        dm.save()
+        c = Credentials.objects.create()
+        dc = DeviceConnection.objects.create(credentials=c, device=d)
+        dc.is_working = True
+        dc.save()
+        self.assertEqual(dm.status, 'ok')
+        n = Notification.objects.get(level='info')
+        self.assertEqual(n.verb, 'connected successfully')
+        self.assertEqual(n.actor, d)
+        dc.is_working = False
+        dc.save()
+        n = Notification.objects.get(level='warning')
+        self.assertEqual(n.verb, 'not working')
+        self.assertEqual(n.actor, d)
+        self.assertEqual(n.recipient, admin)
+
+    @patch('openwisp_monitoring.check.models.Check.perform_check')
+    def test_is_working_false_true(self, mocked_call):
+        d = self._create_device()
+        dm = d.monitoring
+        dm.status = 'unknown'
+        dm.save()
+        ping_path = 'openwisp_monitoring.check.classes.Ping'
+        Check.objects.create(name='Check', content_object=d, check=ping_path)
+        c = Credentials.objects.create()
+        dc = DeviceConnection.objects.create(credentials=c, device=d)
+        dc.is_working = True
+        dc.save()
+        mocked_call.assert_called_once()
+
+    @patch('openwisp_monitoring.check.models.Check.perform_check')
+    def test_is_working_true_false(self, mocked_call):
+        d = self._create_device()
+        dm = d.monitoring
+        dm.status = 'ok'
+        dm.save()
+        ping_path = 'openwisp_monitoring.check.classes.Ping'
+        Check.objects.create(name='Check', content_object=d, check=ping_path)
+        c = Credentials.objects.create()
+        dc = DeviceConnection.objects.create(credentials=c, device=d)
+        dc.is_working = False
+        dc.save()
+        mocked_call.assert_called_once()

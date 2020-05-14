@@ -9,7 +9,7 @@ from ...check.tasks import auto_create_ping
 from ...monitoring.models import Metric
 from ..models import DeviceMonitoring
 from ..signals import health_status_changed
-from ..tasks import trigger_device_recovery
+from ..tasks import trigger_device_checks
 from ..utils import get_device_recovery_cache_key
 from . import DeviceMonitoringTestCase
 
@@ -83,6 +83,6 @@ class TestRecovery(DeviceMonitoringTestCase):
     def test_status_set_ok(self):
         dm = self._create_device_monitoring()
         dm.update_status('critical')
-        trigger_device_recovery.delay(dm.device.pk)
+        trigger_device_checks.delay(dm.device.pk)
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'ok')

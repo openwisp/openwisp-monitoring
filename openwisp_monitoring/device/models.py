@@ -1,4 +1,5 @@
 import json
+from collections import OrderedDict
 from datetime import datetime
 
 from dateutil.relativedelta import relativedelta
@@ -30,6 +31,7 @@ class DeviceData(Device):
     schema = schema
     __data = None
     __key = 'device_data'
+    __data_timestamp = None
 
     checks = GenericRelation('check.Check')
     metrics = GenericRelation('monitoring.Metric')
@@ -46,36 +48,42 @@ class DeviceData(Device):
         if not self.data:
             return None
         data = self.data
+        # slicing to eliminate the nanoseconds from timestamp
+        measured_at = datetime.strptime(self.data_timestamp[0:19], '%Y-%m-%dT%H:%M:%S')
+        time_elapsed = int((datetime.utcnow() - measured_at).total_seconds())
         if 'general' in data and 'local_time' in data['general']:
             local_time = data['general']['local_time']
             data['general']['local_time'] = datetime.fromtimestamp(
-                local_time, tz=tz('UTC')
+                local_time + time_elapsed, tz=tz('UTC')
             )
         if 'general' in data and 'uptime' in data['general']:
             uptime = '{0.days} days, {0.hours} hours and {0.minutes} minutes'
             data['general']['uptime'] = uptime.format(
-                relativedelta(seconds=data['general']['uptime'])
+                relativedelta(seconds=data['general']['uptime'] + time_elapsed)
             )
         if 'resources' in data and 'memory' in data['resources']:
             # convert bytes to megabytes
             MB = 1000000.0
             for key in data['resources']['memory'].keys():
                 data['resources']['memory'][key] /= MB
-        remove = []
+        # used for reordering interfaces
+        interface_dict = OrderedDict()
         for interface in data.get('interfaces', []):
             # don't show interfaces if they don't have any useful info
             if len(interface.keys()) <= 2:
-                remove.append(interface)
                 continue
-            # human readable mode
-            interface['wireless']['mode'] = interface['wireless']['mode'].replace(
-                '_', ' '
-            )
+            # human readable wireless  mode
+            if 'wireless' in interface and 'mode' in interface['wireless']:
+                interface['wireless']['mode'] = interface['wireless']['mode'].replace(
+                    '_', ' '
+                )
             # convert to GHz
             if 'wireless' in interface and 'frequency' in interface['wireless']:
                 interface['wireless']['frequency'] /= 1000
-        for interface in remove:
-            data['interfaces'].remove(interface)
+            interface_dict[interface['name']] = interface
+        # reorder interfaces in alphabetical order
+        interface_dict = OrderedDict(sorted(interface_dict.items()))
+        data['interfaces'] = list(interface_dict.values())
         return data
 
     @property
@@ -92,6 +100,7 @@ class DeviceData(Device):
         points = list(query(q).get_points())
         if not points:
             return None
+        self.data_timestamp = points[0]['time']
         return json.loads(points[0]['data'])
 
     @data.setter
@@ -100,6 +109,20 @@ class DeviceData(Device):
         sets data
         """
         self.__data = data
+
+    @property
+    def data_timestamp(self):
+        """
+        retrieves timestamp at which the data was recorded
+        """
+        return self.__data_timestamp
+
+    @data_timestamp.setter
+    def data_timestamp(self, value):
+        """
+        sets the timestamp related to the data
+        """
+        self.__data_timestamp = value
 
     def validate_data(self):
         """

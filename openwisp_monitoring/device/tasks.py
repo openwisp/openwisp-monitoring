@@ -5,7 +5,7 @@ from .models import DeviceData
 
 
 @shared_task
-def trigger_device_recovery(pk):
+def trigger_device_checks(pk):
     """
     Retrieves all related checks to the passed ``device``
     and calls the ``perform_check`` task from each of them.
