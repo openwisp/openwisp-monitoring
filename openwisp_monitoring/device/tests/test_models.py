@@ -373,7 +373,6 @@ class TestDeviceMonitoring(BaseTestCase):
         self.assertEqual(n.actor, d)
         dc.is_working = False
         dc.save()
-        # self.assertEqual(dm.status, 'problem')
         n = Notification.objects.get(level='warning')
         self.assertEqual(n.verb, 'not working')
         self.assertEqual(n.actor, d)
