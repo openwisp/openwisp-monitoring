@@ -116,6 +116,32 @@
                       <div class="readonly">
                           {{ interface.wireless.clients|length }}
                       </div>
+                      <div class="readonly">
+                        <br />
+                        <table>
+                            <caption>{% trans 'clients' %}</caption>
+                            <thead>
+                                <tr>
+                                    <th>{% trans 'MAC address' %}</th>
+                                    <th>WDS</th>
+                                    <th>HT</th>
+                                    <th>VHT</th>
+                                    <th>WMM</th>
+                                    <th>WPS</th>
+                                </tr>
+                            </thead>
+                            {% for client in interface.wireless.clients %}
+                            <tr>
+                                <td>{{ client.mac }}</td>
+                                <td>{{ client.wds|yesno:'Yes, No, No' }}</td>
+                                <td>{{ client.ht|yesno:'Yes, No, No' }}</td>
+                                <td>{{ client.vht|yesno:'Yes, No, No' }}</td>
+                                <td>{{ client.wmm|yesno:'Yes, No, No' }}</td>
+                                <td>{{ client.wps|yesno:'Yes, No, No' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                      </div>
                   </div>
                   {% endif %}
                   {% endif %}
