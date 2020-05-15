@@ -80,7 +80,7 @@ class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
                                 'aid': 1,
                                 'mfp': False,
                                 'auth': True,
-                                "signature": "test_signature",
+                                'signature': 'test_signature',
                             }
                         ],
                     },
@@ -118,7 +118,7 @@ class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
                                 'aid': 1,
                                 'mfp': False,
                                 'auth': True,
-                                "signature": "test_signature",
+                                'signature': 'test_signature',
                             },
                             {
                                 'mac': 'c0:ee:fb:34:f5:4b',
@@ -133,7 +133,7 @@ class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
                                 'aid': 1,
                                 'mfp': False,
                                 'auth': True,
-                                "signature": "test_signature",
+                                'signature': 'test_signature',
                             },
                         ],
                     },

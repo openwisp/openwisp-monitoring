@@ -234,7 +234,7 @@ class TestDeviceData(BaseTestCase):
         else:
             self.fail('ValidationError not raised')
 
-    def test_validate_arp_data(self):
+    def test_validate_neighbors_data(self):
         dd = self._create_device_data()
         try:
             dd.data = self._sample_data
