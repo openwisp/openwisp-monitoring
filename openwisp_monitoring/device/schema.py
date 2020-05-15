@@ -154,7 +154,6 @@ schema = {
                             "frequency",
                             "mode",
                             "noise",
-                            "signal",
                             "ssid",
                             "tx_power",
                         ],

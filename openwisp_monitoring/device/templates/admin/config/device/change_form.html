@@ -98,12 +98,14 @@
                           {{ interface.wireless.tx_power }} dBm
                       </div>
                   </div>
+                  {% if interface.wireless.signal %}
                   <div class="form-row">
                       <label>{% trans 'Signal' %}:</label>
                       <div class="readonly">
                           {{ interface.wireless.signal }} dBm
                       </div>
                   </div>
+                  {% endif %}
                   <div class="form-row">
                       <label>{% trans 'Noise' %}:</label>
                       <div class="readonly">
