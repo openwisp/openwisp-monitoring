@@ -65,7 +65,9 @@ class DeviceData(Device):
             # convert bytes to megabytes
             MB = 1000000.0
             for key in data['resources']['memory'].keys():
-                data['resources']['memory'][key] /= MB
+                data['resources']['memory'][key] = round(
+                    data['resources']['memory'][key] / MB, 2
+                )
         # used for reordering interfaces
         interface_dict = OrderedDict()
         for interface in data.get('interfaces', []):
