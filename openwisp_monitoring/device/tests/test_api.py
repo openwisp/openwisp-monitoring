@@ -218,6 +218,20 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         # expected upload wlan1
         self.assertEqual(data['traces'][1][1][-1], 1.5)
 
+    def test_garbage_clients(self):
+        o = self._create_org()
+        d = self._create_device(organization=o)
+        r = self._post_data(d.id, d.key, {
+            'type': 'DeviceMonitoring',
+            'interfaces': [
+                {'name': 'garbage1', 'wireless': {'clients': {}}},
+                {'name': 'garbage2', 'wireless': {'clients': [{'what?': 'mac missing'}]}},
+                {'name': 'garbage3', 'wireless': {}},
+                {'name': 'garbage4'},
+            ],
+        })
+        self.assertEqual(r.status_code, 400)
+
     def test_wifi_clients_admin(self):
         self._login_admin()
         d = self._create_device(organization=self._create_org())

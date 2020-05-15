@@ -69,6 +69,12 @@
                   <h2>{% trans 'Interface status' %}: {{ interface.name }}</h2>
                   {% if interface.wireless %}
                   <div class="form-row">
+                      <label>{% trans 'Type' %}:</label>
+                      <div class="readonly">
+                          {% trans 'Wireless' %}
+                      </div>
+                  </div>
+                  <div class="form-row">
                       <label>{% trans 'Mode' %}:</label>
                       <div class="readonly">
                           {{ interface.wireless.mode }}
@@ -118,51 +124,70 @@
                       <div class="readonly">
                           {{ interface.wireless.clients|length }}
                       </div>
-                      <div class="readonly">
-                        <br />
-                        <table>
-                            <caption>{% trans 'clients' %}</caption>
-                            <thead>
-                                <tr>
-                                    <th>{% trans 'MAC address' %}</th>
-                                    <th>WDS</th>
-                                    <th>HT</th>
-                                    <th>VHT</th>
-                                    <th>WMM</th>
-                                    <th>WPS</th>
-                                </tr>
-                            </thead>
-                            {% for client in interface.wireless.clients %}
-                            <tr>
-                                <td>{{ client.mac }}</td>
-                                <td>{{ client.wds|yesno:'Yes, No, No' }}</td>
-                                <td>{{ client.ht|yesno:'Yes, No, No' }}</td>
-                                <td>{{ client.vht|yesno:'Yes, No, No' }}</td>
-                                <td>{{ client.wmm|yesno:'Yes, No, No' }}</td>
-                                <td>{{ client.wps|yesno:'Yes, No, No' }}</td>
-                            </tr>
-                            {% endfor %}
-                        </table>
-                      </div>
                   </div>
-                  {% endif %}
-                  {% endif %}
-                  {% if interface.addresses %}
-                  <table class="addresses">
+                  <table class="wifi-clients">
                       <thead>
                           <tr>
-                              <th>{% trans 'Address' %} / {% trans 'Mask' %}</th>
-                              <th>{% trans 'Protocol' %}</th>
+                              <th class="mac">
+                                  {% trans 'Associated client' %}
+                                  {% trans 'MAC address' %}
+                              </th>
+                              <th class="ht" title="{% trans 'High Throughput (802.11n)' %}">
+                                  HT
+                              </th>
+                              <th class="vht" title="{% trans 'Very High Throughput (802.11ac)' %}">
+                                  VHT
+                              </th>
+                              <th class="wmm" title="{% trans 'Wi-Fi Multimedia' %}">
+                                  WMM
+                              </th>
+                              <th class="wds" title="{% trans 'Wireless Distribution System' %}">
+                                  WDS
+                              </th>
+                              <th class="wps" title="{% trans 'Wi-Fi Protected Setup' %}">
+                                  WPS
+                              </th>
                           </tr>
                       </thead>
-                      {% for address in interface.addresses %}
+                      {% for client in interface.wireless.clients %}
                       <tr>
-                          <td class="address-mask">{{ address.address }} / {{ address.mask }}</td>
-                          <td class="proto">{{ address.proto }}</td>
+                          <td class="mac">{{ client.mac }}</td>
+                          <td class="ht">
+                              <img src="{% static '/admin/img/' %}icon-{{ client.ht|yesno:'yes,no,no' }}.svg">
+                          </td>
+                          <td class="vht">
+                              <img src="{% static '/admin/img/' %}icon-{{ client.vht|yesno:'yes,no,no' }}.svg">
+                          </td>
+                          <td class="wmm">
+                              <img src="{% static '/admin/img/' %}icon-{{ client.wmm|yesno:'yes,no,no' }}.svg">
+                          </td>
+                          <td class="wds">
+                              <img src="{% static '/admin/img/' %}icon-{{ client.wds|yesno:'yes,no,no' }}.svg">
+                          </td>
+                          <td class="wps">
+                              <img src="{% static '/admin/img/' %}icon-{{ client.wps|yesno:'yes,no,no' }}.svg">
+                          </td>
                       </tr>
                       {% endfor %}
                   </table>
                   {% endif %}
+                  {% endif %}
+                  {% if interface.addresses %}
+                  <table class="addresses">
+                  <thead>
+                      <tr>
+                          <th>{% trans 'Address' %} / {% trans 'Mask' %}</th>
+                          <th>{% trans 'Protocol' %}</th>
+                      </tr>
+                  </thead>
+                  {% for address in interface.addresses %}
+                  <tr>
+                      <td class="address-mask">{{ address.address }} / {{ address.mask }}</td>
+                      <td class="proto">{{ address.proto }}</td>
+                  </tr>
+                  {% endfor %}
+              </table>
+              {% endif %}
               </div>
               {% endfor %}
               {% endif %}

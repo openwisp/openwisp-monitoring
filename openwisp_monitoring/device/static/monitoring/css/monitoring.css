@@ -189,3 +189,11 @@ td.field-health_status,
 }
 
 #ow-device-status table.addresses td{ width: 50% }
+
+.wifi-clients th.ht,
+.wifi-clients th.vht,
+.wifi-clients th.wmm,
+.wifi-clients th.wds,
+.wifi-clients th.wps{
+    cursor: default;
+}
