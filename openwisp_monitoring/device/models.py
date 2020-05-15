@@ -11,6 +11,7 @@ from django.dispatch import receiver
 from django.utils.translation import ugettext_lazy as _
 from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
+from mac_vendor_lookup import MacLookup
 from model_utils import Choices
 from model_utils.fields import StatusField
 from pytz import timezone as tz
@@ -25,6 +26,8 @@ from . import settings as app_settings
 from .schema import schema
 from .signals import health_status_changed
 from .utils import SHORT_RP
+
+mac_lookup = MacLookup()
 
 
 class DeviceData(Device):
@@ -140,11 +143,28 @@ class DeviceData(Device):
             )
             raise ValidationError(message)
 
+    def add_mac_vendor_info(self):
+        for interface in self.data.get('interfaces', []):
+            if 'wireless' not in interface or 'clients' not in interface['wireless']:
+                continue
+            for client in interface['wireless']['clients']:
+                client['vendor'] = self._mac_lookup(client['mac'])
+        for neighbor in self.data.get('neighbors', []):
+            neighbor['vendor'] = self._mac_lookup(neighbor['mac_address'])
+
+    def _mac_lookup(self, value):
+        try:
+            return mac_lookup.lookup(value)
+        except KeyError:
+            return ''
+
     def save_data(self, time=None):
         """
         validates and saves data to influxdb
         """
         self.validate_data()
+        if app_settings.MAC_VENDOR_DETECTION:
+            self.add_mac_vendor_info()
         write(
             name=self.__key,
             values={'data': self.json()},

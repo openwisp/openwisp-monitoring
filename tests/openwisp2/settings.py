@@ -268,6 +268,10 @@ OPENWISP_MONITORING_CHARTS = {
     },
 }
 
+# avoid slowing down the test suite with mac vendor lookups
+if TESTING:
+    OPENWISP_MONITORING_MAC_VENDOR_DETECTION = False
+
 LOGGING = {
     'version': 1,
     'filters': {'require_debug_true': {'()': 'django.utils.log.RequireDebugTrue',}},

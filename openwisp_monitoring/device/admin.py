@@ -9,6 +9,7 @@ from openwisp_controller.config.models import Device
 
 from ..monitoring.admin import MetricAdmin
 from ..monitoring.models import Graph
+from . import settings as app_settings
 from .models import DeviceData, DeviceMonitoring
 
 
@@ -23,6 +24,7 @@ class DeviceAdmin(BaseDeviceAdmin):
                     'device_data': device_data.data_user_friendly,
                     'api_url': api_url,
                     'default_time': Graph.DEFAULT_TIME,
+                    'MAC_VENDOR_DETECTION': app_settings.MAC_VENDOR_DETECTION,
                 }
             )
         return ctx

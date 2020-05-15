@@ -132,6 +132,11 @@
                                   {% trans 'Associated client' %}
                                   {% trans 'MAC address' %}
                               </th>
+                              {% if MAC_VENDOR_DETECTION %}
+                              <th class="vendor">
+                                  {% trans 'Vendor' %}
+                              </th>
+                              {% endif %}
                               <th class="ht" title="{% trans 'High Throughput (802.11n)' %}">
                                   HT
                               </th>
@@ -152,6 +157,11 @@
                       {% for client in interface.wireless.clients %}
                       <tr>
                           <td class="mac">{{ client.mac }}</td>
+                          {% if MAC_VENDOR_DETECTION %}
+                          <td class="vendor">
+                              {{ client.vendor }}
+                          </td>
+                          {% endif %}
                           <td class="ht">
                               <img src="{% static '/admin/img/' %}icon-{{ client.ht|yesno:'yes,no,no' }}.svg">
                           </td>
@@ -198,17 +208,23 @@
                       <tr>
                           <th class="ip">{% trans 'IP Address' %}</th>
                           <th class="mac">{% trans 'MAC Address' %}</th>
+                          {% if MAC_VENDOR_DETECTION %}
+                          <th class="vendor">{% trans 'Vendor' %}</th>
+                          {% endif %}
                           <th class="if">{% trans 'Interface' %}</th>
                           <th class="state">{% trans 'State' %}</th>
                       </tr>
                   </thead>
                   <tbody>
-                      {% for arp_entry in device_data.neighbors %}
+                      {% for neighbor in device_data.neighbors %}
                       <tr>
-                          <td class="ip">{{ arp_entry.ip_address }}</td>
-                          <td class="mac">{{ arp_entry.mac_address }}</td>
-                          <td class="if">{{ arp_entry.interface }}</td>
-                          <td class="state">{{ arp_entry.state }}</td>
+                          <td class="ip">{{ neighbor.ip_address }}</td>
+                          <td class="mac">{{ neighbor.mac_address }}</td>
+                          {% if MAC_VENDOR_DETECTION %}
+                          <td class="vendor">{{ neighbor.vendor }}</td>
+                          {% endif %}
+                          <td class="if">{{ neighbor.interface }}</td>
+                          <td class="state">{{ neighbor.state }}</td>
                       </tr>
                       {% endfor %}
                   </tbody>

@@ -380,6 +380,21 @@ In case you just want to change the colors used in a chart here's how to do it:
         }
     }
 
+``OPENWISP_MONITORING_MAC_VENDOR_DETECTION``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``bool``    |
++--------------+-------------+
+| **default**: | ``True``    |
++--------------+-------------+
+
+Indicates whether mac addresses will be complemented with hardware vendor
+information by performing lookups on the OUI
+(Organization Unique Identifier) table.
+
+This feature is enabled by default.
+
 Signals
 -------
 

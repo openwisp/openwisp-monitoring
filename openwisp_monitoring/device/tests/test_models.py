@@ -81,7 +81,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
                             "auth": True,
                             "authorized": True,
                             "ht": True,
-                            "mac": "30:d4:56:19:3b:50",
+                            "mac": "44:D1:FA:4B:00:00",
                             "mfp": False,
                             "preauth": False,
                             "rrm": [0, 0, 0, 0, 0],
@@ -137,7 +137,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
                             "auth": True,
                             "authorized": True,
                             "ht": True,
-                            "mac": "30:d4:56:19:3b:49",
+                            "mac": "44:D1:FA:4B:00:01",
                             "mfp": False,
                             "preauth": False,
                             "rrm": [0, 0, 0, 0, 0],
@@ -180,19 +180,19 @@ class BaseTestCase(DeviceMonitoringTestCase):
         "neighbors": [
             {
                 "ip_address": "fe80::9683:c4ff:fe02:c2bf",
-                "mac_address": "00:11:55:aa:dd:0a",
+                "mac_address": "44:D1:FA:4B:00:02",
                 "interface": "eth2",
                 "state": "REACHABLE",
             },
             {
                 "ip_address": "192.168.56.1",
-                "mac_address": "0a:01:03:40:13:37",
+                "mac_address": "44:D1:FA:4B:00:03",
                 "interface": "br-mng",
                 "state": "STALE",
             },
             {
                 "ip_address": "192.168.56.2",
-                "mac_address": "0a:01:03:40:13:38",
+                "mac_address": "44:D1:FA:4B:00:04",
                 "interface": "br-mng",
             },
         ],
@@ -248,7 +248,7 @@ class TestDeviceData(BaseTestCase):
 
     def test_save_data(self):
         dd = self._create_device_data()
-        dd.data = self._sample_data
+        dd.data = deepcopy(self._sample_data)
         dd.save_data()
         return dd
 
@@ -330,6 +330,21 @@ class TestDeviceData(BaseTestCase):
             self.assertIn("'123\' is not a \'ipv4\'", e.message)
         else:
             self.fail('ValidationError not raised')
+
+    @patch('openwisp_monitoring.device.settings.MAC_VENDOR_DETECTION', True)
+    def test_mac_vendor_info(self):
+        dd = self.test_save_data()
+        dd = DeviceData(pk=dd.pk)
+        vendor = 'Shenzhen Yunlink Technology Co., Ltd'
+        for interface in dd.data['interfaces']:
+            if 'wireless' not in interface and 'clients' not in interface['wireless']:
+                continue
+            for client in interface['wireless']['clients']:
+                self.assertIn('vendor', client)
+                self.assertEqual(client['vendor'], vendor)
+        for neighbor in dd.data['neighbors']:
+            self.assertIn('vendor', neighbor)
+            self.assertEqual(neighbor['vendor'], vendor)
 
 
 class TestDeviceMonitoring(BaseTestCase):
