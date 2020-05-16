@@ -478,3 +478,94 @@ Run tests with:
 .. code-block:: shell
 
     ./runtests.py
+
+The django apps in ``tests/openwisp2/`` namely ``sample_monitoring``, ``sample_check``, ``sample_device_monitoring`` adds some changes on
+top of the ``openwisp_monitoring`` module with the sole purpose of testing the
+module's extensibility.
+
+Extending openwisp-monitoring
+-----------------------------
+
+``sample_monitoring``, ``sample_check`` and ``sample_device_monitoring`` may serve as an example for
+extending *openwisp-monitoring* in your own application.
+
+All apps in *openwisp-monitoring* provide a set of models and admin classes which can
+be imported, extended and reused by third party apps.
+
+To extend any app in *openwisp-monitoring*, you **MUST NOT** add it to ``settings.INSTALLED_APPS``,
+but you must create your own app (which goes into ``settings.INSTALLED_APPS``), import the
+base classes from the respective app in ``openwisp-monitoring`` and add your customizations.
+
+In order to help django find the static files and templates of *openwisp-monitoring*,
+you need to perform the steps described below.
+
+1. Install ``openwisp-monitoring``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Install (and add to the requirement of your project) openwisp-monitoring::
+
+    pip install --U https://github.com/openwisp/openwisp-controller/tarball/master
+
+2. Add ``EXTENDED_APPS``
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Add the following to your ``settings.py``:
+
+.. code-block:: python
+    EXTENDED_APPS = ('monitoring', 'check', 'device_monitoring')
+
+3. Add ``openwisp_utils.staticfiles.DependencyFinder``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Add ``openwisp_utils.staticfiles.DependencyFinder`` to
+``STATICFILES_FINDERS`` in your ``settings.py``:
+
+.. code-block:: python
+    STATICFILES_FINDERS = [
+        'django.contrib.staticfiles.finders.FileSystemFinder',
+        'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+        'openwisp_utils.staticfiles.DependencyFinder',
+    ]
+
+4. Add ``openwisp_utils.loaders.DependencyLoader``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Add ``openwisp_utils.loaders.DependencyLoader`` to ``TEMPLATES`` in your ``settings.py``:
+
+.. code-block:: python
+    TEMPLATES = [
+        {
+            'BACKEND': 'django.template.backends.django.DjangoTemplates',
+            'OPTIONS': {
+                'loaders': [
+                    'django.template.loaders.filesystem.Loader',
+                    'django.template.loaders.app_directories.Loader',
+                    'openwisp_utils.loaders.DependencyLoader',
+                ],
+                'context_processors': [
+                    'django.template.context_processors.debug',
+                    'django.template.context_processors.request',
+                    'django.contrib.auth.context_processors.auth',
+                    'django.contrib.messages.context_processors.messages',
+                ],
+            },
+        }
+    ]
+
+Extending models
+~~~~~~~~~~~~~~~~
+
+To extend ``check`` app, please checkout the `sample_check models.py file <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_check/models.py>`_.
+
+To extend ``monitoring`` app, please checkout the `sample_monitoring models.py file <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_monitoring/models.py>`_.
+
+To extend ``device_monitoring`` app, please checkout the `sample_device_monitoring models.py file <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_device_monitoring/models.py>`_.
+
+Extending the admin
+~~~~~~~~~~~~~~~~~~~
+
+To extend ``check`` app, please checkout the `sample_check admin.py file <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_check/admin.py>`_.
+
+To extend ``monitoring`` app, please checkout the `sample_monitoring admin.py file <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_monitoring/admin.py>`_.
+
+To extend ``device_monitoring`` app, please checkout the `sample_device_monitoring admin.py file <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_device_monitoring/admin.py>`_.
