@@ -7,12 +7,9 @@ from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ValidationError
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.utils.translation import ugettext_lazy as _
 from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
 from mac_vendor_lookup import MacLookup
-from model_utils import Choices
-from model_utils.fields import StatusField
 from pytz import timezone as tz
 from swapper import swappable_setting
 
@@ -20,6 +17,7 @@ from openwisp_controller.config.models import Device
 
 from ..monitoring.signals import threshold_crossed
 from ..monitoring.utils import query, write
+from . import settings as app_settings
 from .base.models import AbstractDeviceMonitoring
 from .schema import schema
 from .utils import SHORT_RP

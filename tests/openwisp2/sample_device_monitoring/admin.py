@@ -1,18 +1,15 @@
 from django.contrib import admin
 from django.urls import reverse
+from openwisp_monitoring.device import settings as app_settings
+from openwisp_monitoring.device.base.admin import AbstractDeviceAdmin
+from openwisp_monitoring.device.models import DeviceData
+from openwisp_monitoring.monitoring.admin import MetricAdmin
+from openwisp_monitoring.monitoring.models import Graph
 
 from openwisp_controller.config.models import Device
 
-from ..monitoring.admin import MetricAdmin
-from ..monitoring.models import Graph
-from . import settings as app_settings
-from .base.admin import AbstractDeviceAdmin
-from .models import DeviceData
-
 
 class DeviceAdmin(AbstractDeviceAdmin):
-    model = Device
-
     def get_extra_context(self, pk=None):
         ctx = super(DeviceAdmin, self).get_extra_context(pk)
         if pk:

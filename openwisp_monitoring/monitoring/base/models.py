@@ -13,7 +13,6 @@ from django.contrib.sites.models import Site
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import models
-from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
@@ -22,7 +21,7 @@ from django.utils.translation import ugettext_lazy as _
 from influxdb.exceptions import InfluxDBClientError
 from openwisp_notifications.signals import notify
 from pytz import timezone as tz
-from swapper import get_model_name, load_model
+from swapper import get_model_name
 
 from openwisp_utils.base import TimeStampedEditableModel
 
@@ -230,7 +229,9 @@ class AbstractMetric(TimeStampedEditableModel):
 
 class AbstractGraph(TimeStampedEditableModel):
     CHARTS = get_chart_configuration()
-    metric = models.ForeignKey(Metric, on_delete=models.CASCADE)
+    metric = models.ForeignKey(
+        get_model_name('monitoring', 'Metric'), on_delete=models.CASCADE
+    )
     configuration = models.CharField(
         max_length=16, null=True, choices=get_chart_configuration_choices()
     )
