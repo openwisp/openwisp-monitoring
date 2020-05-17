@@ -1,18 +1,17 @@
 from django.contrib import admin
 from django.utils.translation import ugettext_lazy as _
+from swapper import load_model
 
 from openwisp_utils.admin import TimeReadonlyAdminMixin
 
-from ..models import Graph, Threshold
-
 
 class ThresholdInline(TimeReadonlyAdminMixin, admin.StackedInline):
-    model = Threshold
+    model = load_model('monitoring', 'Threshold')
     extra = 0
 
 
 class GraphInline(admin.StackedInline):
-    model = Graph
+    model = load_model('monitoring', 'Graph')
     extra = 0
     template = 'admin/graph_inline.html'
     exclude = ['created', 'modified']
@@ -34,7 +33,7 @@ class AbstractMetricAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
 
     class Media:
         css = {'all': ('monitoring/css/monitoring.css',)}
-        js = ('monitoring/js/plotly.min.js', 'monitoring/js/graph.js')
+        js = ('monitoring/js/plotly-cartesian.min.js', 'monitoring/js/graph.js')
 
 
 class AbstracThresholdAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):

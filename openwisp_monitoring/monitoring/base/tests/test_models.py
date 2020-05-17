@@ -11,14 +11,12 @@ from ...utils import query, write
 
 start_time = timezone.now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
+Metric = load_model('monitoring', 'Metric')
 
 
 class BaseTestModels(object):
-    def setUp(self):
-        self.metric_model = load_model(self.app_name, self.model_name)
-
     def test_general_metric_str(self):
-        m = self.metric_model(name='Test metric')
+        m = Metric(name='Test metric')
         self.assertEqual(str(m), m.name)
 
     def test_graph_str(self):
@@ -36,9 +34,9 @@ class BaseTestModels(object):
             self.fail()
 
     def test_general_codename(self):
-        m = self.metric_model(name='Test metric-(1)')
+        m = Metric(name='Test metric-(1)')
         self.assertEqual(m.codename, 'test_metric_1')
-        m = self.metric_model()
+        m = Metric()
         self.assertEqual(m.codename, '')
 
     def test_metric_key_contains_dash(self):
@@ -65,9 +63,9 @@ class BaseTestModels(object):
         self.assertEqual(om.key, om.codename)
 
     def test_custom_get_or_create(self):
-        m, created = self.metric_model()._get_or_create(name='lan', key='br-lan')
+        m, created = Metric._get_or_create(name='lan', key='br-lan')
         self.assertTrue(created)
-        m2, created = self.metric_model()._get_or_create(name='lan', key='br-lan')
+        m2, created = Metric._get_or_create(name='lan', key='br-lan')
         self.assertEqual(m.id, m2.id)
         self.assertFalse(created)
 
@@ -208,7 +206,7 @@ class BaseTestModels(object):
             threshold=t,
             metric=m,
             target=None,
-            sender=load_model(self.app_name, self.model_name),
+            sender=load_model('monitoring', 'Metric'),
             signal=threshold_crossed,
         )
 
@@ -221,7 +219,7 @@ class BaseTestModels(object):
             threshold=t,
             metric=om,
             target=om.content_object,
-            sender=load_model(self.app_name, self.model_name),
+            sender=load_model('monitoring', 'Metric'),
             signal=threshold_crossed,
         )
 
@@ -230,7 +228,7 @@ class BaseTestModels(object):
         with catch_signal(pre_metric_write) as handler:
             om.write(3)
             handler.assert_called_once_with(
-                sender=load_model(self.app_name, self.model_name),
+                sender=load_model('monitoring', 'Metric'),
                 metric=om,
                 values={om.field_name: 3},
                 signal=pre_metric_write,
@@ -241,7 +239,7 @@ class BaseTestModels(object):
         with catch_signal(post_metric_write) as handler:
             om.write(3)
             handler.assert_called_once_with(
-                sender=load_model(self.app_name, self.model_name),
+                sender=Metric,
                 metric=om,
                 values={om.field_name: 3},
                 signal=post_metric_write,

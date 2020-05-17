@@ -1,7 +1,10 @@
 from django.contrib import admin
+from swapper import load_model
 
 from .base.admin import AbstracThresholdAdmin, AbstractMetricAdmin
-from .models import Metric, Threshold
+
+Metric = load_model('monitoring', 'Metric')
+Threshold = load_model('monitoring', 'Threshold')
 
 
 @admin.register(Metric)

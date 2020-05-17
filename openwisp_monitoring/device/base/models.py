@@ -2,10 +2,10 @@ from django.db import models
 from django.utils.translation import ugettext_lazy as _
 from model_utils import Choices
 from model_utils.fields import StatusField
+from swapper import load_model
 
 from openwisp_utils.base import TimeStampedEditableModel
 
-from ...monitoring.models import Metric
 from .. import settings as app_settings
 from ..signals import health_status_changed
 
@@ -50,6 +50,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
 
     @property
     def related_metrics(self):
+        Metric = load_model('monitoring', 'Metric')
         return Metric.objects.select_related('content_type').filter(
             object_id=self.device_id,
             content_type__model='device',

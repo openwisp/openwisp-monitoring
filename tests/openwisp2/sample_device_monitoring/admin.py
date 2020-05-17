@@ -2,11 +2,12 @@ from django.contrib import admin
 from django.urls import reverse
 from openwisp_monitoring.device import settings as app_settings
 from openwisp_monitoring.device.base.admin import AbstractDeviceAdmin
-from openwisp_monitoring.device.models import DeviceData
-from openwisp_monitoring.monitoring.admin import MetricAdmin
-from openwisp_monitoring.monitoring.models import Graph
 
 from openwisp_controller.config.models import Device
+
+from ..sample_monitoring.admin import MetricAdmin
+from ..sample_monitoring.models import Graph
+from .models import DeviceData
 
 
 class DeviceAdmin(AbstractDeviceAdmin):

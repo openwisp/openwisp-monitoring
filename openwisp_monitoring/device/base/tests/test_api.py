@@ -3,12 +3,14 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from openwisp_monitoring import settings as monitoring_settings
-from openwisp_monitoring.monitoring.models import Graph, Metric
 from swapper import load_model
 
 from openwisp_utils.tests import catch_signal
 
 from ...signals import device_metrics_received
+
+Graph = load_model('monitoring', 'Graph')
+Metric = load_model('monitoring', 'Metric')
 
 
 class BaseTestDeviceApi(object):

@@ -477,14 +477,27 @@ Run tests with:
 
 .. code-block:: shell
 
+    # run qa checks
+    ./run-qa-checks
+
+    # standard tests
     ./runtests.py
 
-The django apps in ``tests/openwisp2/`` namely ``sample_monitoring``, ``sample_check``, ``sample_device_monitoring`` adds some changes on
-top of the ``openwisp_monitoring`` module with the sole purpose of testing the
-module's extensibility.
+    # tests for the sample app
+    SAMPLE_APP=1 ./runtests.py --keepdb --failfast
+
+When running the last line of the previous example, the environment variable
+``SAMPLE_APP`` activates the sample apps in ``/tests/openwisp2/``
+which are simple django apps that extend ``openwisp-monitoring`` with
+the sole purpose of testing its extensibility, for more information regarding
+this concept, read the following section.
 
 Extending openwisp-monitoring
 -----------------------------
+
+The django apps in ``tests/openwisp2/`` namely ``sample_monitoring``, ``sample_check``,
+``sample_device_monitoring`` add some changes on top of the ``openwisp_monitoring`` module
+with the sole purpose of testing the module's extensibility.
 
 ``sample_monitoring``, ``sample_check`` and ``sample_device_monitoring`` may serve as an example for
 extending *openwisp-monitoring* in your own application.

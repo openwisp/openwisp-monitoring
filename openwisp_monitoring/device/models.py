@@ -11,7 +11,7 @@ from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
 from mac_vendor_lookup import MacLookup
 from pytz import timezone as tz
-from swapper import swappable_setting
+from swapper import is_swapped, swappable_setting
 
 from openwisp_controller.config.models import Device
 
@@ -31,8 +31,14 @@ class DeviceData(Device):
     __key = 'device_data'
     __data_timestamp = None
 
-    checks = GenericRelation('check.Check')
-    metrics = GenericRelation('monitoring.Metric')
+    if is_swapped('check', 'Check'):
+        checks = GenericRelation(is_swapped('check', 'Check'))
+    else:
+        checks = GenericRelation('check.Check')
+    if is_swapped('monitoring', 'Metric'):
+        metrics = GenericRelation(is_swapped('monitoring', 'Metric'))
+    else:
+        metrics = GenericRelation('monitoring.Metric')
 
     class Meta:
         proxy = True

@@ -11,9 +11,11 @@ Threshold = load_model("sample_monitoring", "Threshold")
 
 @admin.register(Metric)
 class MetricAdmin(AbstractMetricAdmin):
+    model = Metric
     pass
 
 
 @admin.register(Threshold)
 class ThresholdAdmin(AbstracThresholdAdmin):
+    model = Threshold
     pass

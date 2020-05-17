@@ -1,20 +1,22 @@
 import json
 from copy import deepcopy
+from unittest import skipIf
 from unittest.mock import patch
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from swapper import load_model
+from swapper import is_swapped, load_model
 
 from openwisp_controller.connection.models import Credentials, DeviceConnection
 from openwisp_utils.tests import catch_signal
 
-from ....check.models import Check
 from ....monitoring.utils import get_db
 from ... import settings as app_settings
 from ...models import DeviceData
 from ...signals import health_status_changed
 from ...tests import DeviceMonitoringTestCase
 from ...utils import SHORT_RP
+
+Check = load_model('check', 'Check')
 
 
 class BaseTestCase(DeviceMonitoringTestCase):
@@ -496,6 +498,7 @@ class BaseTestDeviceMonitoring(object):
         self.assertEqual(n.actor, d)
         self.assertEqual(n.recipient, admin)
 
+    @skipIf(is_swapped('check', 'Check'), 'Running tests on sample_app')
     @patch('openwisp_monitoring.check.models.Check.perform_check')
     def test_is_working_false_true(self, mocked_call):
         d = self._create_device()
@@ -510,6 +513,7 @@ class BaseTestDeviceMonitoring(object):
         dc.save()
         mocked_call.assert_called_once()
 
+    @skipIf(is_swapped('check', 'Check'), 'Running tests on sample_app')
     @patch('openwisp_monitoring.check.models.Check.perform_check')
     def test_is_working_true_false(self, mocked_call):
         d = self._create_device()
