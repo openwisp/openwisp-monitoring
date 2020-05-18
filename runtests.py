@@ -12,8 +12,5 @@ if __name__ == "__main__":
 
     args = sys.argv
     args.insert(1, "test")
-    if not os.environ.get('SAMPLE_APP', False):
-        args.insert(2, "openwisp_monitoring")
-    else:
-        args.insert(2, "openwisp2")
+    args.insert(2, "openwisp_monitoring")
     execute_from_command_line(args)
