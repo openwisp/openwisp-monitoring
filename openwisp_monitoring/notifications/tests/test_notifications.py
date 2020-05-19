@@ -1,6 +1,5 @@
 from datetime import timedelta
 
-from django.core import mail
 from django.test import TestCase
 from django.utils import timezone
 from swapper import load_model
@@ -11,7 +10,7 @@ from openwisp_users.models import OrganizationUser
 
 from ...monitoring.tests import TestMonitoringMixin
 
-Notification = Notification = load_model('notifications', 'Notification')
+Notification = load_model('openwisp_notifications', 'Notification')
 notification_queryset = Notification.objects.order_by('timestamp')
 start_time = timezone.now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
@@ -285,6 +284,7 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
             email='staff-lone@staff.com',
             password='staff',
             is_staff=True,
+            first_name="'staff-lone'",
         )
         user = self._create_user(is_staff=False)
         OrganizationUser.objects.create(user=user, organization=testorg)
@@ -301,46 +301,3 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         self.assertEqual(n.action_object, om.threshold)
         self.assertEqual(n.level, 'info')
         self.assertEqual(n.verb, 'test')
-
-    def _create_notification(self):
-        d = self._create_device(organization=self._create_org())
-        m = self._create_object_metric(name='load', content_object=d)
-        self._create_threshold(metric=m, operator='>', value=90, seconds=0)
-        m.write(99)
-
-    def test_superuser_notifications_disabled(self):
-        admin = self._create_admin()
-        self.assertEqual(admin.notificationuser.email, True)
-        admin.notificationuser.receive = False
-        admin.notificationuser.save()
-        self._create_notification()
-        self.assertEqual(admin.notificationuser.email, False)
-        self.assertEqual(Notification.objects.count(), 0)
-
-    def test_email_sent(self):
-        admin = self._create_admin()
-        self._create_notification()
-        self.assertEqual(Notification.objects.count(), 1)
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertEqual(mail.outbox[0].to, [admin.email])
-        n = Notification.objects.first()
-        self.assertEqual(mail.outbox[0].subject, n.data.get('email_subject'))
-        self.assertIn(n.description, mail.outbox[0].body)
-        self.assertIn(n.data.get('url'), mail.outbox[0].body)
-        self.assertIn('https://', n.data.get('url'))
-
-    def test_email_disabled(self):
-        admin = self._create_admin()
-        admin.notificationuser.email = False
-        admin.notificationuser.save()
-        self._create_notification()
-        self.assertEqual(Notification.objects.count(), 1)
-        self.assertEqual(len(mail.outbox), 0)
-
-    def test_email_not_present(self):
-        admin = self._create_admin()
-        admin.email = ''
-        admin.save()
-        self._create_notification()
-        self.assertEqual(Notification.objects.count(), 1)
-        self.assertEqual(len(mail.outbox), 0)

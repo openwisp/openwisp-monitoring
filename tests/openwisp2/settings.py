@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     'openwisp_monitoring.monitoring',
     'openwisp_monitoring.device',
     'openwisp_monitoring.check',
+    # notifications
+    'openwisp_notifications',
     # admin
     'django.contrib.admin',
     'django.forms',
