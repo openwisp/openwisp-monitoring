@@ -45,7 +45,7 @@ class DeviceData(Device):
 
     def __init__(self, *args, **kwargs):
         self.data = kwargs.pop('data', None)
-        return super(DeviceData, self).__init__(*args, **kwargs)
+        return super().__init__(*args, **kwargs)
 
     @property
     def data_user_friendly(self):

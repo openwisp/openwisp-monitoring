@@ -1,21 +1,6 @@
 from django.contrib import admin
-from openwisp_monitoring.monitoring.base.admin import (
-    AbstracThresholdAdmin,
-    AbstractMetricAdmin,
-)
-from swapper import load_model
+from openwisp_monitoring.monitoring.admin import MetricAdmin, ThresholdAdmin  # noqa
 
-Metric = load_model("sample_monitoring", "Metric")
-Threshold = load_model("sample_monitoring", "Threshold")
+from .models import DetailsModel
 
-
-@admin.register(Metric)
-class MetricAdmin(AbstractMetricAdmin):
-    model = Metric
-    pass
-
-
-@admin.register(Threshold)
-class ThresholdAdmin(AbstracThresholdAdmin):
-    model = Threshold
-    pass
+admin.site.register(DetailsModel)

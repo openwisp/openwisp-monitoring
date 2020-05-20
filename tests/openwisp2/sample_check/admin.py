@@ -1,10 +1,6 @@
 from django.contrib import admin
-from openwisp_monitoring.check.base.admin import AbstractCheckAdmin
-from swapper import load_model
+from openwisp_monitoring.check.admin import CheckAdmin  # noqa
 
-Check = load_model('sample_check', 'Check')
+from .models import DetailsModel
 
-
-@admin.register(Check)
-class CheckAdmin(AbstractCheckAdmin):
-    pass
+admin.site.register(DetailsModel)

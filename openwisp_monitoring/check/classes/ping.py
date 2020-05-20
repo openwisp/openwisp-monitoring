@@ -12,6 +12,10 @@ from ... import settings as monitoring_settings
 from .. import settings as app_settings
 from ..exceptions import OperationalError
 
+Graph = load_model('monitoring', 'Graph')
+Metric = load_model('monitoring', 'Metric')
+Threshold = load_model('monitoring', 'Threshold')
+
 
 class Ping(object):
     schema = {
@@ -161,7 +165,6 @@ class Ping(object):
         """
         Gets or creates metric
         """
-        Metric = load_model('monitoring', 'Metric')
         check = self.check_instance
         if check.object_id and check.content_type:
             obj_id = check.object_id
@@ -185,7 +188,6 @@ class Ping(object):
         return metric
 
     def _create_threshold(self, metric):
-        Threshold = load_model('monitoring', 'Threshold')
         t = Threshold(metric=metric, operator='<', value=1, seconds=0)
         t.full_clean()
         t.save()
@@ -194,7 +196,6 @@ class Ping(object):
         """
         Creates device graphs if necessary
         """
-        Graph = load_model('monitoring', 'Graph')
         graphs = ['uptime', 'packet_loss', 'rtt']
         for graph in graphs:
             if graph not in monitoring_settings.AUTO_GRAPHS:

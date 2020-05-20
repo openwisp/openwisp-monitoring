@@ -1,3 +1,4 @@
+from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from openwisp_monitoring.device.base.models import AbstractDeviceMonitoring
@@ -7,6 +8,10 @@ from openwisp_monitoring.monitoring.signals import threshold_crossed
 from openwisp_controller.config.models import Device
 
 DeviceData = DeviceData
+
+
+class DetailsModel(models.Model):
+    details = models.CharField(max_length=64, blank=True, null=True)
 
 
 class DeviceMonitoring(AbstractDeviceMonitoring):

@@ -572,6 +572,28 @@ Add ``openwisp_utils.loaders.DependencyLoader`` to ``TEMPLATES`` in your ``setti
         }
     ]
 
+5. Add swapper configurations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Add the following to your ``settings.py``:
+
+.. code-block:: python
+
+    # Setting models for swapper module
+    # For extending ``check`` app
+    CHECK_CHECK_MODEL = 'YOUR_MODULE_NAME.Check'
+    # For extending ``monitoring`` app
+    MONITORING_GRAPH_MODEL = 'YOUR_MODULE_NAME.Graph'
+    MONITORING_METRIC_MODEL = 'YOUR_MODULE_NAME.Metric'
+    MONITORING_THRESHOLD_MODEL = 'YOUR_MODULE_NAME.Threshold'
+    # For extending ``device_monitoring`` app
+    DEVICE_MONITORING_DEVICE_MONITORING_MODEL = (
+        'YOUR_MODULE_NAME.DeviceMonitoring'
+    )
+
+Substitute ``<YOUR_MODULE_NAME>`` with your actual django app name
+(also known as ``app_label``).
+
 Extending models
 ~~~~~~~~~~~~~~~~
 
@@ -589,3 +611,29 @@ To extend ``check`` app, please checkout the `sample_check admin.py file <https:
 To extend ``monitoring`` app, please checkout the `sample_monitoring admin.py file <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_monitoring/admin.py>`_.
 
 To extend ``device_monitoring`` app, please checkout the `sample_device_monitoring admin.py file <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_device_monitoring/admin.py>`_.
+
+Reusing the base tests
+~~~~~~~~~~~~~~~~~~~~~~
+
+When developing a custom application based on this module, it's a good
+idea to import and run the base tests too,
+so that you can be sure the changes you're introducing are not breaking
+some of the existing features of openwisp-monitoring.
+
+In case you need to add breaking changes, you can overwrite the tests defined
+in the base classes to test your own behavior.
+
+For, extending ``check`` app see the `tests of sample_check app <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/sample_check/tests.py>`_
+to find out how to do this.
+
+For, extending ``device_monitoring`` app see the `tests of sample_device_monitoring app <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/sample_device_monitoring/tests.py>`_
+to find out how to do this.
+
+For, extending ``monitoring`` app see the `tests of sample_monitoring app <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/sample_monitoring/tests.py>`_
+to find out how to do this.
+
+Contributing
+------------
+
+Please read the `OpenWISP contributing guidelines
+<http://openwisp.io/docs/developer/contributing.html>`_.

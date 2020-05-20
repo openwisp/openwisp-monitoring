@@ -68,10 +68,10 @@ class AbstractMetric(TimeStampedEditableModel):
         if not self.key:
             self.key = self.codename
 
-    # def full_clean(self, *args, **kwargs):
-    #     # clean up key before field validation
-    #     self.key = self._makekey(self.key)
-    #     return super(Metric, self).full_clean(*args, **kwargs)
+    def full_clean(self, *args, **kwargs):
+        # clean up key before field validation
+        self.key = self._makekey(self.key)
+        return super().full_clean(*args, **kwargs)
 
     @classmethod
     def _get_or_create(cls, **kwargs):

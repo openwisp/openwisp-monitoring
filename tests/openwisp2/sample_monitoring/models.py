@@ -1,3 +1,4 @@
+from django.db import models
 from openwisp_monitoring.monitoring.base.models import (
     AbstractGraph,
     AbstractMetric,
@@ -5,11 +6,12 @@ from openwisp_monitoring.monitoring.base.models import (
 )
 
 
+class DetailsModel(models.Model):
+    details = models.CharField(max_length=64, blank=True, null=True)
+
+
 class Metric(AbstractMetric):
-    def full_clean(self, *args, **kwargs):
-        # clean up key before field validation
-        self.key = self._makekey(self.key)
-        return super(Metric, self).full_clean(*args, **kwargs)
+    pass
 
 
 class Graph(AbstractGraph):
