@@ -519,7 +519,7 @@ from the default module to your extended version may be time consuming.
 The first thing you need to do in order to extend any *openwisp-monitoring* app is create
 a new django app which will contain your custom version of that *openwisp-monitoring* app.
 
-In the following example, we show it for ``check`` app and it can be done similarly for other apps
+In the following example, we show it for ``check`` app and it can be done similarly for ``monitoring`` app
 
 A django app is nothing more than a
 `python package <https://docs.python.org/3/tutorial/modules.html#packages>`_
@@ -539,9 +539,11 @@ ensuring also that ``openwisp_monitoring.check`` has been removed:
 
     INSTALLED_APPS = [
         # ... other apps ...
-        # 'openwisp_monitoring.check'  <-- comment out or delete this line
+        # 'openwisp_monitoring.check',      <-- comment out or delete this line
+        'openwisp_monitoring.device',       <-- do not remove the device app
         'mycheck'
     ]
+
 For more information about how to work with django projects and django apps,
 please refer to the `django documentation <https://docs.djangoproject.com/en/dev/intro/tutorial01/>`_.
 
@@ -559,7 +561,7 @@ Add the following to your ``settings.py``:
 
 .. code-block:: python
 
-    EXTENDED_APPS = ['monitoring', 'check', 'device_monitoring']
+    EXTENDED_APPS = ['monitoring', 'check']
 
 4. Add ``openwisp_utils.staticfiles.DependencyFinder``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -616,7 +618,6 @@ Please refer to the following files in the sample app of the test project:
 For more information regarding the concept of ``AppConfig`` please refer to
 the `"Applications" section in the django documentation <https://docs.djangoproject.com/en/dev/ref/applications/>`_.
 
-\
 7. Create your custom models
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -626,8 +627,12 @@ To extend ``monitoring`` app, refer to `sample_monitoring models.py file <https:
 
 To extend ``device_monitoring`` app, refer to `sample_device_monitoring models.py file <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_device_monitoring/models.py>`_.
 
-**Note**: for doubts regarding how to use, extend or develop models please refer to
+**Note**:
+
+1. For doubts regarding how to use, extend or develop models please refer to
 the `"Models" section in the django documentation <https://docs.djangoproject.com/en/dev/topics/db/models/>`_.
+
+2. In order to extend ``device_monitoring`` app's models make use of `proxy models <https://docs.djangoproject.com/en/dev/topics/db/models/#proxy-models>`_.
 
 8. Add swapper configurations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -643,10 +648,6 @@ Add the following to your ``settings.py``:
     MONITORING_GRAPH_MODEL = 'YOUR_MODULE_NAME.Graph'
     MONITORING_METRIC_MODEL = 'YOUR_MODULE_NAME.Metric'
     MONITORING_THRESHOLD_MODEL = 'YOUR_MODULE_NAME.Threshold'
-    # For extending ``device_monitoring`` app
-    DEVICE_MONITORING_DEVICEMONITORING_MODEL = (
-        'YOUR_MODULE_NAME.DeviceMonitoring'
-    )
 
 Substitute ``<YOUR_MODULE_NAME>`` with your actual django app name
 (also known as ``app_label``).

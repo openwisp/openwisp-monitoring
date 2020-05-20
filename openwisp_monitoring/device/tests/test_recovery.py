@@ -48,6 +48,7 @@ class TestRecovery(DeviceMonitoringTestCase):
             self._post_data(d.id, d.key, data)
         mock.assert_called_once()
 
+    @skipIf(is_swapped('monitoring', 'Metric'), 'Running tests on sample_app')
     def test_device_recovery_cache_key_not_set(self):
         device_monitoring_app = apps.get_app_config('device_monitoring')
         health_status_changed.disconnect(

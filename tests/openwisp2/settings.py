@@ -293,7 +293,6 @@ LOGGING = {
 
 if os.environ.get('SAMPLE_APP', False):
     for app in [
-        'openwisp_monitoring.device',
         'openwisp_monitoring.monitoring',
         'openwisp_monitoring.check',
     ]:
@@ -306,9 +305,6 @@ if os.environ.get('SAMPLE_APP', False):
     MONITORING_GRAPH_MODEL = 'sample_monitoring.Graph'
     MONITORING_METRIC_MODEL = 'sample_monitoring.Metric'
     MONITORING_THRESHOLD_MODEL = 'sample_monitoring.Threshold'
-    # DEVICE_MONITORING_DEVICEMONITORING_MODEL = (
-    #     'sample_device_monitoring.DeviceMonitoring'
-    # )
 
 # local settings must be imported before test runner otherwise they'll be ignored
 try:

@@ -15,15 +15,17 @@ from rest_framework import serializers, status
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
+from swapper import load_model
 
 from ... import settings as monitoring_settings
 from ...monitoring.exceptions import InvalidChartConfigException
-from ...monitoring.models import Graph, Metric
 from ..models import DeviceData
 from ..schema import schema
 from ..signals import device_metrics_received
 
 logger = logging.getLogger(__name__)
+Graph = load_model('monitoring', 'Graph')
+Metric = load_model('monitoring', 'Metric')
 
 
 class DevicePermission(BasePermission):
