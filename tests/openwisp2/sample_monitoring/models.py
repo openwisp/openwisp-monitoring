@@ -11,12 +11,15 @@ class DetailsModel(models.Model):
 
 
 class Metric(AbstractMetric):
-    pass
+    class Meta(AbstractMetric.Meta):
+        abstract = False
 
 
 class Graph(AbstractGraph):
-    pass
+    class Meta(AbstractGraph.Meta):
+        abstract = False
 
 
 class Threshold(AbstractThreshold):
-    pass
+    class Meta(AbstractThreshold.Meta):
+        abstract = False
