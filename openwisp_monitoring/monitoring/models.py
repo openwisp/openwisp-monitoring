@@ -18,6 +18,7 @@ from django.utils.text import slugify
 from django.utils.timezone import make_aware
 from django.utils.translation import ugettext_lazy as _
 from influxdb.exceptions import InfluxDBClientError
+from openwisp_notifications.signals import notify
 from pytz import timezone as tz
 
 from openwisp_utils.base import TimeStampedEditableModel
@@ -29,7 +30,7 @@ from .charts import (
 )
 from .exceptions import InvalidChartConfigException
 from .signals import post_metric_write, pre_metric_write, threshold_crossed
-from .utils import notify_users, query, write
+from .utils import query, write
 
 logger = logging.getLogger(__name__)
 
@@ -193,15 +194,11 @@ class Metric(TimeStampedEditableModel):
 
     def _notify_users(self, level, verb, threshold):
         """ creates notifications for users """
-        opts = dict(actor=self, level=level, verb=verb, action_object=threshold)
-        if self.content_object is None:
-            opts['actor'] = self
-            target_org = None
-        else:
+        opts = dict(sender=self, level=level, verb=verb, action_object=threshold)
+        if self.content_object is not None:
             opts['target'] = self.content_object
-            target_org = getattr(opts['target'], 'organization_id', None)
         self._set_extra_notification_opts(opts)
-        notify_users(opts, target_org)
+        notify.send(**opts)
 
     def _set_extra_notification_opts(self, opts):
         verb = opts['verb']
