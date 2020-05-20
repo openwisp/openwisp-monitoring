@@ -1,4 +1,3 @@
-from openwisp_monitoring.device.models import DeviceData
 from openwisp_monitoring.device.tests import DeviceMonitoringTestCase
 from openwisp_monitoring.device.tests.test_models import BaseTestCase
 from openwisp_monitoring.device.tests.test_models import (
@@ -16,19 +15,16 @@ from openwisp_monitoring.device.tests.test_settings import (
 
 
 class TestRecovery(BaseTestRecovery, DeviceMonitoringTestCase):
-    app_name = 'device_monitoring'
+    pass
 
 
 class TestDeviceData(BaseTestDeviceData, BaseTestCase):
-    app_name = 'device_monitoring'
-    model_name = 'DeviceData'
-    data_model = DeviceData
+    pass
 
 
 class TestDeviceMonitoring(BaseTestDeviceMonitoring, BaseTestCase):
-    app_name = 'device_monitoring'
-    model_name = 'DeviceMonitoring'
+    pass
 
 
 class TestSettings(BaseTestSettings, DeviceMonitoringTestCase):
-    app_name = 'device_monitoring'
+    pass

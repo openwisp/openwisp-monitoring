@@ -4,6 +4,7 @@ import django.utils.timezone
 from django.utils.translation import ugettext_lazy as _
 import model_utils.fields
 import uuid
+import swapper
 
 from openwisp_monitoring.device.models import DeviceMonitoring
 
@@ -24,6 +25,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ('config', '0018_config_context'),
         ('device_monitoring', '0001_initial'),
+        swapper.dependency('device_monitoring', 'DeviceMonitoring'),
     ]
     operations = [
         migrations.CreateModel(
@@ -89,7 +91,12 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={'abstract': False,},
+            options={
+                'abstract': False,
+                'swappable': swapper.swappable_setting(
+                    'device_monitoring', 'DeviceMonitoring'
+                ),
+            },
         ),
         migrations.RunPython(
             create_device_monitoring, reverse_code=migrations.RunPython.noop

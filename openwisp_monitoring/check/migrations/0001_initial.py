@@ -7,6 +7,7 @@ import jsonfield.fields
 import model_utils.fields
 import uuid
 import collections
+import swapper
 
 
 class Migration(migrations.Migration):
@@ -15,6 +16,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('contenttypes', '0002_remove_content_type_name'),
+        swapper.dependency('check', 'Check'),
     ]
 
     operations = [
@@ -84,6 +86,9 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={'abstract': False,},
+            options={
+                'abstract': False,
+                'swappable': swapper.swappable_setting('check', 'Check'),
+            },
         ),
     ]

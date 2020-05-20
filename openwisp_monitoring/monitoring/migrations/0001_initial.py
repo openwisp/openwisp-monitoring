@@ -9,6 +9,7 @@ import django.db.models.deletion
 import django.utils.timezone
 import model_utils.fields
 import uuid
+import swapper
 
 
 class Migration(migrations.Migration):
@@ -18,6 +19,9 @@ class Migration(migrations.Migration):
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ('contenttypes', '0002_remove_content_type_name'),
+        swapper.dependency('monitoring', 'Metric'),
+        swapper.dependency('monitoring', 'Threshold'),
+        swapper.dependency('monitoring', 'Graph'),
     ]
 
     operations = [
@@ -52,7 +56,10 @@ class Migration(migrations.Migration):
                 ('description', models.CharField(blank=True, max_length=64)),
                 ('query', models.TextField(blank=True)),
             ],
-            options={'abstract': False,},
+            options={
+                'abstract': False,
+                'swappable': swapper.swappable_setting('monitoring', 'Graph'),
+            },
         ),
         migrations.CreateModel(
             name='Metric',
@@ -115,6 +122,10 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
+            options={
+                'abstract': False,
+                'swappable': swapper.swappable_setting('monitoring', 'Metric'),
+            },
         ),
         migrations.CreateModel(
             name='NotificationUser',
@@ -225,7 +236,10 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={'abstract': False,},
+            options={
+                'abstract': False,
+                'swappable': swapper.swappable_setting('monitoring', 'Threshold'),
+            },
         ),
         migrations.AddField(
             model_name='graph',
