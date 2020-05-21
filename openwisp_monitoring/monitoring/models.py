@@ -573,10 +573,8 @@ class Threshold(TimeStampedEditableModel):
 
     def _value_crossed(self, current_value):
         threshold_value = self.value
-        if type(current_value) == int:
-            current_value = float(current_value)
         method = '__gt__' if self.operator == '>' else '__lt__'
-        return getattr(current_value, method)(threshold_value)
+        return getattr(float(current_value), method)(threshold_value)
 
     def _time_crossed(self, time):
         threshold_time = timezone.now() - timedelta(seconds=self.seconds)
