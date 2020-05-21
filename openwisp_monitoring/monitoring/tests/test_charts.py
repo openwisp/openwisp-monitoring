@@ -54,7 +54,9 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertEqual(data['summary'], {'value': None})
 
     def test_read_summary_top_fields(self):
-        m = self._create_object_metric(name='applications')
+        m = self._create_object_metric(
+            name='applications', configuration='top_fields_mean'
+        )
         c = self._create_chart(
             metric=m, test_data=False, configuration='top_fields_mean'
         )
@@ -89,7 +91,9 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertEqual(data['summary'], {'google': 200.0, 'facebook': 0.0061})
 
     def test_read_summary_top_fields_acid(self):
-        m = self._create_object_metric(name='applications')
+        m = self._create_object_metric(
+            name='applications', configuration='top_fields_mean'
+        )
         c = self._create_chart(
             metric=m, test_data=False, configuration='top_fields_mean'
         )
@@ -214,15 +218,14 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertIn(str(now() - timedelta(days=3))[0:10], c._get_time('3d'))
 
     def test_get_top_fields(self):
-        c = self._create_chart(test_data=None, configuration='histogram')
+        m = self._create_object_metric(name='test', configuration='get_top_fields')
+        c = self._create_chart(metric=m, test_data=None, configuration='histogram')
         self.assertEqual(c.get_top_fields(number=3), [])
-        c.metric.write(
-            None, extra_values={'http2': 100, 'ssh': 90, 'udp': 80, 'spdy': 70}
-        )
+        m.write(None, extra_values={'http2': 100, 'ssh': 90, 'udp': 80, 'spdy': 70})
         self.assertEqual(c.get_top_fields(number=3), ['http2', 'ssh', 'udp'])
 
     def test_query_histogram(self):
-        m = self._create_object_metric(name='histogram')
+        m = self._create_object_metric(name='histogram', configuration='get_top_fields')
         m.write(None, extra_values={'http2': 100, 'ssh': 90, 'udp': 80, 'spdy': 70})
         c = Chart(metric=m, configuration='histogram')
         c.full_clean()

@@ -196,7 +196,11 @@ class DeviceMetricView(GenericAPIView):
                     continue
                 name = '{0} {1}'.format(ifname, key)
                 metric, created = Metric._get_or_create(
-                    object_id=pk, content_type=ct, key=ifname, field_name=key, name=name
+                    object_id=pk,
+                    content_type=ct,
+                    configuration=f'traffic_{key}',
+                    name=name,
+                    key=ifname,
                 )
                 increment = self._calculate_increment(ifname, key, value)
                 metric.write(increment)
@@ -212,9 +216,9 @@ class DeviceMetricView(GenericAPIView):
             metric, created = Metric._get_or_create(
                 object_id=pk,
                 content_type=ct,
-                key=ifname,
-                field_name='clients',
+                configuration='clients',
                 name=name,
+                key=ifname,
             )
             for client in clients:
                 if 'mac' not in client:
@@ -240,11 +244,7 @@ class DeviceMetricView(GenericAPIView):
             'load_15': float(load[2]),
         }
         metric, created = Metric._get_or_create(
-            object_id=primary_key,
-            content_type=content_type,
-            key='cpu',
-            field_name='cpu_usage',
-            name='CPU usage',
+            object_id=primary_key, content_type=content_type, configuration='cpu',
         )
         if created:
             self._create_resources_chart(metric, resource='cpu')
@@ -260,11 +260,7 @@ class DeviceMetricView(GenericAPIView):
             size_bytes += disk['size_bytes']
             available_bytes += disk['available_bytes']
         metric, created = Metric._get_or_create(
-            object_id=primary_key,
-            content_type=content_type,
-            key='disk',
-            field_name='used_disk',
-            name='Disk usage',
+            object_id=primary_key, content_type=content_type, configuration='disk',
         )
         if created:
             self._create_resources_chart(metric, resource='disk')
@@ -289,11 +285,7 @@ class DeviceMetricView(GenericAPIView):
                     1 - (memory['available'] + memory['buffered']) / memory['total']
                 )
         metric, created = Metric._get_or_create(
-            object_id=primary_key,
-            content_type=content_type,
-            key='memory',
-            field_name='percent_used',
-            name='Memory usage',
+            object_id=primary_key, content_type=content_type, configuration='memory',
         )
         if created:
             self._create_resources_chart(metric, resource='memory')

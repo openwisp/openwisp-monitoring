@@ -174,13 +174,11 @@ class Ping(object):
             obj_id = str(check.id)
             ct = ContentType.objects.get_for_model(Check)
         options = dict(
-            name=check.name,
             object_id=obj_id,
             content_type=ct,
-            field_name='reachable',
-            key=self.__class__.__name__.lower(),
+            configuration=self.__class__.__name__.lower(),
         )
-        metric, created = Metric.objects.get_or_create(**options)
+        metric, created = Metric._get_or_create(**options)
         if created:
             self._create_alert_settings(metric)
             self._create_charts(metric)

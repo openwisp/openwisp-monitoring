@@ -266,7 +266,9 @@ class TestDeviceApi(DeviceMonitoringTestCase):
     def test_get_device_metrics_csv(self):
         d = self._create_device(organization=self._create_org())
         self._create_multiple_measurements(create=False, count=2)
-        m = self._create_object_metric(content_object=d, name='applications')
+        m = self._create_object_metric(
+            content_object=d, name='applications', configuration='get_top_fields'
+        )
         self._create_chart(metric=m, configuration='histogram')
         m.write(None, extra_values={'http2': 90, 'ssh': 100, 'udp': 80, 'spdy': 70})
         r = self.client.get('{0}&csv=1'.format(self._url(d.pk, d.key)))
@@ -349,9 +351,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         d = self._create_device(organization=self._create_org())
         dd = DeviceData(name='test-device', pk=d.pk)
         data = self._data()
-        self._create_object_metric(
-            name='ping', key='ping', field_name='reachable', content_object=d
-        )
+        self._create_object_metric(name='ping', configuration='ping', content_object=d)
         with catch_signal(device_metrics_received) as handler:
             response = self._post_data(d.id, d.key, data)
         request = response.renderer_context['request']
