@@ -566,7 +566,7 @@ class Threshold(TimeStampedEditableModel):
     _THRESHOLD_OPERATORS = (('<', _('less than')), ('>', _('greater than')))
     metric = models.OneToOneField(Metric, on_delete=models.CASCADE)
     operator = models.CharField(max_length=1, choices=_THRESHOLD_OPERATORS)
-    value = models.IntegerField(help_text=_('threshold value'))
+    value = models.FloatField(help_text=_('threshold value'))
     seconds = models.PositiveIntegerField(
         default=0, validators=[MaxValueValidator(604800)], help_text=_(_SECONDS_HELP)
     )
@@ -574,6 +574,8 @@ class Threshold(TimeStampedEditableModel):
     def _value_crossed(self, current_value):
         threshold_value = self.value
         method = '__gt__' if self.operator == '>' else '__lt__'
+        if isinstance(current_value, int):
+            current_value = float(current_value)
         return getattr(current_value, method)(threshold_value)
 
     def _time_crossed(self, time):
