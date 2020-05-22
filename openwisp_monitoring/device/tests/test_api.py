@@ -389,3 +389,18 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             self.assertAlmostEqual(metric_data['percent_used'], 0.09301, places=5)
             self.assertEqual(metric_data['available_memory'], 225567664)
             self.assertEqual(r.status_code, 200)
+
+    def test_get_device_status_200(self):
+        dd = self._create_multiple_measurements()
+        d = self.device_model.objects.get(pk=dd.pk)
+        url = self._url(d.pk.hex, d.key)
+        # status not requested
+        r = self.client.get(url)
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn('status', r.data)
+        # status requested
+        r = self.client.get(f'{url}&status=1')
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('data', r.data)
+        self.assertIsInstance(r.data['data'], dict)
+        self.assertEqual(DeviceData(pk=d.pk).data, r.data['data'])

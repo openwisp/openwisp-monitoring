@@ -75,6 +75,9 @@ class DeviceMetricView(GenericAPIView):
             response = HttpResponse(self._get_csv(data), content_type='text/csv')
             response['Content-Disposition'] = 'attachment; filename=data.csv'
             return response
+        # add device data if requested
+        if request.query_params.get('status', False):
+            data['data'] = self.instance.data
         return Response(data)
 
     def _get_graphs_data(self, graphs, time, timezone):
@@ -318,7 +321,7 @@ class DeviceMetricView(GenericAPIView):
             or 'traffic' not in monitoring_settings.AUTO_GRAPHS
         ):
             return
-        graph = Graph(metric=metric, configuration='traffic',)
+        graph = Graph(metric=metric, configuration='traffic')
         graph.full_clean()
         graph.save()
 
@@ -328,7 +331,7 @@ class DeviceMetricView(GenericAPIView):
         """
         if 'wifi_clients' not in monitoring_settings.AUTO_GRAPHS:
             return
-        graph = Graph(metric=metric, configuration='wifi_clients',)
+        graph = Graph(metric=metric, configuration='wifi_clients')
         graph.full_clean()
         graph.save()
 
