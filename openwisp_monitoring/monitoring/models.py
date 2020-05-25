@@ -49,6 +49,7 @@ class Metric(TimeStampedEditableModel):
     content_object = GenericForeignKey('content_type', 'object_id')
     # NULL means the health has yet to be assessed
     is_healthy = models.BooleanField(default=None, null=True, blank=True, db_index=True)
+    notifications_enabled = models.BooleanField(default=True)
 
     class Meta:
         unique_together = ('key', 'field_name', 'content_type', 'object_id')
@@ -194,6 +195,8 @@ class Metric(TimeStampedEditableModel):
 
     def _notify_users(self, level, verb, threshold):
         """ creates notifications for users """
+        if not self.notifications_enabled:
+            return
         opts = dict(sender=self, level=level, verb=verb, action_object=threshold)
         if self.content_object is not None:
             opts['target'] = self.content_object
