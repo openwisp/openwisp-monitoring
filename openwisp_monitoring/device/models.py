@@ -151,8 +151,11 @@ class DeviceData(Device):
                 client['vendor'] = self._mac_lookup(client['mac'])
         for neighbor in self.data.get('neighbors', []):
             # Neighbors with state = FAILED have no mac_address
-            mac_address = neighbor.get('mac_address', '')
-            neighbor['vendor'] = self._mac_lookup(mac_address)
+            try:
+                mac_address = neighbor['mac_address']
+                neighbor['vendor'] = self._mac_lookup(mac_address)
+            except KeyError:
+                neighbor['vendor'] = ''
 
     def _mac_lookup(self, value):
         try:

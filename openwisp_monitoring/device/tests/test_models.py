@@ -194,6 +194,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
                 "ip_address": "192.168.56.2",
                 "mac_address": "44:D1:FA:4B:00:04",
                 "interface": "br-mng",
+                "state": "STALE",
             },
         ],
     }
@@ -345,6 +346,20 @@ class TestDeviceData(BaseTestCase):
         for neighbor in dd.data['neighbors']:
             self.assertIn('vendor', neighbor)
             self.assertEqual(neighbor['vendor'], vendor)
+
+    @patch('openwisp_monitoring.device.settings.MAC_VENDOR_DETECTION', True)
+    def test_mac_vendor_info_empty(self):
+        dd = self._create_device_data()
+        dd.data = deepcopy(self._sample_data)
+        dd.data['neighbors'] = [
+            {
+                "ip_address": "2001:db80::1",
+                "interface": "eth2.1",
+                "state": "FAILED",
+            },
+        ]
+        dd.save_data()
+        self.assertEqual(dd.data['neighbors'][0]['vendor'], '')
 
 
 class TestDeviceMonitoring(BaseTestCase):
