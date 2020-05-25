@@ -308,8 +308,7 @@ class Graph(TimeStampedEditableModel):
     @property
     def label(self):
         label = self.config_dict.get('label')
-        if not label:
-            return self.title
+        return label or self.title
 
     @property
     def description(self):
