@@ -11,7 +11,7 @@ from django.dispatch import receiver
 from django.utils.translation import ugettext_lazy as _
 from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
-from mac_vendor_lookup import InvalidMacError, MacLookup
+from mac_vendor_lookup import MacLookup
 from model_utils import Choices
 from model_utils.fields import StatusField
 from pytz import timezone as tz
@@ -150,17 +150,16 @@ class DeviceData(Device):
             for client in interface['wireless']['clients']:
                 client['vendor'] = self._mac_lookup(client['mac'])
         for neighbor in self.data.get('neighbors', []):
-            # Neighbors with state = FAILED have no mac_address
-            try:
-                mac_address = neighbor['mac_address']
-                neighbor['vendor'] = self._mac_lookup(mac_address)
-            except KeyError:
-                neighbor['vendor'] = ''
+            # in some cases the mac_address may not be present
+            # eg: neighbors with "FAILED" state
+            neighbor['vendor'] = self._mac_lookup(neighbor.get('mac_address'))
 
     def _mac_lookup(self, value):
+        if not value:
+            return ''
         try:
             return mac_lookup.lookup(value)
-        except (KeyError, InvalidMacError):
+        except KeyError:
             return ''
 
     def save_data(self, time=None):
