@@ -268,7 +268,6 @@ class Graph(TimeStampedEditableModel):
     ]
     GROUP_MAP = {
         '1d': '10m',
-        '1d': '10m',
         '3d': '20m',
         '7d': '1h',
         '30d': '24h',
