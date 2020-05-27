@@ -16,4 +16,5 @@ if __name__ == '__main__':
         args.insert(2, 'openwisp_monitoring')
     else:
         args.insert(2, 'openwisp2')
+        args.insert(3, 'openwisp_monitoring.notifications')
     execute_from_command_line(args)
