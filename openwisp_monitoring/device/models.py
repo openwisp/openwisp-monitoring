@@ -150,9 +150,13 @@ class DeviceData(Device):
             for client in interface['wireless']['clients']:
                 client['vendor'] = self._mac_lookup(client['mac'])
         for neighbor in self.data.get('neighbors', []):
-            neighbor['vendor'] = self._mac_lookup(neighbor['mac_address'])
+            # in some cases the mac_address may not be present
+            # eg: neighbors with "FAILED" state
+            neighbor['vendor'] = self._mac_lookup(neighbor.get('mac_address'))
 
     def _mac_lookup(self, value):
+        if not value:
+            return ''
         try:
             return mac_lookup.lookup(value)
         except KeyError:
