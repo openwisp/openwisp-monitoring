@@ -352,11 +352,7 @@ class TestDeviceData(BaseTestCase):
         dd = self._create_device_data()
         dd.data = deepcopy(self._sample_data)
         dd.data['neighbors'] = [
-            {
-                "ip_address": "2001:db80::1",
-                "interface": "eth2.1",
-                "state": "FAILED",
-            },
+            {'ip_address': '2001:db80::1', 'interface': 'eth2.1', 'state': 'FAILED'},
         ]
         dd.save_data()
         self.assertEqual(dd.data['neighbors'][0]['vendor'], '')
