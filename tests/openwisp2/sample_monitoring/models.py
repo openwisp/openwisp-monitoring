@@ -9,17 +9,20 @@ from openwisp_monitoring.monitoring.base.models import (
 class DetailsModel(models.Model):
     details = models.CharField(max_length=64, blank=True, null=True)
 
+    class Meta:
+        abstract = True
 
-class Metric(AbstractMetric):
+
+class Metric(DetailsModel, AbstractMetric):
     class Meta(AbstractMetric.Meta):
         abstract = False
 
 
-class Graph(AbstractGraph):
+class Graph(DetailsModel, AbstractGraph):
     class Meta(AbstractGraph.Meta):
         abstract = False
 
 
-class Threshold(AbstractThreshold):
+class Threshold(DetailsModel, AbstractThreshold):
     class Meta(AbstractThreshold.Meta):
         abstract = False

@@ -519,14 +519,14 @@ from the default module to your extended version may be time consuming.
 The first thing you need to do in order to extend any *openwisp-monitoring* app is create
 a new django app which will contain your custom version of that *openwisp-monitoring* app.
 
-In the following example, we show it for ``check`` app and it can be done similarly for ``monitoring`` app
-
 A django app is nothing more than a
 `python package <https://docs.python.org/3/tutorial/modules.html#packages>`_
-(a directory of python scripts), in the following examples we'll call this django app
-``mycheck``, but you can name it how you want::
+(a directory of python scripts), in the following examples we'll call these django apps as
+``mycheck``, ``mydevicemonitoring``, ``mymonitoring`` but you can name it how you want::
 
     django-admin startapp mycheck
+    django-admin startapp mydevicemonitoring
+    django-admin startapp mymonitoring
 
 Keep in mind that the command mentioned above must be called from a directory
 which is available in your `PYTHON_PATH <https://docs.python.org/3/using/cmdline.html#envvar-PYTHONPATH>`_
@@ -539,12 +539,12 @@ ensuring also that ``openwisp_monitoring.check`` has been removed:
 
     INSTALLED_APPS = [
         # ... other apps ...
-        # 'openwisp_monitoring.check',      <-- comment out or delete this line
-        'openwisp_monitoring.device',       <-- do not remove the device app
-        'mycheck'
-        # TODO:
-        add device_monitoring
-        add monitoring
+        # 'openwisp_monitoring.check',        <-- comment out or delete this line
+        # 'openwisp_monitoring.device',       <-- comment out or delete this line
+        # 'openwisp_monitoring.monitoring'    <-- comment out or delete this line
+        'mycheck',
+        'mydevicemonitoring',
+        'mymonitoring',
     ]
 
 For more information about how to work with django projects and django apps,
@@ -555,7 +555,7 @@ please refer to the `django documentation <https://docs.djangoproject.com/en/dev
 
 Install (and add to the requirement of your project) *openwisp-monitoring*::
 
-    pip install --U https://github.com/openwisp/openwisp-controller/tarball/master
+    pip install --U https://github.com/openwisp/openwisp-monitoring/tarball/master
 
 3. Add ``EXTENDED_APPS``
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -564,7 +564,7 @@ Add the following to your ``settings.py``:
 
 .. code-block:: python
 
-    EXTENDED_APPS = ['monitoring', 'check']
+    EXTENDED_APPS = ['device_monitoring', 'monitoring', 'check']
 
 4. Add ``openwisp_utils.staticfiles.DependencyFinder``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -634,7 +634,7 @@ To extend ``device_monitoring`` app, refer to `sample_device_monitoring models.p
 
 - For doubts regarding how to use, extend or develop models please refer to
   the `"Models" section in the django documentation <https://docs.djangoproject.com/en/dev/topics/db/models/>`_.
-- In order to extend ``device_monitoring`` app's models make use of `proxy models <https://docs.djangoproject.com/en/dev/topics/db/models/#proxy-models>`_.
+- For doubts regarding proxy models please refer to `proxy models <https://docs.djangoproject.com/en/dev/topics/db/models/#proxy-models>`_.
 
 8. Add swapper configurations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -644,12 +644,15 @@ Add the following to your ``settings.py``:
 .. code-block:: python
 
     # Setting models for swapper module
-    # For extending ``check`` app
+    # For extending check app
     CHECK_CHECK_MODEL = 'YOUR_MODULE_NAME.Check'
-    # For extending ``monitoring`` app
+    # For extending monitoring app
     MONITORING_GRAPH_MODEL = 'YOUR_MODULE_NAME.Graph'
     MONITORING_METRIC_MODEL = 'YOUR_MODULE_NAME.Metric'
     MONITORING_THRESHOLD_MODEL = 'YOUR_MODULE_NAME.Threshold'
+    # For extending device_monitoring app
+    DEVICE_MONITORING_DEVICEDATA_MODEL = 'YOUR_MODULE_NAME.DeviceData'
+    DEVICE_MONITORING_DEVICEMONITORING_MODEL = 'YOUR_MODULE_NAME.DeviceMonitoring'
 
 Substitute ``<YOUR_MODULE_NAME>`` with your actual django app name
 (also known as ``app_label``).
@@ -688,18 +691,38 @@ For example, for ``check`` app you can do it as:
 
 .. code-block:: python
 
-    from openwispmonitoring.check.admin import CheckAdmin
+    from openwisp_monitoring.check.admin import CheckAdmin
 
     CheckAdmin.list_display.insert(1, 'my_custom_field')
     CheckAdmin.ordering = ['-my_custom_field']
 
-TODO: please replicate the examples for the other apps
+Similarly for ``device_monitoring`` app, you can do it as:
+
+.. code-block:: python
+
+    from openwisp_monitoring.device.admin import DeviceAdmin
+
+    DeviceAdmin.list_display.insert(1, 'my_custom_field')
+    DeviceAdmin.ordering = ['-my_custom_field']
+
+Similarly for ``monitoring`` app, you can do it as:
+
+.. code-block:: python
+
+    from openwisp_monitoring.monitoring.admin import MetricAdmin, ThresholdAdmin
+
+    MetricAdmin.list_display.insert(1, 'my_custom_field')
+    MetricAdmin.ordering = ['-my_custom_field']
+    ThresholdAdmin.list_display.insert(1, 'my_custom_field')
+    ThresholdAdmin.ordering = ['-my_custom_field']
 
 2. Inheriting admin classes
 ###########################
 
 If you need to introduce significant changes and/or you don't want to resort to
 monkey patching, you can proceed as follows:
+
+For ``check`` app,
 
 .. code-block:: python
 
@@ -716,7 +739,43 @@ monkey patching, you can proceed as follows:
     class CheckAdmin(BaseCheckAdmin):
         # add your changes here
 
-TODO: please replicate the examples for the other apps
+For ``device_monitoring`` app,
+
+.. code-block:: python
+
+    from django.contrib import admin
+
+    from openwisp_monitoring.device_monitoring.admin import DeviceAdmin as BaseDeviceAdmin
+    from openwisp_controller.config.models import Device
+
+    admin.site.unregister(Device)
+
+    @admin.register(Device)
+    class DeviceAdmin(BaseDeviceAdmin):
+        # add your changes here
+
+For ``monitoring`` app,
+
+.. code-block:: python
+
+    from django.contrib import admin
+
+    from openwisp_monitoring.monitoring.admin import ThresholdAdmin as BaseThresholdAdmin, MetricAdmin as BaseMetricAdmin
+    from swapper import load_model
+
+    Metric = load_model('Metric')
+    Threshold = load_model('Threshold')
+
+    admin.site.unregister(Metric)
+    admin.site.unregister(Threshold)
+
+    @admin.register(Metric)
+    class MetricAdmin(BaseMetricAdmin):
+        # add your changes here
+
+    @admin.register(Threshold)
+    class ThresholdAdmin(BaseThresholdAdmin):
+        # add your changes here
 
 11. Create root URL configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

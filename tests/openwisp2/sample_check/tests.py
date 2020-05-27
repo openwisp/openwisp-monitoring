@@ -1,4 +1,5 @@
 from django.test import TransactionTestCase
+from django.utils.timezone import now
 from openwisp_monitoring.check.tests.test_models import TestModels as BaseTestModels
 from openwisp_monitoring.check.tests.test_ping import TestPing as BaseTestPing
 from openwisp_monitoring.check.tests.test_utils import TestUtils as BaseTestUtils
@@ -17,9 +18,24 @@ class TestPing(BaseTestPing, TestDeviceMonitoringMixin, TransactionTestCase):
 
 
 class TestModels(BaseTestModels, TestDeviceMonitoringMixin, TransactionTestCase):
-    pass
+    def test_last_called(self):
+        device = self._create_device(organization=self._create_org())
+        # will ping localhost
+        device.management_ip = '127.0.0.1'
+        check = Check(
+            name='Ping check',
+            check=self._PING,
+            content_object=device,
+            params={'count': 2, 'interval': 10, 'bytes': 10, 'timeout': 50},
+        )
+        check.perform_check(store=False)
+        # Left the seconds due to minor time lag
+        self.assertEqual(
+            check.last_called.strftime('%D %H %M'), now().strftime('%D %H %M')
+        )
 
 
+# this is necessary to avoid excuting the base test suites
 del BaseTestModels
 del BaseTestPing
 del BaseTestUtils

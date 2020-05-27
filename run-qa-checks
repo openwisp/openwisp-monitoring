@@ -5,3 +5,17 @@ openwisp-qa-check \
                     ./openwisp_monitoring/device/migrations \
                     ./openwisp_monitoring/monitoring/migrations" \
   --migration-module "check device_monitoring monitoring notifications"
+
+echo ''
+echo 'Running checks for SAMPLE_APP'
+SAMPLE_APP=1 openwisp-qa-check \
+    --skip-isort \
+    --skip-flake8 \
+    --skip-checkmigrations \
+    --skip-checkendline \
+    --skip-checkcommit \
+    --skip-black \
+    --migration-path "./tests/openwisp2/sample_check/migrations/ \
+                      ./tests/openwisp2/sample_device_monitoring/migrations/ \
+                      ./tests/openwisp2/sample_monitoring/migrations/" \
+    --migration-module "sample_check sample_device_monitoring sample_monitoring"

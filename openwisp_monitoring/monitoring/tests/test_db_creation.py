@@ -14,12 +14,14 @@ def mock_create_database(self, db):
 
 
 class TestDatabase(TestCase):
+    app = 'monitoring'
+
     @patch('openwisp_monitoring.monitoring.settings.INFLUXDB_DATABASE', 'test_db')
     @patch('openwisp_monitoring.monitoring.apps.MonitoringConfig.warn_and_delay')
     @patch('influxdb.client.InfluxDBClient.create_database', mock_create_database)
     def test_check_retry(self, mock):
         try:
-            apps.get_app_config('monitoring').create_database()
+            apps.get_app_config(self.app).create_database()
         except ConnectionError:
             pass
         get_db().drop_database('test_db')
@@ -29,7 +31,7 @@ class TestDatabase(TestCase):
     def test_warn_and_delay(self, mock):
         f = io.StringIO()
         with redirect_stdout(f):
-            apps.get_app_config('monitoring').warn_and_delay(1)
+            apps.get_app_config(self.app).warn_and_delay(1)
         self.assertEqual(
             f.getvalue(),
             'Got error while connecting to timeseries DB. '

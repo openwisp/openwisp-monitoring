@@ -18,9 +18,10 @@ class DeviceData(AbstractDeviceData, Device):
 
 
 class DeviceMonitoring(AbstractDeviceMonitoring):
+    details = models.CharField(max_length=64, default='devicemonitoring')
+
     class Meta(AbstractDeviceMonitoring.Meta):
         abstract = False
 
-
-class DetailsModel(models.Model):
-    details = models.CharField(max_length=64, blank=True, null=True)
+    def __str__(self):
+        return self.details

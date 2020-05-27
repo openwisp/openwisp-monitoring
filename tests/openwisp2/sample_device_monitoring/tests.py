@@ -1,5 +1,3 @@
-from django.contrib.auth import get_user_model
-from django.test import TestCase
 from openwisp_monitoring.device.tests import (
     DeviceMonitoringTestCase as DeviceMonitoringTestCase,
 )
@@ -27,34 +25,25 @@ class TestDeviceData(BaseTestDeviceData):
 
 
 class TestDeviceMonitoring(BaseTestDeviceMonitoring):
-    pass
+    def test_device_monitoring_str(self):
+        d = self._create_device()
+        dm = d.monitoring
+        self.assertEqual(dm.details, 'devicemonitoring')
+        self.assertEqual(str(dm), 'devicemonitoring')
 
 
 class TestSettings(BaseTestSettings):
     pass
 
 
-class TestAdmin(TestCase):
-    def _login_admin(self):
-        User = get_user_model()
-        u = User.objects.create_superuser('admin', 'admin', 'test@test.com')
-        self.client.force_login(u)
-        return u
-
-    def test_details_model_added(self):
-        self._login_admin()
-        r = self.client.get('/admin/')
-        self.assertContains(r, '/admin/sample_device_monitoring/detailsmodel/')
-
-
 class TestDeviceApi(BaseTestDeviceApi):
     pass
 
 
+# this is necessary to avoid excuting the base test suites
 del BaseTestRecovery
 del DeviceMonitoringTestCase
 del BaseTestDeviceData
 del BaseTestDeviceMonitoring
-del TestAdmin
 del BaseTestSettings
 del BaseTestDeviceApi

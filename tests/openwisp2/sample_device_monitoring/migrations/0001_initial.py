@@ -18,21 +18,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='DetailsModel',
-            fields=[
-                (
-                    'id',
-                    models.AutoField(
-                        auto_created=True,
-                        primary_key=True,
-                        serialize=False,
-                        verbose_name='ID',
-                    ),
-                ),
-                ('details', models.CharField(blank=True, max_length=64, null=True)),
-            ],
-        ),
-        migrations.CreateModel(
             name='DeviceData',
             fields=[],
             options={'proxy': True, 'indexes': [], 'constraints': [],},
@@ -93,6 +78,10 @@ class Migration(migrations.Migration):
                         related_name='monitoring',
                         to='config.Device',
                     ),
+                ),
+                (
+                    'details',
+                    models.CharField(default='devicemonitoring', max_length=64),
                 ),
             ],
             options={'abstract': False,},
