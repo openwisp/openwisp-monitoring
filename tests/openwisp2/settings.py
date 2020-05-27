@@ -295,16 +295,21 @@ if os.environ.get('SAMPLE_APP', False):
     for app in [
         'openwisp_monitoring.monitoring',
         'openwisp_monitoring.check',
+        'openwisp_monitoring.device',
     ]:
         INSTALLED_APPS.remove(app)
         EXTENDED_APPS.append(app)
-    INSTALLED_APPS.append('openwisp2.sample_device_monitoring')
     INSTALLED_APPS.append('openwisp2.sample_monitoring')
     INSTALLED_APPS.append('openwisp2.sample_check')
+    INSTALLED_APPS.append('openwisp2.sample_device_monitoring')
     CHECK_CHECK_MODEL = 'sample_check.Check'
     MONITORING_GRAPH_MODEL = 'sample_monitoring.Graph'
     MONITORING_METRIC_MODEL = 'sample_monitoring.Metric'
     MONITORING_THRESHOLD_MODEL = 'sample_monitoring.Threshold'
+    DEVICE_MONITORING_DEVICEDATA_MODEL = 'sample_device_monitoring.DeviceData'
+    DEVICE_MONITORING_DEVICEMONITORING_MODEL = (
+        'sample_device_monitoring.DeviceMonitoring'
+    )
 
 # local settings must be imported before test runner otherwise they'll be ignored
 try:

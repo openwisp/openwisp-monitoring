@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 from django.core.cache import cache
-from django.db.models.signals import post_delete
+from django.db.models.signals import post_delete, post_save
 from django.utils.translation import ugettext_lazy as _
 from django_netjsonconfig.signals import checksum_requested
 from openwisp_notifications.signals import notify
@@ -19,17 +19,36 @@ class DeviceMonitoringConfig(AppConfig):
     def ready(self):
         manage_short_retention_policy()
         self.connect_is_working_changed()
-        self.connect_device_post_delete()
+        self.connect_device_signals()
         self.device_recovery_detection()
 
-    def connect_device_post_delete(self):
+    def connect_device_signals(self):
         from openwisp_controller.config.models import Device
+
+        post_save.connect(
+            self.device_post_save_receiver,
+            sender=Device,
+            dispatch_uid='device_post_save_receiver',
+        )
 
         post_delete.connect(
             self.device_post_delete_receiver,
             sender=Device,
             dispatch_uid='device_post_delete_receiver',
         )
+
+    @classmethod
+    def device_post_save_receiver(cls, instance, created, **kwargs):
+        if created:
+            DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+            DeviceMonitoring.objects.create(device=instance)
+
+    @classmethod
+    def device_post_delete_receiver(cls, instance, **kwargs):
+        DeviceData = load_model('device_monitoring', 'DeviceData')
+        instance.__class__ = DeviceData
+        instance.checks.all().delete()
+        instance.metrics.all().delete()
 
     def device_recovery_detection(self):
         if app_settings.DEVICE_RECOVERY_DETECTION:
@@ -50,13 +69,6 @@ class DeviceMonitoringConfig(AppConfig):
                 sender=DeviceData,
                 dispatch_uid='received_device_metrics',
             )
-
-    @classmethod
-    def device_post_delete_receiver(cls, instance, **kwargs):
-        DeviceData = load_model('device_monitoring', 'DeviceData')
-        instance.__class__ = DeviceData
-        instance.checks.all().delete()
-        instance.metrics.all().delete()
 
     @classmethod
     def manage_device_recovery_cache_key(cls, instance, status, **kwargs):

@@ -1,9 +1,7 @@
-from unittest import skipIf
 from unittest.mock import patch
 
 from django.core import management
 from django.test import TransactionTestCase
-from swapper import is_swapped
 
 from ...device.tests import TestDeviceMonitoringMixin
 from ..classes import Ping
@@ -32,7 +30,6 @@ class TestUtils(TestDeviceMonitoringMixin, TransactionTestCase):
         self._create_check()
         run_checks_async()
 
-    @skipIf(is_swapped('check', 'Check'), 'Running tests on sample_app')
     @patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
     def test_management_command(self, mocked_method):
         self._create_check()

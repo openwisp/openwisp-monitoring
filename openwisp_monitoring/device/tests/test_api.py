@@ -1,22 +1,20 @@
-from unittest import skipIf
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from swapper import is_swapped, load_model
+from swapper import load_model
 
 from openwisp_utils.tests import catch_signal
 
 from ... import settings as monitoring_settings
-from ..models import DeviceData
 from ..signals import device_metrics_received
 from . import DeviceMonitoringTestCase
 
 Graph = load_model('monitoring', 'Graph')
 Metric = load_model('monitoring', 'Metric')
+DeviceData = load_model('device_monitoring', 'DeviceData')
 
 
-@skipIf(is_swapped('monitoring', 'Metric'), 'Running tests on sample_app')
 class TestDeviceApi(DeviceMonitoringTestCase):
     """
     Tests API (device metric collection)

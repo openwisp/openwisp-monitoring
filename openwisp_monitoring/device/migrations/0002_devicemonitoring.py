@@ -7,6 +7,7 @@ import uuid
 
 from openwisp_monitoring.device.models import DeviceMonitoring
 
+import swapper
 from .. import settings as app_settings
 
 
@@ -15,7 +16,7 @@ def create_device_monitoring(apps, schema_editor):
     Data migration
     """
     Device = apps.get_model('config', 'Device')
-    DeviceMonitoring = apps.get_model('device_monitoring', 'DeviceMonitoring')
+    DeviceMonitoring = swapper.load_model('device_monitoring', 'DeviceMonitoring')
     for device in Device.objects.all():
         DeviceMonitoring.objects.create(device=device)
 
@@ -89,7 +90,12 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={'abstract': False,},
+            options={
+                'abstract': False,
+                'swappable': swapper.swappable_setting(
+                    'device_monitoring', 'DeviceMonitoring'
+                ),
+            },
         ),
         migrations.RunPython(
             create_device_monitoring, reverse_code=migrations.RunPython.noop

@@ -18,3 +18,8 @@ class TestPing(BaseTestPing, TestDeviceMonitoringMixin, TransactionTestCase):
 
 class TestModels(BaseTestModels, TestDeviceMonitoringMixin, TransactionTestCase):
     pass
+
+
+del BaseTestModels
+del BaseTestPing
+del BaseTestUtils

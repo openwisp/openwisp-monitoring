@@ -1,6 +1,5 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
-from openwisp_monitoring.monitoring.tests import TestMonitoringMixin
 from openwisp_monitoring.monitoring.tests.test_graphs import (
     TestGraphs as BaseTestGraphs,
 )
@@ -12,11 +11,11 @@ from swapper import load_model
 Graph = load_model('monitoring', 'Graph')
 
 
-class TestModels(BaseTestModels, TestMonitoringMixin, TestCase):
+class TestModels(BaseTestModels):
     pass
 
 
-class TestGraphs(BaseTestGraphs, TestMonitoringMixin, TestCase):
+class TestGraphs(BaseTestGraphs):
     pass
 
 
@@ -31,3 +30,7 @@ class TestAdmin(TestCase):
         self._login_admin()
         r = self.client.get('/admin/')
         self.assertContains(r, '/admin/sample_monitoring/detailsmodel/')
+
+
+del BaseTestGraphs
+del BaseTestModels

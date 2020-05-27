@@ -484,7 +484,7 @@ Run tests with:
     ./runtests.py
 
     # tests for the sample app
-    SAMPLE_APP=1 ./runtests.py --keepdb --failfast
+    SAMPLE_APP=1 ./runtests.py
 
 When running the last line of the previous example, the environment variable
 ``SAMPLE_APP`` activates the sample apps in ``/tests/openwisp2/``
@@ -542,6 +542,9 @@ ensuring also that ``openwisp_monitoring.check`` has been removed:
         # 'openwisp_monitoring.check',      <-- comment out or delete this line
         'openwisp_monitoring.device',       <-- do not remove the device app
         'mycheck'
+        # TODO:
+        add device_monitoring
+        add monitoring
     ]
 
 For more information about how to work with django projects and django apps,
@@ -629,10 +632,9 @@ To extend ``device_monitoring`` app, refer to `sample_device_monitoring models.p
 
 **Note**:
 
-1. For doubts regarding how to use, extend or develop models please refer to
-the `"Models" section in the django documentation <https://docs.djangoproject.com/en/dev/topics/db/models/>`_.
-
-2. In order to extend ``device_monitoring`` app's models make use of `proxy models <https://docs.djangoproject.com/en/dev/topics/db/models/#proxy-models>`_.
+- For doubts regarding how to use, extend or develop models please refer to
+  the `"Models" section in the django documentation <https://docs.djangoproject.com/en/dev/topics/db/models/>`_.
+- In order to extend ``device_monitoring`` app's models make use of `proxy models <https://docs.djangoproject.com/en/dev/topics/db/models/#proxy-models>`_.
 
 8. Add swapper configurations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -687,9 +689,11 @@ For example, for ``check`` app you can do it as:
 .. code-block:: python
 
     from openwispmonitoring.check.admin import CheckAdmin
-    
+
     CheckAdmin.list_display.insert(1, 'my_custom_field')
     CheckAdmin.ordering = ['-my_custom_field']
+
+TODO: please replicate the examples for the other apps
 
 2. Inheriting admin classes
 ###########################
@@ -711,6 +715,8 @@ monkey patching, you can proceed as follows:
     @admin.register(Check)
     class CheckAdmin(BaseCheckAdmin):
         # add your changes here
+
+TODO: please replicate the examples for the other apps
 
 11. Create root URL configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

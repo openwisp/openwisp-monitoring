@@ -17,15 +17,17 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from swapper import load_model
 
+from openwisp_controller.config.models import Device
+
 from ... import settings as monitoring_settings
 from ...monitoring.exceptions import InvalidChartConfigException
-from ..models import DeviceData
 from ..schema import schema
 from ..signals import device_metrics_received
 
 logger = logging.getLogger(__name__)
 Graph = load_model('monitoring', 'Graph')
 Metric = load_model('monitoring', 'Metric')
+DeviceData = load_model('device_monitoring', 'DeviceData')
 
 
 class DevicePermission(BasePermission):
@@ -48,9 +50,8 @@ class DeviceMetricView(GenericAPIView):
         except ValueError:
             return Response({'detail': 'not found'}, status=404)
         self.instance = self.get_object()
-        device_model = self.model.mro()[1]
         ct = ContentType.objects.get(
-            model=device_model.__name__.lower(), app_label=device_model._meta.app_label
+            model=Device.__name__.lower(), app_label=Device._meta.app_label
         )
         graphs = Graph.objects.filter(
             metric__object_id=pk, metric__content_type=ct

@@ -1,7 +1,7 @@
 from celery import shared_task
+from swapper import load_model
 
 from ..check.tasks import perform_check
-from .models import DeviceData
 
 
 @shared_task
@@ -11,6 +11,7 @@ def trigger_device_checks(pk):
     and calls the ``perform_check`` task from each of them.
     If no check exists changes the status to ``OK``.
     """
+    DeviceData = load_model('device_monitoring', 'DeviceData')
     device = DeviceData.objects.get(pk=pk)
     checks = device.checks.filter(active=True).only('id').values('id')
     for check in checks:

@@ -2,6 +2,8 @@
 
 from django.db import migrations
 
+import swapper
+
 
 class Migration(migrations.Migration):
 
@@ -15,7 +17,13 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='DeviceData',
             fields=[],
-            options={'indexes': [], 'proxy': True,},
+            options={
+                'indexes': [],
+                'proxy': True,
+                'swappable': swapper.swappable_setting(
+                    'device_monitoring', 'DeviceData'
+                ),
+            },
             bases=('config.device',),
         ),
     ]
