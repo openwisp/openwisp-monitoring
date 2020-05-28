@@ -1,7 +1,9 @@
 import json
+import random
 from collections import OrderedDict
 from datetime import datetime
 
+from cache_memoize import cache_memoize
 from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -25,6 +27,14 @@ from ..signals import health_status_changed
 from ..utils import SHORT_RP
 
 mac_lookup = MacLookup()
+
+
+def mac_lookup_cache_timeout():
+    """
+    returns a random number of hours between 12 and 36
+    this avoids timing out most of the cache at the same time
+    """
+    return 60 * 60 * random.randint(12, 36)
 
 
 class AbstractDeviceData(object):
@@ -150,6 +160,7 @@ class AbstractDeviceData(object):
         for lease in self.data.get('dhcp_leases', []):
             lease['vendor'] = self._mac_lookup(lease['mac_address'])
 
+    @cache_memoize(mac_lookup_cache_timeout())
     def _mac_lookup(self, value):
         if not value:
             return ''
