@@ -80,6 +80,9 @@ class AbstractDeviceData(object):
         # reorder interfaces in alphabetical order
         interface_dict = OrderedDict(sorted(interface_dict.items()))
         data['interfaces'] = list(interface_dict.values())
+        # reformat expiry in dhcp leases
+        for lease in data.get('dhcp_leases', []):
+            lease['expiry'] = datetime.fromtimestamp(lease['expiry'], tz=tz('UTC'))
         return data
 
     @property
@@ -144,6 +147,8 @@ class AbstractDeviceData(object):
             # in some cases the mac_address may not be present
             # eg: neighbors with "FAILED" state
             neighbor['vendor'] = self._mac_lookup(neighbor.get('mac_address'))
+        for lease in self.data.get('dhcp_leases', []):
+            lease['vendor'] = self._mac_lookup(lease['mac_address'])
 
     def _mac_lookup(self, value):
         if not value:

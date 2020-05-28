@@ -178,6 +178,22 @@ class BaseTestCase(DeviceMonitoringTestCase):
                 ],
             },
         ],
+        "dhcp_leases": [
+            {
+                "expiry": 1586943200,
+                "mac_address": "f2:f1:3e:56:d2:77",
+                "ip_address": "192.168.66.196",
+                "client_name": "MyPhone1",
+                "client_id": "01:20:f4:78:19:3b:38",
+            },
+            {
+                "expiry": 1586943200,
+                "mac_address": "f2:f1:3e:56:d2:77",
+                "ip_address": "fe80::9683:c4ff:fe02:c2bf",
+                "client_name": "MyPhone1",
+                "client_id": "01:20:f4:78:19:3b:38",
+            },
+        ],
         "neighbors": [
             {
                 "ip_address": "fe80::9683:c4ff:fe02:c2bf",
@@ -333,6 +349,19 @@ class TestDeviceData(BaseTestCase):
         else:
             self.fail('ValidationError not raised')
 
+    def test_bad_dhcp_lease_fail(self):
+        dd = self._create_device_data()
+        data = deepcopy(self._sample_data)
+        data['dhcp_leases'][0]['ip_address'] = '123'
+        try:
+            dd.data = data
+            dd.validate_data()
+        except ValidationError as e:
+            self.assertIn('Invalid data in', e.message)
+            self.assertIn("'123\' is not a \'ipv4\'", e.message)
+        else:
+            self.fail('ValidationError not raised')
+
     @patch('openwisp_monitoring.device.settings.MAC_VENDOR_DETECTION', True)
     def test_mac_vendor_info(self):
         dd = self.test_save_data()
@@ -347,6 +376,9 @@ class TestDeviceData(BaseTestCase):
         for neighbor in dd.data['neighbors']:
             self.assertIn('vendor', neighbor)
             self.assertEqual(neighbor['vendor'], vendor)
+        for lease in dd.data['dhcp_leases']:
+            self.assertIn('vendor', lease)
+            print(lease['vendor'])
 
     @patch('openwisp_monitoring.device.settings.MAC_VENDOR_DETECTION', True)
     def test_mac_vendor_info_empty(self):

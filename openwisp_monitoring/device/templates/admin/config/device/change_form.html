@@ -201,6 +201,37 @@
               </div>
               {% endfor %}
               {% endif %}
+              {% if device_data.dhcp_leases %}
+              <h2>{% trans 'DHCP leases' %}</h2>
+              <table class="dhcp-leases">
+                  <thead>
+                      <tr>
+                          <th class="ip">{% trans 'IP Address' %}</th>
+                          <th class="mac">{% trans 'MAC Address' %}</th>
+                          {% if MAC_VENDOR_DETECTION %}
+                          <th class="vendor">{% trans 'Vendor' %}</th>
+                          {% endif %}
+                          <th class="client-name">{% trans 'Client Name' %}</th>
+                          <th class="client-id">{% trans 'Client ID' %}</th>
+                          <th class="expiry">{% trans 'Expiry' %}</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {% for lease in device_data.dhcp_leases %}
+                      <tr>
+                          <td class="ip">{{ lease.ip_address }}</td>
+                          <td class="mac">{{ lease.mac_address }}</td>
+                          {% if MAC_VENDOR_DETECTION %}
+                          <td class="vendor">{{ lease.vendor }}</td>
+                          {% endif %}
+                          <td class="client-name">{{ lease.client_name }}</td>
+                          <td class="client-id">{{ lease.client_id }}</td>
+                          <td class="expiry">{{ lease.expiry }}</td>
+                      </tr>
+                      {% endfor %}
+                  </tbody>
+              </table>
+              {% endif %}
               {% if device_data.neighbors %}
               <h2>{% trans 'Neighbors' %}</h2>
               <table class="neighbors">

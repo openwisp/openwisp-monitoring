@@ -240,6 +240,33 @@ schema = {
                 },
             },
         },
+        "dhcp_leases": {
+            "type": "array",
+            "title": "DHCP leases",
+            "additionalItems": False,
+            "items": {
+                "type": "object",
+                "title": "DHCP lease",
+                "additionalProperties": False,
+                "properties": {
+                    "expiry": {"type": "number"},
+                    "ip_address": {
+                        "type": "string",
+                        "anyOf": [{"format": "ipv4"}, {"format": "ipv6"}],
+                    },
+                    "mac_address": {"type": "string"},
+                    "client_name": {"type": "string"},
+                    "client_id": {"type": "string"},
+                },
+                "required": [
+                    "expiry",
+                    "ip_address",
+                    "mac_address",
+                    "client_name",
+                    "client_id",
+                ],
+            },
+        },
         "neighbors": {
             "type": "array",
             "title": "Neighbors",
