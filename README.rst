@@ -94,9 +94,15 @@ Follow the setup instructions of `openwisp-controller
     ]
 
     # Make sure you change them in production
-    INFLUXDB_USER = 'openwisp'
-    INFLUXDB_PASSWORD = 'openwisp'
-    INFLUXDB_DATABASE = 'openwisp2'
+    # You can select one of the backends located in openwisp_monitoring.db.backends
+    TIMESERIES_DATABASE = {
+        'BACKEND': 'openwisp_monitoring.db.backends.influxdb',
+        'USER': 'openwisp',
+        'PASSWORD': 'openwisp',
+        'NAME': 'openwisp2',
+        'HOST': 'localhost',
+        'PORT': '8086',
+    }
 
 ``urls.py``:
 

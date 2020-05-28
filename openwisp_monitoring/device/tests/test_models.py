@@ -9,7 +9,7 @@ from swapper import load_model
 from openwisp_controller.connection.models import Credentials, DeviceConnection
 from openwisp_utils.tests import catch_signal
 
-from ...monitoring.utils import get_db
+from ...db import TimeseriesDB
 from .. import settings as app_settings
 from ..signals import health_status_changed
 from ..utils import SHORT_RP
@@ -306,7 +306,7 @@ class TestDeviceData(BaseTestCase):
         self.assertEqual(dd.data, self._sample_data)
 
     def test_retention_policy(self):
-        rp = get_db().get_list_retention_policies()
+        rp = TimeseriesDB().get_db().get_list_retention_policies()
         self.assertEqual(len(rp), 2)
         self.assertEqual(rp[1]['name'], SHORT_RP)
         self.assertEqual(rp[1]['default'], False)

@@ -3,28 +3,31 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 from django.apps import apps
+from django.conf import settings
 from django.test import TestCase
 from requests.exceptions import ConnectionError
 
-from ..utils import get_db
+from ...db import TimeseriesDB
+
+TIMESERIES_DB = getattr(settings, 'TIMESERIES_DATABASE')
 
 
-def mock_create_database(self, db):
+def mock_create_database(self, **kwargs):
     raise ConnectionError
 
 
 class TestDatabase(TestCase):
     app = 'monitoring'
 
-    @patch('openwisp_monitoring.monitoring.settings.INFLUXDB_DATABASE', 'test_db')
+    @patch.dict(TIMESERIES_DB, {'NAME': 'test_db'})
     @patch('openwisp_monitoring.monitoring.apps.MonitoringConfig.warn_and_delay')
-    @patch('influxdb.client.InfluxDBClient.create_database', mock_create_database)
+    @patch('openwisp_monitoring.db.TimeseriesDB.create_database', mock_create_database)
     def test_check_retry(self, mock):
         try:
             apps.get_app_config(self.app).create_database()
         except ConnectionError:
             pass
-        get_db().drop_database('test_db')
+        TimeseriesDB().drop_database('test_db')
         self.assertEqual(mock.call_count, 5)
 
     @patch('openwisp_monitoring.monitoring.apps.sleep', return_value=None)

@@ -16,13 +16,13 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.timezone import make_aware
 from django.utils.translation import gettext_lazy as _
-from influxdb.exceptions import InfluxDBClientError
 from openwisp_notifications.signals import notify
 from pytz import timezone as tz
 from swapper import get_model_name
 
 from openwisp_utils.base import TimeStampedEditableModel
 
+from ...db import TimeseriesDB, default_chart_query
 from ..charts import (
     DEFAULT_COLORS,
     get_chart_configuration,
@@ -30,7 +30,6 @@ from ..charts import (
 )
 from ..exceptions import InvalidChartConfigException
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
-from ..utils import query, write
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -167,7 +166,7 @@ class AbstractMetric(TimeStampedEditableModel):
             values.update(extra_values)
         signal_kwargs = dict(sender=self.__class__, metric=self, values=values)
         pre_metric_write.send(**signal_kwargs)
-        write(
+        TimeseriesDB().write(
             name=self.key,
             values=values,
             tags=self.tags,
@@ -181,30 +180,11 @@ class AbstractMetric(TimeStampedEditableModel):
             return
         self.check_threshold(value, time)
 
-    def read(self, since=None, limit=1, order=None, extra_fields=None):
+    def read(self, **kwargs):
         """ reads timeseries data """
-        fields = self.field_name
-        if extra_fields and extra_fields != '*':
-            fields = ', '.join([fields] + extra_fields)
-        elif extra_fields == '*':
-            fields = '*'
-        q = 'SELECT {fields} FROM {key}'.format(fields=fields, key=self.key)
-        tags = self.tags
-        conditions = []
-        if since:
-            conditions.append("time >= {0}".format(since))
-        if tags:
-            conditions.append(
-                ' AND '.join(["{0} = '{1}'".format(*tag) for tag in tags.items()])
-            )
-        if conditions:
-            conditions = 'WHERE %s' % ' AND '.join(conditions)
-            q = '{0} {1}'.format(q, conditions)
-        if order:
-            q = '{0} ORDER BY {1}'.format(q, order)
-        if limit:
-            q = '{0} LIMIT {1}'.format(q, limit)
-        return list(query(q, epoch='s').get_points())
+        return TimeseriesDB().read(
+            key=self.key, fields=self.field_name, tags=self.tags, **kwargs
+        )
 
     def _notify_users(self, notification_type, alert_settings):
         """ creates notifications for users """
@@ -281,8 +261,8 @@ class AbstractChart(TimeStampedEditableModel):
     def _clean_query(self):
         try:
             self._is_query_allowed(self.query)
-            query(self.get_query())
-        except InfluxDBClientError as e:
+            TimeseriesDB().query(self.get_query())
+        except TimeseriesDB().client_error as e:
             raise ValidationError({'configuration': e}) from e
         except InvalidChartConfigException as e:
             raise ValidationError({'configuration': str(e)}) from e
@@ -340,7 +320,7 @@ class AbstractChart(TimeStampedEditableModel):
     def query(self):
         query = self.config_dict['query']
         if query:
-            return query['influxdb']
+            return query
         return self._default_query
 
     @property
@@ -349,9 +329,9 @@ class AbstractChart(TimeStampedEditableModel):
 
     @property
     def _default_query(self):
-        q = "SELECT {field_name} FROM {key} WHERE time >= '{time}'"
+        q = default_chart_query[0]
         if self.metric.object_id:
-            q += " AND content_type = '{content_type}' AND object_id = '{object_id}'"
+            q += default_chart_query[1]
         return q
 
     _fields_regex = re.compile(
@@ -462,7 +442,7 @@ class AbstractChart(TimeStampedEditableModel):
         q = self.get_query(
             query=q, summary=True, fields=['SUM(*)'], time=time, timezone=timezone
         )
-        res = list(query(q, epoch='s').get_points())
+        res = list(TimeseriesDB().query(q, epoch='s').get_points())
         if not res:
             return []
         res = res[0]
@@ -495,9 +475,9 @@ class AbstractChart(TimeStampedEditableModel):
             else:
                 data_query = self.get_query(**query_kwargs)
                 summary_query = self.get_query(summary=True, **query_kwargs)
-            points = list(query(data_query, epoch='s').get_points())
-            summary = list(query(summary_query, epoch='s').get_points())
-        except InfluxDBClientError as e:
+            points = list(TimeseriesDB().query(data_query, epoch='s').get_points())
+            summary = list(TimeseriesDB().query(summary_query, epoch='s').get_points())
+        except TimeseriesDB().client_error as e:
             logging.error(e, exc_info=True)
             raise e
         for point in points:

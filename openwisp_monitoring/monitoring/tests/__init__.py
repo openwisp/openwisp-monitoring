@@ -5,8 +5,7 @@ from swapper import load_model
 
 from openwisp_users.tests.utils import TestOrganizationMixin
 
-from .. import settings as app_settings
-from ..utils import create_database, get_db, query
+from ...db import TimeseriesDB
 
 start_time = now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
@@ -16,21 +15,13 @@ AlertSettings = load_model('monitoring', 'AlertSettings')
 
 
 class TestMonitoringMixin(TestOrganizationMixin):
-    ORIGINAL_DB = app_settings.INFLUXDB_DATABASE
-    TEST_DB = '{0}_test'.format(ORIGINAL_DB)
-
     @classmethod
     def setUpClass(cls):
-        setattr(app_settings, 'INFLUXDB_DATABASE', cls.TEST_DB)
-        create_database()
+        TimeseriesDB().create_test_database()
 
     @classmethod
     def tearDownClass(cls):
-        get_db().drop_database(cls.TEST_DB)
-        setattr(app_settings, 'INFLUXDB_DATABASE', cls.ORIGINAL_DB)
-
-    def tearDown(self):
-        query('DROP SERIES FROM /.*/')
+        TimeseriesDB().drop_test_database()
 
     def _create_general_metric(self, **kwargs):
         opts = {

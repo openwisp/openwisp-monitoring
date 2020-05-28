@@ -1,4 +1,4 @@
-from ..monitoring.utils import get_db
+from ..db import TimeseriesDB
 from . import settings as app_settings
 
 SHORT_RP = 'short'
@@ -12,7 +12,7 @@ def manage_short_retention_policy():
     """
     creates or updates the "short" retention policy
     """
-    db = get_db()
+    db = TimeseriesDB().get_db()
     duration = app_settings.SHORT_RETENTION_POLICY
     retention_policies = db.get_list_retention_policies()
     exists = False

@@ -1,3 +1,4 @@
+import importlib
 import os
 import sys
 from datetime import timedelta
@@ -14,6 +15,15 @@ DATABASES = {
         'ENGINE': 'django.contrib.gis.db.backends.spatialite',
         'NAME': 'openwisp-monitoring.db',
     }
+}
+
+TIMESERIES_DATABASE = {
+    'BACKEND': 'openwisp_monitoring.db.backends.influxdb',
+    'USER': 'openwisp',
+    'PASSWORD': 'openwisp',
+    'NAME': 'openwisp2',
+    'HOST': 'localhost',
+    'PORT': '8086',
 }
 
 SECRET_KEY = 'fn)t*+$)ugeyip6-#txyy$5wf2ervc0d2n#h)qb)y5@ly$t*@w'
@@ -136,10 +146,6 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 OPENWISP_MONITORING_MANAGEMENT_IP_ONLY = False
 
-INFLUXDB_USER = 'openwisp'
-INFLUXDB_PASSWORD = 'openwisp'
-INFLUXDB_DATABASE = 'openwisp2'
-
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
@@ -170,6 +176,8 @@ CELERY_BEAT_SCHEDULE = {
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 CELERY_EMAIL_BACKEND = EMAIL_BACKEND
 
+test_query = importlib.import_module(TIMESERIES_DATABASE["BACKEND"]).queries.test_query
+
 # this custom chart configuration is used for automated testing purposes
 OPENWISP_MONITORING_CHARTS = {
     'histogram': {
@@ -178,13 +186,7 @@ OPENWISP_MONITORING_CHARTS = {
         'description': 'Histogram',
         'top_fields': 2,
         'order': 999,
-        'query': {
-            'influxdb': (
-                "SELECT {fields|SUM|/ 1} FROM {key} "
-                "WHERE time >= '{time}' AND content_type = "
-                "'{content_type}' AND object_id = '{object_id}'"
-            )
-        },
+        'query': test_query['histogram'],
     },
     'dummy': {
         'type': 'line',
@@ -200,7 +202,7 @@ OPENWISP_MONITORING_CHARTS = {
         'description': 'Bugged chart for testing purposes.',
         'unit': 'bugs',
         'order': 999,
-        'query': {'influxdb': "BAD"},
+        'query': test_query['bad_test'],
     },
     'default': {
         'type': 'line',
@@ -208,12 +210,7 @@ OPENWISP_MONITORING_CHARTS = {
         'description': 'Default query for testing purposes',
         'unit': 'n.',
         'order': 999,
-        'query': {
-            'influxdb': (
-                "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND "
-                "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
-        },
+        'query': test_query['default'],
     },
     'multiple_test': {
         'type': 'line',
@@ -221,12 +218,7 @@ OPENWISP_MONITORING_CHARTS = {
         'description': 'For testing purposes',
         'unit': 'n.',
         'order': 999,
-        'query': {
-            'influxdb': (
-                "SELECT {field_name}, value2 FROM {key} WHERE time >= '{time}' AND "
-                "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
-        },
+        'query': test_query['multiple_test'],
     },
     'mean_test': {
         'type': 'line',
@@ -234,12 +226,7 @@ OPENWISP_MONITORING_CHARTS = {
         'description': 'For testing purposes',
         'unit': 'n.',
         'order': 999,
-        'query': {
-            'influxdb': (
-                "SELECT MEAN({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
-                "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
-        },
+        'query': test_query['mean_test'],
     },
     'sum_test': {
         'type': 'line',
@@ -247,12 +234,7 @@ OPENWISP_MONITORING_CHARTS = {
         'description': 'For testing purposes',
         'unit': 'n.',
         'order': 999,
-        'query': {
-            'influxdb': (
-                "SELECT SUM({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
-                "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
-        },
+        'query': test_query['sum_test'],
     },
     'top_fields_mean': {
         'type': 'histogram',
@@ -260,13 +242,7 @@ OPENWISP_MONITORING_CHARTS = {
         'description': 'For testing purposes',
         'top_fields': 2,
         'order': 999,
-        'query': {
-            'influxdb': (
-                "SELECT {fields|MEAN} FROM {key} "
-                "WHERE time >= '{time}' AND content_type = "
-                "'{content_type}' AND object_id = '{object_id}'"
-            )
-        },
+        'query': test_query['top_fields_mean'],
     },
 }
 

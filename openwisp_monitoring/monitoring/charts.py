@@ -1,4 +1,5 @@
 from django.utils.translation import gettext_lazy as _
+from openwisp_monitoring.db import chart_query
 
 from . import settings as app_settings
 
@@ -44,13 +45,7 @@ DEFAULT_CHARTS = {
             ],
             'fixed_value': 100,
         },
-        'query': {
-            'influxdb': (
-                "SELECT MEAN({field_name})*100 AS uptime FROM {key} WHERE "
-                "time >= '{time}' AND content_type = '{content_type}' AND "
-                "object_id = '{object_id}' GROUP BY time(1d)"
-            )
-        },
+        'query': chart_query['uptime'],
     },
     'packet_loss': {
         'type': 'bar',
@@ -63,13 +58,7 @@ DEFAULT_CHARTS = {
         'unit': '%',
         'colors': [DEFAULT_COLORS[3]],
         'order': 210,
-        'query': {
-            'influxdb': (
-                "SELECT MEAN(loss) AS packet_loss FROM {key} WHERE "
-                "time >= '{time}' AND content_type = '{content_type}' AND "
-                "object_id = '{object_id}' GROUP BY time(1d)"
-            )
-        },
+        'query': chart_query['packet_loss'],
     },
     'rtt': {
         'type': 'scatter',
@@ -84,14 +73,7 @@ DEFAULT_CHARTS = {
         ],
         'unit': f' {_("ms")}',
         'order': 220,
-        'query': {
-            'influxdb': (
-                "SELECT MEAN(rtt_avg) AS RTT_average, MEAN(rtt_max) AS "
-                "RTT_max, MEAN(rtt_min) AS RTT_min FROM {key} WHERE "
-                "time >= '{time}' AND content_type = '{content_type}' AND "
-                "object_id = '{object_id}' GROUP BY time(1d)"
-            )
-        },
+        'query': chart_query['rtt'],
     },
     'wifi_clients': {
         'type': 'bar',
@@ -103,13 +85,7 @@ DEFAULT_CHARTS = {
         'summary_labels': [_('Total Unique WiFi clients')],
         'unit': '',
         'order': 230,
-        'query': {
-            'influxdb': (
-                "SELECT COUNT(DISTINCT({field_name})) AS wifi_clients FROM {key} "
-                "WHERE time >= '{time}' AND content_type = '{content_type}' "
-                "AND object_id = '{object_id}' GROUP BY time(1d)"
-            )
-        },
+        'query': chart_query['wifi_clients'],
     },
     'traffic': {
         'type': 'scatter',
@@ -122,14 +98,7 @@ DEFAULT_CHARTS = {
         'summary_labels': [_('Total download traffic'), _('Total upload traffic')],
         'unit': f' {_("GB")}',
         'order': 240,
-        'query': {
-            'influxdb': (
-                "SELECT SUM(tx_bytes) / 1000000000 AS upload, "
-                "SUM(rx_bytes) / 1000000000 AS download FROM {key} "
-                "WHERE time >= '{time}' AND content_type = '{content_type}' "
-                "AND object_id = '{object_id}' GROUP BY time(1d)"
-            )
-        },
+        'query': chart_query['traffic'],
     },
     'memory': {
         'type': 'scatter',
@@ -207,10 +176,7 @@ def get_chart_configuration():
         assert 'description' in options
         assert 'order' in options
         assert 'query' in options
-        if options['query'] is not None:
-            assert isinstance(options['query'], dict)
-            assert 'influxdb' in options['query']
-        else:
+        if options['query'] is None:
             assert 'unit' in options
         if 'colorscale' in options:
             assert 'max' in options['colorscale']
