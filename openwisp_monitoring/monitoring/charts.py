@@ -133,33 +133,35 @@ DEFAULT_CHARTS = {
     },
     'memory': {
         'type': 'scatter',
-        'title': _('Memory'),
-        'label': _('Memory'),
-        'description': _('Displays percentage of device memory being used'),
-        'summary_labels': [_('Buffered Memory'), _('Shared Memory'), _('Used Memory')],
+        'title': _('Memory Usage'),
+        'description': _('Percentage of memory (RAM) being used.'),
+        'summary_labels': [_('Memory Usage')],
         'unit': '%',
+        'colors': [DEFAULT_COLORS[4]],
         'order': 250,
         'query': {
             'influxdb': (
-                "SELECT 100*(1-((MEDIAN(free_memory)+MEDIAN(buffered_memory))/MEDIAN(total_memory))) "
-                "AS Used_Memory, 100*MEAN(buffered_memory)/MEAN(total_memory) AS Buffered_Memory, "
-                "100*MEAN(shared_memory)/MEAN(total_memory) AS Shared_Memory FROM {key} WHERE "
-                "time >= '{time}' AND content_type = '{content_type}' AND "
-                "object_id = '{object_id}' GROUP BY time(1d)"
+                "SELECT 100 * (1 - ((MEDIAN(free_memory) + MEDIAN(buffered_memory)) "
+                "/ MEDIAN(total_memory))) AS memory_usage "
+                "FROM {key} WHERE time >= '{time}' AND content_type = '{content_type}' "
+                "AND object_id = '{object_id}' GROUP BY time(1d)"
             )
         },
     },
     'load': {
         'type': 'scatter',
         'title': _('CPU Load'),
-        'label': _('CPU Load'),
-        'description': _('Displays average CPU Load of the device'),
+        'description': _(
+            'Average CPU load, measured using the Linux load averages, '
+            'taking into account the number of available CPUs.'
+        ),
         'summary_labels': [_('CPU Load')],
         'unit': '%',
+        'colors': [DEFAULT_COLORS[-3]],
         'order': 260,
         'query': {
             'influxdb': (
-                "SELECT 100*MEAN(load_1) AS CPU_Load FROM {key} WHERE "
+                "SELECT 100 * MEAN(load_1) AS CPU_load FROM {key} WHERE "
                 "time >= '{time}' AND content_type = '{content_type}' AND "
                 "object_id = '{object_id}' GROUP BY time(1d)"
             )
@@ -168,14 +170,16 @@ DEFAULT_CHARTS = {
     'disk': {
         'type': 'scatter',
         'title': _('Disk Usage'),
-        'label': _('Disk Usage'),
-        'description': _('Displays flash disk usage of the device'),
+        'description': _(
+            'Disk usage in percentage, calculated using all the available partitions.'
+        ),
         'summary_labels': [_('Disk Usage')],
         'unit': '%',
+        'colors': [DEFAULT_COLORS[-1]],
         'order': 270,
         'query': {
             'influxdb': (
-                "SELECT 100*MEAN(used_disk) AS Disk_Usage FROM {key} WHERE "
+                "SELECT 100 * MEAN(used_disk) AS disk_usage FROM {key} WHERE "
                 "time >= '{time}' AND content_type = '{content_type}' AND "
                 "object_id = '{object_id}' GROUP BY time(1d)"
             )

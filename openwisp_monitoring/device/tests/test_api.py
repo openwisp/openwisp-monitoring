@@ -341,11 +341,9 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                 'upload - Traffic: wlan0',
                 'download - Traffic: wlan1',
                 'upload - Traffic: wlan1',
-                'Buffered_Memory - Memory',
-                'Shared_Memory - Memory',
-                'Used_Memory - Memory',
-                'CPU_Load - CPU Load',
-                'Disk_Usage - Disk Usage',
+                'memory_usage - Memory Usage',
+                'CPU_load - CPU Load',
+                'disk_usage - Disk Usage',
             ],
         )
         last_line = rows[-1].strip().split(',')
@@ -359,8 +357,6 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                 '0.6',
                 '3',
                 '1.5',
-                '0.39',
-                '0.03',
                 '9.73',
                 '0',
                 '8.27',
