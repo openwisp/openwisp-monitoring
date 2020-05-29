@@ -73,7 +73,7 @@ class Ping(object):
             if path:
                 message = '{0} in "{1}"'.format(message, path)
             message = '{0}: {1}'.format(message, e.message)
-            raise ValidationError({'params': message})
+            raise ValidationError({'params': message}) from e
 
     def check(self, store=True):
         count = self._get_param('count')
@@ -114,9 +114,9 @@ class Ping(object):
                 i = -1
             sent, received, loss = parts[i].strip().split(',')[0].split('/')
             loss = float(loss.strip('%'))
-        except (IndexError, ValueError):
+        except (IndexError, ValueError) as e:
             message = 'Unrecognized fping output:\n\n{0}'.format(output)
-            raise OperationalError(message)
+            raise OperationalError(message) from e
         result = {
             'reachable': int(loss < 100),
             'loss': loss,
