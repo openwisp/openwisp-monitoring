@@ -1,3 +1,4 @@
+from copy import deepcopy
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -242,6 +243,16 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         )
         self.assertEqual(r.status_code, 400)
 
+    def test_no_resources(self):
+        o = self._create_org()
+        d = self._create_device(organization=o)
+        data = deepcopy(self._data())
+        data['resources'] = {}
+        r = self._post_data(d.id, d.key, data)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(Metric.objects.count(), 6)
+        self.assertEqual(Graph.objects.count(), 4)
+
     def test_wifi_clients_admin(self):
         self._login_admin()
         d = self._create_device(organization=self._create_org())
@@ -349,18 +360,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         last_line = rows[-1].strip().split(',')
         self.assertEqual(
             last_line,
-            [
-                last_line[0],
-                '1',
-                '2',
-                '1.2',
-                '0.6',
-                '3',
-                '1.5',
-                '9.73',
-                '0',
-                '8.27',
-            ],
+            [last_line[0], '1', '2', '1.2', '0.6', '3', '1.5', '9.73', '0', '8.27'],
         )
 
     def test_get_device_metrics_400_bad_timezone(self):

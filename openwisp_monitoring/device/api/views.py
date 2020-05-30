@@ -207,62 +207,77 @@ class DeviceMetricView(GenericAPIView):
                 self._create_clients_graph(metric)
         if 'resources' not in data:
             return
-        if 'load' in data['resources']:
-            extra_values = {
-                'load_5': data['resources']['load'][1],
-                'load_15': data['resources']['load'][2],
-            }
-            metric, created = Metric._get_or_create(
-                object_id=pk,
-                content_type=ct,
-                key='load',
-                field_name='load_1',
-                name='Resources: Load',
+        self._write_cpu(data['resources'], pk, ct)
+        self._write_disk(data['resources'], pk, ct)
+        self._write_memory(data['resources'], pk, ct)
+
+    def _write_cpu(self, resources, primary_key, content_type):
+        if 'load' not in resources:
+            return
+        extra_values = {
+            'load_5': float(resources['load'][1]),
+            'load_15': float(resources['load'][2]),
+        }
+        metric, created = Metric._get_or_create(
+            object_id=primary_key,
+            content_type=content_type,
+            key='load',
+            field_name='load_1',
+            name='Resources: Load',
+        )
+        metric.write(
+            float(resources['load'][0]), extra_values=extra_values,
+        )
+        if created:
+            self._create_resources_graph(metric, resource='load')
+            self._create_resources_threshold(
+                metric, resource='load', cpus=resources['cpus']
             )
-            metric.write(
-                data['resources']['load'][0], extra_values=extra_values,
-            )
-            if created:
-                self._create_resources_graph(metric, resource='load')
-                self._create_resources_threshold(metric, resource='load')
-        if 'disk' in data['resources']:
-            used_percent = 0
-            for disk in data['resources']['disk']:
-                used_percent += disk['used_percent']
-            used_percent = used_percent / len(data['resources']['disk']) / 100
-            used_bytes, size_bytes = 0, 0
-            for disk in data['resources']['disk']:
-                used_bytes += disk['used_bytes']
-                size_bytes += disk['size_bytes']
-            metric, created = Metric._get_or_create(
-                object_id=pk,
-                content_type=ct,
-                key='disk',
-                field_name='used_disk',
-                name='Resources: Disk',
-            )
-            metric.write(used_bytes / size_bytes)
-            if created:
-                self._create_resources_graph(metric, resource='disk')
-                self._create_resources_threshold(metric, resource='disk')
-        if 'memory' in data['resources']:
-            memory = data['resources']['memory']
-            extra_values = {
-                'total_memory': memory['total'],
-                'buffered_memory': memory['buffered'],
-                'shared_memory': memory['shared'],
-            }
-            metric, created = Metric._get_or_create(
-                object_id=pk,
-                content_type=ct,
-                key='memory',
-                field_name='free_memory',
-                name='Resources: Memory',
-            )
-            metric.write(memory['free'], extra_values=extra_values)
-            if created:
-                self._create_resources_graph(metric, resource='memory')
-                self._create_resources_threshold(metric, resource='memory')
+
+    def _write_disk(self, resources, primary_key, content_type):
+        if 'disk' not in resources:
+            return
+        used_bytes, size_bytes, available_bytes = 0, 0, 0
+        for disk in resources['disk']:
+            used_bytes += disk['used_bytes']
+            size_bytes += disk['size_bytes']
+            available_bytes += disk['available_bytes']
+        metric, created = Metric._get_or_create(
+            object_id=primary_key,
+            content_type=content_type,
+            key='disk',
+            field_name='used_disk',
+            name='Resources: Disk',
+        )
+        metric.write(used_bytes / size_bytes)
+        if created:
+            self._create_resources_graph(metric, resource='disk')
+            self._create_resources_threshold(metric, resource='disk')
+
+    def _write_memory(self, resources, primary_key, content_type):
+        if 'memory' not in resources:
+            return
+        memory = resources['memory']
+        extra_values = {
+            'total_memory': memory['total'],
+            'free_memory': memory['free'],
+            'buffered_memory': memory['buffered'],
+            'shared_memory': memory['shared'],
+            'available_memory': memory['available'],
+            'cached_memory': memory['cached'],
+        }
+        metric, created = Metric._get_or_create(
+            object_id=primary_key,
+            content_type=content_type,
+            key='memory',
+            field_name='used_memory',
+            name='Resources: Memory',
+        )
+        used_memory = 1 - (memory['free'] + memory['buffered']) / memory['total']
+        metric.write(used_memory, extra_values=extra_values)
+        if created:
+            self._create_resources_graph(metric, resource='memory')
+            self._create_resources_threshold(metric, resource='memory')
 
     def _calculate_increment(self, ifname, stat, value):
         """
@@ -318,8 +333,10 @@ class DeviceMetricView(GenericAPIView):
         graph.full_clean()
         graph.save()
 
-    def _create_resources_threshold(self, metric, resource):
+    def _create_resources_threshold(self, metric, resource, cpus=None):
         value = DEVICE_RESOURCES_THRESHOLDS[resource]
+        if resource == 'load':
+            value = value * cpus
         t = Threshold(metric=metric, operator='>', value=value, seconds=0)
         t.full_clean()
         t.save()

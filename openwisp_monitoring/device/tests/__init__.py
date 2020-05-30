@@ -43,6 +43,7 @@ class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
                     'shared': 86016,
                     'free': 224497664,
                     'cached': 6774784,
+                    'available': 223397664,
                     'buffered': 974848,
                 },
                 'load': [0, 0, 0],
