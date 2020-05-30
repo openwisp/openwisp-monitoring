@@ -296,18 +296,18 @@ class AbstractGraph(TimeStampedEditableModel):
             self._is_query_allowed(self.query)
             query(self.get_query())
         except InfluxDBClientError as e:
-            raise ValidationError({'configuration': e})
+            raise ValidationError({'configuration': e}) from e
         except InvalidChartConfigException as e:
-            raise ValidationError({'configuration': str(e)})
+            raise ValidationError({'configuration': str(e)}) from e
 
     @property
     def config_dict(self):
         try:
             return self.CHARTS[self.configuration]
-        except KeyError:
+        except KeyError as e:
             raise InvalidChartConfigException(
                 f'Invalid chart configuration: "{self.configuration}"'
-            )
+            ) from e
 
     @property
     def type(self):
