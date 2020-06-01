@@ -5,6 +5,7 @@ from swapper import swappable_setting
 
 
 class Check(AbstractCheck):
+    # This field has been added only for testing purposes
     last_called = models.DateTimeField(blank=True, null=True)
 
     class Meta(AbstractCheck.Meta):
@@ -13,9 +14,10 @@ class Check(AbstractCheck):
 
     def perform_check(self, store=True):
         """
-        initiates check instance and calls its check method
+        This method has been added for testing `last_called` field.
+        It need not be added to retain original behaviour.
         """
         self.last_called = now()
         self.full_clean()
         self.save()
-        return self.check_instance.check(store=True)
+        return super().perform_check(store=store)
