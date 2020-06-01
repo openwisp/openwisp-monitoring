@@ -1,6 +1,6 @@
 from swapper import swappable_setting
 
-from .base.models import AbstractGraph, AbstractMetric, AbstractThreshold
+from .base.models import AbstractAlertSettings, AbstractGraph, AbstractMetric
 
 
 class Metric(AbstractMetric):
@@ -15,7 +15,8 @@ class Graph(AbstractGraph):
         swappable = swappable_setting('monitoring', 'Graph')
 
 
-class Threshold(AbstractThreshold):
-    class Meta(AbstractThreshold.Meta):
+class AlertSettings(AbstractAlertSettings):
+    class Meta(AbstractAlertSettings.Meta):
         abstract = False
-        swappable = swappable_setting('monitoring', 'Threshold')
+        db_table = 'monitoring_alertsettings'
+        swappable = swappable_setting('monitoring', 'AlertSettings')

@@ -14,7 +14,7 @@ start_time = now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
 Graph = load_model('monitoring', 'Graph')
 Metric = load_model('monitoring', 'Metric')
-Threshold = load_model('monitoring', 'Threshold')
+AlertSettings = load_model('monitoring', 'AlertSettings')
 
 
 class TestMonitoringMixin(TestOrganizationMixin):
@@ -53,11 +53,11 @@ class TestMonitoringMixin(TestOrganizationMixin):
             kwargs['is_healthy'] = True  # backward compatibility with old tests
         return self._create_general_metric(**opts)
 
-    def _create_threshold(self, **kwargs):
-        t = Threshold(**kwargs)
-        t.full_clean()
-        t.save()
-        return t
+    def _create_alert_settings(self, **kwargs):
+        alert_s = AlertSettings(**kwargs)
+        alert_s.full_clean()
+        alert_s.save()
+        return alert_s
 
     def _create_graph(
         self, metric=None, test_data=True, configuration='dummy',

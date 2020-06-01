@@ -308,7 +308,7 @@ if os.environ.get('SAMPLE_APP', False):
     CHECK_CHECK_MODEL = 'sample_check.Check'
     MONITORING_GRAPH_MODEL = 'sample_monitoring.Graph'
     MONITORING_METRIC_MODEL = 'sample_monitoring.Metric'
-    MONITORING_THRESHOLD_MODEL = 'sample_monitoring.Threshold'
+    MONITORING_ALERTSETTINGS_MODEL = 'sample_monitoring.AlertSettings'
     DEVICE_MONITORING_DEVICEDATA_MODEL = 'sample_device_monitoring.DeviceData'
     DEVICE_MONITORING_DEVICEMONITORING_MODEL = (
         'sample_device_monitoring.DeviceMonitoring'

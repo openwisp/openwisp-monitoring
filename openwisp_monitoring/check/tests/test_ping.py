@@ -11,7 +11,7 @@ from ..classes import Ping
 from ..exceptions import OperationalError
 
 Graph = load_model('monitoring', 'Graph')
-Threshold = load_model('monitoring', 'Threshold')
+AlertSettings = load_model('monitoring', 'AlertSettings')
 Metric = load_model('monitoring', 'Metric')
 Check = load_model('check', 'Check')
 
@@ -203,12 +203,12 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(Check.objects.count(), 1)
         self.assertEqual(Metric.objects.count(), 0)
         self.assertEqual(Graph.objects.count(), 0)
-        self.assertEqual(Threshold.objects.count(), 0)
+        self.assertEqual(AlertSettings.objects.count(), 0)
         check = Check.objects.first()
         result = check.perform_check()
         self.assertEqual(Metric.objects.count(), 1)
         self.assertEqual(Graph.objects.count(), 3)
-        self.assertEqual(Threshold.objects.count(), 1)
+        self.assertEqual(AlertSettings.objects.count(), 1)
         m = Metric.objects.first()
         self.assertEqual(m.content_object, device)
         self.assertEqual(m.key, 'ping')

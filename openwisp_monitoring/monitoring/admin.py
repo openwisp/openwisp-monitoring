@@ -6,11 +6,11 @@ from openwisp_utils.admin import TimeReadonlyAdminMixin
 
 Graph = load_model('monitoring', 'Graph')
 Metric = load_model('monitoring', 'Metric')
-Threshold = load_model('monitoring', 'Threshold')
+AlertSettings = load_model('monitoring', 'AlertSettings')
 
 
-class ThresholdInline(TimeReadonlyAdminMixin, admin.StackedInline):
-    model = Threshold
+class AlertSettingsInline(TimeReadonlyAdminMixin, admin.StackedInline):
+    model = AlertSettings
     extra = 0
 
 
@@ -27,7 +27,7 @@ class MetricAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
     readonly_fields = ['is_healthy']
     search_fields = ['name']
     save_on_top = True
-    inlines = [GraphInline, ThresholdInline]
+    inlines = [GraphInline, AlertSettingsInline]
     fieldsets = [
         (None, {'fields': ('name', 'description', 'content_type', 'object_id',)}),
         (
@@ -41,8 +41,8 @@ class MetricAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
         js = ('monitoring/js/plotly-cartesian.min.js', 'monitoring/js/graph.js')
 
 
-@admin.register(Threshold)
-class ThresholdAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
+@admin.register(AlertSettings)
+class AlertSettingsAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
     list_display = ['metric', 'created', 'modified']
     search_fields = ['name']
     save_on_top = True

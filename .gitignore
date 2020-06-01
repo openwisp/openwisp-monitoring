@@ -66,3 +66,6 @@ local_settings.py
 
 # celery
 tests/celerybeat*
+
+# editor
+.vscode

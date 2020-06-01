@@ -1,8 +1,8 @@
 from django.db import models
 from openwisp_monitoring.monitoring.base.models import (
+    AbstractAlertSettings,
     AbstractGraph,
     AbstractMetric,
-    AbstractThreshold,
 )
 
 
@@ -23,6 +23,6 @@ class Graph(DetailsModel, AbstractGraph):
         abstract = False
 
 
-class Threshold(DetailsModel, AbstractThreshold):
-    class Meta(AbstractThreshold.Meta):
+class AlertSettings(DetailsModel, AbstractAlertSettings):
+    class Meta(AbstractAlertSettings.Meta):
         abstract = False

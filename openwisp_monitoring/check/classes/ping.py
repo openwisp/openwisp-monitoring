@@ -14,7 +14,7 @@ from ..exceptions import OperationalError
 
 Graph = load_model('monitoring', 'Graph')
 Metric = load_model('monitoring', 'Metric')
-Threshold = load_model('monitoring', 'Threshold')
+AlertSettings = load_model('monitoring', 'AlertSettings')
 
 
 class Ping(object):
@@ -183,14 +183,14 @@ class Ping(object):
         )
         metric, created = Metric.objects.get_or_create(**options)
         if created:
-            self._create_threshold(metric)
+            self._create_alert_settings(metric)
             self._create_graphs(metric)
         return metric
 
-    def _create_threshold(self, metric):
-        t = Threshold(metric=metric, operator='<', value=1, seconds=0)
-        t.full_clean()
-        t.save()
+    def _create_alert_settings(self, metric):
+        alert_settings = AlertSettings(metric=metric, operator='<', value=1, seconds=0)
+        alert_settings.full_clean()
+        alert_settings.save()
 
     def _create_graphs(self, metric):
         """
