@@ -12,7 +12,7 @@ from ... import settings as monitoring_settings
 from .. import settings as app_settings
 from ..exceptions import OperationalError
 
-Graph = load_model('monitoring', 'Graph')
+Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 
@@ -184,7 +184,7 @@ class Ping(object):
         metric, created = Metric.objects.get_or_create(**options)
         if created:
             self._create_alert_settings(metric)
-            self._create_graphs(metric)
+            self._create_charts(metric)
         return metric
 
     def _create_alert_settings(self, metric):
@@ -192,14 +192,14 @@ class Ping(object):
         alert_settings.full_clean()
         alert_settings.save()
 
-    def _create_graphs(self, metric):
+    def _create_charts(self, metric):
         """
-        Creates device graphs if necessary
+        Creates device charts if necessary
         """
-        graphs = ['uptime', 'packet_loss', 'rtt']
-        for graph in graphs:
-            if graph not in monitoring_settings.AUTO_GRAPHS:
+        charts = ['uptime', 'packet_loss', 'rtt']
+        for chart in charts:
+            if chart not in monitoring_settings.AUTO_CHARTS:
                 continue
-            graph = Graph(metric=metric, configuration=graph)
-            graph.full_clean()
-            graph.save()
+            chart = Chart(metric=metric, configuration=chart)
+            chart.full_clean()
+            chart.save()

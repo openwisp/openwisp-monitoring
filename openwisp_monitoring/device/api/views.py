@@ -26,7 +26,7 @@ from ..settings import DEVICE_RESOURCES_THRESHOLDS
 from ..signals import device_metrics_received
 
 logger = logging.getLogger(__name__)
-Graph = load_model('monitoring', 'Graph')
+Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 Threshold = load_model('monitoring', 'Threshold')
 DeviceData = load_model('device_monitoring', 'DeviceData')
@@ -55,12 +55,12 @@ class DeviceMetricView(GenericAPIView):
         ct = ContentType.objects.get(
             model=Device.__name__.lower(), app_label=Device._meta.app_label
         )
-        graphs = Graph.objects.filter(
+        charts = Chart.objects.filter(
             metric__object_id=pk, metric__content_type=ct
         ).select_related('metric')
         # determine time range
-        time = request.query_params.get('time', Graph.DEFAULT_TIME)
-        if time not in Graph.GROUP_MAP.keys():
+        time = request.query_params.get('time', Chart.DEFAULT_TIME)
+        if time not in Chart.GROUP_MAP.keys():
             return Response({'detail': 'Time range not supported'}, status=400)
         # try to read timezone
         timezone = request.query_params.get('timezone', settings.TIME_ZONE)
@@ -69,7 +69,7 @@ class DeviceMetricView(GenericAPIView):
         except UnknownTimeZoneError:
             return Response('Unkown Time Zone', status=400)
         # prepare response data
-        data = self._get_graphs_data(graphs, time, timezone)
+        data = self._get_charts_data(charts, time, timezone)
         # csv export has a different response
         if request.query_params.get('csv'):
             response = HttpResponse(self._get_csv(data), content_type='text/csv')
@@ -77,45 +77,45 @@ class DeviceMetricView(GenericAPIView):
             return response
         return Response(data)
 
-    def _get_graphs_data(self, graphs, time, timezone):
-        graph_map = {}
+    def _get_charts_data(self, charts, time, timezone):
+        chart_map = {}
         x_axys = True
-        data = OrderedDict({'graphs': []})
-        for graph in graphs:
-            # prepare graph dict
+        data = OrderedDict({'charts': []})
+        for chart in charts:
+            # prepare chart dict
             try:
-                graph_dict = graph.read(time=time, x_axys=x_axys, timezone=timezone)
-                graph_dict['description'] = graph.description
-                graph_dict['title'] = graph.title.format(metric=graph.metric)
-                graph_dict['type'] = graph.type
-                graph_dict['unit'] = graph.unit
-                graph_dict['summary_labels'] = graph.summary_labels
-                graph_dict['colors'] = graph.colors
-                graph_dict['colorscale'] = graph.colorscale
+                chart_dict = chart.read(time=time, x_axys=x_axys, timezone=timezone)
+                chart_dict['description'] = chart.description
+                chart_dict['title'] = chart.title.format(metric=chart.metric)
+                chart_dict['type'] = chart.type
+                chart_dict['unit'] = chart.unit
+                chart_dict['summary_labels'] = chart.summary_labels
+                chart_dict['colors'] = chart.colors
+                chart_dict['colorscale'] = chart.colorscale
             except InvalidChartConfigException:
-                logger.exception(f'Skipped graph for metric {graph.metric}')
+                logger.exception(f'Skipped chart for metric {chart.metric}')
                 continue
             # get x axys (only once)
-            if x_axys and graph_dict['x'] and graph.type != 'histogram':
-                data['x'] = graph_dict.pop('x')
+            if x_axys and chart_dict['x'] and chart.type != 'histogram':
+                data['x'] = chart_dict.pop('x')
                 x_axys = False
             # prepare to sort the items according to
             # the order in the chart configuration
-            key = f'{graph.order} {graph_dict["title"]}'
-            graph_map[key] = graph_dict
-        # add sorted graph list to graph data
-        data['graphs'] = list(OrderedDict(sorted(graph_map.items())).values())
+            key = f'{chart.order} {chart_dict["title"]}'
+            chart_map[key] = chart_dict
+        # add sorted chart list to chart data
+        data['charts'] = list(OrderedDict(sorted(chart_map.items())).values())
         return data
 
     def _get_csv(self, data):
         header = ['time']
         columns = [data['x']]
-        for graph in data['graphs']:
+        for chart in data['charts']:
             # TODO: add way to export data for histogram charts
-            if graph['type'] == 'histogram':
+            if chart['type'] == 'histogram':
                 continue
-            for trace in graph['traces']:
-                header.append(self._get_csv_header(graph, trace))
+            for trace in chart['traces']:
+                header.append(self._get_csv_header(chart, trace))
                 columns.append(trace[1])
         rows = [header]
         for index, element in enumerate(data['x']):
@@ -128,9 +128,9 @@ class DeviceMetricView(GenericAPIView):
         csv.writer(fileobj).writerows(rows)
         return fileobj.getvalue()
 
-    def _get_csv_header(self, graph, trace):
+    def _get_csv_header(self, chart, trace):
         header = trace[0]
-        return f'{header} - {graph["title"]}'
+        return f'{header} - {chart["title"]}'
 
     def post(self, request, pk):
         self.instance = self.get_object()
@@ -186,7 +186,7 @@ class DeviceMetricView(GenericAPIView):
                 increment = self._calculate_increment(ifname, key, value)
                 metric.write(increment)
                 if created:
-                    self._create_traffic_graph(metric)
+                    self._create_traffic_chart(metric)
             try:
                 clients = interface['wireless']['clients']
             except KeyError:
@@ -206,7 +206,7 @@ class DeviceMetricView(GenericAPIView):
                     continue
                 metric.write(client['mac'])
             if created:
-                self._create_clients_graph(metric)
+                self._create_clients_chart(metric)
         if 'resources' not in data:
             return
         if 'load' in data['resources'] and 'cpus' in data['resources']:
@@ -235,7 +235,7 @@ class DeviceMetricView(GenericAPIView):
             float(load[0] / cpus), extra_values=extra_values,
         )
         if created:
-            self._create_resources_graph(metric, resource='cpu')
+            self._create_resources_chart(metric, resource='cpu')
             self._create_resources_threshold(metric, resource='cpu')
 
     def _write_disk(self, disk_list, primary_key, content_type):
@@ -253,7 +253,7 @@ class DeviceMetricView(GenericAPIView):
         )
         metric.write(used_bytes / size_bytes)
         if created:
-            self._create_resources_graph(metric, resource='disk')
+            self._create_resources_chart(metric, resource='disk')
             self._create_resources_threshold(metric, resource='disk')
 
     def _write_memory(self, memory, primary_key, content_type):
@@ -282,7 +282,7 @@ class DeviceMetricView(GenericAPIView):
         )
         metric.write(percent_used, extra_values=extra_values)
         if created:
-            self._create_resources_graph(metric, resource='memory')
+            self._create_resources_chart(metric, resource='memory')
             self._create_resources_threshold(metric, resource='memory')
 
     def _calculate_increment(self, ifname, stat, value):
@@ -309,35 +309,35 @@ class DeviceMetricView(GenericAPIView):
         else:
             return value
 
-    def _create_traffic_graph(self, metric):
+    def _create_traffic_chart(self, metric):
         """
-        create "traffic (GB)" graph
+        create "traffic (GB)" chart
         """
         if (
             metric.field_name != 'tx_bytes'
-            or 'traffic' not in monitoring_settings.AUTO_GRAPHS
+            or 'traffic' not in monitoring_settings.AUTO_CHARTS
         ):
             return
-        graph = Graph(metric=metric, configuration='traffic',)
-        graph.full_clean()
-        graph.save()
+        chart = Chart(metric=metric, configuration='traffic',)
+        chart.full_clean()
+        chart.save()
 
-    def _create_clients_graph(self, metric):
+    def _create_clients_chart(self, metric):
         """
-        creates "WiFi associations" graph
+        creates "WiFi associations" chart
         """
-        if 'wifi_clients' not in monitoring_settings.AUTO_GRAPHS:
+        if 'wifi_clients' not in monitoring_settings.AUTO_CHARTS:
             return
-        graph = Graph(metric=metric, configuration='wifi_clients',)
-        graph.full_clean()
-        graph.save()
+        chart = Chart(metric=metric, configuration='wifi_clients',)
+        chart.full_clean()
+        chart.save()
 
-    def _create_resources_graph(self, metric, resource):
-        if resource not in monitoring_settings.AUTO_GRAPHS:
+    def _create_resources_chart(self, metric, resource):
+        if resource not in monitoring_settings.AUTO_CHARTS:
             return
-        graph = Graph(metric=metric, configuration=resource)
-        graph.full_clean()
-        graph.save()
+        chart = Chart(metric=metric, configuration=resource)
+        chart.full_clean()
+        chart.save()
 
     def _create_resources_threshold(self, metric, resource):
         value = DEVICE_RESOURCES_THRESHOLDS[resource]

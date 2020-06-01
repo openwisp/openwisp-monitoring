@@ -200,7 +200,7 @@ class AbstractMetric(TimeStampedEditableModel):
         notify.send(**opts)
 
 
-class AbstractGraph(TimeStampedEditableModel):
+class AbstractChart(TimeStampedEditableModel):
     CHARTS = get_chart_configuration()
     metric = models.ForeignKey(
         get_model_name('monitoring', 'Metric'), on_delete=models.CASCADE
@@ -500,7 +500,7 @@ class AbstractGraph(TimeStampedEditableModel):
             if x_axys:
                 x.append(time)
         # prepare result to be returned
-        # (transform graph data so its order is not random)
+        # (transform chart data so its order is not random)
         result = {'traces': sorted(traces.items())}
         if x_axys:
             result['x'] = x

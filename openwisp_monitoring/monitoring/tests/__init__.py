@@ -12,7 +12,7 @@ from ..utils import create_database, get_db, query
 User = get_user_model()
 start_time = now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
-Graph = load_model('monitoring', 'Graph')
+Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 
@@ -59,7 +59,7 @@ class TestMonitoringMixin(TestOrganizationMixin):
         alert_s.save()
         return alert_s
 
-    def _create_graph(
+    def _create_chart(
         self, metric=None, test_data=True, configuration='dummy',
     ):
         m = metric or self._create_object_metric()
@@ -67,7 +67,7 @@ class TestMonitoringMixin(TestOrganizationMixin):
             m.write(3, time=now() - timedelta(days=2))
             m.write(6, time=now() - timedelta(days=1))
             m.write(9, time=now())
-        g = Graph(metric=m, configuration=configuration,)
-        g.full_clean()
-        g.save()
-        return g
+        c = Chart(metric=m, configuration=configuration,)
+        c.full_clean()
+        c.save()
+        return c

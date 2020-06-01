@@ -1,8 +1,8 @@
 from django.conf import settings
 
-AUTO_GRAPHS = getattr(
+AUTO_CHARTS = getattr(
     settings,
-    'OPENWISP_MONITORING_AUTO_GRAPHS',
+    'OPENWISP_MONITORING_AUTO_CHARTS',
     (
         'traffic',
         'wifi_clients',

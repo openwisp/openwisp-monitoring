@@ -21,15 +21,15 @@ class TestModels(TestMonitoringMixin, TestCase):
         m = Metric(name='Test metric')
         self.assertEqual(str(m), m.name)
 
-    def test_graph_str(self):
-        g = self._create_graph()
-        self.assertEqual(str(g), g.label)
+    def test_chart_str(self):
+        c = self._create_chart()
+        self.assertEqual(str(c), c.label)
 
-    def test_graph_no_valid_config(self):
-        g = self._create_graph()
-        g.configuration = 'invalid'
+    def test_chart_no_valid_config(self):
+        c = self._create_chart()
+        c.configuration = 'invalid'
         try:
-            g.full_clean()
+            c.full_clean()
         except ValidationError as e:
             self.assertIn('configuration', e.message_dict)
         else:
