@@ -23,11 +23,11 @@ Available Features
 ------------------
 
 * Displays ``Uptime``, ``Memory Status``, ``Load Status``, ``Addresses``, ``Neighbours`` of the **Device**
-* Displays ``Monitoring Graphs`` namely ``Uptime``, ``Packet Loss``, ``Round Trip Time``, ``Traffic`` in the form of lively charts
-* ``Monitoring Graphs`` can be viewed at resolutions of 1 day, 3 days, a week, a month and a year
+* Displays ``Monitoring Charts`` namely ``Uptime``, ``Packet Loss``, ``Round Trip Time``, ``Traffic`` in the form of lively charts
+* ``Monitoring Charts`` can be viewed at resolutions of 1 day, 3 days, a week, a month and a year
 * CSV Export of monitoring data
 * It allows you to add custom `Charts <https://github.com/openwisp/openwisp-monitoring/#openwisp_monitoring_charts>`_
-* It allows to create custom ``Metric``, select a ``Chart`` and set a ``Threshold``
+* It allows to create custom ``Metric``, select a ``Chart`` and set a ``AlertSettings``
 * Configurable alerts and web notifications
 
 Install Dependencies
@@ -199,7 +199,7 @@ Everything is working normally.
 ~~~~~~~~~~~
 
 One of the metrics has a value which is not in the expected range
-(threshold value crossed).
+(AlertsSettings value crossed).
 
 Example: CPU usage should be less than 90% but current value is at 95%.
 
@@ -208,7 +208,7 @@ Example: CPU usage should be less than 90% but current value is at 95%.
 
 One of the metrics defined in ``OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS``
 has a value which is not in the expected range
-(threshold value crossed).
+(AlertsSettings value crossed).
 
 Example: ping is by default a critical metric which is expected to be always 1
 (reachable).
@@ -242,7 +242,7 @@ in terms of disk space.
 
 Whether ping checks are created automatically for devices.
 
-``OPENWISP_MONITORING_AUTO_GRAPHS``
+``OPENWISP_MONITORING_AUTO_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +--------------+-----------------------------------------------------------------+
@@ -251,7 +251,7 @@ Whether ping checks are created automatically for devices.
 | **default**: | ``('traffic', 'wifi_clients', 'uptime', 'packet_loss', 'rtt')`` |
 +--------------+-----------------------------------------------------------------+
 
-Automatically created graphs.
+Automatically created charts.
 
 ``OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -262,7 +262,7 @@ Automatically created graphs.
 | **default**: | ``[{'key': 'ping', 'field_name': 'reachable'}]``                |
 +--------------+-----------------------------------------------------------------+
 
-Device metrics that are considered critical: when a threshold related to
+Device metrics that are considered critical: when a ``AlertSettings`` related to
 one of this type of metric is crossed, the health status of the device related
 to the metric moves into ``CRITICAL``.
 
@@ -333,7 +333,7 @@ This setting allows to define additional charts or to override
 the default chart configuration defined in
 ``openwisp_monitoring.monitoring.charts.DEFAULT_CHARTS``.
 
-For example, if you want to change the traffic graph to show
+For example, if you want to change the traffic chart to show
 MB (megabytes) instead of GB (Gigabytes) you can use:
 
 .. code-block:: python
@@ -658,9 +658,9 @@ Add the following to your ``settings.py``:
     # For extending check app
     CHECK_CHECK_MODEL = 'YOUR_MODULE_NAME.Check'
     # For extending monitoring app
-    MONITORING_GRAPH_MODEL = 'YOUR_MODULE_NAME.Graph'
+    MONITORING_CHART_MODEL = 'YOUR_MODULE_NAME.Chart'
     MONITORING_METRIC_MODEL = 'YOUR_MODULE_NAME.Metric'
-    MONITORING_THRESHOLD_MODEL = 'YOUR_MODULE_NAME.Threshold'
+    MONITORING_ALERTSETTINGS_MODEL = 'YOUR_MODULE_NAME.AlertSettings'
     # For extending device_monitoring app
     DEVICE_MONITORING_DEVICEDATA_MODEL = 'YOUR_MODULE_NAME.DeviceData'
     DEVICE_MONITORING_DEVICEMONITORING_MODEL = 'YOUR_MODULE_NAME.DeviceMonitoring'
@@ -720,12 +720,12 @@ Similarly for ``monitoring`` app, you can do it as:
 
 .. code-block:: python
 
-    from openwisp_monitoring.monitoring.admin import MetricAdmin, ThresholdAdmin
+    from openwisp_monitoring.monitoring.admin import MetricAdmin, AlertSettingsAdmin
 
     MetricAdmin.list_display.insert(1, 'my_custom_field')
     MetricAdmin.ordering = ['-my_custom_field']
-    ThresholdAdmin.list_display.insert(1, 'my_custom_field')
-    ThresholdAdmin.ordering = ['-my_custom_field']
+    AlertSettingsAdmin.list_display.insert(1, 'my_custom_field')
+    AlertSettingsAdmin.ordering = ['-my_custom_field']
 
 2. Inheriting admin classes
 ###########################
@@ -771,21 +771,21 @@ For ``monitoring`` app,
 
     from django.contrib import admin
 
-    from openwisp_monitoring.monitoring.admin import ThresholdAdmin as BaseThresholdAdmin, MetricAdmin as BaseMetricAdmin
+    from openwisp_monitoring.monitoring.admin import AlertSettingsAdmin as BaseAlertSettingsAdmin, MetricAdmin as BaseMetricAdmin
     from swapper import load_model
 
     Metric = load_model('Metric')
-    Threshold = load_model('Threshold')
+    AlertSettings = load_model('AlertSettings')
 
     admin.site.unregister(Metric)
-    admin.site.unregister(Threshold)
+    admin.site.unregister(AlertSettings)
 
     @admin.register(Metric)
     class MetricAdmin(BaseMetricAdmin):
         # add your changes here
 
-    @admin.register(Threshold)
-    class ThresholdAdmin(BaseThresholdAdmin):
+    @admin.register(AlertSettings)
+    class AlertSettingsAdmin(BaseAlertSettingsAdmin):
         # add your changes here
 
 11. Create root URL configuration
@@ -851,7 +851,7 @@ Other base classes that can be inherited and extended
 ``DeviceMetricView``
 ####################
 
-This view is responsible for displaying ``Monitoring Graphs`` and ``Device Status`` primarily.
+This view is responsible for displaying ``Monitoring Charts`` and ``Device Status`` primarily.
 
 The full python path is: ``openwisp_monitoring.device.api.views.DeviceMetricView``.
 
