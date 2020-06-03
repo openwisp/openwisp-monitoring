@@ -47,6 +47,8 @@ install:
   - pip install -U https://github.com/openwisp/openwisp-utils/tarball/master#egg=openwisp_utils[qa]
   # temporary: remove when openwisp-notifications is released
   - pip install -U https://github.com/openwisp/openwisp-notifications/tarball/master
+  # Remove after new release of celery
+  - pip install future
 
 script:
   - ./run-qa-checks
