@@ -212,8 +212,6 @@ class DeviceMetricView(GenericAPIView):
         self._write_memory(data['resources'], pk, ct)
 
     def _write_cpu(self, resources, primary_key, content_type):
-        if 'load' not in resources:
-            return
         extra_values = {
             'load_5': float(resources['load'][1]),
             'load_15': float(resources['load'][2]),
@@ -221,22 +219,18 @@ class DeviceMetricView(GenericAPIView):
         metric, created = Metric._get_or_create(
             object_id=primary_key,
             content_type=content_type,
-            key='load',
-            field_name='load_1',
-            name='Resources: Load',
+            key='cpu',
+            field_name='cpu',
+            name='Resources: CPU',
         )
         metric.write(
-            float(resources['load'][0]), extra_values=extra_values,
+            float(resources['load'][0] / resources['cpus']), extra_values=extra_values,
         )
         if created:
-            self._create_resources_graph(metric, resource='load')
-            self._create_resources_threshold(
-                metric, resource='load', cpus=resources['cpus']
-            )
+            self._create_resources_graph(metric, resource='cpu')
+            self._create_resources_threshold(metric, resource='cpu')
 
     def _write_disk(self, resources, primary_key, content_type):
-        if 'disk' not in resources:
-            return
         used_bytes, size_bytes, available_bytes = 0, 0, 0
         for disk in resources['disk']:
             used_bytes += disk['used_bytes']
@@ -255,8 +249,6 @@ class DeviceMetricView(GenericAPIView):
             self._create_resources_threshold(metric, resource='disk')
 
     def _write_memory(self, resources, primary_key, content_type):
-        if 'memory' not in resources:
-            return
         memory = resources['memory']
         extra_values = {
             'total_memory': memory['total'],
@@ -333,10 +325,8 @@ class DeviceMetricView(GenericAPIView):
         graph.full_clean()
         graph.save()
 
-    def _create_resources_threshold(self, metric, resource, cpus=None):
+    def _create_resources_threshold(self, metric, resource):
         value = DEVICE_RESOURCES_THRESHOLDS[resource]
-        if resource == 'load':
-            value = value * cpus
         t = Threshold(metric=metric, operator='>', value=value, seconds=0)
         t.full_clean()
         t.save()

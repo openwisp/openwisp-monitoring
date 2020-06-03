@@ -147,7 +147,7 @@ DEFAULT_CHARTS = {
             )
         },
     },
-    'load': {
+    'cpu': {
         'type': 'scatter',
         'title': _('CPU Load'),
         'description': _(
@@ -160,7 +160,7 @@ DEFAULT_CHARTS = {
         'order': 260,
         'query': {
             'influxdb': (
-                "SELECT 100 * MEAN(load_1) AS CPU_load FROM {key} WHERE "
+                "SELECT 100 * MEAN(cpu) AS CPU_load FROM {key} WHERE "
                 "time >= '{time}' AND content_type = '{content_type}' AND "
                 "object_id = '{object_id}' GROUP BY time(1d)"
             )

@@ -1,4 +1,3 @@
-from copy import deepcopy
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -243,16 +242,6 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         )
         self.assertEqual(r.status_code, 400)
 
-    def test_no_resources(self):
-        o = self._create_org()
-        d = self._create_device(organization=o)
-        data = deepcopy(self._data())
-        data['resources'] = {}
-        r = self._post_data(d.id, d.key, data)
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(Metric.objects.count(), 6)
-        self.assertEqual(Graph.objects.count(), 4)
-
     def test_wifi_clients_admin(self):
         self._login_admin()
         d = self._create_device(organization=self._create_org())
@@ -282,7 +271,6 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertIn('x', r.data)
         graphs = r.data['graphs']
         for graph in graphs:
-            # print(graph)
             self.assertIn('traces', graph)
             self.assertIn('title', graph)
             self.assertIn('description', graph)

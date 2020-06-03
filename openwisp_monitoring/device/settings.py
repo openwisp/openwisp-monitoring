@@ -62,5 +62,5 @@ MAC_VENDOR_DETECTION = getattr(
 DEVICE_RESOURCES_THRESHOLDS = getattr(
     settings,
     'OPENWISP_MONITORING_DEVICE_RESOURCES_THRESHOLDS',
-    {'memory': 0.95, 'load': 0.90, 'disk': 0.80},
+    {'memory': 0.95, 'cpu': 0.90, 'disk': 0.80},
 )

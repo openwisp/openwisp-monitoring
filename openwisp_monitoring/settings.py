@@ -10,7 +10,7 @@ AUTO_GRAPHS = getattr(
         'packet_loss',
         'rtt',
         'memory',
-        'load',
+        'cpu',
         'disk',
     ),
 )

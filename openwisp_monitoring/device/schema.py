@@ -35,7 +35,20 @@ schema = {
                         "total": {"type": "integer"},
                         "free": {"type": "integer"},
                         "buffered": {"type": "integer"},
-                        "cache": {"type": "integer"},
+                        "cached": {"type": "integer"},
+                        "shared": {"type": "integer"},
+                        "available": {"type": "integer"},
+                    },
+                },
+                "disk": {
+                    "type": "array",
+                    "properties": {
+                        "mount_point": {"type": "string"},
+                        "filesystem": {"type": "string"},
+                        "used_bytes": {"type": "integer"},
+                        "available_bytes": {"type": "integer"},
+                        "used_percent": {"type": "integer"},
+                        "size_bytes": {"type": "integer"},
                     },
                 },
                 "swap": {
