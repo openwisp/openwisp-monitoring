@@ -26,30 +26,47 @@
               {% endif %}
               {% endif %}
               {% if device_data.resources %}
+              {% if device_data.resources.cpus %}
+              <h2>{% trans 'CPU' %}</h2>
+              <div class="form-row">
+                  <label>{% trans 'Cores' %}:</label>
+                  <div class="readonly">
+                      {{ device_data.resources.cpus }}
+                  </div>
+              </div>
+              {% endif %}
               {% if device_data.resources.memory %}
               <h2>{% trans 'RAM status' %}</h2>
               <div class="form-row">
                   <label>{% trans 'Total' %}:</label>
                   <div class="readonly">
-                      {{ device_data.resources.memory.total }} MB
+                      {{ device_data.resources.memory.total|filesizeformat }}
                   </div>
               </div>
               <div class="form-row">
                   <label>{% trans 'Free' %}:</label>
                   <div class="readonly">
-                      {{ device_data.resources.memory.free }} MB
+                      {{ device_data.resources.memory.free|filesizeformat }}
                   </div>
               </div>
+              {% if device_data.resources.memory.available %}
+              <div class="form-row">
+                <label>{% trans 'Available' %}:</label>
+                <div class="readonly">
+                    {{ device_data.resources.memory.available|filesizeformat }}
+                </div>
+              </div>
+              {% endif %}
               <div class="form-row">
                   <label>{% trans 'Buffered' %}:</label>
                   <div class="readonly">
-                      {{ device_data.resources.memory.buffered }} MB
+                      {{ device_data.resources.memory.buffered|filesizeformat }}
                   </div>
               </div>
               <div class="form-row">
                   <label>{% trans 'Shared' %}:</label>
                   <div class="readonly">
-                      {{ device_data.resources.memory.shared }} MB
+                      {{ device_data.resources.memory.shared|filesizeformat }}
                   </div>
               </div>
               {% endif %}
@@ -61,6 +78,33 @@
                       {{ device_data.resources.load|join:", &nbsp;" }}
                   </div>
               </div>
+              {% endif %}
+              {% if device_data.resources.disk %}
+              <h2>{% trans 'Disk Usage' %}</h2>
+              <table class="disk">
+                  <thead>
+                      <tr>
+                          <th class="filesystem">{% trans 'Filesystem' %}</th>
+                          <th class="used_bytes">{% trans 'Used space' %}</th>
+                          <th class="available_bytes">{% trans 'Available space' %}</th>
+                          <th class="size_bytes">{% trans 'Total space' %}</th>
+                          <th class="used_percent">{% trans 'Percent Used' %}</th>
+                          <th class="mount_point">{% trans 'Mounted on' %}</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      {% for disk in device_data.resources.disk %}
+                      <tr>
+                          <td class="filesystem">{{ disk.filesystem }}</th>
+                          <td class="used_bytes">{{ disk.used_bytes|filesizeformat }}</th>
+                          <td class="available_bytes">{{ disk.available_bytes|filesizeformat }}</th>
+                          <td class="size_bytes">{{ disk.size_bytes|filesizeformat }}</th>
+                          <td class="used_percent">{{ disk.used_percent }}%</th>
+                          <td class="mount_point">{{ disk.mount_point }}</th>
+                      </tr>
+                      {% endfor %}
+                  </tbody>
+              </table>
               {% endif %}
               {% endif %}
               {% if device_data.interfaces %}
