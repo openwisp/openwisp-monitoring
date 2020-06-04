@@ -213,6 +213,7 @@ class DeviceMetricView(GenericAPIView):
 
     def _write_cpu(self, resources, primary_key, content_type):
         extra_values = {
+            'load_1': float(resources['load'][0]),
             'load_5': float(resources['load'][1]),
             'load_15': float(resources['load'][2]),
         }
@@ -220,7 +221,7 @@ class DeviceMetricView(GenericAPIView):
             object_id=primary_key,
             content_type=content_type,
             key='cpu',
-            field_name='cpu',
+            field_name='cpu_usage',
             name='Resources: CPU',
         )
         metric.write(
