@@ -214,7 +214,7 @@ class AbstractMetric(TimeStampedEditableModel):
         if not self.is_healthy:
             info = ' ({0} {1})'.format(t.get_operator_display(), t.value)
         desc = 'Metric "{metric}" {verb}{info}.'.format(
-            status=status, metric=metric, verb=verb, info=info
+            metric=metric, verb=verb, info=info
         )
         opts['description'] = desc
         opts['data'] = {
@@ -296,18 +296,18 @@ class AbstractGraph(TimeStampedEditableModel):
             self._is_query_allowed(self.query)
             query(self.get_query())
         except InfluxDBClientError as e:
-            raise ValidationError({'configuration': e})
+            raise ValidationError({'configuration': e}) from e
         except InvalidChartConfigException as e:
-            raise ValidationError({'configuration': str(e)})
+            raise ValidationError({'configuration': str(e)}) from e
 
     @property
     def config_dict(self):
         try:
             return self.CHARTS[self.configuration]
-        except KeyError:
+        except KeyError as e:
             raise InvalidChartConfigException(
                 f'Invalid chart configuration: "{self.configuration}"'
-            )
+            ) from e
 
     @property
     def type(self):
