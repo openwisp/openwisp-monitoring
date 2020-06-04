@@ -214,7 +214,7 @@ class AbstractMetric(TimeStampedEditableModel):
         if not self.is_healthy:
             info = ' ({0} {1})'.format(t.get_operator_display(), t.value)
         desc = 'Metric "{metric}" {verb}{info}.'.format(
-            status=status, metric=metric, verb=verb, info=info
+            metric=metric, verb=verb, info=info
         )
         opts['description'] = desc
         opts['data'] = {
