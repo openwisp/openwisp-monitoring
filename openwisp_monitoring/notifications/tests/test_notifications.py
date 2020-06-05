@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.core import mail
 from django.test import TestCase
 from django.utils import timezone
 from swapper import load_model
@@ -301,3 +302,25 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         self.assertEqual(n.action_object, om.threshold)
         self.assertEqual(n.level, 'info')
         self.assertEqual(n.verb, 'test')
+
+    def test_email_notification(self):
+        self._create_admin()
+        d = self._create_device(organization=self._get_org())
+        m = self._create_general_metric(name='load', content_object=d)
+        self._create_threshold(metric=m, operator='>', value=90, seconds=0)
+        exp_email_body = (
+            '{n.message}'
+            '\n\nFor more information see https://example.com/admin/config/device/{d.id}/change/.'
+        )
+
+        with self.subTest("Test notification email for metric crossed threshold"):
+            m.write(99)
+            n = notification_queryset.first()
+            self.assertEqual(mail.outbox[0].subject, n.data.get('email_subject'))
+            self.assertEqual(mail.outbox[0].body, exp_email_body.format(n=n, d=d))
+
+        with self.subTest("Test notification email for metric returned under threhold"):
+            m.write(50)
+            n = notification_queryset.first()
+            self.assertEqual(mail.outbox[0].subject, n.data.get('email_subject'))
+            self.assertEqual(mail.outbox[0].body, exp_email_body.format(n=n, d=d))
