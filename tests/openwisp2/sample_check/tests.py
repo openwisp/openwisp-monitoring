@@ -29,10 +29,9 @@ class TestModels(BaseTestModels, TestDeviceMonitoringMixin, TransactionTestCase)
             params={'count': 2, 'interval': 10, 'bytes': 10, 'timeout': 50},
         )
         check.perform_check(store=False)
-        # Left the seconds due to minor time lag
-        self.assertEqual(
-            check.last_called.strftime('%D %H %M'), now().strftime('%D %H %M')
-        )
+        # Avoid any failures due to minor lag
+        lag = int(now().strftime('%s')) - int(check.last_called.strftime('%s'))
+        self.assertLessEqual(lag, 4)
 
 
 # this is necessary to avoid excuting the base test suites
