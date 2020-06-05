@@ -26,8 +26,18 @@
               {% endif %}
               {% endif %}
               {% if device_data.resources %}
-              {% if device_data.resources.cpus %}
+              {% if device_data.resources.load or device_data.resources.cpus %}
               <h2>{% trans 'CPU' %}</h2>
+              {% endif %}
+              {% if device_data.resources.load %}
+              <div class="form-row">
+                  <label>{% trans 'Load average' %}:</label>
+                  <div class="readonly">
+                      {{ device_data.resources.load|join:", &nbsp;" }}
+                  </div>
+              </div>
+              {% endif %}
+              {% if device_data.resources.cpus %}
               <div class="form-row">
                   <label>{% trans 'Cores' %}:</label>
                   <div class="readonly">
@@ -70,17 +80,8 @@
                   </div>
               </div>
               {% endif %}
-              {% if device_data.resources.load %}
-              <h2>{% trans 'Load status' %}</h2>
-              <div class="form-row">
-                  <label>{% trans 'Load average' %}:</label>
-                  <div class="readonly">
-                      {{ device_data.resources.load|join:", &nbsp;" }}
-                  </div>
-              </div>
-              {% endif %}
               {% if device_data.resources.disk %}
-              <h2>{% trans 'Disk Usage' %}</h2>
+              <h2>{% trans 'Storage' %}</h2>
               <table class="disk">
                   <thead>
                       <tr>
@@ -95,12 +96,12 @@
                   <tbody>
                       {% for disk in device_data.resources.disk %}
                       <tr>
-                          <td class="filesystem">{{ disk.filesystem }}</th>
-                          <td class="used_bytes">{{ disk.used_bytes|filesizeformat }}</th>
-                          <td class="available_bytes">{{ disk.available_bytes|filesizeformat }}</th>
-                          <td class="size_bytes">{{ disk.size_bytes|filesizeformat }}</th>
-                          <td class="used_percent">{{ disk.used_percent }}%</th>
-                          <td class="mount_point">{{ disk.mount_point }}</th>
+                          <td class="filesystem">{{ disk.filesystem }}</td>
+                          <td class="used_bytes">{{ disk.used_bytes|filesizeformat }}</td>
+                          <td class="available_bytes">{{ disk.available_bytes|filesizeformat }}</td>
+                          <td class="size_bytes">{{ disk.size_bytes|filesizeformat }}</td>
+                          <td class="used_percent">{{ disk.used_percent }}%</td>
+                          <td class="mount_point">{{ disk.mount_point }}</td>
                       </tr>
                       {% endfor %}
                   </tbody>
