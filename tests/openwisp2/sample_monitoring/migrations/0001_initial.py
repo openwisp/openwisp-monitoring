@@ -7,7 +7,7 @@ import django.utils.timezone
 import model_utils.fields
 import uuid
 
-from openwisp_monitoring.monitoring.charts import get_chart_configuration_choices
+from openwisp_monitoring.monitoring.charts import CHART_CONFIGURATION_CHOICES
 
 
 class Migration(migrations.Migration):
@@ -168,9 +168,7 @@ class Migration(migrations.Migration):
                 (
                     'configuration',
                     models.CharField(
-                        choices=get_chart_configuration_choices(),
-                        max_length=16,
-                        null=True,
+                        choices=CHART_CONFIGURATION_CHOICES, max_length=16, null=True,
                     ),
                 ),
                 (
