@@ -21,7 +21,7 @@ class DeviceAdmin(BaseDeviceAdmin):
         ctx = super().get_extra_context(pk)
         if pk:
             device_data = DeviceData(pk=pk)
-            api_url = reverse(f'monitoring:api_device_metric', args=[pk])
+            api_url = reverse('monitoring:api_device_metric', args=[pk])
             ctx.update(
                 {
                     'device_data': device_data.data_user_friendly,

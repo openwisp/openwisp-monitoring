@@ -310,6 +310,8 @@ if os.environ.get('SAMPLE_APP', False):
     DEVICE_MONITORING_DEVICEMONITORING_MODEL = (
         'sample_device_monitoring.DeviceMonitoring'
     )
+    # Celery auto detects tasks only from INSTALLED_APPS
+    CELERY_IMPORTS = ('openwisp_monitoring.device.tasks',)
 
 # local settings must be imported before test runner otherwise they'll be ignored
 try:

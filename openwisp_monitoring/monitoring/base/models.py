@@ -214,17 +214,17 @@ class AbstractMetric(TimeStampedEditableModel):
         if not self.is_healthy:
             info = ' ({0} {1})'.format(t.get_operator_display(), t.value)
         desc = 'Metric "{metric}" {verb}{info}.'.format(
-            status=status, metric=metric, verb=verb, info=info
+            metric=metric, verb=verb, info=info
         )
         opts['description'] = desc
-        opts['data'] = {
-            'email_subject': '[{status}] {metric}'.format(status=status, metric=metric)
-        }
+        opts['email_subject'] = '[{status}] {metric}'.format(
+            status=status, metric=metric
+        )
         if target and target.__class__.__name__.lower() == 'device':
             current_site = Site.objects.get_current()
             base_url = 'https://{}'.format(current_site.domain)
             device_url = reverse('admin:config_device_change', args=[target.pk])
-            opts['data']['url'] = '{}{}'.format(base_url, device_url)
+            opts['url'] = '{}{}'.format(base_url, device_url)
 
 
 class AbstractGraph(TimeStampedEditableModel):
