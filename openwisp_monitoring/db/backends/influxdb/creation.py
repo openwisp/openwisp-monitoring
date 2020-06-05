@@ -6,7 +6,8 @@ logger = logging.getLogger(__name__)
 
 
 class DatabaseCreation(object):
-    TEST_DB = '{0}_test'.format(TIMESERIES_DB['NAME'])
+    ORIGINAL_DB = TIMESERIES_DB['NAME']
+    TEST_DB = f'{ORIGINAL_DB}_test'
 
     def create_database(self, database=TIMESERIES_DB['NAME']):
         """ creates database if necessary """
@@ -30,8 +31,10 @@ class DatabaseCreation(object):
             logger.info(f'Dropped influxdb database {database}')
 
     def create_test_database(self):
+        TIMESERIES_DB['NAME'] = self.TEST_DB
         self.create_database(self.TEST_DB)
 
     def drop_test_database(self):
         self.drop_database(self.TEST_DB)
+        TIMESERIES_DB['NAME'] = self.ORIGINAL_DB
         self.get_db().query('DROP SERIES FROM /.*/')

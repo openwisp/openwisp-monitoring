@@ -41,16 +41,13 @@ class DatabaseClient(DatabaseCreation, DatabaseException):
             timestamp = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
         if timestamp:
             point['time'] = timestamp
-        try:
-            self.get_db().write(
-                {'points': [point]},
-                {
-                    'db': kwargs.get('database') or TIMESERIES_DB['NAME'],
-                    'rp': kwargs.get('retention_policy'),
-                },
-            )
-        except Exception as e:
-            raise e
+        self.get_db().write(
+            {'points': [point]},
+            {
+                'db': kwargs.get('database') or TIMESERIES_DB['NAME'],
+                'rp': kwargs.get('retention_policy'),
+            },
+        )
 
     def read(self, key, fields, tags, **kwargs):
         """ Method to be called via threading module. """
