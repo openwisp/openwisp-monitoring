@@ -86,6 +86,19 @@ class AbstractDeviceData(object):
         # reformat expiry in dhcp leases
         for lease in data.get('dhcp_leases', []):
             lease['expiry'] = datetime.fromtimestamp(lease['expiry'], tz=tz('UTC'))
+        if 'resources' in data and 'disk' in data['resources']:
+            # convert kibibytes to bytes
+            KiB = 1024
+            for counter, disk in enumerate(data['resources']['disk']):
+                data['resources']['disk'][counter]['used_bytes'] = (
+                    disk['used_bytes'] * KiB
+                )
+                data['resources']['disk'][counter]['available_bytes'] = (
+                    disk['available_bytes'] * KiB
+                )
+                data['resources']['disk'][counter]['size_bytes'] = (
+                    disk['size_bytes'] * KiB
+                )
         return data
 
     @property
