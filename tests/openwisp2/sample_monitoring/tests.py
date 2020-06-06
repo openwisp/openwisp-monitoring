@@ -15,19 +15,19 @@ class TestDatabase(BaseTestDatabase):
 
 class TestModels(BaseTestModels):
     def test_details_field(self):
-        details = 'This metric has one related threshold'
+        details = 'This metric has one related alert setting'
         m = self._create_object_metric(name='br-lan', details=details)
         self.assertEqual(m.details, details)
-        t = self._create_threshold(
+        alert_s = self._create_alert_settings(
             metric=m,
             operator='>',
             value=90,
             seconds=0,
             details=f'Related metric name is {m.name}',
         )
-        self.assertEqual(t.details, f'Related metric name is {m.name}')
-        g = self._create_graph(metric=m)
-        self.assertEqual(g.details, None)
+        self.assertEqual(alert_s.details, f'Related metric name is {m.name}')
+        c = self._create_chart(metric=m)
+        self.assertEqual(c.details, None)
 
 
 class TestCharts(BaseTestCharts):

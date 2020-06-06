@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('monitoring', '0010_rename_threshold_alert_settings'),
+        ('monitoring', '0011_alert_settings_contenttype_registration'),
     ]
 
     operations = [

@@ -46,3 +46,7 @@ class AlertSettingsAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
     list_display = ['metric', 'created', 'modified']
     search_fields = ['name']
     save_on_top = True
+
+    class Meta:
+        verbose_name = 'Alert Settings'
+        verbose_name_plural = 'Alert Settings'
