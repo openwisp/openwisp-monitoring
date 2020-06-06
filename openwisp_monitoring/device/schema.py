@@ -28,6 +28,7 @@ schema = {
                     "type": "array",
                     "items": {"type": "number", "minItems": 3, "maxItems": 3},
                 },
+                "cpus": {"type": "integer"},
                 "memory": {
                     "id": "memory",
                     "type": "object",
@@ -42,13 +43,28 @@ schema = {
                 },
                 "disk": {
                     "type": "array",
-                    "properties": {
-                        "mount_point": {"type": "string"},
-                        "filesystem": {"type": "string"},
-                        "used_bytes": {"type": "integer"},
-                        "available_bytes": {"type": "integer"},
-                        "used_percent": {"type": "integer"},
-                        "size_bytes": {"type": "integer"},
+                    "additionalItems": False,
+                    "title": "Disks",
+                    "items": {
+                        "type": "object",
+                        "title": "Disk",
+                        "additionalProperties": False,
+                        "properties": {
+                            "mount_point": {"type": "string"},
+                            "filesystem": {"type": "string"},
+                            "used_bytes": {"type": "integer"},
+                            "available_bytes": {"type": "integer"},
+                            "used_percent": {"type": "integer"},
+                            "size_bytes": {"type": "integer"},
+                        },
+                        "required": [
+                            "mount_point",
+                            "filesystem",
+                            "used_bytes",
+                            "available_bytes",
+                            "used_percent",
+                            "size_bytes",
+                        ],
                     },
                 },
                 "swap": {

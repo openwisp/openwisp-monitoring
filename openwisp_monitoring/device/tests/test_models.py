@@ -390,6 +390,49 @@ class TestDeviceData(BaseTestCase):
         dd.save_data()
         self.assertEqual(dd.data['neighbors'][0]['vendor'], '')
 
+    def test_bad_disk_fail(self):
+        dd = self._create_device_data()
+        data = deepcopy(self._sample_data)
+        with self.subTest('Incorrect type'):
+            data['resources']['disk'] = dict()
+            try:
+                dd.data = data
+                dd.validate_data()
+            except ValidationError as e:
+                self.assertIn('Invalid data in', e.message)
+                self.assertIn("{} is not of type \'array\'", e.message)
+            else:
+                self.fail('ValidationError not raised')
+        with self.subTest('Missing required fields'):
+            data['resources']['disk'] = [{'used_bytes': 18792}]
+            try:
+                dd.data = data
+                dd.validate_data()
+            except ValidationError as e:
+                self.assertIn('Invalid data in', e.message)
+                self.assertIn("'mount_point\' is a required property", e.message)
+            else:
+                self.fail('ValidationError not raised')
+        with self.subTest('Incorrect field type'):
+            data['resources']['disk'] = [
+                {
+                    'used_bytes': 18792.12,
+                    'available_bytes': 233984,
+                    'filesystem': '/dev/root',
+                    'mount_point': '/',
+                    'used_percent': 7,
+                    'size_bytes': 258016,
+                }
+            ]
+            try:
+                dd.data = data
+                dd.validate_data()
+            except ValidationError as e:
+                self.assertIn('Invalid data in', e.message)
+                self.assertIn("18792.12 is not of type \'integer\'", e.message)
+            else:
+                self.fail('ValidationError not raised')
+
 
 class TestDeviceMonitoring(BaseTestCase):
     """
