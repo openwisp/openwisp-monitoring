@@ -31,10 +31,21 @@ class BaseTestCase(DeviceMonitoringTestCase):
             "load": [10144, 15456, 6624],
             "memory": {
                 "buffered": 3334144,
+                'cached': 6774784,
                 "free": 79429632,
                 "shared": 102400,
                 "total": 128430080,
             },
+            'disk': [
+                {
+                    'used_bytes': 18792,
+                    'available_bytes': 233984,
+                    'filesystem': '/dev/root',
+                    'mount_point': '/',
+                    'used_percent': 7,
+                    'size_bytes': 258016,
+                },
+            ],
             "swap": {"free": 0, "total": 0},
         },
         "interfaces": [
@@ -414,16 +425,8 @@ class TestDeviceData(BaseTestCase):
             else:
                 self.fail('ValidationError not raised')
         with self.subTest('Incorrect field type'):
-            data['resources']['disk'] = [
-                {
-                    'used_bytes': 18792.12,
-                    'available_bytes': 233984,
-                    'filesystem': '/dev/root',
-                    'mount_point': '/',
-                    'used_percent': 7,
-                    'size_bytes': 258016,
-                }
-            ]
+            data = deepcopy(self._sample_data)
+            data['resources']['disk'][0]['used_bytes'] = 18792.12
             try:
                 dd.data = data
                 dd.validate_data()
@@ -432,6 +435,29 @@ class TestDeviceData(BaseTestCase):
                 self.assertIn("18792.12 is not of type \'integer\'", e.message)
             else:
                 self.fail('ValidationError not raised')
+
+    def test_resources_no_key(self):
+        dd = self._create_device_data()
+        with self.subTest('Test No Resources'):
+            data = deepcopy(self._sample_data)
+            del data['resources']
+            dd.data = data
+            dd.validate_data()
+        with self.subTest('Test No Load'):
+            data = deepcopy(self._sample_data)
+            del data['resources']['load']
+            dd.data = data
+            dd.validate_data()
+        with self.subTest('Test No Memory'):
+            data = deepcopy(self._sample_data)
+            del data['resources']['memory']
+            dd.data = data
+            dd.validate_data()
+        with self.subTest('Test No Disk'):
+            data = deepcopy(self._sample_data)
+            del data['resources']['disk']
+            dd.data = data
+            dd.validate_data()
 
 
 class TestDeviceMonitoring(BaseTestCase):
