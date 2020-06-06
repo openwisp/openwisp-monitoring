@@ -431,3 +431,32 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             r = self.client.get(self._url(d.pk.hex, d.key))
         self.assertIn('InvalidChartConfigException', stderr.getvalue())
         self.assertEqual(r.status_code, 200)
+
+    def test_available_memory(self):
+        o = self._create_org()
+        d = self._create_device(organization=o)
+        data = self._data()
+        data['resources']['memory']['free'] = 224497664
+        with self.subTest('Test without available memory'):
+            del data['resources']['memory']['available']
+            r = self._post_data(d.id, d.key, data)
+            m = Metric.objects.get(key='memory')
+            metric_data = m.read(order='DESC', extra_fields='*')[0]
+            self.assertAlmostEqual(metric_data['used_memory'], 0.09729, places=5)
+            self.assertIsNone(metric_data.get('available_memory'))
+            self.assertEqual(r.status_code, 200)
+        with self.subTest('Test when available memory is less than free memory'):
+            data['resources']['memory']['available'] = 2232664
+            r = self._post_data(d.id, d.key, data)
+            metric_data = m.read(order='DESC', extra_fields='*')[0]
+            self.assertAlmostEqual(metric_data['used_memory'], 0.09729, places=5)
+            self.assertEqual(metric_data['available_memory'], 2232664)
+            self.assertEqual(r.status_code, 200)
+        with self.subTest('Test when available memory is greater than free memory'):
+            data['resources']['memory']['available'] = 225567664
+            r = self._post_data(d.id, d.key, data)
+            m = Metric.objects.get(key='memory')
+            metric_data = m.read(order='DESC', extra_fields='*')[0]
+            self.assertAlmostEqual(metric_data['used_memory'], 0.09301, places=5)
+            self.assertEqual(metric_data['available_memory'], 225567664)
+            self.assertEqual(r.status_code, 200)
