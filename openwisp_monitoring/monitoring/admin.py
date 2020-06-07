@@ -48,5 +48,5 @@ class AlertSettingsAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
     save_on_top = True
 
     class Meta:
-        verbose_name = 'Alert Settings'
-        verbose_name_plural = 'Alert Settings'
+        verbose_name = _('Alert Settings')
+        verbose_name_plural = _('Alert Settings')

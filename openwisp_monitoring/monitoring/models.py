@@ -12,6 +12,7 @@ class Metric(AbstractMetric):
 class Chart(AbstractChart):
     class Meta(AbstractChart.Meta):
         abstract = False
+        db_table = 'monitoring_chart'
         swappable = swappable_setting('monitoring', 'Chart')
 
 

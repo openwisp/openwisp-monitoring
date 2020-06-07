@@ -12,5 +12,4 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AlterModelTable(name='graph', table='monitoring_chart',),
         migrations.RenameModel(old_name='Graph', new_name='Chart',),
-        migrations.AlterModelTable(name='chart', table=None,),
     ]
