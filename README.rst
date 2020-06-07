@@ -795,7 +795,25 @@ file in the test project.
 For more information about the usage of celery in django, please refer to the
 `"First steps with Django" section in the celery documentation <https://docs.celeryproject.org/en/master/django/first-steps-with-django.html>`_.
 
-13. Import the automated tests
+13. Import Celery Tasks
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Add the following in your settings.py to import celery tasks from ``device_monitoring`` app.
+
+.. code-block:: python
+
+    CELERY_IMPORTS = ('openwisp_monitoring.device.tasks',)
+
+14. Create the custom command ``run_checks``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Please refer to the `run_checks.py <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/sample_check/management/commands/run_checks.py>`_
+file in the test project.
+
+For more information about the usage of custom management commands in django, please refer to the
+`"Writing custom django-admin commands" section in the django documentation <https://docs.djangoproject.com/en/dev/howto/custom-management-commands/>`_.
+
+15. Import the automated tests
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When developing a custom application based on this module, it's a good idea
