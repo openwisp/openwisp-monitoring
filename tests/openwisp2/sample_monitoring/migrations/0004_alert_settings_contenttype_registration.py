@@ -6,7 +6,7 @@ from django.db import migrations
 
 
 def register_content_type(apps, schema_editor):
-    """Registers AlertThreshold if not yet registered"""
+    """Registers AlertSettings if not yet registered"""
     try:
         ContentType.objects.get(app_label='sample_monitoring', model='alertsettings')
     except ObjectDoesNotExist:
