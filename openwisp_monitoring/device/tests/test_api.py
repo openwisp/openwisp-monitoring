@@ -1,7 +1,7 @@
+from contextlib import redirect_stderr
+from io import StringIO
 from unittest.mock import patch
 
-from django.contrib.auth import get_user_model
-from django.urls import reverse
 from swapper import load_model
 
 from openwisp_utils.tests import catch_signal
@@ -59,33 +59,10 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(Graph.objects.count(), 0)
 
     def test_200_create(self):
-        o = self._create_org()
-        d = self._create_device(organization=o)
-        data = self._data()
-        r = self._post_data(d.id, d.key, data)
-        self.assertEqual(r.status_code, 200)
-        dd = DeviceData(pk=d.pk)
-        self.assertDictEqual(dd.data, data)
-        self.assertEqual(Metric.objects.count(), 9)
-        self.assertEqual(Graph.objects.count(), 7)
-        if_dict = {'wlan0': data['interfaces'][0], 'wlan1': data['interfaces'][1]}
-        for ifname in ['wlan0', 'wlan1']:
-            iface = if_dict[ifname]
-            for field_name in ['rx_bytes', 'tx_bytes']:
-                m = Metric.objects.get(
-                    key=ifname, field_name=field_name, object_id=d.pk
-                )
-                points = m.read(limit=10, order='time DESC')
-                self.assertEqual(len(points), 1)
-                self.assertEqual(
-                    points[0][m.field_name], iface['statistics'][field_name]
-                )
-            m = Metric.objects.get(key=ifname, field_name='clients', object_id=d.pk)
-            points = m.read(limit=10, order='time DESC')
-            self.assertEqual(len(points), len(iface['wireless']['clients']))
+        self.create_test_adata()
 
     def test_200_traffic_counter_incremented(self):
-        self.test_200_create()
+        self.create_test_adata()
         self.assertEqual(self.device_model.objects.count(), 1)
         d = self.device_model.objects.first()
         data2 = self._data()
@@ -115,7 +92,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
     def test_200_traffic_counter_reset(self):
-        self.test_200_create()
+        self.create_test_adata()
         self.assertEqual(self.device_model.objects.count(), 1)
         d = self.device_model.objects.first()
         data2 = self._data()
@@ -146,7 +123,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
 
     def _create_multiple_measurements(self, create=True):
         if create:
-            self.test_200_create()
+            self.create_test_adata()
         self.assertEqual(self.device_model.objects.count(), 1)
         d = self.device_model.objects.first()
         data2 = self._data()
@@ -241,17 +218,6 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             },
         )
         self.assertEqual(r.status_code, 400)
-
-    def test_wifi_clients_admin(self):
-        self._login_admin()
-        d = self._create_device(organization=self._create_org())
-        data = self._data()
-        r = self._post_data(d.id, d.key, data)
-        url = reverse('admin:config_device_change', args=[d.id])
-        r1 = self.client.get(url, follow=True)
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(r1.status_code, 200)
-        self.assertContains(r1, '00:ee:ad:34:f5:3b')
 
     @patch.object(monitoring_settings, 'AUTO_GRAPHS', return_value=[])
     def test_auto_graph_disabled(self, *args):
@@ -382,46 +348,9 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             signal=device_metrics_received,
         )
 
-    # testing admin here is more convenient because
-    # we already have the code that creates test data
-
-    def _login_admin(self):
-        User = get_user_model()
-        u = User.objects.create_superuser('admin', 'admin', 'test@test.com')
-        self.client.force_login(u)
-
-    def test_device_admin(self):
-        dd = self._create_multiple_measurements()
-        url = reverse('admin:config_device_change', args=[dd.pk])
-        self._login_admin()
-        r = self.client.get(url)
-        self.assertContains(r, 'Device Status')
-        self.assertContains(r, 'Monitoring Graph')
-
-    def test_no_device_data(self):
-        d = self._create_device(organization=self._create_org())
-        url = reverse('admin:config_device_change', args=[d.pk])
-        self._login_admin()
-        self.client.get(url)
-
-    def test_remove_invalid_interface(self):
-        d = self._create_device(organization=self._create_org())
-        dd = DeviceData(name='test-device', pk=d.pk)
-        self._post_data(
-            d.id,
-            d.key,
-            {'type': 'DeviceMonitoring', 'interfaces': [{'name': 'br-lan'}]},
-        )
-        url = reverse('admin:config_device_change', args=[dd.pk])
-        self._login_admin()
-        self.client.get(url)
-
     def test_invalid_graph_config(self):
         # Tests if graph_config is invaid, then it is skipped and not failed
-        from io import StringIO
-        from contextlib import redirect_stderr
-
-        self.test_200_create()
+        self.create_test_adata()
         d = DeviceData.objects.first()
         self.assertEqual(Graph.objects.count(), 7)
         with redirect_stderr(StringIO()) as stderr:

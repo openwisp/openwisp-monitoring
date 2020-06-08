@@ -1,3 +1,5 @@
+import uuid
+
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
@@ -20,7 +22,7 @@ class DeviceAdmin(BaseDeviceAdmin):
     def get_extra_context(self, pk=None):
         ctx = super().get_extra_context(pk)
         if pk:
-            device_data = DeviceData(pk=pk)
+            device_data = DeviceData(pk=uuid.UUID(pk))
             api_url = reverse('monitoring:api_device_metric', args=[pk])
             ctx.update(
                 {
