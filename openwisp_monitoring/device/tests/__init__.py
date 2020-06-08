@@ -45,8 +45,8 @@ class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
         self.assertEqual(r.status_code, 200)
         dd = DeviceData(pk=d.pk)
         self.assertDictEqual(dd.data, data)
-        self.assertEqual(Metric.objects.count(), 6)
-        self.assertEqual(Graph.objects.count(), 4)
+        self.assertEqual(Metric.objects.count(), 9)
+        self.assertEqual(Graph.objects.count(), 7)
         if_dict = {'wlan0': data['interfaces'][0], 'wlan1': data['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
