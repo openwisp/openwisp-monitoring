@@ -391,6 +391,9 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         r = self.client.get(url)
         self.assertContains(r, 'Device Status')
         self.assertContains(r, 'Monitoring Graph')
+        self.assertContains(r, 'Storage')
+        self.assertContains(r, 'CPU')
+        self.assertContains(r, 'RAM status')
 
     def test_no_device_data(self):
         d = self._create_device(organization=self._create_org())
