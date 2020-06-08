@@ -74,8 +74,8 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(r.status_code, 200)
         dd = DeviceData(pk=d.pk)
         self.assertDictEqual(dd.data, data2)
-        self.assertEqual(Metric.objects.count(), 6)
-        self.assertEqual(Graph.objects.count(), 4)
+        self.assertEqual(Metric.objects.count(), 9)
+        self.assertEqual(Graph.objects.count(), 7)
         if_dict = {'wlan0': data2['interfaces'][0], 'wlan1': data2['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
@@ -104,8 +104,8 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(r.status_code, 200)
         dd = DeviceData(pk=d.pk)
         self.assertDictEqual(dd.data, data2)
-        self.assertEqual(Metric.objects.count(), 6)
-        self.assertEqual(Graph.objects.count(), 4)
+        self.assertEqual(Metric.objects.count(), 9)
+        self.assertEqual(Graph.objects.count(), 7)
         if_dict = {'wlan0': data2['interfaces'][0], 'wlan1': data2['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
@@ -151,8 +151,8 @@ class TestDeviceApi(DeviceMonitoringTestCase):
 
     def test_200_multiple_measurements(self):
         dd = self._create_multiple_measurements()
-        self.assertEqual(Metric.objects.count(), 6)
-        self.assertEqual(Graph.objects.count(), 4)
+        self.assertEqual(Metric.objects.count(), 9)
+        self.assertEqual(Graph.objects.count(), 7)
         expected = {
             'wlan0': {'rx_bytes': 10000, 'tx_bytes': 6000},
             'wlan1': {'rx_bytes': 4587, 'tx_bytes': 2993},
@@ -233,7 +233,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         r = self.client.get(self._url(d.pk.hex, d.key))
         self.assertEqual(r.status_code, 200)
         self.assertIsInstance(r.data['graphs'], list)
-        self.assertEqual(len(r.data['graphs']), 4)
+        self.assertEqual(len(r.data['graphs']), 7)
         self.assertIn('x', r.data)
         graphs = r.data['graphs']
         for graph in graphs:
@@ -306,10 +306,16 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                 'upload - Traffic: wlan0',
                 'download - Traffic: wlan1',
                 'upload - Traffic: wlan1',
+                'memory_usage - Memory Usage',
+                'CPU_load - CPU Load',
+                'disk_usage - Disk Usage',
             ],
         )
         last_line = rows[-1].strip().split(',')
-        self.assertEqual(last_line, [last_line[0], '1', '2', '1.2', '0.6', '3', '1.5'])
+        self.assertEqual(
+            last_line,
+            [last_line[0], '1', '2', '1.2', '0.6', '3', '1.5', '9.73', '0', '8.27'],
+        )
 
     def test_get_device_metrics_400_bad_timezone(self):
         dd = self._create_multiple_measurements()
@@ -346,7 +352,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         # Tests if graph_config is invaid, then it is skipped and not failed
         self.create_test_adata()
         d = DeviceData.objects.first()
-        self.assertEqual(Graph.objects.count(), 4)
+        self.assertEqual(Graph.objects.count(), 7)
         with redirect_stderr(StringIO()) as stderr:
             g1 = Graph.objects.first()
             g1.configuration = 'invalid'
@@ -354,3 +360,32 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             r = self.client.get(self._url(d.pk.hex, d.key))
         self.assertIn('InvalidChartConfigException', stderr.getvalue())
         self.assertEqual(r.status_code, 200)
+
+    def test_available_memory(self):
+        o = self._create_org()
+        d = self._create_device(organization=o)
+        data = self._data()
+        data['resources']['memory']['free'] = 224497664
+        with self.subTest('Test without available memory'):
+            del data['resources']['memory']['available']
+            r = self._post_data(d.id, d.key, data)
+            m = Metric.objects.get(key='memory')
+            metric_data = m.read(order='DESC', extra_fields='*')[0]
+            self.assertAlmostEqual(metric_data['percent_used'], 0.09729, places=5)
+            self.assertIsNone(metric_data.get('available_memory'))
+            self.assertEqual(r.status_code, 200)
+        with self.subTest('Test when available memory is less than free memory'):
+            data['resources']['memory']['available'] = 2232664
+            r = self._post_data(d.id, d.key, data)
+            metric_data = m.read(order='DESC', extra_fields='*')[0]
+            self.assertAlmostEqual(metric_data['percent_used'], 0.09729, places=5)
+            self.assertEqual(metric_data['available_memory'], 2232664)
+            self.assertEqual(r.status_code, 200)
+        with self.subTest('Test when available memory is greater than free memory'):
+            data['resources']['memory']['available'] = 225567664
+            r = self._post_data(d.id, d.key, data)
+            m = Metric.objects.get(key='memory')
+            metric_data = m.read(order='DESC', extra_fields='*')[0]
+            self.assertAlmostEqual(metric_data['percent_used'], 0.09301, places=5)
+            self.assertEqual(metric_data['available_memory'], 225567664)
+            self.assertEqual(r.status_code, 200)

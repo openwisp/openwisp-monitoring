@@ -22,11 +22,13 @@ from openwisp_controller.config.models import Device
 from ... import settings as monitoring_settings
 from ...monitoring.exceptions import InvalidChartConfigException
 from ..schema import schema
+from ..settings import DEVICE_RESOURCES_THRESHOLDS
 from ..signals import device_metrics_received
 
 logger = logging.getLogger(__name__)
 Graph = load_model('monitoring', 'Graph')
 Metric = load_model('monitoring', 'Metric')
+Threshold = load_model('monitoring', 'Threshold')
 DeviceData = load_model('device_monitoring', 'DeviceData')
 
 
@@ -205,6 +207,82 @@ class DeviceMetricView(GenericAPIView):
                 metric.write(client['mac'])
             if created:
                 self._create_clients_graph(metric)
+        if 'resources' not in data:
+            return
+        if 'load' in data['resources'] and 'cpus' in data['resources']:
+            self._write_cpu(
+                data['resources']['load'], data['resources']['cpus'], pk, ct
+            )
+        if 'disk' in data['resources']:
+            self._write_disk(data['resources']['disk'], pk, ct)
+        if 'memory' in data['resources']:
+            self._write_memory(data['resources']['memory'], pk, ct)
+
+    def _write_cpu(self, load, cpus, primary_key, content_type):
+        extra_values = {
+            'load_1': float(load[0]),
+            'load_5': float(load[1]),
+            'load_15': float(load[2]),
+        }
+        metric, created = Metric._get_or_create(
+            object_id=primary_key,
+            content_type=content_type,
+            key='cpu',
+            field_name='cpu_usage',
+            name='Resources: CPU',
+        )
+        metric.write(
+            float(load[0] / cpus), extra_values=extra_values,
+        )
+        if created:
+            self._create_resources_graph(metric, resource='cpu')
+            self._create_resources_threshold(metric, resource='cpu')
+
+    def _write_disk(self, disk_list, primary_key, content_type):
+        used_bytes, size_bytes, available_bytes = 0, 0, 0
+        for disk in disk_list:
+            used_bytes += disk['used_bytes']
+            size_bytes += disk['size_bytes']
+            available_bytes += disk['available_bytes']
+        metric, created = Metric._get_or_create(
+            object_id=primary_key,
+            content_type=content_type,
+            key='disk',
+            field_name='used_disk',
+            name='Resources: Disk',
+        )
+        metric.write(used_bytes / size_bytes)
+        if created:
+            self._create_resources_graph(metric, resource='disk')
+            self._create_resources_threshold(metric, resource='disk')
+
+    def _write_memory(self, memory, primary_key, content_type):
+        extra_values = {
+            'total_memory': memory['total'],
+            'free_memory': memory['free'],
+            'buffered_memory': memory['buffered'],
+            'shared_memory': memory['shared'],
+            'cached_memory': memory['cached'],
+        }
+        percent_used = 1 - (memory['free'] + memory['buffered']) / memory['total']
+        # Available Memory is not shown in some systems (older openwrt versions)
+        if memory.get('available'):
+            extra_values.update({'available_memory': memory['available']})
+            if memory['available'] > memory['free']:
+                percent_used = (
+                    1 - (memory['available'] + memory['buffered']) / memory['total']
+                )
+        metric, created = Metric._get_or_create(
+            object_id=primary_key,
+            content_type=content_type,
+            key='memory',
+            field_name='percent_used',
+            name='Resources: Memory',
+        )
+        metric.write(percent_used, extra_values=extra_values)
+        if created:
+            self._create_resources_graph(metric, resource='memory')
+            self._create_resources_threshold(metric, resource='memory')
 
     def _calculate_increment(self, ifname, stat, value):
         """
@@ -252,6 +330,19 @@ class DeviceMetricView(GenericAPIView):
         graph = Graph(metric=metric, configuration='wifi_clients',)
         graph.full_clean()
         graph.save()
+
+    def _create_resources_graph(self, metric, resource):
+        if resource not in monitoring_settings.AUTO_GRAPHS:
+            return
+        graph = Graph(metric=metric, configuration=resource)
+        graph.full_clean()
+        graph.save()
+
+    def _create_resources_threshold(self, metric, resource):
+        value = DEVICE_RESOURCES_THRESHOLDS[resource]
+        t = Threshold(metric=metric, operator='>', value=value, seconds=0)
+        t.full_clean()
+        t.save()
 
 
 device_metric = DeviceMetricView.as_view()
