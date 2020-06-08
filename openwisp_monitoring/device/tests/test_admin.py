@@ -56,3 +56,11 @@ class TestAdmin(DeviceMonitoringTestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r1.status_code, 200)
         self.assertContains(r1, '00:ee:ad:34:f5:3b')
+
+    def test_uuid_bug(self):
+        dd = self._create_multiple_measurements()
+        uuid = str(dd.pk).replace('-', '')
+        url = reverse('admin:config_device_change', args=[uuid])
+        self._login_admin()
+        r = self.client.get(url)
+        self.assertContains(r, 'Device Status')
