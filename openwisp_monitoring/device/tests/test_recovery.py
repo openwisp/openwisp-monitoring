@@ -55,14 +55,14 @@ class TestRecovery(DeviceMonitoringTestCase):
             'openwisp_monitoring.device.apps.app_settings.DEVICE_RECOVERY_DETECTION',
             False,
         ):
-            device_monitoring_app.ready()
+            device_monitoring_app.device_recovery_detection()
         dm = self._create_device_monitoring()
         cache_key = get_device_recovery_cache_key(device=dm.device)
         dm.update_status('critical')
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'critical')
         self.assertEqual(cache.get(cache_key), None)
-        device_monitoring_app.ready()
+        device_monitoring_app.device_recovery_detection()
 
     def test_device_recovery_cache_key_set(self):
         dm = self._create_device_monitoring()

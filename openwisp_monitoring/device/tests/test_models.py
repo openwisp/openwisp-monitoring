@@ -587,38 +587,6 @@ class TestDeviceMonitoring(BaseTestCase):
         ping.write(0)
         self.assertEqual(dm.status, 'critical')
 
-    def test_unknown_problem_ok(self):
-        dm, ping, load, process_count = self._create_env()
-        self._set_env_unknown(load, process_count, ping, dm)
-        dm.refresh_from_db()
-        self.assertEqual(dm.status, 'unknown')
-        load.check_threshold(100)
-        self.assertEqual(dm.status, 'problem')
-        load.check_threshold(20)
-        self.assertEqual(dm.status, 'ok')
-
-    def test_device_connection_change(self):
-        admin = self._create_admin()
-        Notification = load_model('openwisp_notifications', 'Notification')
-        d = self._create_device()
-        dm = d.monitoring
-        dm.status = 'unknown'
-        dm.save()
-        c = Credentials.objects.create()
-        dc = DeviceConnection.objects.create(credentials=c, device=d)
-        dc.is_working = True
-        dc.save()
-        self.assertEqual(dm.status, 'ok')
-        n = Notification.objects.get(level='info')
-        self.assertEqual(n.verb, 'connected successfully')
-        self.assertEqual(n.actor, d)
-        dc.is_working = False
-        dc.save()
-        n = Notification.objects.get(level='warning')
-        self.assertEqual(n.verb, 'not working')
-        self.assertEqual(n.actor, d)
-        self.assertEqual(n.recipient, admin)
-
     @patch.object(Check, 'perform_check')
     def test_is_working_false_true(self, mocked_call):
         d = self._create_device()
