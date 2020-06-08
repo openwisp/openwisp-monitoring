@@ -141,7 +141,7 @@ DEFAULT_CHARTS = {
         'order': 250,
         'query': {
             'influxdb': (
-                "SELECT 100 * MEAN(used_memory) AS memory_usage "
+                "SELECT 100 * MEAN(percent_used) AS memory_usage "
                 "FROM {key} WHERE time >= '{time}' AND content_type = '{content_type}' "
                 "AND object_id = '{object_id}' GROUP BY time(1d)"
             )

@@ -262,22 +262,22 @@ class DeviceMetricView(GenericAPIView):
             'shared_memory': memory['shared'],
             'cached_memory': memory['cached'],
         }
-        used_memory = 1 - (memory['free'] + memory['buffered']) / memory['total']
+        percent_used = 1 - (memory['free'] + memory['buffered']) / memory['total']
         # Available Memory is not shown in some systems (older openwrt versions)
         if memory.get('available'):
             extra_values.update({'available_memory': memory['available']})
             if memory['available'] > memory['free']:
-                used_memory = (
+                percent_used = (
                     1 - (memory['available'] + memory['buffered']) / memory['total']
                 )
         metric, created = Metric._get_or_create(
             object_id=primary_key,
             content_type=content_type,
             key='memory',
-            field_name='used_memory',
+            field_name='percent_used',
             name='Resources: Memory',
         )
-        metric.write(used_memory, extra_values=extra_values)
+        metric.write(percent_used, extra_values=extra_values)
         if created:
             self._create_resources_graph(metric, resource='memory')
             self._create_resources_threshold(metric, resource='memory')
