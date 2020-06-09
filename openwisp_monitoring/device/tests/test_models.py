@@ -373,6 +373,13 @@ class TestDeviceData(BaseTestCase):
         else:
             self.fail('ValidationError not raised')
 
+    def test_cached_memory_optional(self):
+        dd = self._create_device_data()
+        data = deepcopy(self._sample_data)
+        del data['resources']['memory']['cached']
+        dd.data = data
+        dd.validate_data()
+
     @patch('openwisp_monitoring.device.settings.MAC_VENDOR_DETECTION', True)
     def test_mac_vendor_info(self):
         dd = self.test_save_data()

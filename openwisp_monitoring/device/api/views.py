@@ -262,11 +262,12 @@ class DeviceMetricView(GenericAPIView):
             'free_memory': memory['free'],
             'buffered_memory': memory['buffered'],
             'shared_memory': memory['shared'],
-            'cached_memory': memory['cached'],
         }
+        if 'cached' in memory:
+            extra_values['cached_memory'] = memory.get('cached')
         percent_used = 1 - (memory['free'] + memory['buffered']) / memory['total']
         # Available Memory is not shown in some systems (older openwrt versions)
-        if memory.get('available'):
+        if 'available' in memory:
             extra_values.update({'available_memory': memory['available']})
             if memory['available'] > memory['free']:
                 percent_used = (
