@@ -22,13 +22,13 @@ from openwisp_controller.config.models import Device
 from ... import settings as monitoring_settings
 from ...monitoring.exceptions import InvalidChartConfigException
 from ..schema import schema
-from ..settings import DEVICE_RESOURCES_THRESHOLDS
+from ..settings import DEVICE_RESOURCES_ALERTSETTINGS
 from ..signals import device_metrics_received
 
 logger = logging.getLogger(__name__)
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
-Threshold = load_model('monitoring', 'Threshold')
+AlertSettings = load_model('monitoring', 'AlertSettings')
 DeviceData = load_model('device_monitoring', 'DeviceData')
 
 
@@ -236,7 +236,7 @@ class DeviceMetricView(GenericAPIView):
         )
         if created:
             self._create_resources_chart(metric, resource='cpu')
-            self._create_resources_threshold(metric, resource='cpu')
+            self._create_resources_alert_settings(metric, resource='cpu')
 
     def _write_disk(self, disk_list, primary_key, content_type):
         used_bytes, size_bytes, available_bytes = 0, 0, 0
@@ -254,7 +254,7 @@ class DeviceMetricView(GenericAPIView):
         metric.write(used_bytes / size_bytes)
         if created:
             self._create_resources_chart(metric, resource='disk')
-            self._create_resources_threshold(metric, resource='disk')
+            self._create_resources_alert_settings(metric, resource='disk')
 
     def _write_memory(self, memory, primary_key, content_type):
         extra_values = {
@@ -283,7 +283,7 @@ class DeviceMetricView(GenericAPIView):
         metric.write(percent_used, extra_values=extra_values)
         if created:
             self._create_resources_chart(metric, resource='memory')
-            self._create_resources_threshold(metric, resource='memory')
+            self._create_resources_alert_settings(metric, resource='memory')
 
     def _calculate_increment(self, ifname, stat, value):
         """
@@ -339,11 +339,13 @@ class DeviceMetricView(GenericAPIView):
         chart.full_clean()
         chart.save()
 
-    def _create_resources_threshold(self, metric, resource):
-        value = DEVICE_RESOURCES_THRESHOLDS[resource]
-        t = Threshold(metric=metric, operator='>', value=value, seconds=0)
-        t.full_clean()
-        t.save()
+    def _create_resources_alert_settings(self, metric, resource):
+        value = DEVICE_RESOURCES_ALERTSETTINGS[resource]
+        alert_settings = AlertSettings(
+            metric=metric, operator='>', value=value, seconds=0
+        )
+        alert_settings.full_clean()
+        alert_settings.save()
 
 
 device_metric = DeviceMetricView.as_view()

@@ -12,7 +12,7 @@ from ..utils import manage_short_retention_policy
 
 Metric = load_model('monitoring', 'Metric')
 DeviceData = load_model('device_monitoring', 'DeviceData')
-Graph = load_model('monitoring', 'Graph')
+Chart = load_model('monitoring', 'Chart')
 
 
 class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
@@ -46,7 +46,7 @@ class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
         dd = DeviceData(pk=d.pk)
         self.assertDictEqual(dd.data, data)
         self.assertEqual(Metric.objects.count(), 9)
-        self.assertEqual(Graph.objects.count(), 7)
+        self.assertEqual(Chart.objects.count(), 7)
         if_dict = {'wlan0': data['interfaces'][0], 'wlan1': data['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]

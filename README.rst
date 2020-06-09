@@ -428,13 +428,13 @@ it is not sent if the response was not successful.
 Default Alerts / Notifications
 ------------------------------
 
-+-----------------------+------------------------------------------------------------------------------+
-| Notification Types    | Uses                                                                         |
-+-----------------------+------------------------------------------------------------------------------+
-| ``threshold_crossed`` | Used for creating notification when a metric exceeds threshold value.        |
-+-----------------------+------------------------------------------------------------------------------+
-| ``under_threshold``   | Used for creating notification when a metric falls behind threshold value.   |
-+-----------------------+------------------------------------------------------------------------------+
++----------------------------+---------------------------------------------------------------------------------+
+|    Notification Types      | Uses                                                                            |
++----------------------------+---------------------------------------------------------------------------------+
+| ``alert_settings_crossed`` | Used for creating notification when a metric exceeds alert settings value.      |
++----------------------------+---------------------------------------------------------------------------------+
+|  ``under_alert_settings``  | Used for creating notification when a metric falls behind alert settings value. |
++----------------------------+---------------------------------------------------------------------------------+
 
 Installing for development
 --------------------------

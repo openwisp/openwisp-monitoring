@@ -52,7 +52,9 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
             self.assertEqual(n.action_object, m.alertsettings)
             self.assertEqual(n.level, 'info')
 
-        with self.subTest("Test no double alarm for metric falling behind alert settings"):
+        with self.subTest(
+            "Test no double alarm for metric falling behind alert settings"
+        ):
             m.write(40)
             self.assertTrue(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 2)
@@ -112,9 +114,13 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
     def test_object_check_alert_settings_crossed_immediate(self):
         admin = self._create_admin()
         om = self._create_object_metric(name='load')
-        alert_s = self._create_alert_settings(metric=om, operator='>', value=90, seconds=0)
+        alert_s = self._create_alert_settings(
+            metric=om, operator='>', value=90, seconds=0
+        )
 
-        with self.subTest("Test notification for object metric exceeding alert settings"):
+        with self.subTest(
+            "Test notification for object metric exceeding alert settings"
+        ):
             om.write(99)
             self.assertFalse(om.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
@@ -125,7 +131,9 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
             self.assertEqual(n.target, om.content_object)
             self.assertEqual(n.level, 'warning')
 
-        with self.subTest("Test no double alarm for object metric exceeding alert settings"):
+        with self.subTest(
+            "Test no double alarm for object metric exceeding alert settings"
+        ):
             om.write(95)
             self.assertFalse(om.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
@@ -229,7 +237,9 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         OrganizationUser.objects.create(user=staff, organization=testorg)
         self.assertIsNotNone(staff.notificationuser)
         m = self._create_general_metric(name='load')
-        alert_s = self._create_alert_settings(metric=m, operator='>', value=90, seconds=61)
+        alert_s = self._create_alert_settings(
+            metric=m, operator='>', value=90, seconds=61
+        )
         m._notify_users(notification_type='default', alert_settings=alert_s)
         self.assertEqual(Notification.objects.count(), 1)
         n = notification_queryset.first()
@@ -261,7 +271,9 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         self.assertIsNotNone(staff.notificationuser)
         d = self._create_device(organization=testorg)
         om = self._create_object_metric(name='load', content_object=d)
-        alert_s = self._create_alert_settings(metric=om, operator='>', value=90, seconds=61)
+        alert_s = self._create_alert_settings(
+            metric=om, operator='>', value=90, seconds=61
+        )
         om._notify_users(notification_type='default', alert_settings=alert_s)
         self.assertEqual(Notification.objects.count(), 2)
         n = notification_queryset.first()
@@ -300,7 +312,9 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         OrganizationUser.objects.create(user=staff, organization=testorg)
         self.assertIsNotNone(staff.notificationuser)
         om = self._create_object_metric(name='logins', content_object=user)
-        alert_s = self._create_alert_settings(metric=om, operator='>', value=90, seconds=0)
+        alert_s = self._create_alert_settings(
+            metric=om, operator='>', value=90, seconds=0
+        )
         om._notify_users(notification_type='default', alert_settings=alert_s)
         self.assertEqual(Notification.objects.count(), 1)
         n = notification_queryset.first()
