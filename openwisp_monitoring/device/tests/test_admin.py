@@ -24,7 +24,7 @@ class TestAdmin(DeviceMonitoringTestCase):
         url = reverse('admin:config_device_change', args=[dd.pk])
         self._login_admin()
         r = self.client.get(url)
-        self.assertContains(r, 'Device Status')
+        self.assertContains(r, '<h2>Status</h2>')
         self.assertContains(r, 'Monitoring Graph')
         self.assertContains(r, 'Storage')
         self.assertContains(r, 'CPU')
@@ -35,7 +35,7 @@ class TestAdmin(DeviceMonitoringTestCase):
         url = reverse('admin:config_device_change', args=[d.pk])
         self._login_admin()
         r = self.client.get(url)
-        self.assertNotContains(r, 'Device Status')
+        self.assertNotContains(r, '<h2>Status</h2>')
 
     def test_remove_invalid_interface(self):
         d = self._create_device(organization=self._create_org())
@@ -66,4 +66,4 @@ class TestAdmin(DeviceMonitoringTestCase):
         url = reverse('admin:config_device_change', args=[uuid])
         self._login_admin()
         r = self.client.get(url)
-        self.assertContains(r, 'Device Status')
+        self.assertContains(r, '<h2>Status</h2>')
