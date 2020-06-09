@@ -65,13 +65,6 @@ class AbstractDeviceData(object):
             data['general']['uptime'] = uptime.format(
                 relativedelta(seconds=data['general']['uptime'] + time_elapsed)
             )
-        if 'resources' in data and 'memory' in data['resources']:
-            # convert bytes to megabytes
-            MB = 1000000.0
-            for key in data['resources']['memory'].keys():
-                data['resources']['memory'][key] = round(
-                    data['resources']['memory'][key] / MB, 2
-                )
         # used for reordering interfaces
         interface_dict = OrderedDict()
         for interface in data.get('interfaces', []):

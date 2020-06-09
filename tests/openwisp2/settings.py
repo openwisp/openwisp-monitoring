@@ -276,7 +276,7 @@ if TESTING:
 
 LOGGING = {
     'version': 1,
-    'filters': {'require_debug_true': {'()': 'django.utils.log.RequireDebugTrue',}},
+    'filters': {'require_debug_true': {'()': 'django.utils.log.RequireDebugTrue'}},
     'handlers': {
         'console': {
             'level': 'DEBUG',
@@ -285,11 +285,14 @@ LOGGING = {
         }
     },
     'loggers': {
-        'py.warnings': {'handlers': ['console'],},
-        'celery': {'handlers': ['console'], 'level': 'DEBUG',},
-        'celery.task': {'handlers': ['console'], 'level': 'DEBUG',},
+        'py.warnings': {'handlers': ['console']},
+        'celery': {'handlers': ['console'], 'level': 'DEBUG'},
+        'celery.task': {'handlers': ['console'], 'level': 'DEBUG'},
     },
 }
+
+if not TESTING:
+    LOGGING.update({'root': {'level': 'INFO', 'handlers': ['console']}})
 
 if os.environ.get('SAMPLE_APP', False):
     for app in [
