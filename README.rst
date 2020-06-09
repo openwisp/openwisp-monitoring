@@ -28,7 +28,7 @@ Available Features
 * CSV Export of monitoring data
 * It allows you to add custom `Charts <https://github.com/openwisp/openwisp-monitoring/#openwisp_monitoring_charts>`_
 * It allows to create custom ``Metric``, select a ``Chart`` and set a ``Threshold``
-* Notifications are sent whenever ``Threshold`` value is crossed
+* Configurable alerts and web notifications
 
 Install Dependencies
 --------------------
@@ -424,6 +424,17 @@ view (only when using HTTP POST).
 
 The signal is emitted just before a successful response is returned,
 it is not sent if the response was not successful.
+
+Default Alerts / Notifications
+------------------------------
+
++-----------------------+------------------------------------------------------------------------------+
+| Notification Types    | Uses                                                                         |
++-----------------------+------------------------------------------------------------------------------+
+| ``threshold_crossed`` | Used for creating notification when a metric exceeds threshold value.        |
++-----------------------+------------------------------------------------------------------------------+
+| ``under_threshold``   | Used for creating notification when a metric falls behind threshold value.   |
++-----------------------+------------------------------------------------------------------------------+
 
 Installing for development
 --------------------------
@@ -880,6 +891,17 @@ If you want to extend this view, you will have to perform the additional steps b
         # ... other URLs
         url(r'^(?P<path>.*)$', DeviceMetricView.as_view(), name='api_device_metric',),
     ]
+
+Registering new notification types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can define your own notification types using ``register_notification_type`` function from OpenWISP
+Notifications. For more information, see the relevant `openwisp-notifications section about registering notification types
+<https://github.com/openwisp/openwisp-notifications#registering--unregistering-notification-types>`_.
+
+Once a new notification type is registered, you have to use the `"notify" signal provided in
+openwisp-notifications <https://github.com/openwisp/openwisp-notifications#sending-notifications>`_
+to send notifications for this type.
 
 Contributing
 ------------
