@@ -108,22 +108,20 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertFalse(created)
 
     def test_write(self):
-        TimeseriesDB().write(
-            'test_write', dict(value=2), database=TimeseriesDB().TEST_DB
-        )
+        TimeseriesDB.write('test_write', dict(value=2), database=self.TEST_DB)
         measurement = list(
-            TimeseriesDB()
-            .query('select * from test_write', database=TimeseriesDB().TEST_DB)
-            .get_points()
+            TimeseriesDB.query(
+                'select * from test_write', database=self.TEST_DB
+            ).get_points()
         )[0]
         self.assertEqual(measurement['value'], 2)
 
     def test_general_write(self):
         m = self._create_general_metric(name='Sync test')
         m.write(1)
-        measurement = list(
-            TimeseriesDB().query('select * from sync_test').get_points()
-        )[0]
+        measurement = list(TimeseriesDB.query('select * from sync_test').get_points())[
+            0
+        ]
         self.assertEqual(measurement['value'], 1)
 
     def test_object_write(self):
@@ -134,7 +132,7 @@ class TestModels(TestMonitoringMixin, TestCase):
             "select * from test_metric WHERE object_id = '{0}'"
             " AND content_type = '{1}'".format(om.object_id, content_type)
         )
-        measurement = list(TimeseriesDB().query(q).get_points())[0]
+        measurement = list(TimeseriesDB.query(q).get_points())[0]
         self.assertEqual(measurement['value'], 3)
 
     def test_general_same_key_different_fields(self):
@@ -147,11 +145,11 @@ class TestModels(TestMonitoringMixin, TestCase):
         )
         up.write(100)
         measurement = list(
-            TimeseriesDB().query('select download from traffic').get_points()
+            TimeseriesDB.query('select download from traffic').get_points()
         )[0]
         self.assertEqual(measurement['download'], 200)
         measurement = list(
-            TimeseriesDB().query('select upload from traffic').get_points()
+            TimeseriesDB.query('select upload from traffic').get_points()
         )[0]
         self.assertEqual(measurement['upload'], 100)
 
@@ -176,13 +174,13 @@ class TestModels(TestMonitoringMixin, TestCase):
             "select download from traffic WHERE object_id = '{0}'"
             " AND content_type = '{1}'".format(user_down.object_id, content_type)
         )
-        measurement = list(TimeseriesDB().query(q).get_points())[0]
+        measurement = list(TimeseriesDB.query(q).get_points())[0]
         self.assertEqual(measurement['download'], 200)
         q = (
             "select upload from traffic WHERE object_id = '{0}'"
             " AND content_type = '{1}'".format(user_up.object_id, content_type)
         )
-        measurement = list(TimeseriesDB().query(q).get_points())[0]
+        measurement = list(TimeseriesDB.query(q).get_points())[0]
         self.assertEqual(measurement['upload'], 100)
 
     def test_read_general_metric(self):

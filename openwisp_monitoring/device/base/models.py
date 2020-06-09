@@ -96,7 +96,7 @@ class AbstractDeviceData(object):
         if self.__data:
             return self.__data
         q = device_data_query.format(SHORT_RP, self.__key, self.pk)
-        points = list(TimeseriesDB().query(q).get_points())
+        points = list(TimeseriesDB.query(q).get_points())
         if not points:
             return None
         self.data_timestamp = points[0]['time']
@@ -168,7 +168,7 @@ class AbstractDeviceData(object):
             self.add_mac_vendor_info()
         # TODO: Rename the parameters, since they might be called
         # differently in the other database (eg: tags/labels)
-        TimeseriesDB().write(
+        TimeseriesDB.write(
             name=self.__key,
             values={'data': self.json()},
             tags={'pk': self.pk},

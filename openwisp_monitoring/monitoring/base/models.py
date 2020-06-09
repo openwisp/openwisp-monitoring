@@ -166,7 +166,7 @@ class AbstractMetric(TimeStampedEditableModel):
             values.update(extra_values)
         signal_kwargs = dict(sender=self.__class__, metric=self, values=values)
         pre_metric_write.send(**signal_kwargs)
-        TimeseriesDB().write(
+        TimeseriesDB.write(
             name=self.key,
             values=values,
             tags=self.tags,
@@ -182,7 +182,7 @@ class AbstractMetric(TimeStampedEditableModel):
 
     def read(self, **kwargs):
         """ reads timeseries data """
-        return TimeseriesDB().read(
+        return TimeseriesDB.read(
             key=self.key, fields=self.field_name, tags=self.tags, **kwargs
         )
 
@@ -261,8 +261,8 @@ class AbstractChart(TimeStampedEditableModel):
     def _clean_query(self):
         try:
             self._is_query_allowed(self.query)
-            TimeseriesDB().query(self.get_query())
-        except TimeseriesDB().client_error as e:
+            TimeseriesDB.query(self.get_query())
+        except TimeseriesDB.client_error as e:
             raise ValidationError({'configuration': e}) from e
         except InvalidChartConfigException as e:
             raise ValidationError({'configuration': str(e)}) from e
@@ -318,10 +318,7 @@ class AbstractChart(TimeStampedEditableModel):
 
     @property
     def query(self):
-        query = self.config_dict['query']
-        if query:
-            return query
-        return self._default_query
+        return self.config_dict['query'] or self._default_query
 
     @property
     def top_fields(self):
@@ -442,7 +439,7 @@ class AbstractChart(TimeStampedEditableModel):
         q = self.get_query(
             query=q, summary=True, fields=['SUM(*)'], time=time, timezone=timezone
         )
-        res = list(TimeseriesDB().query(q, epoch='s').get_points())
+        res = list(TimeseriesDB.query(q, epoch='s').get_points())
         if not res:
             return []
         res = res[0]
@@ -475,9 +472,9 @@ class AbstractChart(TimeStampedEditableModel):
             else:
                 data_query = self.get_query(**query_kwargs)
                 summary_query = self.get_query(summary=True, **query_kwargs)
-            points = list(TimeseriesDB().query(data_query, epoch='s').get_points())
-            summary = list(TimeseriesDB().query(summary_query, epoch='s').get_points())
-        except TimeseriesDB().client_error as e:
+            points = list(TimeseriesDB.query(data_query, epoch='s').get_points())
+            summary = list(TimeseriesDB.query(summary_query, epoch='s').get_points())
+        except TimeseriesDB.client_error as e:
             logging.error(e, exc_info=True)
             raise e
         for point in points:

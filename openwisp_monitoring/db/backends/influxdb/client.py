@@ -1,26 +1,50 @@
+import logging
 from datetime import datetime
 
 from influxdb import client
 
 from .. import TIMESERIES_DB
-from .creation import DatabaseCreation
 from .exception import DatabaseException
 
+logger = logging.getLogger(__name__)
 
-class DatabaseClient(DatabaseCreation, DatabaseException):
+
+class DatabaseClient(DatabaseException):
+    def __init__(self):
+        self._db = None
+        self.db_name = None
+
+    def create_database(self, database=TIMESERIES_DB['NAME']):
+        """ creates database if necessary """
+        db = self.get_db()
+        # influxdb does not create a new database, neither raise an error if databese exists
+        db.create_database(database)
+        logger.info(f'Created influxdb database "{database}"')
+
+    def drop_database(self, database=TIMESERIES_DB['NAME']):
+        """ drops database if it exists """
+        db = self.get_db()
+        # influxdb does not raise an error if databese does not exist
+        db.drop_database(database)
+        logger.info(f'Dropped influxdb database "{database}"')
+
+    # TODO: Needs to be improved
     def get_db(self):
         """ Returns an ``InfluxDBClient`` instance """
-        return client.InfluxDBClient(
-            TIMESERIES_DB['HOST'],
-            TIMESERIES_DB['PORT'],
-            TIMESERIES_DB['USER'],
-            TIMESERIES_DB['PASSWORD'],
-            TIMESERIES_DB['NAME'],
-        )
+        if not self._db or self._db._database != self.db_name:
+            self._db = client.InfluxDBClient(
+                TIMESERIES_DB['HOST'],
+                TIMESERIES_DB['PORT'],
+                TIMESERIES_DB['USER'],
+                TIMESERIES_DB['PASSWORD'],
+                self.db_name or TIMESERIES_DB['NAME'],
+            )
+            self.db_name = self._db._database
+        return self._db
 
     def query(self, query, **kwargs):
         db = self.get_db()
-        database = kwargs.get('database') or TIMESERIES_DB['NAME']
+        database = kwargs.get('database') or self.db_name or TIMESERIES_DB['NAME']
         return db.query(
             query,
             kwargs.get('params'),
@@ -44,7 +68,7 @@ class DatabaseClient(DatabaseCreation, DatabaseException):
         self.get_db().write(
             {'points': [point]},
             {
-                'db': kwargs.get('database') or TIMESERIES_DB['NAME'],
+                'db': kwargs.get('database') or self.db_name or TIMESERIES_DB['NAME'],
                 'rp': kwargs.get('retention_policy'),
             },
         )

@@ -36,33 +36,3 @@ default_chart_query = [
 device_data_query = (
     "SELECT data FROM {0}.{1} WHERE pk = '{2}' " "ORDER BY time DESC LIMIT 1"
 )
-
-test_query = {
-    'histogram': (
-        "SELECT {fields|SUM|/ 1} FROM {key} "
-        "WHERE time >= '{time}' AND content_type = "
-        "'{content_type}' AND object_id = '{object_id}'"
-    ),
-    'bad_test': "BAD",
-    'default': (
-        "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND "
-        "content_type = '{content_type}' AND object_id = '{object_id}'"
-    ),
-    'multiple_test': (
-        "SELECT {field_name}, value2 FROM {key} WHERE time >= '{time}' AND "
-        "content_type = '{content_type}' AND object_id = '{object_id}'"
-    ),
-    'mean_test': (
-        "SELECT MEAN({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
-        "content_type = '{content_type}' AND object_id = '{object_id}'"
-    ),
-    'sum_test': (
-        "SELECT SUM({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
-        "content_type = '{content_type}' AND object_id = '{object_id}'"
-    ),
-    'top_fields_mean': (
-        "SELECT {fields|MEAN} FROM {key} "
-        "WHERE time >= '{time}' AND content_type = "
-        "'{content_type}' AND object_id = '{object_id}'"
-    ),
-}

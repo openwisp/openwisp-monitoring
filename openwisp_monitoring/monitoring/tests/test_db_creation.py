@@ -12,7 +12,7 @@ from ...db import TimeseriesDB
 TIMESERIES_DB = getattr(settings, 'TIMESERIES_DATABASE')
 
 
-def mock_create_database(self, **kwargs):
+def mock_create_database(**kwargs):
     raise ConnectionError
 
 
@@ -27,7 +27,7 @@ class TestDatabase(TestCase):
             apps.get_app_config(self.app).create_database()
         except ConnectionError:
             pass
-        TimeseriesDB().drop_database('test_db')
+        TimeseriesDB.drop_database('test_db')
         self.assertEqual(mock.call_count, 5)
 
     @patch('openwisp_monitoring.monitoring.apps.sleep', return_value=None)

@@ -25,7 +25,7 @@ class MonitoringConfig(AppConfig):
         # create influxdb database if doesn't exist yet
         for attempt_number in range(1, self.max_retries + 1):
             try:
-                TimeseriesDB().create_database()
+                TimeseriesDB.create_database()
                 return
             except ConnectionError as e:
                 self.warn_and_delay(attempt_number)

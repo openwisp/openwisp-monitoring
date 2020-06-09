@@ -1,10 +1,26 @@
+import logging
 from importlib import import_module
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db import DatabaseError
 
-TIMESERIES_DB = getattr(settings, 'TIMESERIES_DATABASE')
+logger = logging.getLogger(__name__)
+
+TIMESERIES_DB = getattr(settings, 'TIMESERIES_DATABASE', None)
+if not TIMESERIES_DB:
+    TIMESERIES_DB = {
+        'BACKEND': 'openwisp_monitoring.db.backends.influxdb',
+        'USER': 'openwisp',
+        'PASSWORD': 'openwisp',
+        'NAME': 'openwisp2',
+        'HOST': 'localhost',
+        'PORT': '8086',
+    }
+    logger.warning(
+        'The previous method to define Timeseries Database has been deprecated. Please refer the docs\n'
+        'https://github.com/openwisp/openwisp-monitoring#setup-integrate-in-an-existing-django-project',
+    )
 
 
 def load_backend(backend_name=TIMESERIES_DB['BACKEND'], module=None):
@@ -43,5 +59,5 @@ def load_backend(backend_name=TIMESERIES_DB['BACKEND'], module=None):
             ) from e
 
 
-TimeseriesDB = load_backend(module='client').DatabaseClient
+TimeseriesDB = load_backend(module='client').DatabaseClient()
 TimeseriesDBQueries = load_backend(module='queries')

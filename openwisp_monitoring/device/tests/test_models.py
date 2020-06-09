@@ -306,7 +306,7 @@ class TestDeviceData(BaseTestCase):
         self.assertEqual(dd.data, self._sample_data)
 
     def test_retention_policy(self):
-        rp = TimeseriesDB().get_db().get_list_retention_policies()
+        rp = TimeseriesDB.get_db().get_list_retention_policies()
         self.assertEqual(len(rp), 2)
         self.assertEqual(rp[1]['name'], SHORT_RP)
         self.assertEqual(rp[1]['default'], False)

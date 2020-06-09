@@ -176,7 +176,36 @@ CELERY_BEAT_SCHEDULE = {
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 CELERY_EMAIL_BACKEND = EMAIL_BACKEND
 
-test_query = importlib.import_module(TIMESERIES_DATABASE["BACKEND"]).queries.test_query
+# chart configuration queries of influxdb for automated tests
+test_query = {
+    'histogram': (
+        "SELECT {fields|SUM|/ 1} FROM {key} "
+        "WHERE time >= '{time}' AND content_type = "
+        "'{content_type}' AND object_id = '{object_id}'"
+    ),
+    'bad_test': "BAD",
+    'default': (
+        "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND "
+        "content_type = '{content_type}' AND object_id = '{object_id}'"
+    ),
+    'multiple_test': (
+        "SELECT {field_name}, value2 FROM {key} WHERE time >= '{time}' AND "
+        "content_type = '{content_type}' AND object_id = '{object_id}'"
+    ),
+    'mean_test': (
+        "SELECT MEAN({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
+        "content_type = '{content_type}' AND object_id = '{object_id}'"
+    ),
+    'sum_test': (
+        "SELECT SUM({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
+        "content_type = '{content_type}' AND object_id = '{object_id}'"
+    ),
+    'top_fields_mean': (
+        "SELECT {fields|MEAN} FROM {key} "
+        "WHERE time >= '{time}' AND content_type = "
+        "'{content_type}' AND object_id = '{object_id}'"
+    ),
+}
 
 # this custom chart configuration is used for automated testing purposes
 OPENWISP_MONITORING_CHARTS = {
