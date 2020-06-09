@@ -7,6 +7,8 @@ import django.utils.timezone
 import model_utils.fields
 import uuid
 
+from openwisp_monitoring.monitoring.charts import get_chart_configuration_choices
+
 
 class Migration(migrations.Migration):
 
@@ -166,21 +168,7 @@ class Migration(migrations.Migration):
                 (
                     'configuration',
                     models.CharField(
-                        choices=[
-                            ('bad_test', 'Bugged chart for testing purposes'),
-                            ('default', 'Default query for testing purposes'),
-                            ('dummy', 'Dummy chart'),
-                            ('histogram', 'Histogram'),
-                            ('mean_test', 'Mean test'),
-                            ('multiple_test', 'Multiple test'),
-                            ('packet_loss', 'Packet loss'),
-                            ('rtt', 'Round Trip Time'),
-                            ('sum_test', 'Sum test'),
-                            ('top_fields_mean', 'Top fields mean test'),
-                            ('traffic', 'Traffic'),
-                            ('uptime', 'Uptime'),
-                            ('wifi_clients', 'WiFi clients'),
-                        ],
+                        choices=get_chart_configuration_choices(),
                         max_length=16,
                         null=True,
                     ),

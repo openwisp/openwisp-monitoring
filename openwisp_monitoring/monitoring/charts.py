@@ -131,6 +131,59 @@ DEFAULT_CHARTS = {
             )
         },
     },
+    'memory': {
+        'type': 'scatter',
+        'title': _('Memory Usage'),
+        'description': _('Percentage of memory (RAM) being used.'),
+        'summary_labels': [_('Memory Usage')],
+        'unit': '%',
+        'colors': [DEFAULT_COLORS[4]],
+        'order': 250,
+        'query': {
+            'influxdb': (
+                "SELECT 100 * MEAN(percent_used) AS memory_usage "
+                "FROM {key} WHERE time >= '{time}' AND content_type = '{content_type}' "
+                "AND object_id = '{object_id}' GROUP BY time(1d)"
+            )
+        },
+    },
+    'cpu': {
+        'type': 'scatter',
+        'title': _('CPU Load'),
+        'description': _(
+            'Average CPU load, measured using the Linux load averages, '
+            'taking into account the number of available CPUs.'
+        ),
+        'summary_labels': [_('CPU Load')],
+        'unit': '%',
+        'colors': [DEFAULT_COLORS[-3]],
+        'order': 260,
+        'query': {
+            'influxdb': (
+                "SELECT 100 * MEAN(cpu_usage) AS CPU_load FROM {key} WHERE "
+                "time >= '{time}' AND content_type = '{content_type}' AND "
+                "object_id = '{object_id}' GROUP BY time(1d)"
+            )
+        },
+    },
+    'disk': {
+        'type': 'scatter',
+        'title': _('Disk Usage'),
+        'description': _(
+            'Disk usage in percentage, calculated using all the available partitions.'
+        ),
+        'summary_labels': [_('Disk Usage')],
+        'unit': '%',
+        'colors': [DEFAULT_COLORS[-1]],
+        'order': 270,
+        'query': {
+            'influxdb': (
+                "SELECT 100 * MEAN(used_disk) AS disk_usage FROM {key} WHERE "
+                "time >= '{time}' AND content_type = '{content_type}' AND "
+                "object_id = '{object_id}' GROUP BY time(1d)"
+            )
+        },
+    },
 }
 
 
