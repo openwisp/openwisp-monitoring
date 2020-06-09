@@ -229,7 +229,7 @@ class DeviceMetricView(GenericAPIView):
             content_type=content_type,
             key='cpu',
             field_name='cpu_usage',
-            name='Resources: CPU',
+            name='CPU usage',
         )
         metric.write(
             float(load[0] / cpus), extra_values=extra_values,
@@ -249,7 +249,7 @@ class DeviceMetricView(GenericAPIView):
             content_type=content_type,
             key='disk',
             field_name='used_disk',
-            name='Resources: Disk',
+            name='Disk usage',
         )
         metric.write(used_bytes / size_bytes)
         if created:
@@ -278,7 +278,7 @@ class DeviceMetricView(GenericAPIView):
             content_type=content_type,
             key='memory',
             field_name='percent_used',
-            name='Resources: Memory',
+            name='Memory usage',
         )
         metric.write(percent_used, extra_values=extra_values)
         if created:
