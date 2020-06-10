@@ -27,4 +27,5 @@ class Migration(migrations.Migration):
             name='value',
             field=models.FloatField(help_text='alert settings value'),
         ),
+        migrations.AlterModelTable(name='alertsettings', table=None,),
     ]
