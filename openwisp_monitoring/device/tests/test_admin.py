@@ -25,7 +25,7 @@ class TestAdmin(DeviceMonitoringTestCase):
         self._login_admin()
         r = self.client.get(url)
         self.assertContains(r, '<h2>Status</h2>')
-        self.assertContains(r, 'Monitoring Chart')
+        self.assertContains(r, '<h2>Charts</h2>')
         self.assertContains(r, 'Storage')
         self.assertContains(r, 'CPU')
         self.assertContains(r, 'RAM status')

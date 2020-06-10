@@ -23,8 +23,8 @@ Available Features
 ------------------
 
 * Displays ``Uptime``, ``Memory Status``, ``Load Status``, ``Addresses``, ``Neighbours`` of the **Device**
-* Displays ``Monitoring Charts`` namely ``Uptime``, ``Packet Loss``, ``Round Trip Time``, ``Traffic`` in the form of lively charts
-* ``Monitoring Charts`` can be viewed at resolutions of 1 day, 3 days, a week, a month and a year
+* Displays ``Charts`` namely ``Uptime``, ``Packet Loss``, ``Round Trip Time``, ``Traffic`` in the form of lively charts
+* ``Charts`` can be viewed at resolutions of 1 day, 3 days, a week, a month and a year
 * CSV Export of monitoring data
 * It allows you to add custom `Charts <https://github.com/openwisp/openwisp-monitoring/#openwisp_monitoring_charts>`_
 * It allows to create custom ``Metric``, select a ``Chart`` and set a ``AlertSettings``
@@ -851,7 +851,7 @@ Other base classes that can be inherited and extended
 ``DeviceMetricView``
 ####################
 
-This view is responsible for displaying ``Monitoring Charts`` and ``Device Status`` primarily.
+This view is responsible for displaying ``Charts`` and ``Status`` primarily.
 
 The full python path is: ``openwisp_monitoring.device.api.views.DeviceMetricView``.
 
