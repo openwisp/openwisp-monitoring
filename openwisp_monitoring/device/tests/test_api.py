@@ -268,6 +268,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self._create_multiple_measurements(create=False, count=2)
         m = self._create_object_metric(content_object=d, name='applications')
         self._create_chart(metric=m, configuration='histogram')
+        m.write(None, extra_values={'http2': 90, 'ssh': 100, 'udp': 80, 'spdy': 70})
         r = self.client.get('{0}&csv=1'.format(self._url(d.pk, d.key)))
         self.assertEqual(r.get('Content-Disposition'), 'attachment; filename=data.csv')
         self.assertEqual(r.get('Content-Type'), 'text/csv')
@@ -288,11 +289,47 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                 'disk_usage - Disk Usage',
             ],
         )
-        last_line = rows[-1].strip().split(',')
+        last_line_before_histogram = rows[-5].strip().split(',')
         self.assertEqual(
-            last_line,
-            [last_line[0], '1', '2', '0.4', '0.1', '2', '1', '9.73', '0', '8.27'],
+            last_line_before_histogram,
+            [
+                last_line_before_histogram[0],
+                '1',
+                '2',
+                '0.4',
+                '0.1',
+                '2',
+                '1',
+                '9.73',
+                '0',
+                '8.27',
+            ],
         )
+        self.assertEqual(rows[-4].strip(), '')
+        self.assertEqual(rows[-3].strip(), 'Histogram')
+        self.assertEqual(rows[-2].strip().split(','), ['ssh', '100'])
+        self.assertEqual(rows[-1].strip().split(','), ['http2', '90'])
+
+    def test_histogram_csv_none_value(self):
+        d = self._create_device(organization=self._create_org())
+        m = self._create_object_metric(content_object=d, name='applications')
+        mock = {
+            'traces': [('http2', [100]), ('ssh', [None])],
+            'x': ['2020-06-15 00:00'],
+            'summary': {'http2': 100, 'ssh': None},
+        }
+        c = self._create_chart(metric=m, configuration='histogram')
+        with patch(
+            'openwisp_monitoring.monitoring.base.models.AbstractChart.read',
+            return_value=mock,
+        ):
+            self.assertEqual(c.read(), mock)
+            r = self.client.get('{0}&csv=1'.format(self._url(d.pk, d.key)))
+        self.assertEqual(r.get('Content-Disposition'), 'attachment; filename=data.csv')
+        self.assertEqual(r.get('Content-Type'), 'text/csv')
+        rows = r.content.decode('utf8').strip().split('\n')
+        self.assertEqual(rows[-2].strip().split(','), ['http2', '100'])
+        self.assertEqual(rows[-1].strip().split(','), ['ssh', '0'])
 
     def test_get_device_metrics_400_bad_timezone(self):
         dd = self.create_test_adata(no_resources=True)

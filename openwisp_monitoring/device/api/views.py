@@ -112,20 +112,34 @@ class DeviceMetricView(GenericAPIView):
 
     def _get_csv(self, data):
         header = ['time']
-        columns = [data['x']]
+        columns = [data.get('x')]
+        histograms = []
         for chart in data['charts']:
-            # TODO: add way to export data for histogram charts
             if chart['type'] == 'histogram':
+                histograms.append(chart)
                 continue
             for trace in chart['traces']:
                 header.append(self._get_csv_header(chart, trace))
                 columns.append(trace[1])
         rows = [header]
-        for index, element in enumerate(data['x']):
+        for index, element in enumerate(data.get('x', [])):
             row = []
             for column in columns:
                 row.append(column[index])
             rows.append(row)
+        for chart in histograms:
+            rows.append([])
+            rows.append([chart['title']])
+            # Export value as 0 if it is None
+            for key, value in chart['summary'].items():
+                if chart['summary'][key] is None:
+                    chart['summary'][key] = 0
+            # Sort Histogram on the basis of value in the descending order
+            sorted_charts = sorted(
+                chart['summary'].items(), key=lambda x: x[1], reverse=True
+            )
+            for field, value in sorted_charts:
+                rows.append([field, value])
         # write CSV to in-memory file object
         fileobj = StringIO()
         csv.writer(fileobj).writerows(rows)
