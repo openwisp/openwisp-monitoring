@@ -108,13 +108,7 @@ DEFAULT_CHARTS = {
         'unit': '%',
         'colors': [DEFAULT_COLORS[4]],
         'order': 250,
-        'query': {
-            'influxdb': (
-                "SELECT 100 * MEAN(percent_used) AS memory_usage "
-                "FROM {key} WHERE time >= '{time}' AND content_type = '{content_type}' "
-                "AND object_id = '{object_id}' GROUP BY time(1d)"
-            )
-        },
+        'query': chart_query['memory'],
     },
     'cpu': {
         'type': 'scatter',
@@ -127,13 +121,7 @@ DEFAULT_CHARTS = {
         'unit': '%',
         'colors': [DEFAULT_COLORS[-3]],
         'order': 260,
-        'query': {
-            'influxdb': (
-                "SELECT 100 * MEAN(cpu_usage) AS CPU_load FROM {key} WHERE "
-                "time >= '{time}' AND content_type = '{content_type}' AND "
-                "object_id = '{object_id}' GROUP BY time(1d)"
-            )
-        },
+        'query': chart_query['cpu'],
     },
     'disk': {
         'type': 'scatter',
@@ -145,13 +133,7 @@ DEFAULT_CHARTS = {
         'unit': '%',
         'colors': [DEFAULT_COLORS[-1]],
         'order': 270,
-        'query': {
-            'influxdb': (
-                "SELECT 100 * MEAN(used_disk) AS disk_usage FROM {key} WHERE "
-                "time >= '{time}' AND content_type = '{content_type}' AND "
-                "object_id = '{object_id}' GROUP BY time(1d)"
-            )
-        },
+        'query': chart_query['disk'],
     },
 }
 

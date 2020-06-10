@@ -28,7 +28,7 @@ class TestMonitoringMixin(TestOrganizationMixin):
     def tearDownClass(cls):
         TimeseriesDB.drop_database(cls.TEST_DB)
 
-    def teardown(self):
+    def tearDown(self):
         TimeseriesDB.query('DROP SERIES FROM /.*/')
 
     def _create_general_metric(self, **kwargs):
