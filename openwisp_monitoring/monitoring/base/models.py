@@ -129,24 +129,35 @@ class AbstractMetric(TimeStampedEditableModel):
         except ObjectDoesNotExist:
             return
         crossed = alert_settings._is_crossed_by(value, time)
+        first_time = False
         # situation has not changed
         if (not crossed and self.is_healthy) or (crossed and self.is_healthy is False):
             return
         # problem: not within threshold limit
         elif crossed and self.is_healthy in [True, None]:
+            if self.is_healthy is None:
+                first_time = True
             self.is_healthy = False
             notification_type = 'threshold_crossed'
         # ok: returned within threshold limit
-        elif not crossed and self.is_healthy in [False, None]:
+        elif not crossed and self.is_healthy is False:
             self.is_healthy = True
             notification_type = 'threshold_recovery'
+        # First metric write within threshold
+        elif not crossed and self.is_healthy is None:
+            self.is_healthy = True
+            first_time = True
         self.save()
         threshold_crossed.send(
             sender=self.__class__,
             alert_settings=alert_settings,
             metric=self,
             target=self.content_object,
+            first_time=first_time,
         )
+        # First metric write and within threshold, do not raise alert
+        if first_time and self.is_healthy:
+            return
         self._notify_users(notification_type, alert_settings)
 
     def write(self, value, time=None, database=None, check=True, extra_values=None):

@@ -432,6 +432,25 @@ view (only when using HTTP POST).
 The signal is emitted just before a successful response is returned,
 it is not sent if the response was not successful.
 
+``threshold_crossed``
+~~~~~~~~~~~~~~~~~~~~~
+
+**Path**: ``openwisp_monitoring.monitoring.signals.threshold_crossed``
+
+**Arguments**:
+
+- ``sender``: Metric class
+- ``metric``: ``Metric`` object whose threshold defined in related alert settings was crossed
+- ``alert_settings``: ``AlertSettings`` related to the ``Metric``
+- ``target``: related ``Device`` object
+- ``first_time``: it will be set to true when the metric is written for the first time. It shall be set to false afterwards.
+
+``first_time`` parameter can be used to avoid initiating unneeded actions.
+For example, sending recovery notifications.
+
+This signal is emitted when the threshold value of a ``Metric`` defined in
+alert settings is crossed.
+
 Default Alerts / Notifications
 ------------------------------
 
