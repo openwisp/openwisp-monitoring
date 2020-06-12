@@ -217,11 +217,12 @@ class TestGraphs(TestMonitoringMixin, TestCase):
             name='wifi associations', key='hostapd', field_name='mac_address'
         )
         g = self._create_graph(metric=m, test_data=False, configuration='wifi_clients')
+        now_ = now()
         for n in range(0, 9):
-            m.write('00:16:3e:00:00:00', time=now() - timedelta(days=n))
-            m.write('00:23:4b:00:00:00', time=now() - timedelta(days=n, seconds=1))
-        m.write('00:16:3e:00:00:00', time=now() - timedelta(days=2))
-        m.write('00:16:3e:00:00:00', time=now() - timedelta(days=4))
+            m.write('00:16:3e:00:00:00', time=now_ - timedelta(days=n))
+            m.write('00:23:4b:00:00:00', time=now_ - timedelta(days=n, seconds=1))
+        m.write('00:16:3e:00:00:00', time=now_ - timedelta(days=2))
+        m.write('00:16:3e:00:00:00', time=now_ - timedelta(days=4))
         m.write('00:23:4a:00:00:00')
         m.write('00:14:5c:00:00:00')
         g.save()
