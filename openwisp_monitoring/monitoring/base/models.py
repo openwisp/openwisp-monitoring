@@ -77,10 +77,13 @@ class AbstractMetric(TimeStampedEditableModel):
         like ``get_or_create`` method of django model managers
         but with validation before creation
         """
+        assert 'name' in kwargs
         if 'key' in kwargs:
             kwargs['key'] = cls._makekey(kwargs['key'])
         try:
-            metric = cls.objects.get(**kwargs)
+            lookup_kwargs = kwargs.copy()
+            del lookup_kwargs['name']
+            metric = cls.objects.get(**lookup_kwargs)
             created = False
         except cls.DoesNotExist:
             metric = cls(**kwargs)

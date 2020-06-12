@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
@@ -69,6 +70,40 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertTrue(created)
         m2, created = Metric._get_or_create(name='lan', key='br-lan')
         self.assertEqual(m.id, m2.id)
+        self.assertFalse(created)
+
+    def test_get_or_create_renamed(self):
+        m, created = Metric._get_or_create(name='lan', key='br-lan', field_name='rx')
+        self.assertTrue(created)
+        m.name = 'renamed'
+        m.save()
+        m2, created = Metric._get_or_create(name='lan', key='br-lan', field_name='rx')
+        self.assertEqual(m.id, m2.id)
+        self.assertEqual(m2.name, m.name)
+        self.assertFalse(created)
+
+    def test_get_or_create_renamed_object(self):
+        obj = self._create_user()
+        ct = ContentType.objects.get(model='user', app_label='openwisp_users')
+        m, created = Metric._get_or_create(
+            name='logins',
+            key='users',
+            field_name='logins',
+            content_type=ct,
+            object_id=obj.pk,
+        )
+        self.assertTrue(created)
+        m.name = 'renamed'
+        m.save()
+        m2, created = Metric._get_or_create(
+            name='logins',
+            key='users',
+            field_name='logins',
+            content_type=ct,
+            object_id=obj.pk,
+        )
+        self.assertEqual(m.id, m2.id)
+        self.assertEqual(m2.name, m.name)
         self.assertFalse(created)
 
     def test_write(self):
