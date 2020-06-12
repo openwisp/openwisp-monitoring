@@ -3,13 +3,8 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 from django.apps import apps
-from django.conf import settings
 from django.test import TestCase
 from requests.exceptions import ConnectionError
-
-from ...db import TimeseriesDB
-
-TIMESERIES_DB = getattr(settings, 'TIMESERIES_DATABASE')
 
 
 def mock_create_database(**kwargs):
@@ -19,7 +14,6 @@ def mock_create_database(**kwargs):
 class TestDatabase(TestCase):
     app = 'monitoring'
 
-    @patch.dict(TIMESERIES_DB, {'NAME': 'test_db'})
     @patch('openwisp_monitoring.monitoring.apps.MonitoringConfig.warn_and_delay')
     @patch('openwisp_monitoring.db.TimeseriesDB.create_database', mock_create_database)
     def test_check_retry(self, mock):
@@ -27,7 +21,6 @@ class TestDatabase(TestCase):
             apps.get_app_config(self.app).create_database()
         except ConnectionError:
             pass
-        TimeseriesDB.drop_database('test_db')
         self.assertEqual(mock.call_count, 5)
 
     @patch('openwisp_monitoring.monitoring.apps.sleep', return_value=None)

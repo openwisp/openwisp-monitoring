@@ -22,11 +22,11 @@ class TestMonitoringMixin(TestOrganizationMixin):
     @classmethod
     def setUpClass(cls):
         TimeseriesDB.db_name = cls.TEST_DB
-        TimeseriesDB.create_database(cls.TEST_DB)
+        TimeseriesDB.create_database()
 
     @classmethod
     def tearDownClass(cls):
-        TimeseriesDB.drop_database(cls.TEST_DB)
+        TimeseriesDB.drop_database()
 
     def tearDown(self):
         TimeseriesDB.query('DROP SERIES FROM /.*/')

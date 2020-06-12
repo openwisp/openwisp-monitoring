@@ -10,25 +10,24 @@ logger = logging.getLogger(__name__)
 
 
 class DatabaseClient(DatabaseException):
-    def __init__(self):
+    def __init__(self, db_name=None):
         self._db = None
-        self.db_name = None
+        self.db_name = db_name or TIMESERIES_DB['NAME']
 
-    def create_database(self, database=TIMESERIES_DB['NAME']):
+    def create_database(self):
         """ creates database if necessary """
         db = self.get_db()
-        # influxdb does not create a new database, neither raise an error if databese exists
-        db.create_database(database)
-        logger.info(f'Created influxdb database "{database}"')
+        # InfluxDB does not create a new database, neither raise an error if databese exists
+        db.create_database(self.db_name)
+        logger.info(f'Created InfluxDB database "{self.db_name}"')
 
-    def drop_database(self, database=TIMESERIES_DB['NAME']):
+    def drop_database(self):
         """ drops database if it exists """
         db = self.get_db()
-        # influxdb does not raise an error if databese does not exist
-        db.drop_database(database)
-        logger.info(f'Dropped influxdb database "{database}"')
+        # InfluxDB does not raise an error if databese does not exist
+        db.drop_database(self.db_name)
+        logger.info(f'Dropped InfluxDB database "{self.db_name}"')
 
-    # TODO: Needs to be improved
     def get_db(self):
         """ Returns an ``InfluxDBClient`` instance """
         if not self._db or self._db._database != self.db_name:
@@ -37,14 +36,14 @@ class DatabaseClient(DatabaseException):
                 TIMESERIES_DB['PORT'],
                 TIMESERIES_DB['USER'],
                 TIMESERIES_DB['PASSWORD'],
-                self.db_name or TIMESERIES_DB['NAME'],
+                self.db_name,
             )
             self.db_name = self._db._database
         return self._db
 
     def query(self, query, **kwargs):
         db = self.get_db()
-        database = kwargs.get('database') or self.db_name or TIMESERIES_DB['NAME']
+        database = kwargs.get('database') or self.db_name
         return db.query(
             query,
             kwargs.get('params'),
@@ -54,7 +53,6 @@ class DatabaseClient(DatabaseException):
         )
 
     def write(self, name, values, **kwargs):
-        """ Method to be called via threading module. """
         point = {
             'measurement': name,
             'tags': kwargs.get('tags'),
@@ -68,13 +66,12 @@ class DatabaseClient(DatabaseException):
         self.get_db().write(
             {'points': [point]},
             {
-                'db': kwargs.get('database') or self.db_name or TIMESERIES_DB['NAME'],
+                'db': kwargs.get('database') or self.db_name,
                 'rp': kwargs.get('retention_policy'),
             },
         )
 
     def read(self, key, fields, tags, **kwargs):
-        """ Method to be called via threading module. """
         extra_fields = kwargs.get('extra_fields')
         since = kwargs.get('since')
         order = kwargs.get('order')

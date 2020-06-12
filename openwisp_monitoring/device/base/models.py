@@ -91,7 +91,7 @@ class AbstractDeviceData(object):
     @property
     def data(self):
         """
-        retrieves last data snapshot from influxdb
+        retrieves last data snapshot from InfluxDB
         """
         if self.__data:
             return self.__data
@@ -161,7 +161,7 @@ class AbstractDeviceData(object):
 
     def save_data(self, time=None):
         """
-        validates and saves data to influxdb
+        validates and saves data to InfluxDB
         """
         self.validate_data()
         if app_settings.MAC_VENDOR_DETECTION:

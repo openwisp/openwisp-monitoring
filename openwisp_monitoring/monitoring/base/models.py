@@ -98,7 +98,7 @@ class AbstractMetric(TimeStampedEditableModel):
 
     @staticmethod
     def _makekey(value):
-        """ makes value suited for influxdb key """
+        """ makes value suited for InfluxDB key """
         value = value.replace('.', '_')
         return slugify(value).replace('-', '_')
 

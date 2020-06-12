@@ -22,7 +22,7 @@ class MonitoringConfig(AppConfig):
         self.register_notification_types()
 
     def create_database(self):
-        # create influxdb database if doesn't exist yet
+        # create InfluxDB database if doesn't exist yet
         for attempt_number in range(1, self.max_retries + 1):
             try:
                 TimeseriesDB.create_database()

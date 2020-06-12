@@ -176,7 +176,7 @@ CELERY_BEAT_SCHEDULE = {
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 CELERY_EMAIL_BACKEND = EMAIL_BACKEND
 
-# chart configuration queries of influxdb for automated tests
+# chart configuration queries of InfluxDB for automated tests
 test_query = {
     'histogram': (
         "SELECT {fields|SUM|/ 1} FROM {key} "
