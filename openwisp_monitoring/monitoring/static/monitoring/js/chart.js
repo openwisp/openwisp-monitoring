@@ -1,6 +1,6 @@
 (function ($) {
     'use strict';
-    window.createGraph = function (data, x, id, title, type) {
+    window.createChart = function (data, x, id, title, type) {
         if (data === false) {
             alert(gettext('error while receiving data from server'));
             return;
@@ -27,7 +27,7 @@
                 height: 350,
                 hovermode: 'x unified'
             },
-            graphs = [],
+            charts = [],
             container = $('#' + id),
             plotlyContainer = container.find('.js-plotly-plot').get(0),
             notApplicable = gettext('N/A'),
@@ -61,7 +61,7 @@
             }
             return {color: color, desc: desc};
         }
-        // loop over traces to put them on the graph
+        // loop over traces to put them on the chart
         for (var i=0; i<data.traces.length; i++) {
             var key = data.traces[i][0],
                 label = data.traces[i][0].replace(/_/g, ' ');
@@ -128,10 +128,10 @@
                 options.y.push(val);
                 options.hovertemplate.push(hovertemplate);
             }
-            graphs.push(options);
+            charts.push(options);
         }
 
-        Plotly.newPlot(plotlyContainer, graphs, layout, {responsive: true});
+        Plotly.newPlot(plotlyContainer, charts, layout, {responsive: true});
 
         container.find('.custom-legend').remove();
         // custom legends when using color map
@@ -183,12 +183,12 @@
         }
         // do not add heading, help and tooltip if already done
         // or if there's not title and description to show
-        if (container.find('h3.graph-heading').length || !data.title) {
+        if (container.find('h3.chart-heading').length || !data.title) {
             return;
         }
         // add heading
-        container.prepend('<h3 class="graph-heading"></h3>');
-        heading = container.find('.graph-heading');
+        container.prepend('<h3 class="chart-heading"></h3>');
+        heading = container.find('.chart-heading');
         heading.text(title);
         // add help icon
         heading.append('<a class="chart-help">?</a>');

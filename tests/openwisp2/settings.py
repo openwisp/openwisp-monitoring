@@ -306,9 +306,9 @@ if os.environ.get('SAMPLE_APP', False):
     INSTALLED_APPS.append('openwisp2.sample_check')
     INSTALLED_APPS.append('openwisp2.sample_device_monitoring')
     CHECK_CHECK_MODEL = 'sample_check.Check'
-    MONITORING_GRAPH_MODEL = 'sample_monitoring.Graph'
+    MONITORING_CHART_MODEL = 'sample_monitoring.Chart'
     MONITORING_METRIC_MODEL = 'sample_monitoring.Metric'
-    MONITORING_THRESHOLD_MODEL = 'sample_monitoring.Threshold'
+    MONITORING_ALERTSETTINGS_MODEL = 'sample_monitoring.AlertSettings'
     DEVICE_MONITORING_DEVICEDATA_MODEL = 'sample_device_monitoring.DeviceData'
     DEVICE_MONITORING_DEVICEMONITORING_MODEL = (
         'sample_device_monitoring.DeviceMonitoring'

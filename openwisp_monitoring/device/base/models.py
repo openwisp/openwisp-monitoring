@@ -19,7 +19,7 @@ from swapper import load_model
 
 from openwisp_utils.base import TimeStampedEditableModel
 
-from ...monitoring.signals import threshold_crossed
+from ...monitoring.signals import alert_settings_crossed
 from ...monitoring.utils import query, write
 from .. import settings as app_settings
 from ..schema import schema
@@ -229,10 +229,10 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         )
 
     @staticmethod
-    @receiver(threshold_crossed, dispatch_uid='threshold_crossed_receiver')
-    def threshold_crossed(sender, metric, threshold, target, **kwargs):
+    @receiver(alert_settings_crossed, dispatch_uid='alert_settings_crossed_receiver')
+    def alert_settings_crossed(sender, metric, alert_settings, target, **kwargs):
         """
-        Changes the health status of a device when a threshold is crossed.
+        Changes the health status of a device when a alert_settings is crossed.
         """
         DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
         if not isinstance(target, DeviceMonitoring.device.field.related_model):

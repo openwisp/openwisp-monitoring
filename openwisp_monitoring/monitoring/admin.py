@@ -4,20 +4,20 @@ from swapper import load_model
 
 from openwisp_utils.admin import TimeReadonlyAdminMixin
 
-Graph = load_model('monitoring', 'Graph')
+Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
-Threshold = load_model('monitoring', 'Threshold')
+AlertSettings = load_model('monitoring', 'AlertSettings')
 
 
-class ThresholdInline(TimeReadonlyAdminMixin, admin.StackedInline):
-    model = Threshold
+class AlertSettingsInline(TimeReadonlyAdminMixin, admin.StackedInline):
+    model = AlertSettings
     extra = 0
 
 
-class GraphInline(admin.StackedInline):
-    model = Graph
+class ChartInline(admin.StackedInline):
+    model = Chart
     extra = 0
-    template = 'admin/graph_inline.html'
+    template = 'admin/chart_inline.html'
     exclude = ['created', 'modified']
 
 
@@ -27,7 +27,7 @@ class MetricAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
     readonly_fields = ['is_healthy']
     search_fields = ['name']
     save_on_top = True
-    inlines = [GraphInline, ThresholdInline]
+    inlines = [ChartInline, AlertSettingsInline]
     fieldsets = [
         (None, {'fields': ('name', 'description', 'content_type', 'object_id',)}),
         (
@@ -38,11 +38,15 @@ class MetricAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
 
     class Media:
         css = {'all': ('monitoring/css/monitoring.css',)}
-        js = ('monitoring/js/plotly-cartesian.min.js', 'monitoring/js/graph.js')
+        js = ('monitoring/js/plotly-cartesian.min.js', 'monitoring/js/chart.js')
 
 
-@admin.register(Threshold)
-class ThresholdAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
+@admin.register(AlertSettings)
+class AlertSettingsAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
     list_display = ['metric', 'created', 'modified']
     search_fields = ['name']
     save_on_top = True
+
+    class Meta:
+        verbose_name = _('Alert Settings')
+        verbose_name_plural = _('Alert Settings')

@@ -10,7 +10,7 @@ from ... import settings as monitoring_settings
 from ..signals import device_metrics_received
 from . import DeviceMonitoringTestCase
 
-Graph = load_model('monitoring', 'Graph')
+Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 DeviceData = load_model('device_monitoring', 'DeviceData')
 
@@ -51,12 +51,12 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(Metric.objects.count(), 0)
-        self.assertEqual(Graph.objects.count(), 0)
+        self.assertEqual(Chart.objects.count(), 0)
         data = {'type': 'DeviceMonitoring'}
         r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(Metric.objects.count(), 0)
-        self.assertEqual(Graph.objects.count(), 0)
+        self.assertEqual(Chart.objects.count(), 0)
 
     def test_200_create(self):
         self.create_test_adata()
@@ -75,7 +75,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         dd = DeviceData(pk=d.pk)
         self.assertDictEqual(dd.data, data2)
         self.assertEqual(Metric.objects.count(), 9)
-        self.assertEqual(Graph.objects.count(), 7)
+        self.assertEqual(Chart.objects.count(), 7)
         if_dict = {'wlan0': data2['interfaces'][0], 'wlan1': data2['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
@@ -105,7 +105,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         dd = DeviceData(pk=d.pk)
         self.assertDictEqual(dd.data, data2)
         self.assertEqual(Metric.objects.count(), 9)
-        self.assertEqual(Graph.objects.count(), 7)
+        self.assertEqual(Chart.objects.count(), 7)
         if_dict = {'wlan0': data2['interfaces'][0], 'wlan1': data2['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
@@ -152,7 +152,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
     def test_200_multiple_measurements(self):
         dd = self._create_multiple_measurements()
         self.assertEqual(Metric.objects.count(), 9)
-        self.assertEqual(Graph.objects.count(), 7)
+        self.assertEqual(Chart.objects.count(), 7)
         expected = {
             'wlan0': {'rx_bytes': 10000, 'tx_bytes': 6000},
             'wlan1': {'rx_bytes': 4587, 'tx_bytes': 2993},
@@ -171,8 +171,8 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         expected = [300000000, 200000000, 99999855, 145]
         for i, point in enumerate(points):
             self.assertEqual(point['tx_bytes'], expected[i])
-        g = m.graph_set.first()
-        data = g.read()
+        c = m.chart_set.first()
+        data = c.read()
         # expected download wlan0
         self.assertEqual(data['traces'][0][1][-1], 1.2)
         # expected upload wlan0
@@ -191,8 +191,8 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         expected = [500000000, 0, 999999174, 826]
         for i, point in enumerate(points):
             self.assertEqual(point['tx_bytes'], expected[i])
-        g = m.graph_set.first()
-        data = g.read()
+        c = m.chart_set.first()
+        data = c.read()
         # expected download wlan1
         self.assertEqual(data['traces'][0][1][-1], 3.0)
         # expected upload wlan1
@@ -219,46 +219,46 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         )
         self.assertEqual(r.status_code, 400)
 
-    @patch.object(monitoring_settings, 'AUTO_GRAPHS', return_value=[])
-    def test_auto_graph_disabled(self, *args):
-        self.assertEqual(Graph.objects.count(), 0)
+    @patch.object(monitoring_settings, 'AUTO_CHARTS', return_value=[])
+    def test_auto_chart_disabled(self, *args):
+        self.assertEqual(Chart.objects.count(), 0)
         o = self._create_org()
         d = self._create_device(organization=o)
         self._post_data(d.id, d.key, self._data())
-        self.assertEqual(Graph.objects.count(), 0)
+        self.assertEqual(Chart.objects.count(), 0)
 
     def test_get_device_metrics_200(self):
         dd = self._create_multiple_measurements()
         d = self.device_model.objects.get(pk=dd.pk)
         r = self.client.get(self._url(d.pk.hex, d.key))
         self.assertEqual(r.status_code, 200)
-        self.assertIsInstance(r.data['graphs'], list)
-        self.assertEqual(len(r.data['graphs']), 7)
+        self.assertIsInstance(r.data['charts'], list)
+        self.assertEqual(len(r.data['charts']), 7)
         self.assertIn('x', r.data)
-        graphs = r.data['graphs']
-        for graph in graphs:
-            self.assertIn('traces', graph)
-            self.assertIn('title', graph)
-            self.assertIn('description', graph)
-            self.assertIn('type', graph)
-            self.assertIn('summary', graph)
-            self.assertIsInstance(graph['summary'], dict)
-            self.assertIn('summary_labels', graph)
-            self.assertIsInstance(graph['summary_labels'], list)
-            self.assertIn('unit', graph)
-            self.assertIn('colors', graph)
-            self.assertIn('colorscale', graph)
+        charts = r.data['charts']
+        for chart in charts:
+            self.assertIn('traces', chart)
+            self.assertIn('title', chart)
+            self.assertIn('description', chart)
+            self.assertIn('type', chart)
+            self.assertIn('summary', chart)
+            self.assertIsInstance(chart['summary'], dict)
+            self.assertIn('summary_labels', chart)
+            self.assertIsInstance(chart['summary_labels'], list)
+            self.assertIn('unit', chart)
+            self.assertIn('colors', chart)
+            self.assertIn('colorscale', chart)
         # test order
-        self.assertEqual(graphs[0]['title'], 'WiFi clients: wlan0')
-        self.assertEqual(graphs[1]['title'], 'WiFi clients: wlan1')
-        self.assertEqual(graphs[2]['title'], 'Traffic: wlan0')
-        self.assertEqual(graphs[3]['title'], 'Traffic: wlan1')
+        self.assertEqual(charts[0]['title'], 'WiFi clients: wlan0')
+        self.assertEqual(charts[1]['title'], 'WiFi clients: wlan1')
+        self.assertEqual(charts[2]['title'], 'Traffic: wlan0')
+        self.assertEqual(charts[3]['title'], 'Traffic: wlan1')
 
     def test_get_device_metrics_histogram_ignore_x(self):
         o = self._create_org()
         d = self._create_device(organization=o)
         m = self._create_object_metric(content_object=d, name='applications')
-        self._create_graph(metric=m, configuration='histogram')
+        self._create_chart(metric=m, configuration='histogram')
         self._create_multiple_measurements(create=False)
         r = self.client.get(self._url(d.pk.hex, d.key))
         self.assertEqual(r.status_code, 200)
@@ -269,7 +269,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         d = self.device_model.objects.get(pk=dd.pk)
         r = self.client.get('{0}&time=1d'.format(self._url(d.pk, d.key)))
         self.assertEqual(r.status_code, 200)
-        self.assertIsInstance(r.data['graphs'], list)
+        self.assertIsInstance(r.data['charts'], list)
 
     def test_get_device_metrics_404(self):
         r = self.client.get(self._url('WRONG', 'MADEUP'))
@@ -290,7 +290,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         dd = self._create_multiple_measurements()
         d = self.device_model.objects.get(pk=dd.pk)
         m = self._create_object_metric(content_object=d, name='applications')
-        self._create_graph(metric=m, configuration='histogram')
+        self._create_chart(metric=m, configuration='histogram')
         r = self.client.get('{0}&csv=1'.format(self._url(d.pk, d.key)))
         self.assertEqual(r.get('Content-Disposition'), 'attachment; filename=data.csv')
         self.assertEqual(r.get('Content-Type'), 'text/csv')
@@ -348,15 +348,15 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             signal=device_metrics_received,
         )
 
-    def test_invalid_graph_config(self):
-        # Tests if graph_config is invaid, then it is skipped and not failed
+    def test_invalid_chart_config(self):
+        # Tests if chart_config is invalid, then it is skipped and not failed
         self.create_test_adata()
         d = DeviceData.objects.first()
-        self.assertEqual(Graph.objects.count(), 7)
+        self.assertEqual(Chart.objects.count(), 7)
         with redirect_stderr(StringIO()) as stderr:
-            g1 = Graph.objects.first()
-            g1.configuration = 'invalid'
-            g1.save()
+            c = Chart.objects.first()
+            c.configuration = 'invalid'
+            c.save()
             r = self.client.get(self._url(d.pk.hex, d.key))
         self.assertIn('InvalidChartConfigException', stderr.getvalue())
         self.assertEqual(r.status_code, 200)

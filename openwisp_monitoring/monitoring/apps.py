@@ -46,10 +46,10 @@ class MonitoringConfig(AppConfig):
         )
 
         register_notification_type(
-            'threshold_crossed',
+            'alert_settings_crossed',
             {
                 'name': 'Monitoring Alert',
-                'verb': 'crossed threshold limit',
+                'verb': 'crossed alert settings limit',
                 'level': 'warning',
                 'email_subject': '[{site.name}] PROBLEM: {notification.actor.name} {notification.target}',
                 'message': default_message,
@@ -57,10 +57,10 @@ class MonitoringConfig(AppConfig):
         )
 
         register_notification_type(
-            'under_threshold',
+            'under_alert_settings',
             {
                 'name': 'Monitoring Alert',
-                'verb': 'returned within threshold limit',
+                'verb': 'returned within alert settings limit',
                 'level': 'info',
                 'email_subject': '[{site.name}] RECOVERY: {notification.actor.name} {notification.target}',
                 'message': default_message,

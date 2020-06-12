@@ -22,73 +22,75 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
     device_model = Device
     config_model = Config
 
-    def test_general_check_threshold_crossed_immediate(self):
+    def test_general_check_alert_settings_crossed_immediate(self):
         admin = self._create_admin()
         m = self._create_general_metric(name='load')
-        self._create_threshold(metric=m, operator='>', value=90, seconds=0)
+        self._create_alert_settings(metric=m, operator='>', value=90, seconds=0)
 
-        with self.subTest("Test notification for metric exceeding threshold"):
+        with self.subTest("Test notification for metric exceeding alert settings"):
             m.write(99)
             self.assertFalse(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
             n = notification_queryset.first()
             self.assertEqual(n.recipient, admin)
             self.assertEqual(n.actor, m)
-            self.assertEqual(n.action_object, m.threshold)
+            self.assertEqual(n.action_object, m.alertsettings)
             self.assertEqual(n.level, 'warning')
 
-        with self.subTest("Test no double alarm for metric exceeding threshold"):
+        with self.subTest("Test no double alarm for metric exceeding alert settings"):
             m.write(95)
             self.assertFalse(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
 
-        with self.subTest("Test notification for metric falling behind threshold"):
+        with self.subTest("Test notification for metric falling behind alert settings"):
             m.write(60)
             self.assertTrue(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 2)
             n = notification_queryset.last()
             self.assertEqual(n.recipient, admin)
             self.assertEqual(n.actor, m)
-            self.assertEqual(n.action_object, m.threshold)
+            self.assertEqual(n.action_object, m.alertsettings)
             self.assertEqual(n.level, 'info')
 
-        with self.subTest("Test no double alarm for metric falling behind threshold"):
+        with self.subTest(
+            "Test no double alarm for metric falling behind alert settings"
+        ):
             m.write(40)
             self.assertTrue(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 2)
 
-    def test_general_check_threshold_crossed_deferred(self):
+    def test_general_check_alert_settings_crossed_deferred(self):
         admin = self._create_admin()
         m = self._create_general_metric(name='load')
-        self._create_threshold(metric=m, operator='>', value=90, seconds=60)
+        self._create_alert_settings(metric=m, operator='>', value=90, seconds=60)
         m.write(99, time=ten_minutes_ago)
         self.assertFalse(m.is_healthy)
         self.assertEqual(Notification.objects.count(), 1)
         n = notification_queryset.first()
         self.assertEqual(n.recipient, admin)
         self.assertEqual(n.actor, m)
-        self.assertEqual(n.action_object, m.threshold)
+        self.assertEqual(n.action_object, m.alertsettings)
         self.assertEqual(n.level, 'warning')
 
-    def test_general_check_threshold_deferred_not_crossed(self):
+    def test_general_check_alert_settings_deferred_not_crossed(self):
         self._create_admin()
         m = self._create_general_metric(name='load')
-        self._create_threshold(metric=m, operator='>', value=90, seconds=60)
+        self._create_alert_settings(metric=m, operator='>', value=90, seconds=60)
         m.write(99)
         self.assertTrue(m.is_healthy)
         self.assertEqual(Notification.objects.count(), 0)
 
-    def test_general_check_threshold_crossed_for_long_time(self):
+    def test_general_check_alert_settings_crossed_for_long_time(self):
         """
         this is going to be the most realistic scenario:
         incoming metrics will always be stored with the current
         timestamp, which means the system must be able to look
-        back in previous measurements to see if the threshold
+        back in previous measurements to see if the AlertSettings
         has been crossed for long enough
         """
         admin = self._create_admin()
         m = self._create_general_metric(name='load')
-        self._create_threshold(metric=m, operator='>', value=90, seconds=61)
+        self._create_alert_settings(metric=m, operator='>', value=90, seconds=61)
 
         with self.subTest("Test no notification is generated for healthy status"):
             m.write(89, time=ten_minutes_ago)
@@ -106,32 +108,38 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
             n = notification_queryset.first()
             self.assertEqual(n.recipient, admin)
             self.assertEqual(n.actor, m)
-            self.assertEqual(n.action_object, m.threshold)
+            self.assertEqual(n.action_object, m.alertsettings)
             self.assertEqual(n.level, 'warning')
 
-    def test_object_check_threshold_crossed_immediate(self):
+    def test_object_check_alert_settings_crossed_immediate(self):
         admin = self._create_admin()
         om = self._create_object_metric(name='load')
-        t = self._create_threshold(metric=om, operator='>', value=90, seconds=0)
+        alert_s = self._create_alert_settings(
+            metric=om, operator='>', value=90, seconds=0
+        )
 
-        with self.subTest("Test notification for object metric exceeding threshold"):
+        with self.subTest(
+            "Test notification for object metric exceeding alert settings"
+        ):
             om.write(99)
             self.assertFalse(om.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
             n = notification_queryset.first()
             self.assertEqual(n.recipient, admin)
             self.assertEqual(n.actor, om)
-            self.assertEqual(n.action_object, t)
+            self.assertEqual(n.action_object, alert_s)
             self.assertEqual(n.target, om.content_object)
             self.assertEqual(n.level, 'warning')
 
-        with self.subTest("Test no double alarm for object metric exceeding threshold"):
+        with self.subTest(
+            "Test no double alarm for object metric exceeding alert settings"
+        ):
             om.write(95)
             self.assertFalse(om.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
 
         with self.subTest(
-            "Test notification for object metric falling behind threshold"
+            "Test notification for object metric falling behind alert settings"
         ):
             om.write(60)
             self.assertTrue(om.is_healthy)
@@ -139,43 +147,47 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
             n = notification_queryset.last()
             self.assertEqual(n.recipient, admin)
             self.assertEqual(n.actor, om)
-            self.assertEqual(n.action_object, t)
+            self.assertEqual(n.action_object, alert_s)
             self.assertEqual(n.target, om.content_object)
             self.assertEqual(n.level, 'info')
 
         with self.subTest(
-            "Test no double alarm for object metric falling behind threshold"
+            "Test no double alarm for object metric falling behind alert settings"
         ):
             om.write(40)
             self.assertTrue(om.is_healthy)
             self.assertEqual(Notification.objects.count(), 2)
 
-    def test_object_check_threshold_crossed_deferred(self):
+    def test_object_check_alert_settings_crossed_deferred(self):
         admin = self._create_admin()
         om = self._create_object_metric(name='load')
-        t = self._create_threshold(metric=om, operator='>', value=90, seconds=60)
+        alert_s = self._create_alert_settings(
+            metric=om, operator='>', value=90, seconds=60
+        )
         om.write(99, time=ten_minutes_ago)
         self.assertFalse(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 1)
         n = notification_queryset.first()
         self.assertEqual(n.recipient, admin)
         self.assertEqual(n.actor, om)
-        self.assertEqual(n.action_object, t)
+        self.assertEqual(n.action_object, alert_s)
         self.assertEqual(n.target, om.content_object)
         self.assertEqual(n.level, 'warning')
 
-    def test_object_check_threshold_deferred_not_crossed(self):
+    def test_object_check_alert_settings_deferred_not_crossed(self):
         self._create_admin()
         om = self._create_object_metric(name='load')
-        self._create_threshold(metric=om, operator='>', value=90, seconds=60)
+        self._create_alert_settings(metric=om, operator='>', value=90, seconds=60)
         om.write(99)
         self.assertTrue(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 0)
 
-    def test_object_check_threshold_crossed_for_long_time(self):
+    def test_object_check_alert_settings_crossed_for_long_time(self):
         admin = self._create_admin()
         om = self._create_object_metric(name='load')
-        t = self._create_threshold(metric=om, operator='>', value=90, seconds=61)
+        alert_s = self._create_alert_settings(
+            metric=om, operator='>', value=90, seconds=61
+        )
         om.write(89, time=ten_minutes_ago)
         self.assertEqual(Notification.objects.count(), 0)
         om.write(91, time=ten_minutes_ago, check=False)
@@ -186,21 +198,21 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         n = notification_queryset.first()
         self.assertEqual(n.recipient, admin)
         self.assertEqual(n.actor, om)
-        self.assertEqual(n.action_object, t)
+        self.assertEqual(n.action_object, alert_s)
         self.assertEqual(n.target, om.content_object)
         self.assertEqual(n.level, 'warning')
         # ensure double alarm not sent
         om.write(95)
         self.assertFalse(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 1)
-        # threshold back to normal
+        # alert_settings back to normal
         om.write(60)
         self.assertTrue(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 2)
         n = notification_queryset.last()
         self.assertEqual(n.recipient, admin)
         self.assertEqual(n.actor, om)
-        self.assertEqual(n.action_object, t)
+        self.assertEqual(n.action_object, alert_s)
         self.assertEqual(n.target, om.content_object)
         self.assertEqual(n.level, 'info')
         # ensure double alarm not sent
@@ -225,14 +237,16 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         OrganizationUser.objects.create(user=staff, organization=testorg)
         self.assertIsNotNone(staff.notificationuser)
         m = self._create_general_metric(name='load')
-        t = self._create_threshold(metric=m, operator='>', value=90, seconds=61)
-        m._notify_users(notification_type='default', threshold=t)
+        alert_s = self._create_alert_settings(
+            metric=m, operator='>', value=90, seconds=61
+        )
+        m._notify_users(notification_type='default', alert_settings=alert_s)
         self.assertEqual(Notification.objects.count(), 1)
         n = notification_queryset.first()
         self.assertEqual(n.recipient, admin)
         self.assertEqual(n.actor, m)
         self.assertEqual(n.target, None)
-        self.assertEqual(n.action_object, m.threshold)
+        self.assertEqual(n.action_object, m.alertsettings)
         self.assertEqual(n.level, 'info')
         self.assertEqual(n.verb, 'default verb')
         self.assertIn(
@@ -257,14 +271,16 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         self.assertIsNotNone(staff.notificationuser)
         d = self._create_device(organization=testorg)
         om = self._create_object_metric(name='load', content_object=d)
-        t = self._create_threshold(metric=om, operator='>', value=90, seconds=61)
-        om._notify_users(notification_type='default', threshold=t)
+        alert_s = self._create_alert_settings(
+            metric=om, operator='>', value=90, seconds=61
+        )
+        om._notify_users(notification_type='default', alert_settings=alert_s)
         self.assertEqual(Notification.objects.count(), 2)
         n = notification_queryset.first()
         self.assertEqual(n.recipient, admin)
         self.assertEqual(n.actor, om)
         self.assertEqual(n.target, d)
-        self.assertEqual(n.action_object, om.threshold)
+        self.assertEqual(n.action_object, om.alertsettings)
         self.assertEqual(n.level, 'info')
         self.assertEqual(n.verb, 'default verb')
         self.assertIn(
@@ -274,7 +290,7 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         self.assertEqual(n.recipient, staff)
         self.assertEqual(n.actor, om)
         self.assertEqual(n.target, d)
-        self.assertEqual(n.action_object, om.threshold)
+        self.assertEqual(n.action_object, om.alertsettings)
         self.assertEqual(n.level, 'info')
         self.assertEqual(n.verb, 'default verb')
 
@@ -296,14 +312,16 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         OrganizationUser.objects.create(user=staff, organization=testorg)
         self.assertIsNotNone(staff.notificationuser)
         om = self._create_object_metric(name='logins', content_object=user)
-        t = self._create_threshold(metric=om, operator='>', value=90, seconds=0)
-        om._notify_users(notification_type='default', threshold=t)
+        alert_s = self._create_alert_settings(
+            metric=om, operator='>', value=90, seconds=0
+        )
+        om._notify_users(notification_type='default', alert_settings=alert_s)
         self.assertEqual(Notification.objects.count(), 1)
         n = notification_queryset.first()
         self.assertEqual(n.recipient, admin)
         self.assertEqual(n.actor, om)
         self.assertEqual(n.target, user)
-        self.assertEqual(n.action_object, om.threshold)
+        self.assertEqual(n.action_object, om.alertsettings)
         self.assertEqual(n.level, 'info')
         self.assertEqual(n.verb, 'default verb')
 
@@ -311,11 +329,11 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         self._create_admin()
         d = self._create_device(organization=self._get_org())
         m = self._create_general_metric(name='load', content_object=d)
-        self._create_threshold(metric=m, operator='>', value=90, seconds=0)
+        self._create_alert_settings(metric=m, operator='>', value=90, seconds=0)
         exp_target_link = f'http://example.com/admin/config/device/{d.id}/change/'
         exp_email_body = '{message}' f'\n\nFor more information see {exp_target_link}.'
 
-        with self.subTest("Test notification email for metric crossed threshold"):
+        with self.subTest("Test notification email for metric crossed alert settings"):
             m.write(99)
             n = notification_queryset.first()
             email = mail.outbox.pop()
@@ -350,27 +368,27 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
     def test_notification_types(self):
         self._create_admin()
         m = self._create_object_metric(name='load')
-        self._create_threshold(metric=m, operator='>', value=90, seconds=0)
+        self._create_alert_settings(metric=m, operator='>', value=90, seconds=0)
         exp_message = (
             '<p>{n.actor.name} for device '
             '"<a href="http://example.com/admin/openwisp_users/user/{n.target.id}/change/">tester</a>"'
             ' {n.verb}.</p>'
         )
-        with self.subTest("Test notification for 'threshold crossed'"):
+        with self.subTest("Test notification for 'alert settings crossed'"):
             m.write(99)
             n = notification_queryset.first()
             self.assertEqual(n.level, 'warning')
-            self.assertEqual(n.verb, 'crossed threshold limit')
+            self.assertEqual(n.verb, 'crossed alert settings limit')
             self.assertEqual(
                 n.email_subject, f'[example.com] PROBLEM: {n.actor.name} {n.target}',
             )
             self.assertEqual(n.message, exp_message.format(n=n))
 
-        with self.subTest("Test notification for 'under threshold'"):
+        with self.subTest("Test notification for 'under alert settings'"):
             m.write(80)
             n = notification_queryset.last()
             self.assertEqual(n.level, 'info')
-            self.assertEqual(n.verb, 'returned within threshold limit')
+            self.assertEqual(n.verb, 'returned within alert settings limit')
             self.assertEqual(
                 n.email_subject, f'[example.com] RECOVERY: {n.actor.name} {n.target}',
             )

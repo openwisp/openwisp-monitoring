@@ -15,7 +15,7 @@ from . import settings as app_settings
 
 DeviceData = load_model('device_monitoring', 'DeviceData')
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
-Graph = load_model('monitoring', 'Graph')
+Chart = load_model('monitoring', 'Chart')
 
 
 class DeviceAdmin(BaseDeviceAdmin):
@@ -28,7 +28,7 @@ class DeviceAdmin(BaseDeviceAdmin):
                 {
                     'device_data': device_data.data_user_friendly,
                     'api_url': api_url,
-                    'default_time': Graph.DEFAULT_TIME,
+                    'default_time': Chart.DEFAULT_TIME,
                     'MAC_VENDOR_DETECTION': app_settings.MAC_VENDOR_DETECTION,
                 }
             )

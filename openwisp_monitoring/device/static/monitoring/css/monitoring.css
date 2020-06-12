@@ -1,8 +1,8 @@
-#ow-graph-time{
+#ow-chart-time{
   margin-top: 15px;
   text-align: center
 }
-#ow-graph-time a{
+#ow-chart-time a{
   display: inline-block;
   margin: 0 2px;
   color: #fff;
@@ -12,22 +12,22 @@
   border-radius: 3px;
   cursor: pointer;
 }
-#ow-graph-time a:hover{
+#ow-chart-time a:hover{
   background-color: #000
 }
-#ow-graph-time a.active{
+#ow-chart-time a.active{
   background: transparent;
   color: #666;
   cursor: default;
   border: 1px solid #666;
 }
-#ow-graph-time a.export{
+#ow-chart-time a.export{
   background: rgba(0,0,0,0.32);
 }
-#ow-graph-time a.export:hover{
+#ow-chart-time a.export:hover{
   background: rgba(0,0,0,0.45);
 }
-#ow-graph-fallback{
+#ow-chart-fallback{
   display: none;
   border: 0 none;
 }
@@ -77,7 +77,7 @@ td.field-health_status,
 .health-problem{ color: orange }
 .health-critical{ color: red }
 
-#ow-graph-contents > div {
+#ow-chart-contents > div {
     position: relative
 }
 
@@ -116,7 +116,7 @@ td.field-health_status,
     font-size: 1.2em
 }
 
-.graph-heading {
+.chart-heading {
     margin: 0;
     font-size: 2em;
     text-align: center;
@@ -149,7 +149,7 @@ td.field-health_status,
     background: rgba(0, 0, 0, 0.125);
 }
 
-#ow-graph-contents .percircle:hover > span {
+#ow-chart-contents .percircle:hover > span {
     transform: scale(1.15) translateY(-50%);
     letter-spacing: -0.3px;
 }
@@ -176,7 +176,7 @@ td.field-health_status,
     margin-right: 2px;
 }
 
-#ow-graph-container .circle > span {
+#ow-chart-container .circle > span {
     font-size: .15em;
     word-spacing: -0.75px;
     color: rgba(0, 0, 0, 0.6) !important;
@@ -184,7 +184,7 @@ td.field-health_status,
     font-weight: bold;
 }
 
-#ow-graph-container b{
+#ow-chart-container b{
     background-color: #000 !important;
 }
 

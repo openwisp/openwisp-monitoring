@@ -4,7 +4,7 @@ from swapper import load_model
 
 from . import DeviceMonitoringTestCase
 
-Graph = load_model('monitoring', 'Graph')
+Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 DeviceData = load_model('device_monitoring', 'DeviceData')
 
@@ -25,7 +25,7 @@ class TestAdmin(DeviceMonitoringTestCase):
         self._login_admin()
         r = self.client.get(url)
         self.assertContains(r, '<h2>Status</h2>')
-        self.assertContains(r, 'Monitoring Graph')
+        self.assertContains(r, '<h2>Charts</h2>')
         self.assertContains(r, 'Storage')
         self.assertContains(r, 'CPU')
         self.assertContains(r, 'RAM status')

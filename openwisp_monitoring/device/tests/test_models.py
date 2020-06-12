@@ -480,13 +480,15 @@ class TestDeviceMonitoring(BaseTestCase):
         ping = self._create_object_metric(
             name='ping', key='ping', field_name='reachable', content_object=d
         )
-        self._create_threshold(metric=ping, operator='<', value=1, seconds=0)
+        self._create_alert_settings(metric=ping, operator='<', value=1, seconds=0)
         load = self._create_object_metric(name='load', content_object=d)
-        self._create_threshold(metric=load, operator='>', value=90, seconds=0)
+        self._create_alert_settings(metric=load, operator='>', value=90, seconds=0)
         process_count = self._create_object_metric(
             name='process_count', content_object=d
         )
-        self._create_threshold(metric=process_count, operator='>', value=20, seconds=0)
+        self._create_alert_settings(
+            metric=process_count, operator='>', value=20, seconds=0
+        )
         return dm, ping, load, process_count
 
     def test_status_changed(self):
@@ -506,53 +508,53 @@ class TestDeviceMonitoring(BaseTestCase):
     def test_ok_critical_ok(self):
         dm, ping, load, process_count = self._create_env()
         self.assertEqual(dm.status, 'ok')
-        ping.check_threshold(0)
+        ping.check_alert_settings(0)
         self.assertEqual(dm.status, 'critical')
-        ping.check_threshold(1)
+        ping.check_alert_settings(1)
         self.assertEqual(dm.status, 'ok')
 
     def test_ok_problem_ok(self):
         dm, ping, load, process_count = self._create_env()
         self.assertEqual(dm.status, 'ok')
-        load.check_threshold(100)
+        load.check_alert_settings(100)
         self.assertEqual(dm.status, 'problem')
-        load.check_threshold(20)
+        load.check_alert_settings(20)
         self.assertEqual(dm.status, 'ok')
 
     def test_ok_problem_critical_problem_ok(self):
         dm, ping, load, process_count = self._create_env()
         self.assertEqual(dm.status, 'ok')
-        load.check_threshold(100)
+        load.check_alert_settings(100)
         self.assertEqual(dm.status, 'problem')
-        ping.check_threshold(0)
+        ping.check_alert_settings(0)
         self.assertEqual(dm.status, 'critical')
-        ping.check_threshold(1)
+        ping.check_alert_settings(1)
         self.assertEqual(dm.status, 'problem')
-        load.check_threshold(80)
+        load.check_alert_settings(80)
         self.assertEqual(dm.status, 'ok')
 
     def test_ok_critical_critical_critical_ok(self):
         dm, ping, load, process_count = self._create_env()
         self.assertEqual(dm.status, 'ok')
-        ping.check_threshold(0)
+        ping.check_alert_settings(0)
         self.assertEqual(dm.status, 'critical')
-        load.check_threshold(100)
+        load.check_alert_settings(100)
         self.assertEqual(dm.status, 'critical')
-        load.check_threshold(80)
+        load.check_alert_settings(80)
         self.assertEqual(dm.status, 'critical')
-        ping.check_threshold(1)
+        ping.check_alert_settings(1)
         self.assertEqual(dm.status, 'ok')
 
     def test_ok_problem_problem_problem_ok(self):
         dm, ping, load, process_count = self._create_env()
         self.assertEqual(dm.status, 'ok')
-        load.check_threshold(100)
+        load.check_alert_settings(100)
         self.assertEqual(dm.status, 'problem')
-        process_count.check_threshold(40)
+        process_count.check_alert_settings(40)
         self.assertEqual(dm.status, 'problem')
-        process_count.check_threshold(10)
+        process_count.check_alert_settings(10)
         self.assertEqual(dm.status, 'problem')
-        load.check_threshold(80)
+        load.check_alert_settings(80)
         self.assertEqual(dm.status, 'ok')
 
     def _set_env_unknown(self, load, process_count, ping, dm):
@@ -590,9 +592,9 @@ class TestDeviceMonitoring(BaseTestCase):
         self._set_env_unknown(load, process_count, ping, dm)
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'unknown')
-        load.check_threshold(100)
+        load.check_alert_settings(100)
         self.assertEqual(dm.status, 'problem')
-        load.check_threshold(20)
+        load.check_alert_settings(20)
         self.assertEqual(dm.status, 'ok')
 
     def test_device_connection_change(self):

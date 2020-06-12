@@ -10,8 +10,8 @@ from .. import settings
 from ..classes import Ping
 from ..exceptions import OperationalError
 
-Graph = load_model('monitoring', 'Graph')
-Threshold = load_model('monitoring', 'Threshold')
+Chart = load_model('monitoring', 'Chart')
+AlertSettings = load_model('monitoring', 'AlertSettings')
 Metric = load_model('monitoring', 'Metric')
 Check = load_model('check', 'Check')
 
@@ -202,13 +202,13 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         # check created automatically by autoping
         self.assertEqual(Check.objects.count(), 1)
         self.assertEqual(Metric.objects.count(), 0)
-        self.assertEqual(Graph.objects.count(), 0)
-        self.assertEqual(Threshold.objects.count(), 0)
+        self.assertEqual(Chart.objects.count(), 0)
+        self.assertEqual(AlertSettings.objects.count(), 0)
         check = Check.objects.first()
         result = check.perform_check()
         self.assertEqual(Metric.objects.count(), 1)
-        self.assertEqual(Graph.objects.count(), 3)
-        self.assertEqual(Threshold.objects.count(), 1)
+        self.assertEqual(Chart.objects.count(), 3)
+        self.assertEqual(AlertSettings.objects.count(), 1)
         m = Metric.objects.first()
         self.assertEqual(m.content_object, device)
         self.assertEqual(m.key, 'ping')
@@ -221,12 +221,12 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(points[0]['rtt_max'], result['rtt_max'])
 
     @patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
-    @patch.object(monitoring_settings, 'AUTO_GRAPHS', return_value=[])
-    def test_auto_graph_disabled(self, *args):
+    @patch.object(monitoring_settings, 'AUTO_CHARTS', return_value=[])
+    def test_auto_chart_disabled(self, *args):
         device = self._create_device(organization=self._create_org())
         device.last_ip = '127.0.0.1'
         device.save()
         check = Check.objects.first()
-        self.assertEqual(Graph.objects.count(), 0)
+        self.assertEqual(Chart.objects.count(), 0)
         check.perform_check()
-        self.assertEqual(Graph.objects.count(), 0)
+        self.assertEqual(Chart.objects.count(), 0)

@@ -21,11 +21,11 @@
   {% if inline_admin_form.needs_explicit_pk_field %}{{ inline_admin_form.pk_field.field }}{% endif %}
   {{ inline_admin_form.fk_field.field }}
   {% if inline_admin_form.original %}
-  <div class="form-row graph">
-      <div id="graph-{{ forloop.counter }}"></div>
+  <div class="form-row chart">
+      <div id="chart-{{ forloop.counter }}"></div>
       <script>
-          createGraph({{ inline_admin_form.form.instance.json|safe }}, null,
-                      'graph-{{ forloop.counter }}', null,
+          createChart({{ inline_admin_form.form.instance.json|safe }}, null,
+                      'chart-{{ forloop.counter }}', null,
                       '{{ inline_admin_form.form.instance.type }}');
       </script>
   </div>
