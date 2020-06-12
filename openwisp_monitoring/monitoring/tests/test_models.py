@@ -8,7 +8,7 @@ from swapper import load_model
 
 from openwisp_utils.tests import catch_signal
 
-from ..signals import alert_settings_crossed, post_metric_write, pre_metric_write
+from ..signals import post_metric_write, pre_metric_write, threshold_crossed
 from ..utils import query, write
 from . import TestMonitoringMixin
 
@@ -198,7 +198,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         else:
             self.fail('ValidationError not raised')
 
-    def test_alert_settings_is_crossed_error(self):
+    def test_threshold_is_crossed_error(self):
         m = self._create_general_metric(name='load')
         alert_s = self._create_alert_settings(
             metric=m, operator='>', value=90, seconds=0
@@ -206,7 +206,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         with self.assertRaises(ValueError):
             alert_s._is_crossed_by(alert_s, start_time)
 
-    def test_alert_settings_is_crossed_immediate(self):
+    def test_threshold_is_crossed_immediate(self):
         m = self._create_general_metric(name='load')
         alert_s = self._create_alert_settings(
             metric=m, operator='>', value=90, seconds=0
@@ -220,7 +220,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         alert_s.save()
         self.assertTrue(alert_s._is_crossed_by(80))
 
-    def test_alert_settings_is_crossed_deferred(self):
+    def test_threshold_is_crossed_deferred(self):
         m = self._create_general_metric(name='load')
         alert_s = self._create_alert_settings(
             metric=m, operator='>', value=90, seconds=60 * 9
@@ -230,7 +230,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertFalse(alert_s._is_crossed_by(80, start_time))
         self.assertFalse(alert_s._is_crossed_by(80, ten_minutes_ago))
 
-    def test_alert_settings_is_crossed_deferred_2(self):
+    def test_threshold_is_crossed_deferred_2(self):
         self._create_admin()
         m = self._create_general_metric(name='load')
         self._create_alert_settings(metric=m, operator='>', value=90, seconds=60)
@@ -238,23 +238,23 @@ class TestModels(TestMonitoringMixin, TestCase):
         m.write(99)
         self.assertTrue(m.is_healthy)
 
-    def test_general_check_alert_settings_no_exception(self):
+    def test_general_check_threshold_no_exception(self):
         m = self._create_general_metric()
-        m.check_alert_settings(1)
+        m.check_threshold(1)
 
     def test_general_metric_signal_emitted(self):
         m = self._create_general_metric(name='load')
         alert_s = self._create_alert_settings(
             metric=m, operator='>', value=90, seconds=0
         )
-        with catch_signal(alert_settings_crossed) as handler:
-            m.check_alert_settings(91)
+        with catch_signal(threshold_crossed) as handler:
+            m.check_threshold(91)
         handler.assert_called_once_with(
             alert_settings=alert_s,
             metric=m,
             target=None,
             sender=Metric,
-            signal=alert_settings_crossed,
+            signal=threshold_crossed,
         )
 
     def test_object_metric_signal_emitted(self):
@@ -262,14 +262,14 @@ class TestModels(TestMonitoringMixin, TestCase):
         alert_s = self._create_alert_settings(
             metric=om, operator='>', value=90, seconds=0
         )
-        with catch_signal(alert_settings_crossed) as handler:
-            om.check_alert_settings(91)
+        with catch_signal(threshold_crossed) as handler:
+            om.check_threshold(91)
         handler.assert_called_once_with(
             alert_settings=alert_s,
             metric=om,
             target=om.content_object,
             sender=Metric,
-            signal=alert_settings_crossed,
+            signal=threshold_crossed,
         )
 
     def test_metric_pre_write_signals_emitted(self):

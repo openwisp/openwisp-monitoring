@@ -22,13 +22,18 @@ OpenWISP 2 monitoring module (Work in progress).
 Available Features
 ------------------
 
-* Displays ``Uptime``, ``Memory Status``, ``Load Status``, ``Addresses``, ``Neighbours`` of the **Device**
-* Displays ``Charts`` namely ``Uptime``, ``Packet Loss``, ``Round Trip Time``, ``Traffic`` in the form of lively charts
-* ``Charts`` can be viewed at resolutions of 1 day, 3 days, a week, a month and a year
+* Collects and displays device status information like uptime, RAM status, CPU load averages,
+  Interface addresses, WiFi interface status and associated clients, Neighbors information, DHCP Leases, Disk/Flash status
+* Collection of monitoring information in a timeseries database (currently only influxdb is supported)
+* Monitoring charts for uptime, packet loss, round trip time (latency), associated wifi clients, interface traffic,
+  RAM usage, CPU load, flash/disk usage
+* Charts can be viewed at resolutions of 1 day, 3 days, a week, a month and a year
 * CSV Export of monitoring data
-* It allows you to add custom `Charts <https://github.com/openwisp/openwisp-monitoring/#openwisp_monitoring_charts>`_
-* It allows to create custom ``Metric``, select a ``Chart`` and set a ``AlertSettings``
+* Possibility to define custom `Charts <https://github.com/openwisp/openwisp-monitoring/#openwisp_monitoring_charts>`_
+* Extensible active check system: it's possible to write additional checks that
+  are run periodically using python classes
 * Configurable alerts and web notifications
+* API to retrieve the chart metrics and status information of each device
 
 Install Dependencies
 --------------------
@@ -199,7 +204,7 @@ Everything is working normally.
 ~~~~~~~~~~~
 
 One of the metrics has a value which is not in the expected range
-(AlertSettings value crossed).
+(the threshold value set in the alert settings has been crossed).
 
 Example: CPU usage should be less than 90% but current value is at 95%.
 
@@ -208,7 +213,7 @@ Example: CPU usage should be less than 90% but current value is at 95%.
 
 One of the metrics defined in ``OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS``
 has a value which is not in the expected range
-(AlertSettings value crossed).
+(the threshold value set in the alert settings has been crossed).
 
 Example: ping is by default a critical metric which is expected to be always 1
 (reachable).
@@ -262,11 +267,13 @@ Automatically created charts.
 | **default**: | ``[{'key': 'ping', 'field_name': 'reachable'}]``                |
 +--------------+-----------------------------------------------------------------+
 
-Device metrics that are considered critical: when a ``AlertSettings`` related to
-one of this type of metric is crossed, the health status of the device related
-to the metric moves into ``CRITICAL``.
+Device metrics that are considered critical:
 
-By default, if devices are not reachable by ping they are flagged as ``CRITICAL``.
+when a value crosses the boundary defined in the "threshold value" field
+of the alert settings related to one of these metric types, the health status
+of the device related to the metric moves into ``CRITICAL``.
+
+By default, if devices are not reachable by pings they are flagged as ``CRITICAL``.
 
 ``OPENWISP_MONITORING_HEALTH_STATUS_LABELS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -428,13 +435,13 @@ it is not sent if the response was not successful.
 Default Alerts / Notifications
 ------------------------------
 
-+----------------------------+---------------------------------------------------------------------------------+
-|    Notification Types      | Uses                                                                            |
-+----------------------------+---------------------------------------------------------------------------------+
-| ``alert_settings_crossed`` | Used for creating notification when a metric exceeds alert settings value.      |
-+----------------------------+---------------------------------------------------------------------------------+
-|  ``under_alert_settings``  | Used for creating notification when a metric falls behind alert settings value. |
-+----------------------------+---------------------------------------------------------------------------------+
++----------------------------+------------------------------------------------------------------------------------------------+
+|    Notification Types      | Uses                                                                                           |
++----------------------------+------------------------------------------------------------------------------------------------+
+| ``threshold_crossed``      | Fires when a metric crosses the boundary defined in the threshold value of the alert settings. |
++----------------------------+------------------------------------------------------------------------------------------------+
+| ``threshold_recovery``     | Fires when a metric goes back within the expected range.                                       |
++----------------------------+------------------------------------------------------------------------------------------------+
 
 Installing for development
 --------------------------
@@ -771,7 +778,10 @@ For ``monitoring`` app,
 
     from django.contrib import admin
 
-    from openwisp_monitoring.monitoring.admin import AlertSettingsAdmin as BaseAlertSettingsAdmin, MetricAdmin as BaseMetricAdmin
+    from openwisp_monitoring.monitoring.admin import (
+        AlertSettingsAdmin as BaseAlertSettingsAdmin,
+        MetricAdmin as BaseMetricAdmin
+    )
     from swapper import load_model
 
     Metric = load_model('Metric')

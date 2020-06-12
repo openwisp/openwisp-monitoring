@@ -24,6 +24,13 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='alertsettings',
             name='value',
-            field=models.FloatField(help_text='alert settings value'),
+            field=models.FloatField(help_text='threshold value'),
+        ),
+        migrations.AlterModelOptions(
+            name='alertsettings',
+            options={
+                'verbose_name': 'Alert settings',
+                'verbose_name_plural': 'Alert settings',
+            },
         ),
     ]

@@ -29,7 +29,7 @@ from ..charts import (
     get_chart_configuration_choices,
 )
 from ..exceptions import InvalidChartConfigException
-from ..signals import alert_settings_crossed, post_metric_write, pre_metric_write
+from ..signals import post_metric_write, pre_metric_write, threshold_crossed
 from ..utils import query, write
 
 User = get_user_model()
@@ -119,9 +119,9 @@ class AbstractMetric(TimeStampedEditableModel):
         except AttributeError:
             return None
 
-    def check_alert_settings(self, value, time=None):
+    def check_threshold(self, value, time=None):
         """
-        checks if the alert_settings is crossed
+        checks if the threshold is crossed
         and notifies users accordingly
         """
         try:
@@ -132,16 +132,16 @@ class AbstractMetric(TimeStampedEditableModel):
         # situation has not changed
         if (not crossed and self.is_healthy) or (crossed and self.is_healthy is False):
             return
-        # problem: not within alert_settings limit
+        # problem: not within threshold limit
         elif crossed and self.is_healthy in [True, None]:
             self.is_healthy = False
-            notification_type = 'alert_settings_crossed'
-        # ok: returned within alert settings limit
+            notification_type = 'threshold_crossed'
+        # ok: returned within threshold limit
         elif not crossed and self.is_healthy in [False, None]:
             self.is_healthy = True
-            notification_type = 'under_alert_settings'
+            notification_type = 'threshold_recovery'
         self.save()
-        alert_settings_crossed.send(
+        threshold_crossed.send(
             sender=self.__class__,
             alert_settings=alert_settings,
             metric=self,
@@ -168,7 +168,7 @@ class AbstractMetric(TimeStampedEditableModel):
         # mostly for automated testing and debugging purposes
         if not check:
             return
-        self.check_alert_settings(value, time)
+        self.check_threshold(value, time)
 
     def read(self, since=None, limit=1, order=None, extra_fields=None):
         """ reads timeseries data """
@@ -550,27 +550,29 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         get_model_name('monitoring', 'Metric'), on_delete=models.CASCADE
     )
     operator = models.CharField(max_length=1, choices=_ALERTSETTINGS_OPERATORS)
-    value = models.FloatField(help_text=_('alert settings value'))
+    value = models.FloatField(help_text=_('threshold value'))
     seconds = models.PositiveIntegerField(
         default=0, validators=[MaxValueValidator(604800)], help_text=_(_SECONDS_HELP)
     )
 
     class Meta:
         abstract = True
+        verbose_name = _('Alert settings')
+        verbose_name_plural = verbose_name
 
     def _value_crossed(self, current_value):
-        alert_settings_value = self.value
+        threshold_value = self.value
         method = '__gt__' if self.operator == '>' else '__lt__'
         if isinstance(current_value, int):
             current_value = float(current_value)
-        return getattr(current_value, method)(alert_settings_value)
+        return getattr(current_value, method)(threshold_value)
 
     def _time_crossed(self, time):
-        alert_settings_time = timezone.now() - timedelta(seconds=self.seconds)
-        return time < alert_settings_time
+        threshold_time = timezone.now() - timedelta(seconds=self.seconds)
+        return time < threshold_time
 
     def _is_crossed_by(self, current_value, time=None):
-        """ do current_value and time cross the alert_settings? """
+        """ do current_value and time cross the threshold? """
         value_crossed = self._value_crossed(current_value)
         if value_crossed is NotImplemented:
             raise ValueError('Supplied value type not suppported')
@@ -580,7 +582,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
             return True
         if time is None:
             # retrieves latest measurements up to the maximum
-            # alert_settings in seconds allowed plus a small margin
+            # threshold in seconds allowed plus a small margin
             since = 'now() - {0}s'.format(int(self._SECONDS_MAX * 1.05))
             points = self.metric.read(since=since, limit=None, order='time DESC')
             # loop on each measurement starting from the most recent
@@ -595,7 +597,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
                     make_aware(datetime.fromtimestamp(point['time']))
                 ):
                     return True
-                # if alert_settings value is crossed but alert_settings time is not
+                # if threshold value is crossed but threshold time is not
                 # keep iterating (explicit continue statement added
                 #                 for better algorithm readability)
                 continue

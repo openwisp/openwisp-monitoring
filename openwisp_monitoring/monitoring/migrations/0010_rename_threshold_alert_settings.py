@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='alertsettings',
             name='value',
-            field=models.FloatField(help_text='alert settings value'),
+            field=models.FloatField(help_text='threshold value'),
         ),
-        migrations.AlterModelTable(name='alertsettings', table=None,),
+        migrations.AlterModelTable(name='alertsettings', table=None),
     ]

@@ -10,7 +10,14 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterModelTable(name='graph', table='monitoring_chart',),
-        migrations.RenameModel(old_name='Graph', new_name='Chart',),
-        migrations.AlterModelTable(name='chart', table=None,),
+        migrations.AlterModelTable(name='graph', table='monitoring_chart'),
+        migrations.RenameModel(old_name='Graph', new_name='Chart'),
+        migrations.AlterModelTable(name='chart', table=None),
+        migrations.AlterModelOptions(
+            name='alertsettings',
+            options={
+                'verbose_name': 'Alert settings',
+                'verbose_name_plural': 'Alert settings',
+            },
+        ),
     ]
