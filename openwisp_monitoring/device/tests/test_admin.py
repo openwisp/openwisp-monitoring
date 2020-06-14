@@ -20,7 +20,7 @@ class TestAdmin(DeviceMonitoringTestCase):
         self.client.force_login(u)
 
     def test_device_admin(self):
-        dd = self._create_multiple_measurements()
+        dd = self.create_test_adata()
         url = reverse('admin:config_device_change', args=[dd.pk])
         self._login_admin()
         r = self.client.get(url)
@@ -51,17 +51,14 @@ class TestAdmin(DeviceMonitoringTestCase):
 
     def test_wifi_clients_admin(self):
         self._login_admin()
-        d = self._create_device(organization=self._create_org())
-        data = self._data()
-        r = self._post_data(d.id, d.key, data)
-        url = reverse('admin:config_device_change', args=[d.id])
+        dd = self.create_test_adata(no_resources=True)
+        url = reverse('admin:config_device_change', args=[dd.id])
         r1 = self.client.get(url, follow=True)
-        self.assertEqual(r.status_code, 200)
         self.assertEqual(r1.status_code, 200)
         self.assertContains(r1, '00:ee:ad:34:f5:3b')
 
     def test_uuid_bug(self):
-        dd = self._create_multiple_measurements()
+        dd = self.create_test_adata(no_resources=True)
         uuid = str(dd.pk).replace('-', '')
         url = reverse('admin:config_device_change', args=[uuid])
         self._login_admin()
