@@ -1,7 +1,7 @@
 from django.db import migrations, models
 import django.db.models.deletion
 import django.utils.timezone
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 import model_utils.fields
 import uuid
 

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from swapper import load_model
 
 from openwisp_utils.admin import TimeReadonlyAdminMixin

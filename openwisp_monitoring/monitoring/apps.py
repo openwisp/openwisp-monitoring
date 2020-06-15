@@ -2,7 +2,7 @@ from time import sleep
 
 from django.apps import AppConfig
 from django.conf import settings
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from openwisp_notifications.types import register_notification_type
 from requests.exceptions import ConnectionError
 

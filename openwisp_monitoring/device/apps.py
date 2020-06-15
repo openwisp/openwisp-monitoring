@@ -1,7 +1,7 @@
 from django.apps import AppConfig
 from django.core.cache import cache
 from django.db.models.signals import post_delete, post_save
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from django_netjsonconfig.signals import checksum_requested
 from openwisp_notifications.signals import notify
 from swapper import load_model
