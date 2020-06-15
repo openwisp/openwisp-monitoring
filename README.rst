@@ -368,7 +368,7 @@ call in your custom code (eg: a custom check class), you can do so as follows:
 
 .. code-block:: python
 
-    from django.utils.translation import ugettext_lazy as _
+    from django.utils.translation import gettext_lazy as _
 
     OPENWISP_MONITORING_CHARTS = {
         'ram': {

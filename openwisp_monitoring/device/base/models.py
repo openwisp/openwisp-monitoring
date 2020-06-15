@@ -8,7 +8,7 @@ from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.dispatch import receiver
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
 from mac_vendor_lookup import MacLookup
