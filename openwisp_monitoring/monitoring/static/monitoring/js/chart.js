@@ -41,6 +41,8 @@
         // hide yaxis in fixed value charts
         if (data.colorscale && typeof(data.colorscale.fixed_value) !== undefined) {
             layout.yaxis = {visible: false};
+        } else if (unit === '%') {
+            layout.yaxis = {range: [0, 100]};
         }
         if (type === 'histogram') {
             layout.hovermode = 'closest';
