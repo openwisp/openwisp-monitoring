@@ -34,6 +34,8 @@
             unit = data.unit,
             labels = [],
             summaryLabels = [],
+            fixedY = false,
+            fixedYMax = 100,
             help, tooltip, heading;
         if (data.colors) {
             layout.colorway = data.colors;
@@ -41,8 +43,9 @@
         // hide yaxis in fixed value charts
         if (data.colorscale && typeof(data.colorscale.fixed_value) !== undefined) {
             layout.yaxis = {visible: false};
+        // if using %, we'll make sure the minimum y axis range is 0-100
         } else if (unit === '%') {
-            layout.yaxis = {range: [0, 100]};
+            fixedY = true;
         }
         if (type === 'histogram') {
             layout.hovermode = 'closest';
@@ -127,11 +130,16 @@
                 else {
                     hovertemplate = shownVal + unit + '<extra>' + desc + '</extra>';
                 }
+                // if using fixed y axis, adjust max Y value if needed
+                if (fixedY && val > fixedYMax) {
+                    fixedYMax = val;
+                }
                 options.y.push(val);
                 options.hovertemplate.push(hovertemplate);
             }
             charts.push(options);
         }
+        if (fixedY) { layout.yaxis = {range: [0, fixedYMax]}; }
 
         Plotly.newPlot(plotlyContainer, charts, layout, {responsive: true});
 
