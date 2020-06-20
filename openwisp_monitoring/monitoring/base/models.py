@@ -1,8 +1,5 @@
 import json
 import logging
-import operator
-import re
-from collections import OrderedDict
 from datetime import date, datetime, timedelta
 
 from django.conf import settings
@@ -22,7 +19,7 @@ from swapper import get_model_name
 
 from openwisp_utils.base import TimeStampedEditableModel
 
-from ...db import TimeseriesDB, default_chart_query
+from ...db import default_chart_query, timeseries_db
 from ..charts import (
     DEFAULT_COLORS,
     get_chart_configuration,
@@ -96,6 +93,7 @@ class AbstractMetric(TimeStampedEditableModel):
         """ identifier stored in timeseries db """
         return self._makekey(self.name)
 
+    # TODO: This method needs to be refactored when adding the other db
     @staticmethod
     def _makekey(value):
         """ makes value suited for InfluxDB key """
@@ -166,7 +164,7 @@ class AbstractMetric(TimeStampedEditableModel):
             values.update(extra_values)
         signal_kwargs = dict(sender=self.__class__, metric=self, values=values)
         pre_metric_write.send(**signal_kwargs)
-        TimeseriesDB.write(
+        timeseries_db.write(
             name=self.key,
             values=values,
             tags=self.tags,
@@ -182,7 +180,7 @@ class AbstractMetric(TimeStampedEditableModel):
 
     def read(self, **kwargs):
         """ reads timeseries data """
-        return TimeseriesDB.read(
+        return timeseries_db.read(
             key=self.key, fields=self.field_name, tags=self.tags, **kwargs
         )
 
@@ -202,6 +200,14 @@ class AbstractChart(TimeStampedEditableModel):
     configuration = models.CharField(
         max_length=16, null=True, choices=get_chart_configuration_choices()
     )
+    GROUP_MAP = {
+        '1d': '10m',
+        '3d': '20m',
+        '7d': '1h',
+        '30d': '24h',
+        '365d': '24h',
+    }
+    DEFAULT_TIME = '7d'
 
     class Meta:
         abstract = True
@@ -212,57 +218,11 @@ class AbstractChart(TimeStampedEditableModel):
     def clean(self):
         self._clean_query()
 
-    _FORBIDDEN = ['drop', 'create', 'delete', 'alter', 'into']
-    _AGGREGATE = [
-        'COUNT',
-        'DISTINCT',
-        'INTEGRAL',
-        'MEAN',
-        'MEDIAN',
-        'MODE',
-        'SPREAD',
-        'STDDEV',
-        'SUM',
-        'BOTTOM',
-        'FIRST',
-        'LAST',
-        'MAX',
-        'MIN',
-        'PERCENTILE',
-        'SAMPLE',
-        'TOP',
-        'CEILING',
-        'CUMULATIVE_SUM',
-        'DERIVATIVE',
-        'DIFFERENCE',
-        'ELAPSED',
-        'FLOOR',
-        'HISTOGRAM',
-        'MOVING_AVERAGE',
-        'NON_NEGATIVE_DERIVATIVE',
-        'HOLT_WINTERS',
-    ]
-    GROUP_MAP = {
-        '1d': '10m',
-        '3d': '20m',
-        '7d': '1h',
-        '30d': '24h',
-        '365d': '24h',
-    }
-    DEFAULT_TIME = '7d'
-
-    @classmethod
-    def _is_query_allowed(cls, query):
-        for word in cls._FORBIDDEN:
-            if word in query.lower():
-                msg = _('the word "{0}" is not allowed').format(word.upper())
-                raise ValidationError({'configuration': msg})
-
     def _clean_query(self):
         try:
-            self._is_query_allowed(self.query)
-            TimeseriesDB.query(self.get_query())
-        except TimeseriesDB.client_error as e:
+            timeseries_db.validate_query(self.query)
+            timeseries_db.query(self.get_query())
+        except timeseries_db.client_error as e:
             raise ValidationError({'configuration': e}) from e
         except InvalidChartConfigException as e:
             raise ValidationError({'configuration': str(e)}) from e
@@ -331,10 +291,6 @@ class AbstractChart(TimeStampedEditableModel):
             q += default_chart_query[1]
         return q
 
-    _fields_regex = re.compile(
-        r'(?P<group>\{fields\|(?P<func>\w+)(?:\|(?P<op>.*?))?\})', flags=re.IGNORECASE
-    )
-
     def get_query(
         self,
         time=DEFAULT_TIME,
@@ -343,53 +299,36 @@ class AbstractChart(TimeStampedEditableModel):
         query=None,
         timezone=settings.TIME_ZONE,
     ):
-        m = self.metric
         query = query or self.query
+        params = self._get_query_params(time)
+        return timeseries_db.get_query(
+            self.type, params, time, self.GROUP_MAP, summary, fields, query, timezone
+        )
+
+    def get_top_fields(self, number):
+        """
+        Returns list of top ``number`` of fields (highest sum) of a
+        measurement in the specified time range (descending order).
+        """
+        q = self._default_query.replace('{field_name}', '{fields}')
+        params = self._get_query_params(self.DEFAULT_TIME)
+        return timeseries_db._get_top_fields(
+            query=q,
+            chart_type=self.type,
+            group_map=self.GROUP_MAP,
+            number=number,
+            params=params,
+            time=self.DEFAULT_TIME,
+        )
+
+    def _get_query_params(self, time):
+        m = self.metric
         params = dict(field_name=m.field_name, key=m.key, time=self._get_time(time))
         if m.object_id:
             params.update(
                 {'content_type': m.content_type_key, 'object_id': m.object_id}
             )
-        query = self._fields(fields, query)
-        query = query.format(**params)
-        query = self._group_by(query, time, strip=summary)
-        if summary:
-            query = '{0} LIMIT 1'.format(query)
-        return "{0} tz('{1}')".format(query, timezone)
-
-    def _fields(self, fields, query):
-        """
-        support substitution of {fields|<FUNCTION_NAME>|<OPERATION>}
-        with <FUNCTION_NAME>(field1) AS field1 <OPERATION>,
-             <FUNCTION_NAME>(field2) AS field2 <OPERATION>
-        """
-        matches = re.search(self._fields_regex, query)
-        if not matches and not fields:
-            return query
-        elif matches and not fields:
-            groups = matches.groupdict()
-            fields_key = groups.get('group')
-            fields = [self.metric.field_name]
-        if fields and matches:
-            groups = matches.groupdict()
-            function = groups['func']  # required
-            operation = groups.get('op')  # optional
-            fields = [self.__transform_field(f, function, operation) for f in fields]
-            fields_key = groups.get('group')
-        else:
-            fields_key = '{fields}'
-        if fields:
-            selected_fields = ', '.join(fields)
-        return query.replace(fields_key, selected_fields)
-
-    def __transform_field(self, field, function, operation=None):
-        if operation:
-            operation = ' {}'.format(operation)
-        else:
-            operation = ''
-        return '{0}("{1}"){3} AS {2}'.format(
-            function, field, field.replace('-', '_'), operation
-        )
+        return params
 
     def _get_time(self, time):
         if not isinstance(time, str):
@@ -406,51 +345,6 @@ class AbstractChart(TimeStampedEditableModel):
             time = str(now - timedelta(days=days))[0:19]
         return time
 
-    def _is_aggregate(self, q):
-        q = q.upper()
-        for word in self._AGGREGATE:
-            if any(['%s(' % word in q, '|%s}' % word in q, '|%s|' % word in q]):
-                return True
-        return False
-
-    _group_by_regex = re.compile(r'GROUP BY time\(\w+\)', flags=re.IGNORECASE)
-
-    def _group_by(self, query, time, strip=False):
-        if not self._is_aggregate(query):
-            return query
-        if not strip and not self.type == 'histogram':
-            value = self.GROUP_MAP[time]
-            group_by = 'GROUP BY time({0})'.format(value)
-        else:
-            # can be empty when getting summaries
-            group_by = ''
-        if 'GROUP BY' not in query.upper():
-            query = '{0} {1}'.format(query, group_by)
-        else:
-            query = re.sub(self._group_by_regex, group_by, query)
-        return query
-
-    def _get_top_fields(self, number, time=DEFAULT_TIME, timezone=settings.TIME_ZONE):
-        """
-        Returns list of top ``number`` of fields (highes sum) of a
-        measurement in the specified time range (descending order).
-        """
-        q = self._default_query.replace('{field_name}', '{fields}')
-        q = self.get_query(
-            query=q, summary=True, fields=['SUM(*)'], time=time, timezone=timezone
-        )
-        res = list(TimeseriesDB.query(q, epoch='s').get_points())
-        if not res:
-            return []
-        res = res[0]
-        res = {key: value for key, value in res.items() if value is not None}
-        sorted_dict = OrderedDict(sorted(res.items(), key=operator.itemgetter(1)))
-        del sorted_dict['time']
-        keys = list(sorted_dict.keys())
-        keys.reverse()
-        top = keys[0:number]
-        return [item.replace('sum_', '') for item in top]
-
     def read(
         self,
         decimal_places=2,
@@ -464,7 +358,7 @@ class AbstractChart(TimeStampedEditableModel):
         try:
             query_kwargs = dict(time=time, timezone=timezone)
             if self.top_fields:
-                fields = self._get_top_fields(self.top_fields)
+                fields = self.get_top_fields(self.top_fields)
                 data_query = self.get_query(fields=fields, **query_kwargs)
                 summary_query = self.get_query(
                     fields=fields, summary=True, **query_kwargs
@@ -472,9 +366,9 @@ class AbstractChart(TimeStampedEditableModel):
             else:
                 data_query = self.get_query(**query_kwargs)
                 summary_query = self.get_query(summary=True, **query_kwargs)
-            points = list(TimeseriesDB.query(data_query, epoch='s').get_points())
-            summary = list(TimeseriesDB.query(summary_query, epoch='s').get_points())
-        except TimeseriesDB.client_error as e:
+            points = timeseries_db.get_list_query(data_query)
+            summary = timeseries_db.get_list_query(summary_query)
+        except timeseries_db.client_error as e:
             logging.error(e, exc_info=True)
             raise e
         for point in points:
@@ -501,7 +395,7 @@ class AbstractChart(TimeStampedEditableModel):
             for key, value in summary[0].items():
                 if key == 'time':
                     continue
-                if not self._is_aggregate(self.query):
+                if not timeseries_db.validate_query(self.query):
                     value = None
                 elif value:
                     value = self._round(value, decimal_places)

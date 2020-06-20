@@ -1,7 +1,7 @@
-from .backends import TimeseriesDB, TimeseriesDBQueries
+from .backends import timeseries_db
 
-chart_query = TimeseriesDBQueries.chart_query
-default_chart_query = TimeseriesDBQueries.default_chart_query
-device_data_query = TimeseriesDBQueries.device_data_query
+chart_query = timeseries_db.queries.chart_query
+default_chart_query = timeseries_db.queries.default_chart_query
+device_data_query = timeseries_db.queries.device_data_query
 
-__all__ = ['TimeseriesDB', 'TimeseriesDBQueries']
+__all__ = ['timeseries_db', 'chart_query', 'default_chart_query', 'device_data_query']

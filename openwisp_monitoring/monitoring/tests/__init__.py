@@ -5,7 +5,7 @@ from swapper import load_model
 
 from openwisp_users.tests.utils import TestOrganizationMixin
 
-from ...db import TimeseriesDB
+from ...db import timeseries_db
 from ...db.backends import TIMESERIES_DB
 
 start_time = now()
@@ -21,15 +21,18 @@ class TestMonitoringMixin(TestOrganizationMixin):
 
     @classmethod
     def setUpClass(cls):
-        TimeseriesDB.db_name = cls.TEST_DB
-        TimeseriesDB.create_database()
+        # By default timeseries_db.get_db shall connect to the database
+        # defined in settings when apps are loaded. We don't want that while testing
+        timeseries_db.db_name = cls.TEST_DB
+        del timeseries_db.get_db
+        timeseries_db.create_database()
 
     @classmethod
     def tearDownClass(cls):
-        TimeseriesDB.drop_database()
+        timeseries_db.drop_database()
 
     def tearDown(self):
-        TimeseriesDB.query('DROP SERIES FROM /.*/')
+        timeseries_db.delete_metric_data()
 
     def _create_general_metric(self, **kwargs):
         opts = {

@@ -15,7 +15,7 @@ class TestDatabase(TestCase):
     app = 'monitoring'
 
     @patch('openwisp_monitoring.monitoring.apps.MonitoringConfig.warn_and_delay')
-    @patch('openwisp_monitoring.db.TimeseriesDB.create_database', mock_create_database)
+    @patch('openwisp_monitoring.db.timeseries_db.create_database', mock_create_database)
     def test_check_retry(self, mock):
         try:
             apps.get_app_config(self.app).create_database()
@@ -30,7 +30,7 @@ class TestDatabase(TestCase):
             apps.get_app_config(self.app).warn_and_delay(1)
         self.assertEqual(
             f.getvalue(),
-            'Got error while connecting to timeseries DB. '
+            'Got error while connecting to timeseries database. '
             'Retrying again in 3 seconds (attempt n. 1 out of 5).\n',
         )
         mock.assert_called_with(3)

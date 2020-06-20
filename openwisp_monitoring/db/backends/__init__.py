@@ -11,19 +11,19 @@ TIMESERIES_DB = getattr(settings, 'TIMESERIES_DATABASE', None)
 if not TIMESERIES_DB:
     TIMESERIES_DB = {
         'BACKEND': 'openwisp_monitoring.db.backends.influxdb',
-        'USER': 'openwisp',
-        'PASSWORD': 'openwisp',
-        'NAME': 'openwisp2',
-        'HOST': 'localhost',
-        'PORT': '8086',
+        'USER': getattr(settings, 'INFLUXDB_USER', 'openwisp'),
+        'PASSWORD': getattr(settings, 'INFLUXDB_PASSWORD', 'openwisp'),
+        'NAME': getattr(settings, 'INFLUXDB_DATABASE', 'openwisp2'),
+        'HOST': getattr(settings, 'INFLUXDB_HOST', 'localhost'),
+        'PORT': getattr(settings, 'INFLUXDB_PORT', '8086'),
     }
     logger.warning(
-        'The previous method to define Timeseries Database has been deprecated. Please refer the docs\n'
+        'The previous method to define Timeseries Database has been deprecated. Please refer to the docs:\n'
         'https://github.com/openwisp/openwisp-monitoring#setup-integrate-in-an-existing-django-project',
     )
 
 
-def load_backend(backend_name=TIMESERIES_DB['BACKEND'], module=None):
+def load_backend_module(backend_name=TIMESERIES_DB['BACKEND'], module=None):
     """
     Returns database backend module given a fully qualified database backend name,
     or raise an error if it doesn't exist or backend is not well defined.
@@ -59,5 +59,5 @@ def load_backend(backend_name=TIMESERIES_DB['BACKEND'], module=None):
             ) from e
 
 
-TimeseriesDB = load_backend(module='client').DatabaseClient()
-TimeseriesDBQueries = load_backend(module='queries')
+timeseries_db = load_backend_module(module='client').DatabaseClient()
+timeseries_db.queries = load_backend_module(module='queries')
