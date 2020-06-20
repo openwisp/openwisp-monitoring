@@ -285,7 +285,12 @@ LOGGING = {
         }
     },
     'loggers': {
-        'py.warnings': {'handlers': ['console']},
+        'django': {
+            'handlers': ['console'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'py.warnings': {'handlers': ['console'], 'propagate': False},
         'celery': {'handlers': ['console'], 'level': 'DEBUG'},
         'celery.task': {'handlers': ['console'], 'level': 'DEBUG'},
     },
