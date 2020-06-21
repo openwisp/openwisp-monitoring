@@ -18,7 +18,9 @@ start_time = timezone.now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
 
 
-class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
+class TestMonitoringNotifications(
+    CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
+):
     device_model = Device
     config_model = Config
 
