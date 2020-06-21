@@ -103,7 +103,14 @@ class DeviceMonitoringConfig(AppConfig):
         )
 
     @classmethod
-    def is_working_changed_receiver(cls, instance, is_working, **kwargs):
+    def is_working_changed_receiver(
+        cls, instance, is_working, old_is_working, **kwargs
+    ):
+        # if old_is_working is None, it's a new device connection which wasn't
+        # ever used yet, so nothing is really changing and we don't need to do anything
+        if old_is_working is None and is_working:
+            return
+
         from .tasks import trigger_device_checks
 
         Check = load_model('check', 'Check')

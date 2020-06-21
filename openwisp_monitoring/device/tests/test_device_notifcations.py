@@ -50,6 +50,9 @@ class TestDeviceNotifications(BaseTestCase):
         )
 
     def test_connection_working_notification(self):
+        self.dc = DeviceConnection.objects.create(
+            credentials=self.creds, device=self.d, is_working=False
+        )
         self.dc.is_working = True
         self.dc.save()
         self._generic_notification_test(
