@@ -274,6 +274,9 @@ OPENWISP_MONITORING_CHARTS = {
 if TESTING:
     OPENWISP_MONITORING_MAC_VENDOR_DETECTION = False
 
+# Temporarily added to identify slow tests
+TEST_RUNNER = 'openwisp_utils.tests.TimeLoggingTestRunner'
+
 LOGGING = {
     'version': 1,
     'filters': {'require_debug_true': {'()': 'django.utils.log.RequireDebugTrue'}},

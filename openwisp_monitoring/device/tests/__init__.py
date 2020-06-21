@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 
 from django.test import TestCase
 from django.urls import reverse
@@ -37,16 +38,24 @@ class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
         netjson = json.dumps(data)
         return self.client.post(url, netjson, content_type='application/json')
 
-    def create_test_adata(self):
+    def create_test_adata(self, no_resources=False):
         o = self._create_org()
         d = self._create_device(organization=o)
         data = self._data()
+        # creation of resources metrics can be avoided in tests not involving them
+        # this speeds up those tests by reducing requests made
+        if no_resources:
+            del data['resources']
         r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 200)
         dd = DeviceData(pk=d.pk)
         self.assertDictEqual(dd.data, data)
-        self.assertEqual(Metric.objects.count(), 9)
-        self.assertEqual(Chart.objects.count(), 7)
+        if no_resources:
+            metric_count, chart_count = 6, 4
+        else:
+            metric_count, chart_count = 9, 7
+        self.assertEqual(Metric.objects.count(), metric_count)
+        self.assertEqual(Chart.objects.count(), chart_count)
         if_dict = {'wlan0': data['interfaces'][0], 'wlan1': data['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
@@ -62,32 +71,42 @@ class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
             m = Metric.objects.get(key=ifname, field_name='clients', object_id=d.pk)
             points = m.read(limit=10, order='time DESC')
             self.assertEqual(len(points), len(iface['wireless']['clients']))
+        return dd
 
-    def _create_multiple_measurements(self, create=True):
+    def _create_multiple_measurements(self, create=True, no_resources=False, count=4):
         if create:
-            self.create_test_adata()
+            self.create_test_adata(no_resources=no_resources)
         self.assertEqual(self.device_model.objects.count(), 1)
         d = self.device_model.objects.first()
-        data2 = self._data()
+        dd = DeviceData(pk=d.pk)
+        data = self._data()
+        # creation of resources metrics can be avoided in tests not involving them
+        # this speeds up those tests by reducing requests made
+        if no_resources:
+            del data['resources']
+        data2 = deepcopy(data)
         data2['interfaces'][0]['statistics']['rx_bytes'] = 400000000
         data2['interfaces'][0]['statistics']['tx_bytes'] = 100000000
         data2['interfaces'][1]['statistics']['rx_bytes'] = 2000000000
         data2['interfaces'][1]['statistics']['tx_bytes'] = 1000000000
         r = self._post_data(d.id, d.key, data2)
-        data3 = self._data()
+        if count == 2:
+            return dd
+        data3 = deepcopy(data)
         data3['interfaces'][0]['statistics']['rx_bytes'] = 500000000
         data3['interfaces'][0]['statistics']['tx_bytes'] = 300000000
         data3['interfaces'][1]['statistics']['rx_bytes'] = 0
         data3['interfaces'][1]['statistics']['tx_bytes'] = 0
         r = self._post_data(d.id, d.key, data3)
-        data4 = self._data()
+        if count == 3:
+            return dd
+        data4 = deepcopy(data)
         data4['interfaces'][0]['statistics']['rx_bytes'] = 1200000000
         data4['interfaces'][0]['statistics']['tx_bytes'] = 600000000
         data4['interfaces'][1]['statistics']['rx_bytes'] = 1000000000
         data4['interfaces'][1]['statistics']['tx_bytes'] = 500000000
         r = self._post_data(d.id, d.key, data4)
         self.assertEqual(r.status_code, 200)
-        dd = DeviceData(pk=d.pk)
         self.assertDictEqual(dd.data, data4)
         return dd
 
