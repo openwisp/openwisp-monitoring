@@ -44,7 +44,9 @@ install:
   # Until release of django-netjsonconfig 0.12.0
   - pip install --upgrade https://github.com/openwisp/django-netjsonconfig/tarball/master
   # temporary: remove when openwisp-notifications is released
-  - pip install -U https://github.com/openwisp/openwisp-notifications/tarball/issues/2 # will change later
+  - pip install -U https://github.com/openwisp/openwisp-notifications/tarball/master
+  # To be removed after new release of openwisp-utils
+  - pip install --upgrade https://github.com/openwisp/openwisp-utils/tarball/master
 
 script:
   - ./run-qa-checks

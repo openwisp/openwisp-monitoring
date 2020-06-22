@@ -4,7 +4,9 @@ from django.core.cache import cache
 from django.urls import reverse
 from swapper import load_model
 
+from ...check.classes import Ping
 from ...check.tasks import auto_create_ping
+from ...check.tests import _FPING_REACHABLE
 from ..signals import health_status_changed
 from ..tasks import trigger_device_checks
 from ..utils import get_device_recovery_cache_key
@@ -27,11 +29,16 @@ class TestRecovery(DeviceMonitoringTestCase):
         dm.save()
         return dm
 
-    def test_trigger_device_recovery_task(self):
+    @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
+    def test_trigger_device_recovery_task(self, mocked_method):
         d = self._create_device(organization=self._create_org())
         d.management_ip = '10.40.0.5'
         d.save()
         data = self._data()
+        # Creation of resources, clients and traffic metrics can be avoided here
+        # as they are not involved. This speeds up the test by reducing requests made.
+        del data['resources']
+        del data['interfaces']
         auto_create_ping.delay(
             model='device', app_label='config', object_id=str(d.pk), created=True,
         )

@@ -9,6 +9,7 @@ from ...device.tests import TestDeviceMonitoringMixin
 from .. import settings
 from ..classes import Ping
 from ..exceptions import OperationalError
+from . import _FPING_REACHABLE, _FPING_UNREACHABLE
 
 Chart = load_model('monitoring', 'Chart')
 AlertSettings = load_model('monitoring', 'AlertSettings')
@@ -24,15 +25,9 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         '',
         bytes("fping: option requires an argument -- 'z'", encoding='utf8'),
     )
-    _FPING_OUTPUT = (
-        '',
-        bytes(
-            '10.40.0.1 : xmt/rcv/%loss = 5/5/0%, ' 'min/avg/max = 0.04/0.08/0.15',
-            'utf8',
-        ),
-    )
 
-    def test_check_ping_no_params(self):
+    @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
+    def test_check_ping_no_params(self, mocked_method):
         device = self._create_device(organization=self._create_org())
         # will ping localhost
         device.management_ip = '127.0.0.1'
@@ -65,9 +60,9 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         for key in self._RTT_KEYS:
             self.assertTrue(result[key] < 1)
 
-    def test_check_ping_unreachable(self):
+    @patch.object(Ping, '_command', return_value=_FPING_UNREACHABLE)
+    def test_check_ping_unreachable(self, mocked_method):
         device = self._create_device(organization=self._create_org())
-        # will hopefully ping an unexisting private address
         device.management_ip = '192.168.255.255'
         check = Check(
             name='Ping check',
@@ -98,7 +93,8 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         else:
             self.fail('OperationalError not raised')
 
-    def _check_no_ip_case(self, status, management_ip_only=False):
+    @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
+    def _check_no_ip_case(self, status, mocked_method, management_ip_only=False):
         device = self._create_device(
             organization=self._create_org(), last_ip='127.0.0.1'
         )
@@ -124,24 +120,29 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(device.monitoring.status, expected_status)
         self.assertEqual(Metric.objects.count(), expected_metrics_count)
 
+    @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
     @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', True)
-    def test_device_without_ip_unknown_status(self):
+    def test_device_without_ip_unknown_status(self, mocked_method):
         self._check_no_ip_case('unknown')
 
+    @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
     @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', True)
-    def test_device_without_ip_ok_status(self):
+    def test_device_without_ip_ok_status(self, mocked_method):
         self._check_no_ip_case('ok')
 
+    @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
     @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', True)
-    def test_device_without_ip_problem_status(self):
+    def test_device_without_ip_problem_status(self, mocked_method):
         self._check_no_ip_case('problem')
 
+    @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
     @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', True)
-    def test_device_without_ip_critical_status(self):
+    def test_device_without_ip_critical_status(self, mocked_method):
         self._check_no_ip_case('critical')
 
+    @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
     @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', False)
-    def test_device_with_last_ip_unknown_status(self):
+    def test_device_with_last_ip_unknown_status(self, mocked_method):
         self._check_no_ip_case('unknown', management_ip_only=True)
 
     def test_content_object_none(self):
@@ -193,7 +194,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
             else:
                 self.fail('ValidationError not raised')
 
-    @patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
+    @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
     def test_store_result(self, mocked_method):
         self.assertEqual(Check.objects.count(), 0)
         device = self._create_device(organization=self._create_org())
@@ -220,7 +221,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(points[0]['rtt_avg'], result['rtt_avg'])
         self.assertEqual(points[0]['rtt_max'], result['rtt_max'])
 
-    @patch.object(Ping, '_command', return_value=_FPING_OUTPUT)
+    @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
     @patch.object(monitoring_settings, 'AUTO_CHARTS', return_value=[])
     def test_auto_chart_disabled(self, *args):
         device = self._create_device(organization=self._create_org())
