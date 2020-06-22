@@ -13,6 +13,7 @@ from .. import settings as app_settings
 from ..exceptions import OperationalError
 
 Chart = load_model('monitoring', 'Chart')
+Check = load_model('check', 'Check')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 
@@ -171,9 +172,7 @@ class Ping(object):
             ct = check.content_type
         else:
             obj_id = str(check.id)
-            ct = ContentType.objects.get(
-                app_label=check._meta.app_label, model=check.__class__.__name__.lower()
-            )
+            ct = ContentType.objects.get_for_model(Check)
         options = dict(
             name=check.name,
             object_id=obj_id,

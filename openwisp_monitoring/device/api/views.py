@@ -52,9 +52,7 @@ class DeviceMetricView(GenericAPIView):
         except ValueError:
             return Response({'detail': 'not found'}, status=404)
         self.instance = self.get_object()
-        ct = ContentType.objects.get(
-            model=Device.__name__.lower(), app_label=Device._meta.app_label
-        )
+        ct = ContentType.objects.get_for_model(Device)
         charts = Chart.objects.filter(
             metric__object_id=pk, metric__content_type=ct
         ).select_related('metric')
@@ -176,7 +174,7 @@ class DeviceMetricView(GenericAPIView):
         # saves raw device data
         self.instance.save_data()
         data = self.instance.data
-        ct = ContentType.objects.get(model='device', app_label='config')
+        ct = ContentType.objects.get_for_model(Device)
         for interface in data.get('interfaces', []):
             ifname = interface['name']
             for key, value in interface.get('statistics', {}).items():
