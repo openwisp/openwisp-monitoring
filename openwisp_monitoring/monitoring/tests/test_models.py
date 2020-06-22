@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.test import TestCase
@@ -84,7 +85,7 @@ class TestModels(TestMonitoringMixin, TestCase):
 
     def test_get_or_create_renamed_object(self):
         obj = self._create_user()
-        ct = ContentType.objects.get(model='user', app_label='openwisp_users')
+        ct = ContentType.objects.get_for_model(get_user_model())
         m, created = Metric._get_or_create(
             name='logins',
             key='users',
