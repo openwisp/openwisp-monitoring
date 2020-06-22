@@ -1,26 +1,24 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.core import mail
-from django.test import TestCase
 from django.utils import timezone
 from django.utils.html import strip_tags
 from swapper import load_model
 
 from openwisp_controller.config.models import Config, Device
-from openwisp_controller.config.tests import CreateConfigTemplateMixin
 from openwisp_users.models import OrganizationUser
 
-from ...monitoring.tests import TestMonitoringMixin
+from ...device.tests import DeviceMonitoringTestCase
 
+Metric = load_model('monitoring', 'Metric')
 Notification = load_model('openwisp_notifications', 'Notification')
 notification_queryset = Notification.objects.order_by('timestamp')
 start_time = timezone.now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
 
 
-class TestMonitoringNotifications(
-    CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
-):
+class TestMonitoringNotifications(DeviceMonitoringTestCase):
     device_model = Device
     config_model = Config
 
@@ -81,6 +79,29 @@ class TestMonitoringNotifications(
         m.write(99)
         self.assertTrue(m.is_healthy)
         self.assertEqual(Notification.objects.count(), 0)
+
+    def test_resources_metric_threshold_deferred_not_crossed(self):
+        # Verify that newly created metrics within threshold limit don't send any notifications
+        self._create_admin()
+        self.create_test_adata()
+        self.assertEqual(Notification.objects.count(), 0)
+
+    def test_cpu_metric_threshold_crossed(self):
+        admin = self._create_admin()
+        test_data_path = (
+            'openwisp_monitoring.device.tests.DeviceMonitoringTestCase._data'
+        )
+        data = self._data()
+        data['resources']['load'] = [0.99, 0.99, 0.99]
+        with patch(test_data_path, return_value=data):
+            self.create_test_adata()
+            m = Metric.objects.get(name='CPU usage')
+            self.assertEqual(Notification.objects.count(), 1)
+            n = Notification.objects.first()
+            self.assertEqual(n.recipient, admin)
+            self.assertEqual(n.actor, m)
+            self.assertEqual(n.action_object, m.alertsettings)
+            self.assertEqual(n.level, 'warning')
 
     def test_general_check_threshold_crossed_for_long_time(self):
         """

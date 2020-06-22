@@ -252,6 +252,7 @@ class TestModels(TestMonitoringMixin, TestCase):
             m.check_threshold(91)
         handler.assert_called_once_with(
             alert_settings=alert_s,
+            first_time=False,
             metric=m,
             target=None,
             sender=Metric,
@@ -267,6 +268,7 @@ class TestModels(TestMonitoringMixin, TestCase):
             om.check_threshold(91)
         handler.assert_called_once_with(
             alert_settings=alert_s,
+            first_time=False,
             metric=om,
             target=om.content_object,
             sender=Metric,
