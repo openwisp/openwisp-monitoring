@@ -18,7 +18,9 @@ start_time = timezone.now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
 
 
-class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
+class TestMonitoringNotifications(
+    CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
+):
     device_model = Device
     config_model = Config
 
@@ -27,7 +29,7 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         m = self._create_general_metric(name='load')
         self._create_alert_settings(metric=m, operator='>', value=90, seconds=0)
 
-        with self.subTest("Test notification for metric exceeding alert settings"):
+        with self.subTest('Test notification for metric exceeding alert settings'):
             m.write(99)
             self.assertFalse(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
@@ -37,12 +39,12 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
             self.assertEqual(n.action_object, m.alertsettings)
             self.assertEqual(n.level, 'warning')
 
-        with self.subTest("Test no double alarm for metric exceeding alert settings"):
+        with self.subTest('Test no double alarm for metric exceeding alert settings'):
             m.write(95)
             self.assertFalse(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
 
-        with self.subTest("Test notification for metric falling behind alert settings"):
+        with self.subTest('Test notification for metric falling behind alert settings'):
             m.write(60)
             self.assertTrue(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 2)
@@ -53,7 +55,7 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
             self.assertEqual(n.level, 'info')
 
         with self.subTest(
-            "Test no double alarm for metric falling behind alert settings"
+            'Test no double alarm for metric falling behind alert settings'
         ):
             m.write(40)
             self.assertTrue(m.is_healthy)
@@ -92,16 +94,16 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         m = self._create_general_metric(name='load')
         self._create_alert_settings(metric=m, operator='>', value=90, seconds=61)
 
-        with self.subTest("Test no notification is generated for healthy status"):
+        with self.subTest('Test no notification is generated for healthy status'):
             m.write(89, time=ten_minutes_ago)
             self.assertTrue(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 0)
 
-        with self.subTest("Test no notification is generated when check=False"):
+        with self.subTest('Test no notification is generated when check=False'):
             m.write(91, time=ten_minutes_ago, check=False)
             self.assertEqual(Notification.objects.count(), 0)
 
-        with self.subTest("Test notification for metric with current timestamp"):
+        with self.subTest('Test notification for metric with current timestamp'):
             m.write(92)
             self.assertFalse(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
@@ -220,7 +222,7 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         self.assertTrue(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 2)
 
-    def test_general_metric_multiple_notifications(self):
+    def test_multiple_notifications(self):
         testorg = self._create_org()
         admin = self._create_admin()
         staff = self._create_user(
@@ -236,94 +238,57 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         OrganizationUser.objects.create(user=user, organization=testorg)
         OrganizationUser.objects.create(user=staff, organization=testorg)
         self.assertIsNotNone(staff.notificationuser)
-        m = self._create_general_metric(name='load')
-        alert_s = self._create_alert_settings(
-            metric=m, operator='>', value=90, seconds=61
-        )
-        m._notify_users(notification_type='default', alert_settings=alert_s)
-        self.assertEqual(Notification.objects.count(), 1)
-        n = notification_queryset.first()
-        self.assertEqual(n.recipient, admin)
-        self.assertEqual(n.actor, m)
-        self.assertEqual(n.target, None)
-        self.assertEqual(n.action_object, m.alertsettings)
-        self.assertEqual(n.level, 'info')
-        self.assertEqual(n.verb, 'default verb')
-        self.assertIn(
-            'Default notification with default verb and level info', n.message
-        )
 
-    def test_object_metric_multiple_notifications(self):
-        testorg = self._create_org()
-        admin = self._create_admin()
-        staff = self._create_user(
-            username='staff', email='staff@staff.com', password='staff', is_staff=True
-        )
-        self._create_user(
-            username='staff-lone',
-            email='staff-lone@staff.com',
-            password='staff',
-            is_staff=True,
-        )
-        user = self._create_user(is_staff=False)
-        OrganizationUser.objects.create(user=user, organization=testorg)
-        OrganizationUser.objects.create(user=staff, organization=testorg)
-        self.assertIsNotNone(staff.notificationuser)
-        d = self._create_device(organization=testorg)
-        om = self._create_object_metric(name='load', content_object=d)
-        alert_s = self._create_alert_settings(
-            metric=om, operator='>', value=90, seconds=61
-        )
-        om._notify_users(notification_type='default', alert_settings=alert_s)
-        self.assertEqual(Notification.objects.count(), 2)
-        n = notification_queryset.first()
-        self.assertEqual(n.recipient, admin)
-        self.assertEqual(n.actor, om)
-        self.assertEqual(n.target, d)
-        self.assertEqual(n.action_object, om.alertsettings)
-        self.assertEqual(n.level, 'info')
-        self.assertEqual(n.verb, 'default verb')
-        self.assertIn(
-            'Default notification with default verb and level info', n.message,
-        )
-        n = notification_queryset.last()
-        self.assertEqual(n.recipient, staff)
-        self.assertEqual(n.actor, om)
-        self.assertEqual(n.target, d)
-        self.assertEqual(n.action_object, om.alertsettings)
-        self.assertEqual(n.level, 'info')
-        self.assertEqual(n.verb, 'default verb')
+        with self.subTest('Test general metric multiple notifications'):
+            m = self._create_general_metric(name='load')
+            alert_s = self._create_alert_settings(
+                metric=m, operator='>', value=90, seconds=61
+            )
+            m._notify_users(notification_type='default', alert_settings=alert_s)
+            self.assertEqual(Notification.objects.count(), 1)
+            n = notification_queryset.first()
+            self._check_notification_parameters(n, admin, m, None)
+            self.assertIn(
+                'Default notification with default verb and level info', n.message
+            )
+            Notification.objects.all().delete()
 
-    def test_object_metric_multiple_notifications_no_org(self):
-        testorg = self._create_org()
-        admin = self._create_admin()
-        staff = self._create_user(
-            username='staff', email='staff@staff.com', password='staff', is_staff=True
-        )
-        self._create_user(
-            username='staff-lone',
-            email='staff-lone@staff.com',
-            password='staff',
-            is_staff=True,
-            first_name="'staff-lone'",
-        )
-        user = self._create_user(is_staff=False)
-        OrganizationUser.objects.create(user=user, organization=testorg)
-        OrganizationUser.objects.create(user=staff, organization=testorg)
-        self.assertIsNotNone(staff.notificationuser)
-        om = self._create_object_metric(name='logins', content_object=user)
-        alert_s = self._create_alert_settings(
-            metric=om, operator='>', value=90, seconds=0
-        )
-        om._notify_users(notification_type='default', alert_settings=alert_s)
-        self.assertEqual(Notification.objects.count(), 1)
-        n = notification_queryset.first()
-        self.assertEqual(n.recipient, admin)
-        self.assertEqual(n.actor, om)
-        self.assertEqual(n.target, user)
-        self.assertEqual(n.action_object, om.alertsettings)
-        self.assertEqual(n.level, 'info')
-        self.assertEqual(n.verb, 'default verb')
+        with self.subTest('Test object metric multiple notifications'):
+            d = self._create_device(organization=testorg)
+            om = self._create_object_metric(name='load', content_object=d)
+            alert_s = self._create_alert_settings(
+                metric=om, operator='>', value=90, seconds=61
+            )
+            self.assertEqual(Notification.objects.count(), 0)
+            om._notify_users(notification_type='default', alert_settings=alert_s)
+            self.assertEqual(Notification.objects.count(), 2)
+            n = notification_queryset.first()
+            self._check_notification_parameters(n, admin, om, d)
+            self.assertIn(
+                'Default notification with default verb and level info', n.message,
+            )
+            n = notification_queryset.last()
+            self._check_notification_parameters(n, staff, om, d)
+            Notification.objects.all().delete()
+
+        with self.subTest('Test object metric multiple notifications no org'):
+            om = self._create_object_metric(name='logins', content_object=user)
+            alert_s = self._create_alert_settings(
+                metric=om, operator='>', value=90, seconds=0
+            )
+            self.assertEqual(Notification.objects.count(), 0)
+            om._notify_users(notification_type='default', alert_settings=alert_s)
+            self.assertEqual(Notification.objects.count(), 1)
+            n = notification_queryset.first()
+            self._check_notification_parameters(n, admin, om, user)
+
+    def _check_notification_parameters(self, notification, recepient, metric, target):
+        self.assertEqual(notification.recipient, recepient)
+        self.assertEqual(notification.actor, metric)
+        self.assertEqual(notification.target, target)
+        self.assertEqual(notification.action_object, metric.alertsettings)
+        self.assertEqual(notification.level, 'info')
+        self.assertEqual(notification.verb, 'default verb')
 
     def test_email_notification(self):
         self._create_admin()
@@ -333,7 +298,7 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
         exp_target_link = f'http://example.com/admin/config/device/{d.id}/change/'
         exp_email_body = '{message}' f'\n\nFor more information see {exp_target_link}.'
 
-        with self.subTest("Test notification email for metric crossed alert settings"):
+        with self.subTest('Test notification email for metric crossed alert settings'):
             m.write(99)
             n = notification_queryset.first()
             email = mail.outbox.pop()
@@ -349,7 +314,7 @@ class TestNotifications(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
                 html_message,
             )
 
-        with self.subTest("Test notification email for metric returned under threhold"):
+        with self.subTest('Test notification email for metric returned under threhold'):
             m.write(50)
             n = notification_queryset.last()
             email = mail.outbox.pop()

@@ -4,6 +4,7 @@ from django.db.models.signals import post_delete, post_save
 from django.utils.translation import gettext_lazy as _
 from django_netjsonconfig.signals import checksum_requested
 from openwisp_notifications.signals import notify
+from openwisp_notifications.types import register_notification_type
 from swapper import load_model
 
 from . import settings as app_settings
@@ -18,6 +19,7 @@ class DeviceMonitoringConfig(AppConfig):
 
     def ready(self):
         manage_short_retention_policy()
+        self.register_notifcation_types()
         self.connect_is_working_changed()
         self.connect_device_signals()
         self.device_recovery_detection()
@@ -101,7 +103,14 @@ class DeviceMonitoringConfig(AppConfig):
         )
 
     @classmethod
-    def is_working_changed_receiver(cls, instance, is_working, **kwargs):
+    def is_working_changed_receiver(
+        cls, instance, is_working, old_is_working, **kwargs
+    ):
+        # if old_is_working is None, it's a new device connection which wasn't
+        # ever used yet, so nothing is really changing and we don't need to do anything
+        if old_is_working is None and is_working:
+            return
+
         from .tasks import trigger_device_checks
 
         Check = load_model('check', 'Check')
@@ -109,27 +118,47 @@ class DeviceMonitoringConfig(AppConfig):
         device_monitoring = device.monitoring
         initial_status = device_monitoring.status
         status = 'ok' if is_working else 'problem'
+        notification_opts = dict(sender=instance, target=device)
         if not is_working:
-            # Create a related notification explaining why it's not working
-            desc = instance.failure_reason
-            opts = dict(
-                sender=device, level='warning', verb='not working', description=desc
-            )
+            notification_opts['type'] = 'connection_is_not_working'
             if initial_status == 'ok':
                 trigger_device_checks.delay(pk=device.pk)
         else:
             # create a notification that device is working
-            desc = f'{device} has connected successfully.'
-            opts = dict(
-                sender=device,
-                level='info',
-                verb='connected successfully',
-                description=desc,
-            )
+            notification_opts['type'] = 'connection_is_working'
             # if checks exist trigger them else, set status as 'ok'
             if Check.objects.filter(object_id=instance.device.pk).exists():
                 trigger_device_checks.delay(pk=device.pk)
             else:
                 device_monitoring.update_status(status)
-        opts['data'] = {'email_subject': f'[{status.upper()}] {device}'}
-        notify.send(**opts)
+        notify.send(**notification_opts)
+
+    def register_notifcation_types(self):
+        register_notification_type(
+            'connection_is_working',
+            {
+                'name': 'Device Alert',
+                'verb': 'working',
+                'level': 'info',
+                'email_subject': '[{site.name}] RECOVERY: Device "{notification.target}"',
+                'message': (
+                    '{notification.actor.credentials} connection to'
+                    ' [Device: {notification.target}]({notification.target_link})'
+                    ' is {notification.verb}. {notification.actor.failure_reason}'
+                ),
+            },
+        )
+        register_notification_type(
+            'connection_is_not_working',
+            {
+                'name': 'Device Alert',
+                'verb': 'not working',
+                'level': 'error',
+                'email_subject': '[{site.name}] PROBLEM: Device "{notification.target}"',
+                'message': (
+                    '{notification.actor.credentials} connection to'
+                    ' [Device: {notification.target}]({notification.target_link})'
+                    ' is {notification.verb}. {notification.actor.failure_reason}'
+                ),
+            },
+        )
