@@ -19,8 +19,8 @@ from swapper import load_model
 
 from openwisp_utils.base import TimeStampedEditableModel
 
+from ...db import device_data_query, timeseries_db
 from ...monitoring.signals import threshold_crossed
-from ...monitoring.utils import query, write
 from .. import settings as app_settings
 from ..schema import schema
 from ..signals import health_status_changed
@@ -91,15 +91,12 @@ class AbstractDeviceData(object):
     @property
     def data(self):
         """
-        retrieves last data snapshot from influxdb
+        retrieves last data snapshot from Timeseries Database
         """
         if self.__data:
             return self.__data
-        q = (
-            "SELECT data FROM {0}.{1} WHERE pk = '{2}' "
-            "ORDER BY time DESC LIMIT 1".format(SHORT_RP, self.__key, self.pk)
-        )
-        points = list(query(q).get_points())
+        q = device_data_query.format(SHORT_RP, self.__key, self.pk)
+        points = timeseries_db.get_list_query(q, precision=None)
         if not points:
             return None
         self.data_timestamp = points[0]['time']
@@ -164,12 +161,14 @@ class AbstractDeviceData(object):
 
     def save_data(self, time=None):
         """
-        validates and saves data to influxdb
+        validates and saves data to Timeseries Database
         """
         self.validate_data()
         if app_settings.MAC_VENDOR_DETECTION:
             self.add_mac_vendor_info()
-        write(
+        # TODO: Rename the parameters, since they might be called
+        # differently in the other database (eg: tags/labels)
+        timeseries_db.write(
             name=self.__key,
             values={'data': self.json()},
             tags={'pk': self.pk},
