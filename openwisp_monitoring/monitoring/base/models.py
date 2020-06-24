@@ -309,7 +309,10 @@ class AbstractChart(TimeStampedEditableModel):
 
     @property
     def query(self):
-        return self.config_dict['query'] or self._default_query
+        query = self.config_dict['query']
+        if query:
+            return query[timeseries_db.backend_name]
+        return self._default_query
 
     @property
     def top_fields(self):

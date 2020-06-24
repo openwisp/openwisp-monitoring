@@ -177,33 +177,45 @@ CELERY_EMAIL_BACKEND = EMAIL_BACKEND
 
 # chart configuration queries of InfluxDB for automated tests
 test_query = {
-    'histogram': (
-        "SELECT {fields|SUM|/ 1} FROM {key} "
-        "WHERE time >= '{time}' AND content_type = "
-        "'{content_type}' AND object_id = '{object_id}'"
-    ),
-    'bad_test': "BAD",
-    'default': (
-        "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND "
-        "content_type = '{content_type}' AND object_id = '{object_id}'"
-    ),
-    'multiple_test': (
-        "SELECT {field_name}, value2 FROM {key} WHERE time >= '{time}' AND "
-        "content_type = '{content_type}' AND object_id = '{object_id}'"
-    ),
-    'mean_test': (
-        "SELECT MEAN({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
-        "content_type = '{content_type}' AND object_id = '{object_id}'"
-    ),
-    'sum_test': (
-        "SELECT SUM({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
-        "content_type = '{content_type}' AND object_id = '{object_id}'"
-    ),
-    'top_fields_mean': (
-        "SELECT {fields|MEAN} FROM {key} "
-        "WHERE time >= '{time}' AND content_type = "
-        "'{content_type}' AND object_id = '{object_id}'"
-    ),
+    'histogram': {
+        'influxdb': (
+            "SELECT {fields|SUM|/ 1} FROM {key} "
+            "WHERE time >= '{time}' AND content_type = "
+            "'{content_type}' AND object_id = '{object_id}'"
+        )
+    },
+    'bad_test': {'influxdb': "BAD"},
+    'default': {
+        'influxdb': (
+            "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND "
+            "content_type = '{content_type}' AND object_id = '{object_id}'"
+        )
+    },
+    'multiple_test': {
+        'influxdb': (
+            "SELECT {field_name}, value2 FROM {key} WHERE time >= '{time}' AND "
+            "content_type = '{content_type}' AND object_id = '{object_id}'"
+        )
+    },
+    'mean_test': {
+        'influxdb': (
+            "SELECT MEAN({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
+            "content_type = '{content_type}' AND object_id = '{object_id}'"
+        )
+    },
+    'sum_test': {
+        'influxdb': (
+            "SELECT SUM({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
+            "content_type = '{content_type}' AND object_id = '{object_id}'"
+        )
+    },
+    'top_fields_mean': {
+        'influxdb': (
+            "SELECT {fields|MEAN} FROM {key} "
+            "WHERE time >= '{time}' AND content_type = "
+            "'{content_type}' AND object_id = '{object_id}'"
+        )
+    },
 }
 
 # this custom chart configuration is used for automated testing purposes
