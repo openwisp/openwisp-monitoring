@@ -191,3 +191,20 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         )
         c.metric.object_id = None
         self.assertEqual(timeseries_db.queries.default_chart_query[0], c._default_query)
+
+    def test_read_order(self):
+        m = self._create_general_metric(name='dummy')
+        m.write(30)
+        m.write(40, time=now() - timedelta(days=2))
+        with self.subTest('Test ascending read order'):
+            metric_data = m.read(limit=2, order='time')
+            self.assertEqual(metric_data[0]['value'], 40)
+            self.assertEqual(metric_data[1]['value'], 30)
+        with self.subTest('Test descending read order'):
+            metric_data = m.read(limit=2, order='-time')
+            self.assertEqual(metric_data[0]['value'], 30)
+            self.assertEqual(metric_data[1]['value'], 40)
+        with self.subTest('Test invalid read order'):
+            with self.assertRaises(timeseries_db.client_error) as e:
+                metric_data = m.read(limit=2, order='invalid')
+                self.assertIn('Invalid order "invalid" passed.', str(e))

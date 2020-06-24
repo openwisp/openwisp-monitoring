@@ -146,6 +146,16 @@ class DatabaseClient(object):
             conditions = 'WHERE %s' % ' AND '.join(conditions)
             q = f'{q} {conditions}'
         if order:
+            # InfluxDB only allows ordering results by time
+            if order == 'time':
+                order = 'time ASC'
+            elif order == '-time':
+                order = 'time DESC'
+            else:
+                raise self.client_error(
+                    f'Invalid order "{order}" passed.\nYou may pass "time" / "-time" to get '
+                    'result sorted in ascending /descending order respectively.'
+                )
             q = f'{q} ORDER BY {order}'
         if limit:
             q = f'{q} LIMIT {limit}'
