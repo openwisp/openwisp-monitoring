@@ -47,6 +47,7 @@ class DatabaseClient(object):
         'HOLT_WINTERS',
     ]
     _FORBIDDEN = ['drop', 'create', 'delete', 'alter', 'into']
+    backend_name = 'influxdb'
 
     def __init__(self, db_name=None):
         self._db = None
