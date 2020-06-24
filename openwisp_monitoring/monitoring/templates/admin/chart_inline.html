@@ -22,7 +22,7 @@
   {{ inline_admin_form.fk_field.field }}
   {% if inline_admin_form.original %}
   <div class="form-row chart">
-      <div id="chart-{{ forloop.counter }}"></div>
+      <div id="chart-{{ forloop.counter }}"><div class="js-plotly-plot"></div></div>
       <script>
           createChart({{ inline_admin_form.form.instance.json|safe }}, null,
                       'chart-{{ forloop.counter }}', null,

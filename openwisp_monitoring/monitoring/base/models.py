@@ -407,7 +407,10 @@ class AbstractChart(TimeStampedEditableModel):
 
     def json(self, time=DEFAULT_TIME, **kwargs):
         try:
-            return json.dumps(self.read(time=time), **kwargs)
+            # unit needs to be passed for chart_inline
+            data = self.read(time=time)
+            data.update({'unit': self.unit})
+            return json.dumps(data, **kwargs)
         except KeyError:
             # TODO: this should be improved
             pass
