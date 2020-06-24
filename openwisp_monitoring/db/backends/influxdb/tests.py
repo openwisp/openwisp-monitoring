@@ -177,3 +177,17 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         self.assertEqual(rp[1]['name'], SHORT_RP)
         self.assertEqual(rp[1]['default'], False)
         self.assertEqual(rp[1]['duration'], SHORT_RETENTION_POLICY)
+
+    def test_query_set(self):
+        c = self._create_chart(configuration='histogram')
+        expected = (
+            "SELECT {fields|SUM|/ 1} FROM {key} "
+            "WHERE time >= '{time}' AND content_type = "
+            "'{content_type}' AND object_id = '{object_id}'"
+        )
+        self.assertEqual(c.query, expected)
+        self.assertEqual(
+            ''.join(timeseries_db.queries.default_chart_query[0:2]), c._default_query
+        )
+        c.metric.object_id = None
+        self.assertEqual(timeseries_db.queries.default_chart_query[0], c._default_query)
