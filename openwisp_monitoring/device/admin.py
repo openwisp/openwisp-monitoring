@@ -1,6 +1,11 @@
 import uuid
 
 from django.contrib import admin
+from django.contrib.contenttypes.admin import GenericStackedInline
+from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
+from django.contrib.contenttypes.models import ContentType
+from django.db.models import TextField
+from django.forms import Textarea
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -9,6 +14,7 @@ from swapper import load_model
 
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
 from openwisp_controller.config.models import Device
+from openwisp_utils.admin import TimeReadonlyAdminMixin
 
 from ..monitoring.admin import MetricAdmin
 from . import settings as app_settings
@@ -16,6 +22,36 @@ from . import settings as app_settings
 DeviceData = load_model('device_monitoring', 'DeviceData')
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 Chart = load_model('monitoring', 'Chart')
+Check = load_model('check', 'Check')
+
+
+class CheckInlineFormSet(BaseGenericInlineFormSet):
+    def full_clean(self):
+        for form in self.forms:
+            obj = form.instance
+            if not obj.content_type or not obj.object_id:
+                setattr(
+                    form.instance,
+                    self.ct_field.get_attname(),
+                    ContentType.objects.get_for_model(self.instance).pk,
+                )
+                setattr(form.instance, self.ct_fk_field.get_attname(), self.instance.pk)
+        super().full_clean()
+
+
+class CheckInline(TimeReadonlyAdminMixin, GenericStackedInline):
+    model = Check
+    extra = 0
+    formset = CheckInlineFormSet
+    fieldsets = [
+        (
+            None,
+            {'fields': ('name', 'check', 'active', 'params', 'created', 'modified',)},
+        ),
+    ]
+    formfield_overrides = {
+        TextField: {'widget': Textarea(attrs={'rows': 3, 'cols': 40})},
+    }
 
 
 class DeviceAdmin(BaseDeviceAdmin):
@@ -53,6 +89,8 @@ class DeviceAdmin(BaseDeviceAdmin):
         )
         return super().get_form(request, obj, **kwargs)
 
+
+DeviceAdmin.inlines.append(CheckInline)
 
 DeviceAdmin.Media.js += MetricAdmin.Media.js + ('monitoring/js/percircle.js',)
 DeviceAdmin.Media.css['all'] += (
