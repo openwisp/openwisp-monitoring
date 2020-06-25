@@ -112,7 +112,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertEqual(m.read()[0][m.field_name], 50)
         m.write(1, check=False)
         self.assertEqual(m.read()[0][m.field_name], 50)
-        self.assertEqual(m.read(order='time DESC')[0][m.field_name], 1)
+        self.assertEqual(m.read(order='-time')[0][m.field_name], 1)
 
     def test_read_object_metric(self):
         om = self._create_object_metric(name='load')

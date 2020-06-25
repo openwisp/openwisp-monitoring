@@ -84,12 +84,12 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                 m = Metric.objects.get(
                     key=ifname, field_name=field_name, object_id=d.pk
                 )
-                points = m.read(limit=10, order='time DESC')
+                points = m.read(limit=10, order='-time')
                 self.assertEqual(len(points), 2)
                 expected = iface['statistics'][field_name] - points[1][m.field_name]
                 self.assertEqual(points[0][m.field_name], expected)
             m = Metric.objects.get(key=ifname, field_name='clients', object_id=d.pk)
-            points = m.read(limit=10, order='time DESC')
+            points = m.read(limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
     def test_200_traffic_counter_reset(self):
@@ -115,12 +115,12 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                 m = Metric.objects.get(
                     key=ifname, field_name=field_name, object_id=d.pk
                 )
-                points = m.read(limit=10, order='time DESC')
+                points = m.read(limit=10, order='-time')
                 self.assertEqual(len(points), 2)
                 expected = iface['statistics'][field_name]
                 self.assertEqual(points[0][m.field_name], expected)
             m = Metric.objects.get(key=ifname, field_name='clients', object_id=d.pk)
-            points = m.read(limit=10, order='time DESC')
+            points = m.read(limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
     def test_200_multiple_measurements(self):
@@ -133,14 +133,14 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         }
         # wlan0 rx_bytes
         m = Metric.objects.get(key='wlan0', field_name='rx_bytes', object_id=dd.pk)
-        points = m.read(limit=10, order='time DESC')
+        points = m.read(limit=10, order='-time')
         self.assertEqual(len(points), 4)
         expected = [700000000, 100000000, 399999676, 324]
         for i, point in enumerate(points):
             self.assertEqual(point['rx_bytes'], expected[i])
         # wlan0 tx_bytes
         m = Metric.objects.get(key='wlan0', field_name='tx_bytes', object_id=dd.pk)
-        points = m.read(limit=10, order='time DESC')
+        points = m.read(limit=10, order='-time')
         self.assertEqual(len(points), 4)
         expected = [300000000, 200000000, 99999855, 145]
         for i, point in enumerate(points):
@@ -153,14 +153,14 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(data['traces'][1][1][-1], 0.6)
         # wlan1 rx_bytes
         m = Metric.objects.get(key='wlan1', field_name='rx_bytes', object_id=dd.pk)
-        points = m.read(limit=10, order='time DESC')
+        points = m.read(limit=10, order='-time')
         self.assertEqual(len(points), 4)
         expected = [1000000000, 0, 1999997725, 2275]
         for i, point in enumerate(points):
             self.assertEqual(point['rx_bytes'], expected[i])
         # wlan1 tx_bytes
         m = Metric.objects.get(key='wlan1', field_name='tx_bytes', object_id=dd.pk)
-        points = m.read(limit=10, order='time DESC')
+        points = m.read(limit=10, order='-time')
         self.assertEqual(len(points), 4)
         expected = [500000000, 0, 999999174, 826]
         for i, point in enumerate(points):
@@ -383,14 +383,14 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             del data['resources']['memory']['available']
             r = self._post_data(d.id, d.key, data)
             m = Metric.objects.get(key='memory')
-            metric_data = m.read(order='DESC', extra_fields='*')[0]
+            metric_data = m.read(order='-time', extra_fields='*')[0]
             self.assertAlmostEqual(metric_data['percent_used'], 0.09729, places=5)
             self.assertIsNone(metric_data.get('available_memory'))
             self.assertEqual(r.status_code, 200)
         with self.subTest('Test when available memory is less than free memory'):
             data['resources']['memory']['available'] = 2232664
             r = self._post_data(d.id, d.key, data)
-            metric_data = m.read(order='DESC', extra_fields='*')[0]
+            metric_data = m.read(order='-time', extra_fields='*')[0]
             self.assertAlmostEqual(metric_data['percent_used'], 0.09729, places=5)
             self.assertEqual(metric_data['available_memory'], 2232664)
             self.assertEqual(r.status_code, 200)
@@ -398,7 +398,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             data['resources']['memory']['available'] = 225567664
             r = self._post_data(d.id, d.key, data)
             m = Metric.objects.get(key='memory')
-            metric_data = m.read(order='DESC', extra_fields='*')[0]
+            metric_data = m.read(order='-time', extra_fields='*')[0]
             self.assertAlmostEqual(metric_data['percent_used'], 0.09301, places=5)
             self.assertEqual(metric_data['available_memory'], 225567664)
             self.assertEqual(r.status_code, 200)

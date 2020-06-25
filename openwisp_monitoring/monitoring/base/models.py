@@ -469,7 +469,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
             # retrieves latest measurements up to the maximum
             # threshold in seconds allowed plus a small margin
             since = 'now() - {0}s'.format(int(self._SECONDS_MAX * 1.05))
-            points = self.metric.read(since=since, limit=None, order='time DESC')
+            points = self.metric.read(since=since, limit=None, order='-time')
             # loop on each measurement starting from the most recent
             for i, point in enumerate(points):
                 # skip the first point because it was just added before this
