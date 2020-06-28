@@ -37,7 +37,8 @@ def perform_check(uuid):
 @shared_task
 def auto_create_ping(model, app_label, object_id):
     """
-    Called by openwisp_monitoring.check.models.auto_ping_receiver
+    Called by django signal (dispatch_uid: auto_ping)
+    registered in check app's apps.py file.
     """
     Check = load_model('check', 'Check')
     ping_path = 'openwisp_monitoring.check.classes.Ping'

@@ -6,13 +6,14 @@ from django.utils import timezone
 from django.utils.html import strip_tags
 from swapper import load_model
 
-from openwisp_controller.config.models import Config, Device
-from openwisp_users.models import OrganizationUser
-
 from ...device.tests import DeviceMonitoringTestCase
 
 Metric = load_model('monitoring', 'Metric')
 Notification = load_model('openwisp_notifications', 'Notification')
+Device = load_model('config', 'Device')
+Config = load_model('config', 'Config')
+OrganizationUser = load_model('openwisp_users', 'OrganizationUser')
+
 notification_queryset = Notification.objects.order_by('timestamp')
 start_time = timezone.now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
@@ -331,7 +332,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertIn(n.message, html_message)
             self.assertIn(
                 f'<a href="{exp_target_link}">'
-                'For further information see "device: test-device".</a>',
+                'For further information see "device: default.test.device".</a>',
                 html_message,
             )
 
@@ -347,7 +348,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertIn(n.message, html_message)
             self.assertIn(
                 f'<a href="{exp_target_link}">'
-                'For further information see "device: test-device".</a>',
+                'For further information see "device: default.test.device".</a>',
                 html_message,
             )
 

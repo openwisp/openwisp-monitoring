@@ -1,12 +1,12 @@
 from django.contrib.contenttypes.fields import GenericRelation
 from swapper import get_model_name, swappable_setting
 
-from openwisp_controller.config.models import Device
+from openwisp_controller.config.models import Device as BaseDevice
 
 from .base.models import AbstractDeviceData, AbstractDeviceMonitoring
 
 
-class DeviceData(AbstractDeviceData, Device):
+class DeviceData(AbstractDeviceData, BaseDevice):
     checks = GenericRelation(get_model_name('check', 'Check'))
     metrics = GenericRelation(get_model_name('monitoring', 'Metric'))
 

@@ -5,8 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 from swapper import load_model
 
-from openwisp_controller.config.models import Config, Device
-from openwisp_controller.config.tests import CreateConfigTemplateMixin
+from openwisp_controller.config.tests.utils import CreateConfigTemplateMixin
 
 from ...monitoring.tests import TestMonitoringMixin
 from ..utils import manage_short_retention_policy
@@ -14,6 +13,8 @@ from ..utils import manage_short_retention_policy
 Metric = load_model('monitoring', 'Metric')
 DeviceData = load_model('device_monitoring', 'DeviceData')
 Chart = load_model('monitoring', 'Chart')
+Config = load_model('config', 'Config')
+Device = load_model('config', 'Device')
 
 
 class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):

@@ -6,6 +6,7 @@ import django.db.models.deletion
 import django.utils.timezone
 import model_utils.fields
 import uuid
+import swapper
 
 from openwisp_monitoring.monitoring.charts import get_chart_configuration_choices
 
@@ -131,7 +132,7 @@ class Migration(migrations.Migration):
                     'metric',
                     models.OneToOneField(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to='sample_monitoring.Metric',
+                        to=swapper.get_model_name('monitoring', 'Metric'),
                     ),
                 ),
             ],
@@ -177,7 +178,7 @@ class Migration(migrations.Migration):
                     'metric',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to='sample_monitoring.Metric',
+                        to=swapper.get_model_name('monitoring', 'Metric'),
                     ),
                 ),
             ],

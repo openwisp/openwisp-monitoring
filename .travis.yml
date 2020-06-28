@@ -39,7 +39,9 @@ before_install:
 
 install:
   - pip install -e .
-  # temporary: remove when openwisp-notifications is released
+  # TODO: To be removed after release of openwisp-controller 0.8.0
+  - pip install -U https://github.com/openwisp/openwisp-controller/tarball/master
+  # TODO: remove when openwisp-notifications is released
   - pip install -U https://github.com/openwisp/openwisp-notifications/tarball/master
 
 script:
