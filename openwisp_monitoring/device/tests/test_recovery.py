@@ -40,7 +40,7 @@ class TestRecovery(DeviceMonitoringTestCase):
         del data['resources']
         del data['interfaces']
         auto_create_ping.delay(
-            model='device', app_label='config', object_id=str(d.pk), created=True,
+            model='device', app_label='config', object_id=str(d.pk),
         )
         check = Check.objects.first()
         check.perform_check()

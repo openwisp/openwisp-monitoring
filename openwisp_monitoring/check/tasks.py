@@ -35,18 +35,15 @@ def perform_check(uuid):
 
 
 @shared_task
-def auto_create_ping(model, app_label, object_id, created):
+def auto_create_ping(model, app_label, object_id):
     """
     Called by openwisp_monitoring.check.models.auto_ping_receiver
     """
     Check = load_model('check', 'Check')
     ping_path = 'openwisp_monitoring.check.classes.Ping'
-    has_check = (
-        Check.objects.filter(
-            object_id=object_id, content_type__model='device', check=ping_path
-        ).count()
-        > 0
-    )
+    has_check = Check.objects.filter(
+        object_id=object_id, content_type__model='device', check=ping_path
+    ).exists()
     # create new check only if necessary
     if has_check:
         return
