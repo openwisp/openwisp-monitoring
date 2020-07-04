@@ -108,20 +108,28 @@ class DeviceMonitoringConfig(AppConfig):
 
     @classmethod
     def is_working_changed_receiver(
-        cls, instance, is_working, old_is_working, **kwargs
+        cls, instance, is_working, old_is_working, failure_reason, **kwargs
     ):
-        # if old_is_working is None, it's a new device connection which wasn't
-        # ever used yet, so nothing is really changing and we don't need to do anything
-        if old_is_working is None and is_working:
-            return
-
         from .tasks import trigger_device_checks
 
         Check = load_model('check', 'Check')
         device = instance.device
         device_monitoring = device.monitoring
+        # if old_is_working is None, it's a new device connection which wasn't
+        # ever used yet, so nothing is really changing and we don't need to do anything
+        if old_is_working is None and is_working:
+            return
+        # if device is down because of connectivity issues, it's probably due
+        # to reboot caused by firmware upgrade, avoid notifications
+        if 'Unable to connect' in failure_reason:
+            device_monitoring.save()
+            return
         initial_status = device_monitoring.status
         status = 'ok' if is_working else 'problem'
+        # do not send notificatons if recovery made after firmware upgrade
+        if status == initial_status == 'ok':
+            device_monitoring.save()
+            return
         notification_opts = dict(sender=instance, target=device)
         if not is_working:
             notification_opts['type'] = 'connection_is_not_working'
