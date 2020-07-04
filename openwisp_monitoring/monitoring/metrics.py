@@ -12,17 +12,12 @@ DEFAULT_METRICS = {
         'field_name': 'reachable',
         'related_fields': ['loss', 'rtt_min', 'rtt_max', 'rtt_avg'],
     },
-    'traffic_rx_bytes': {
+    'traffic': {
         'label': _('Traffic'),
         'name': '{name}',
         'key': '{key}',
         'field_name': 'rx_bytes',
-    },
-    'traffic_tx_bytes': {
-        'label': _('Traffic'),
-        'name': '{name}',
-        'key': '{key}',
-        'field_name': 'tx_bytes',
+        'related_fields': ['tx_bytes'],
     },
     'clients': {
         'label': _('Clients'),
