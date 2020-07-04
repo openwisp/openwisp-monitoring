@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 from .tasks import run_checks
 
 

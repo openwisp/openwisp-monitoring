@@ -224,6 +224,18 @@ has a value which is not in the expected range
 Example: ping is by default a critical metric which is expected to be always 1
 (reachable).
 
+``Available Checks``
+--------------------
+
+``Ping``
+~~~~~~~~
+
+This check returns information on device ``uptime`` and ``RTT (Round trip time)``.
+The Charts ``uptime``, ``packet loss`` and ``rtt`` are created. The ``fping``
+command is used to collect these metrics.
+You may choose to disable auto creation of this check by setting
+`OPENWISP_MONITORING_AUTO_PING <#OPENWISP_MONITORING_AUTO_PING>`_ to ``False``.
+
 Settings
 --------
 

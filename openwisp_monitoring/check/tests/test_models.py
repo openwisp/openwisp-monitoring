@@ -7,6 +7,7 @@ from ..classes import Ping
 from ..settings import CHECK_CLASSES
 
 Check = load_model('check', 'Check')
+Metric = load_model('monitoring', 'Metric')
 
 
 class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
@@ -15,6 +16,11 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
     def test_check_str(self):
         c = Check(name='Test check')
         self.assertEqual(str(c), c.name)
+
+    def test_check_no_content_type(self):
+        c = Check(name='Ping class check', check=self._PING)
+        m = c.check_instance._get_metric()
+        self.assertEqual(m, Metric.objects.first())
 
     def test_check_str_with_relation(self):
         obj = self._create_user()
@@ -25,6 +31,14 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
     def test_check_class(self):
         c = Check(name='Ping class check', check=self._PING)
         self.assertEqual(c.check_class, Ping)
+
+    def test_base_check_class(self):
+        path = 'openwisp_monitoring.check.classes.base.BaseCheck'
+        c = Check(name='Base check', check=path)
+        i = c.check_instance
+        i.validate_params()
+        with self.assertRaises(NotImplementedError):
+            i.check()
 
     def test_check_instance(self):
         obj = self._create_device(organization=self._create_org())

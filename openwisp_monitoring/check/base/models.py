@@ -84,7 +84,7 @@ if app_settings.AUTO_PING:
     def auto_ping_receiver(sender, instance, created, **kwargs):
         """
         Implements OPENWISP_MONITORING_AUTO_PING
-        The creation step is executed in the backround
+        The creation step is executed in the background
         """
         # we need to skip this otherwise this task will be executed
         # every time the configuration is requested via checksum
@@ -96,6 +96,5 @@ if app_settings.AUTO_PING:
                     model=sender.__name__.lower(),
                     app_label=sender._meta.app_label,
                     object_id=str(instance.pk),
-                    created=created,
                 )
             )
