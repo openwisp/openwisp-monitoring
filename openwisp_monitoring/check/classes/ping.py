@@ -147,7 +147,7 @@ class Ping(BaseCheck):
         """
         Gets or creates metric
         """
-        metric, created = self._get_or_create_metric(field_name='reachable')
+        metric, created = self._get_or_create_metric()
         if created:
             self._create_alert_settings(metric)
             self._create_charts(metric)
