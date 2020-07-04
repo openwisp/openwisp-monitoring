@@ -29,7 +29,18 @@ class MetricAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
     save_on_top = True
     inlines = [ChartInline, AlertSettingsInline]
     fieldsets = [
-        (None, {'fields': ('name', 'description', 'content_type', 'object_id',)}),
+        (
+            None,
+            {
+                'fields': (
+                    'name',
+                    'description',
+                    'content_type',
+                    'object_id',
+                    'configuration',
+                )
+            },
+        ),
         (
             _('Advanced options'),
             {'classes': ('collapse',), 'fields': ('key', 'field_name')},

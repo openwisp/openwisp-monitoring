@@ -1,6 +1,8 @@
 from django.utils.translation import gettext_lazy as _
 from openwisp_monitoring.db import chart_query
 
+from openwisp_utils.utils import deep_merge_dicts
+
 from . import settings as app_settings
 
 DEFAULT_COLORS = [
@@ -136,17 +138,6 @@ DEFAULT_CHARTS = {
         'query': chart_query['disk'],
     },
 }
-
-
-def deep_merge_dicts(dict1, dict2):
-    result = dict1.copy()
-    for key, value in dict2.items():
-        if isinstance(value, dict):
-            node = result.get(key, {})
-            result[key] = deep_merge_dicts(node, value)
-        else:
-            result[key] = value
-    return result
 
 
 def get_chart_configuration():

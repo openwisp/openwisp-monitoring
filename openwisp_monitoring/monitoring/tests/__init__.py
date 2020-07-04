@@ -38,6 +38,7 @@ class TestMonitoringMixin(TestOrganizationMixin):
         opts = {
             'name': 'test_metric',
             'is_healthy': True,  # backward compatibility with old tests
+            'configuration': 'test_metric',
         }
         opts.update(kwargs)
         m = Metric(**opts)

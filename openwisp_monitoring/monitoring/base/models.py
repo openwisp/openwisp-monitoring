@@ -25,7 +25,8 @@ from ..charts import (
     get_chart_configuration,
     get_chart_configuration_choices,
 )
-from ..exceptions import InvalidChartConfigException
+from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
+from ..metrics import get_metric_configuration, get_metric_configuration_choices
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
 
 User = get_user_model()
@@ -33,12 +34,15 @@ logger = logging.getLogger(__name__)
 
 
 class AbstractMetric(TimeStampedEditableModel):
+    METRICS = get_metric_configuration()
     name = models.CharField(max_length=64)
-    description = models.TextField(blank=True)
     key = models.SlugField(
         max_length=64, blank=True, help_text=_('leave blank to determine automatically')
     )
     field_name = models.CharField(max_length=16, default='value')
+    configuration = models.CharField(
+        max_length=16, null=True, choices=get_metric_configuration_choices()
+    )
     content_type = models.ForeignKey(
         ContentType, on_delete=models.CASCADE, null=True, blank=True
     )
@@ -59,10 +63,21 @@ class AbstractMetric(TimeStampedEditableModel):
         return '{0} ({1}: {2})'.format(self.name, model_name, obj)
 
     def clean(self):
-        if not self.key:
+        if (
+            self.field_name == 'value'
+            and self.config_dict['field_name'] != '{field_name}'
+        ):
+            self.field_name = self.config_dict['field_name']
+        if self.key:
+            return
+        elif self.config_dict['key'] != '{key}':
+            self.key = self.config_dict['key']
+        else:
             self.key = self.codename
 
     def full_clean(self, *args, **kwargs):
+        if not self.name:
+            self.name = self.config_dict['name']
         # clean up key before field validation
         self.key = self._makekey(self.key)
         return super().full_clean(*args, **kwargs)
@@ -73,12 +88,12 @@ class AbstractMetric(TimeStampedEditableModel):
         like ``get_or_create`` method of django model managers
         but with validation before creation
         """
-        assert 'name' in kwargs
         if 'key' in kwargs:
             kwargs['key'] = cls._makekey(kwargs['key'])
         try:
             lookup_kwargs = kwargs.copy()
-            del lookup_kwargs['name']
+            if lookup_kwargs.get('name'):
+                del lookup_kwargs['name']
             metric = cls.objects.get(**lookup_kwargs)
             created = False
         except cls.DoesNotExist:
@@ -92,6 +107,19 @@ class AbstractMetric(TimeStampedEditableModel):
     def codename(self):
         """ identifier stored in timeseries db """
         return self._makekey(self.name)
+
+    @property
+    def config_dict(self):
+        try:
+            return self.METRICS[self.configuration]
+        except KeyError:
+            raise InvalidMetricConfigException(
+                f'Invalid metric configuration: "{self.configuration}"'
+            )
+
+    @property
+    def related_fields(self):
+        return self.config_dict.get('related_fields', [])
 
     # TODO: This method needs to be refactored when adding the other db
     @staticmethod
@@ -161,6 +189,9 @@ class AbstractMetric(TimeStampedEditableModel):
         """ write timeseries data """
         values = {self.field_name: value}
         if extra_values and isinstance(extra_values, dict):
+            for key in extra_values.keys():
+                if not self.related_fields or key not in self.related_fields:
+                    raise ValueError(f'"{key}" not defined in metric configuration')
             values.update(extra_values)
         signal_kwargs = dict(sender=self.__class__, metric=self, values=values)
         pre_metric_write.send(**signal_kwargs)

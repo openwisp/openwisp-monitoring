@@ -416,6 +416,51 @@ In case you just want to change the colors used in a chart here's how to do it:
         }
     }
 
+``OPENWISP_MONITORING_METRICS``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``dict``    |
++--------------+-------------+
+| **default**: | ``{}``      |
++--------------+-------------+
+
+This setting allows to define additional metric configuration or to override
+the default metric configuration defined in
+``openwisp_monitoring.monitoring.metrics.DEFAULT_METRICS``.
+
+For example, if you want to change the field_name of
+``clients`` metric to ``wifi_clients`` you can use:
+
+.. code-block:: python
+
+    from django.utils.translation import gettext_lazy as _
+
+    OPENWISP_MONITORING_METRICS = {
+        'clients': {
+            'label': _('Clients'),
+            'key': '{key}',
+            'field_name': 'wifi_clients',
+        },
+    }
+
+Or if you want to define a new metric configuration, which you can then
+call in your custom code (eg: a custom check class), you can do so as follows:
+
+.. code-block:: python
+
+    from django.utils.translation import gettext_lazy as _
+
+    OPENWISP_MONITORING_METRICS = {
+        'top_fields_mean': {
+            'name': 'Top Fields Mean',
+            'key': '{key}',
+            'field_name': '{field_name}',
+            'label': '_(Top fields mean)',
+            'related_fields': ['field1', 'field2', 'field3'],
+        },
+    }
+
 ``OPENWISP_MONITORING_MAC_VENDOR_DETECTION``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

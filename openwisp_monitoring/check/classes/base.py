@@ -31,7 +31,7 @@ class BaseCheck(object):
     def check(self, store=True):
         raise NotImplementedError
 
-    def _get_or_create_metric(self, field_name):
+    def _get_or_create_metric(self):
         """
         Gets or creates metric
         """
@@ -43,11 +43,9 @@ class BaseCheck(object):
             obj_id = str(check.id)
             ct = ContentType.objects.get_for_model(Check)
         options = dict(
-            name=check.name,
             object_id=obj_id,
             content_type=ct,
-            field_name=field_name,
-            key=self.__class__.__name__.lower(),
+            configuration=self.__class__.__name__.lower(),
         )
         metric, created = Metric._get_or_create(**options)
         return metric, created
