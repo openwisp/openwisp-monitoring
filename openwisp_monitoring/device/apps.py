@@ -53,24 +53,28 @@ class DeviceMonitoringConfig(AppConfig):
         instance.metrics.all().delete()
 
     def device_recovery_detection(self):
-        if app_settings.DEVICE_RECOVERY_DETECTION:
-            from openwisp_controller.config.models import Device
+        if not app_settings.DEVICE_RECOVERY_DETECTION:
+            return
 
-            DeviceData = load_model('device_monitoring', 'DeviceData')
-            DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
-            health_status_changed.connect(
-                self.manage_device_recovery_cache_key, sender=DeviceMonitoring
-            )
-            checksum_requested.connect(
-                self.trigger_device_recovery_checks,
-                sender=Device,
-                dispatch_uid='checksum_requested',
-            )
-            device_metrics_received.connect(
-                self.trigger_device_recovery_checks,
-                sender=DeviceData,
-                dispatch_uid='received_device_metrics',
-            )
+        from openwisp_controller.config.models import Device
+
+        DeviceData = load_model('device_monitoring', 'DeviceData')
+        DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+        health_status_changed.connect(
+            self.manage_device_recovery_cache_key,
+            sender=DeviceMonitoring,
+            dispatch_uid='recovery_health_status_changed',
+        )
+        checksum_requested.connect(
+            self.trigger_device_recovery_checks,
+            sender=Device,
+            dispatch_uid='recovery_checksum_requested',
+        )
+        device_metrics_received.connect(
+            self.trigger_device_recovery_checks,
+            sender=DeviceData,
+            dispatch_uid='recovery_device_metrics_received',
+        )
 
     @classmethod
     def manage_device_recovery_cache_key(cls, instance, status, **kwargs):

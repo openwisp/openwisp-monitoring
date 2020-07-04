@@ -57,6 +57,7 @@ class TestRecovery(DeviceMonitoringTestCase):
         health_status_changed.disconnect(
             device_monitoring_app.manage_device_recovery_cache_key,
             sender=DeviceMonitoring,
+            dispatch_uid='recovery_health_status_changed',
         )
         with patch(
             'openwisp_monitoring.device.apps.app_settings.DEVICE_RECOVERY_DETECTION',
