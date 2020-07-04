@@ -155,6 +155,8 @@ class TestCharts(TestMonitoringMixin, TestCase):
         # convert tuples to lists otherwise comparison will fail
         for i, chart in enumerate(data['traces']):
             data['traces'][i] = list(chart)
+        # update data with unit
+        data.update({'unit': c.unit})
         self.assertDictEqual(json.loads(c.json()), data)
 
     def test_read_bad_query(self):
