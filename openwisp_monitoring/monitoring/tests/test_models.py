@@ -9,6 +9,7 @@ from swapper import load_model
 
 from openwisp_utils.tests import catch_signal
 
+from ..exceptions import InvalidMetricConfigException
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
 from . import TestMonitoringMixin
 
@@ -35,6 +36,19 @@ class TestModels(TestMonitoringMixin, TestCase):
             self.assertIn('configuration', e.message_dict)
         else:
             self.fail()
+
+    def test_metric_no_valid_config(self):
+        m = self._create_object_metric()
+        m.configuration = 'invalid'
+        with self.assertRaises(InvalidMetricConfigException):
+            m.full_clean()
+
+    def test_metric_related_fields(self):
+        m = self._create_object_metric()
+        self.assertEqual(m.related_fields, [])
+        m.configuration = 'ping'
+        m.full_clean()
+        self.assertEqual(m.related_fields, ['loss', 'rtt_min', 'rtt_max', 'rtt_avg'])
 
     def test_general_codename(self):
         m = Metric(name='Test metric-(1)')
@@ -66,18 +80,18 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertEqual(om.key, om.codename)
 
     def test_custom_get_or_create(self):
-        m, created = Metric._get_or_create(name='lan', key='br-lan')
+        m, created = Metric._get_or_create(name='lan', configuration='test_metric')
         self.assertTrue(created)
-        m2, created = Metric._get_or_create(name='lan', key='br-lan')
+        m2, created = Metric._get_or_create(name='lan', configuration='test_metric')
         self.assertEqual(m.id, m2.id)
         self.assertFalse(created)
 
     def test_get_or_create_renamed(self):
-        m, created = Metric._get_or_create(name='lan', key='br-lan', field_name='rx')
+        m, created = Metric._get_or_create(name='lan', configuration='test_metric')
         self.assertTrue(created)
         m.name = 'renamed'
         m.save()
-        m2, created = Metric._get_or_create(name='lan', key='br-lan', field_name='rx')
+        m2, created = Metric._get_or_create(name='lan', configuration='test_metric')
         self.assertEqual(m.id, m2.id)
         self.assertEqual(m2.name, m.name)
         self.assertFalse(created)
@@ -87,8 +101,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         ct = ContentType.objects.get_for_model(get_user_model())
         m, created = Metric._get_or_create(
             name='logins',
-            key='users',
-            field_name='logins',
+            configuration='test_metric',
             content_type=ct,
             object_id=obj.pk,
         )
@@ -97,14 +110,21 @@ class TestModels(TestMonitoringMixin, TestCase):
         m.save()
         m2, created = Metric._get_or_create(
             name='logins',
-            key='users',
-            field_name='logins',
+            configuration='test_metric',
             content_type=ct,
             object_id=obj.pk,
         )
         self.assertEqual(m.id, m2.id)
         self.assertEqual(m2.name, m.name)
         self.assertFalse(created)
+
+    def test_metric_write_wrong_related_fields(self):
+        m = self._create_general_metric(name='ping', configuration='ping')
+        extra_values = {'reachable': 0, 'rtt_avg': 0.51, 'rtt_max': 0.6, 'rtt_min': 0.4}
+        with self.assertRaisesRegex(
+            ValueError, '"reachable" not defined in metric configuration'
+        ):
+            m.write(1, extra_values=extra_values)
 
     def test_read_general_metric(self):
         m = self._create_general_metric(name='load')

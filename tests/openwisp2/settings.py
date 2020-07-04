@@ -285,6 +285,31 @@ OPENWISP_MONITORING_CHARTS = {
     },
 }
 
+# these custom metric configurations are used for automated testing purposes
+if TESTING:
+    OPENWISP_MONITORING_METRICS = {
+        'test_metric': {
+            'name': 'dummy',
+            'key': '{key}',
+            'field_name': '{field_name}',
+            'label': 'Test Metric',
+        },
+        'top_fields_mean': {
+            'name': 'top_fields_mean_test',
+            'key': '{key}',
+            'field_name': '{field_name}',
+            'label': 'top fields mean test',
+            'related_fields': ['google', 'facebook', 'reddit'],
+        },
+        'get_top_fields': {
+            'name': 'get_top_fields_test',
+            'key': '{key}',
+            'field_name': '{field_name}',
+            'label': 'get top fields test',
+            'related_fields': ['http2', 'ssh', 'udp', 'spdy'],
+        },
+    }
+
 # avoid slowing down the test suite with mac vendor lookups
 if TESTING:
     OPENWISP_MONITORING_MAC_VENDOR_DETECTION = False
