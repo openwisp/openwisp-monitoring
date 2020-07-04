@@ -1,6 +1,5 @@
 language: python
 dist: bionic
-
 cache: pip
 
 python:
@@ -30,6 +29,7 @@ services:
 branches:
   only:
     - master
+    - dev
 
 before_install:
   - docker run -d --name influxdb -e INFLUXDB_DB=openwisp2 -p 8086:8086 influxdb:alpine
