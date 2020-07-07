@@ -21,9 +21,9 @@ from openwisp_utils.base import TimeStampedEditableModel
 
 from ...db import default_chart_query, timeseries_db
 from ..charts import (
+    CHART_CONFIGURATION_CHOICES,
     DEFAULT_COLORS,
     get_chart_configuration,
-    get_chart_configuration_choices,
 )
 from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
 from ..metrics import get_metric_configuration, get_metric_configuration_choices
@@ -224,12 +224,11 @@ class AbstractMetric(TimeStampedEditableModel):
 
 
 class AbstractChart(TimeStampedEditableModel):
-    CHARTS = get_chart_configuration()
     metric = models.ForeignKey(
         get_model_name('monitoring', 'Metric'), on_delete=models.CASCADE
     )
     configuration = models.CharField(
-        max_length=16, null=True, choices=get_chart_configuration_choices()
+        max_length=16, null=True, choices=CHART_CONFIGURATION_CHOICES
     )
     GROUP_MAP = {
         '1d': '10m',
@@ -261,7 +260,7 @@ class AbstractChart(TimeStampedEditableModel):
     @property
     def config_dict(self):
         try:
-            return self.CHARTS[self.configuration]
+            return get_chart_configuration()[self.configuration]
         except KeyError as e:
             raise InvalidChartConfigException(
                 f'Invalid chart configuration: "{self.configuration}"'
