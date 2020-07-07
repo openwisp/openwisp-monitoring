@@ -8,7 +8,6 @@ from openwisp_notifications.signals import notify
 from paramiko.ssh_exception import NoValidConnectionsError
 from swapper import load_model
 
-from openwisp_controller.connection.models import Credentials, DeviceConnection
 from openwisp_controller.connection.tests.base import CreateConnectionsMixin
 from openwisp_utils.tests import catch_signal
 
