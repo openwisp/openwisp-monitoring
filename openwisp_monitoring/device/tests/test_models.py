@@ -6,7 +6,6 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from openwisp_notifications.signals import notify
 from swapper import load_model
 
-from openwisp_controller.connection.models import Credentials, DeviceConnection
 from openwisp_utils.tests import catch_signal
 
 from ..signals import health_status_changed
@@ -15,6 +14,8 @@ from . import DeviceMonitoringTestCase
 Check = load_model('check', 'Check')
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 DeviceData = load_model('device_monitoring', 'DeviceData')
+DeviceConnection = load_model('connection', 'DeviceConnection')
+Credentials = load_model('connection', 'Credentials')
 
 
 class BaseTestCase(DeviceMonitoringTestCase):

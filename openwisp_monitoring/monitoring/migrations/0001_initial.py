@@ -232,7 +232,7 @@ class Migration(migrations.Migration):
                     'metric',
                     models.OneToOneField(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to='monitoring.Metric',
+                        to=swapper.get_model_name('monitoring', 'Metric'),
                     ),
                 ),
             ],
@@ -245,7 +245,8 @@ class Migration(migrations.Migration):
             model_name='graph',
             name='metric',
             field=models.ForeignKey(
-                on_delete=django.db.models.deletion.CASCADE, to='monitoring.Metric'
+                on_delete=django.db.models.deletion.CASCADE,
+                to=swapper.get_model_name('monitoring', 'Metric'),
             ),
         ),
         migrations.AlterUniqueTogether(

@@ -17,8 +17,6 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from swapper import load_model
 
-from openwisp_controller.config.models import Device
-
 from ... import settings as monitoring_settings
 from ...monitoring.exceptions import InvalidChartConfigException
 from ..schema import schema
@@ -29,6 +27,7 @@ logger = logging.getLogger(__name__)
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
+Device = load_model('config', 'Device')
 DeviceData = load_model('device_monitoring', 'DeviceData')
 
 

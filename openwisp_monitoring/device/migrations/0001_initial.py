@@ -24,6 +24,6 @@ class Migration(migrations.Migration):
                     'device_monitoring', 'DeviceData'
                 ),
             },
-            bases=('config.device',),
+            bases=(swapper.get_model_name('config', 'Device'),),
         ),
     ]

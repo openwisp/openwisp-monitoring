@@ -367,12 +367,12 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         d = self._create_device(organization=self._create_org())
         m = self._create_object_metric(name='test_metric', content_object=d)
         c = self._create_chart(metric=m, test_data=None)
+        c.configuration = 'invalid'
+        c.save()
         with redirect_stderr(StringIO()) as stderr:
-            c.configuration = 'invalid'
-            c.save()
-            r = self.client.get(self._url(d.pk.hex, d.key))
+            response = self.client.get(self._url(d.pk.hex, d.key))
         self.assertIn('InvalidChartConfigException', stderr.getvalue())
-        self.assertEqual(r.status_code, 200)
+        self.assertEqual(response.status_code, 200)
 
     def test_available_memory(self):
         o = self._create_org()

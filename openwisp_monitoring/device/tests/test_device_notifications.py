@@ -2,11 +2,11 @@ from django.core import mail
 from django.utils.html import strip_tags
 from swapper import load_model
 
-from openwisp_controller.connection.models import Credentials, DeviceConnection
-
 from .test_models import BaseTestCase
 
 Notification = load_model('openwisp_notifications', 'Notification')
+Credentials = load_model('connection', 'Credentials')
+DeviceConnection = load_model('connection', 'DeviceConnection')
 
 
 class TestDeviceNotifications(BaseTestCase):
@@ -26,7 +26,7 @@ class TestDeviceNotifications(BaseTestCase):
 
         n = Notification.objects.first()
         email = mail.outbox.pop()
-        html_message, content_type = email.alternatives.pop()
+        html_message, _ = email.alternatives.pop()
         self.assertEqual(n.type, exp_type)
         self.assertEqual(n.level, exp_level)
         self.assertEqual(n.verb, exp_verb)
@@ -45,7 +45,7 @@ class TestDeviceNotifications(BaseTestCase):
         self.assertIn(n.message, html_message)
         self.assertIn(
             f'<a href="{exp_target_link}">'
-            'For further information see "device: test-device".</a>',
+            'For further information see "device: default.test.device".</a>',
             html_message,
         )
 

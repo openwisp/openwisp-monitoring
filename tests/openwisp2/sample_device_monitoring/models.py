@@ -6,10 +6,10 @@ from openwisp_monitoring.device.base.models import (
 )
 from swapper import get_model_name
 
-from openwisp_controller.config.models import Device
+from openwisp_controller.config.models import Device as BaseDevice
 
 
-class DeviceData(AbstractDeviceData, Device):
+class DeviceData(AbstractDeviceData, BaseDevice):
     checks = GenericRelation(get_model_name('check', 'Check'))
     metrics = GenericRelation(get_model_name('monitoring', 'Metric'))
 

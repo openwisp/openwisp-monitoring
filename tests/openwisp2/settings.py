@@ -71,7 +71,6 @@ INSTALLED_APPS = [
 ]
 
 EXTENDED_APPS = [
-    'django_netjsonconfig',
     'django_x509',
     'django_loci',
 ]

@@ -793,7 +793,7 @@ For ``check`` app,
     from openwisp_monitoring.check.admin import CheckAdmin as BaseCheckAdmin
     from swapper import load_model
 
-    Check = load_model('Check')
+    Check = load_model('check', 'Check')
 
     admin.site.unregister(Check)
 
@@ -808,7 +808,9 @@ For ``device_monitoring`` app,
     from django.contrib import admin
 
     from openwisp_monitoring.device_monitoring.admin import DeviceAdmin as BaseDeviceAdmin
-    from openwisp_controller.config.models import Device
+    from swapper import load_model
+
+    Device = load_model('config', 'Device')
 
     admin.site.unregister(Device)
 

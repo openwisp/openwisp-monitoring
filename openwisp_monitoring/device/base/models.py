@@ -3,6 +3,7 @@ import random
 from collections import OrderedDict
 from datetime import datetime
 
+import swapper
 from cache_memoize import cache_memoize
 from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ValidationError
@@ -45,7 +46,7 @@ class AbstractDeviceData(object):
 
     def __init__(self, *args, **kwargs):
         self.data = kwargs.pop('data', None)
-        return super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @property
     def data_user_friendly(self):
@@ -182,7 +183,9 @@ class AbstractDeviceData(object):
 
 class AbstractDeviceMonitoring(TimeStampedEditableModel):
     device = models.OneToOneField(
-        'config.Device', on_delete=models.CASCADE, related_name='monitoring'
+        swapper.get_model_name('config', 'Device'),
+        on_delete=models.CASCADE,
+        related_name='monitoring',
     )
     STATUS = Choices(
         ('unknown', _(app_settings.HEALTH_STATUS_LABELS['unknown'])),

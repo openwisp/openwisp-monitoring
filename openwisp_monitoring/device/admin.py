@@ -8,7 +8,6 @@ from django.utils.translation import gettext_lazy as _
 from swapper import load_model
 
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
-from openwisp_controller.config.models import Device
 
 from ..monitoring.admin import MetricAdmin
 from . import settings as app_settings
@@ -16,9 +15,12 @@ from . import settings as app_settings
 DeviceData = load_model('device_monitoring', 'DeviceData')
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 Chart = load_model('monitoring', 'Chart')
+Device = load_model('config', 'Device')
 
 
 class DeviceAdmin(BaseDeviceAdmin):
+    change_form_template = 'admin/config/device/change_form.html'
+
     def get_extra_context(self, pk=None):
         ctx = super().get_extra_context(pk)
         if pk:
