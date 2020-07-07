@@ -6,7 +6,6 @@ from . import TestMonitoringMixin
 
 
 class TestAdmin(TestMonitoringMixin, TestCase):
-
     def _login_admin(self):
         User = get_user_model()
         u = User.objects.create_superuser('admin', 'admin', 'test@test.com')
