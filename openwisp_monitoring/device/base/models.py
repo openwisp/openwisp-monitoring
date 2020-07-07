@@ -22,7 +22,7 @@ from swapper import load_model
 
 from openwisp_utils.base import TimeStampedEditableModel
 
-from ...db import device_data_query, timeseries_db
+from ...db import timeseries_db
 from ...monitoring.signals import threshold_crossed
 from ...monitoring.tasks import timeseries_write
 from .. import settings as app_settings
@@ -104,11 +104,12 @@ class AbstractDeviceData(object):
         """
         if self.__data:
             return self.__data
-        q = device_data_query.format(SHORT_RP, self.__key, self.pk)
         cache_key = get_device_cache_key(device=self, context='current-data')
         points = cache.get(cache_key)
         if not points:
-            points = timeseries_db.get_list_query(q, precision=None)
+            points = timeseries_db._device_data(
+                rp=SHORT_RP, tags={'pk': self.pk}, key=self.__key, fields='data'
+            )
         if not points:
             return None
         self.data_timestamp = points[0]['time']

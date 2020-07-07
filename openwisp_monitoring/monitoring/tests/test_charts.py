@@ -2,7 +2,6 @@ import json
 from datetime import date, timedelta
 from unittest.mock import patch
 
-from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.test import TestCase
 from django.utils.timezone import now
@@ -24,18 +23,6 @@ class TestCharts(TestMonitoringMixin, TestCase):
     """
     Tests for functionalities related to charts
     """
-
-    def test_read(self):
-        c = self._create_chart()
-        data = c.read()
-        key = c.metric.field_name
-        self.assertIn('x', data)
-        self.assertIn('traces', data)
-        self.assertEqual(len(data['x']), 3)
-        charts = data['traces']
-        self.assertEqual(charts[0][0], key)
-        self.assertEqual(len(charts[0][1]), 3)
-        self.assertEqual(charts[0][1], [3, 6, 9])
 
     def test_read_summary_avg(self):
         m = self._create_object_metric(name='summary_avg')
@@ -133,34 +120,6 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertEqual(data['summary'], {'google': 87500000, 'facebook': 37503000})
         self.assertEqual(c.get_top_fields(2), ['google', 'facebook'])
 
-    def test_read_multiple(self):
-        c = self._create_chart(test_data=None, configuration='multiple_test')
-        m1 = c.metric
-        m2 = self._create_object_metric(
-            name='test metric 2',
-            key='test_metric',
-            field_name='value2',
-            content_object=m1.content_object,
-        )
-        now_ = now()
-        for n in range(0, 3):
-            time = now_ - timedelta(days=n)
-            m1.write(n + 1, time=time)
-            m2.write(n + 2, time=time)
-        data = c.read()
-        f1 = m1.field_name
-        f2 = 'value2'
-        self.assertIn('x', data)
-        self.assertIn('traces', data)
-        self.assertEqual(len(data['x']), 3)
-        charts = data['traces']
-        self.assertIn(f1, charts[0][0])
-        self.assertIn(f2, charts[1][0])
-        self.assertEqual(len(charts[0][1]), 3)
-        self.assertEqual(len(charts[1][1]), 3)
-        self.assertEqual(charts[0][1], [3, 2, 1])
-        self.assertEqual(charts[1][1], [4, 3, 2])
-
     def test_json(self):
         c = self._create_chart()
         data = c.read()
@@ -179,22 +138,6 @@ class TestCharts(TestMonitoringMixin, TestCase):
             self.assertIn('error parsing query: found BAD', str(e.message_dict))
         else:
             self.fail('ValidationError not raised')
-
-    def test_get_query(self):
-        c = self._create_chart(test_data=False)
-        m = c.metric
-        now_ = now()
-        today = date(now_.year, now_.month, now_.day)
-        time = today - timedelta(days=6)
-        expected = c.query.format(
-            field_name=m.field_name,
-            key=m.key,
-            content_type=m.content_type_key,
-            object_id=m.object_id,
-            time=str(time),
-        )
-        expected = "{0} tz('{1}')".format(expected, settings.TIME_ZONE)
-        self.assertEqual(c.get_query(), expected)
 
     def test_description(self):
         c = self._create_chart(test_data=False)

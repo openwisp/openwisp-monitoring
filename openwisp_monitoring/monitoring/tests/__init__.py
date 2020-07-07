@@ -7,6 +7,7 @@ from openwisp_users.tests.utils import TestOrganizationMixin
 
 from ...db import timeseries_db
 from ...db.backends import TIMESERIES_DB
+from ...db.backends.elasticsearch.queries import _make_query
 from ..configuration import (
     register_chart,
     register_metric,
@@ -80,7 +81,10 @@ charts = {
                 "SELECT {fields|SUM|/ 1} FROM {key} "
                 "WHERE time >= '{time}' AND content_type = "
                 "'{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'elasticsearch': _make_query(
+                {'{field_name}': {'sum': {'field': 'points.fields.{field_name}'}}}
+            ),
         },
     },
     'dummy': {
@@ -97,7 +101,7 @@ charts = {
         'description': 'Bugged chart for testing purposes.',
         'unit': 'bugs',
         'order': 999,
-        'query': {'influxdb': "BAD"},
+        'query': {'influxdb': "BAD", 'elasticsearch': "BAD"},
     },
     'default': {
         'type': 'line',
@@ -109,7 +113,8 @@ charts = {
             'influxdb': (
                 "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'elasticsearch': _make_query(),
         },
     },
     'multiple_test': {
@@ -122,7 +127,13 @@ charts = {
             'influxdb': (
                 "SELECT {field_name}, value2 FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'elasticsearch': _make_query(
+                {
+                    '{field_name}': {'sum': {'field': 'points.fields.{field_name}'}},
+                    'value2': {'sum': {'field': 'points.fields.value2'}},
+                }
+            ),
         },
     },
     'mean_test': {
@@ -135,7 +146,8 @@ charts = {
             'influxdb': (
                 "SELECT MEAN({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'elasticsearch': _make_query(),
         },
     },
     'sum_test': {
@@ -148,7 +160,10 @@ charts = {
             'influxdb': (
                 "SELECT SUM({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'elasticsearch': _make_query(
+                {'{field_name}': {'sum': {'field': 'points.fields.{field_name}'}}}
+            ),
         },
     },
     'top_fields_mean': {
@@ -162,7 +177,8 @@ charts = {
                 "SELECT {fields|MEAN} FROM {key} "
                 "WHERE time >= '{time}' AND content_type = "
                 "'{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'elasticsearch': _make_query(),
         },
     },
 }

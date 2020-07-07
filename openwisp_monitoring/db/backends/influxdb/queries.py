@@ -58,12 +58,3 @@ chart_query = {
         )
     },
 }
-
-default_chart_query = [
-    "SELECT {field_name} FROM {key} WHERE time >= '{time}'",
-    " AND content_type = '{content_type}' AND object_id = '{object_id}'",
-]
-
-device_data_query = (
-    "SELECT data FROM {0}.{1} WHERE pk = '{2}' " "ORDER BY time DESC LIMIT 1"
-)
