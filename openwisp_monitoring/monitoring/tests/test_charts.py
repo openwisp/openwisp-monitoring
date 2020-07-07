@@ -1,13 +1,21 @@
 import json
 from datetime import date, timedelta
+from unittest.mock import patch
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.test import TestCase
 from django.utils.timezone import now
 from swapper import load_model
 
-from . import TestMonitoringMixin
+from .. import settings as app_settings
+from ..charts import (
+    CHART_CONFIGURATION_CHOICES,
+    get_chart_configuration,
+    register_chart,
+    unregister_chart,
+)
+from . import TestMonitoringMixin, charts
 
 Chart = load_model('monitoring', 'Chart')
 
@@ -242,3 +250,43 @@ class TestCharts(TestMonitoringMixin, TestCase):
         m.write('00:14:5c:00:00:00')
         c.save()
         self.assertIsNone(c.json(time=1))
+
+    def test_register_invalid_chart_configuration(self):
+        with self.subTest('Registering with incomplete chart configuration.'):
+            with self.assertRaises(AssertionError):
+                register_chart('test_type', dict())
+        with self.subTest('Registering already registered chart configuration.'):
+            histogram = charts['histogram']
+            register_chart('histogram_test', histogram)
+            with self.assertRaises(ImproperlyConfigured):
+                register_chart('histogram_test', histogram)
+            unregister_chart('histogram_test')
+        with self.subTest('Registering with improper chart configuration name'):
+            with self.assertRaises(ImproperlyConfigured):
+                register_chart(['test_type'], dict())
+        with self.subTest('Registering with improper chart configuration'):
+            with self.assertRaises(ImproperlyConfigured):
+                register_chart('test_type', tuple())
+
+    def test_unregister_invalid_chart_configuration(self):
+        with self.subTest('Unregistering with improper chart configuration name'):
+            with self.assertRaises(ImproperlyConfigured):
+                unregister_chart(dict())
+        with self.subTest('Unregistering unregistered chart configuration'):
+            with self.assertRaises(ImproperlyConfigured):
+                unregister_chart('test_chart')
+
+    def test_register_valid_chart_configuration(self):
+        dummy = charts['dummy']
+        register_chart('dummy_test', dummy)
+        self.assertIn(('dummy_test', 'dummy_test'), CHART_CONFIGURATION_CHOICES)
+        unregister_chart('dummy_test')
+        self.assertNotIn(('dummy_test', 'dummy_test'), CHART_CONFIGURATION_CHOICES)
+
+    def test_additional_charts_setting(self):
+        self.assertNotIn('dummy_test', get_chart_configuration())
+        chart = {'dummy_test': charts['dummy']}
+        with patch.object(app_settings, 'ADDITIONAL_CHARTS', chart):
+            self.assertEqual(
+                get_chart_configuration()['dummy_test'], chart['dummy_test']
+            )

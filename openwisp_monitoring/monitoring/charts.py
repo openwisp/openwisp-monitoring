@@ -1,3 +1,4 @@
+from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import gettext_lazy as _
 from openwisp_monitoring.db import chart_query
 
@@ -140,23 +141,66 @@ DEFAULT_CHARTS = {
 }
 
 
+def _validate_chart_configuration(chart_config):
+    assert 'type' in chart_config
+    assert 'title' in chart_config
+    assert 'description' in chart_config
+    assert 'order' in chart_config
+    assert 'query' in chart_config
+    if chart_config['query'] is None:
+        assert 'unit' in chart_config
+    if 'colorscale' in chart_config:
+        assert 'max' in chart_config['colorscale']
+        assert 'min' in chart_config['colorscale']
+        assert 'label' in chart_config['colorscale']
+        assert 'scale' in chart_config['colorscale']
+
+
 def get_chart_configuration():
     charts = deep_merge_dicts(DEFAULT_CHARTS, app_settings.ADDITIONAL_CHARTS)
     # ensure configuration is not broken
     for key, options in charts.items():
-        assert 'type' in options
-        assert 'title' in options
-        assert 'description' in options
-        assert 'order' in options
-        assert 'query' in options
-        if options['query'] is None:
-            assert 'unit' in options
-        if 'colorscale' in options:
-            assert 'max' in options['colorscale']
-            assert 'min' in options['colorscale']
-            assert 'label' in options['colorscale']
-            assert 'scale' in options['colorscale']
+        _validate_chart_configuration(options)
     return charts
+
+
+def register_chart(chart_name, chart_config):
+    """
+    Registers a new chart configuration.
+    """
+    if not isinstance(chart_name, str):
+        raise ImproperlyConfigured('Chart name should be type "str".')
+    if not isinstance(chart_config, dict):
+        raise ImproperlyConfigured('Chart configuration should be type "dict".')
+    if chart_name in DEFAULT_CHARTS:
+        raise ImproperlyConfigured(
+            f'{chart_name} is an already registered Chart Configuration.'
+        )
+
+    _validate_chart_configuration(chart_config)
+    DEFAULT_CHARTS.update({chart_name: chart_config})
+    _register_chart_configuration_choice(chart_name, chart_config)
+
+
+def unregister_chart(chart_name):
+    if not isinstance(chart_name, str):
+        raise ImproperlyConfigured('Chart configuration name should be type "str"')
+    if chart_name not in DEFAULT_CHARTS:
+        raise ImproperlyConfigured(f'No such Chart configuation "{chart_name}"')
+    DEFAULT_CHARTS.pop(chart_name)
+    _unregister_chart_configuration_choice(chart_name)
+
+
+def _register_chart_configuration_choice(chart_name, chart_config):
+    name = chart_config.get('verbose_name', chart_name)
+    CHART_CONFIGURATION_CHOICES.append((chart_name, name))
+
+
+def _unregister_chart_configuration_choice(chart_name):
+    for index, (key, name) in enumerate(CHART_CONFIGURATION_CHOICES):
+        if key == chart_name:
+            CHART_CONFIGURATION_CHOICES.pop(index)
+            return
 
 
 def get_chart_configuration_choices():
@@ -166,3 +210,6 @@ def get_chart_configuration_choices():
         label = charts[key].get('label', charts[key]['title'])
         choices.append((key, label))
     return choices
+
+
+CHART_CONFIGURATION_CHOICES = get_chart_configuration_choices()

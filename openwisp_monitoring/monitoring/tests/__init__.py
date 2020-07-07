@@ -7,12 +7,113 @@ from openwisp_users.tests.utils import TestOrganizationMixin
 
 from ...db import timeseries_db
 from ...db.backends import TIMESERIES_DB
+from .. import register_chart, unregister_chart
 
 start_time = now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
+
+# this custom chart configuration is used for automated testing purposes
+charts = {
+    'histogram': {
+        'type': 'histogram',
+        'title': 'Histogram',
+        'description': 'Histogram',
+        'top_fields': 2,
+        'order': 999,
+        'query': {
+            'influxdb': (
+                "SELECT {fields|SUM|/ 1} FROM {key} "
+                "WHERE time >= '{time}' AND content_type = "
+                "'{content_type}' AND object_id = '{object_id}'"
+            )
+        },
+    },
+    'dummy': {
+        'type': 'line',
+        'title': 'Dummy chart',
+        'description': 'Dummy chart for testing purposes.',
+        'unit': 'candies',
+        'order': 999,
+        'query': None,
+    },
+    'bad_test': {
+        'type': 'line',
+        'title': 'Bugged chart for testing purposes',
+        'description': 'Bugged chart for testing purposes.',
+        'unit': 'bugs',
+        'order': 999,
+        'query': {'influxdb': "BAD"},
+    },
+    'default': {
+        'type': 'line',
+        'title': 'Default query for testing purposes',
+        'description': 'Default query for testing purposes',
+        'unit': 'n.',
+        'order': 999,
+        'query': {
+            'influxdb': (
+                "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND "
+                "content_type = '{content_type}' AND object_id = '{object_id}'"
+            )
+        },
+    },
+    'multiple_test': {
+        'type': 'line',
+        'title': 'Multiple test',
+        'description': 'For testing purposes',
+        'unit': 'n.',
+        'order': 999,
+        'query': {
+            'influxdb': (
+                "SELECT {field_name}, value2 FROM {key} WHERE time >= '{time}' AND "
+                "content_type = '{content_type}' AND object_id = '{object_id}'"
+            )
+        },
+    },
+    'mean_test': {
+        'type': 'line',
+        'title': 'Mean test',
+        'description': 'For testing purposes',
+        'unit': 'n.',
+        'order': 999,
+        'query': {
+            'influxdb': (
+                "SELECT MEAN({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
+                "content_type = '{content_type}' AND object_id = '{object_id}'"
+            )
+        },
+    },
+    'sum_test': {
+        'type': 'line',
+        'title': 'Sum test',
+        'description': 'For testing purposes',
+        'unit': 'n.',
+        'order': 999,
+        'query': {
+            'influxdb': (
+                "SELECT SUM({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
+                "content_type = '{content_type}' AND object_id = '{object_id}'"
+            )
+        },
+    },
+    'top_fields_mean': {
+        'type': 'histogram',
+        'title': 'Top fields mean test',
+        'description': 'For testing purposes',
+        'top_fields': 2,
+        'order': 999,
+        'query': {
+            'influxdb': (
+                "SELECT {fields|MEAN} FROM {key} "
+                "WHERE time >= '{time}' AND content_type = "
+                "'{content_type}' AND object_id = '{object_id}'"
+            )
+        },
+    },
+}
 
 
 class TestMonitoringMixin(TestOrganizationMixin):
@@ -26,10 +127,14 @@ class TestMonitoringMixin(TestOrganizationMixin):
         timeseries_db.db_name = cls.TEST_DB
         del timeseries_db.get_db
         timeseries_db.create_database()
+        for key, value in charts.items():
+            register_chart(key, value)
 
     @classmethod
     def tearDownClass(cls):
         timeseries_db.drop_database()
+        for key in charts.keys():
+            unregister_chart(key)
 
     def tearDown(self):
         timeseries_db.delete_metric_data()
