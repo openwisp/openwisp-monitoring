@@ -21,7 +21,7 @@ TIMESERIES_DATABASE = {
     'USER': 'openwisp',
     'PASSWORD': 'openwisp',
     'NAME': 'openwisp2',
-    'HOST': 'localhost',
+    'HOST': os.getenv('INFLUXDB_HOST', 'localhost'),
     'PORT': '8086',
 }
 
@@ -144,10 +144,11 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 OPENWISP_MONITORING_MANAGEMENT_IP_ONLY = False
 
+redis_host = os.getenv('REDIS_HOST', 'localhost')
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://localhost/0',
+        'LOCATION': f'redis://{redis_host}/0',
         'OPTIONS': {'CLIENT_CLASS': 'django_redis.client.DefaultClient',},
     }
 }
@@ -156,7 +157,7 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 SESSION_CACHE_ALIAS = 'default'
 
 if not TESTING:
-    CELERY_BROKER_URL = 'redis://localhost/1'
+    CELERY_BROKER_URL = f'redis://{redis_host}/1'
 else:
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True

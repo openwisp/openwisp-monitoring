@@ -1,6 +1,17 @@
 version: "3"
 
 services:
+  monitoring:
+    image: openwisp/openwisp-monitoring:develop
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - influxdb
+      - redis
+
   influxdb:
     image: influxdb:1.8-alpine
     volumes:
@@ -19,4 +30,4 @@ services:
     entrypoint: redis-server --appendonly yes
 
 volumes:
-  influxdb-data:
+  influxdb-data: {}
