@@ -6,7 +6,7 @@ from swapper import load_model
 
 from ...check.classes import Ping
 from ...check.tasks import auto_create_ping
-from ...check.tests import _FPING_REACHABLE
+from ...check.tests import _FPING_REACHABLE, _FPING_UNREACHABLE
 from ..signals import health_status_changed
 from ..tasks import trigger_device_checks
 from ..utils import get_device_recovery_cache_key
@@ -88,10 +88,42 @@ class TestRecovery(DeviceMonitoringTestCase):
         self.assertEqual(dm.status, 'ok')
         self.assertEqual(cache.get(cache_key), None)
 
-    # Tests device status is set to ok if no related checks present
     def test_status_set_ok(self):
+        """
+        Tests device status is set to ok if no related checks present
+        """
         dm = self._create_device_monitoring()
         dm.update_status('critical')
         trigger_device_checks.delay(dm.device.pk)
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'ok')
+
+    def test_status_set_critical(self):
+        """
+        Tests device status is set to critical if no related checks present
+        and recovery=False is passed
+        """
+        dm = self._create_device_monitoring()
+        dm.update_status('critical')
+        trigger_device_checks.delay(dm.device.pk, recovery=False)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'critical')
+
+    @patch.object(Ping, '_command', return_value=_FPING_UNREACHABLE)
+    @patch.object(DeviceMonitoring, 'update_status')
+    def test_trigger_device_recovery_task_regression(
+        self, mocked_update_status, mocked_ping
+    ):
+        dm = self._create_device_monitoring()
+        dm.device.management_ip = None
+        dm.device.save()
+        self.assertFalse(Check.objects.exists())
+        auto_create_ping.delay(
+            model='device', app_label='config', object_id=str(dm.device.pk),
+        )
+
+        trigger_device_checks.delay(dm.device.pk)
+        self.assertTrue(Check.objects.exists())
+        # we expect update_status() to be called once (by the check)
+        # and not a second time directly by our code
+        mocked_update_status.assert_called_once()
