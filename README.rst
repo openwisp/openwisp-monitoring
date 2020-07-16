@@ -345,6 +345,13 @@ or to send monitoring metrics).
 
 This feature is enabled by default.
 
+If you use OpenVPN as the management VPN, you may want to check out a similar
+integration built in **openwisp-network-topology**: when the status of an OpenVPN link
+changes (detected by monitoring the status information of OpenVPN), the
+network topology module will trigger the monitoring checks.
+For more information see:
+`Network Topology Device Integration <https://github.com/openwisp/openwisp-network-topology#integration-with-openwisp-controller-and-openwisp-monitoring>`_
+
 ``OPENWISP_MONITORING_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
