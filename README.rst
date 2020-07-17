@@ -621,6 +621,12 @@ Install your forked repo:
     cd openwisp-monitoring/
     python setup.py develop
 
+Install development dependencies:
+
+.. code-block:: shell
+
+    ./install-dev.sh
+
 Install test requirements:
 
 .. code-block:: shell
@@ -631,7 +637,7 @@ Start Redis and InfluxDB using docker-compose:
 
 .. code-block:: shell
 
-    docker-compose up -d
+    docker-compose up -d redis influxdb
 
 Create the Django database:
 
@@ -676,6 +682,15 @@ When running the last line of the previous example, the environment variable
 which are simple django apps that extend ``openwisp-monitoring`` with
 the sole purpose of testing its extensibility, for more information regarding
 this concept, read the following section.
+
+Install and run on docker
+-------------------------
+
+.. code-block:: shell
+
+    # ``--build`` parameter is useful when you want to
+    # rebuild the openwisp-monitoring image with your changes.
+    docker-compose up --build
 
 Extending openwisp-monitoring
 -----------------------------

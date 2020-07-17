@@ -39,17 +39,23 @@ before_install:
 
 install:
   - pip install -e .
-  # TODO: removed when openwisp-controller 0.8.0 is released
-  - pip install -U https://github.com/openwisp/openwisp-controller/tarball/master
-  # TODO: removed when openwisp-users 0.3.0 is released
-  - pip install -U https://github.com/openwisp/openwisp-users/tarball/master
-  # TODO: remove when openwisp-notifications 0.1 is released
-  - pip install -U https://github.com/openwisp/openwisp-notifications/tarball/master
+  - sh install-dev.sh
 
 script:
   - ./run-qa-checks
   - SAMPLE_APP=1 coverage run --source=openwisp_monitoring runtests.py
   - coverage run -a --source=openwisp_monitoring runtests.py
+
+jobs:
+  include:
+    - stage: Deploy
+      before_install: skip
+      install: skip
+      if: type = push AND branch = master
+      script:
+        - echo "$DOCKER_TOKEN" | docker login --username $DOCKER_USERNAME --password-stdin
+        - docker build . -t openwisp/openwisp-monitoring:develop
+        - docker push openwisp/openwisp-monitoring:develop
 
 after_success:
   coveralls
