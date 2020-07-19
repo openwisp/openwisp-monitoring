@@ -34,15 +34,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.gis',
-    # openwisp2 admin theme
-    # (must be loaded here)
-    'openwisp_utils.admin_theme',
     # all-auth
     'django.contrib.sites',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
     'django_extensions',
+    'django_filters',
     # openwisp2 modules
     'openwisp_controller.config',
     'openwisp_controller.connection',
@@ -57,6 +55,9 @@ INSTALLED_APPS = [
     # notifications
     'openwisp_notifications',
     # admin
+    # openwisp2 admin theme
+    # (must be loaded here)
+    'openwisp_utils.admin_theme',
     'django.contrib.admin',
     'django.forms',
     # other dependencies
@@ -76,7 +77,7 @@ EXTENDED_APPS = [
 ]
 
 AUTH_USER_MODEL = 'openwisp_users.User'
-SITE_ID = '1'
+SITE_ID = 1
 
 STATICFILES_FINDERS = [
     'django.contrib.staticfiles.finders.FileSystemFinder',
@@ -116,7 +117,6 @@ TEMPLATES = [
         'DIRS': [os.path.join(os.path.dirname(BASE_DIR), 'templates')],
         'OPTIONS': {
             'loaders': [
-                'apptemplates.Loader',
                 'django.template.loaders.filesystem.Loader',
                 'django.template.loaders.app_directories.Loader',
                 'openwisp_utils.loaders.DependencyLoader',
@@ -197,6 +197,19 @@ if TESTING:
             'field_name': '{field_name}',
             'label': 'get top fields test',
             'related_fields': ['http2', 'ssh', 'udp', 'spdy'],
+        },
+    }
+
+ASGI_APPLICATION = 'openwisp2.routing.application'
+if TESTING:
+    CHANNEL_LAYERS = {
+        'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'},
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {'hosts': ['redis://localhost/7'],},
         },
     }
 
