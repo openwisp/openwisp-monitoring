@@ -69,24 +69,26 @@ Follow the setup instructions of `openwisp-controller
 
     INSTALLED_APPS = [
         # django apps
-        # openwisp2 admin theme (must be loaded here)
-        'openwisp_utils.admin_theme',
         # all-auth
         'django.contrib.sites',
         'allauth',
         'allauth.account',
         'allauth.socialaccount',
         'django_extensions',
+        'django_filters',
         # openwisp2 modules
         'openwisp_users',
         'openwisp_controller.pki',
         'openwisp_controller.config',
         'openwisp_controller.connection',
         # monitoring
-        'notifications',
         'openwisp_monitoring.monitoring',
         'openwisp_monitoring.device',
         'openwisp_monitoring.check',
+        # notifications
+        'openwisp_notifications',
+        # openwisp2 admin theme (must be loaded here)
+        'openwisp_utils.admin_theme',
         # admin
         'django.contrib.admin',
         'django.forms',
@@ -123,31 +125,6 @@ Follow the setup instructions of `openwisp-controller
     ]
 
     urlpatterns += staticfiles_urlpatterns()
-
-Add `apptemplates.Loader` to template loaders:
-
-.. code-block:: python
-
-    TEMPLATES = [
-        {
-            'BACKEND': 'django.template.backends.django.DjangoTemplates',
-            'DIRS': [os.path.join(os.path.dirname(BASE_DIR), 'templates')],
-            'OPTIONS': {
-                'loaders': [
-                    'apptemplates.Loader',
-                    'django.template.loaders.filesystem.Loader',
-                    'django.template.loaders.app_directories.Loader',
-                    'openwisp_utils.loaders.DependencyLoader',
-                ],
-                'context_processors': [
-                    'django.template.context_processors.debug',
-                    'django.template.context_processors.request',
-                    'django.contrib.auth.context_processors.auth',
-                    'django.contrib.messages.context_processors.messages',
-                ],
-            },
-        }
-    ]
 
 Configure caching (you may use a different cache storage if you want):
 
