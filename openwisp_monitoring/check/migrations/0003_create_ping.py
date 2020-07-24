@@ -11,7 +11,6 @@ def create_device_ping(apps, schema_editor):
                 model=Device.__name__.lower(),
                 app_label=Device._meta.app_label,
                 object_id=str(device.pk),
-                created=True,
             )
 
 

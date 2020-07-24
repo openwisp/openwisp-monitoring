@@ -86,7 +86,7 @@ class Migration(migrations.Migration):
                     models.OneToOneField(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name='monitoring',
-                        to='config.Device',
+                        to=swapper.get_model_name('config', 'Device'),
                     ),
                 ),
             ],

@@ -2,10 +2,12 @@ from django.apps import AppConfig
 from django.core.cache import cache
 from django.db.models.signals import post_delete, post_save
 from django.utils.translation import gettext_lazy as _
-from django_netjsonconfig.signals import checksum_requested
 from openwisp_notifications.signals import notify
 from openwisp_notifications.types import register_notification_type
 from swapper import load_model
+
+from openwisp_controller.config.signals import checksum_requested
+from openwisp_controller.connection.signals import is_working_changed
 
 from . import settings as app_settings
 from .signals import device_metrics_received, health_status_changed
@@ -25,7 +27,7 @@ class DeviceMonitoringConfig(AppConfig):
         self.device_recovery_detection()
 
     def connect_device_signals(self):
-        from openwisp_controller.config.models import Device
+        Device = load_model('config', 'Device')
 
         post_save.connect(
             self.device_post_save_receiver,
@@ -53,24 +55,27 @@ class DeviceMonitoringConfig(AppConfig):
         instance.metrics.all().delete()
 
     def device_recovery_detection(self):
-        if app_settings.DEVICE_RECOVERY_DETECTION:
-            from openwisp_controller.config.models import Device
+        if not app_settings.DEVICE_RECOVERY_DETECTION:
+            return
 
-            DeviceData = load_model('device_monitoring', 'DeviceData')
-            DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
-            health_status_changed.connect(
-                self.manage_device_recovery_cache_key, sender=DeviceMonitoring
-            )
-            checksum_requested.connect(
-                self.trigger_device_recovery_checks,
-                sender=Device,
-                dispatch_uid='checksum_requested',
-            )
-            device_metrics_received.connect(
-                self.trigger_device_recovery_checks,
-                sender=DeviceData,
-                dispatch_uid='received_device_metrics',
-            )
+        Device = load_model('config', 'Device')
+        DeviceData = load_model('device_monitoring', 'DeviceData')
+        DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+        health_status_changed.connect(
+            self.manage_device_recovery_cache_key,
+            sender=DeviceMonitoring,
+            dispatch_uid='recovery_health_status_changed',
+        )
+        checksum_requested.connect(
+            self.trigger_device_recovery_checks,
+            sender=Device,
+            dispatch_uid='recovery_checksum_requested',
+        )
+        device_metrics_received.connect(
+            self.trigger_device_recovery_checks,
+            sender=DeviceData,
+            dispatch_uid='recovery_device_metrics_received',
+        )
 
     @classmethod
     def manage_device_recovery_cache_key(cls, instance, status, **kwargs):
@@ -92,13 +97,10 @@ class DeviceMonitoringConfig(AppConfig):
             trigger_device_checks.delay(pk=instance.pk)
 
     @classmethod
-    def connect_is_working_changed(self):
-        from openwisp_controller.connection.models import DeviceConnection
-        from openwisp_controller.connection.signals import is_working_changed
-
+    def connect_is_working_changed(cls):
         is_working_changed.connect(
-            self.is_working_changed_receiver,
-            sender=DeviceConnection,
+            cls.is_working_changed_receiver,
+            sender=load_model('connection', 'DeviceConnection'),
             dispatch_uid='is_working_changed_monitoring',
         )
 

@@ -6,7 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from openwisp_notifications.types import register_notification_type
 from requests.exceptions import ConnectionError
 
-from .utils import create_database
+from ..db import timeseries_db
 
 
 class MonitoringConfig(AppConfig):
@@ -22,10 +22,10 @@ class MonitoringConfig(AppConfig):
         self.register_notification_types()
 
     def create_database(self):
-        # create influxdb database if doesn't exist yet
+        # create Timeseries database if it doesn't exist yet
         for attempt_number in range(1, self.max_retries + 1):
             try:
-                create_database()
+                timeseries_db.create_database()
                 return
             except ConnectionError as e:
                 self.warn_and_delay(attempt_number)
@@ -34,7 +34,7 @@ class MonitoringConfig(AppConfig):
 
     def warn_and_delay(self, attempt_number):
         print(
-            'Got error while connecting to timeseries DB. '
+            'Got error while connecting to timeseries database. '
             f'Retrying again in 3 seconds (attempt n. {attempt_number} out of 5).'
         )
         sleep(self.retry_delay)

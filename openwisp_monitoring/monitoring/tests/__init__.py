@@ -5,8 +5,8 @@ from swapper import load_model
 
 from openwisp_users.tests.utils import TestOrganizationMixin
 
-from .. import settings as app_settings
-from ..utils import create_database, get_db, query
+from ...db import timeseries_db
+from ...db.backends import TIMESERIES_DB
 
 start_time = now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
@@ -16,21 +16,23 @@ AlertSettings = load_model('monitoring', 'AlertSettings')
 
 
 class TestMonitoringMixin(TestOrganizationMixin):
-    ORIGINAL_DB = app_settings.INFLUXDB_DATABASE
-    TEST_DB = '{0}_test'.format(ORIGINAL_DB)
+    ORIGINAL_DB = TIMESERIES_DB['NAME']
+    TEST_DB = f'{ORIGINAL_DB}_test'
 
     @classmethod
     def setUpClass(cls):
-        setattr(app_settings, 'INFLUXDB_DATABASE', cls.TEST_DB)
-        create_database()
+        # By default timeseries_db.get_db shall connect to the database
+        # defined in settings when apps are loaded. We don't want that while testing
+        timeseries_db.db_name = cls.TEST_DB
+        del timeseries_db.get_db
+        timeseries_db.create_database()
 
     @classmethod
     def tearDownClass(cls):
-        get_db().drop_database(cls.TEST_DB)
-        setattr(app_settings, 'INFLUXDB_DATABASE', cls.ORIGINAL_DB)
+        timeseries_db.drop_database()
 
     def tearDown(self):
-        query('DROP SERIES FROM /.*/')
+        timeseries_db.delete_metric_data()
 
     def _create_general_metric(self, **kwargs):
         opts = {

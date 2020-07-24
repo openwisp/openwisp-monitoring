@@ -6,6 +6,7 @@ import django.utils.timezone
 import model_utils.fields
 import openwisp_monitoring.device.base.models
 import uuid
+import swapper
 
 
 class Migration(migrations.Migration):
@@ -23,7 +24,7 @@ class Migration(migrations.Migration):
             options={'proxy': True, 'indexes': [], 'constraints': [],},
             bases=(
                 openwisp_monitoring.device.base.models.AbstractDeviceData,
-                'config.device',
+                swapper.get_model_name('config', 'Device'),
             ),
         ),
         migrations.CreateModel(
@@ -76,7 +77,7 @@ class Migration(migrations.Migration):
                     models.OneToOneField(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name='monitoring',
-                        to='config.Device',
+                        to=swapper.get_model_name('config', 'Device'),
                     ),
                 ),
                 (

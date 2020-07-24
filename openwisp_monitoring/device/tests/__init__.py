@@ -5,8 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 from swapper import load_model
 
-from openwisp_controller.config.models import Config, Device
-from openwisp_controller.config.tests import CreateConfigTemplateMixin
+from openwisp_controller.config.tests.utils import CreateConfigTemplateMixin
 
 from ...monitoring.tests import TestMonitoringMixin
 from ..utils import manage_short_retention_policy
@@ -14,6 +13,8 @@ from ..utils import manage_short_retention_policy
 Metric = load_model('monitoring', 'Metric')
 DeviceData = load_model('device_monitoring', 'DeviceData')
 Chart = load_model('monitoring', 'Chart')
+Config = load_model('config', 'Config')
+Device = load_model('config', 'Device')
 
 
 class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
@@ -63,13 +64,13 @@ class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
                 m = Metric.objects.get(
                     key=ifname, field_name=field_name, object_id=d.pk
                 )
-                points = m.read(limit=10, order='time DESC')
+                points = m.read(limit=10, order='-time')
                 self.assertEqual(len(points), 1)
                 self.assertEqual(
                     points[0][m.field_name], iface['statistics'][field_name]
                 )
             m = Metric.objects.get(key=ifname, field_name='clients', object_id=d.pk)
-            points = m.read(limit=10, order='time DESC')
+            points = m.read(limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']))
         return dd
 

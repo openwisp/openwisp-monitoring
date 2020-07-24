@@ -119,7 +119,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         )
         data = c.read()
         self.assertEqual(data['summary'], {'google': 87500000, 'facebook': 37503000})
-        self.assertEqual(c._get_top_fields(2), ['google', 'facebook'])
+        self.assertEqual(c.get_top_fields(2), ['google', 'facebook'])
 
     def test_read_multiple(self):
         c = self._create_chart(test_data=None, configuration='multiple_test')
@@ -155,6 +155,8 @@ class TestCharts(TestMonitoringMixin, TestCase):
         # convert tuples to lists otherwise comparison will fail
         for i, chart in enumerate(data['traces']):
             data['traces'][i] = list(chart)
+        # update data with unit
+        data.update({'unit': c.unit})
         self.assertDictEqual(json.loads(c.json()), data)
 
     def test_read_bad_query(self):
@@ -165,14 +167,6 @@ class TestCharts(TestMonitoringMixin, TestCase):
             self.assertIn('error parsing query: found BAD', str(e.message_dict))
         else:
             self.fail('ValidationError not raised')
-
-    def test_default_query(self):
-        c = self._create_chart(test_data=False)
-        q = (
-            "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND "
-            "content_type = '{content_type}' AND object_id = '{object_id}'"
-        )
-        self.assertEqual(c.query, q)
 
     def test_get_query(self):
         c = self._create_chart(test_data=False)
@@ -189,24 +183,6 @@ class TestCharts(TestMonitoringMixin, TestCase):
         )
         expected = "{0} tz('{1}')".format(expected, settings.TIME_ZONE)
         self.assertEqual(c.get_query(), expected)
-
-    def test_forbidden_queries(self):
-        c = self._create_chart(test_data=False)
-        queries = [
-            'DROP DATABASE openwisp2',
-            'DROP MEASUREMENT test_metric',
-            'CREATE DATABASE test',
-            'DELETE MEASUREMENT test_metric',
-            'ALTER RETENTION POLICY policy',
-            'SELECT * INTO metric2 FROM test_metric',
-        ]
-        for q in queries:
-            try:
-                c._is_query_allowed(q)
-            except ValidationError as e:
-                self.assertIn('configuration', e.message_dict)
-            else:
-                self.fail('ValidationError not raised')
 
     def test_description(self):
         c = self._create_chart(test_data=False)
@@ -231,20 +207,6 @@ class TestCharts(TestMonitoringMixin, TestCase):
         # last 10 days
         self.assertEqual(data['traces'][0][1][-10:], [0, 2, 2, 2, 2, 2, 2, 2, 2, 4])
 
-    def test_get_query_1d(self):
-        c = self._create_chart(test_data=None, configuration='uptime')
-        q = c.get_query(time='1d')
-        last24 = now() - timedelta(days=1)
-        self.assertIn(str(last24)[0:14], q)
-        self.assertIn('group by time(10m)', q.lower())
-
-    def test_get_query_30d(self):
-        c = self._create_chart(test_data=None, configuration='uptime')
-        q = c.get_query(time='30d')
-        last30d = now() - timedelta(days=30)
-        self.assertIn(str(last30d)[0:10], q)
-        self.assertIn('group by time(24h)', q.lower())
-
     def test_get_time(self):
         c = Chart()
         now_ = now()
@@ -253,38 +215,13 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertIn(str(now() - timedelta(days=1))[0:10], c._get_time('1d'))
         self.assertIn(str(now() - timedelta(days=3))[0:10], c._get_time('3d'))
 
-    def test_get_query_fields_function(self):
-        c = self._create_chart(test_data=None, configuration='histogram')
-        q = c.get_query(fields=['ssh', 'http2', 'apple-music'])
-        expected = (
-            'SELECT SUM("ssh") / 1 AS ssh, '
-            'SUM("http2") / 1 AS http2, '
-            'SUM("apple-music") / 1 AS apple_music FROM'
-        )
-        self.assertIn(expected, q)
-
-    def test_get_custom_query(self):
-        c = self._create_chart(test_data=None)
-        custom_q = c._default_query.replace('{field_name}', '{fields}')
-        q = c.get_query(query=custom_q, fields=['SUM(*)'])
-        self.assertIn('SELECT SUM(*) FROM', q)
-
     def test_get_top_fields(self):
         c = self._create_chart(test_data=None, configuration='histogram')
+        self.assertEqual(c.get_top_fields(number=3), [])
         c.metric.write(
             None, extra_values={'http2': 100, 'ssh': 90, 'udp': 80, 'spdy': 70}
         )
-        self.assertEqual(c._get_top_fields(number=3), ['http2', 'ssh', 'udp'])
-
-    def test_is_aggregate_bug(self):
-        m = self._create_object_metric(name='summary_avg')
-        c = Chart(metric=m, configuration='dummy')
-        self.assertFalse(c._is_aggregate(c.query))
-
-    def test_is_aggregate_fields_function(self):
-        m = self._create_object_metric(name='is_aggregate_func')
-        c = Chart(metric=m, configuration='uptime')
-        self.assertTrue(c._is_aggregate(c.query))
+        self.assertEqual(c.get_top_fields(number=3), ['http2', 'ssh', 'udp'])
 
     def test_query_histogram(self):
         m = self._create_object_metric(name='histogram')

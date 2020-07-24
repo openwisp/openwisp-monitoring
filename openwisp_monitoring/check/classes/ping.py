@@ -1,25 +1,23 @@
 import subprocess
 
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
 from swapper import load_model
 
-from openwisp_controller.config.models import Device
-
 from ... import settings as monitoring_settings
 from .. import settings as app_settings
 from ..exceptions import OperationalError
+from .base import BaseCheck
 
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 
 
-class Ping(object):
+class Ping(BaseCheck):
     schema = {
-        '$schema': 'http://json-schema.org/draft-04/schema#',
+        '$schema': 'http://json-schema.org/draft-07/schema#',
         'type': 'object',
         'additionalProperties': False,
         'properties': {
@@ -47,22 +45,6 @@ class Ping(object):
             },
         },
     }
-
-    def __init__(self, check, params):
-        self.check_instance = check
-        self.related_object = check.content_object
-        self.params = params
-
-    def validate(self):
-        self.validate_instance()
-        self.validate_params()
-
-    def validate_instance(self):
-        # check instance is of type device
-        obj = self.related_object
-        if not obj or not isinstance(obj, Device):
-            message = 'A related device is required ' 'to perform this operation'
-            raise ValidationError({'content_type': message, 'object_id': message})
 
     def validate_params(self):
         try:
@@ -165,23 +147,7 @@ class Ping(object):
         """
         Gets or creates metric
         """
-        check = self.check_instance
-        if check.object_id and check.content_type:
-            obj_id = check.object_id
-            ct = check.content_type
-        else:
-            obj_id = str(check.id)
-            ct = ContentType.objects.get(
-                app_label=check._meta.app_label, model=check.__class__.__name__.lower()
-            )
-        options = dict(
-            name=check.name,
-            object_id=obj_id,
-            content_type=ct,
-            field_name='reachable',
-            key=self.__class__.__name__.lower(),
-        )
-        metric, created = Metric.objects.get_or_create(**options)
+        metric, created = self._get_or_create_metric(field_name='reachable')
         if created:
             self._create_alert_settings(metric)
             self._create_charts(metric)

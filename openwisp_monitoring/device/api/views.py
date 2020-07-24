@@ -17,8 +17,6 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from swapper import load_model
 
-from openwisp_controller.config.models import Device
-
 from ... import settings as monitoring_settings
 from ...monitoring.exceptions import InvalidChartConfigException
 from ..schema import schema
@@ -29,6 +27,7 @@ logger = logging.getLogger(__name__)
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
+Device = load_model('config', 'Device')
 DeviceData = load_model('device_monitoring', 'DeviceData')
 
 
@@ -52,9 +51,7 @@ class DeviceMetricView(GenericAPIView):
         except ValueError:
             return Response({'detail': 'not found'}, status=404)
         self.instance = self.get_object()
-        ct = ContentType.objects.get(
-            model=Device.__name__.lower(), app_label=Device._meta.app_label
-        )
+        ct = ContentType.objects.get_for_model(Device)
         charts = Chart.objects.filter(
             metric__object_id=pk, metric__content_type=ct
         ).select_related('metric')
@@ -112,20 +109,34 @@ class DeviceMetricView(GenericAPIView):
 
     def _get_csv(self, data):
         header = ['time']
-        columns = [data['x']]
+        columns = [data.get('x')]
+        histograms = []
         for chart in data['charts']:
-            # TODO: add way to export data for histogram charts
             if chart['type'] == 'histogram':
+                histograms.append(chart)
                 continue
             for trace in chart['traces']:
                 header.append(self._get_csv_header(chart, trace))
                 columns.append(trace[1])
         rows = [header]
-        for index, element in enumerate(data['x']):
+        for index, element in enumerate(data.get('x', [])):
             row = []
             for column in columns:
                 row.append(column[index])
             rows.append(row)
+        for chart in histograms:
+            rows.append([])
+            rows.append([chart['title']])
+            # Export value as 0 if it is None
+            for key, value in chart['summary'].items():
+                if chart['summary'][key] is None:
+                    chart['summary'][key] = 0
+            # Sort Histogram on the basis of value in the descending order
+            sorted_charts = sorted(
+                chart['summary'].items(), key=lambda x: x[1], reverse=True
+            )
+            for field, value in sorted_charts:
+                rows.append([field, value])
         # write CSV to in-memory file object
         fileobj = StringIO()
         csv.writer(fileobj).writerows(rows)
@@ -176,7 +187,7 @@ class DeviceMetricView(GenericAPIView):
         # saves raw device data
         self.instance.save_data()
         data = self.instance.data
-        ct = ContentType.objects.get(model='device', app_label='config')
+        ct = ContentType.objects.get_for_model(Device)
         for interface in data.get('interfaces', []):
             ifname = interface['name']
             for key, value in interface.get('statistics', {}).items():
@@ -234,12 +245,12 @@ class DeviceMetricView(GenericAPIView):
             field_name='cpu_usage',
             name='CPU usage',
         )
-        metric.write(
-            float(load[0] / cpus), extra_values=extra_values,
-        )
         if created:
             self._create_resources_chart(metric, resource='cpu')
             self._create_resources_alert_settings(metric, resource='cpu')
+        metric.write(
+            float(load[0] / cpus), extra_values=extra_values,
+        )
 
     def _write_disk(self, disk_list, primary_key, content_type):
         used_bytes, size_bytes, available_bytes = 0, 0, 0
@@ -254,10 +265,10 @@ class DeviceMetricView(GenericAPIView):
             field_name='used_disk',
             name='Disk usage',
         )
-        metric.write(used_bytes / size_bytes)
         if created:
             self._create_resources_chart(metric, resource='disk')
             self._create_resources_alert_settings(metric, resource='disk')
+        metric.write(used_bytes / size_bytes)
 
     def _write_memory(self, memory, primary_key, content_type):
         extra_values = {
@@ -283,10 +294,10 @@ class DeviceMetricView(GenericAPIView):
             field_name='percent_used',
             name='Memory usage',
         )
-        metric.write(percent_used, extra_values=extra_values)
         if created:
             self._create_resources_chart(metric, resource='memory')
             self._create_resources_alert_settings(metric, resource='memory')
+        metric.write(percent_used, extra_values=extra_values)
 
     def _calculate_increment(self, ifname, stat, value):
         """

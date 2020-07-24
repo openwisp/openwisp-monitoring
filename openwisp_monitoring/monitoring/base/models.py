@@ -1,8 +1,5 @@
 import json
 import logging
-import operator
-import re
-from collections import OrderedDict
 from datetime import date, datetime, timedelta
 
 from django.conf import settings
@@ -16,13 +13,13 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.timezone import make_aware
 from django.utils.translation import gettext_lazy as _
-from influxdb.exceptions import InfluxDBClientError
 from openwisp_notifications.signals import notify
 from pytz import timezone as tz
 from swapper import get_model_name
 
 from openwisp_utils.base import TimeStampedEditableModel
 
+from ...db import default_chart_query, timeseries_db
 from ..charts import (
     DEFAULT_COLORS,
     get_chart_configuration,
@@ -30,7 +27,6 @@ from ..charts import (
 )
 from ..exceptions import InvalidChartConfigException
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
-from ..utils import query, write
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -97,9 +93,10 @@ class AbstractMetric(TimeStampedEditableModel):
         """ identifier stored in timeseries db """
         return self._makekey(self.name)
 
+    # TODO: This method needs to be refactored when adding the other db
     @staticmethod
     def _makekey(value):
-        """ makes value suited for influxdb key """
+        """ makes value suited for InfluxDB key """
         value = value.replace('.', '_')
         return slugify(value).replace('-', '_')
 
@@ -129,24 +126,35 @@ class AbstractMetric(TimeStampedEditableModel):
         except ObjectDoesNotExist:
             return
         crossed = alert_settings._is_crossed_by(value, time)
+        first_time = False
         # situation has not changed
         if (not crossed and self.is_healthy) or (crossed and self.is_healthy is False):
             return
         # problem: not within threshold limit
         elif crossed and self.is_healthy in [True, None]:
+            if self.is_healthy is None:
+                first_time = True
             self.is_healthy = False
             notification_type = 'threshold_crossed'
         # ok: returned within threshold limit
-        elif not crossed and self.is_healthy in [False, None]:
+        elif not crossed and self.is_healthy is False:
             self.is_healthy = True
             notification_type = 'threshold_recovery'
+        # First metric write within threshold
+        elif not crossed and self.is_healthy is None:
+            self.is_healthy = True
+            first_time = True
         self.save()
         threshold_crossed.send(
             sender=self.__class__,
             alert_settings=alert_settings,
             metric=self,
             target=self.content_object,
+            first_time=first_time,
         )
+        # First metric write and within threshold, do not raise alert
+        if first_time and self.is_healthy:
+            return
         self._notify_users(notification_type, alert_settings)
 
     def write(self, value, time=None, database=None, check=True, extra_values=None):
@@ -156,7 +164,7 @@ class AbstractMetric(TimeStampedEditableModel):
             values.update(extra_values)
         signal_kwargs = dict(sender=self.__class__, metric=self, values=values)
         pre_metric_write.send(**signal_kwargs)
-        write(
+        timeseries_db.write(
             name=self.key,
             values=values,
             tags=self.tags,
@@ -170,30 +178,11 @@ class AbstractMetric(TimeStampedEditableModel):
             return
         self.check_threshold(value, time)
 
-    def read(self, since=None, limit=1, order=None, extra_fields=None):
+    def read(self, **kwargs):
         """ reads timeseries data """
-        fields = self.field_name
-        if extra_fields and extra_fields != '*':
-            fields = ', '.join([fields] + extra_fields)
-        elif extra_fields == '*':
-            fields = '*'
-        q = 'SELECT {fields} FROM {key}'.format(fields=fields, key=self.key)
-        tags = self.tags
-        conditions = []
-        if since:
-            conditions.append("time >= {0}".format(since))
-        if tags:
-            conditions.append(
-                ' AND '.join(["{0} = '{1}'".format(*tag) for tag in tags.items()])
-            )
-        if conditions:
-            conditions = 'WHERE %s' % ' AND '.join(conditions)
-            q = '{0} {1}'.format(q, conditions)
-        if order:
-            q = '{0} ORDER BY {1}'.format(q, order)
-        if limit:
-            q = '{0} LIMIT {1}'.format(q, limit)
-        return list(query(q, epoch='s').get_points())
+        return timeseries_db.read(
+            key=self.key, fields=self.field_name, tags=self.tags, **kwargs
+        )
 
     def _notify_users(self, notification_type, alert_settings):
         """ creates notifications for users """
@@ -211,6 +200,14 @@ class AbstractChart(TimeStampedEditableModel):
     configuration = models.CharField(
         max_length=16, null=True, choices=get_chart_configuration_choices()
     )
+    GROUP_MAP = {
+        '1d': '10m',
+        '3d': '20m',
+        '7d': '1h',
+        '30d': '24h',
+        '365d': '24h',
+    }
+    DEFAULT_TIME = '7d'
 
     class Meta:
         abstract = True
@@ -221,57 +218,11 @@ class AbstractChart(TimeStampedEditableModel):
     def clean(self):
         self._clean_query()
 
-    _FORBIDDEN = ['drop', 'create', 'delete', 'alter', 'into']
-    _AGGREGATE = [
-        'COUNT',
-        'DISTINCT',
-        'INTEGRAL',
-        'MEAN',
-        'MEDIAN',
-        'MODE',
-        'SPREAD',
-        'STDDEV',
-        'SUM',
-        'BOTTOM',
-        'FIRST',
-        'LAST',
-        'MAX',
-        'MIN',
-        'PERCENTILE',
-        'SAMPLE',
-        'TOP',
-        'CEILING',
-        'CUMULATIVE_SUM',
-        'DERIVATIVE',
-        'DIFFERENCE',
-        'ELAPSED',
-        'FLOOR',
-        'HISTOGRAM',
-        'MOVING_AVERAGE',
-        'NON_NEGATIVE_DERIVATIVE',
-        'HOLT_WINTERS',
-    ]
-    GROUP_MAP = {
-        '1d': '10m',
-        '3d': '20m',
-        '7d': '1h',
-        '30d': '24h',
-        '365d': '24h',
-    }
-    DEFAULT_TIME = '7d'
-
-    @classmethod
-    def _is_query_allowed(cls, query):
-        for word in cls._FORBIDDEN:
-            if word in query.lower():
-                msg = _('the word "{0}" is not allowed').format(word.upper())
-                raise ValidationError({'configuration': msg})
-
     def _clean_query(self):
         try:
-            self._is_query_allowed(self.query)
-            query(self.get_query())
-        except InfluxDBClientError as e:
+            timeseries_db.validate_query(self.query)
+            timeseries_db.query(self.get_query())
+        except timeseries_db.client_error as e:
             raise ValidationError({'configuration': e}) from e
         except InvalidChartConfigException as e:
             raise ValidationError({'configuration': str(e)}) from e
@@ -329,7 +280,7 @@ class AbstractChart(TimeStampedEditableModel):
     def query(self):
         query = self.config_dict['query']
         if query:
-            return query['influxdb']
+            return query[timeseries_db.backend_name]
         return self._default_query
 
     @property
@@ -338,14 +289,10 @@ class AbstractChart(TimeStampedEditableModel):
 
     @property
     def _default_query(self):
-        q = "SELECT {field_name} FROM {key} WHERE time >= '{time}'"
+        q = default_chart_query[0]
         if self.metric.object_id:
-            q += " AND content_type = '{content_type}' AND object_id = '{object_id}'"
+            q += default_chart_query[1]
         return q
-
-    _fields_regex = re.compile(
-        r'(?P<group>\{fields\|(?P<func>\w+)(?:\|(?P<op>.*?))?\})', flags=re.IGNORECASE
-    )
 
     def get_query(
         self,
@@ -355,53 +302,36 @@ class AbstractChart(TimeStampedEditableModel):
         query=None,
         timezone=settings.TIME_ZONE,
     ):
-        m = self.metric
         query = query or self.query
+        params = self._get_query_params(time)
+        return timeseries_db.get_query(
+            self.type, params, time, self.GROUP_MAP, summary, fields, query, timezone
+        )
+
+    def get_top_fields(self, number):
+        """
+        Returns list of top ``number`` of fields (highest sum) of a
+        measurement in the specified time range (descending order).
+        """
+        q = self._default_query.replace('{field_name}', '{fields}')
+        params = self._get_query_params(self.DEFAULT_TIME)
+        return timeseries_db._get_top_fields(
+            query=q,
+            chart_type=self.type,
+            group_map=self.GROUP_MAP,
+            number=number,
+            params=params,
+            time=self.DEFAULT_TIME,
+        )
+
+    def _get_query_params(self, time):
+        m = self.metric
         params = dict(field_name=m.field_name, key=m.key, time=self._get_time(time))
         if m.object_id:
             params.update(
                 {'content_type': m.content_type_key, 'object_id': m.object_id}
             )
-        query = self._fields(fields, query)
-        query = query.format(**params)
-        query = self._group_by(query, time, strip=summary)
-        if summary:
-            query = '{0} LIMIT 1'.format(query)
-        return "{0} tz('{1}')".format(query, timezone)
-
-    def _fields(self, fields, query):
-        """
-        support substitution of {fields|<FUNCTION_NAME>|<OPERATION>}
-        with <FUNCTION_NAME>(field1) AS field1 <OPERATION>,
-             <FUNCTION_NAME>(field2) AS field2 <OPERATION>
-        """
-        matches = re.search(self._fields_regex, query)
-        if not matches and not fields:
-            return query
-        elif matches and not fields:
-            groups = matches.groupdict()
-            fields_key = groups.get('group')
-            fields = [self.metric.field_name]
-        if fields and matches:
-            groups = matches.groupdict()
-            function = groups['func']  # required
-            operation = groups.get('op')  # optional
-            fields = [self.__transform_field(f, function, operation) for f in fields]
-            fields_key = groups.get('group')
-        else:
-            fields_key = '{fields}'
-        if fields:
-            selected_fields = ', '.join(fields)
-        return query.replace(fields_key, selected_fields)
-
-    def __transform_field(self, field, function, operation=None):
-        if operation:
-            operation = ' {}'.format(operation)
-        else:
-            operation = ''
-        return '{0}("{1}"){3} AS {2}'.format(
-            function, field, field.replace('-', '_'), operation
-        )
+        return params
 
     def _get_time(self, time):
         if not isinstance(time, str):
@@ -418,51 +348,6 @@ class AbstractChart(TimeStampedEditableModel):
             time = str(now - timedelta(days=days))[0:19]
         return time
 
-    def _is_aggregate(self, q):
-        q = q.upper()
-        for word in self._AGGREGATE:
-            if any(['%s(' % word in q, '|%s}' % word in q, '|%s|' % word in q]):
-                return True
-        return False
-
-    _group_by_regex = re.compile(r'GROUP BY time\(\w+\)', flags=re.IGNORECASE)
-
-    def _group_by(self, query, time, strip=False):
-        if not self._is_aggregate(query):
-            return query
-        if not strip and not self.type == 'histogram':
-            value = self.GROUP_MAP[time]
-            group_by = 'GROUP BY time({0})'.format(value)
-        else:
-            # can be empty when getting summaries
-            group_by = ''
-        if 'GROUP BY' not in query.upper():
-            query = '{0} {1}'.format(query, group_by)
-        else:
-            query = re.sub(self._group_by_regex, group_by, query)
-        return query
-
-    def _get_top_fields(self, number, time=DEFAULT_TIME, timezone=settings.TIME_ZONE):
-        """
-        Returns list of top ``number`` of fields (highes sum) of a
-        measurement in the specified time range (descending order).
-        """
-        q = self._default_query.replace('{field_name}', '{fields}')
-        q = self.get_query(
-            query=q, summary=True, fields=['SUM(*)'], time=time, timezone=timezone
-        )
-        res = list(query(q, epoch='s').get_points())
-        if not res:
-            return []
-        res = res[0]
-        res = {key: value for key, value in res.items() if value is not None}
-        sorted_dict = OrderedDict(sorted(res.items(), key=operator.itemgetter(1)))
-        del sorted_dict['time']
-        keys = list(sorted_dict.keys())
-        keys.reverse()
-        top = keys[0:number]
-        return [item.replace('sum_', '') for item in top]
-
     def read(
         self,
         decimal_places=2,
@@ -476,7 +361,7 @@ class AbstractChart(TimeStampedEditableModel):
         try:
             query_kwargs = dict(time=time, timezone=timezone)
             if self.top_fields:
-                fields = self._get_top_fields(self.top_fields)
+                fields = self.get_top_fields(self.top_fields)
                 data_query = self.get_query(fields=fields, **query_kwargs)
                 summary_query = self.get_query(
                     fields=fields, summary=True, **query_kwargs
@@ -484,9 +369,9 @@ class AbstractChart(TimeStampedEditableModel):
             else:
                 data_query = self.get_query(**query_kwargs)
                 summary_query = self.get_query(summary=True, **query_kwargs)
-            points = list(query(data_query, epoch='s').get_points())
-            summary = list(query(summary_query, epoch='s').get_points())
-        except InfluxDBClientError as e:
+            points = timeseries_db.get_list_query(data_query)
+            summary = timeseries_db.get_list_query(summary_query)
+        except timeseries_db.client_error as e:
             logging.error(e, exc_info=True)
             raise e
         for point in points:
@@ -513,7 +398,7 @@ class AbstractChart(TimeStampedEditableModel):
             for key, value in summary[0].items():
                 if key == 'time':
                     continue
-                if not self._is_aggregate(self.query):
+                if not timeseries_db.validate_query(self.query):
                     value = None
                 elif value:
                     value = self._round(value, decimal_places)
@@ -522,7 +407,10 @@ class AbstractChart(TimeStampedEditableModel):
 
     def json(self, time=DEFAULT_TIME, **kwargs):
         try:
-            return json.dumps(self.read(time=time), **kwargs)
+            # unit needs to be passed for chart_inline
+            data = self.read(time=time)
+            data.update({'unit': self.unit})
+            return json.dumps(data, **kwargs)
         except KeyError:
             # TODO: this should be improved
             pass
@@ -584,7 +472,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
             # retrieves latest measurements up to the maximum
             # threshold in seconds allowed plus a small margin
             since = 'now() - {0}s'.format(int(self._SECONDS_MAX * 1.05))
-            points = self.metric.read(since=since, limit=None, order='time DESC')
+            points = self.metric.read(since=since, limit=None, order='-time')
             # loop on each measurement starting from the most recent
             for i, point in enumerate(points):
                 # skip the first point because it was just added before this

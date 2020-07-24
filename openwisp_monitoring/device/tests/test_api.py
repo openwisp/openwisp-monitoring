@@ -84,12 +84,12 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                 m = Metric.objects.get(
                     key=ifname, field_name=field_name, object_id=d.pk
                 )
-                points = m.read(limit=10, order='time DESC')
+                points = m.read(limit=10, order='-time')
                 self.assertEqual(len(points), 2)
                 expected = iface['statistics'][field_name] - points[1][m.field_name]
                 self.assertEqual(points[0][m.field_name], expected)
             m = Metric.objects.get(key=ifname, field_name='clients', object_id=d.pk)
-            points = m.read(limit=10, order='time DESC')
+            points = m.read(limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
     def test_200_traffic_counter_reset(self):
@@ -115,12 +115,12 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                 m = Metric.objects.get(
                     key=ifname, field_name=field_name, object_id=d.pk
                 )
-                points = m.read(limit=10, order='time DESC')
+                points = m.read(limit=10, order='-time')
                 self.assertEqual(len(points), 2)
                 expected = iface['statistics'][field_name]
                 self.assertEqual(points[0][m.field_name], expected)
             m = Metric.objects.get(key=ifname, field_name='clients', object_id=d.pk)
-            points = m.read(limit=10, order='time DESC')
+            points = m.read(limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
     def test_200_multiple_measurements(self):
@@ -133,14 +133,14 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         }
         # wlan0 rx_bytes
         m = Metric.objects.get(key='wlan0', field_name='rx_bytes', object_id=dd.pk)
-        points = m.read(limit=10, order='time DESC')
+        points = m.read(limit=10, order='-time')
         self.assertEqual(len(points), 4)
         expected = [700000000, 100000000, 399999676, 324]
         for i, point in enumerate(points):
             self.assertEqual(point['rx_bytes'], expected[i])
         # wlan0 tx_bytes
         m = Metric.objects.get(key='wlan0', field_name='tx_bytes', object_id=dd.pk)
-        points = m.read(limit=10, order='time DESC')
+        points = m.read(limit=10, order='-time')
         self.assertEqual(len(points), 4)
         expected = [300000000, 200000000, 99999855, 145]
         for i, point in enumerate(points):
@@ -153,14 +153,14 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(data['traces'][1][1][-1], 0.6)
         # wlan1 rx_bytes
         m = Metric.objects.get(key='wlan1', field_name='rx_bytes', object_id=dd.pk)
-        points = m.read(limit=10, order='time DESC')
+        points = m.read(limit=10, order='-time')
         self.assertEqual(len(points), 4)
         expected = [1000000000, 0, 1999997725, 2275]
         for i, point in enumerate(points):
             self.assertEqual(point['rx_bytes'], expected[i])
         # wlan1 tx_bytes
         m = Metric.objects.get(key='wlan1', field_name='tx_bytes', object_id=dd.pk)
-        points = m.read(limit=10, order='time DESC')
+        points = m.read(limit=10, order='-time')
         self.assertEqual(len(points), 4)
         expected = [500000000, 0, 999999174, 826]
         for i, point in enumerate(points):
@@ -268,6 +268,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self._create_multiple_measurements(create=False, count=2)
         m = self._create_object_metric(content_object=d, name='applications')
         self._create_chart(metric=m, configuration='histogram')
+        m.write(None, extra_values={'http2': 90, 'ssh': 100, 'udp': 80, 'spdy': 70})
         r = self.client.get('{0}&csv=1'.format(self._url(d.pk, d.key)))
         self.assertEqual(r.get('Content-Disposition'), 'attachment; filename=data.csv')
         self.assertEqual(r.get('Content-Type'), 'text/csv')
@@ -288,11 +289,47 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                 'disk_usage - Disk Usage',
             ],
         )
-        last_line = rows[-1].strip().split(',')
+        last_line_before_histogram = rows[-5].strip().split(',')
         self.assertEqual(
-            last_line,
-            [last_line[0], '1', '2', '0.4', '0.1', '2', '1', '9.73', '0', '8.27'],
+            last_line_before_histogram,
+            [
+                last_line_before_histogram[0],
+                '1',
+                '2',
+                '0.4',
+                '0.1',
+                '2',
+                '1',
+                '9.73',
+                '0',
+                '8.27',
+            ],
         )
+        self.assertEqual(rows[-4].strip(), '')
+        self.assertEqual(rows[-3].strip(), 'Histogram')
+        self.assertEqual(rows[-2].strip().split(','), ['ssh', '100'])
+        self.assertEqual(rows[-1].strip().split(','), ['http2', '90'])
+
+    def test_histogram_csv_none_value(self):
+        d = self._create_device(organization=self._create_org())
+        m = self._create_object_metric(content_object=d, name='applications')
+        mock = {
+            'traces': [('http2', [100]), ('ssh', [None])],
+            'x': ['2020-06-15 00:00'],
+            'summary': {'http2': 100, 'ssh': None},
+        }
+        c = self._create_chart(metric=m, configuration='histogram')
+        with patch(
+            'openwisp_monitoring.monitoring.base.models.AbstractChart.read',
+            return_value=mock,
+        ):
+            self.assertEqual(c.read(), mock)
+            r = self.client.get('{0}&csv=1'.format(self._url(d.pk, d.key)))
+        self.assertEqual(r.get('Content-Disposition'), 'attachment; filename=data.csv')
+        self.assertEqual(r.get('Content-Type'), 'text/csv')
+        rows = r.content.decode('utf8').strip().split('\n')
+        self.assertEqual(rows[-2].strip().split(','), ['http2', '100'])
+        self.assertEqual(rows[-1].strip().split(','), ['ssh', '0'])
 
     def test_get_device_metrics_400_bad_timezone(self):
         dd = self.create_test_adata(no_resources=True)
@@ -330,12 +367,12 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         d = self._create_device(organization=self._create_org())
         m = self._create_object_metric(name='test_metric', content_object=d)
         c = self._create_chart(metric=m, test_data=None)
+        c.configuration = 'invalid'
+        c.save()
         with redirect_stderr(StringIO()) as stderr:
-            c.configuration = 'invalid'
-            c.save()
-            r = self.client.get(self._url(d.pk.hex, d.key))
+            response = self.client.get(self._url(d.pk.hex, d.key))
         self.assertIn('InvalidChartConfigException', stderr.getvalue())
-        self.assertEqual(r.status_code, 200)
+        self.assertEqual(response.status_code, 200)
 
     def test_available_memory(self):
         o = self._create_org()
@@ -346,14 +383,14 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             del data['resources']['memory']['available']
             r = self._post_data(d.id, d.key, data)
             m = Metric.objects.get(key='memory')
-            metric_data = m.read(order='DESC', extra_fields='*')[0]
+            metric_data = m.read(order='-time', extra_fields='*')[0]
             self.assertAlmostEqual(metric_data['percent_used'], 0.09729, places=5)
             self.assertIsNone(metric_data.get('available_memory'))
             self.assertEqual(r.status_code, 200)
         with self.subTest('Test when available memory is less than free memory'):
             data['resources']['memory']['available'] = 2232664
             r = self._post_data(d.id, d.key, data)
-            metric_data = m.read(order='DESC', extra_fields='*')[0]
+            metric_data = m.read(order='-time', extra_fields='*')[0]
             self.assertAlmostEqual(metric_data['percent_used'], 0.09729, places=5)
             self.assertEqual(metric_data['available_memory'], 2232664)
             self.assertEqual(r.status_code, 200)
@@ -361,7 +398,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             data['resources']['memory']['available'] = 225567664
             r = self._post_data(d.id, d.key, data)
             m = Metric.objects.get(key='memory')
-            metric_data = m.read(order='DESC', extra_fields='*')[0]
+            metric_data = m.read(order='-time', extra_fields='*')[0]
             self.assertAlmostEqual(metric_data['percent_used'], 0.09301, places=5)
             self.assertEqual(metric_data['available_memory'], 225567664)
             self.assertEqual(r.status_code, 200)

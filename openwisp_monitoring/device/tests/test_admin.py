@@ -7,6 +7,7 @@ from . import DeviceMonitoringTestCase
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 DeviceData = load_model('device_monitoring', 'DeviceData')
+User = get_user_model()
 
 
 class TestAdmin(DeviceMonitoringTestCase):
@@ -15,7 +16,6 @@ class TestAdmin(DeviceMonitoringTestCase):
     """
 
     def _login_admin(self):
-        User = get_user_model()
         u = User.objects.create_superuser('admin', 'admin', 'test@test.com')
         self.client.force_login(u)
 

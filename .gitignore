@@ -47,6 +47,9 @@ coverage.xml
 # Django stuff:
 *.log
 
+# celery
+tests/celerybeat*
+
 # Sphinx documentation
 docs/_build/
 
@@ -55,6 +58,7 @@ target/
 
 # editors
 *.komodoproject
+.vscode
 
 # other
 *.DS_Store*
@@ -63,9 +67,5 @@ target/
 local_settings.py
 *.db
 *.tar.gz
-
-# celery
-tests/celerybeat*
-
-# editor
-.vscode
+Pipfile
+Pipfile.lock

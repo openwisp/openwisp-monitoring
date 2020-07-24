@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.test import TestCase
@@ -9,7 +10,6 @@ from swapper import load_model
 from openwisp_utils.tests import catch_signal
 
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
-from ..utils import query, write
 from . import TestMonitoringMixin
 
 start_time = timezone.now()
@@ -84,7 +84,7 @@ class TestModels(TestMonitoringMixin, TestCase):
 
     def test_get_or_create_renamed_object(self):
         obj = self._create_user()
-        ct = ContentType.objects.get(model='user', app_label='openwisp_users')
+        ct = ContentType.objects.get_for_model(get_user_model())
         m, created = Metric._get_or_create(
             name='logins',
             key='users',
@@ -106,79 +106,13 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertEqual(m2.name, m.name)
         self.assertFalse(created)
 
-    def test_write(self):
-        write('test_write', dict(value=2), database=self.TEST_DB)
-        measurement = list(query('select * from test_write').get_points())[0]
-        self.assertEqual(measurement['value'], 2)
-
-    def test_general_write(self):
-        m = self._create_general_metric(name='Sync test')
-        m.write(1)
-        measurement = list(query('select * from sync_test').get_points())[0]
-        self.assertEqual(measurement['value'], 1)
-
-    def test_object_write(self):
-        om = self._create_object_metric()
-        om.write(3)
-        content_type = '.'.join(om.content_type.natural_key())
-        q = (
-            "select * from test_metric WHERE object_id = '{0}'"
-            " AND content_type = '{1}'".format(om.object_id, content_type)
-        )
-        measurement = list(query(q).get_points())[0]
-        self.assertEqual(measurement['value'], 3)
-
-    def test_general_same_key_different_fields(self):
-        down = self._create_general_metric(
-            name='traffic (download)', key='traffic', field_name='download'
-        )
-        down.write(200)
-        up = self._create_general_metric(
-            name='traffic (upload)', key='traffic', field_name='upload'
-        )
-        up.write(100)
-        measurement = list(query('select download from traffic').get_points())[0]
-        self.assertEqual(measurement['download'], 200)
-        measurement = list(query('select upload from traffic').get_points())[0]
-        self.assertEqual(measurement['upload'], 100)
-
-    def test_object_same_key_different_fields(self):
-        user = self._create_user()
-        user_down = self._create_object_metric(
-            name='traffic (download)',
-            key='traffic',
-            field_name='download',
-            content_object=user,
-        )
-        user_down.write(200)
-        user_up = self._create_object_metric(
-            name='traffic (upload)',
-            key='traffic',
-            field_name='upload',
-            content_object=user,
-        )
-        user_up.write(100)
-        content_type = '.'.join(user_down.content_type.natural_key())
-        q = (
-            "select download from traffic WHERE object_id = '{0}'"
-            " AND content_type = '{1}'".format(user_down.object_id, content_type)
-        )
-        measurement = list(query(q).get_points())[0]
-        self.assertEqual(measurement['download'], 200)
-        q = (
-            "select upload from traffic WHERE object_id = '{0}'"
-            " AND content_type = '{1}'".format(user_up.object_id, content_type)
-        )
-        measurement = list(query(q).get_points())[0]
-        self.assertEqual(measurement['upload'], 100)
-
     def test_read_general_metric(self):
         m = self._create_general_metric(name='load')
         m.write(50, check=False)
         self.assertEqual(m.read()[0][m.field_name], 50)
         m.write(1, check=False)
         self.assertEqual(m.read()[0][m.field_name], 50)
-        self.assertEqual(m.read(order='time DESC')[0][m.field_name], 1)
+        self.assertEqual(m.read(order='-time')[0][m.field_name], 1)
 
     def test_read_object_metric(self):
         om = self._create_object_metric(name='load')
@@ -251,6 +185,7 @@ class TestModels(TestMonitoringMixin, TestCase):
             m.check_threshold(91)
         handler.assert_called_once_with(
             alert_settings=alert_s,
+            first_time=False,
             metric=m,
             target=None,
             sender=Metric,
@@ -266,6 +201,7 @@ class TestModels(TestMonitoringMixin, TestCase):
             om.check_threshold(91)
         handler.assert_called_once_with(
             alert_settings=alert_s,
+            first_time=False,
             metric=om,
             target=om.content_object,
             sender=Metric,

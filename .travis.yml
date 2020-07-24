@@ -1,6 +1,5 @@
 language: python
 dist: bionic
-
 cache: pip
 
 python:
@@ -30,6 +29,7 @@ services:
 branches:
   only:
     - master
+    - dev
 
 before_install:
   - docker run -d --name influxdb -e INFLUXDB_DB=openwisp2 -p 8086:8086 influxdb:alpine
@@ -39,14 +39,12 @@ before_install:
 
 install:
   - pip install -e .
-  # To be removed after new release of openwisp-controller
-  - pip install --upgrade https://github.com/openwisp/openwisp-controller/tarball/master
-  # Until release of django-netjsonconfig 0.12.0
-  - pip install --upgrade https://github.com/openwisp/django-netjsonconfig/tarball/master
-  # temporary: remove when openwisp-notifications is released
+  # TODO: removed when openwisp-controller 0.8.0 is released
+  - pip install -U https://github.com/openwisp/openwisp-controller/tarball/master
+  # TODO: removed when openwisp-users 0.3.0 is released
+  - pip install -U https://github.com/openwisp/openwisp-users/tarball/master
+  # TODO: remove when openwisp-notifications 0.1 is released
   - pip install -U https://github.com/openwisp/openwisp-notifications/tarball/master
-  # To be removed after new release of openwisp-utils
-  - pip install --upgrade https://github.com/openwisp/openwisp-utils/tarball/master
 
 script:
   - ./run-qa-checks

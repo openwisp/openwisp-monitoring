@@ -98,9 +98,15 @@ Follow the setup instructions of `openwisp-controller
     ]
 
     # Make sure you change them in production
-    INFLUXDB_USER = 'openwisp'
-    INFLUXDB_PASSWORD = 'openwisp'
-    INFLUXDB_DATABASE = 'openwisp2'
+    # You can select one of the backends located in openwisp_monitoring.db.backends
+    TIMESERIES_DATABASE = {
+        'BACKEND': 'openwisp_monitoring.db.backends.influxdb',
+        'USER': 'openwisp',
+        'PASSWORD': 'openwisp',
+        'NAME': 'openwisp2',
+        'HOST': 'localhost',
+        'PORT': '8086',
+    }
 
 ``urls.py``:
 
@@ -395,6 +401,18 @@ Default Alerts / Notifications
 |                               | outdated, or device is not reachable).                           |
 +-------------------------------+------------------------------------------------------------------+
 
+``Available Checks``
+--------------------
+
+``Ping``
+~~~~~~~~
+
+This check returns information on device ``uptime`` and ``RTT (Round trip time)``.
+The Charts ``uptime``, ``packet loss`` and ``rtt`` are created. The ``fping``
+command is used to collect these metrics.
+You may choose to disable auto creation of this check by setting
+`OPENWISP_MONITORING_AUTO_PING <#OPENWISP_MONITORING_AUTO_PING>`_ to ``False``.
+
 Settings
 --------
 
@@ -504,6 +522,13 @@ or to send monitoring metrics).
 
 This feature is enabled by default.
 
+If you use OpenVPN as the management VPN, you may want to check out a similar
+integration built in **openwisp-network-topology**: when the status of an OpenVPN link
+changes (detected by monitoring the status information of OpenVPN), the
+network topology module will trigger the monitoring checks.
+For more information see:
+`Network Topology Device Integration <https://github.com/openwisp/openwisp-network-topology#integration-with-openwisp-controller-and-openwisp-monitoring>`_
+
 ``OPENWISP_MONITORING_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -608,6 +633,25 @@ view (only when using HTTP POST).
 
 The signal is emitted just before a successful response is returned,
 it is not sent if the response was not successful.
+
+``threshold_crossed``
+~~~~~~~~~~~~~~~~~~~~~
+
+**Path**: ``openwisp_monitoring.monitoring.signals.threshold_crossed``
+
+**Arguments**:
+
+- ``sender``: Metric class
+- ``metric``: ``Metric`` object whose threshold defined in related alert settings was crossed
+- ``alert_settings``: ``AlertSettings`` related to the ``Metric``
+- ``target``: related ``Device`` object
+- ``first_time``: it will be set to true when the metric is written for the first time. It shall be set to false afterwards.
+
+``first_time`` parameter can be used to avoid initiating unneeded actions.
+For example, sending recovery notifications.
+
+This signal is emitted when the threshold value of a ``Metric`` defined in
+alert settings is crossed.
 
 Installing for development
 --------------------------
@@ -915,7 +959,7 @@ For ``check`` app,
     from openwisp_monitoring.check.admin import CheckAdmin as BaseCheckAdmin
     from swapper import load_model
 
-    Check = load_model('Check')
+    Check = load_model('check', 'Check')
 
     admin.site.unregister(Check)
 
@@ -930,7 +974,9 @@ For ``device_monitoring`` app,
     from django.contrib import admin
 
     from openwisp_monitoring.device_monitoring.admin import DeviceAdmin as BaseDeviceAdmin
-    from openwisp_controller.config.models import Device
+    from swapper import load_model
+
+    Device = load_model('config', 'Device')
 
     admin.site.unregister(Device)
 

@@ -2,15 +2,14 @@ from collections import OrderedDict
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
-from django.db.models.signals import post_save
+from django.db import models, transaction
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from jsonfield import JSONField
 from openwisp_monitoring.check import settings as app_settings
+from openwisp_monitoring.check.tasks import auto_create_ping
 
-from openwisp_controller.config.models import Device
 from openwisp_utils.base import TimeStampedEditableModel
 
 
@@ -75,27 +74,20 @@ class AbstractCheck(TimeStampedEditableModel):
         return self.check_instance.check(store=True)
 
 
-if app_settings.AUTO_PING:
-    from django.db import transaction
-    from django.dispatch import receiver
-    from openwisp_monitoring.check.tasks import auto_create_ping
-
-    @receiver(post_save, sender=Device, dispatch_uid='auto_ping')
-    def auto_ping_receiver(sender, instance, created, **kwargs):
-        """
-        Implements OPENWISP_MONITORING_AUTO_PING
-        The creation step is executed in the backround
-        """
-        # we need to skip this otherwise this task will be executed
-        # every time the configuration is requested via checksum
-        if not created:
-            return
-        with transaction.atomic():
-            transaction.on_commit(
-                lambda: auto_create_ping.delay(
-                    model=sender.__name__.lower(),
-                    app_label=sender._meta.app_label,
-                    object_id=str(instance.pk),
-                    created=created,
-                )
+def auto_ping_receiver(sender, instance, created, **kwargs):
+    """
+    Implements OPENWISP_MONITORING_AUTO_PING
+    The creation step is executed in the background
+    """
+    # we need to skip this otherwise this task will be executed
+    # every time the configuration is requested via checksum
+    if not created:
+        return
+    with transaction.atomic():
+        transaction.on_commit(
+            lambda: auto_create_ping.delay(
+                model=sender.__name__.lower(),
+                app_label=sender._meta.app_label,
+                object_id=str(instance.pk),
             )
+        )
