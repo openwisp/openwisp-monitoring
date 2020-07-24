@@ -10,18 +10,25 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
+from nested_admin.nested import (
+    NestedGenericStackedInline,
+    NestedModelAdmin,
+    NestedStackedInline,
+)
 from swapper import load_model
 
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
-from openwisp_utils.admin import TimeReadonlyAdminMixin
 
 from ..monitoring.admin import MetricAdmin
 from . import settings as app_settings
 
 DeviceData = load_model('device_monitoring', 'DeviceData')
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+AlertSettings = load_model('monitoring', 'AlertSettings')
 Chart = load_model('monitoring', 'Chart')
 Device = load_model('config', 'Device')
+Metric = load_model('monitoring', 'Metric')
+Notification = load_model('openwisp_notifications', 'Notification')
 Check = load_model('check', 'Check')
 
 
@@ -39,22 +46,53 @@ class CheckInlineFormSet(BaseGenericInlineFormSet):
         super().full_clean()
 
 
-class CheckInline(TimeReadonlyAdminMixin, GenericStackedInline):
+class CheckInline(GenericStackedInline):
     model = Check
     extra = 0
     formset = CheckInlineFormSet
     fieldsets = [
-        (
-            None,
-            {'fields': ('name', 'check', 'active', 'params', 'created', 'modified',)},
-        ),
+        (None, {'fields': ('name', 'check', 'active', 'params',)},),
     ]
     formfield_overrides = {
         TextField: {'widget': Textarea(attrs={'rows': 3, 'cols': 40})},
     }
 
 
-class DeviceAdmin(BaseDeviceAdmin):
+class AlertSettingsInline(NestedStackedInline):
+    model = AlertSettings
+    extra = 0
+    max_num = 0
+    exclude = ['created', 'modified']
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class MetricInline(NestedGenericStackedInline):
+    model = Metric
+    extra = 0
+    inlines = [AlertSettingsInline]
+    readonly_fields = ['name']
+    fields = ['name']
+    # Explicitly changed name from Metrics to Alert Settings
+    verbose_name = _('Alert Settings')
+    verbose_name_plural = _('Alert Settings')
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.filter(alertsettings__isnull=False)
+
+
+class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
     change_form_template = 'admin/config/device/change_form.html'
 
     def get_extra_context(self, pk=None):
@@ -92,9 +130,26 @@ class DeviceAdmin(BaseDeviceAdmin):
         return super().get_form(request, obj, **kwargs)
 
 
-DeviceAdmin.inlines.append(CheckInline)
+def device_admin_get_inlines(self, request, obj):
+    # copy the list to avoid modifying the original data structure
+    inlines = list(super(DeviceAdmin, self).get_inlines(request, obj))
+    if not obj or obj._state.adding:
+        inlines.remove(MetricInline)
+        return inlines
+    return inlines
 
-DeviceAdmin.Media.js += MetricAdmin.Media.js + ('monitoring/js/percircle.js',)
+
+DeviceAdmin.inlines += [CheckInline, MetricInline]
+# This attribute needs to be set for nested inline
+for i, inline in enumerate(DeviceAdmin.inlines):
+    DeviceAdmin.inlines[i].sortable_options = dict()
+
+DeviceAdmin.get_inlines = device_admin_get_inlines
+
+DeviceAdmin.Media.js += MetricAdmin.Media.js + (
+    'monitoring/js/percircle.js',
+    'monitoring/js/alertsettings_inline.js',
+)
 DeviceAdmin.Media.css['all'] += (
     'monitoring/css/percircle.css',
 ) + MetricAdmin.Media.css['all']

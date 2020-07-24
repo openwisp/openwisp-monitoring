@@ -380,3 +380,15 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
                 n.email_subject, f'[example.com] RECOVERY: {n.actor.name} {n.target}',
             )
             self.assertEqual(n.message, exp_message.format(n=n))
+
+    def test_alerts_disabled(self):
+        self._create_admin()
+        d = self._create_device(organization=self._get_org())
+        m = self._create_general_metric(name='load', content_object=d)
+        self._create_alert_settings(
+            metric=m, operator='>', value=90, seconds=60, is_active=False
+        )
+        m.write(99, time=ten_minutes_ago)
+        self.assertFalse(m.is_healthy)
+        self.assertEqual(d.monitoring.status, 'problem')
+        self.assertEqual(Notification.objects.count(), 0)

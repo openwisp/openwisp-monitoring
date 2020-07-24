@@ -39,14 +39,3 @@ class MetricAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
     class Media:
         css = {'all': ('monitoring/css/monitoring.css',)}
         js = ('monitoring/js/plotly-cartesian.min.js', 'monitoring/js/chart.js')
-
-
-@admin.register(AlertSettings)
-class AlertSettingsAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
-    list_display = ['metric', 'created', 'modified']
-    search_fields = ['name']
-    save_on_top = True
-
-    class Meta:
-        verbose_name = _('Alert Settings')
-        verbose_name_plural = _('Alert Settings')

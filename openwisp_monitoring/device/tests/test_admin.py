@@ -38,6 +38,7 @@ class TestAdmin(DeviceMonitoringTestCase):
         self.assertContains(r, 'Storage')
         self.assertContains(r, 'CPU')
         self.assertContains(r, 'RAM status')
+        self.assertContains(r, 'AlertSettings')
         self.assertContains(r, check.name)
         self.assertContains(r, check.params)
 
@@ -47,6 +48,17 @@ class TestAdmin(DeviceMonitoringTestCase):
         self._login_admin()
         r = self.client.get(url)
         self.assertNotContains(r, '<h2>Status</h2>')
+        self.assertNotContains(r, 'AlertSettings')
+
+    def test_device_add_view(self):
+        self._login_admin()
+        url = reverse('admin:config_device_add')
+        r = self.client.get(url)
+        self.assertNotContains(r, 'AlertSettings')
+        self.assertContains(r, '<h2>Configuration</h2>')
+        self.assertContains(r, '<h2>Map</h2>')
+        self.assertContains(r, '<h2>Credentials</h2>')
+        self.assertContains(r, '<h2>Checks</h2>')
 
     def test_remove_invalid_interface(self):
         d = self._create_device(organization=self._create_org())

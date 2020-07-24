@@ -6,3 +6,4 @@ djangorestframework>=3.11,<3.12
 mac-vendor-lookup~=0.1
 swapper~=1.1
 django-cache-memoize~=0.1
+django-nested-admin~=3.3.2
