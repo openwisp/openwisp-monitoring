@@ -7,7 +7,7 @@ from ..metrics import get_metric_configuration_choices
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('monitoring', '0012_rename_graph_chart'),
+        ('monitoring', '0015_delete_models'),
     ]
 
     operations = [

@@ -51,7 +51,7 @@ def fill_configuration(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('monitoring', '0013_metric_configuration'),
+        ('monitoring', '0016_metric_configuration'),
     ]
 
     operations = [

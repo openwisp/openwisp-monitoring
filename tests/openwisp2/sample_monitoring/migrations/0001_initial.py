@@ -9,6 +9,7 @@ import uuid
 import swapper
 
 from openwisp_monitoring.monitoring.charts import CHART_CONFIGURATION_CHOICES
+from openwisp_monitoring.monitoring.metrics import get_metric_configuration_choices
 
 
 class Migration(migrations.Migration):
@@ -49,7 +50,14 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ('name', models.CharField(max_length=64)),
-                ('description', models.TextField(blank=True)),
+                (
+                    'configuration',
+                    models.CharField(
+                        choices=get_metric_configuration_choices(),
+                        max_length=16,
+                        null=True,
+                    ),
+                ),
                 (
                     'key',
                     models.SlugField(
