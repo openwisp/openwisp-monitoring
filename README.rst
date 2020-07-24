@@ -11,10 +11,10 @@ openwisp-monitoring
 
 OpenWISP 2 monitoring module (Work in progress).
 
-------------
-
 .. figure:: https://drive.google.com/uc?export=view&id=1BgxmXEkdEgCWlWASALZB2a3WeZad0wXw
   :align: center
+
+------------
 
 .. contents:: **Table of Contents**:
    :backlinks: none
@@ -25,17 +25,18 @@ OpenWISP 2 monitoring module (Work in progress).
 Available Features
 ------------------
 
-* Collects and displays device status information like `uptime, RAM status, CPU load averages,
-  Interface addresses, WiFi interface status and associated clients, Neighbors information, DHCP Leases, Disk/Flash status <https://github.com/openwisp/openwisp-monitoring/master/docs/device_status.png>`_
+* Collects and displays `device status <#device-status>`_ information like Uptime, RAM status, CPU load averages,
+  Interface addresses, WiFi interface status and associated clients, Neighbors information,
+  DHCP Leases, Disk/Flash status
 * Collection of monitoring information in a timeseries database (currently only influxdb is supported)
 * Monitoring charts for uptime, packet loss, round trip time (latency), associated wifi clients, interface traffic,
   RAM usage, CPU load, flash/disk usage
 * Charts can be viewed at resolutions of 1 day, 3 days, a week, a month and a year
+* Configurable alerts
 * CSV Export of monitoring data
-* Possibility to define custom `Charts <#openwisp_monitoring_charts>`_
+* Possibility to `Configure additional charts <#openwisp_monitoring_charts>`_
 * Extensible active check system: it's possible to write additional checks that
   are run periodically using python classes
-* Configurable `alerts and web notifications <https://github.com/openwisp/openwisp-monitoring/master/docs/notifications.png>`_
 * API to retrieve the chart metrics and status information of each device
 
 Install Dependencies
@@ -220,6 +221,179 @@ has a value which is not in the expected range
 
 Example: ping is by default a critical metric which is expected to be always 1
 (reachable).
+
+Default Metrics
+---------------
+
+Device Status
+~~~~~~~~~~~~~
+
+This metric stores the status of the device for viewing purposes.
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/device-status-1.png
+  :align: center
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/device-status-2.png
+  :align: center
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/device-status-3.png
+  :align: center
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/device-status-4.png
+  :align: center
+
+Ping
+~~~~
+
++--------------------+----------------------------------------------------------------+
+| **measurement**:   | ``ping``                                                       |
++--------------------+----------------------------------------------------------------+
+| **types**:         | ``int`` (reachable and loss), ``float`` (rtt)                  |
++--------------------+----------------------------------------------------------------+
+| **fields**:        | ``reachable``, ``loss``, ``rtt_min``, ``rtt_max``, ``rtt_avg`` |
++--------------------+----------------------------------------------------------------+
+| **configuration**: | ``ping``                                                       |
++--------------------+----------------------------------------------------------------+
+| **charts**:        | ``uptime``, ``packet_loss``, ``rtt``                           |
++--------------------+----------------------------------------------------------------+
+
+**Uptime**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/uptime.png
+  :align: center
+
+**Packet loss**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/packet-loss.png
+  :align: center
+
+**Round Trip Time**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/rtt.png
+  :align: center
+
+``Traffic rx bytes``
+~~~~~~~~~~~~~~~~~~~~
+
++--------------------+-------------------------------+
+| **measurement**:   | ``<interface_name> rx_bytes`` |
++--------------------+-------------------------------+
+| **type**:          | ``int``                       |
++--------------------+-------------------------------+
+| **fields**:        | ``rx_bytes``                  |
++--------------------+-------------------------------+
+| **configuration**: | ``traffic_rx_bytes``          |
++--------------------+-------------------------------+
+| **charts**:        | ``traffic``                   |
++--------------------+-------------------------------+
+
+``Traffic tx bytes``
+~~~~~~~~~~~~~~~~~~~~
+
++--------------------+-------------------------------+
+| **measurement**:   | ``<interface_name> tx_bytes`` |
++--------------------+-------------------------------+
+| **type**:          | ``int``                       |
++--------------------+-------------------------------+
+| **fields**:        | ``tx_bytes``                  |
++--------------------+-------------------------------+
+| **configuration**: | ``traffic_tx_bytes``          |
++--------------------+-------------------------------+
+| **charts**:        | ``traffic``                   |
++--------------------+-------------------------------+
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/traffic.png
+  :align: center
+
+``WiFI Clients``
+~~~~~~~~~~~~~~~~
+
++--------------------+--------------------------+
+| **measurement**:   | ``<interface_name>``     |
++--------------------+--------------------------+
+| **type**:          | ``int``                  |
++--------------------+--------------------------+
+| **fields**:        | ``clients``              |
++--------------------+--------------------------+
+| **configuration**: | ``clients``              |
++--------------------+--------------------------+
+| **charts**:        | ``wifi_clients``         |
++--------------------+--------------------------+
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/wifi-clients.png
+  :align: center
+
+``Memory Usage``
+~~~~~~~~~~~~~~~~
+
++--------------------+--------------------------------------------------------------------------------------------------------------------------------------+
+| **measurement**:   | ``<memory>``                                                                                                                         |
++--------------------+--------------------------------------------------------------------------------------------------------------------------------------+
+| **type**:          | ``float``                                                                                                                            |
++--------------------+--------------------------------------------------------------------------------------------------------------------------------------+
+| **fields**:        | ``percent_used``, ``free_memory``, ``total_memory``, ``buffered_memory``, ``shared_memory``, ``cached_memory``, ``available_memory`` |
++--------------------+--------------------------------------------------------------------------------------------------------------------------------------+
+| **configuration**: | ``memory``                                                                                                                           |
++--------------------+--------------------------------------------------------------------------------------------------------------------------------------+
+| **charts**:        | ``memory``                                                                                                                           |
++--------------------+--------------------------------------------------------------------------------------------------------------------------------------+
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/memory.png
+  :align: center
+
+``CPU Load``
+~~~~~~~~~~~~
+
++--------------------+----------------------------------------------------+
+| **measurement**:   | ``load``                                           |
++--------------------+----------------------------------------------------+
+| **type**:          | ``float``                                          |
++--------------------+----------------------------------------------------+
+| **fields**:        | ``cpu_usage``, ``load_1``, ``load_5``, ``load_15`` |
++--------------------+----------------------------------------------------+
+| **configuration**: | ``load``                                           |
++--------------------+----------------------------------------------------+
+| **charts**:        | ``load``                                           |
++--------------------+----------------------------------------------------+
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/cpu-load.png
+  :align: center
+
+``Disk Usage``
+~~~~~~~~~~~~~~
+
++--------------------+-------------------+
+| **measurement**:   | ``disk``          |
++--------------------+-------------------+
+| **type**:          | ``float``         |
++--------------------+-------------------+
+| **fields**:        | ``used_disk``     |
++--------------------+-------------------+
+| **configuration**: | ``disk``          |
++--------------------+-------------------+
+| **charts**:        | ``disk``          |
++--------------------+-------------------+
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/disk-usage.png
+  :align: center
+
+Default Alerts / Notifications
+------------------------------
+
++-------------------------------+------------------------------------------------------------------+
+| Notification Type             | Use                                                              |
++-------------------------------+------------------------------------------------------------------+
+| ``threshold_crossed``         | Fires when a metric crosses the boundary defined in the          |
+|                               | threshold value of the alert settings.                           |
++-------------------------------+------------------------------------------------------------------+
+| ``threshold_recovery``        | Fires when a metric goes back within the expected range.         |
++-------------------------------+------------------------------------------------------------------+
+| ``connection_is_working``     | Fires when the connection to a device is working.                |
++-------------------------------+------------------------------------------------------------------+
+| ``connection_is_not_working`` | Fires when the connection (eg: SSH) to a device stops working    |
+|                               | (eg: credentials are outdated, management IP address is          |
+|                               | outdated, or device is not reachable).                           |
++-------------------------------+------------------------------------------------------------------+
 
 Settings
 --------
@@ -434,150 +608,6 @@ view (only when using HTTP POST).
 
 The signal is emitted just before a successful response is returned,
 it is not sent if the response was not successful.
-
-Default Alerts / Notifications
-------------------------------
-
-+-------------------------------+------------------------------------------------------------------+
-| Notification Type             | Use                                                              |
-+-------------------------------+------------------------------------------------------------------+
-| ``threshold_crossed``         | Fires when a metric crosses the boundary defined in the          |
-|                               | threshold value of the alert settings.                           |
-+-------------------------------+------------------------------------------------------------------+
-| ``threshold_recovery``        | Fires when a metric goes back within the expected range.         |
-+-------------------------------+------------------------------------------------------------------+
-| ``connection_is_working``     | Fires when the connection to a device is working.                |
-+-------------------------------+------------------------------------------------------------------+
-| ``connection_is_not_working`` | Fires when the connection (eg: SSH) to a device stops working    |
-|                               | (eg: credentials are outdated, management IP address is          |
-|                               | outdated, or device is not reachable).                           |
-+-------------------------------+------------------------------------------------------------------+
-
-Default Metrics
----------------
-
-``Ping``
-~~~~~~~~
-
-+--------------------+----------------------------------------------------------------+
-|  **measurement**:  |                           ``ping``                             |
-+--------------------+----------------------------------------------------------------+
-|  **value type**:   |          ``int`` (reachable / loss), ``float`` (rtt)           |
-+--------------------+----------------------------------------------------------------+
-|    **fields**:     | ``reachable``, ``loss``, ``rtt_min``, ``rtt_max``, ``rtt_avg`` |
-+--------------------+----------------------------------------------------------------+
-| **configuration**: |                           ``ping``                             |
-+--------------------+----------------------------------------------------------------+
-|    **charts**:     |             ``uptime``, ``packet_loss``, ``rtt``               |
-+--------------------+----------------------------------------------------------------+
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/master/docs/uptime.png
-  :align: center
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/master/docs/downtime.png
-  :align: center
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/master/docs/rtt.png
-  :align: center
-
-``Traffic rx bytes``
-~~~~~~~~~~~~~~~~~~~~
-
-+--------------------+-------------------------------------------------+
-|  **measurement**:  |        ``<interface_name> rx_bytes``            |
-+--------------------+-------------------------------------------------+
-|  **value type**:   |                    ``int``                      |
-+--------------------+-------------------------------------------------+
-|    **fields**:     |                 ``rx_bytes``                    |
-+--------------------+-------------------------------------------------+
-| **configuration**: |              ``traffic_rx_bytes``               |
-+--------------------+-------------------------------------------------+
-|    **charts**:     |                  ``traffic``                    |
-+--------------------+-------------------------------------------------+
-
-``Traffic tx bytes``
-~~~~~~~~~~~~~~~~~~~~
-
-+--------------------+-------------------------------------------------+
-|  **measurement**:  |        ``<interface_name> tx_bytes``            |
-+--------------------+-------------------------------------------------+
-|  **value type**:   |                    ``int``                      |
-+--------------------+-------------------------------------------------+
-|    **fields**:     |                 ``tx_bytes``                    |
-+--------------------+-------------------------------------------------+
-| **configuration**: |              ``traffic_tx_bytes``               |
-+--------------------+-------------------------------------------------+
-|    **charts**:     |                  ``traffic``                    |
-+--------------------+-------------------------------------------------+
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/master/docs/traffic.png
-  :align: center
-
-``WiFI Clients``
-~~~~~~~~~~~~~~~~
-
-+--------------------+-------------------------------------------------+
-|  **measurement**:  |             ``<interface_name>``                |
-+--------------------+-------------------------------------------------+
-|  **value type**:   |                   ``int``                       |
-+--------------------+-------------------------------------------------+
-|    **fields**:     |                  ``clients``                    |
-+--------------------+-------------------------------------------------+
-| **configuration**: |                  ``clients``                    |
-+--------------------+-------------------------------------------------+
-|    **charts**:     |                ``wifi_clients``                 |
-+--------------------+-------------------------------------------------+
-
-``Memory Usage``
-~~~~~~~~~~~~~~~~
-
-+--------------------+--------------------------------------------------------------------------------------------------------------------------------------+
-|  **measurement**:  |                                                            ``<memory>``                                                              |
-+--------------------+--------------------------------------------------------------------------------------------------------------------------------------+
-|  **value type**:   |                                                               ``int``                                                                |
-+--------------------+--------------------------------------------------------------------------------------------------------------------------------------+
-|    **fields**:     | ``percent_used``, ``free_memory``, ``total_memory``, ``buffered_memory``, ``shared_memory``, ``cached_memory``, ``available_memory`` |
-+--------------------+--------------------------------------------------------------------------------------------------------------------------------------+
-| **configuration**: |                                                             ``memory``                                                               |
-+--------------------+--------------------------------------------------------------------------------------------------------------------------------------+
-|    **charts**:     |                                                             ``memory``                                                               |
-+--------------------+--------------------------------------------------------------------------------------------------------------------------------------+
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/master/docs/memory.png
-  :align: center
-
-``CPU Load``
-~~~~~~~~~~~~
-
-+--------------------+----------------------------------------------------+
-|  **measurement**:  |                     ``load``                       |
-+--------------------+----------------------------------------------------+
-|  **value type**:   |                     ``float``                      |
-+--------------------+----------------------------------------------------+
-|    **fields**:     | ``cpu_usage``, ``load_1``, ``load_5``, ``load_15`` |
-+--------------------+----------------------------------------------------+
-| **configuration**: |                     ``load``                       |
-+--------------------+----------------------------------------------------+
-|    **charts**:     |                     ``load``                       |
-+--------------------+----------------------------------------------------+
-
-``Disk Usage``
-~~~~~~~~~~~~~~
-
-+--------------------+-------------------------------------------------+
-|  **measurement**:  |                   ``disk``                      |
-+--------------------+-------------------------------------------------+
-|  **value type**:   |                   ``float``                     |
-+--------------------+-------------------------------------------------+
-|    **fields**:     |                 ``used_disk``                   |
-+--------------------+-------------------------------------------------+
-| **configuration**: |                   ``disk``                      |
-+--------------------+-------------------------------------------------+
-|    **charts**:     |                   ``disk``                      |
-+--------------------+-------------------------------------------------+
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/master/docs/disk_usage.png
-  :align: center
 
 Installing for development
 --------------------------
