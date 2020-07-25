@@ -197,3 +197,7 @@ td.field-health_status,
 .wifi-clients th.wps{
     cursor: default;
 }
+
+#monitoring-metric-content_type-object_id-group .inline-related h3 {
+  padding: 10px 20px;
+}

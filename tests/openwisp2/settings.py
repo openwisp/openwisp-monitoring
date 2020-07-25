@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     'sortedm2m',
     'reversion',
     'leaflet',
+    'nested_admin',
     # rest framework
     'rest_framework',
     'rest_framework_gis',

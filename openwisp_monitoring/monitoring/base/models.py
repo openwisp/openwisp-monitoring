@@ -183,7 +183,8 @@ class AbstractMetric(TimeStampedEditableModel):
         # First metric write and within threshold, do not raise alert
         if first_time and self.is_healthy:
             return
-        self._notify_users(notification_type, alert_settings)
+        if alert_settings.is_active:
+            self._notify_users(notification_type, alert_settings)
 
     def write(self, value, time=None, database=None, check=True, extra_values=None):
         """ write timeseries data """
@@ -464,6 +465,14 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         '({1} days)'.format(_SECONDS_MAX, int(_SECONDS_MAX / 60 / 60 / 24))
     )
     _ALERTSETTINGS_OPERATORS = (('<', _('less than')), ('>', _('greater than')))
+    is_active = models.BooleanField(
+        _('Alerts enabled'),
+        default=True,
+        help_text=_(
+            'whether alerts are enabled for this metric, uncheck to disable '
+            'the alert without deleting the alert settings'
+        ),
+    )
     metric = models.OneToOneField(
         get_model_name('monitoring', 'Metric'), on_delete=models.CASCADE
     )
