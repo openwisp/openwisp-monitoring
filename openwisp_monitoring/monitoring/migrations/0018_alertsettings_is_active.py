@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
             name='is_active',
             field=models.BooleanField(
                 default=True,
-                help_text='whether alerts are enabled for this metric, uncheck to disable the alert without deleting the alert settings',
+                help_text='whether alerts are enabled for this metric',
                 verbose_name='Alerts enabled',
             ),
         )

@@ -64,6 +64,9 @@ class AlertSettingsInline(NestedStackedInline):
     max_num = 0
     exclude = ['created', 'modified']
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).order_by('created')
+
     def has_add_permission(self, request, obj=None):
         return False
 
@@ -88,8 +91,7 @@ class MetricInline(NestedGenericStackedInline):
         return False
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs.filter(alertsettings__isnull=False)
+        return super().get_queryset(request).filter(alertsettings__isnull=False)
 
 
 class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
@@ -141,14 +143,15 @@ def device_admin_get_inlines(self, request, obj):
 
 DeviceAdmin.inlines += [CheckInline, MetricInline]
 # This attribute needs to be set for nested inline
-for i, inline in enumerate(DeviceAdmin.inlines):
-    DeviceAdmin.inlines[i].sortable_options = dict()
+for inline in DeviceAdmin.inlines:
+    if not hasattr(inline, 'sortable_options'):
+        inline.sortable_options = {'disabled': True}
 
 DeviceAdmin.get_inlines = device_admin_get_inlines
 
 DeviceAdmin.Media.js += MetricAdmin.Media.js + (
     'monitoring/js/percircle.js',
-    'monitoring/js/alertsettings_inline.js',
+    'monitoring/js/alert-settings.js',
 )
 DeviceAdmin.Media.css['all'] += (
     'monitoring/css/percircle.css',

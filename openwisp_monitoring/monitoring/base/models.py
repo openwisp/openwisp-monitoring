@@ -460,18 +460,15 @@ class AbstractChart(TimeStampedEditableModel):
 class AbstractAlertSettings(TimeStampedEditableModel):
     _SECONDS_MAX = 60 * 60 * 24 * 7  # 7 days
     _SECONDS_HELP = (
-        'for how long should the alert_settings value be crossed before '
-        'triggering an alert? The maximum allowed is {0} seconds '
+        'for how long should the value be crossed before '
+        'an alert is sent? The maximum allowed is {0} seconds '
         '({1} days)'.format(_SECONDS_MAX, int(_SECONDS_MAX / 60 / 60 / 24))
     )
     _ALERTSETTINGS_OPERATORS = (('<', _('less than')), ('>', _('greater than')))
     is_active = models.BooleanField(
         _('Alerts enabled'),
         default=True,
-        help_text=_(
-            'whether alerts are enabled for this metric, uncheck to disable '
-            'the alert without deleting the alert settings'
-        ),
+        help_text=_('whether alerts are enabled for this metric'),
     )
     metric = models.OneToOneField(
         get_model_name('monitoring', 'Metric'), on_delete=models.CASCADE

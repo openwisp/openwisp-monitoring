@@ -178,7 +178,7 @@ class Migration(migrations.Migration):
                     'seconds',
                     models.PositiveIntegerField(
                         default=0,
-                        help_text='for how long should the alert_settings value be crossed before triggering an alert? The maximum allowed is 604800 seconds (7 days)',
+                        help_text='for how long should the value be crossed before an alert is sent? The maximum allowed is 604800 seconds (7 days)',
                         validators=[django.core.validators.MaxValueValidator(604800)],
                     ),
                 ),
@@ -194,7 +194,7 @@ class Migration(migrations.Migration):
                     'is_active',
                     models.BooleanField(
                         default=True,
-                        help_text='whether alerts are enabled for this metric, uncheck to disable the alert without deleting the alert settings',
+                        help_text='whether alerts are enabled for this metric',
                         verbose_name='Alerts enabled',
                     ),
                 ),
