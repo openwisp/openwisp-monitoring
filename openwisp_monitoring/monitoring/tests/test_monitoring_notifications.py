@@ -259,7 +259,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         user = self._create_user(is_staff=False)
         OrganizationUser.objects.create(user=user, organization=testorg)
         OrganizationUser.objects.create(user=staff, organization=testorg)
-        self.assertIsNotNone(staff.notificationuser)
+        self.assertIsNotNone(staff.notificationsetting_set.filter(organization=testorg))
 
         with self.subTest('Test general metric multiple notifications'):
             m = self._create_general_metric(name='load')

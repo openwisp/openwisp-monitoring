@@ -147,7 +147,7 @@ class DeviceMonitoringConfig(AppConfig):
         register_notification_type(
             'connection_is_working',
             {
-                'name': 'Device Alert',
+                'name': 'Device Alert (Connection Working)',
                 'verb': 'working',
                 'level': 'info',
                 'email_subject': '[{site.name}] RECOVERY: Device "{notification.target}"',
@@ -161,7 +161,7 @@ class DeviceMonitoringConfig(AppConfig):
         register_notification_type(
             'connection_is_not_working',
             {
-                'name': 'Device Alert',
+                'name': 'Device  Alert (Connection not working)',
                 'verb': 'not working',
                 'level': 'error',
                 'email_subject': '[{site.name}] PROBLEM: Device "{notification.target}"',
