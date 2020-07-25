@@ -13,8 +13,8 @@ metric_mapping = {
 
 
 def merge_traffic_metrics(apps, schema_editor):
-    Metric = load_model('monitoring', 'Metric')
-    Chart = load_model('monitoring', 'Chart')
+    Metric = apps.get_model('monitoring', 'Metric')
+    Chart = apps.get_model('monitoring', 'Chart')
     rx_metrics = Metric.objects.filter(field_name='rx_bytes')
     for rx_metric in rx_metrics:
         if rx_metric.name.split()[1] == 'traffic':
