@@ -190,6 +190,14 @@ class Migration(migrations.Migration):
                         to=swapper.get_model_name('monitoring', 'Metric'),
                     ),
                 ),
+                (
+                    'is_active',
+                    models.BooleanField(
+                        default=True,
+                        help_text='whether alerts are enabled for this metric, uncheck to disable the alert without deleting the alert settings',
+                        verbose_name='Alerts enabled',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Alert settings',

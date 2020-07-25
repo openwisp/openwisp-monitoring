@@ -1,1 +1,1 @@
-from openwisp_monitoring.monitoring.admin import AlertSettingsAdmin, MetricAdmin  # noqa
+from openwisp_monitoring.monitoring.admin import MetricAdmin  # noqa
