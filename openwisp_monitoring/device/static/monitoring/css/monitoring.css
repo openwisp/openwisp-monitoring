@@ -201,3 +201,11 @@ td.field-health_status,
 #monitoring-metric-content_type-object_id-group .inline-related h3 {
   padding: 10px 20px;
 }
+
+#monitoring-metric-content_type-object_id-group .djn-group-nested fieldset.djn-fieldset.module > h2,
+#monitoring-metric-content_type-object_id-group .djn-group-nested fieldset.djn-fieldset.module .djn-inline-form > h3{
+    display: none;
+}
+#monitoring-metric-content_type-object_id-group{
+    padding-top: 0 !important;
+}

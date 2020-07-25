@@ -106,7 +106,7 @@ class Migration(migrations.Migration):
                     'seconds',
                     models.PositiveIntegerField(
                         default=0,
-                        help_text='for how long should the alert_settings value be crossed before triggering an alert? The maximum allowed is 604800 seconds (7 days)',
+                        help_text='for how long should the value be crossed before an alert is sent? The maximum allowed is 604800 seconds (7 days)',
                         validators=[django.core.validators.MaxValueValidator(604800)],
                     ),
                 ),
