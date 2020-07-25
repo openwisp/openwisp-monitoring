@@ -1,17 +1,27 @@
+from datetime import timedelta
+from unittest.mock import patch
+
 from django.core.exceptions import ValidationError
 from django.test import TransactionTestCase
+from django.utils.timezone import now
+from freezegun import freeze_time
 from swapper import load_model
 
 from ...device.tests import TestDeviceMonitoringMixin
-from ..classes import Ping
-from ..settings import CHECK_CLASSES
+from .. import settings as app_settings
+from ..classes import ConfigApplied, Ping
+from ..tasks import auto_create_config_check, auto_create_ping
 
 Check = load_model('check', 'Check')
 Metric = load_model('monitoring', 'Metric')
+AlertSettings = load_model('monitoring', 'AlertSettings')
+Device = load_model('config', 'device')
+Notification = load_model('openwisp_notifications', 'Notification')
 
 
 class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
-    _PING = CHECK_CLASSES[0][0]
+    _PING = app_settings.CHECK_CLASSES[0][0]
+    _CONFIG_APPLIED = app_settings.CHECK_CLASSES[1][0]
 
     def test_check_str(self):
         c = Check(name='Test check')
@@ -29,8 +39,14 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(str(c), expected)
 
     def test_check_class(self):
-        c = Check(name='Ping class check', check=self._PING)
-        self.assertEqual(c.check_class, Ping)
+        with self.subTest('Test Ping check Class'):
+            c = Check(name='Ping class check', check=self._PING)
+            self.assertEqual(c.check_class, Ping)
+        with self.subTest('Test Configuration Applied check Class'):
+            c = Check(
+                name='Configuration Applied class check', check=self._CONFIG_APPLIED
+            )
+            self.assertEqual(c.check_class, ConfigApplied)
 
     def test_base_check_class(self):
         path = 'openwisp_monitoring.check.classes.base.BaseCheck'
@@ -42,34 +58,131 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
 
     def test_check_instance(self):
         obj = self._create_device(organization=self._create_org())
-        c = Check(
-            name='Ping class check', check=self._PING, content_object=obj, params={}
-        )
-        i = c.check_instance
-        self.assertIsInstance(i, Ping)
-        self.assertEqual(i.related_object, obj)
-        self.assertEqual(i.params, c.params)
+        with self.subTest('Test Ping check instance'):
+            c = Check(
+                name='Ping class check', check=self._PING, content_object=obj, params={}
+            )
+            i = c.check_instance
+            self.assertIsInstance(i, Ping)
+            self.assertEqual(i.related_object, obj)
+            self.assertEqual(i.params, c.params)
+        with self.subTest('Test Configuration Applied check instance'):
+            c = Check(
+                name='Configuration Applied class check',
+                check=self._CONFIG_APPLIED,
+                content_object=obj,
+                params={},
+            )
+            i = c.check_instance
+            self.assertIsInstance(i, ConfigApplied)
+            self.assertEqual(i.related_object, obj)
+            self.assertEqual(i.params, c.params)
 
     def test_validation(self):
-        check = Check(name='Ping check', check=self._PING, params={})
-        try:
-            check.full_clean()
-        except ValidationError as e:
-            self.assertIn('device', str(e))
-        else:
-            self.fail('ValidationError not raised')
+        with self.subTest('Test Ping check validation'):
+            check = Check(name='Ping check', check=self._PING, params={})
+            try:
+                check.full_clean()
+            except ValidationError as e:
+                self.assertIn('device', str(e))
+            else:
+                self.fail('ValidationError not raised')
+        with self.subTest('Test Configuration Applied check validation'):
+            check = Check(name='Config check', check=self._CONFIG_APPLIED, params={})
+            try:
+                check.full_clean()
+            except ValidationError as e:
+                self.assertIn('device', str(e))
+            else:
+                self.fail('ValidationError not raised')
 
-    def test_auto_ping(self):
+    def test_auto_check_creation(self):
         self.assertEqual(Check.objects.count(), 0)
         d = self._create_device(organization=self._create_org())
-        self.assertEqual(Check.objects.count(), 1)
-        c = Check.objects.first()
-        self.assertEqual(c.content_object, d)
-        self.assertIn('Ping', c.check)
+        self.assertEqual(Check.objects.count(), 2)
+        with self.subTest('Test AUTO_PING'):
+            c1 = Check.objects.filter(check=self._PING).first()
+            self.assertEqual(c1.content_object, d)
+            self.assertEqual(self._PING, c1.check)
+        with self.subTest('Test AUTO_CONFIG_CHECK'):
+            c2 = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+            self.assertEqual(c2.content_object, d)
+            self.assertEqual(self._CONFIG_APPLIED, c2.check)
 
     def test_device_deleted(self):
         self.assertEqual(Check.objects.count(), 0)
         d = self._create_device(organization=self._create_org())
-        self.assertEqual(Check.objects.count(), 1)
+        self.assertEqual(Check.objects.count(), 2)
         d.delete()
         self.assertEqual(Check.objects.count(), 0)
+
+    @patch('openwisp_monitoring.check.settings.AUTO_PING', False)
+    def test_config_modified_device_problem(self):
+        self._create_admin()
+        self.assertEqual(Check.objects.count(), 0)
+        self._create_config(status='modified', organization=self._create_org())
+        d = Device.objects.first()
+        self.assertEqual(Check.objects.count(), 2)
+        self.assertEqual(Metric.objects.count(), 0)
+        self.assertEqual(AlertSettings.objects.count(), 0)
+        check = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+        with freeze_time(now() - timedelta(minutes=10)):
+            check.perform_check()
+        self.assertEqual(Metric.objects.count(), 1)
+        self.assertEqual(AlertSettings.objects.count(), 1)
+        # Check needs to be run again without mocking time for threshold crossed
+        check.perform_check()
+        m = Metric.objects.first()
+        self.assertEqual(m.content_object, d)
+        self.assertEqual(m.key, 'config_applied')
+        dm = d.monitoring
+        self.assertFalse(m.is_healthy)
+        self.assertEqual(dm.status, 'problem')
+        self.assertEqual(Notification.objects.count(), 1)
+
+    @patch(
+        'openwisp_monitoring.device.base.models.app_settings.CRITICAL_DEVICE_METRICS',
+        [{'key': 'config_applied', 'field_name': 'config_applied'}],
+    )
+    @patch('openwisp_monitoring.check.settings.AUTO_PING', False)
+    def test_config_check_critical_metric(self):
+        self._create_config(status='modified', organization=self._create_org())
+        self.assertEqual(Check.objects.count(), 2)
+        d = Device.objects.first()
+        dm = d.monitoring
+        check = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+        check.perform_check()
+        self.assertEqual(Metric.objects.count(), 1)
+        self.assertEqual(AlertSettings.objects.count(), 1)
+        m = Metric.objects.first()
+        self.assertTrue(dm.is_metric_critical(m))
+        with freeze_time(now() - timedelta(minutes=10)):
+            check.perform_check()
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'critical')
+
+    def test_no_duplicate_check_created(self):
+        self._create_config(organization=self._create_org())
+        self.assertEqual(Check.objects.count(), 2)
+        d = Device.objects.first()
+        auto_create_config_check.delay(
+            model=Device.__name__.lower(),
+            app_label=Device._meta.app_label,
+            object_id=str(d.pk),
+        )
+        auto_create_ping.delay(
+            model=Device.__name__.lower(),
+            app_label=Device._meta.app_label,
+            object_id=str(d.pk),
+        )
+        self.assertEqual(Check.objects.count(), 2)
+
+    def test_device_unreachable_no_config_check(self):
+        self._create_config(status='modified', organization=self._create_org())
+        d = self.device_model.objects.first()
+        d.monitoring.update_status('critical')
+        self.assertEqual(Check.objects.count(), 2)
+        c2 = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+        c2.perform_check()
+        self.assertEqual(Metric.objects.count(), 0)
+        self.assertIsNone(c2.perform_check())
