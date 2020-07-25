@@ -51,7 +51,9 @@ class CheckInline(GenericStackedInline):
     extra = 0
     formset = CheckInlineFormSet
     fieldsets = [
-        (None, {'fields': ('name', 'check', 'active', 'params',)},),
+        (None, {'fields': ('name', 'check',)}),
+        (_('Advanced options'), {'classes': ('collapse',), 'fields': ('params',)}),
+        (None, {'fields': ('active',)}),
     ]
     formfield_overrides = {
         TextField: {'widget': Textarea(attrs={'rows': 3, 'cols': 40})},
