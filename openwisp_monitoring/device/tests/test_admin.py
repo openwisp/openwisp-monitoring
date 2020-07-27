@@ -39,6 +39,7 @@ class TestAdmin(DeviceMonitoringTestCase):
         self.assertContains(r, 'CPU')
         self.assertContains(r, 'RAM status')
         self.assertContains(r, 'AlertSettings')
+        self.assertContains(r, 'Is healthy')
         self.assertContains(r, check.name)
         self.assertContains(r, check.params)
 
