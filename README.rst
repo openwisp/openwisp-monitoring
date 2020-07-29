@@ -661,7 +661,7 @@ An example usage has been shown below.
 
 .. code-block:: python
 
-    from openwisp_monitoring.monitoring import register_chart
+    from openwisp_monitoring.monitoring.charts import register_chart
 
     # Define configuration of your chart
     chart_config = {
@@ -700,7 +700,7 @@ An example usage is shown below.
 
 .. code-block:: python
 
-    from openwisp_monitoring.monitoring import unregister_chart
+    from openwisp_monitoring.monitoring.charts import unregister_chart
 
     # Unregister previously registered chart configuration
     unregister_chart('chart_name')

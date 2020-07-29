@@ -7,7 +7,7 @@ from openwisp_users.tests.utils import TestOrganizationMixin
 
 from ...db import timeseries_db
 from ...db.backends import TIMESERIES_DB
-from .. import register_chart, unregister_chart
+from ..charts import register_chart, unregister_chart
 
 start_time = now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
