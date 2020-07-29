@@ -1,5 +1,4 @@
 from django.db import migrations
-from swapper import load_model
 
 
 metric_mapping = {
@@ -20,7 +19,11 @@ def merge_traffic_metrics(apps, schema_editor):
         if rx_metric.name.split()[1] == 'traffic':
             return
         # Traffic chart is created with tx_bytes metric
-        tx_metric = Metric.objects.get(name=f'{rx_metric.name.split()[0]} tx_bytes')
+        tx_metric = Metric.objects.get(
+            name=f'{rx_metric.name.split()[0]} tx_bytes',
+            object_id=rx_metric.object_id,
+            content_type=rx_metric.content_type,
+        )
         if tx_metric.chart_set.count():
             chart = Chart.objects.get(metric=tx_metric)
             new_name = f'{rx_metric.name.split()[0]} traffic'
