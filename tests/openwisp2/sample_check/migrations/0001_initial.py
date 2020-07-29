@@ -8,6 +8,8 @@ import jsonfield.fields
 import model_utils.fields
 import uuid
 
+from openwisp_monitoring.check.settings import CHECK_CLASSES
+
 
 class Migration(migrations.Migration):
 
@@ -47,7 +49,17 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ('name', models.CharField(db_index=True, max_length=64)),
-                ('active', models.BooleanField(db_index=True, default=True)),
+                (
+                    'is_active',
+                    models.BooleanField(
+                        'active',
+                        db_index=True,
+                        default=True,
+                        help_text=(
+                            'whether the check should be run, related metrics collected and alerts sent'
+                        ),
+                    ),
+                ),
                 ('description', models.TextField(blank=True, help_text='Notes')),
                 (
                     'object_id',
@@ -56,9 +68,8 @@ class Migration(migrations.Migration):
                 (
                     'check',
                     models.CharField(
-                        choices=[('openwisp_monitoring.check.classes.Ping', 'Ping')],
+                        choices=CHECK_CLASSES,
                         db_index=True,
-                        help_text='Select check type',
                         max_length=128,
                         verbose_name='check type',
                     ),

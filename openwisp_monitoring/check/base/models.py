@@ -15,7 +15,14 @@ from openwisp_utils.base import TimeStampedEditableModel
 
 class AbstractCheck(TimeStampedEditableModel):
     name = models.CharField(max_length=64, db_index=True)
-    active = models.BooleanField(default=True, db_index=True)
+    is_active = models.BooleanField(
+        _('active'),
+        default=True,
+        db_index=True,
+        help_text=_(
+            'whether the check should be run, related metrics collected and alerts sent'
+        ),
+    )
     description = models.TextField(blank=True, help_text=_('Notes'))
     content_type = models.ForeignKey(
         ContentType, on_delete=models.CASCADE, null=True, blank=True
@@ -27,7 +34,6 @@ class AbstractCheck(TimeStampedEditableModel):
         choices=app_settings.CHECK_CLASSES,
         db_index=True,
         max_length=128,
-        help_text=_('Select check type'),
     )
     params = JSONField(
         _('parameters'),
