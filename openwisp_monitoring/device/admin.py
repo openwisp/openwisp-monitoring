@@ -4,8 +4,6 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline
 from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import TextField
-from django.forms import Textarea
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -50,14 +48,14 @@ class CheckInline(GenericStackedInline):
     model = Check
     extra = 0
     formset = CheckInlineFormSet
-    fieldsets = [
-        (None, {'fields': ('name', 'check',)}),
-        (_('Advanced options'), {'classes': ('collapse',), 'fields': ('params',)}),
-        (None, {'fields': ('active',)}),
-    ]
-    formfield_overrides = {
-        TextField: {'widget': Textarea(attrs={'rows': 3, 'cols': 40})},
-    }
+    fields = ['name', 'check', 'is_active']
+    readonly_fields = ['name', 'check']
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 class AlertSettingsInline(NestedStackedInline):

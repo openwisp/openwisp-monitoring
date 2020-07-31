@@ -16,7 +16,7 @@ def run_checks():
     and execute them in parallel with multiple workers if needed.
     """
     Check = load_model('check', 'Check')
-    iterator = Check.objects.filter(active=True).only('id').values('id').iterator()
+    iterator = Check.objects.filter(is_active=True).only('id').values('id').iterator()
     for check in iterator:
         perform_check.delay(check['id'])
 
