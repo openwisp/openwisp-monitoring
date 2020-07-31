@@ -104,7 +104,7 @@ class TestAdmin(DeviceMonitoringTestCase):
             f'{ct}-0-name': 'Ping Check',
             f'{ct}-0-check': CHECK_CLASSES[0][0],
             f'{ct}-0-params': '{}',
-            f'{ct}-0-active': True,
+            f'{ct}-0-is_active': True,
             f'{ct}-0-created': now(),
             f'{ct}-0-modified': now(),
         }
