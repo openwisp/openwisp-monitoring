@@ -8,7 +8,7 @@ def add_config_applied_checks(apps, schema_editor):
         return
     Device = apps.get_model('config', 'Device')
     for device in Device.objects.all():
-        auto_create_config_check.delay(
+        auto_create_config_check(
             model=Device.__name__.lower(),
             app_label=Device._meta.app_label,
             object_id=str(device.pk),
