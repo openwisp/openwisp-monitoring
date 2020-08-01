@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.core.exceptions import ValidationError
 from django.test import TestCase
@@ -11,6 +11,7 @@ from swapper import load_model
 from .. import timeseries_db
 
 Chart = load_model('monitoring', 'Chart')
+Notification = load_model('openwisp_notifications', 'Notification')
 
 
 class TestDatabaseClient(TestMonitoringMixin, TestCase):
@@ -176,7 +177,8 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         self.assertEqual(len(rp), 2)
         self.assertEqual(rp[1]['name'], SHORT_RP)
         self.assertEqual(rp[1]['default'], False)
-        self.assertEqual(rp[1]['duration'], SHORT_RETENTION_POLICY)
+        duration = SHORT_RETENTION_POLICY
+        self.assertEqual(rp[1]['duration'], duration)
 
     def test_query_set(self):
         c = self._create_chart(configuration='histogram')
@@ -208,3 +210,33 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
             with self.assertRaises(timeseries_db.client_error) as e:
                 metric_data = m.read(limit=2, order='invalid')
                 self.assertIn('Invalid order "invalid" passed.', str(e))
+
+    def test_read_with_rp(self):
+        self._create_admin()
+        manage_short_retention_policy()
+        with self.subTest(
+            'Test metric write on short retention_policy immediate alert'
+        ):
+            m = self._create_general_metric(name='dummy')
+            self._create_alert_settings(metric=m, operator='<', value=1, seconds=0)
+            m.write(0, retention_policy=SHORT_RP)
+            self.assertEqual(m.read(retention_policy=SHORT_RP)[0][m.field_name], 0)
+            self.assertFalse(m.is_healthy)
+            self.assertEqual(Notification.objects.count(), 1)
+        with self.subTest(
+            'Test metric write on short retention_policy with deferred alert'
+        ):
+            m2 = self._create_general_metric(name='dummy2')
+            self._create_alert_settings(metric=m2, operator='<', value=1, seconds=60)
+            m.write(0, retention_policy=SHORT_RP, time=now() - timedelta(minutes=2))
+            self.assertEqual(m.read(retention_policy=SHORT_RP)[0][m.field_name], 0)
+            self.assertFalse(m.is_healthy)
+            self.assertEqual(Notification.objects.count(), 1)
+
+    def test_metric_write_microseconds_precision(self):
+        m = self._create_object_metric(
+            name='wlan0', key='wlan0', configuration='clients'
+        )
+        m.write('00:14:5c:00:00:00', time=datetime(2020, 7, 31, 22, 5, 47, 235142))
+        m.write('00:23:4a:00:00:00', time=datetime(2020, 7, 31, 22, 5, 47, 235152))
+        self.assertEqual(len(m.read()), 2)

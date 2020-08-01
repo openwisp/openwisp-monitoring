@@ -12,6 +12,12 @@ DEFAULT_METRICS = {
         'field_name': 'reachable',
         'related_fields': ['loss', 'rtt_min', 'rtt_max', 'rtt_avg'],
     },
+    'config_applied': {
+        'label': _('Configuration Applied'),
+        'name': 'Configuration Applied',
+        'key': 'config_applied',
+        'field_name': 'config_applied',
+    },
     'traffic': {
         'label': _('Traffic'),
         'name': '{name}',

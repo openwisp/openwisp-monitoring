@@ -213,6 +213,20 @@ command is used to collect these metrics.
 You may choose to disable auto creation of this check by setting
 `OPENWISP_MONITORING_AUTO_PING <#OPENWISP_MONITORING_AUTO_PING>`_ to ``False``.
 
+``Configuration applied``
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This check ensures that the `openwisp-config agent <https://github.com/openwisp/openwisp-config/>`_
+is running and applying configuration changes in a timely manner.
+
+By default, if a configuration object stays in the ``modified`` state
+for more than 5 minutes (configurable via
+`OPENWISP_MONITORING_DEVICE_CONFIG_CHECK_MAX_TIME <#OPENWISP_MONITORING_DEVICE_CONFIG_CHECK_MAX_TIME>`_),
+the check will fail and set the health status of the device to ``PROBLEM``.
+
+You may choose to disable auto creation of this check by using the
+setting `OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK <#OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK>`_.
+
 Settings
 --------
 
@@ -241,6 +255,33 @@ in terms of disk space.
 +--------------+-------------+
 
 Whether ping checks are created automatically for devices.
+
+``OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``bool``    |
++--------------+-------------+
+| **default**: | ``True``    |
++--------------+-------------+
+
+This setting allows you to choose whether `config_applied <#configuration-applied>`_ checks should be
+created automatically for newly registered devices. It's enabled by default.
+
+``OPENWISP_MONITORING_DEVICE_CONFIG_CHECK_MAX_TIME``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-----------+
+| **type**:    |  ``int``  |
++--------------+-----------+
+| **default**: |   ``5``   |
++--------------+-----------+
+
+Defines the maximum amount of minutes the device configuration can stay in the *modified*
+state before its health status is changed to ``PROBLEM`` and an alert is sent.
+
+**Note**: The setting will be ignored if ``OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK``
+is ``False``.
 
 ``OPENWISP_MONITORING_AUTO_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
