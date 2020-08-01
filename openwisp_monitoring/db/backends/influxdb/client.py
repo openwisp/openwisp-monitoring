@@ -7,6 +7,7 @@ from datetime import datetime
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils.functional import cached_property
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from influxdb import InfluxDBClient
 
@@ -112,11 +113,10 @@ class DatabaseClient(object):
             'tags': kwargs.get('tags'),
             'fields': values,
         }
-        timestamp = kwargs.get('timestamp')
+        timestamp = kwargs.get('timestamp') or now()
         if isinstance(timestamp, datetime):
-            timestamp = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
-        if timestamp:
-            point['time'] = timestamp
+            timestamp = timestamp.isoformat(sep='T', timespec='microseconds')
+        point['time'] = timestamp
         self.get_db.write(
             {'points': [point]},
             {
@@ -130,11 +130,13 @@ class DatabaseClient(object):
         since = kwargs.get('since')
         order = kwargs.get('order')
         limit = kwargs.get('limit')
+        rp = kwargs.get('retention_policy')
         if extra_fields and extra_fields != '*':
             fields = ', '.join([fields] + extra_fields)
         elif extra_fields == '*':
             fields = '*'
-        q = f'SELECT {fields} FROM {key}'
+        from_clause = f'{rp}.{key}' if rp else key
+        q = f'SELECT {fields} FROM {from_clause}'
         conditions = []
         if since:
             conditions.append(f'time >= {since}')

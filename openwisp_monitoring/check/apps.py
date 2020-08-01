@@ -22,3 +22,12 @@ class CheckConfig(AppConfig):
                 sender=load_model('config', 'Device'),
                 dispatch_uid='auto_ping',
             )
+
+        if app_settings.AUTO_CONFIG_CHECK:
+            from .base.models import auto_config_check_receiver
+
+            post_save.connect(
+                auto_config_check_receiver,
+                sender=load_model('config', 'Device'),
+                dispatch_uid='auto_config_check',
+            )

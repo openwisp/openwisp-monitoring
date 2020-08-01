@@ -201,11 +201,11 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         device.management_ip = '10.40.0.1'
         device.save()
         # check created automatically by autoping
-        self.assertEqual(Check.objects.count(), 1)
+        self.assertEqual(Check.objects.count(), 2)
         self.assertEqual(Metric.objects.count(), 0)
         self.assertEqual(Chart.objects.count(), 0)
         self.assertEqual(AlertSettings.objects.count(), 0)
-        check = Check.objects.first()
+        check = Check.objects.filter(check=self._PING).first()
         result = check.perform_check()
         self.assertEqual(Metric.objects.count(), 1)
         self.assertEqual(Chart.objects.count(), 3)
