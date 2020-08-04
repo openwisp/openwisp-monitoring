@@ -25,9 +25,9 @@ OpenWISP 2 monitoring module (Work in progress).
 Available Features
 ------------------
 
-* Collects and displays `device status <#device-status>`_ information like Uptime, RAM status, CPU load averages,
-  Interface addresses, WiFi interface status and associated clients, Neighbors information,
-  DHCP Leases, Disk/Flash status
+* Collects and displays `device status <#device-status>`_ information like uptime, RAM status, CPU load averages,
+  Interface properties and addresses, WiFi interface status and associated clients,
+  Neighbors information, DHCP Leases, Disk/Flash status
 * Collection of monitoring information in a timeseries database (currently only influxdb is supported)
 * Monitoring charts for uptime, packet loss, round trip time (latency), associated wifi clients, interface traffic,
   RAM usage, CPU load, flash/disk usage

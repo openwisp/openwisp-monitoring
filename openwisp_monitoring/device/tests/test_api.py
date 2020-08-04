@@ -165,22 +165,14 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         d = self._create_device(organization=o)
         garbage_interfaces = [
             {'name': 'garbage1', 'wireless': {'clients': {}}},
-            {
-                'name': 'garbage2',
-                'wireless': {'clients': [{'what?': 'mac missing'}]},
-            },
-            {'name': 'garbage3', 'wireless': {}}
+            {'name': 'garbage2', 'wireless': {'clients': [{'what?': 'mac missing'}]}},
+            {'name': 'garbage3', 'wireless': {}},
         ]
         for garbage_interface in garbage_interfaces:
             interface = self._data()['interfaces'][0]
             interface.update(garbage_interface)
             r = self._post_data(
-                d.id,
-                d.key,
-                {
-                    'type': 'DeviceMonitoring',
-                    'interfaces': [interface]
-                }
+                d.id, d.key, {'type': 'DeviceMonitoring', 'interfaces': [interface]}
             )
             with self.subTest(garbage_interface):
                 self.assertEqual(r.status_code, 400)
@@ -409,3 +401,30 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertIn('data', r.data)
         self.assertIsInstance(r.data['data'], dict)
         self.assertEqual(dd.data, r.data['data'])
+
+    def test_garbage_interface_properties(self):
+        o = self._create_org()
+        d = self._create_device(organization=o)
+        garbage_interfaces = [
+            {'type': 1},
+            {'uptime': 'string'},
+            {'up': 'up'},
+            {'mac': 1},
+            {'mtu': 'string'},
+            {'txqueuelen': 'string'},
+            {'speed': 0},
+            {'multicast': 1},
+            {'type': 'bridge', 'bridge_members': [1, 2]},
+            {'stp': 1},
+        ]
+        number = 1
+        for garbage_interface in garbage_interfaces:
+            interface = self._data()['interfaces'][0]
+            interface.update(garbage_interface)
+            interface['name'] = f'garbage{number}'
+            r = self._post_data(
+                d.id, d.key, {'type': 'DeviceMonitoring', 'interfaces': [interface]}
+            )
+            number += 1
+            with self.subTest(garbage_interface):
+                self.assertEqual(r.status_code, 400)
