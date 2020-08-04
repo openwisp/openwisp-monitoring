@@ -160,26 +160,30 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         # expected upload wlan1
         self.assertEqual(data['traces'][1][1][-1], 1.5)
 
-    def test_garbage_clients(self):
+    def test_garbage_wireless_clients(self):
         o = self._create_org()
         d = self._create_device(organization=o)
-        r = self._post_data(
-            d.id,
-            d.key,
+        garbage_interfaces = [
+            {'name': 'garbage1', 'wireless': {'clients': {}}},
             {
-                'type': 'DeviceMonitoring',
-                'interfaces': [
-                    {'name': 'garbage1', 'wireless': {'clients': {}}},
-                    {
-                        'name': 'garbage2',
-                        'wireless': {'clients': [{'what?': 'mac missing'}]},
-                    },
-                    {'name': 'garbage3', 'wireless': {}},
-                    {'name': 'garbage4'},
-                ],
+                'name': 'garbage2',
+                'wireless': {'clients': [{'what?': 'mac missing'}]},
             },
-        )
-        self.assertEqual(r.status_code, 400)
+            {'name': 'garbage3', 'wireless': {}}
+        ]
+        for garbage_interface in garbage_interfaces:
+            interface = self._data()['interfaces'][0]
+            interface.update(garbage_interface)
+            r = self._post_data(
+                d.id,
+                d.key,
+                {
+                    'type': 'DeviceMonitoring',
+                    'interfaces': [interface]
+                }
+            )
+            with self.subTest(garbage_interface):
+                self.assertEqual(r.status_code, 400)
 
     @patch.object(monitoring_settings, 'AUTO_CHARTS', return_value=[])
     def test_auto_chart_disabled(self, *args):
