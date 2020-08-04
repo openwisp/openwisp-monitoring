@@ -146,7 +146,20 @@ schema = {
                 "required": ["name"],
                 "properties": {
                     "name": {"type": "string"},
+                    "type": {"type": "string"},
                     "uptime": {"type": "integer"},
+                    "up": {"type": "boolean"},
+                    "mac": {"type": "string"},
+                    "mtu": {"type": "integer"},
+                    "txqueuelen": {"type": "integer"},
+                    "speed": {"type": "string"},
+                    "multicast": {"type": "boolean"},
+                    "bridge_members": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "additionalItems": False,
+                    },
+                    "stp": {"type": "boolean"},
                     "statistics": {
                         "type": "object",
                         "properties": {

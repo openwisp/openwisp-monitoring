@@ -145,6 +145,12 @@ class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
             'interfaces': [
                 {
                     'name': 'wlan0',
+                    'type': 'wireless',
+                    'up': True,
+                    'mac': '44:d1:fa:4b:38:43',
+                    'txqueuelen': 1000,
+                    'multicast': True,
+                    'mtu': 1500,
                     'statistics': {
                         'rx_bytes': 324,
                         'tx_bytes': 145,
@@ -183,6 +189,12 @@ class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
                 },
                 {
                     'name': 'wlan1',
+                    'type': 'wireless',
+                    'up': True,
+                    'mac': '44:d1:fa:4b:38:44',
+                    'txqueuelen': 1000,
+                    'multicast': True,
+                    'mtu': 1500,
                     'statistics': {
                         'rx_bytes': 2275,
                         'tx_bytes': 826,

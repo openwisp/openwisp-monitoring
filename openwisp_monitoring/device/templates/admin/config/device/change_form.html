@@ -112,13 +112,23 @@
               {% for interface in device_data.interfaces %}
               <div class="inline-group">
                   <h2>{% trans 'Interface status' %}: {{ interface.name }}</h2>
-                  {% if interface.wireless %}
+                  {% if interface.mac %}
+                  <div class="form-row">
+                      <label>{% trans 'MAC Address' %}:</label>
+                      <div class="readonly">
+                          {{ interface.mac }}
+                      </div>
+                  </div>
+                  {% endif %}
+                  {% if interface.type %}
                   <div class="form-row">
                       <label>{% trans 'Type' %}:</label>
                       <div class="readonly">
-                          {% trans 'Wireless' %}
+                          {{ interface.type }}
                       </div>
                   </div>
+                  {% endif %}
+                  {% if interface.wireless %}
                   <div class="form-row">
                       <label>{% trans 'Mode' %}:</label>
                       <div class="readonly">
@@ -170,6 +180,65 @@
                           {{ interface.wireless.clients|length }}
                       </div>
                   </div>
+                  {% endif %}
+                  {% endif %}
+                  {% if interface.type == 'ethernet' and interface.speed %}
+                  <div class="form-row">
+                      <label>{% trans 'Speed' %}:</label>
+                      <div class="readonly">
+                          {{ interface.speed }}
+                      </div>
+                  </div>
+                  {% endif %}
+                  {% if interface.bridge_members %}
+                  <div class="form-row">
+                      <label>{% trans 'Bridge Members' %}:</label>
+                      <div class="readonly">
+                          {{ interface.bridge_members|join:", " }}
+                      </div>
+                  </div>
+                  {% endif %}
+                  {% if interface.stp != None %}
+                  <div class="form-row">
+                      <label>{% trans 'Spanning Tree Protocol' %}:</label>
+                      <div class="readonly">
+                          <img src="{% static '/admin/img/' %}icon-{{ interface.stp|yesno:'yes,no,no' }}.svg">
+                      </div>
+                  </div>
+                  {% endif %}
+                  {% if interface.up != None %}
+                  <div class="form-row">
+                      <label>{% trans 'Up' %}:</label>
+                      <div class="readonly">
+                          <img src="{% static '/admin/img/' %}icon-{{ interface.up|yesno:'yes,no,no' }}.svg">
+                      </div>
+                  </div>
+                  {% endif %}
+                  {% if interface.multicast != None %}
+                  <div class="form-row">
+                      <label>{% trans 'Multicast' %}:</label>
+                      <div class="readonly">
+                           <img src="{% static '/admin/img/' %}icon-{{ interface.multicast|yesno:'yes,no,no' }}.svg">
+                      </div>
+                  </div>
+                  {% endif %}
+                  {% if interface.mtu %}
+                  <div class="form-row">
+                      <label>{% trans 'MTU' %}:</label>
+                      <div class="readonly">
+                          {{ interface.mtu }}
+                      </div>
+                  </div>
+                  {% endif %}
+                  {% if interface.txqueuelen != None %}
+                  <div class="form-row">
+                      <label>{% trans 'Transmit Queue Length' %}:</label>
+                      <div class="readonly">
+                          {{ interface.txqueuelen }}
+                      </div>
+                  </div>
+                  {% endif %}
+                  {% if interface.wireless and interface.wireless.clients %}
                   <table class="wifi-clients">
                       <thead>
                           <tr>
@@ -225,7 +294,6 @@
                       </tr>
                       {% endfor %}
                   </table>
-                  {% endif %}
                   {% endif %}
                   {% if interface.addresses %}
                   <table class="addresses">
