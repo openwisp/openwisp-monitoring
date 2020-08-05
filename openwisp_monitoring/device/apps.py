@@ -152,11 +152,11 @@ class DeviceMonitoringConfig(AppConfig):
                 'name': 'Device Alert',
                 'verb': 'working',
                 'level': 'info',
-                'email_subject': '[{site.name}] RECOVERY: Device "{notification.target}"',
+                'email_subject': '[{site.name}] RECOVERY: Connection to device {notification.target}',
                 'message': (
-                    '{notification.actor.credentials} connection to'
-                    ' [Device: {notification.target}]({notification.target_link})'
-                    ' is {notification.verb}. {notification.actor.failure_reason}'
+                    '{notification.actor.credentials} connection to '
+                    'device [{notification.target}]({notification.target_link}) '
+                    'is {notification.verb}. {notification.actor.failure_reason}'
                 ),
             },
         )
@@ -166,11 +166,11 @@ class DeviceMonitoringConfig(AppConfig):
                 'name': 'Device Alert',
                 'verb': 'not working',
                 'level': 'error',
-                'email_subject': '[{site.name}] PROBLEM: Device "{notification.target}"',
+                'email_subject': '[{site.name}] PROBLEM: Connection to device {notification.target}',
                 'message': (
-                    '{notification.actor.credentials} connection to'
-                    ' [Device: {notification.target}]({notification.target_link})'
-                    ' is {notification.verb}. {notification.actor.failure_reason}'
+                    '{notification.actor.credentials} connection to '
+                    'device [{notification.target}]({notification.target_link}) '
+                    'is {notification.verb}. {notification.actor.failure_reason}'
                 ),
             },
         )
