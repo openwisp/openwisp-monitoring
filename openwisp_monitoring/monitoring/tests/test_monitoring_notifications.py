@@ -317,7 +317,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         d = self._create_device(organization=self._get_org())
         m = self._create_general_metric(name='load', content_object=d)
         self._create_alert_settings(metric=m, operator='>', value=90, seconds=0)
-        exp_target_link = f'http://example.com/admin/config/device/{d.id}/change/'
+        exp_target_link = f'https://example.com/admin/config/device/{d.id}/change/'
         exp_email_body = '{message}' f'\n\nFor more information see {exp_target_link}.'
 
         with self.subTest('Test notification email for metric crossed alert settings'):
@@ -358,7 +358,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self._create_alert_settings(metric=m, operator='>', value=90, seconds=0)
         exp_message = (
             '<p>{n.actor.name} for device '
-            '"<a href="http://example.com/admin/openwisp_users/user/{n.target.id}/change/">tester</a>"'
+            '<a href="https://example.com/admin/openwisp_users/user/{n.target.id}/change/">tester</a>'
             ' {n.verb}.</p>'
         )
         with self.subTest("Test notification for 'alert settings crossed'"):

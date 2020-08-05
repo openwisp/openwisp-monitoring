@@ -21,7 +21,7 @@ class TestDeviceNotifications(BaseTestCase):
     def _generic_notification_test(
         self, exp_level, exp_type, exp_verb, exp_message, exp_email_subject
     ):
-        exp_target_link = f'http://example.com/admin/config/device/{self.d.id}/change/'
+        exp_target_link = f'https://example.com/admin/config/device/{self.d.id}/change/'
         exp_email_body = '{message}' f'\n\nFor more information see {exp_target_link}.'
 
         n = Notification.objects.first()
