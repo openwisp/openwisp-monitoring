@@ -41,8 +41,8 @@ class MonitoringConfig(AppConfig):
 
     def register_notification_types(self):
         default_message = (
-            '{notification.actor.name} for device "[{notification.target}]'
-            '({notification.target_link})" {notification.verb}.'
+            '{notification.actor.name} for device [{notification.target}]'
+            '({notification.target_link}) {notification.verb}.'
         )
 
         register_notification_type(

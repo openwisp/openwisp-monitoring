@@ -60,10 +60,10 @@ class TestDeviceNotifications(BaseTestCase):
             exp_type='connection_is_working',
             exp_verb='working',
             exp_message=(
-                '<p>(SSH) connection to <a href="{target_link}">'
-                'Device: {n.target}</a> is {n.verb}. </p>'
+                '<p>(SSH) connection to device <a href="{target_link}">'
+                '{n.target}</a> is {n.verb}. </p>'
             ),
-            exp_email_subject='[example.com] RECOVERY: Device "{n.target}"',
+            exp_email_subject='[example.com] RECOVERY: Connection to device {n.target}',
         )
 
     def test_connection_not_working_notification(self):
@@ -74,10 +74,10 @@ class TestDeviceNotifications(BaseTestCase):
             exp_type='connection_is_not_working',
             exp_verb='not working',
             exp_message=(
-                '<p>(SSH) connection to <a href="{target_link}">'
-                'Device: {n.target}</a> is {n.verb}. </p>'
+                '<p>(SSH) connection to device <a href="{target_link}">'
+                '{n.target}</a> is {n.verb}. </p>'
             ),
-            exp_email_subject='[example.com] PROBLEM: Device "{n.target}"',
+            exp_email_subject='[example.com] PROBLEM: Connection to device {n.target}',
         )
 
     def test_unreachable_after_upgrade_notification(self):
@@ -89,9 +89,9 @@ class TestDeviceNotifications(BaseTestCase):
             exp_type='connection_is_not_working',
             exp_verb='not working',
             exp_message=(
-                '<p>(SSH) connection to <a href="{target_link}">'
-                'Device: {n.target}</a> is {n.verb}.'
-                ' Giving up, device not reachable anymore after upgrade</p>'
+                '<p>(SSH) connection to device <a href="{target_link}">'
+                '{n.target}</a> is {n.verb}. '
+                'Giving up, device not reachable anymore after upgrade</p>'
             ),
-            exp_email_subject='[example.com] PROBLEM: Device "{n.target}"',
+            exp_email_subject='[example.com] PROBLEM: Connection to device {n.target}',
         )
