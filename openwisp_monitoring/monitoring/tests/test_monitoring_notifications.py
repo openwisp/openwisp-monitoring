@@ -2,6 +2,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.core import mail
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import strip_tags
 from swapper import load_model
@@ -318,39 +319,49 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         m = self._create_general_metric(name='load', content_object=d)
         self._create_alert_settings(metric=m, operator='>', value=90, seconds=0)
         exp_target_link = f'https://example.com/admin/config/device/{d.id}/change/'
-        exp_email_body = '{message}' f'\n\nFor more information see {exp_target_link}.'
+        exp_email_body = '{message}\n\nFor more information see {email_link}.'
 
         with self.subTest('Test notification email for metric crossed alert settings'):
             m.write(99)
             n = notification_queryset.first()
+            url_path = reverse('notifications:notification_read_redirect', args=[n.pk])
+            email_link = f'https://example.com{url_path}'
             email = mail.outbox.pop()
             html_message, content_type = email.alternatives.pop()
             self.assertEqual(email.subject, n.email_subject)
             self.assertEqual(
-                email.body, exp_email_body.format(message=strip_tags(n.message))
+                email.body,
+                exp_email_body.format(
+                    message=strip_tags(n.message), email_link=email_link
+                ),
             )
-            self.assertIn(n.message, html_message)
             self.assertIn(
-                f'<a href="{exp_target_link}">'
+                f'<a href="{email_link}">'
                 'For further information see "device: default.test.device".</a>',
                 html_message,
             )
+            self.assertIn(exp_target_link, n.message)
 
         with self.subTest('Test notification email for metric returned under threhold'):
             m.write(50)
             n = notification_queryset.last()
+            url_path = reverse('notifications:notification_read_redirect', args=[n.pk])
+            email_link = f'https://example.com{url_path}'
             email = mail.outbox.pop()
             html_message, content_type = email.alternatives.pop()
             self.assertEqual(email.subject, n.email_subject)
             self.assertEqual(
-                email.body, exp_email_body.format(message=strip_tags(n.message))
+                email.body,
+                exp_email_body.format(
+                    message=strip_tags(n.message), email_link=email_link
+                ),
             )
-            self.assertIn(n.message, html_message)
             self.assertIn(
-                f'<a href="{exp_target_link}">'
+                f'<a href="{email_link}">'
                 'For further information see "device: default.test.device".</a>',
                 html_message,
             )
+            self.assertIn(exp_target_link, n.message)
 
     def test_notification_types(self):
         self._create_admin()
