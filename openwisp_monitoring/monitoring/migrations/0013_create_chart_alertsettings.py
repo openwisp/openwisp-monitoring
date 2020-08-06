@@ -8,7 +8,7 @@ import django.utils.timezone
 import model_utils.fields
 import uuid
 
-from ..charts import get_chart_configuration_choices
+from ..configuration import get_chart_configuration_choices
 
 
 class Migration(migrations.Migration):

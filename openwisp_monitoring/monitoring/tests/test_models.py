@@ -16,6 +16,7 @@ from . import TestMonitoringMixin
 start_time = timezone.now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
 Metric = load_model('monitoring', 'Metric')
+AlertSettings = load_model('monitoring', 'AlertSettings')
 
 
 class TestModels(TestMonitoringMixin, TestCase):
@@ -145,17 +146,20 @@ class TestModels(TestMonitoringMixin, TestCase):
         m = self._create_general_metric(name='load')
         try:
             self._create_alert_settings(
-                metric=m, operator='>', value=90, seconds=9999999
+                metric=m,
+                custom_operator='>',
+                custom_threshold=90,
+                custom_tolerance=9999999,
             )
         except ValidationError as e:
-            self.assertIn('seconds', e.message_dict)
+            self.assertIn('custom_tolerance', e.message_dict)
         else:
             self.fail('ValidationError not raised')
 
     def test_threshold_is_crossed_error(self):
         m = self._create_general_metric(name='load')
         alert_s = self._create_alert_settings(
-            metric=m, operator='>', value=90, seconds=0
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=0
         )
         with self.assertRaises(ValueError):
             alert_s._is_crossed_by(alert_s, start_time)
@@ -163,21 +167,21 @@ class TestModels(TestMonitoringMixin, TestCase):
     def test_threshold_is_crossed_immediate(self):
         m = self._create_general_metric(name='load')
         alert_s = self._create_alert_settings(
-            metric=m, operator='>', value=90, seconds=0
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=0
         )
         self.assertFalse(alert_s._is_crossed_by(80, start_time))
         self.assertTrue(alert_s._is_crossed_by(91, start_time))
         self.assertTrue(alert_s._is_crossed_by(100, start_time))
         self.assertTrue(alert_s._is_crossed_by(100))
         self.assertFalse(alert_s._is_crossed_by(90, start_time))
-        alert_s.operator = '<'
+        alert_s.custom_operator = '<'
         alert_s.save()
         self.assertTrue(alert_s._is_crossed_by(80))
 
     def test_threshold_is_crossed_deferred(self):
         m = self._create_general_metric(name='load')
         alert_s = self._create_alert_settings(
-            metric=m, operator='>', value=90, seconds=60 * 9
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=60 * 9
         )
         self.assertFalse(alert_s._is_crossed_by(95, start_time))
         self.assertTrue(alert_s._is_crossed_by(95, ten_minutes_ago))
@@ -187,7 +191,9 @@ class TestModels(TestMonitoringMixin, TestCase):
     def test_threshold_is_crossed_deferred_2(self):
         self._create_admin()
         m = self._create_general_metric(name='load')
-        self._create_alert_settings(metric=m, operator='>', value=90, seconds=60)
+        self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=60
+        )
         m.write(60)
         m.write(99)
         self.assertTrue(m.is_healthy)
@@ -199,7 +205,7 @@ class TestModels(TestMonitoringMixin, TestCase):
     def test_general_metric_signal_emitted(self):
         m = self._create_general_metric(name='load')
         alert_s = self._create_alert_settings(
-            metric=m, operator='>', value=90, seconds=0
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=0
         )
         with catch_signal(threshold_crossed) as handler:
             m.check_threshold(91)
@@ -215,7 +221,7 @@ class TestModels(TestMonitoringMixin, TestCase):
     def test_object_metric_signal_emitted(self):
         om = self._create_object_metric()
         alert_s = self._create_alert_settings(
-            metric=om, operator='>', value=90, seconds=0
+            metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=0
         )
         with catch_signal(threshold_crossed) as handler:
             om.check_threshold(91)
@@ -249,3 +255,23 @@ class TestModels(TestMonitoringMixin, TestCase):
                 values={om.field_name: 3},
                 signal=post_metric_write,
             )
+
+    def test_clean_default_threshold_values(self):
+        m = self._create_general_metric(configuration='ping')
+        alert_s = AlertSettings(metric=m)
+        with self.subTest('Store default values'):
+            alert_s.custom_operator = alert_s.operator
+            alert_s.custom_threshold = alert_s.threshold
+            alert_s.custom_tolerance = alert_s.tolerance
+            alert_s.full_clean()
+            self.assertIsNone(alert_s.custom_operator)
+            self.assertIsNone(alert_s.custom_threshold)
+            self.assertIsNone(alert_s.custom_tolerance)
+        with self.subTest('Store default and custom values'):
+            alert_s.custom_operator = alert_s.operator
+            alert_s.custom_threshold = 0.5
+            alert_s.custom_tolerance = 2
+            alert_s.full_clean()
+            self.assertIsNone(alert_s.custom_operator)
+            self.assertEqual(alert_s.custom_threshold, 0.5)
+            self.assertEqual(alert_s.custom_tolerance, 2)

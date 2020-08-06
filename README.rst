@@ -445,21 +445,6 @@ Whether ping checks are created automatically for devices.
 This setting allows you to choose whether `config_applied <#configuration-applied>`_ checks should be
 created automatically for newly registered devices. It's enabled by default.
 
-``OPENWISP_MONITORING_DEVICE_CONFIG_CHECK_MAX_TIME``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-+--------------+-----------+
-| **type**:    |  ``int``  |
-+--------------+-----------+
-| **default**: |   ``5``   |
-+--------------+-----------+
-
-Defines the maximum amount of minutes the device configuration can stay in the *modified*
-state before its health status is changed to ``PROBLEM`` and an alert is sent.
-
-**Note**: The setting will be ignored if ``OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK``
-is ``False``.
-
 ``OPENWISP_MONITORING_AUTO_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -547,6 +532,145 @@ network topology module will trigger the monitoring checks.
 For more information see:
 `Network Topology Device Integration <https://github.com/openwisp/openwisp-network-topology#integration-with-openwisp-controller-and-openwisp-monitoring>`_
 
+``OPENWISP_MONITORING_MAC_VENDOR_DETECTION``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``bool``    |
++--------------+-------------+
+| **default**: | ``True``    |
++--------------+-------------+
+
+Indicates whether mac addresses will be complemented with hardware vendor
+information by performing lookups on the OUI
+(Organization Unique Identifier) table.
+
+This feature is enabled by default.
+
+``OPENWISP_MONITORING_WRITE_RETRY_OPTIONS``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-----------+
+| **type**:    | ``dict``  |
++--------------+-----------+
+| **default**: | see below |
++--------------+-----------+
+
+.. code-block:: python
+
+    # default value of OPENWISP_MONITORING_RETRY_OPTIONS:
+
+    dict(
+        max_retries=None,
+        retry_backoff=True,
+        retry_backoff_max=600,
+        retry_jitter=True,
+    )
+
+Retry settings for recoverable failures during metric writes.
+
+By default if a metric write fails (eg: due to excessive load on timeseries database at that moment)
+then the operation will be retried indefinitely with an exponential random backoff and a maximum delay of 10 minutes.
+
+This feature makes the monitoring system resilient to temporary outages and helps to prevent data loss.
+
+For more information regarding these settings, consult the `celery documentation
+regarding automatic retries for known errors
+<https://docs.celeryproject.org/en/stable/userguide/tasks.html#automatic-retry-for-known-exceptions>`_.
+
+``OPENWISP_MONITORING_METRICS``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``dict``    |
++--------------+-------------+
+| **default**: | ``{}``      |
++--------------+-------------+
+
+This setting allows to define additional metric configuration or to override
+the default metric configuration defined in
+``openwisp_monitoring.monitoring.configuration.DEFAULT_METRICS``.
+
+For example, if you want to change only the **field_name** of
+``clients`` metric to ``wifi_clients`` you can use:
+
+.. code-block:: python
+
+    from django.utils.translation import gettext_lazy as _
+
+    OPENWISP_MONITORING_METRICS = {
+        'clients': {
+            'label': _('WiFi clients'),
+            'field_name': 'wifi_clients',
+        },
+    }
+
+For example, if you want to change only the default alert settings of
+``memory`` metric you can use:
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_METRICS = {
+        'memory': {
+            'alert_settings': {'threshold': 0.75, 'tolerance': 5}
+        },
+    }
+
+For example, if you want to change only the notification of
+``config_applied`` metric you can use:
+
+.. code-block:: python
+
+    from django.utils.translation import gettext_lazy as _
+
+    OPENWISP_MONITORING_METRICS = {
+        'config_applied': {
+            'notification': {
+                'problem': {
+                    'verbose_name': 'Configuration PROBLEM',
+                    'verb': _('has not been applied'),
+                    'email_subject': _(
+                        '[{site.name}] PROBLEM: {notification.target} configuration '
+                        'status issue'
+                    ),
+                    'message': _(
+                        'The configuration for device [{notification.target}]'
+                        '({notification.target_link}) {notification.verb} in a timely manner.'
+                    ),
+                },
+                'recovery': {
+                    'verbose_name': 'Configuration RECOVERY',
+                    'verb': _('configuration has been applied again'),
+                    'email_subject': _(
+                        '[{site.name}] RECOVERY: {notification.target} {notification.verb} '
+                        'successfully'
+                    ),
+                    'message': _(
+                        'The device [{notification.target}]({notification.target_link}) '
+                        '{notification.verb} successfully.'
+                    ),
+                },
+            },
+        },
+    }
+
+Or if you want to define a new metric configuration, which you can then
+call in your custom code (eg: a custom check class), you can do so as follows:
+
+.. code-block:: python
+
+    from django.utils.translation import gettext_lazy as _
+
+    OPENWISP_MONITORING_METRICS = {
+        'top_fields_mean': {
+            'name': 'Top Fields Mean',
+            'key': '{key}',
+            'field_name': '{field_name}',
+            'label': '_(Top fields mean)',
+            'related_fields': ['field1', 'field2', 'field3'],
+        },
+    }
+
 ``OPENWISP_MONITORING_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -558,7 +682,7 @@ For more information see:
 
 This setting allows to define additional charts or to override
 the default chart configuration defined in
-``openwisp_monitoring.monitoring.charts.DEFAULT_CHARTS``.
+``openwisp_monitoring.monitoring.configuration.DEFAULT_CHARTS``.
 
 For example, if you want to change the traffic chart to show
 MB (megabytes) instead of GB (Gigabytes) you can use:
@@ -618,102 +742,173 @@ In case you just want to change the colors used in a chart here's how to do it:
         }
     }
 
-``OPENWISP_MONITORING_METRICS``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Registering / Unregistering Metric Configuration
+------------------------------------------------
 
-+--------------+-------------+
-| **type**:    | ``dict``    |
-+--------------+-------------+
-| **default**: | ``{}``      |
-+--------------+-------------+
+**OpenWISP Monitoring** provides registering and unregistering metric configuration through utility functions
+``openwisp_monitoring.monitoring.configuration.register_metric`` and ``openwisp_monitoring.monitoring.configuration.unregister_metric``.
+Using these functions you can register or unregister metric configurations from anywhere in your code.
 
-This setting allows to define additional metric configuration or to override
-the default metric configuration defined in
-``openwisp_monitoring.monitoring.metrics.DEFAULT_METRICS``.
+register_metric
+~~~~~~~~~~~~~~~
 
-For example, if you want to change the field_name of
-``clients`` metric to ``wifi_clients`` you can use:
+This function is used to register a new metric configuration from anywhere in your code.
 
-.. code-block:: python
++--------------------------+------------------------------------------------------+
+|      **Parameter**       |                   **Description**                    |
++--------------------------+------------------------------------------------------+
+|     **metric_name**:     | A ``str`` defining name of the metric configuration. |
++--------------------------+------------------------------------------------------+
+|**metric_configuration**: | A ``dict`` defining configuration of the metric.     |
++--------------------------+------------------------------------------------------+
 
-    from django.utils.translation import gettext_lazy as _
-
-    OPENWISP_MONITORING_METRICS = {
-        'clients': {
-            'label': _('Clients'),
-            'key': '{key}',
-            'field_name': 'wifi_clients',
-        },
-    }
-
-Or if you want to define a new metric configuration, which you can then
-call in your custom code (eg: a custom check class), you can do so as follows:
+An example usage has been shown below.
 
 .. code-block:: python
 
     from django.utils.translation import gettext_lazy as _
+    from openwisp_monitoring.monitoring.configuration import register_metric
 
-    OPENWISP_MONITORING_METRICS = {
-        'top_fields_mean': {
-            'name': 'Top Fields Mean',
-            'key': '{key}',
-            'field_name': '{field_name}',
-            'label': '_(Top fields mean)',
-            'related_fields': ['field1', 'field2', 'field3'],
+    # Define configuration of your metric
+    metric_config = {
+        'label': _('Ping'),
+        'name': 'Ping',
+        'key': 'ping',
+        'field_name': 'reachable',
+        'related_fields': ['loss', 'rtt_min', 'rtt_max', 'rtt_avg'],
+        'charts': {
+            'uptime': {
+                'type': 'bar',
+                'title': _('Uptime'),
+                'description': _(
+                    'A value of 100% means reachable, 0% means unreachable, values in '
+                    'between 0% and 100% indicate the average reachability in the '
+                    'period observed. Obtained with the fping linux program.'
+                ),
+                'summary_labels': [_('Average uptime')],
+                'unit': '%',
+                'order': 200,
+                'colorscale': {
+                    'max': 100,
+                    'min': 0,
+                    'label': _('Reachable'),
+                    'scale': [
+                        [0, '#c13000'],
+                        [0.5, '#deed0e'],
+                        [1, '#7db201'],
+                    ],
+                    'map': [
+                        [100, '#7db201', _('Reachable')],
+                        [33, '#deed0e', _('Partly reachable')],
+                        [None, '#c13000', _('Unreachable')],
+                    ],
+                    'fixed_value': 100,
+                },
+                'query': chart_query['uptime'],
+            },
+            'packet_loss': {
+                'type': 'bar',
+                'title': _('Packet loss'),
+                'description': _(
+                    'Indicates the percentage of lost packets observed in ICMP probes. '
+                    'Obtained with the fping linux program.'
+                ),
+                'summary_labels': [_('Average packet loss')],
+                'unit': '%',
+                'colors': '#d62728',
+                'order': 210,
+                'query': chart_query['packet_loss'],
+            },
+            'rtt': {
+                'type': 'scatter',
+                'title': _('Round Trip Time'),
+                'description': _(
+                    'Round trip time observed in ICMP probes, measuered in milliseconds.'
+                ),
+                'summary_labels': [
+                    _('Average RTT'),
+                    _('Average Max RTT'),
+                    _('Average Min RTT'),
+                ],
+                'unit': f' {_("ms")}',
+                'order': 220,
+                'query': chart_query['rtt'],
+            },
+        },
+        'alert_settings': {'operator': '<', 'threshold': 1, 'tolerance': 0},
+        'notification': {
+            'problem': {
+                'verbose_name': 'Ping PROBLEM',
+                'verb': 'cannot be reached anymore',
+                'level': 'warning',
+                'email_subject': _(
+                    '[{site.name}] {notification.target} is not reachable'
+                ),
+                'message': _(
+                    'The device [{notification.target}] {notification.verb} anymore by our ping '
+                    'messages.'
+                ),
+            },
+            'recovery': {
+                'verbose_name': 'Ping RECOVERY',
+                'verb': 'has become reachable',
+                'level': 'info',
+                'email_subject': _(
+                    '[{site.name}] {notification.target} is reachable again'
+                ),
+                'message': _(
+                    'The device [{notification.target}] {notification.verb} again by our ping '
+                    'messages.'
+                ),
+            },
         },
     }
 
-``OPENWISP_MONITORING_MAC_VENDOR_DETECTION``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # Register your custom metric configuration
+    register_metric('ping', metric_config)
 
-+--------------+-------------+
-| **type**:    | ``bool``    |
-+--------------+-------------+
-| **default**: | ``True``    |
-+--------------+-------------+
+The above example will register one metric configuration (named ``ping``), three chart
+configurations (named ``rtt``, ``packet_loss``, ``uptime``) as defined in the **charts** key,
+two notification types (named ``ping_recovery``, ``ping_problem``) as defined in **notification** key.
 
-Indicates whether mac addresses will be complemented with hardware vendor
-information by performing lookups on the OUI
-(Organization Unique Identifier) table.
+The ``AlertSettings`` of ``ping`` metric will by default use ``threshold`` and ``tolerance``
+defined in the ``alert_settings`` key.
+You can always override them and define your own custom values via the *admin*.
 
-This feature is enabled by default.
+**Note**: It will raise ``ImproperlyConfigured`` exception if a metric configuration
+is already registered with same name (not to be confused with verbose_name).
 
-``OPENWISP_MONITORING_WRITE_RETRY_OPTIONS``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+If you don't need to register a new metric but need to change a specific key of an
+existing metric configuration, you can use `OPENWISP_MONITORING_METRICS <#openwisp_monitoring_metrics>`_.
 
-+--------------+-----------+
-| **type**:    | ``dict``  |
-+--------------+-----------+
-| **default**: | see below |
-+--------------+-----------+
+unregister_metric
+~~~~~~~~~~~~~~~~~
+
+This function is used to unregister a metric configuration from anywhere in your code.
+
++------------------+------------------------------------------------------+
+|  **Parameter**   |                   **Description**                    |
++------------------+------------------------------------------------------+
+| **metric_name**: | A ``str`` defining name of the metric configuration. |
++------------------+------------------------------------------------------+
+
+An example usage is shown below.
 
 .. code-block:: python
 
-    # default value of OPENWISP_MONITORING_RETRY_OPTIONS:
+    from openwisp_monitoring.monitoring.configuration import unregister_metric
 
-    dict(
-        max_retries=None,
-        retry_backoff=True,
-        retry_backoff_max=600,
-        retry_jitter=True,
-    )
+    # Unregister previously registered metric configuration
+    unregister_metric('metric_name')
 
-Retry settings for recoverable failures during metric writes.
-
-By default if a metric write fails (eg: due to excessive load on timeseries database at that moment)
-then the operation will be retried indefinitely with an exponential random backoff and a maximum delay of 10 minutes.
-
-This feature makes the monitoring system resilient to temporary outages and helps to prevent data loss.
-
-For more information regarding these settings, consult the `celery documentation
-regarding automatic retries for known errors
-<https://docs.celeryproject.org/en/stable/userguide/tasks.html#automatic-retry-for-known-exceptions>`_.
+**Note**: It will raise ``ImproperlyConfigured`` exception if the concerned metric
+configuration is not registered.
 
 Registering / Unregistering Chart Configuration
 -----------------------------------------------
 
 **OpenWISP Monitoring** provides registering and unregistering chart configuration through utility functions
-``openwisp_monitoring.monitoring.charts.register_chart`` and ``openwisp_monitoring.monitoring.charts.unregister_chart``.
+``openwisp_monitoring.monitoring.configuration.register_chart`` and ``openwisp_monitoring.monitoring.configuration.unregister_chart``.
 Using these functions you can register or unregister chart configurations from anywhere in your code.
 
 register_chart
@@ -733,7 +928,7 @@ An example usage has been shown below.
 
 .. code-block:: python
 
-    from openwisp_monitoring.monitoring.charts import register_chart
+    from openwisp_monitoring.monitoring.configuration import register_chart
 
     # Define configuration of your chart
     chart_config = {
@@ -757,6 +952,9 @@ An example usage has been shown below.
 **Note**: It will raise ``ImproperlyConfigured`` exception if a chart configuration
 is already registered with same name (not to be confused with verbose_name).
 
+If you don't need to register a new chart but need to change a specific key of an
+existing chart configuration, you can use `OPENWISP_MONITORING_CHARTS <#openwisp_monitoring_charts>`_.
+
 unregister_chart
 ~~~~~~~~~~~~~~~~
 
@@ -772,7 +970,7 @@ An example usage is shown below.
 
 .. code-block:: python
 
-    from openwisp_monitoring.monitoring.charts import unregister_chart
+    from openwisp_monitoring.monitoring.configuration import unregister_chart
 
     # Unregister previously registered chart configuration
     unregister_chart('chart_name')
@@ -1259,7 +1457,7 @@ The full python path is: ``openwisp_monitoring.device.api.views.DeviceMetricView
 
 If you want to extend this view, you will have to perform the additional steps below.
 
-**Step 1. Import and extend view:**
+Step 1. Import and extend view:
 
 .. code-block:: python
 
@@ -1272,7 +1470,7 @@ If you want to extend this view, you will have to perform the additional steps b
         # add your customizations here ...
         pass
 
-**Step 2: remove the following line from your root ``urls.py`` file:**
+Step 2: remove the following line from your root ``urls.py`` file:
 
 .. code-block:: python
 
@@ -1282,7 +1480,7 @@ If you want to extend this view, you will have to perform the additional steps b
         name='api_device_metric',
     ),
 
-**Step 3: add an URL route pointing to your custom view in ``urls.py`` file:**
+Step 3: add an URL route pointing to your custom view in ``urls.py`` file:
 
 .. code-block:: python
 

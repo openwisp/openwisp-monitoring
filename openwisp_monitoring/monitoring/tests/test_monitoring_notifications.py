@@ -27,7 +27,9 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
     def test_general_check_threshold_crossed_immediate(self):
         admin = self._create_admin()
         m = self._create_general_metric(name='load')
-        self._create_alert_settings(metric=m, operator='>', value=90, seconds=0)
+        self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=0
+        )
 
         with self.subTest('Test notification for metric exceeding alert settings'):
             m.write(99)
@@ -64,7 +66,9 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
     def test_general_check_threshold_crossed_deferred(self):
         admin = self._create_admin()
         m = self._create_general_metric(name='load')
-        self._create_alert_settings(metric=m, operator='>', value=90, seconds=60)
+        self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=1
+        )
         m.write(99, time=ten_minutes_ago)
         self.assertFalse(m.is_healthy)
         self.assertEqual(Notification.objects.count(), 1)
@@ -77,7 +81,9 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
     def test_general_check_threshold_deferred_not_crossed(self):
         self._create_admin()
         m = self._create_general_metric(name='load')
-        self._create_alert_settings(metric=m, operator='>', value=90, seconds=60)
+        self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=1
+        )
         m.write(99)
         self.assertTrue(m.is_healthy)
         self.assertEqual(Notification.objects.count(), 0)
@@ -115,7 +121,9 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         """
         admin = self._create_admin()
         m = self._create_general_metric(name='load')
-        self._create_alert_settings(metric=m, operator='>', value=90, seconds=61)
+        self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=1
+        )
 
         with self.subTest('Test no notification is generated for healthy status'):
             m.write(89, time=ten_minutes_ago)
@@ -140,7 +148,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         admin = self._create_admin()
         om = self._create_object_metric(name='load')
         alert_s = self._create_alert_settings(
-            metric=om, operator='>', value=90, seconds=0
+            metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=0
         )
 
         with self.subTest(
@@ -187,7 +195,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         admin = self._create_admin()
         om = self._create_object_metric(name='load')
         alert_s = self._create_alert_settings(
-            metric=om, operator='>', value=90, seconds=60
+            metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=1
         )
         om.write(99, time=ten_minutes_ago)
         self.assertFalse(om.is_healthy)
@@ -202,7 +210,9 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
     def test_object_check_threshold_deferred_not_crossed(self):
         self._create_admin()
         om = self._create_object_metric(name='load')
-        self._create_alert_settings(metric=om, operator='>', value=90, seconds=60)
+        self._create_alert_settings(
+            metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=1
+        )
         om.write(99)
         self.assertTrue(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 0)
@@ -211,7 +221,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         admin = self._create_admin()
         om = self._create_object_metric(name='load')
         alert_s = self._create_alert_settings(
-            metric=om, operator='>', value=90, seconds=61
+            metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=1
         )
         om.write(89, time=ten_minutes_ago)
         self.assertEqual(Notification.objects.count(), 0)
@@ -265,7 +275,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         with self.subTest('Test general metric multiple notifications'):
             m = self._create_general_metric(name='load')
             alert_s = self._create_alert_settings(
-                metric=m, operator='>', value=90, seconds=61
+                metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=1
             )
             m._notify_users(notification_type='default', alert_settings=alert_s)
             self.assertEqual(Notification.objects.count(), 1)
@@ -280,7 +290,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             d = self._create_device(organization=testorg)
             om = self._create_object_metric(name='load', content_object=d)
             alert_s = self._create_alert_settings(
-                metric=om, operator='>', value=90, seconds=61
+                metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=1
             )
             self.assertEqual(Notification.objects.count(), 0)
             om._notify_users(notification_type='default', alert_settings=alert_s)
@@ -297,7 +307,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         with self.subTest('Test object metric multiple notifications no org'):
             om = self._create_object_metric(name='logins', content_object=user)
             alert_s = self._create_alert_settings(
-                metric=om, operator='>', value=90, seconds=0
+                metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=0
             )
             self.assertEqual(Notification.objects.count(), 0)
             om._notify_users(notification_type='default', alert_settings=alert_s)
@@ -317,7 +327,9 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self._create_admin()
         d = self._create_device(organization=self._get_org())
         m = self._create_general_metric(name='load', content_object=d)
-        self._create_alert_settings(metric=m, operator='>', value=90, seconds=0)
+        self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=0
+        )
         exp_target_link = f'https://example.com/admin/config/device/{d.id}/change/'
         exp_email_body = '{message}\n\nFor more information see {email_link}.'
 
@@ -366,7 +378,9 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
     def test_notification_types(self):
         self._create_admin()
         m = self._create_object_metric(name='load')
-        self._create_alert_settings(metric=m, operator='>', value=90, seconds=0)
+        self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=0
+        )
         exp_message = (
             '<p>{n.actor.name} for device '
             '<a href="https://example.com/admin/openwisp_users/user/{n.target.id}/change/">tester</a>'
@@ -397,7 +411,11 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         d = self._create_device(organization=self._get_org())
         m = self._create_general_metric(name='load', content_object=d)
         self._create_alert_settings(
-            metric=m, operator='>', value=90, seconds=60, is_active=False
+            metric=m,
+            custom_operator='>',
+            custom_threshold=90,
+            custom_tolerance=1,
+            is_active=False,
         )
         m.write(99, time=ten_minutes_ago)
         self.assertFalse(m.is_healthy)

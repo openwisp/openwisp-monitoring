@@ -23,9 +23,9 @@ class TestModels(BaseTestModels):
         self.assertEqual(m.details, details)
         alert_s = self._create_alert_settings(
             metric=m,
-            operator='>',
-            value=90,
-            seconds=0,
+            custom_operator='>',
+            custom_threshold=90,
+            custom_tolerance=0,
             details=f'Related metric name is {m.name}',
         )
         self.assertEqual(alert_s.details, f'Related metric name is {m.name}')

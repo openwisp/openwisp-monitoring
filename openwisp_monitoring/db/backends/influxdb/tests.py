@@ -226,7 +226,9 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
             'Test metric write on short retention_policy immediate alert'
         ):
             m = self._create_general_metric(name='dummy')
-            self._create_alert_settings(metric=m, operator='<', value=1, seconds=0)
+            self._create_alert_settings(
+                metric=m, custom_operator='<', custom_threshold=1, custom_tolerance=0
+            )
             m.write(0, retention_policy=SHORT_RP)
             self.assertEqual(m.read(retention_policy=SHORT_RP)[0][m.field_name], 0)
             self.assertFalse(m.is_healthy)
@@ -235,7 +237,9 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
             'Test metric write on short retention_policy with deferred alert'
         ):
             m2 = self._create_general_metric(name='dummy2')
-            self._create_alert_settings(metric=m2, operator='<', value=1, seconds=60)
+            self._create_alert_settings(
+                metric=m2, custom_operator='<', custom_threshold=1, custom_tolerance=1
+            )
             m.write(0, retention_policy=SHORT_RP, time=now() - timedelta(minutes=2))
             self.assertEqual(m.read(retention_policy=SHORT_RP)[0][m.field_name], 0)
             self.assertFalse(m.is_healthy)

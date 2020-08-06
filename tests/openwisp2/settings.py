@@ -8,6 +8,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
+# required by openwisp-notifications
+INTERNAL_IPS = ['127.0.0.1']
 
 DATABASES = {
     'default': {
@@ -176,31 +178,6 @@ CELERY_BEAT_SCHEDULE = {
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 CELERY_EMAIL_BACKEND = EMAIL_BACKEND
-
-# these custom metric configurations are used for automated testing purposes
-if TESTING:
-    OPENWISP_MONITORING_METRICS = {
-        'test_metric': {
-            'name': 'dummy',
-            'key': '{key}',
-            'field_name': '{field_name}',
-            'label': 'Test Metric',
-        },
-        'top_fields_mean': {
-            'name': 'top_fields_mean_test',
-            'key': '{key}',
-            'field_name': '{field_name}',
-            'label': 'top fields mean test',
-            'related_fields': ['google', 'facebook', 'reddit'],
-        },
-        'get_top_fields': {
-            'name': 'get_top_fields_test',
-            'key': '{key}',
-            'field_name': '{field_name}',
-            'label': 'get top fields test',
-            'related_fields': ['http2', 'ssh', 'udp', 'spdy'],
-        },
-    }
 
 ASGI_APPLICATION = 'openwisp2.routing.application'
 if TESTING:
