@@ -1,11 +1,9 @@
 import json
-import socket
 from copy import deepcopy
 from unittest.mock import patch
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from openwisp_notifications.signals import notify
-from paramiko.ssh_exception import NoValidConnectionsError
 from swapper import load_model
 
 from openwisp_controller.config.signals import config_modified
@@ -23,6 +21,7 @@ Credentials = load_model('connection', 'Credentials')
 
 
 class BaseTestCase(DeviceMonitoringTestCase):
+    _PING = 'openwisp_monitoring.check.classes.Ping'
     _sample_data = {
         "type": "DeviceMonitoring",
         "general": {
@@ -589,8 +588,7 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         dm = d.monitoring
         dm.status = 'unknown'
         dm.save()
-        ping_path = 'openwisp_monitoring.check.classes.Ping'
-        Check.objects.create(name='Check', content_object=d, check=ping_path)
+        Check.objects.create(name='Check', content_object=d, check=self._PING)
         c = Credentials.objects.create()
         dc = DeviceConnection.objects.create(credentials=c, device=d, is_working=False)
         self.assertFalse(dc.is_working)
@@ -606,8 +604,7 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         dm = d.monitoring
         dm.status = 'ok'
         dm.save()
-        ping_path = 'openwisp_monitoring.check.classes.Ping'
-        Check.objects.create(name='Check', content_object=d, check=ping_path)
+        Check.objects.create(name='Check', content_object=d, check=self._PING)
         c = Credentials.objects.create()
         dc = DeviceConnection.objects.create(credentials=c, device=d)
         dc.is_working = False
@@ -622,8 +619,7 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         dm = d.monitoring
         dm.status = 'unknown'
         dm.save()
-        ping_path = 'openwisp_monitoring.check.classes.Ping'
-        Check.objects.create(name='Check', content_object=d, check=ping_path)
+        Check.objects.create(name='Check', content_object=d, check=self._PING)
         c = Credentials.objects.create()
         dc = DeviceConnection.objects.create(credentials=c, device=d)
         self.assertIsNone(dc.is_working)
@@ -634,24 +630,43 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
 
     @patch.object(Check, 'perform_check')
     @patch.object(notify, 'send')
-    def test_is_working_connectivity_failure(self, notify_send, perform_check):
+    def test_is_working_changed_unable_to_connect(self, notify_send, perform_check):
         ckey = self._create_credentials_with_key(port=self.ssh_server.port)
         dc = self._create_device_connection(credentials=ckey)
-        d = self.device_model.objects.first()
-        d.monitoring.update_status('unknown')
-        ping_path = 'openwisp_monitoring.check.classes.Ping'
-        Check.objects.create(name='Check', content_object=d, check=ping_path)
-        self.assertIsNone(dc.is_working)
         dc.is_working = True
-        e = NoValidConnectionsError({'error': socket.error})
-        self.assertEqual(dc.failure_reason, '')
-        with patch.object(dc.connector_instance, 'connect', return_value=e):
-            dc.save()
-        dc.connect()
-        self.assertEqual(
-            dc.failure_reason,
-            '[Errno None] Unable to connect to port 5555 on 127.0.0.1',
-        )
+        dc.save()
+        notify_send.assert_not_called()
+        perform_check.assert_not_called()
+
+        d = self.device_model.objects.first()
+        d.monitoring.update_status('ok')
+        Check.objects.create(name='Check', content_object=d, check=self._PING)
+        dc.is_working = False
+        dc.failure_reason = '[Errno None] Unable to connect to port 5555 on 127.0.0.1'
+        dc.full_clean()
+        dc.save()
+
+        notify_send.assert_not_called()
+        perform_check.assert_not_called()
+
+    @patch.object(Check, 'perform_check')
+    @patch.object(notify, 'send')
+    def test_is_working_changed_timed_out(self, notify_send, perform_check):
+        ckey = self._create_credentials_with_key(port=self.ssh_server.port)
+        dc = self._create_device_connection(credentials=ckey)
+        dc.is_working = True
+        dc.save()
+        notify_send.assert_not_called()
+        perform_check.assert_not_called()
+
+        d = self.device_model.objects.first()
+        d.monitoring.update_status('ok')
+        Check.objects.create(name='Check', content_object=d, check=self._PING)
+        dc.is_working = False
+        dc.failure_reason = 'timed out'
+        dc.full_clean()
+        dc.save()
+
         notify_send.assert_not_called()
         perform_check.assert_not_called()
 
@@ -663,8 +678,7 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         d = self.device_model.objects.first()
         d.monitoring.update_status('ok')
         dc.refresh_from_db()
-        ping_path = 'openwisp_monitoring.check.classes.Ping'
-        Check.objects.create(name='Check', content_object=d, check=ping_path)
+        Check.objects.create(name='Check', content_object=d, check=self._PING)
         failure_reason = '[Errno None] Unable to connect to port 5555 on 127.0.0.1'
         self.assertTrue(dc.is_working)
         dc.failure_reason = failure_reason
