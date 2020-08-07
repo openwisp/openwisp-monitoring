@@ -121,9 +121,11 @@ class DeviceMonitoringConfig(AppConfig):
             return
         # if device is down because of connectivity issues, it's probably due
         # to reboot caused by firmware upgrade, avoid notifications
-        if 'Unable to connect' in failure_reason:
-            device_monitoring.save()
-            return
+        ignored_failures = ['Unable to connect', 'timed out']
+        for message in ignored_failures:
+            if message in failure_reason:
+                device_monitoring.save()
+                return
         initial_status = device_monitoring.status
         status = 'ok' if is_working else 'problem'
         # do not send notificatons if recovery made after firmware upgrade
