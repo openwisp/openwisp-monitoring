@@ -10,9 +10,10 @@ from django.utils.functional import cached_property
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from influxdb import InfluxDBClient
+from influxdb.exceptions import InfluxDBClientError
 
+from ...exceptions import TimeseriesWriteException
 from .. import TIMESERIES_DB
-from .exception import DatabaseException
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ class DatabaseClient(object):
     def __init__(self, db_name=None):
         self._db = None
         self.db_name = db_name or TIMESERIES_DB['NAME']
-        self.client_error = DatabaseException.client_error
+        self.client_error = InfluxDBClientError
 
     def create_database(self):
         """ creates database if necessary """
@@ -117,13 +118,17 @@ class DatabaseClient(object):
         if isinstance(timestamp, datetime):
             timestamp = timestamp.isoformat(sep='T', timespec='microseconds')
         point['time'] = timestamp
-        self.get_db.write(
-            {'points': [point]},
-            {
-                'db': kwargs.get('database') or self.db_name,
-                'rp': kwargs.get('retention_policy'),
-            },
-        )
+        try:
+            self.get_db.write(
+                {'points': [point]},
+                {
+                    'db': kwargs.get('database') or self.db_name,
+                    'rp': kwargs.get('retention_policy'),
+                },
+            )
+        except Exception as exception:
+            logger.warning(f'got exception while writing to tsdb: {exception}')
+            raise TimeseriesWriteException
 
     def read(self, key, fields, tags, **kwargs):
         extra_fields = kwargs.get('extra_fields')

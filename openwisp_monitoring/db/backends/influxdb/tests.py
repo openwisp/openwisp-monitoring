@@ -1,13 +1,20 @@
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
+from celery.exceptions import Retry
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils.timezone import now
+from freezegun import freeze_time
+from influxdb import InfluxDBClient
+from influxdb.exceptions import InfluxDBServerError
 from openwisp_monitoring.device.settings import SHORT_RETENTION_POLICY
 from openwisp_monitoring.device.utils import SHORT_RP, manage_short_retention_policy
 from openwisp_monitoring.monitoring.tests import TestMonitoringMixin
+from pytz import timezone as tz
 from swapper import load_model
 
+from ...exceptions import TimeseriesWriteException
 from .. import timeseries_db
 
 Chart = load_model('monitoring', 'Chart')
@@ -240,3 +247,42 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         m.write('00:14:5c:00:00:00', time=datetime(2020, 7, 31, 22, 5, 47, 235142))
         m.write('00:23:4a:00:00:00', time=datetime(2020, 7, 31, 22, 5, 47, 235152))
         self.assertEqual(len(m.read()), 2)
+
+    @patch.object(
+        InfluxDBClient, 'write', side_effect=InfluxDBServerError('Server error')
+    )
+    def test_write_retry(self, mock_write):
+        with self.assertRaises(TimeseriesWriteException):
+            timeseries_db.write('test_write', {'value': 1})
+        m = self._create_general_metric(name='Test metric')
+        with self.assertRaises(Retry):
+            m.write(1)
+
+    @patch.object(
+        InfluxDBClient, 'write', side_effect=InfluxDBServerError('Server error')
+    )
+    def test_timeseries_write_params(self, mock_write):
+        with freeze_time('Jan 14th, 2020') as frozen_datetime:
+            m = self._create_general_metric(name='Test metric')
+            with self.assertRaises(Retry) as e:
+                m.write(1)
+            frozen_datetime.tick(delta=timedelta(minutes=10))
+            self.assertEqual(
+                now(), datetime(2020, 1, 14, tzinfo=tz('UTC')) + timedelta(minutes=10)
+            )
+            task_signature = e.exception.sig
+            with patch.object(timeseries_db, 'write') as mock_write:
+                self._retry_task(task_signature)
+            mock_write.assert_called_with(
+                'test_metric',
+                {'value': 1},
+                database=None,
+                retention_policy=None,
+                tags={},
+                # this should be the original time at the moment of first failure
+                timestamp='2020-01-14T00:00:00Z',
+            )
+
+    def _retry_task(self, task_signature):
+        task_kwargs = task_signature.kwargs
+        task_signature.type.run(**task_kwargs)

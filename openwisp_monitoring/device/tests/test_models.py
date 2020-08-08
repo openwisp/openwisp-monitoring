@@ -2,6 +2,7 @@ import json
 from copy import deepcopy
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from openwisp_notifications.signals import notify
 from swapper import load_model
@@ -10,8 +11,10 @@ from openwisp_controller.config.signals import config_modified
 from openwisp_controller.connection.tests.base import CreateConnectionsMixin
 from openwisp_utils.tests import catch_signal
 
+from ...db import timeseries_db
 from ..signals import health_status_changed
 from ..tasks import trigger_device_checks
+from ..utils import get_device_cache_key
 from . import DeviceMonitoringTestCase
 
 Check = load_model('check', 'Check')
@@ -466,6 +469,15 @@ class TestDeviceData(BaseTestCase):
         dd = DeviceData(name='Test Device')
         trigger_device_checks.delay(dd.pk)
         mock.assert_called_with(f'The device with uuid {dd.pk} has been deleted')
+
+    def test_device_data_cache_set(self):
+        dd = self.create_test_adata(no_resources=True)
+        cache_key = get_device_cache_key(dd, context='current-data')
+        cache_data = cache.get(cache_key)[0]['data']
+        self.assertEqual(json.loads(cache_data), dd.data)
+        with patch.object(timeseries_db, 'query', side_effect=Exception):
+            dd.refresh_from_db()
+            self.assertEqual(json.loads(cache_data), dd.data)
 
 
 class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):

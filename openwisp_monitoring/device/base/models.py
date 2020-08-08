@@ -6,9 +6,11 @@ from datetime import datetime
 import swapper
 from cache_memoize import cache_memoize
 from dateutil.relativedelta import relativedelta
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.dispatch import receiver
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
@@ -22,10 +24,11 @@ from openwisp_utils.base import TimeStampedEditableModel
 
 from ...db import device_data_query, timeseries_db
 from ...monitoring.signals import threshold_crossed
+from ...monitoring.tasks import timeseries_write
 from .. import settings as app_settings
 from ..schema import schema
 from ..signals import health_status_changed
-from ..utils import SHORT_RP
+from ..utils import SHORT_RP, get_device_cache_key
 
 mac_lookup = MacLookup()
 
@@ -97,7 +100,10 @@ class AbstractDeviceData(object):
         if self.__data:
             return self.__data
         q = device_data_query.format(SHORT_RP, self.__key, self.pk)
-        points = timeseries_db.get_list_query(q, precision=None)
+        cache_key = get_device_cache_key(device=self, context='current-data')
+        points = cache.get(cache_key)
+        if not points:
+            points = timeseries_db.get_list_query(q, precision=None)
         if not points:
             return None
         self.data_timestamp = points[0]['time']
@@ -167,14 +173,20 @@ class AbstractDeviceData(object):
         self.validate_data()
         if app_settings.MAC_VENDOR_DETECTION:
             self.add_mac_vendor_info()
-        # TODO: Rename the parameters, since they might be called
-        # differently in the other database (eg: tags/labels)
-        timeseries_db.write(
-            name=self.__key,
-            values={'data': self.json()},
-            tags={'pk': self.pk},
-            timestamp=time,
-            retention_policy=SHORT_RP,
+        time = time or now()
+        options = dict(tags={'pk': self.pk}, timestamp=time, retention_policy=SHORT_RP)
+        timeseries_write.delay(name=self.__key, values={'data': self.json()}, **options)
+        cache_key = get_device_cache_key(device=self, context='current-data')
+        # cache current data to allow getting it without querying the timeseries DB
+        cache.set(
+            cache_key,
+            [
+                {
+                    'data': self.json(),
+                    'time': time.astimezone(tz=tz('UTC')).isoformat(timespec='seconds'),
+                }
+            ],
+            timeout=86400,  # 24 hours
         )
 
     def json(self, *args, **kwargs):
