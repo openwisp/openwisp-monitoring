@@ -1,9 +1,13 @@
 import json
+import logging
 
 from celery import shared_task
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ObjectDoesNotExist
 from swapper import load_model
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task
@@ -28,7 +32,11 @@ def perform_check(uuid):
     and calls ``check.perform_check()``
     """
     Check = load_model('check', 'Check')
-    check = Check.objects.get(pk=uuid)
+    try:
+        check = Check.objects.get(pk=uuid)
+    except ObjectDoesNotExist:
+        logger.warning(f'The check with uuid {uuid} has been deleted')
+        return
     result = check.perform_check()
     if settings.DEBUG:  # pragma: nocover
         print(json.dumps(result, indent=4, sort_keys=True))

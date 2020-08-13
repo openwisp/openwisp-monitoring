@@ -11,6 +11,7 @@ from openwisp_controller.connection.tests.base import CreateConnectionsMixin
 from openwisp_utils.tests import catch_signal
 
 from ..signals import health_status_changed
+from ..tasks import trigger_device_checks
 from . import DeviceMonitoringTestCase
 
 Check = load_model('check', 'Check')
@@ -459,6 +460,12 @@ class TestDeviceData(BaseTestCase):
             del data['resources']['disk']
             dd.data = data
             dd.validate_data()
+
+    @patch('logging.Logger.warning')
+    def test_trigger_device_checks_task_resiliency(self, mock):
+        dd = DeviceData(name='Test Device')
+        trigger_device_checks.delay(dd.pk)
+        mock.assert_called_with(f'The device with uuid {dd.pk} has been deleted')
 
 
 class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):

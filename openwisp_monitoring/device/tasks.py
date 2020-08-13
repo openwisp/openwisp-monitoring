@@ -1,7 +1,12 @@
+import logging
+
 from celery import shared_task
+from django.core.exceptions import ObjectDoesNotExist
 from swapper import load_model
 
 from ..check.tasks import perform_check
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task
@@ -13,7 +18,11 @@ def trigger_device_checks(pk, recovery=True):
     ``recovery`` argument.
     """
     DeviceData = load_model('device_monitoring', 'DeviceData')
-    device = DeviceData.objects.get(pk=pk)
+    try:
+        device = DeviceData.objects.get(pk=pk)
+    except ObjectDoesNotExist:
+        logger.warning(f'The device with uuid {pk} has been deleted')
+        return
     checks = device.checks.filter(is_active=True).only('id').values('id')
     has_checks = False
     for check in checks:
