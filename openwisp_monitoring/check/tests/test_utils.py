@@ -2,12 +2,16 @@ from unittest.mock import patch
 
 from django.core import management
 from django.test import TransactionTestCase
+from swapper import load_model
 
 from ...device.tests import TestDeviceMonitoringMixin
 from ..classes import Ping
 from ..settings import CHECK_CLASSES
+from ..tasks import perform_check
 from ..utils import run_checks_async
 from . import _FPING_REACHABLE
+
+Check = load_model('check', 'Check')
 
 
 class TestUtils(TestDeviceMonitoringMixin, TransactionTestCase):
@@ -28,3 +32,9 @@ class TestUtils(TestDeviceMonitoringMixin, TransactionTestCase):
     def test_management_command(self, mocked_method):
         self._create_check()
         management.call_command('run_checks')
+
+    @patch('logging.Logger.warning')
+    def test_perform_check_task_resiliency(self, mock):
+        check = Check(name='Test check')
+        perform_check.delay(check.pk)
+        mock.assert_called_with(f'The check with uuid {check.pk} has been deleted')
