@@ -1,4 +1,5 @@
 from django.db import models
+
 from openwisp_monitoring.monitoring.base.models import (
     AbstractAlertSettings,
     AbstractChart,

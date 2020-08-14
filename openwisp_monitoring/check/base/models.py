@@ -7,9 +7,9 @@ from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from jsonfield import JSONField
+
 from openwisp_monitoring.check import settings as app_settings
 from openwisp_monitoring.check.tasks import auto_create_config_check, auto_create_ping
-
 from openwisp_utils.base import TimeStampedEditableModel
 
 

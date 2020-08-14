@@ -1,7 +1,7 @@
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import gettext_lazy as _
-from openwisp_monitoring.db import chart_query
 
+from openwisp_monitoring.db import chart_query
 from openwisp_utils.utils import deep_merge_dicts
 
 from . import settings as app_settings

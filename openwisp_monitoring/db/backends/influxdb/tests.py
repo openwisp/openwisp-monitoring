@@ -8,11 +8,12 @@ from django.utils.timezone import now
 from freezegun import freeze_time
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBServerError
+from pytz import timezone as tz
+from swapper import load_model
+
 from openwisp_monitoring.device.settings import SHORT_RETENTION_POLICY
 from openwisp_monitoring.device.utils import SHORT_RP, manage_short_retention_policy
 from openwisp_monitoring.monitoring.tests import TestMonitoringMixin
-from pytz import timezone as tz
-from swapper import load_model
 
 from ...exceptions import TimeseriesWriteException
 from .. import timeseries_db
