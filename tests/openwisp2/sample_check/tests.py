@@ -2,13 +2,14 @@ from unittest.mock import patch
 
 from django.test import TransactionTestCase
 from django.utils.timezone import now
+from swapper import load_model
+
 from openwisp_monitoring.check.classes import Ping
 from openwisp_monitoring.check.tests import _FPING_REACHABLE
 from openwisp_monitoring.check.tests.test_models import TestModels as BaseTestModels
 from openwisp_monitoring.check.tests.test_ping import TestPing as BaseTestPing
 from openwisp_monitoring.check.tests.test_utils import TestUtils as BaseTestUtils
 from openwisp_monitoring.device.tests import TestDeviceMonitoringMixin
-from swapper import load_model
 
 Check = load_model('check', 'Check')
 

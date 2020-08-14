@@ -1,8 +1,9 @@
 from django.apps import AppConfig
 from django.db.models.signals import post_save
 from django.utils.translation import ugettext_lazy as _
-from openwisp_monitoring.check import settings as app_settings
 from swapper import load_model
+
+from openwisp_monitoring.check import settings as app_settings
 
 
 class CheckConfig(AppConfig):

@@ -1,7 +1,8 @@
 from django.db import models
 from django.utils.timezone import now
-from openwisp_monitoring.check.base.models import AbstractCheck
 from swapper import swappable_setting
+
+from openwisp_monitoring.check.base.models import AbstractCheck
 
 
 class Check(AbstractCheck):
