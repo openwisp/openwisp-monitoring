@@ -9,7 +9,7 @@ from ...check.tasks import auto_create_ping
 from ...check.tests import _FPING_REACHABLE, _FPING_UNREACHABLE
 from ..signals import health_status_changed
 from ..tasks import trigger_device_checks
-from ..utils import get_device_recovery_cache_key
+from ..utils import get_device_cache_key
 from . import DeviceMonitoringTestCase
 
 Check = load_model('check', 'Check')
@@ -65,7 +65,7 @@ class TestRecovery(DeviceMonitoringTestCase):
         ):
             device_monitoring_app.device_recovery_detection()
         dm = self._create_device_monitoring()
-        cache_key = get_device_recovery_cache_key(device=dm.device)
+        cache_key = get_device_cache_key(device=dm.device)
         dm.update_status('critical')
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'critical')
@@ -74,7 +74,7 @@ class TestRecovery(DeviceMonitoringTestCase):
 
     def test_device_recovery_cache_key_set(self):
         dm = self._create_device_monitoring()
-        cache_key = get_device_recovery_cache_key(device=dm.device)
+        cache_key = get_device_cache_key(device=dm.device)
         dm.update_status('critical')
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'critical')

@@ -1,0 +1,2 @@
+class TimeseriesWriteException(Exception):
+    pass

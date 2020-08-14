@@ -4,8 +4,8 @@ from . import settings as app_settings
 SHORT_RP = 'short'
 
 
-def get_device_recovery_cache_key(device):
-    return f'device-{device.pk}-react-to-updates'
+def get_device_cache_key(device, context='react-to-updates'):
+    return f'device-{device.pk}-{context}'
 
 
 def manage_short_retention_policy():

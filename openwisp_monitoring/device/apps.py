@@ -12,7 +12,7 @@ from openwisp_controller.connection.signals import is_working_changed
 from ..check import settings as check_settings
 from . import settings as app_settings
 from .signals import device_metrics_received, health_status_changed
-from .utils import get_device_recovery_cache_key, manage_short_retention_policy
+from .utils import get_device_cache_key, manage_short_retention_policy
 
 
 class DeviceMonitoringConfig(AppConfig):
@@ -85,7 +85,7 @@ class DeviceMonitoringConfig(AppConfig):
         It sets the ``cache_key`` as 1 when device ``health_status`` goes to ``critical``
         and deletes the ``cache_key`` when device recovers from ``critical`` state
         """
-        cache_key = get_device_recovery_cache_key(device=instance.device)
+        cache_key = get_device_cache_key(device=instance.device)
         if status == 'critical':
             cache.set(cache_key, 1, timeout=None)
         else:
@@ -95,7 +95,7 @@ class DeviceMonitoringConfig(AppConfig):
     def trigger_device_recovery_checks(cls, instance, **kwargs):
         from .tasks import trigger_device_checks
 
-        if cache.get(get_device_recovery_cache_key(device=instance)):
+        if cache.get(get_device_cache_key(device=instance)):
             trigger_device_checks.delay(pk=instance.pk)
 
     @classmethod

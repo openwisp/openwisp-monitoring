@@ -11,7 +11,7 @@ from django.core.validators import MaxValueValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
-from django.utils.timezone import make_aware
+from django.utils.timezone import make_aware, now
 from django.utils.translation import gettext_lazy as _
 from openwisp_notifications.signals import notify
 from pytz import timezone as tz
@@ -28,6 +28,7 @@ from ..charts import (
 from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
 from ..metrics import get_metric_configuration, get_metric_configuration_choices
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
+from ..tasks import timeseries_write
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -204,14 +205,13 @@ class AbstractMetric(TimeStampedEditableModel):
             values.update(extra_values)
         signal_kwargs = dict(sender=self.__class__, metric=self, values=values)
         pre_metric_write.send(**signal_kwargs)
-        timeseries_db.write(
-            name=self.key,
-            values=values,
+        options = dict(
             tags=self.tags,
-            timestamp=time,
+            timestamp=time or now(),
             database=database,
             retention_policy=retention_policy,
         )
+        timeseries_write.delay(name=self.key, values=values, **options)
         post_metric_write.send(**signal_kwargs)
         # check can be disabled,
         # mostly for automated testing and debugging purposes

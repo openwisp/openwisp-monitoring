@@ -678,6 +678,37 @@ information by performing lookups on the OUI
 
 This feature is enabled by default.
 
+``OPENWISP_MONITORING_WRITE_RETRY_OPTIONS``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-----------+
+| **type**:    | ``dict``  |
++--------------+-----------+
+| **default**: | see below |
++--------------+-----------+
+
+.. code-block:: python
+
+    # default value of OPENWISP_MONITORING_RETRY_OPTIONS:
+
+    dict(
+        max_retries=None,
+        retry_backoff=True,
+        retry_backoff_max=600,
+        retry_jitter=True,
+    )
+
+Retry settings for recoverable failures during metric writes.
+
+By default if a metric write fails (eg: due to excessive load on timeseries database at that moment)
+then the operation will be retried indefinitely with an exponential random backoff and a maximum delay of 10 minutes.
+
+This feature makes the monitoring system resilient to temporary outages and helps to prevent data loss.
+
+For more information regarding these settings, consult the `celery documentation
+regarding automatic retries for known errors
+<https://docs.celeryproject.org/en/stable/userguide/tasks.html#automatic-retry-for-known-exceptions>`_.
+
 Registering / Unregistering Chart Configuration
 -----------------------------------------------
 
