@@ -209,3 +209,7 @@ td.field-health_status,
 #monitoring-metric-content_type-object_id-group{
     padding-top: 0 !important;
 }
+
+.form-row.field-metric_health div.readonly {
+  margin-left: 0px !important;
+}

@@ -160,3 +160,28 @@ class TestAdmin(DeviceMonitoringTestCase):
         c = Check.objects.first()
         self.assertEqual(c.name, 'Ping Check')
         self.assertEqual(c.content_object, d)
+
+    def test_metric_health_list(self):
+        dd = self.create_test_adata()
+        url = reverse('admin:config_device_change', args=[dd.pk])
+        self._login_admin()
+        r = self.client.get(url)
+        self.assertNotContains(r, '<label>Metric health:</label>')
+        m = Metric.objects.filter(configuration='disk').first()
+        m.write(m.alertsettings.threshold + 0.1)
+        self.assertFalse(m.is_healthy)
+        self.assertEqual(dd.monitoring.status, 'problem')
+        r = self.client.get(url)
+        self.assertContains(r, '<label>Metric health:</label>')
+        # Clients and Traffic metrics
+        interface_metrics = dd.metrics.filter(is_healthy=None)
+        other_metrics = dd.metrics.all().exclude(is_healthy=None)
+        for metric in interface_metrics:
+            self.assertNotContains(r, f'{metric.name}</li>')
+        for metric in other_metrics:
+            health = 'yes' if metric.is_healthy else 'no'
+            self.assertContains(
+                r,
+                f'<li><img src="/static/admin/img/icon-{health}.svg" '
+                f'alt="health"> {metric.name}</li>',
+            )
