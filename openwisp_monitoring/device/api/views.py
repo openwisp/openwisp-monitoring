@@ -257,7 +257,7 @@ class DeviceMetricView(GenericAPIView):
             self._create_resources_chart(metric, resource='cpu')
             self._create_resources_alert_settings(metric, resource='cpu')
         metric.write(
-            float(load[0] / cpus), extra_values=extra_values,
+            100 * float(load[0] / cpus), extra_values=extra_values,
         )
 
     def _write_disk(self, disk_list, primary_key, content_type):
@@ -272,7 +272,7 @@ class DeviceMetricView(GenericAPIView):
         if created:
             self._create_resources_chart(metric, resource='disk')
             self._create_resources_alert_settings(metric, resource='disk')
-        metric.write(used_bytes / size_bytes)
+        metric.write(100 * used_bytes / size_bytes)
 
     def _write_memory(self, memory, primary_key, content_type):
         extra_values = {
@@ -283,12 +283,14 @@ class DeviceMetricView(GenericAPIView):
         }
         if 'cached' in memory:
             extra_values['cached_memory'] = memory.get('cached')
-        percent_used = 1 - (memory['free'] + memory['buffered']) / memory['total']
+        percent_used = 100 * (
+            1 - (memory['free'] + memory['buffered']) / memory['total']
+        )
         # Available Memory is not shown in some systems (older openwrt versions)
         if 'available' in memory:
             extra_values.update({'available_memory': memory['available']})
             if memory['available'] > memory['free']:
-                percent_used = (
+                percent_used = 100 * (
                     1 - (memory['available'] + memory['buffered']) / memory['total']
                 )
         metric, created = Metric._get_or_create(
