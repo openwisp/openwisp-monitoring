@@ -126,6 +126,21 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
             )
         return ctx
 
+    def metric_health(self, obj):
+        metric_rows = []
+        for metric in DeviceData(pk=obj.pk).metrics.all():
+            # Skip metrics which don't affect device health
+            if metric.is_healthy is None:
+                continue
+            health = 'yes' if metric.is_healthy else 'no'
+            metric_rows.append(
+                f'<li><img src="/static/admin/img/icon-{health}.svg" '
+                f'alt="health"> {metric.name}</li>'
+            )
+        return format_html(
+            mark_safe(f'<ul class="metric_health">{"".join(metric_rows)}</ul>'),
+        )
+
     def health_status(self, obj):
         return format_html(
             mark_safe('<span class="health-{0}">{1}</span>'),
@@ -144,6 +159,20 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
             {'help_texts': {'health_status': health_status.replace('\n', '<br>')}}
         )
         return super().get_form(request, obj, **kwargs)
+
+    def get_fields(self, request, obj=None):
+        if not obj or obj.monitoring.status != 'problem':
+            return self.fields
+        fields = list(self.fields)
+        fields.insert(fields.index('last_ip'), 'metric_health')
+        return fields
+
+    def get_readonly_fields(self, request, obj=None):
+        if not obj or obj.monitoring.status != 'problem':
+            return self.readonly_fields
+        readonly_fields = list(self.readonly_fields)
+        readonly_fields.append('metric_health')
+        return readonly_fields
 
 
 def device_admin_get_inlines(self, request, obj):
