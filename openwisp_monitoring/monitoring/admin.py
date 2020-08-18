@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.forms import ModelForm
 from django.utils.translation import gettext_lazy as _
 from swapper import load_model
 
@@ -9,8 +10,21 @@ Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 
 
+class AlertSettingsForm(ModelForm):
+    def __init__(self, *args, **kwargs):
+        instance = kwargs.get('instance')
+        if instance:
+            kwargs['initial'] = {
+                'custom_tolerance': instance.tolerance,
+                'custom_threshold': instance.threshold,
+                'custom_operator': instance.operator,
+            }
+        super().__init__(*args, **kwargs)
+
+
 class AlertSettingsInline(TimeReadonlyAdminMixin, admin.StackedInline):
     model = AlertSettings
+    form = AlertSettingsForm
     extra = 0
 
 

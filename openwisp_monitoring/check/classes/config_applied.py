@@ -1,7 +1,6 @@
 from swapper import load_model
 
 from ...device.utils import SHORT_RP
-from ..settings import CONFIG_CHECK_MAX_TIME
 from .base import BaseCheck
 
 AlertSettings = load_model('monitoring', 'AlertSettings')
@@ -28,8 +27,6 @@ class ConfigApplied(BaseCheck):
         return metric
 
     def _create_alert_setting(self, metric):
-        alert_s = AlertSettings(
-            metric=metric, operator='<', value=1, seconds=CONFIG_CHECK_MAX_TIME * 60
-        )
+        alert_s = AlertSettings(metric=metric)
         alert_s.full_clean()
         alert_s.save()

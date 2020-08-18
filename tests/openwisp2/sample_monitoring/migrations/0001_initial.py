@@ -8,8 +8,10 @@ import model_utils.fields
 import uuid
 import swapper
 
-from openwisp_monitoring.monitoring.charts import CHART_CONFIGURATION_CHOICES
-from openwisp_monitoring.monitoring.metrics import get_metric_configuration_choices
+from openwisp_monitoring.monitoring.configuration import (
+    get_metric_configuration_choices,
+    get_chart_configuration_choices,
+)
 
 
 class Migration(migrations.Migration):
@@ -124,7 +126,9 @@ class Migration(migrations.Migration):
                 (
                     'configuration',
                     models.CharField(
-                        choices=CHART_CONFIGURATION_CHOICES, max_length=16, null=True,
+                        choices=get_chart_configuration_choices(),
+                        max_length=16,
+                        null=True,
                     ),
                 ),
                 ('details', models.CharField(blank=True, max_length=64, null=True)),
@@ -167,19 +171,33 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    'operator',
+                    'custom_operator',
                     models.CharField(
+                        blank=True,
                         choices=[('<', 'less than'), ('>', 'greater than')],
                         max_length=1,
+                        null=True,
+                        verbose_name='operator',
                     ),
                 ),
-                ('value', models.FloatField(help_text='threshold value')),
                 (
-                    'seconds',
+                    'custom_threshold',
+                    models.FloatField(
+                        blank=True,
+                        help_text='threshold value',
+                        null=True,
+                        verbose_name='threshold value',
+                    ),
+                ),
+                (
+                    'custom_tolerance',
                     models.PositiveIntegerField(
+                        blank=True,
                         default=0,
-                        help_text='for how long should the value be crossed before an alert is sent? The maximum allowed is 604800 seconds (7 days)',
-                        validators=[django.core.validators.MaxValueValidator(604800)],
+                        help_text='for how many minutes should the threshold value be crossed before an alert is sent? A value of zero means the alert is sent immediately',
+                        null=True,
+                        validators=[django.core.validators.MaxValueValidator(10080)],
+                        verbose_name='threshold tolerance',
                     ),
                 ),
                 ('details', models.CharField(blank=True, max_length=64, null=True)),

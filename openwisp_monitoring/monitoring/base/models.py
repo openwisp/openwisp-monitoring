@@ -20,13 +20,14 @@ from swapper import get_model_name
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...db import default_chart_query, timeseries_db
-from ..charts import (
+from ..configuration import (
     CHART_CONFIGURATION_CHOICES,
     DEFAULT_COLORS,
+    METRIC_CONFIGURATION_CHOICES,
     get_chart_configuration,
+    get_metric_configuration,
 )
 from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
-from ..metrics import get_metric_configuration, get_metric_configuration_choices
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
 from ..tasks import timeseries_write
 
@@ -35,14 +36,13 @@ logger = logging.getLogger(__name__)
 
 
 class AbstractMetric(TimeStampedEditableModel):
-    METRICS = get_metric_configuration()
     name = models.CharField(max_length=64)
     key = models.SlugField(
         max_length=64, blank=True, help_text=_('leave blank to determine automatically')
     )
     field_name = models.CharField(max_length=16, default='value')
     configuration = models.CharField(
-        max_length=16, null=True, choices=get_metric_configuration_choices()
+        max_length=16, null=True, choices=METRIC_CONFIGURATION_CHOICES,
     )
     content_type = models.ForeignKey(
         ContentType, on_delete=models.CASCADE, null=True, blank=True
@@ -112,7 +112,7 @@ class AbstractMetric(TimeStampedEditableModel):
     @property
     def config_dict(self):
         try:
-            return self.METRICS[self.configuration]
+            return get_metric_configuration()[self.configuration]
         except KeyError:
             raise InvalidMetricConfigException(
                 f'Invalid metric configuration: "{self.configuration}"'
@@ -164,11 +164,11 @@ class AbstractMetric(TimeStampedEditableModel):
             if self.is_healthy is None:
                 first_time = True
             self.is_healthy = False
-            notification_type = 'threshold_crossed'
+            notification_type = f'{self.configuration}_problem'
         # ok: returned within threshold limit
         elif not crossed and self.is_healthy is False:
             self.is_healthy = True
-            notification_type = 'threshold_recovery'
+            notification_type = f'{self.configuration}_recovery'
         # First metric write within threshold
         elif not crossed and self.is_healthy is None:
             self.is_healthy = True
@@ -467,11 +467,10 @@ class AbstractChart(TimeStampedEditableModel):
 
 
 class AbstractAlertSettings(TimeStampedEditableModel):
-    _SECONDS_MAX = 60 * 60 * 24 * 7  # 7 days
-    _SECONDS_HELP = (
-        'for how long should the value be crossed before '
-        'an alert is sent? The maximum allowed is {0} seconds '
-        '({1} days)'.format(_SECONDS_MAX, int(_SECONDS_MAX / 60 / 60 / 24))
+    _MINUTES_MAX = 60 * 24 * 7  # 7 days
+    _MINUTES_HELP = (
+        'for how many minutes should the threshold value be crossed before '
+        'an alert is sent? A value of zero means the alert is sent immediately'
     )
     _ALERTSETTINGS_OPERATORS = (('<', _('less than')), ('>', _('greater than')))
     is_active = models.BooleanField(
@@ -482,10 +481,23 @@ class AbstractAlertSettings(TimeStampedEditableModel):
     metric = models.OneToOneField(
         get_model_name('monitoring', 'Metric'), on_delete=models.CASCADE
     )
-    operator = models.CharField(max_length=1, choices=_ALERTSETTINGS_OPERATORS)
-    value = models.FloatField(help_text=_('threshold value'))
-    seconds = models.PositiveIntegerField(
-        default=0, validators=[MaxValueValidator(604800)], help_text=_(_SECONDS_HELP)
+    custom_operator = models.CharField(
+        _('operator'),
+        max_length=1,
+        choices=_ALERTSETTINGS_OPERATORS,
+        null=True,
+        blank=True,
+    )
+    custom_threshold = models.FloatField(
+        _('threshold value'), help_text=_('threshold value'), blank=True, null=True,
+    )
+    custom_tolerance = models.PositiveIntegerField(
+        _('threshold tolerance'),
+        default=0,
+        validators=[MaxValueValidator(_MINUTES_MAX)],
+        help_text=_(_MINUTES_HELP),
+        blank=True,
+        null=True,
     )
 
     class Meta:
@@ -493,15 +505,48 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         verbose_name = _('Alert settings')
         verbose_name_plural = verbose_name
 
+    def full_clean(self, *args, **kwargs):
+        if self.custom_threshold == self.config_dict['threshold']:
+            self.custom_threshold = None
+        if self.custom_tolerance == self.config_dict['tolerance']:
+            self.custom_tolerance = None
+        if self.custom_operator == self.config_dict['operator']:
+            self.custom_operator = None
+        return super().full_clean(*args, **kwargs)
+
+    @property
+    def config_dict(self):
+        return self.metric.config_dict.get(
+            'alert_settings', {'operator': '<', 'threshold': 1, 'tolerance': 0}
+        )
+
+    @property
+    def threshold(self):
+        if self.custom_threshold is None:
+            return self.config_dict['threshold']
+        return self.custom_threshold
+
+    @property
+    def tolerance(self):
+        if self.custom_tolerance is None:
+            return self.config_dict['tolerance']
+        return self.custom_tolerance
+
+    @property
+    def operator(self):
+        if self.custom_operator is None:
+            return self.config_dict['operator']
+        return self.custom_operator
+
     def _value_crossed(self, current_value):
-        threshold_value = self.value
+        threshold_value = self.threshold
         method = '__gt__' if self.operator == '>' else '__lt__'
         if isinstance(current_value, int):
             current_value = float(current_value)
         return getattr(current_value, method)(threshold_value)
 
     def _time_crossed(self, time):
-        threshold_time = timezone.now() - timedelta(seconds=self.seconds)
+        threshold_time = timezone.now() - timedelta(seconds=self.tolerance)
         return time < threshold_time
 
     def _is_crossed_by(self, current_value, time=None, retention_policy=None):
@@ -511,12 +556,12 @@ class AbstractAlertSettings(TimeStampedEditableModel):
             raise ValueError('Supplied value type not suppported')
         if not value_crossed:
             return False
-        if value_crossed and self.seconds == 0:
+        if value_crossed and self.tolerance == 0:
             return True
         if time is None:
             # retrieves latest measurements up to the maximum
             # threshold in seconds allowed plus a small margin
-            since = 'now() - {0}s'.format(int(self._SECONDS_MAX * 1.05))
+            since = f'now() - {int(self._MINUTES_MAX * 1.05)}s'
             points = self.metric.read(
                 since=since,
                 limit=None,

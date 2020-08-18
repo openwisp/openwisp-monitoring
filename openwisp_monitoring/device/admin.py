@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline
 from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
 from django.contrib.contenttypes.models import ContentType
+from django.forms import ModelForm
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -58,11 +59,24 @@ class CheckInline(GenericStackedInline):
         return False
 
 
+class AlertSettingsForm(ModelForm):
+    def __init__(self, *args, **kwargs):
+        instance = kwargs.get('instance')
+        if instance:
+            kwargs['initial'] = {
+                'custom_tolerance': instance.tolerance,
+                'custom_operator': instance.operator,
+                'custom_threshold': instance.threshold,
+            }
+        super().__init__(*args, **kwargs)
+
+
 class AlertSettingsInline(NestedStackedInline):
     model = AlertSettings
     extra = 0
     max_num = 0
     exclude = ['created', 'modified']
+    form = AlertSettingsForm
 
     def get_queryset(self, request):
         return super().get_queryset(request).order_by('created')

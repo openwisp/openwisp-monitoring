@@ -7,13 +7,65 @@ from openwisp_users.tests.utils import TestOrganizationMixin
 
 from ...db import timeseries_db
 from ...db.backends import TIMESERIES_DB
-from ..charts import register_chart, unregister_chart
+from ..configuration import (
+    register_chart,
+    register_metric,
+    unregister_chart,
+    unregister_metric,
+)
 
 start_time = now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
+
+default_message = (
+    '{notification.actor.name} for device [{notification.target}]'
+    '({notification.target_link}) {notification.verb}.'
+)
+
+test_notification = {
+    'problem': {
+        'verbose_name': 'Monitoring Alert',
+        'verb': 'crossed the threshold',
+        'level': 'warning',
+        'email_subject': '[{site.name}] PROBLEM: {notification.actor.name} {notification.target}',
+        'message': default_message,
+    },
+    'recovery': {
+        'verbose_name': 'Monitoring Alert',
+        'verb': 'returned within the threshold',
+        'level': 'info',
+        'email_subject': '[{site.name}] RECOVERY: {notification.actor.name} {notification.target}',
+        'message': default_message,
+    },
+}
+
+# these custom metric configurations are used for automated testing purposes
+metrics = {
+    'test_metric': {
+        'name': 'dummy',
+        'key': '{key}',
+        'field_name': '{field_name}',
+        'label': 'Test Metric',
+        'notification': test_notification,
+    },
+    'top_fields_mean': {
+        'name': 'top_fields_mean_test',
+        'key': '{key}',
+        'field_name': '{field_name}',
+        'label': 'top fields mean test',
+        'related_fields': ['google', 'facebook', 'reddit'],
+    },
+    'get_top_fields': {
+        'name': 'get_top_fields_test',
+        'key': '{key}',
+        'field_name': '{field_name}',
+        'label': 'get top fields test',
+        'related_fields': ['http2', 'ssh', 'udp', 'spdy'],
+    },
+}
 
 # this custom chart configuration is used for automated testing purposes
 charts = {
@@ -127,12 +179,16 @@ class TestMonitoringMixin(TestOrganizationMixin):
         timeseries_db.db_name = cls.TEST_DB
         del timeseries_db.get_db
         timeseries_db.create_database()
+        for key, value in metrics.items():
+            register_metric(key, value)
         for key, value in charts.items():
             register_chart(key, value)
 
     @classmethod
     def tearDownClass(cls):
         timeseries_db.drop_database()
+        for metric_name in metrics.keys():
+            unregister_metric(metric_name)
         for key in charts.keys():
             unregister_chart(key)
 

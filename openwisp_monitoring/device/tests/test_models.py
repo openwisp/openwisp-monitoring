@@ -493,14 +493,21 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         ping = self._create_object_metric(
             name='ping', key='ping', field_name='reachable', content_object=d
         )
-        self._create_alert_settings(metric=ping, operator='<', value=1, seconds=0)
+        self._create_alert_settings(
+            metric=ping, custom_operator='<', custom_threshold=1, custom_tolerance=0
+        )
         load = self._create_object_metric(name='load', content_object=d)
-        self._create_alert_settings(metric=load, operator='>', value=90, seconds=0)
+        self._create_alert_settings(
+            metric=load, custom_operator='>', custom_threshold=90, custom_tolerance=0
+        )
         process_count = self._create_object_metric(
             name='process_count', content_object=d
         )
         self._create_alert_settings(
-            metric=process_count, operator='>', value=20, seconds=0
+            metric=process_count,
+            custom_operator='>',
+            custom_threshold=20,
+            custom_tolerance=0,
         )
         return dm, ping, load, process_count
 
