@@ -9,7 +9,7 @@ from django.utils.timezone import now
 from swapper import load_model
 
 from .. import settings as app_settings
-from ..charts import (
+from ..configuration import (
     CHART_CONFIGURATION_CHOICES,
     get_chart_configuration,
     register_chart,

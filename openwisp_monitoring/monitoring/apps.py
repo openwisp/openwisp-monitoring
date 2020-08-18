@@ -3,10 +3,10 @@ from time import sleep
 from django.apps import AppConfig
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
-from openwisp_notifications.types import register_notification_type
 from requests.exceptions import ConnectionError
 
 from ..db import timeseries_db
+from .configuration import get_metric_configuration, register_metric_notifications
 
 
 class MonitoringConfig(AppConfig):
@@ -19,7 +19,9 @@ class MonitoringConfig(AppConfig):
     def ready(self):
         self.create_database()
         setattr(settings, 'OPENWISP_ADMIN_SHOW_USERLINKS_BLOCK', True)
-        self.register_notification_types()
+        metrics = get_metric_configuration()
+        for metric_name, metric_config in metrics.items():
+            register_metric_notifications(metric_name, metric_config)
 
     def create_database(self):
         # create Timeseries database if it doesn't exist yet
@@ -38,31 +40,3 @@ class MonitoringConfig(AppConfig):
             f'Retrying again in 3 seconds (attempt n. {attempt_number} out of 5).'
         )
         sleep(self.retry_delay)
-
-    def register_notification_types(self):
-        default_message = (
-            '{notification.actor.name} for device [{notification.target}]'
-            '({notification.target_link}) {notification.verb}.'
-        )
-
-        register_notification_type(
-            'threshold_crossed',
-            {
-                'name': 'Monitoring Alert',
-                'verb': 'crossed the threshold',
-                'level': 'warning',
-                'email_subject': '[{site.name}] PROBLEM: {notification.actor.name} {notification.target}',
-                'message': default_message,
-            },
-        )
-
-        register_notification_type(
-            'threshold_recovery',
-            {
-                'name': 'Monitoring Alert',
-                'verb': 'returned within the threshold',
-                'level': 'info',
-                'email_subject': '[{site.name}] RECOVERY: {notification.actor.name} {notification.target}',
-                'message': default_message,
-            },
-        )

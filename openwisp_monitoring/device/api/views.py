@@ -20,7 +20,6 @@ from swapper import load_model
 from ... import settings as monitoring_settings
 from ...monitoring.exceptions import InvalidChartConfigException
 from ..schema import schema
-from ..settings import DEVICE_RESOURCES_ALERTSETTINGS
 from ..signals import device_metrics_received
 
 logger = logging.getLogger(__name__)
@@ -352,10 +351,7 @@ class DeviceMetricView(GenericAPIView):
         chart.save()
 
     def _create_resources_alert_settings(self, metric, resource):
-        value = DEVICE_RESOURCES_ALERTSETTINGS[resource]
-        alert_settings = AlertSettings(
-            metric=metric, operator='>', value=value, seconds=0
-        )
+        alert_settings = AlertSettings(metric=metric)
         alert_settings.full_clean()
         alert_settings.save()
 

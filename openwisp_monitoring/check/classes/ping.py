@@ -154,7 +154,7 @@ class Ping(BaseCheck):
         return metric
 
     def _create_alert_settings(self, metric):
-        alert_settings = AlertSettings(metric=metric, operator='<', value=1, seconds=0)
+        alert_settings = AlertSettings(metric=metric)
         alert_settings.full_clean()
         alert_settings.save()
 
