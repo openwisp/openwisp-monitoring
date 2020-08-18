@@ -3,7 +3,10 @@ from django.core.cache import cache
 from django.db.models.signals import post_delete, post_save
 from django.utils.translation import gettext_lazy as _
 from openwisp_notifications.signals import notify
-from openwisp_notifications.types import register_notification_type
+from openwisp_notifications.types import (
+    register_notification_type,
+    unregister_notification_type,
+)
 from swapper import load_model
 
 from openwisp_controller.config.signals import checksum_requested, config_modified
@@ -22,7 +25,7 @@ class DeviceMonitoringConfig(AppConfig):
 
     def ready(self):
         manage_short_retention_policy()
-        self.register_notifcation_types()
+        self.register_notification_types()
         self.connect_is_working_changed()
         self.connect_device_signals()
         self.connect_config_modified()
@@ -128,7 +131,7 @@ class DeviceMonitoringConfig(AppConfig):
                 return
         initial_status = device_monitoring.status
         status = 'ok' if is_working else 'problem'
-        # do not send notificatons if recovery made after firmware upgrade
+        # do not send notifications if recovery made after firmware upgrade
         if status == initial_status == 'ok':
             device_monitoring.save()
             return
@@ -147,11 +150,11 @@ class DeviceMonitoringConfig(AppConfig):
                 device_monitoring.update_status(status)
         notify.send(**notification_opts)
 
-    def register_notifcation_types(self):
+    def register_notification_types(self):
         register_notification_type(
             'connection_is_working',
             {
-                'verbose_name': 'Device Alert',
+                'verbose_name': 'Device Alert (Connection Working)',
                 'verb': 'working',
                 'level': 'info',
                 'email_subject': '[{site.name}] RECOVERY: Connection to device {notification.target}',
@@ -165,7 +168,7 @@ class DeviceMonitoringConfig(AppConfig):
         register_notification_type(
             'connection_is_not_working',
             {
-                'verbose_name': 'Device Alert',
+                'verbose_name': 'Device  Alert (Connection not working)',
                 'verb': 'not working',
                 'level': 'error',
                 'email_subject': '[{site.name}] PROBLEM: Connection to device {notification.target}',
@@ -176,6 +179,7 @@ class DeviceMonitoringConfig(AppConfig):
                 ),
             },
         )
+        unregister_notification_type('default')
 
     @classmethod
     def connect_config_modified(cls):
