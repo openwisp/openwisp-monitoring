@@ -255,8 +255,8 @@ Ping
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/rtt.png
   :align: center
 
-``Traffic rx bytes``
-~~~~~~~~~~~~~~~~~~~~
+Traffic rx bytes
+~~~~~~~~~~~~~~~~
 
 +--------------------+-------------------------------+
 | **measurement**:   | ``<interface_name> rx_bytes`` |
@@ -270,8 +270,8 @@ Ping
 | **charts**:        | ``traffic``                   |
 +--------------------+-------------------------------+
 
-``Traffic tx bytes``
-~~~~~~~~~~~~~~~~~~~~
+Traffic tx bytes
+~~~~~~~~~~~~~~~~
 
 +--------------------+-------------------------------+
 | **measurement**:   | ``<interface_name> tx_bytes`` |
@@ -288,8 +288,8 @@ Ping
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/traffic.png
   :align: center
 
-``WiFI Clients``
-~~~~~~~~~~~~~~~~
+WiFI Clients
+~~~~~~~~~~~~
 
 +--------------------+--------------------------+
 | **measurement**:   | ``<interface_name>``     |
@@ -306,8 +306,8 @@ Ping
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/wifi-clients.png
   :align: center
 
-``Memory Usage``
-~~~~~~~~~~~~~~~~
+Memory Usage
+~~~~~~~~~~~~
 
 +--------------------+--------------------------------------------------------------------------------------------------------------------------------------+
 | **measurement**:   | ``<memory>``                                                                                                                         |
@@ -324,8 +324,8 @@ Ping
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/memory.png
   :align: center
 
-``CPU Load``
-~~~~~~~~~~~~
+CPU Load
+~~~~~~~~
 
 +--------------------+----------------------------------------------------+
 | **measurement**:   | ``load``                                           |
@@ -342,8 +342,8 @@ Ping
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/cpu-load.png
   :align: center
 
-``Disk Usage``
-~~~~~~~~~~~~~~
+Disk Usage
+~~~~~~~~~~
 
 +--------------------+-------------------+
 | **measurement**:   | ``disk``          |
@@ -378,11 +378,11 @@ Default Alerts / Notifications
 |                               | outdated, or device is not reachable).                           |
 +-------------------------------+------------------------------------------------------------------+
 
-``Available Checks``
---------------------
+Available Checks
+----------------
 
-``Ping``
-~~~~~~~~
+Ping
+~~~~
 
 This check returns information on device ``uptime`` and ``RTT (Round trip time)``.
 The Charts ``uptime``, ``packet loss`` and ``rtt`` are created. The ``fping``
@@ -390,8 +390,8 @@ command is used to collect these metrics.
 You may choose to disable auto creation of this check by setting
 `OPENWISP_MONITORING_AUTO_PING <#OPENWISP_MONITORING_AUTO_PING>`_ to ``False``.
 
-``Configuration applied``
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Configuration applied
+~~~~~~~~~~~~~~~~~~~~~
 
 This check ensures that the `openwisp-config agent <https://github.com/openwisp/openwisp-config/>`_
 is running and applying configuration changes in a timely manner.
@@ -749,8 +749,8 @@ Registering / Unregistering Metric Configuration
 ``openwisp_monitoring.monitoring.configuration.register_metric`` and ``openwisp_monitoring.monitoring.configuration.unregister_metric``.
 Using these functions you can register or unregister metric configurations from anywhere in your code.
 
-register_metric
-~~~~~~~~~~~~~~~
+``register_metric``
+~~~~~~~~~~~~~~~~~~~
 
 This function is used to register a new metric configuration from anywhere in your code.
 
@@ -881,8 +881,8 @@ is already registered with same name (not to be confused with verbose_name).
 If you don't need to register a new metric but need to change a specific key of an
 existing metric configuration, you can use `OPENWISP_MONITORING_METRICS <#openwisp_monitoring_metrics>`_.
 
-unregister_metric
-~~~~~~~~~~~~~~~~~
+``unregister_metric``
+~~~~~~~~~~~~~~~~~~~~~
 
 This function is used to unregister a metric configuration from anywhere in your code.
 
@@ -911,8 +911,8 @@ Registering / Unregistering Chart Configuration
 ``openwisp_monitoring.monitoring.configuration.register_chart`` and ``openwisp_monitoring.monitoring.configuration.unregister_chart``.
 Using these functions you can register or unregister chart configurations from anywhere in your code.
 
-register_chart
-~~~~~~~~~~~~~~
+``register_chart``
+~~~~~~~~~~~~~~~~~~
 
 This function is used to register a new chart configuration from anywhere in your code.
 
@@ -955,8 +955,8 @@ is already registered with same name (not to be confused with verbose_name).
 If you don't need to register a new chart but need to change a specific key of an
 existing chart configuration, you can use `OPENWISP_MONITORING_CHARTS <#openwisp_monitoring_charts>`_.
 
-unregister_chart
-~~~~~~~~~~~~~~~~
+``unregister_chart``
+~~~~~~~~~~~~~~~~~~~~
 
 This function is used to unregister a chart configuration from anywhere in your code.
 
