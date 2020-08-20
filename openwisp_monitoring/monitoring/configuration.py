@@ -86,7 +86,7 @@ DEFAULT_METRICS = {
                     _('Average Max RTT'),
                     _('Average Min RTT'),
                 ],
-                'unit': _(" ms"),
+                'unit': _(' ms'),
                 'order': 220,
                 'query': chart_query['rtt'],
             },
@@ -173,7 +173,7 @@ DEFAULT_METRICS = {
                     _('Total download traffic'),
                     _('Total upload traffic'),
                 ],
-                'unit': _(" GB"),
+                'unit': _(' GB'),
                 'order': 240,
                 'query': chart_query['traffic'],
             },
@@ -230,12 +230,12 @@ DEFAULT_METRICS = {
                 'message': _(
                     'The device [{notification.target}]({notification.target_link}) '
                     '{notification.verb} disk usage which has gone over '
-                    '{notification.actor.alertsettings.threshold:.1%}.'
+                    '{notification.actor.alertsettings.threshold:.0%}.'
                 ),
             },
             'recovery': {
                 'verbose_name': 'Disk usage RECOVERY',
-                'verb': _('has returned within threshold'),
+                'verb': _('has returned to normal levels'),
                 'level': 'info',
                 'email_subject': _(
                     '[{site.name}] RECOVERY: {notification.target} disk usage '
@@ -243,8 +243,7 @@ DEFAULT_METRICS = {
                 ),
                 'message': (
                     'The device [{notification.target}]({notification.target_link}) '
-                    'disk usage {notification.verb} value of '
-                    '{notification.actor.alertsettings.threshold:.1%}.'
+                    'disk usage {notification.verb}.'
                 ),
             },
         },
@@ -281,24 +280,24 @@ DEFAULT_METRICS = {
                 'verb': _('is experiencing a peak in'),
                 'level': 'warning',
                 'email_subject': _(
-                    '[{site.name}] PROBLEM: {notification.target} {notification.verb} ram usage'
+                    '[{site.name}] PROBLEM: {notification.target} {notification.verb} RAM usage'
                 ),
                 'message': _(
                     'The device [{notification.target}]({notification.target_link}) '
-                    '{notification.verb} ram usage which has gone '
-                    'over {notification.actor.alertsettings.threshold:.1%}.'
+                    '{notification.verb} RAM usage which has gone '
+                    'over {notification.actor.alertsettings.threshold:.0%}.'
                 ),
             },
             'recovery': {
                 'verbose_name': 'Memory usage RECOVERY',
-                'verb': _('has returned within threshold'),
+                'verb': _('has returned to normal levels'),
                 'level': 'info',
                 'email_subject': _(
-                    '[{site.name}] RECOVERY: {notification.target} ram usage {notification.verb}'
+                    '[{site.name}] RECOVERY: {notification.target} RAM usage {notification.verb}'
                 ),
                 'message': (
-                    'The device [{notification.target}]({notification.target_link}) ram usage '
-                    '{notification.verb} value of {notification.actor.alertsettings.threshold:.1%}.'
+                    'The device [{notification.target}]({notification.target_link}) RAM usage '
+                    '{notification.verb}.'
                 ),
             },
         },
@@ -331,25 +330,24 @@ DEFAULT_METRICS = {
                 'verb': _('is experiencing a peak in'),
                 'level': 'warning',
                 'email_subject': _(
-                    '[{site.name}] PROBLEM: {notification.target} {notification.verb} cpu usage'
+                    '[{site.name}] PROBLEM: {notification.target} {notification.verb} CPU usage'
                 ),
                 'message': _(
                     'The device [{notification.target}]({notification.target_link}) '
-                    '{notification.verb} cpu usage which has gone '
-                    'over {notification.actor.alertsettings.threshold:.1%}.'
+                    '{notification.verb} CPU usage which has gone '
+                    'over {notification.actor.alertsettings.threshold:.0%}.'
                 ),
             },
             'recovery': {
                 'verbose_name': 'CPU usage RECOVERY',
-                'verb': _('has returned within threshold'),
+                'verb': _('has returned to normal levels'),
                 'level': 'info',
                 'email_subject': _(
-                    '[{site.name}] RECOVERY: {notification.target} cpu usage {notification.verb}'
+                    '[{site.name}] RECOVERY: {notification.target} CPU usage {notification.verb}'
                 ),
                 'message': (
                     'The device [{notification.target}]({notification.target_link}) '
-                    'cpu usage {notification.verb} value of '
-                    '{notification.actor.alertsettings.threshold:.1%}.'
+                    'CPU usage {notification.verb}.'
                 ),
             },
         },

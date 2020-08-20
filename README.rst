@@ -815,7 +815,7 @@ An example usage has been shown below.
                     _('Average Max RTT'),
                     _('Average Min RTT'),
                 ],
-                'unit': f' {_("ms")}',
+                'unit': _(' ms'),
                 'order': 220,
                 'query': chart_query['rtt'],
             },
