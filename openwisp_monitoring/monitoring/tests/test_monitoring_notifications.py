@@ -268,8 +268,8 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             is_staff=True,
         )
         user = self._create_user(is_staff=False)
-        OrganizationUser.objects.create(user=user, organization=testorg)
-        OrganizationUser.objects.create(user=staff, organization=testorg)
+        OrganizationUser.objects.create(user=user, organization=testorg, is_admin=True)
+        OrganizationUser.objects.create(user=staff, organization=testorg, is_admin=True)
         self.assertIsNotNone(staff.notificationsetting_set.filter(organization=testorg))
 
         with self.subTest('Test general metric multiple notifications'):
