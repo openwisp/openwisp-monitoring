@@ -3,24 +3,40 @@ openwisp-monitoring
 
 .. image:: https://api.travis-ci.org/openwisp/openwisp-monitoring.svg?branch=master
     :target: https://travis-ci.org/github/openwisp/openwisp-monitoring
+    :alt: ci build
 
 .. image:: https://coveralls.io/repos/github/openwisp/openwisp-monitoring/badge.svg?branch=master
     :target: https://coveralls.io/github/openwisp/openwisp-monitoring?branch=master
+    :alt: Test coverage
+
+.. image:: https://requires.io/github/openwisp/openwisp-monitoring/requirements.svg?branch=master
+   :target: https://requires.io/github/openwisp/openwisp-monitoring/requirements/?branch=master
+   :alt: Requirements Status
+
+.. image:: https://badge.fury.io/py/openwisp-monitoring.svg
+    :target: http://badge.fury.io/py/openwisp-monitoring
+    :alt: pypi
+
+.. image:: https://pepy.tech/badge/openwisp-monitoring
+   :target: https://pepy.tech/project/openwisp-monitoring
+   :alt: downloads
+
+.. image:: https://img.shields.io/gitter/room/nwjs/nw.js.svg?style=flat-square
+   :target: https://gitter.im/openwisp/monitoring
+   :alt: support chat
+
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+   :target: https://pypi.org/project/black/
+   :alt: code style: black
 
 ------------
 
-OpenWISP 2 monitoring module (Work in progress).
+This repository contains the monitoring module of `OpenWISP <openwisp.org>`_. It packs in a wide range
+of features which have been designed to be **extensible**, **scalable** and easily **deployable**.
 
-.. figure:: https://drive.google.com/uc?export=view&id=1BgxmXEkdEgCWlWASALZB2a3WeZad0wXw
+.. figure:: https://drive.google.com/uc?export=view&id=1GuB5HsyiZejBzXKZJnM8QJCUJt1Z5IkJ
   :align: center
 
-------------
-
-.. contents:: **Table of Contents**:
-   :backlinks: none
-   :depth: 3
-
-------------
 
 Available Features
 ------------------
@@ -34,10 +50,19 @@ Available Features
 * Charts can be viewed at resolutions of 1 day, 3 days, a week, a month and a year
 * Configurable alerts
 * CSV Export of monitoring data
-* Possibility to `Configure additional charts <#openwisp_monitoring_charts>`_
+* Possibility to configure additional `Metrics <#openwisp_monitoring_metrics>`_ and `Charts <#openwisp_monitoring_charts>`_
 * Extensible active check system: it's possible to write additional checks that
   are run periodically using python classes
 * API to retrieve the chart metrics and status information of each device
+* The format used for Device Status is inspired by `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_
+
+------------
+
+.. contents:: **Table of Contents**:
+   :backlinks: none
+   :depth: 3
+
+------------
 
 Install Dependencies
 --------------------
@@ -85,6 +110,7 @@ Follow the setup instructions of `openwisp-controller
         'openwisp_controller.pki',
         'openwisp_controller.config',
         'openwisp_controller.connection',
+        'openwisp_controller.geo',
         # monitoring
         'openwisp_monitoring.monitoring',
         'openwisp_monitoring.device',
@@ -380,12 +406,6 @@ Configuration applied
 
 This check ensures that the `openwisp-config agent <https://github.com/openwisp/openwisp-config/>`_
 is running and applying configuration changes in a timely manner.
-
-By default, if a configuration object stays in the ``modified`` state
-for more than 5 minutes (configurable via
-`OPENWISP_MONITORING_DEVICE_CONFIG_CHECK_MAX_TIME <#OPENWISP_MONITORING_DEVICE_CONFIG_CHECK_MAX_TIME>`_),
-the check will fail and set the health status of the device to ``PROBLEM``.
-
 You may choose to disable auto creation of this check by using the
 setting `OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK <#OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK>`_.
 
@@ -963,6 +983,84 @@ An example usage is shown below.
 **Note**: It will raise ``ImproperlyConfigured`` exception if the concerned chart
 configuration is not registered.
 
+Exceptions
+----------
+
+``TimeseriesWriteException``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Path**: ``openwisp_monitoring.db.exceptions.TimeseriesWriteException``
+
+If there is any failure due while writing data in timeseries database, this exception shall
+be raised with a helpful error message explaining the cause of the failure.
+This exception will normally be caught and the failed write task will be retried in the background
+so that there is no loss of data if failures occur due to overload of Timeseries server.
+You can read more about this retry mechanism at `OPENWISP_MONITORING_WRITE_RETRY_OPTIONS <#openwisp-monitoring-write-retry-options>`_.
+
+``InvalidMetricConfigException``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Path**: ``openwisp_monitoring.monitoring.exceptions.InvalidMetricConfigException``
+
+This exception shall be raised if the metric configuration is broken.
+
+``InvalidChartConfigException``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Path**: ``openwisp_monitoring.monitoring.exceptions.InvalidChartConfigException``
+
+This exception shall be raised if the chart configuration is broken.
+
+Rest API
+--------
+
+Live documentation
+~~~~~~~~~~~~~~~~~~
+
+.. image:: docs/api-doc.png
+
+A general live API documentation (following the OpenAPI specification) at ``/api/v1/docs/``.
+
+Browsable web interface
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. image:: docs/api-ui-1.png
+.. image:: docs/api-ui-2.png
+
+Additionally, opening any of the endpoints `listed below <#list-of-endpoints>`_
+directly in the browser will show the `browsable API interface of Django-REST-Framework
+<https://www.django-rest-framework.org/topics/browsable-api/>`_,
+which makes it even easier to find out the details of each endpoint.
+
+List of endpoints
+~~~~~~~~~~~~~~~~~
+
+Since the detailed explanation is contained in the `Live documentation <#live-documentation>`_
+and in the `Browsable web page <#browsable-web-interface>`_ of each point,
+here we'll provide just a list of the available endpoints,
+for further information please open the URL of the endpoint in your browser.
+
+Retrieve device charts and device status data
+#############################################
+
+.. code-block:: text
+
+    GET /v1/monitoring/device/{pk}/?key={key}&status=true
+
+The format used for Device Status is inspired by `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_.
+
+**Note**: If the request is made without ``?status=true`` then only device charts
+data would be returned.
+
+Collect device metrics and status
+#################################
+
+.. code-block:: text
+
+    POST /v1/monitoring/device/{pk}/?key={key}
+
+The format used for Device Status is inspired by `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_.
+
 Signals
 -------
 
@@ -982,6 +1080,18 @@ view (only when using HTTP POST).
 The signal is emitted just before a successful response is returned,
 it is not sent if the response was not successful.
 
+``health_status_changed``
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Path**: ``openwisp_monitoring.device.signals.health_status_changed``
+
+**Arguments**:
+
+- ``instance``: instance of ``DeviceMonitoring`` whose status has been changed
+- ``status``: the status by which DeviceMonitoring's existing status has been updated with
+
+This signal is emitted only if the health status of DeviceMonitoring object gets updated.
+
 ``threshold_crossed``
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -989,7 +1099,6 @@ it is not sent if the response was not successful.
 
 **Arguments**:
 
-- ``sender``: Metric class
 - ``metric``: ``Metric`` object whose threshold defined in related alert settings was crossed
 - ``alert_settings``: ``AlertSettings`` related to the ``Metric``
 - ``target``: related ``Device`` object
@@ -1000,6 +1109,55 @@ For example, sending recovery notifications.
 
 This signal is emitted when the threshold value of a ``Metric`` defined in
 alert settings is crossed.
+
+``pre_metric_write``
+~~~~~~~~~~~~~~~~~~~~
+
+**Path**: ``openwisp_monitoring.monitoring.signals.pre_metric_write``
+
+**Arguments**:
+
+- ``metric``: ``Metric`` object whose data shall be stored in timeseries database
+- ``values``: metric data that shall be stored in the timeseries database
+
+This signal is emitted for every metric before the write operation is sent to
+the timeseries database.
+
+``post_metric_write``
+~~~~~~~~~~~~~~~~~~~~~
+
+**Path**: ``openwisp_monitoring.monitoring.signals.post_metric_write``
+
+**Arguments**:
+
+- ``metric``: ``Metric`` object whose data is being stored in timeseries database
+- ``values``: metric data that is being stored in the timeseries database
+
+This signal is emitted for every metric after the write operation is sent to the
+timeseries database. Since the write operation is run in the background and may be
+retried on failures, using the ``post_metric_write`` signal does not guarantee the
+receiver function will be called after the data has been written, only after the
+request to write it has been sent.
+
+Management commands
+-------------------
+
+``run_checks``
+~~~~~~~~~~~~~~
+
+This command will execute all the `available checks <#available-checks>`_ for all the devices.
+By default checks are run periodically by *celery beat*. You can learn more
+about this in `Setup <#setup-integrate-in-an-existing-django-project>`_.
+
+Example usage:
+
+.. code-block:: shell
+
+    cd tests/
+    ./manage.py run_checks
+
+For more information about how to custom django management commnads work,
+please refer to the `django documentation https://docs.djangoproject.com/en/dev/howto/custom-management-commands/>`_.
 
 Installing for development
 --------------------------

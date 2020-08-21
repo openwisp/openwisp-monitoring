@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     # rest framework
     'rest_framework',
     'rest_framework_gis',
+    'drf_yasg',
     # channels
     'channels',
 ]
