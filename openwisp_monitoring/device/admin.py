@@ -126,7 +126,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
             )
         return ctx
 
-    def metric_health(self, obj):
+    def health_checks(self, obj):
         metric_rows = []
         for metric in DeviceData(pk=obj.pk).metrics.all():
             # Skip metrics which don't affect device health
@@ -138,8 +138,10 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
                 f'alt="health"> {metric.name}</li>'
             )
         return format_html(
-            mark_safe(f'<ul class="metric_health">{"".join(metric_rows)}</ul>'),
+            mark_safe(f'<ul class="health_checks">{"".join(metric_rows)}</ul>'),
         )
+
+    health_checks.short_description = _('health checks')
 
     def health_status(self, obj):
         return format_html(
@@ -161,17 +163,19 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         return super().get_form(request, obj, **kwargs)
 
     def get_fields(self, request, obj=None):
-        if not obj or obj.monitoring.status != 'problem':
-            return self.fields
-        fields = list(self.fields)
-        fields.insert(fields.index('last_ip'), 'metric_health')
+        fields = super().get_fields(request, obj)
+        if not obj or obj.monitoring.status in ['ok', 'unknown']:
+            return fields
+        fields = list(fields)
+        fields.insert(fields.index('health_status') + 1, 'health_checks')
         return fields
 
     def get_readonly_fields(self, request, obj=None):
-        if not obj or obj.monitoring.status != 'problem':
-            return self.readonly_fields
-        readonly_fields = list(self.readonly_fields)
-        readonly_fields.append('metric_health')
+        readonly_fields = super().get_readonly_fields(request, obj)
+        if not obj or obj.monitoring.status in ['ok', 'unknown']:
+            return readonly_fields
+        readonly_fields = list(readonly_fields)
+        readonly_fields.append('health_checks')
         return readonly_fields
 
 
