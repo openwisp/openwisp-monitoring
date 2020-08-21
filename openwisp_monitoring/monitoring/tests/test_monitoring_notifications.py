@@ -270,19 +270,19 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         user = self._create_user(is_staff=False)
         OrganizationUser.objects.create(user=user, organization=testorg)
         OrganizationUser.objects.create(user=staff, organization=testorg)
-        self.assertIsNotNone(staff.notificationuser)
+        self.assertIsNotNone(staff.notificationsetting_set.filter(organization=testorg))
 
         with self.subTest('Test general metric multiple notifications'):
             m = self._create_general_metric(name='load')
             alert_s = self._create_alert_settings(
                 metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=1
             )
-            m._notify_users(notification_type='default', alert_settings=alert_s)
+            m._notify_users(notification_type='ping_problem', alert_settings=alert_s)
             self.assertEqual(Notification.objects.count(), 1)
             n = notification_queryset.first()
             self._check_notification_parameters(n, admin, m, None)
-            self.assertIn(
-                'Default notification with default verb and level info', n.message
+            self.assertEqual(
+                '<p>The device <a href="#">None</a> is not reachable.</p>', n.message
             )
             Notification.objects.all().delete()
 
@@ -293,12 +293,12 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
                 metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=1
             )
             self.assertEqual(Notification.objects.count(), 0)
-            om._notify_users(notification_type='default', alert_settings=alert_s)
+            om._notify_users(notification_type='ping_problem', alert_settings=alert_s)
             self.assertEqual(Notification.objects.count(), 2)
             n = notification_queryset.first()
             self._check_notification_parameters(n, admin, om, d)
             self.assertIn(
-                'Default notification with default verb and level info', n.message,
+                'is not reachable.', n.message,
             )
             n = notification_queryset.last()
             self._check_notification_parameters(n, staff, om, d)
@@ -310,7 +310,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
                 metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=0
             )
             self.assertEqual(Notification.objects.count(), 0)
-            om._notify_users(notification_type='default', alert_settings=alert_s)
+            om._notify_users(notification_type='ping_problem', alert_settings=alert_s)
             self.assertEqual(Notification.objects.count(), 1)
             n = notification_queryset.first()
             self._check_notification_parameters(n, admin, om, user)
@@ -320,8 +320,8 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(notification.actor, metric)
         self.assertEqual(notification.target, target)
         self.assertEqual(notification.action_object, metric.alertsettings)
-        self.assertEqual(notification.level, 'info')
-        self.assertEqual(notification.verb, 'default verb')
+        self.assertEqual(notification.level, 'warning')
+        self.assertEqual(notification.verb, 'is not reachable')
 
     def test_email_notification(self):
         self._create_admin()
