@@ -476,7 +476,10 @@ class AbstractAlertSettings(TimeStampedEditableModel):
     is_active = models.BooleanField(
         _('Alerts enabled'),
         default=True,
-        help_text=_('whether alerts are enabled for this metric'),
+        help_text=_(
+            'whether alerts are enabled for this metric, uncheck to '
+            'disable this alert for this object and all users'
+        ),
     )
     metric = models.OneToOneField(
         get_model_name('monitoring', 'Metric'), on_delete=models.CASCADE

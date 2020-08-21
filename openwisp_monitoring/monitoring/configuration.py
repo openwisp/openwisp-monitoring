@@ -130,7 +130,7 @@ DEFAULT_METRICS = {
                     'status issue'
                 ),
                 'message': _(
-                    'The configuration for device [{notification.target}]'
+                    'The configuration of device [{notification.target}]'
                     '({notification.target_link}) {notification.verb} in a timely manner.'
                 ),
             },
@@ -143,7 +143,7 @@ DEFAULT_METRICS = {
                     'successfully'
                 ),
                 'message': _(
-                    'The device [{notification.target}]({notification.target_link}) '
+                    'The configuration of device [{notification.target}]({notification.target_link}) '
                     '{notification.verb} successfully.'
                 ),
             },
