@@ -210,6 +210,6 @@ td.field-health_status,
     padding-top: 0 !important;
 }
 
-.form-row.field-metric_health div.readonly {
+.form-row.field-health_checks div.readonly {
   margin-left: 0px !important;
 }
