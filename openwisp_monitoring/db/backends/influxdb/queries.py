@@ -38,21 +38,21 @@ chart_query = {
     },
     'memory': {
         'influxdb': (
-            "SELECT 100 * MEAN(percent_used) AS memory_usage "
+            "SELECT MEAN(percent_used) AS memory_usage "
             "FROM {key} WHERE time >= '{time}' AND content_type = '{content_type}' "
             "AND object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
     'cpu': {
         'influxdb': (
-            "SELECT 100 * MEAN(cpu_usage) AS CPU_load FROM {key} WHERE "
+            "SELECT MEAN(cpu_usage) AS CPU_load FROM {key} WHERE "
             "time >= '{time}' AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
     'disk': {
         'influxdb': (
-            "SELECT 100 * MEAN(used_disk) AS disk_usage FROM {key} WHERE "
+            "SELECT MEAN(used_disk) AS disk_usage FROM {key} WHERE "
             "time >= '{time}' AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )

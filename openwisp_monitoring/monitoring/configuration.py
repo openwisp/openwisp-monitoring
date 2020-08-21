@@ -213,7 +213,7 @@ DEFAULT_METRICS = {
                 'query': chart_query['disk'],
             },
         },
-        'alert_settings': {'operator': '>', 'threshold': 0.80, 'tolerance': 0},
+        'alert_settings': {'operator': '>', 'threshold': 80, 'tolerance': 0},
         'notification': {
             'problem': {
                 'verbose_name': 'Disk usage PROBLEM',
@@ -225,7 +225,7 @@ DEFAULT_METRICS = {
                 'message': _(
                     'The device [{notification.target}]({notification.target_link}) '
                     '{notification.verb} disk usage which has gone over '
-                    '{notification.actor.alertsettings.threshold:.0%}.'
+                    '{notification.actor.alertsettings.threshold}.'
                 ),
             },
             'recovery': {
@@ -268,7 +268,7 @@ DEFAULT_METRICS = {
                 'query': chart_query['memory'],
             },
         },
-        'alert_settings': {'operator': '>', 'threshold': 0.95, 'tolerance': 0},
+        'alert_settings': {'operator': '>', 'threshold': 95, 'tolerance': 0},
         'notification': {
             'problem': {
                 'verbose_name': 'Memory usage PROBLEM',
@@ -280,7 +280,7 @@ DEFAULT_METRICS = {
                 'message': _(
                     'The device [{notification.target}]({notification.target_link}) '
                     '{notification.verb} RAM usage which has gone '
-                    'over {notification.actor.alertsettings.threshold:.0%}.'
+                    'over {notification.actor.alertsettings.threshold}.'
                 ),
             },
             'recovery': {
@@ -318,7 +318,7 @@ DEFAULT_METRICS = {
                 'query': chart_query['cpu'],
             },
         },
-        'alert_settings': {'operator': '>', 'threshold': 0.90, 'tolerance': 0},
+        'alert_settings': {'operator': '>', 'threshold': 90, 'tolerance': 0},
         'notification': {
             'problem': {
                 'verbose_name': 'CPU usage PROBLEM',
@@ -330,7 +330,7 @@ DEFAULT_METRICS = {
                 'message': _(
                     'The device [{notification.target}]({notification.target_link}) '
                     '{notification.verb} CPU usage which has gone '
-                    'over {notification.actor.alertsettings.threshold:.0%}.'
+                    'over {notification.actor.alertsettings.threshold}.'
                 ),
             },
             'recovery': {
