@@ -152,12 +152,12 @@ class DeviceMonitoringConfig(AppConfig):
 
     def register_notification_types(self):
         register_notification_type(
-            'connection_is_working',
+            'connection_is_not_working',
             {
-                'verbose_name': 'Device Alert (Connection Working)',
-                'verb': 'working',
-                'level': 'info',
-                'email_subject': '[{site.name}] RECOVERY: Connection to device {notification.target}',
+                'verbose_name': 'Device Connection PROBLEM',
+                'verb': 'not working',
+                'level': 'error',
+                'email_subject': '[{site.name}] PROBLEM: Connection to device {notification.target}',
                 'message': (
                     '{notification.actor.credentials} connection to '
                     'device [{notification.target}]({notification.target_link}) '
@@ -166,12 +166,12 @@ class DeviceMonitoringConfig(AppConfig):
             },
         )
         register_notification_type(
-            'connection_is_not_working',
+            'connection_is_working',
             {
-                'verbose_name': 'Device  Alert (Connection not working)',
-                'verb': 'not working',
-                'level': 'error',
-                'email_subject': '[{site.name}] PROBLEM: Connection to device {notification.target}',
+                'verbose_name': 'Device Connection RECOVERY',
+                'verb': 'working',
+                'level': 'info',
+                'email_subject': '[{site.name}] RECOVERY: Connection to device {notification.target}',
                 'message': (
                     '{notification.actor.credentials} connection to '
                     'device [{notification.target}]({notification.target_link}) '

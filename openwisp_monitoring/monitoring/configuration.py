@@ -47,12 +47,7 @@ DEFAULT_METRICS = {
                     'max': 100,
                     'min': 0,
                     'label': _('Reachable'),
-                    'scale': [
-                        [0, '#c13000'],
-                        # [0.33, '#ef7d2d'],
-                        [0.5, '#deed0e'],
-                        [1, '#7db201'],
-                    ],
+                    'scale': [[0, '#c13000'], [0.5, '#deed0e'], [1, '#7db201']],
                     'map': [
                         [100, '#7db201', _('Reachable')],
                         [33, '#deed0e', _('Partly reachable')],
