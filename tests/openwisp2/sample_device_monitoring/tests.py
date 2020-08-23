@@ -49,7 +49,7 @@ class TestAdmin(BaseTestAdmin):
 
 
 class TestDeviceNotifications(BaseTestDeviceNotifications):
-    pass
+    app_label = 'sample_device_monitoring'
 
 
 # this is necessary to avoid excuting the base test suites

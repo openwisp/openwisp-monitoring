@@ -1,6 +1,8 @@
+from django.apps.registry import apps
 from django.core import mail
 from django.urls import reverse
 from django.utils.html import strip_tags
+from openwisp_notifications.types import unregister_notification_type
 from swapper import load_model
 
 from .test_models import BaseTestCase
@@ -11,6 +13,8 @@ DeviceConnection = load_model('connection', 'DeviceConnection')
 
 
 class TestDeviceNotifications(BaseTestCase):
+    app_label = 'device_monitoring'
+
     def setUp(self):
         self._create_admin()
         self.d = self._create_device()
@@ -103,3 +107,18 @@ class TestDeviceNotifications(BaseTestCase):
             ),
             exp_email_subject='[example.com] PROBLEM: Connection to device {n.target}',
         )
+
+    def test_default_notification_type_already_unregistered(self):
+        # Simulates if 'default notification type is already unregistered
+        # by some other module
+
+        # Unregister "config_error" and "device_registered" notification
+        # types to avoid getting rasing ImproperlyConfigured exceptions
+        unregister_notification_type('connection_is_not_working')
+        unregister_notification_type('connection_is_working')
+
+        # This will try to unregister 'default' notification type
+        # which is already got unregistered when Django loaded.
+        # No exception should be raised as the exception is already handled.
+        app = apps.get_app_config(self.app_label)
+        app.register_notification_types()

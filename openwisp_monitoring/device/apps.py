@@ -1,5 +1,6 @@
 from django.apps import AppConfig
 from django.core.cache import cache
+from django.core.exceptions import ImproperlyConfigured
 from django.db.models.signals import post_delete, post_save
 from django.utils.translation import gettext_lazy as _
 from openwisp_notifications.signals import notify
@@ -179,7 +180,10 @@ class DeviceMonitoringConfig(AppConfig):
                 ),
             },
         )
-        unregister_notification_type('default')
+        try:
+            unregister_notification_type('default')
+        except ImproperlyConfigured:
+            pass
 
     @classmethod
     def connect_config_modified(cls):
