@@ -174,10 +174,13 @@ class TestAdmin(DeviceMonitoringTestCase):
         r = self.client.get(url)
         self.assertContains(r, '<label>Health checks:</label>')
         # Clients and Traffic metrics
-        interface_metrics = dd.metrics.filter(is_healthy=None)
-        other_metrics = dd.metrics.all().exclude(is_healthy=None)
+        interface_metrics = dd.metrics.filter(alertsettings__isnull=True)
+        interface_metric = interface_metrics.first()
+        interface_metric.is_healthy = True
+        interface_metric.save()
         for metric in interface_metrics:
             self.assertNotContains(r, f'{metric.name}</li>')
+        other_metrics = dd.metrics.filter(alertsettings__isnull=False)
         for metric in other_metrics:
             health = 'yes' if metric.is_healthy else 'no'
             self.assertContains(
