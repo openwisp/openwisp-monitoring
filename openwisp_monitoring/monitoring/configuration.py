@@ -225,7 +225,7 @@ DEFAULT_METRICS = {
                 'message': _(
                     'The device [{notification.target}]({notification.target_link}) '
                     '{notification.verb} disk usage which has gone over '
-                    '{notification.actor.alertsettings.threshold}.'
+                    '{notification.actor.alertsettings.threshold}%.'
                 ),
             },
             'recovery': {
@@ -280,7 +280,7 @@ DEFAULT_METRICS = {
                 'message': _(
                     'The device [{notification.target}]({notification.target_link}) '
                     '{notification.verb} RAM usage which has gone '
-                    'over {notification.actor.alertsettings.threshold}.'
+                    'over {notification.actor.alertsettings.threshold}%.'
                 ),
             },
             'recovery': {
@@ -330,7 +330,7 @@ DEFAULT_METRICS = {
                 'message': _(
                     'The device [{notification.target}]({notification.target_link}) '
                     '{notification.verb} CPU usage which has gone '
-                    'over {notification.actor.alertsettings.threshold}.'
+                    'over {notification.actor.alertsettings.threshold}%.'
                 ),
             },
             'recovery': {
