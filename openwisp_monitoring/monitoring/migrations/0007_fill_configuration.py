@@ -1,6 +1,5 @@
 from django.db import migrations
 
-
 graph_mapping = {
     'uptime': 'uptime',
     'packet loss': 'packet_loss',

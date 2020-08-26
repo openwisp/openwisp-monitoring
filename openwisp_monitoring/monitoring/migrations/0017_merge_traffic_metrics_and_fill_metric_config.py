@@ -1,6 +1,5 @@
 from django.db import migrations
 
-
 metric_mapping = {
     'reachable': 'ping',
     'rx_bytes': 'traffic',

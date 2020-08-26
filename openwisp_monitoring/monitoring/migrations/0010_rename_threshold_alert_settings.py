@@ -18,7 +18,8 @@ class Migration(migrations.Migration):
             name='seconds',
             field=models.PositiveIntegerField(
                 default=0,
-                help_text='for how long should the alert_settings value be crossed before triggering an alert? The maximum allowed is 604800 seconds (7 days)',
+                help_text='for how long should the alert_settings value be crossed before '
+                'triggering an alert? The maximum allowed is 604800 seconds (7 days)',
                 validators=[MaxValueValidator(604800)],
             ),
         ),
