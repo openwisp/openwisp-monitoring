@@ -8,7 +8,7 @@ def get_critical_device_metrics():
         'OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS',
         [{'key': 'ping', 'field_name': 'reachable'}],
     )
-    for item in critical_metrics:  # pragma: no-cover
+    for item in critical_metrics:  # pragma: no cover
         try:
             assert 'key' in item
             assert 'field_name' in item
@@ -35,7 +35,7 @@ def get_health_status_labels():
         assert 'ok' in labels
         assert 'problem' in labels
         assert 'critical' in labels
-    except AssertionError as e:  # pragma: no-cover
+    except AssertionError as e:  # pragma: no cover
         raise ImproperlyConfigured(
             'OPENWISP_MONITORING_HEALTH_STATUS_LABELS must contain the following '
             'keys: unknown, ok, problem, critical'
