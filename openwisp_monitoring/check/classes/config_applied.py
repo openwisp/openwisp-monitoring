@@ -9,7 +9,7 @@ AlertSettings = load_model('monitoring', 'AlertSettings')
 class ConfigApplied(BaseCheck):
     def check(self, store=True):
         # If the device is down do not run config applied checks
-        if self.related_object.monitoring.status == 'critical':
+        if self.related_object.monitoring.status in ['critical', 'unknown']:
             return
         if not hasattr(self.related_object, 'config'):
             return

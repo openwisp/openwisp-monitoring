@@ -122,6 +122,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(Check.objects.count(), 0)
         self._create_config(status='modified', organization=self._create_org())
         d = Device.objects.first()
+        d.monitoring.update_status('ok')
         self.assertEqual(Check.objects.count(), 2)
         self.assertEqual(Metric.objects.count(), 0)
         self.assertEqual(AlertSettings.objects.count(), 0)
@@ -136,6 +137,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(m.content_object, d)
         self.assertEqual(m.key, 'config_applied')
         dm = d.monitoring
+        dm.refresh_from_db()
         self.assertFalse(m.is_healthy)
         self.assertEqual(dm.status, 'problem')
         self.assertEqual(Notification.objects.count(), 1)
@@ -150,6 +152,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(Check.objects.count(), 2)
         d = Device.objects.first()
         dm = d.monitoring
+        dm.update_status('ok')
         check = Check.objects.filter(check=self._CONFIG_APPLIED).first()
         check.perform_check()
         self.assertEqual(Metric.objects.count(), 1)
@@ -185,4 +188,16 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         c2 = Check.objects.filter(check=self._CONFIG_APPLIED).first()
         c2.perform_check()
         self.assertEqual(Metric.objects.count(), 0)
+        self.assertIsNone(c2.perform_check())
+
+    def test_device_unknown_no_config_check(self):
+        self._create_admin()
+        self._create_config(status='modified', organization=self._create_org())
+        d = self.device_model.objects.first()
+        d.monitoring.update_status('unknown')
+        self.assertEqual(Check.objects.count(), 2)
+        c2 = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+        c2.perform_check()
+        self.assertEqual(Metric.objects.count(), 0)
+        self.assertEqual(Notification.objects.count(), 0)
         self.assertIsNone(c2.perform_check())
