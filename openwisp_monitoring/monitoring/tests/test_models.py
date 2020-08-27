@@ -17,6 +17,7 @@ start_time = timezone.now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
+Notification = load_model('openwisp_notifications', 'Notification')
 
 
 class TestModels(TestMonitoringMixin, TestCase):
@@ -181,7 +182,7 @@ class TestModels(TestMonitoringMixin, TestCase):
     def test_threshold_is_crossed_deferred(self):
         m = self._create_general_metric(name='load')
         alert_s = self._create_alert_settings(
-            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=60 * 9
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=9
         )
         self.assertFalse(alert_s._is_crossed_by(95, start_time))
         self.assertTrue(alert_s._is_crossed_by(95, ten_minutes_ago))
@@ -192,7 +193,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         self._create_admin()
         m = self._create_general_metric(name='load')
         self._create_alert_settings(
-            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=60
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=1
         )
         m.write(60)
         m.write(99)
@@ -280,3 +281,13 @@ class TestModels(TestMonitoringMixin, TestCase):
         m = self._create_general_metric(name='load')
         alert_s = AlertSettings(metric=m)
         self.assertIsNone(alert_s.custom_tolerance)
+
+    def test_tolerance_is_crossed_deferred(self):
+        self._create_admin()
+        m = self._create_general_metric(name='load')
+        self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=5
+        )
+        m.write(99, time=timezone.now() - timedelta(minutes=3))
+        self.assertTrue(m.is_healthy)
+        self.assertEqual(Notification.objects.count(), 0)
