@@ -10,6 +10,10 @@ from swapper import load_model
 logger = logging.getLogger(__name__)
 
 
+def get_check_model():
+    return load_model('check', 'Check')
+
+
 @shared_task
 def run_checks():
     """
@@ -19,8 +23,13 @@ def run_checks():
     This allows to enqueue all the checks that need to be performed
     and execute them in parallel with multiple workers if needed.
     """
-    Check = load_model('check', 'Check')
-    iterator = Check.objects.filter(is_active=True).only('id').values('id').iterator()
+    iterator = (
+        get_check_model()
+        .objects.filter(is_active=True)
+        .only('id')
+        .values('id')
+        .iterator()
+    )
     for check in iterator:
         perform_check.delay(check['id'])
 
@@ -31,9 +40,8 @@ def perform_check(uuid):
     Retrieves check according to the passed UUID
     and calls ``check.perform_check()``
     """
-    Check = load_model('check', 'Check')
     try:
-        check = Check.objects.get(pk=uuid)
+        check = get_check_model().objects.get(pk=uuid)
     except ObjectDoesNotExist:
         logger.warning(f'The check with uuid {uuid} has been deleted')
         return
@@ -43,12 +51,14 @@ def perform_check(uuid):
 
 
 @shared_task
-def auto_create_ping(model, app_label, object_id):
+def auto_create_ping(
+    model, app_label, object_id, check_model=None, content_type_model=None
+):
     """
     Called by django signal (dispatch_uid: auto_ping)
     registered in check app's apps.py file.
     """
-    Check = load_model('check', 'Check')
+    Check = check_model or get_check_model()
     ping_path = 'openwisp_monitoring.check.classes.Ping'
     has_check = Check.objects.filter(
         object_id=object_id, content_type__model='device', check=ping_path
@@ -56,18 +66,21 @@ def auto_create_ping(model, app_label, object_id):
     # create new check only if necessary
     if has_check:
         return
-    ct = ContentType.objects.get(app_label=app_label, model=model)
+    content_type_model = content_type_model or ContentType
+    ct = content_type_model.objects.get(app_label=app_label, model=model)
     check = Check(name='Ping', check=ping_path, content_type=ct, object_id=object_id)
     check.full_clean()
     check.save()
 
 
 @shared_task
-def auto_create_config_check(model, app_label, object_id):
+def auto_create_config_check(
+    model, app_label, object_id, check_model=None, content_type_model=None
+):
     """
     Called by openwisp_monitoring.check.models.auto_config_check_receiver
     """
-    Check = load_model('check', 'Check')
+    Check = check_model or get_check_model()
     config_check_path = 'openwisp_monitoring.check.classes.ConfigApplied'
     has_check = Check.objects.filter(
         object_id=object_id, content_type__model='device', check=config_check_path,
@@ -75,7 +88,8 @@ def auto_create_config_check(model, app_label, object_id):
     # create new check only if necessary
     if has_check:
         return
-    ct = ContentType.objects.get(app_label=app_label, model=model)
+    content_type_model = content_type_model or ContentType
+    ct = content_type_model.objects.get(app_label=app_label, model=model)
     check = Check(
         name='Configuration Applied',
         check=config_check_path,
