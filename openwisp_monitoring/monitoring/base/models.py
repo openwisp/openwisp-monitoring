@@ -496,7 +496,6 @@ class AbstractAlertSettings(TimeStampedEditableModel):
     )
     custom_tolerance = models.PositiveIntegerField(
         _('threshold tolerance'),
-        default=0,
         validators=[MaxValueValidator(_MINUTES_MAX)],
         help_text=_(_MINUTES_HELP),
         blank=True,

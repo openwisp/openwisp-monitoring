@@ -275,3 +275,8 @@ class TestModels(TestMonitoringMixin, TestCase):
             self.assertIsNone(alert_s.custom_operator)
             self.assertEqual(alert_s.custom_threshold, 0.5)
             self.assertEqual(alert_s.custom_tolerance, 2)
+
+    def test_alert_settings_tolerance_default(self):
+        m = self._create_general_metric(name='load')
+        alert_s = AlertSettings(metric=m)
+        self.assertIsNone(alert_s.custom_tolerance)
