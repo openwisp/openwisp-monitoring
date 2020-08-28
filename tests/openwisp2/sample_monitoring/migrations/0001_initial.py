@@ -193,7 +193,6 @@ class Migration(migrations.Migration):
                     'custom_tolerance',
                     models.PositiveIntegerField(
                         blank=True,
-                        default=0,
                         help_text='for how many minutes should the threshold value be crossed before an alert is sent? A value of zero means the alert is sent immediately',
                         null=True,
                         validators=[django.core.validators.MaxValueValidator(10080)],
