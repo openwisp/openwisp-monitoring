@@ -548,7 +548,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         return getattr(current_value, method)(threshold_value)
 
     def _time_crossed(self, time):
-        threshold_time = timezone.now() - timedelta(seconds=self.tolerance)
+        threshold_time = timezone.now() - timedelta(minutes=self.tolerance)
         return time < threshold_time
 
     def _is_crossed_by(self, current_value, time=None, retention_policy=None):
@@ -562,8 +562,8 @@ class AbstractAlertSettings(TimeStampedEditableModel):
             return True
         if time is None:
             # retrieves latest measurements up to the maximum
-            # threshold in seconds allowed plus a small margin
-            since = f'now() - {int(self._MINUTES_MAX * 1.05)}s'
+            # threshold in minutes allowed plus a small margin
+            since = f'now() - {int(self._MINUTES_MAX * 1.05)}m'
             points = self.metric.read(
                 since=since,
                 limit=None,
