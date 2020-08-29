@@ -282,12 +282,24 @@ class TestModels(TestMonitoringMixin, TestCase):
         alert_s = AlertSettings(metric=m)
         self.assertIsNone(alert_s.custom_tolerance)
 
-    def test_tolerance_is_crossed_deferred(self):
+    def test_tolerance(self):
         self._create_admin()
         m = self._create_general_metric(name='load')
         self._create_alert_settings(
             metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=5
         )
-        m.write(99, time=timezone.now() - timedelta(minutes=3))
-        self.assertTrue(m.is_healthy)
-        self.assertEqual(Notification.objects.count(), 0)
+        with self.subTest('within tolerance, no alerts expected'):
+            m.write(99, time=timezone.now() - timedelta(minutes=2))
+            self.assertTrue(m.is_healthy)
+            self.assertEqual(Notification.objects.count(), 0)
+            m.write(99, time=timezone.now() - timedelta(minutes=4))
+            self.assertTrue(m.is_healthy)
+            self.assertEqual(Notification.objects.count(), 0)
+        with self.subTest('tolerance trepassed, alerts expected'):
+            m.write(99, time=timezone.now() - timedelta(minutes=6))
+            self.assertFalse(m.is_healthy)
+            self.assertEqual(Notification.objects.count(), 1)
+        with self.subTest('value back to normal, tolerance not considered'):
+            m.write(71, time=timezone.now() - timedelta(minutes=7))
+            self.assertTrue(m.is_healthy)
+            self.assertEqual(Notification.objects.count(), 2)

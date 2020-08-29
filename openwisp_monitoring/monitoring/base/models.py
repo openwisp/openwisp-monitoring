@@ -587,6 +587,4 @@ class AbstractAlertSettings(TimeStampedEditableModel):
                 #                 for better algorithm readability)
                 continue
             time = timezone.now()
-        if self._time_crossed(time):
-            return True
-        return False
+        return self._time_crossed(time)
