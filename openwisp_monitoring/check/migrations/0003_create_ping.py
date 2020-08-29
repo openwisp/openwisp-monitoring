@@ -1,4 +1,5 @@
 from django.db import migrations
+
 from openwisp_monitoring.check.settings import AUTO_PING
 from openwisp_monitoring.check.tasks import auto_create_ping
 

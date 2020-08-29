@@ -25,7 +25,8 @@ class Migration(migrations.Migration):
             name='top_fields',
             field=models.PositiveIntegerField(
                 default=0,
-                help_text='substitutes {fields} in the query with the top N fields, a value of zero disables this feature',
+                help_text='substitutes {fields} in the query with the top '
+                'N fields, a value of zero disables this feature',
                 verbose_name='top fields',
             ),
         ),

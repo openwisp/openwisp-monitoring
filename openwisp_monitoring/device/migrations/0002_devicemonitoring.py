@@ -1,13 +1,14 @@
-from django.db import migrations, models
+import uuid
+
 import django.db.models.deletion
 import django.utils.timezone
-from django.utils.translation import gettext_lazy as _
 import model_utils.fields
-import uuid
+import swapper
+from django.db import migrations, models
+from django.utils.translation import gettext_lazy as _
 
 from openwisp_monitoring.device.models import DeviceMonitoring
 
-import swapper
 from .. import settings as app_settings
 
 
