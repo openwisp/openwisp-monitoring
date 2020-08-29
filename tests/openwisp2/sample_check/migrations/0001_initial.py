@@ -98,7 +98,6 @@ class Migration(migrations.Migration):
             ],
             options={
                 'abstract': False,
-                'swappable': 'CHECK_CHECK_MODEL',
                 'unique_together': {('name', 'object_id', 'content_type')},
             },
         ),
