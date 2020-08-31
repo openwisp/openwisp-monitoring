@@ -31,20 +31,46 @@ openwisp-monitoring
 
 ------------
 
-This repository contains the monitoring module of `OpenWISP <openwisp.org>`_. It packs in a wide range
-of features which have been designed to be **extensible**, **scalable** and easily **deployable**.
+OpenWISP Monitoring is a network monitoring system written in Python and Django,
+designed to be **extensible**, **programmable**, **scalable** and easy to use by end users:
+once the system is configured, monitoring checks, alerts and metric collection
+happens automatically.
+
+See the `available features <#available-features>`_.
+
+`OpenWISP <http://openwisp.org>`_ is not only an application designed for end users,
+but can also be used as a framework on which custom network automation solutions can be
+built on top of its building blocks.
+
+Other popular building blocks that are part of the OpenWISP ecosystem are:
+
+- `openwisp-controller <https://github.com/openwisp/controller>`_:
+  network and WiFi controller: provisioning, configuration management,
+  x509 PKI management and more; works on OpenWRT, but designed to work also on other systems.
+- `openwisp-network-topology <https://github.com/openwisp/openwisp-network-topology>`_:
+  provides way to collect and visualize network topology data from
+  dynamic mesh routing daemons or other network software (eg: OpenVPN);
+  it can be used in conjunction with openwisp-monitoring to get a better idea
+  of the state of the network
+- `openwisp-firmware-upgrader <https://github.com/openwisp/openwisp-firmware-upgrader>`_:
+  automated firmware upgrades (single device or mass network upgrades)
+- `openwisp-radius <https://github.com/openwisp/openwisp-radius>`_:
+  based on FreeRADIUS, allows to implement network access authentication systems like
+  802.1x WPA2 Enterprise, captive portal authentication, Hotspot 2.0 (802.11u)
+- `openwisp-ipam <https://github.com/openwisp/openwisp-ipam>`_:
+  it allows to manage the IP address space of networks
 
 .. figure:: https://drive.google.com/uc?export=view&id=1GuB5HsyiZejBzXKZJnM8QJCUJt1Z5IkJ
   :align: center
 
-
 Available Features
 ------------------
 
+* Collection of monitoring information in a timeseries database (currently only influxdb is supported)
+* Allows to browse alerts easily from the user interface with one click
 * Collects and displays `device status <#device-status>`_ information like uptime, RAM status, CPU load averages,
   Interface properties and addresses, WiFi interface status and associated clients,
   Neighbors information, DHCP Leases, Disk/Flash status
-* Collection of monitoring information in a timeseries database (currently only influxdb is supported)
 * Monitoring charts for uptime, packet loss, round trip time (latency), associated wifi clients, interface traffic,
   RAM usage, CPU load, flash/disk usage
 * Charts can be viewed at resolutions of 1 day, 3 days, a week, a month and a year
@@ -53,8 +79,9 @@ Available Features
 * Possibility to configure additional `Metrics <#openwisp_monitoring_metrics>`_ and `Charts <#openwisp_monitoring_charts>`_
 * Extensible active check system: it's possible to write additional checks that
   are run periodically using python classes
+* Extensible metrics and charts: it's possible to define new metrics and new charts
 * API to retrieve the chart metrics and status information of each device
-* The format used for Device Status is inspired by `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_
+  based on `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_
 
 ------------
 
@@ -79,14 +106,9 @@ Install spatialite and sqlite:
 
 .. code-block:: shell
 
-    sudo apt-get install sqlite3 libsqlite3-dev openssl libssl-dev
-    sudo apt-get install gdal-bin libproj-dev libgeos-dev libspatialite-dev
-
-Optionally, install ``fping`` if you need to use the ping active check:
-
-.. code-block:: shell
-
-    sudo apt install -y fping
+    sudo apt-get install -y sqlite3 libsqlite3-dev openssl libssl-dev \
+                            gdal-bin libproj-dev libgeos-dev libspatialite-dev \
+                            fping
 
 Setup (integrate in an existing Django project)
 -----------------------------------------------
