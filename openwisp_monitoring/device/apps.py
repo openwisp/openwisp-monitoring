@@ -183,7 +183,7 @@ class DeviceMonitoringConfig(AppConfig):
 
     @classmethod
     def connect_config_modified(cls):
-        from openwisp_controller.config.models import Config
+        Config = load_model('config', 'Config')
 
         if check_settings.AUTO_CONFIG_CHECK:
             config_modified.connect(
