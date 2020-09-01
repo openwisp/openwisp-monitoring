@@ -1,8 +1,9 @@
 openwisp-controller~=0.7.post1
+# openwisp-utils[rest] is left unpinned so the version used is the one dictated by openwisp-controller
+openwisp-utils[rest]
 influxdb>=5.2,<5.3
-django-notifications-hq>=1.6,<1.7
-django-celery-email>=3.0.0,<3.1
-djangorestframework>=3.11,<3.12
+openwisp-notifications~=0.1
+django-celery-email~=3.0.0
 mac-vendor-lookup~=0.1
 swapper~=1.1
 django-cache-memoize~=0.1
