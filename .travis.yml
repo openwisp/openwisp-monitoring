@@ -7,8 +7,9 @@ python:
   - "3.7"
 
 env:
-  - DJANGO="django>=2.2,<3.0"
-  - DJANGO="django>=3.0,<3.1"
+  - DJANGO="django~=2.2"
+  - DJANGO="django~=3.0"
+  - DJANGO="django~=3.1"
 
 addons:
   apt:
@@ -34,8 +35,8 @@ branches:
 before_install:
   - docker run -d --name influxdb -e INFLUXDB_DB=openwisp2 -p 8086:8086 influxdb:alpine
   - pip install -U pip wheel setuptools
-  - pip install $DJANGO
   - pip install -U -r requirements-test.txt
+  - pip install -U $DJANGO
 
 install:
   - pip install -e .
