@@ -1,56 +1,20 @@
 from unittest.mock import patch
 
 from django.core.cache import cache
-from django.urls import reverse
 from swapper import load_model
 
-from ...check.classes import Ping
-from ...check.tasks import auto_create_ping
-from ...check.tests import _FPING_REACHABLE, _FPING_UNREACHABLE
 from ..signals import health_status_changed
 from ..tasks import trigger_device_checks
 from ..utils import get_device_cache_key
 from . import DeviceMonitoringTestCase
 
-Check = load_model('check', 'Check')
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
-Metric = load_model('monitoring', 'Metric')
 
 
 class TestRecovery(DeviceMonitoringTestCase):
     """
     Tests ``Device Recovery Detection`` functionality
     """
-
-    def _create_device_monitoring(self):
-        d = self._create_device(organization=self._create_org())
-        dm = d.monitoring
-        dm.status = 'ok'
-        dm.save()
-        return dm
-
-    @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
-    def test_trigger_device_recovery_task(self, mocked_method):
-        d = self._create_device(organization=self._create_org())
-        d.management_ip = '10.40.0.5'
-        d.save()
-        data = self._data()
-        # Creation of resources, clients and traffic metrics can be avoided here
-        # as they are not involved. This speeds up the test by reducing requests made.
-        del data['resources']
-        del data['interfaces']
-        auto_create_ping.delay(
-            model='device', app_label='config', object_id=str(d.pk),
-        )
-        check = Check.objects.first()
-        check.perform_check()
-        self.assertEqual(Metric.objects.count(), 1)
-        d.monitoring.update_status('critical')
-        url = reverse('monitoring:api_device_metric', args=[d.pk.hex])
-        url = '{0}?key={1}'.format(url, d.key)
-        with patch.object(Check, 'perform_check') as mock:
-            self._post_data(d.id, d.key, data)
-        mock.assert_called_once()
 
     def test_device_recovery_cache_key_not_set(self):
         device_monitoring_app = DeviceMonitoring._meta.app_config
@@ -108,22 +72,3 @@ class TestRecovery(DeviceMonitoringTestCase):
         trigger_device_checks.delay(dm.device.pk, recovery=False)
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'critical')
-
-    @patch.object(Ping, '_command', return_value=_FPING_UNREACHABLE)
-    @patch.object(DeviceMonitoring, 'update_status')
-    def test_trigger_device_recovery_task_regression(
-        self, mocked_update_status, mocked_ping
-    ):
-        dm = self._create_device_monitoring()
-        dm.device.management_ip = None
-        dm.device.save()
-        self.assertFalse(Check.objects.exists())
-        auto_create_ping.delay(
-            model='device', app_label='config', object_id=str(dm.device.pk),
-        )
-
-        trigger_device_checks.delay(dm.device.pk)
-        self.assertTrue(Check.objects.exists())
-        # we expect update_status() to be called once (by the check)
-        # and not a second time directly by our code
-        mocked_update_status.assert_called_once()

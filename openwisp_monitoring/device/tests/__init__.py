@@ -1,7 +1,7 @@
 import json
 from copy import deepcopy
 
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 from swapper import load_model
 
@@ -20,14 +20,13 @@ Device = load_model('config', 'Device')
 class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
     device_model = Device
     config_model = Config
+    _PING = 'openwisp_monitoring.check.classes.Ping'
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         manage_short_retention_policy()
 
-
-class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
     def _url(self, pk, key=None):
         url = reverse('monitoring:api_device_metric', args=[pk])
         if key:
@@ -38,6 +37,13 @@ class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
         url = self._url(id, key)
         netjson = json.dumps(data)
         return self.client.post(url, netjson, content_type='application/json')
+
+    def _create_device_monitoring(self):
+        d = self._create_device(organization=self._create_org())
+        dm = d.monitoring
+        dm.status = 'ok'
+        dm.save()
+        return dm
 
     def create_test_adata(self, no_resources=False):
         o = self._create_org()
@@ -248,3 +254,13 @@ class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
                 },
             ],
         }
+
+
+class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
+    pass
+
+
+class DeviceMonitoringTransactionTestcase(
+    TestDeviceMonitoringMixin, TransactionTestCase
+):
+    pass

@@ -6,7 +6,7 @@ from openwisp_monitoring.device.base.models import (
     AbstractDeviceData,
     AbstractDeviceMonitoring,
 )
-from openwisp_monitoring.device.utils import load_model_patched
+from openwisp_monitoring.utils import load_model_patched
 
 BaseDevice = load_model_patched('config', 'Device', require_ready=False)
 

@@ -4,10 +4,8 @@ from unittest.mock import patch
 
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from openwisp_notifications.signals import notify
 from swapper import load_model
 
-from openwisp_controller.config.signals import config_modified
 from openwisp_controller.connection.tests.base import CreateConnectionsMixin
 from openwisp_utils.tests import catch_signal
 
@@ -17,15 +15,11 @@ from ..tasks import trigger_device_checks
 from ..utils import get_device_cache_key
 from . import DeviceMonitoringTestCase
 
-Check = load_model('check', 'Check')
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 DeviceData = load_model('device_monitoring', 'DeviceData')
-DeviceConnection = load_model('connection', 'DeviceConnection')
-Credentials = load_model('connection', 'Credentials')
 
 
 class BaseTestCase(DeviceMonitoringTestCase):
-    _PING = 'openwisp_monitoring.check.classes.Ping'
     _sample_data = {
         "type": "DeviceMonitoring",
         "general": {
@@ -606,130 +600,3 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         self.assertEqual(dm.status, 'unknown')
         ping.write(0)
         self.assertEqual(dm.status, 'critical')
-
-    @patch.object(Check, 'perform_check')
-    @patch.object(notify, 'send')
-    def test_is_working_false_true(self, notify_send, perform_check):
-        d = self._create_device()
-        dm = d.monitoring
-        dm.status = 'unknown'
-        dm.save()
-        Check.objects.create(name='Check', content_object=d, check=self._PING)
-        c = Credentials.objects.create()
-        dc = DeviceConnection.objects.create(credentials=c, device=d, is_working=False)
-        self.assertFalse(dc.is_working)
-        dc.is_working = True
-        dc.save()
-        perform_check.assert_called_once()
-        notify_send.assert_called_once()
-
-    @patch.object(Check, 'perform_check')
-    @patch.object(notify, 'send')
-    def test_is_working_changed_to_false(self, notify_send, perform_check):
-        d = self._create_device()
-        dm = d.monitoring
-        dm.status = 'ok'
-        dm.save()
-        Check.objects.create(name='Check', content_object=d, check=self._PING)
-        c = Credentials.objects.create()
-        dc = DeviceConnection.objects.create(credentials=c, device=d)
-        dc.is_working = False
-        dc.save()
-        perform_check.assert_called_once()
-        notify_send.assert_called_once()
-
-    @patch.object(Check, 'perform_check')
-    @patch.object(notify, 'send')
-    def test_is_working_none_true(self, notify_send, perform_check):
-        d = self._create_device()
-        dm = d.monitoring
-        dm.status = 'unknown'
-        dm.save()
-        Check.objects.create(name='Check', content_object=d, check=self._PING)
-        c = Credentials.objects.create()
-        dc = DeviceConnection.objects.create(credentials=c, device=d)
-        self.assertIsNone(dc.is_working)
-        dc.is_working = True
-        dc.save()
-        notify_send.assert_not_called()
-        perform_check.assert_not_called()
-
-    @patch.object(Check, 'perform_check')
-    @patch.object(notify, 'send')
-    def test_is_working_changed_unable_to_connect(self, notify_send, perform_check):
-        ckey = self._create_credentials_with_key(port=self.ssh_server.port)
-        dc = self._create_device_connection(credentials=ckey)
-        dc.is_working = True
-        dc.save()
-        notify_send.assert_not_called()
-        perform_check.assert_not_called()
-
-        d = self.device_model.objects.first()
-        d.monitoring.update_status('ok')
-        Check.objects.create(name='Check', content_object=d, check=self._PING)
-        dc.is_working = False
-        dc.failure_reason = '[Errno None] Unable to connect to port 5555 on 127.0.0.1'
-        dc.full_clean()
-        dc.save()
-
-        notify_send.assert_not_called()
-        perform_check.assert_not_called()
-
-    @patch.object(Check, 'perform_check')
-    @patch.object(notify, 'send')
-    def test_is_working_changed_timed_out(self, notify_send, perform_check):
-        ckey = self._create_credentials_with_key(port=self.ssh_server.port)
-        dc = self._create_device_connection(credentials=ckey)
-        dc.is_working = True
-        dc.save()
-        notify_send.assert_not_called()
-        perform_check.assert_not_called()
-
-        d = self.device_model.objects.first()
-        d.monitoring.update_status('ok')
-        Check.objects.create(name='Check', content_object=d, check=self._PING)
-        dc.is_working = False
-        dc.failure_reason = 'timed out'
-        dc.full_clean()
-        dc.save()
-
-        notify_send.assert_not_called()
-        perform_check.assert_not_called()
-
-    @patch.object(Check, 'perform_check')
-    @patch.object(notify, 'send')
-    def test_is_working_no_recovery_notification(self, notify_send, perform_check):
-        ckey = self._create_credentials_with_key(port=self.ssh_server.port)
-        dc = self._create_device_connection(credentials=ckey, is_working=True)
-        d = self.device_model.objects.first()
-        d.monitoring.update_status('ok')
-        dc.refresh_from_db()
-        Check.objects.create(name='Check', content_object=d, check=self._PING)
-        failure_reason = '[Errno None] Unable to connect to port 5555 on 127.0.0.1'
-        self.assertTrue(dc.is_working)
-        dc.failure_reason = failure_reason
-        dc.is_working = False
-        dc.save()
-        # Recovery is made
-        dc.failure_reason = ''
-        dc.is_working = True
-        dc.save()
-        notify_send.assert_not_called()
-        perform_check.assert_not_called()
-
-    @patch('openwisp_monitoring.check.tasks.perform_check.delay')
-    def test_config_modified_receiver(self, mock_method):
-        c = self._create_config(status='applied', organization=self._create_org())
-        config_applied_path = 'openwisp_monitoring.check.classes.ConfigApplied'
-        Check.objects.create(
-            name='Configuration Applied',
-            content_object=c.device,
-            check=config_applied_path,
-        )
-        c.config = {'general': {'description': 'test'}}
-        c.full_clean()
-        with catch_signal(config_modified) as handler:
-            c.save()
-            handler.assert_called_once()
-        self.assertEqual(c.status, 'modified')
-        self.assertEqual(mock_method.call_count, 1)

@@ -18,6 +18,9 @@ from openwisp_monitoring.device.tests.test_recovery import (
 from openwisp_monitoring.device.tests.test_settings import (
     TestSettings as BaseTestSettings,
 )
+from openwisp_monitoring.device.tests.test_transactions import (
+    TestTransactions as BaseTestTransactions,
+)
 
 
 class TestRecovery(BaseTestRecovery):
@@ -34,6 +37,10 @@ class TestDeviceMonitoring(BaseTestDeviceMonitoring):
         dm = d.monitoring
         self.assertEqual(dm.details, 'devicemonitoring')
         self.assertEqual(str(dm), 'devicemonitoring')
+
+
+class TestTransactions(BaseTestTransactions):
+    pass
 
 
 class TestSettings(BaseTestSettings):
@@ -61,3 +68,4 @@ del BaseTestSettings
 del BaseTestDeviceApi
 del BaseTestAdmin
 del BaseTestDeviceNotifications
+del BaseTestTransactions

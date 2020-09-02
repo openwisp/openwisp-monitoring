@@ -13,6 +13,7 @@ from openwisp_controller.config.signals import checksum_requested, config_modifi
 from openwisp_controller.connection.signals import is_working_changed
 
 from ..check import settings as check_settings
+from ..utils import transaction_on_commit
 from . import settings as app_settings
 from .signals import device_metrics_received, health_status_changed
 from .utils import get_device_cache_key, manage_short_retention_policy
@@ -99,7 +100,7 @@ class DeviceMonitoringConfig(AppConfig):
         from .tasks import trigger_device_checks
 
         if cache.get(get_device_cache_key(device=instance)):
-            trigger_device_checks.delay(pk=instance.pk)
+            transaction_on_commit(lambda: trigger_device_checks.delay(pk=instance.pk))
 
     @classmethod
     def connect_is_working_changed(cls):
@@ -139,13 +140,13 @@ class DeviceMonitoringConfig(AppConfig):
         if not is_working:
             notification_opts['type'] = 'connection_is_not_working'
             if initial_status == 'ok':
-                trigger_device_checks.delay(pk=device.pk)
+                transaction_on_commit(lambda: trigger_device_checks.delay(pk=device.pk))
         else:
             # create a notification that device is working
             notification_opts['type'] = 'connection_is_working'
             # if checks exist trigger them else, set status as 'ok'
             if Check.objects.filter(object_id=instance.device.pk).exists():
-                trigger_device_checks.delay(pk=device.pk)
+                transaction_on_commit(lambda: trigger_device_checks.delay(pk=device.pk))
             else:
                 device_monitoring.update_status(status)
         notify.send(**notification_opts)
@@ -198,6 +199,6 @@ class DeviceMonitoringConfig(AppConfig):
 
         DeviceData = load_model('device_monitoring', 'DeviceData')
         device = DeviceData.objects.get(config=instance)
-        check = device.checks.filter(check__contains='ConfigApplied')
+        check = device.checks.filter(check__contains='ConfigApplied').first()
         if check:
-            perform_check.delay(check.first().id)
+            transaction_on_commit(lambda: perform_check.delay(check.pk))

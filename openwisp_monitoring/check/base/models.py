@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.db import models, transaction
+from django.db import models
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
@@ -11,6 +11,8 @@ from jsonfield import JSONField
 from openwisp_monitoring.check import settings as app_settings
 from openwisp_monitoring.check.tasks import auto_create_config_check, auto_create_ping
 from openwisp_utils.base import TimeStampedEditableModel
+
+from ...utils import transaction_on_commit
 
 
 class AbstractCheck(TimeStampedEditableModel):
@@ -89,14 +91,13 @@ def auto_ping_receiver(sender, instance, created, **kwargs):
     # every time the configuration is requested via checksum
     if not created:
         return
-    with transaction.atomic():
-        transaction.on_commit(
-            lambda: auto_create_ping.delay(
-                model=sender.__name__.lower(),
-                app_label=sender._meta.app_label,
-                object_id=str(instance.pk),
-            )
+    transaction_on_commit(
+        lambda: auto_create_ping.delay(
+            model=sender.__name__.lower(),
+            app_label=sender._meta.app_label,
+            object_id=str(instance.pk),
         )
+    )
 
 
 def auto_config_check_receiver(sender, instance, created, **kwargs):
@@ -108,11 +109,10 @@ def auto_config_check_receiver(sender, instance, created, **kwargs):
     # every time the configuration is requested via checksum
     if not created:
         return
-    with transaction.atomic():
-        transaction.on_commit(
-            lambda: auto_create_config_check.delay(
-                model=sender.__name__.lower(),
-                app_label=sender._meta.app_label,
-                object_id=str(instance.pk),
-            )
+    transaction_on_commit(
+        lambda: auto_create_config_check.delay(
+            model=sender.__name__.lower(),
+            app_label=sender._meta.app_label,
+            object_id=str(instance.pk),
         )
+    )
