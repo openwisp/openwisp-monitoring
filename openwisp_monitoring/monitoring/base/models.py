@@ -450,10 +450,9 @@ class AbstractChart(TimeStampedEditableModel):
             # unit needs to be passed for chart_inline
             data = self.read(time=time)
             data.update({'unit': self.unit})
-            return json.dumps(data, **kwargs)
-        except KeyError:
-            # TODO: this should be improved
-            pass
+            return json.dumps(data, **kwargs, default=str)
+        except KeyError as e:
+            logger.warning(f'Got KeyError in Chart.json method: {e}')
 
     @staticmethod
     def _round(value, decimal_places):
