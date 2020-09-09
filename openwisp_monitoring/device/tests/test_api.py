@@ -284,17 +284,17 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                 '2',
                 '0.4',
                 '0.1',
-                '2',
-                '1',
+                '2.0',
+                '1.0',
                 '9.73',
-                '0',
+                '0.0',
                 '8.27',
             ],
         )
         self.assertEqual(rows[-4].strip(), '')
         self.assertEqual(rows[-3].strip(), 'Histogram')
-        self.assertEqual(rows[-2].strip().split(','), ['ssh', '100'])
-        self.assertEqual(rows[-1].strip().split(','), ['http2', '90'])
+        self.assertEqual(rows[-2].strip().split(','), ['ssh', '100.0'])
+        self.assertEqual(rows[-1].strip().split(','), ['http2', '90.0'])
 
     def test_histogram_csv_none_value(self):
         d = self._create_device(organization=self._create_org())
