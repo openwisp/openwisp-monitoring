@@ -3,7 +3,7 @@ openwisp-controller~=0.7.post1
 openwisp-utils[rest]
 influxdb~=5.3
 django-celery-email~=3.0.0
-mac-vendor-lookup~=0.1
-swapper~=1.1
 django-cache-memoize~=0.1
 django-nested-admin~=3.3.2
+swapper~=1.1
+mac-vendor-lookup~=0.1
