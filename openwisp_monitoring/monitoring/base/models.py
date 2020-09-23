@@ -145,7 +145,7 @@ class AbstractMetric(TimeStampedEditableModel):
         except AttributeError:
             return None
 
-    def check_threshold(self, value, time=None, retention_policy=None):
+    def check_threshold(self, value, time=None, retention_policy=None, send_alert=True):
         """
         checks if the threshold is crossed
         and notifies users accordingly
@@ -184,7 +184,7 @@ class AbstractMetric(TimeStampedEditableModel):
         # First metric write and within threshold, do not raise alert
         if first_time and self.is_healthy:
             return
-        if alert_settings.is_active:
+        if alert_settings.is_active and send_alert:
             self._notify_users(notification_type, alert_settings)
 
     def write(
@@ -195,6 +195,7 @@ class AbstractMetric(TimeStampedEditableModel):
         check=True,
         extra_values=None,
         retention_policy=None,
+        send_alert=True,
     ):
         """ write timeseries data """
         values = {self.field_name: value}
@@ -217,7 +218,7 @@ class AbstractMetric(TimeStampedEditableModel):
         # mostly for automated testing and debugging purposes
         if not check:
             return
-        self.check_threshold(value, time, retention_policy)
+        self.check_threshold(value, time, retention_policy, send_alert)
 
     def read(self, **kwargs):
         """ reads timeseries data """

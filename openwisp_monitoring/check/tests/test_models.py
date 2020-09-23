@@ -142,6 +142,39 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(dm.status, 'problem')
         self.assertEqual(Notification.objects.count(), 1)
 
+    @patch('openwisp_monitoring.check.settings.AUTO_PING', False)
+    def test_config_error(self):
+        """
+        Test that ConfigApplied checks are skipped when device config status is errored
+        """
+        self._create_admin()
+        self.assertEqual(Check.objects.count(), 0)
+        self._create_config(status='error', organization=self._create_org())
+        dm = Device.objects.first().monitoring
+        dm.update_status('ok')
+        self.assertEqual(Check.objects.count(), 2)
+        self.assertEqual(Metric.objects.count(), 0)
+        self.assertEqual(AlertSettings.objects.count(), 0)
+        check = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+        with freeze_time(now() - timedelta(minutes=10)):
+            check.perform_check()
+        # Check needs to be run again without mocking time for threshold crossed
+        self.assertEqual(check.perform_check(), 0)
+        self.assertEqual(Metric.objects.count(), 1)
+        m = Metric.objects.first()
+        self.assertEqual(AlertSettings.objects.count(), 1)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'problem')
+        self.assertEqual(Notification.objects.filter(actor_object_id=m.id).count(), 0)
+        # Check config recovery
+        dm.device.config.set_status_applied()
+        # We are once again querying for the check to override the cached property check_instance
+        check = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+        check.perform_check()
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(Notification.objects.filter(actor_object_id=m.id).count(), 1)
+
     @patch(
         'openwisp_monitoring.device.base.models.app_settings.CRITICAL_DEVICE_METRICS',
         [{'key': 'config_applied', 'field_name': 'config_applied'}],
