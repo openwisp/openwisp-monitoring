@@ -1,4 +1,5 @@
 from django.apps import AppConfig
+from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models.signals import post_delete, post_save
@@ -11,6 +12,7 @@ from openwisp_notifications.types import (
 from swapper import load_model
 
 from openwisp_controller.config.signals import checksum_requested, config_modified
+from openwisp_controller.connection import settings as connection_settings
 from openwisp_controller.connection.signals import is_working_changed
 
 from ..check import settings as check_settings
@@ -32,6 +34,7 @@ class DeviceMonitoringConfig(AppConfig):
         self.connect_device_signals()
         self.connect_config_modified()
         self.device_recovery_detection()
+        self.set_update_config_model()
 
     def connect_device_signals(self):
         Device = load_model('config', 'Device')
@@ -206,3 +209,11 @@ class DeviceMonitoringConfig(AppConfig):
         check = device.checks.filter(check__contains='ConfigApplied').first()
         if check:
             transaction_on_commit(lambda: perform_check.delay(check.pk))
+
+    def set_update_config_model(self):
+        if not getattr(settings, 'OPENWISP_UPDATE_CONFIG_MODEL', None):
+            setattr(
+                connection_settings,
+                'UPDATE_CONFIG_MODEL',
+                'device_monitoring.DeviceData',
+            )

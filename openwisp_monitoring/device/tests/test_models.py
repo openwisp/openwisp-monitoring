@@ -6,6 +6,7 @@ from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from swapper import load_model
 
+from openwisp_controller.connection.tasks import update_config
 from openwisp_controller.connection.tests.base import CreateConnectionsMixin
 from openwisp_utils.tests import catch_signal
 
@@ -472,6 +473,14 @@ class TestDeviceData(BaseTestCase):
         with patch.object(timeseries_db, 'query', side_effect=Exception):
             dd.refresh_from_db()
             self.assertEqual(json.loads(cache_data), dd.data)
+
+    @patch('openwisp_controller.connection.tasks.logger.info')
+    def test_can_be_updated(self, mocked_logger_info):
+        device = self._create_device_config()
+        device.monitoring.status = 'critical'
+        device.monitoring.save()
+        update_config.delay(device.pk)
+        mocked_logger_info.assert_called_once()
 
 
 class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):

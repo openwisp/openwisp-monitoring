@@ -51,6 +51,13 @@ class AbstractDeviceData(object):
         self.data = kwargs.pop('data', None)
         super().__init__(*args, **kwargs)
 
+    def can_be_updated(self):
+        """
+        Do not attempt at pushing the conf if the device is not reachable
+        """
+        can_be_updated = super().can_be_updated()
+        return can_be_updated and self.monitoring.status != 'critical'
+
     @property
     def data_user_friendly(self):
         if not self.data:
