@@ -17,6 +17,7 @@ OrganizationUser = load_model('openwisp_users', 'OrganizationUser')
 
 notification_queryset = Notification.objects.order_by('timestamp')
 start_time = timezone.now()
+five_minutes_ago = start_time - timedelta(minutes=5)
 ten_minutes_ago = start_time - timedelta(minutes=10)
 
 
@@ -127,12 +128,12 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
 
         with self.subTest('Test no notification is generated for healthy status'):
             m.write(89, time=ten_minutes_ago)
-            self.assertTrue(m.is_healthy)
+            self.assertTrue(m.is_healthy)  # FIX - test fails
             self.assertEqual(Notification.objects.count(), 0)
 
         with self.subTest('Test no notification is generated when check=False'):
             m.write(91, time=ten_minutes_ago, check=False)
-            self.assertEqual(Notification.objects.count(), 0)
+            self.assertEqual(Notification.objects.count(), 0)  # FIX - test fails
 
         with self.subTest('Test notification for metric with current timestamp'):
             m.write(92)

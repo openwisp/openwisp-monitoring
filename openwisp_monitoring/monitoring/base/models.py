@@ -154,25 +154,81 @@ class AbstractMetric(TimeStampedEditableModel):
             alert_settings = self.alertsettings
         except ObjectDoesNotExist:
             return
-        crossed = alert_settings._is_crossed_by(value, time, retention_policy)
+        # crossed = alert_settings._is_crossed_by(value, time, retention_policy)
+        crossed = alert_settings._value_crossed(value)
+        tolerance = alert_settings.tolerance
         first_time = False
-        # situation has not changed
-        if (not crossed and self.is_healthy) or (crossed and self.is_healthy is False):
-            return
-        # problem: not within threshold limit
-        elif crossed and self.is_healthy in [True, None]:
-            if self.is_healthy is None:
-                first_time = True
-            self.is_healthy = False
-            notification_type = f'{self.configuration}_problem'
-        # ok: returned within threshold limit
-        elif not crossed and self.is_healthy is False:
-            self.is_healthy = True
-            notification_type = f'{self.configuration}_recovery'
-        # First metric write within threshold
-        elif not crossed and self.is_healthy is None:
-            self.is_healthy = True
-            first_time = True
+        notification_type = None
+
+        if tolerance == 0:
+            if crossed:
+                # situation has not changed
+                if self.is_healthy is False:
+                    return
+                # problem: not within threshold limit
+                elif self.is_healthy in [True, None]:
+                    if self.is_healthy is None:
+                        first_time = True
+                    self.is_healthy = False
+                    notification_type = f'{self.configuration}_problem'
+            else:
+                # situation has not changed
+                if self.is_healthy:
+                    return
+                # ok: returned within threshold limit
+                elif self.is_healthy is False:
+                    self.is_healthy = True
+                    notification_type = f'{self.configuration}_recovery'
+                # First metric write within threshold
+                elif self.is_healthy is None:
+                    self.is_healthy = True
+                    first_time = True
+        else:
+            # Tolerance is specified so we need to look for previous values
+
+            if crossed:
+                if self.is_healthy is False:
+                    # the metric is unhealthy => tell me if it has gone back to being healthy
+                    # again for the last x minutes
+                    if alert_settings._has_crossed_been(True, time, retention_policy):
+                        self.is_healthy = False
+                        notification_type = f'{self.configuration}_problem'
+                    else:
+                        # situation has changed but not enough time
+                        return
+                # problem: not within threshold limit
+                elif self.is_healthy in [True, None]:
+                    if alert_settings._has_crossed_been(True, time, retention_policy):
+                        self.is_healthy = False
+                        notification_type = f'{self.configuration}_problem'
+                    else:
+                        # situation has changed but not enough time
+                        return
+            else:
+                if self.is_healthy is True:
+                    # the metric is healthy now => tell me if it hasn't been healthy in
+                    # the last x minutes
+                    if alert_settings._has_crossed_been(False, time, retention_policy):
+                        alert_now = True
+                        self.is_healthy = True
+                        notification_type = f'{self.configuration}_recovery'
+                    else:
+                        # situation has changed but not enough time
+                        return
+                # ok: returned within threshold limit
+                elif self.is_healthy is False:
+                    if alert_settings._has_crossed_been(True, time, retention_policy):
+                        alert_now = True
+                        self.is_healthy = True
+                        notification_type = f'{self.configuration}_recovery'
+                    else:
+                        # situation has changed but not enough time
+                        return
+                # First metric write within threshold
+                elif self.is_healthy is None:
+                    self.is_healthy = True
+                    first_time = True
+
         self.save()
         threshold_crossed.send(
             sender=self.__class__,
@@ -184,7 +240,8 @@ class AbstractMetric(TimeStampedEditableModel):
         # First metric write and within threshold, do not raise alert
         if first_time and self.is_healthy:
             return
-        if alert_settings.is_active:
+
+        if alert_settings.is_active and notification_type:
             self._notify_users(notification_type, alert_settings)
 
     def write(
@@ -550,19 +607,14 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         threshold_time = timezone.now() - timedelta(minutes=self.tolerance)
         return time < threshold_time
 
-    def _is_crossed_by(self, current_value, time=None, retention_policy=None):
-        """ do current_value and time cross the threshold? """
-        value_crossed = self._value_crossed(current_value)
-        if value_crossed is NotImplemented:
-            raise ValueError('Supplied value type not suppported')
-        if not value_crossed:
-            return False
-        if value_crossed and self.tolerance == 0:
-            return True
+    def _has_crossed_been(self, expected_value, time, retention_policy):
+        """ Check that the metric has been crossed or uncrossed during the
+            specified time taking into account the tolerance value
+        """
+        # retrieves latest measurements up to the tolerance limit
+        # in minutes allowed plus a small margin
         if time is None:
-            # retrieves latest measurements up to the maximum
-            # threshold in minutes allowed plus a small margin
-            since = f'now() - {int(self._MINUTES_MAX * 1.05)}m'
+            since = f'now() - {int(self.tolerance * 1.05)}m'
             points = self.metric.read(
                 since=since,
                 limit=None,
@@ -570,12 +622,10 @@ class AbstractAlertSettings(TimeStampedEditableModel):
                 retention_policy=retention_policy,
             )
             # loop on each measurement starting from the most recent
-            for i, point in enumerate(points):
-                # skip the first point because it was just added before this
-                # check started and its value coincides with ``current_value``
-                if i < 1:
-                    continue
-                if not self._value_crossed(point[self.metric.field_name]):
+            # skip the first point because it was just added before this
+            # check started and its value coincides with ``current_value``
+            for i, point in enumerate(points, 1):
+                if self._value_crossed(point[self.metric.field_name]) != expected_value:
                     return False
                 if self._time_crossed(
                     make_aware(datetime.fromtimestamp(point['time']))

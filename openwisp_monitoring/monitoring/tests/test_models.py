@@ -184,13 +184,16 @@ class TestModels(TestMonitoringMixin, TestCase):
         alert_s = self._create_alert_settings(
             metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=9
         )
+        # import pdb; pdb.set_trace()
         self.assertFalse(alert_s._is_crossed_by(95, start_time))
         self.assertTrue(alert_s._is_crossed_by(95, ten_minutes_ago))
         self.assertFalse(alert_s._is_crossed_by(80, start_time))
-        self.assertFalse(alert_s._is_crossed_by(80, ten_minutes_ago))
+        self.assertFalse(
+            alert_s._is_crossed_by(80, ten_minutes_ago)
+        )  # FIX - test fails
 
     def test_threshold_is_crossed_deferred_2(self):
-        self._create_admin()
+        # self._create_admin()
         m = self._create_general_metric(name='load')
         self._create_alert_settings(
             metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=1
@@ -283,23 +286,24 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertIsNone(alert_s.custom_tolerance)
 
     def test_tolerance(self):
-        self._create_admin()
+        # self._create_admin()
         m = self._create_general_metric(name='load')
         self._create_alert_settings(
             metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=5
         )
         with self.subTest('within tolerance, no alerts expected'):
-            m.write(99, time=timezone.now() - timedelta(minutes=2))
+            m.write(99, time=start_time - timedelta(minutes=2))
             self.assertTrue(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 0)
-            m.write(99, time=timezone.now() - timedelta(minutes=4))
+            m.write(99, time=start_time - timedelta(minutes=4))
             self.assertTrue(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 0)
+        # import pdb; pdb.set_trace()
         with self.subTest('tolerance trepassed, alerts expected'):
-            m.write(99, time=timezone.now() - timedelta(minutes=6))
+            m.write(99, time=start_time - timedelta(minutes=6))
             self.assertFalse(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
         with self.subTest('value back to normal, tolerance not considered'):
-            m.write(71, time=timezone.now() - timedelta(minutes=7))
-            self.assertTrue(m.is_healthy)
+            m.write(71, time=start_time - timedelta(minutes=7))
+            self.assertTrue(m.is_healthy)  # FIX - test fails
             self.assertEqual(Notification.objects.count(), 2)
