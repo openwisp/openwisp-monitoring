@@ -91,7 +91,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
     def test_resources_metric_threshold_deferred_not_crossed(self):
         # Verify that newly created metrics within threshold limit don't send any notifications
         self._create_admin()
-        self.create_test_adata()
+        self.create_test_data()
         self.assertEqual(Notification.objects.count(), 0)
 
     def test_cpu_metric_threshold_crossed(self):
@@ -102,7 +102,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         data = self._data()
         data['resources']['load'] = [0.99, 0.99, 0.99]
         with patch(test_data_path, return_value=data):
-            self.create_test_adata()
+            self.create_test_data()
             m = Metric.objects.get(name='CPU usage')
             self.assertEqual(Notification.objects.count(), 1)
             n = Notification.objects.first()

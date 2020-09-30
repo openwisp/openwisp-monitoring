@@ -45,7 +45,7 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
         dm.save()
         return dm
 
-    def create_test_adata(self, no_resources=False):
+    def create_test_data(self, no_resources=False):
         o = self._create_org()
         d = self._create_device(organization=o)
         data = self._data()
@@ -78,7 +78,7 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
 
     def _create_multiple_measurements(self, create=True, no_resources=False, count=4):
         if create:
-            self.create_test_adata(no_resources=no_resources)
+            self.create_test_data(no_resources=no_resources)
         self.assertEqual(self.device_model.objects.count(), 1)
         d = self.device_model.objects.first()
         dd = DeviceData(pk=d.pk)

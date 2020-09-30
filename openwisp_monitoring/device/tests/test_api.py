@@ -59,10 +59,10 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(Chart.objects.count(), 0)
 
     def test_200_create(self):
-        self.create_test_adata(no_resources=True)
+        self.create_test_data(no_resources=True)
 
     def test_200_traffic_counter_incremented(self):
-        dd = self.create_test_adata(no_resources=True)
+        dd = self.create_test_data(no_resources=True)
         d = self.device_model.objects.first()
         data2 = self._data()
         # creation of resources metrics can be avoided here as it is not involved
@@ -91,7 +91,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
     def test_200_traffic_counter_reset(self):
-        dd = self.create_test_adata(no_resources=True)
+        dd = self.create_test_data(no_resources=True)
         d = self.device_model.objects.first()
         data2 = self._data()
         # creation of resources metrics can be avoided here as it is not involved
@@ -186,7 +186,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(Chart.objects.count(), 0)
 
     def test_get_device_metrics_200(self):
-        dd = self.create_test_adata()
+        dd = self.create_test_data()
         d = self.device_model.objects.get(pk=dd.pk)
         r = self.client.get(self._url(d.pk.hex, d.key))
         self.assertEqual(r.status_code, 200)
@@ -226,7 +226,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertTrue(len(r.data['x']) > 50)
 
     def test_get_device_metrics_1d(self):
-        dd = self.create_test_adata()
+        dd = self.create_test_data()
         d = self.device_model.objects.get(pk=dd.pk)
         r = self.client.get('{0}&time=1d'.format(self._url(d.pk, d.key)))
         self.assertEqual(r.status_code, 200)
@@ -318,7 +318,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(rows[-1].strip().split(','), ['ssh', '0'])
 
     def test_get_device_metrics_400_bad_timezone(self):
-        dd = self.create_test_adata(no_resources=True)
+        dd = self.create_test_data(no_resources=True)
         d = self.device_model.objects.get(pk=dd.pk)
         wrong_timezone_values = (
             'wrong',
@@ -388,7 +388,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             self.assertEqual(r.status_code, 200)
 
     def test_get_device_status_200(self):
-        dd = self.create_test_adata(no_resources=True)
+        dd = self.create_test_data(no_resources=True)
         d = self.device_model.objects.get(pk=dd.pk)
         url = self._url(d.pk.hex, d.key)
         # status not requested

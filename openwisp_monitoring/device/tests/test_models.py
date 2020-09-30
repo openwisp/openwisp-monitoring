@@ -465,7 +465,7 @@ class TestDeviceData(BaseTestCase):
         mock.assert_called_with(f'The device with uuid {dd.pk} has been deleted')
 
     def test_device_data_cache_set(self):
-        dd = self.create_test_adata(no_resources=True)
+        dd = self.create_test_data(no_resources=True)
         cache_key = get_device_cache_key(dd, context='current-data')
         cache_data = cache.get(cache_key)[0]['data']
         self.assertEqual(json.loads(cache_data), dd.data)

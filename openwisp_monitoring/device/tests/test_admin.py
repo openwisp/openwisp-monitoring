@@ -25,7 +25,7 @@ class TestAdmin(DeviceMonitoringTestCase):
         self.client.force_login(u)
 
     def test_device_admin(self):
-        dd = self.create_test_adata()
+        dd = self.create_test_data()
         check = Check.objects.create(
             name='Ping check', check=CHECK_CLASSES[0][0], content_object=dd, params={},
         )
@@ -75,7 +75,7 @@ class TestAdmin(DeviceMonitoringTestCase):
 
     def test_wifi_clients_admin(self):
         self._login_admin()
-        dd = self.create_test_adata(no_resources=True)
+        dd = self.create_test_data(no_resources=True)
         url = reverse('admin:config_device_change', args=[dd.id])
         r1 = self.client.get(url, follow=True)
         self.assertEqual(r1.status_code, 200)
@@ -83,7 +83,7 @@ class TestAdmin(DeviceMonitoringTestCase):
 
     def test_interface_properties_admin(self):
         self._login_admin()
-        dd = self.create_test_adata(no_resources=True)
+        dd = self.create_test_data(no_resources=True)
         url = reverse('admin:config_device_change', args=[dd.id])
         r1 = self.client.get(url, follow=True)
         self.assertEqual(r1.status_code, 200)
@@ -122,7 +122,7 @@ class TestAdmin(DeviceMonitoringTestCase):
         self.assertContains(r1, 'Spanning Tree Protocol')
 
     def test_uuid_bug(self):
-        dd = self.create_test_adata(no_resources=True)
+        dd = self.create_test_data(no_resources=True)
         uuid = str(dd.pk).replace('-', '')
         url = reverse('admin:config_device_change', args=[uuid])
         self._login_admin()
@@ -162,7 +162,7 @@ class TestAdmin(DeviceMonitoringTestCase):
         self.assertEqual(c.content_object, d)
 
     def test_health_checks_list(self):
-        dd = self.create_test_adata()
+        dd = self.create_test_data()
         url = reverse('admin:config_device_change', args=[dd.pk])
         self._login_admin()
         r = self.client.get(url)
