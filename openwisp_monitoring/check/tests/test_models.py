@@ -170,7 +170,10 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         dm.device.config.set_status_applied()
         # We are once again querying for the check to override the cached property check_instance
         check = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+        # must be performed multiple times to trepass tolerance
         check.perform_check()
+        with freeze_time(now() + timedelta(minutes=10)):
+            check.perform_check()
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'ok')
         self.assertEqual(Notification.objects.filter(actor_object_id=m.id).count(), 1)
@@ -192,8 +195,10 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(AlertSettings.objects.count(), 1)
         m = Metric.objects.first()
         self.assertTrue(dm.is_metric_critical(m))
-        with freeze_time(now() - timedelta(minutes=10)):
+        # must be executed twice to trepass the tolerance
+        with freeze_time(now() - timedelta(minutes=6)):
             check.perform_check()
+        check.perform_check()
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'critical')
 

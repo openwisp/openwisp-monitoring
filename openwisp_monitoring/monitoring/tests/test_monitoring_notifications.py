@@ -5,6 +5,7 @@ from django.core import mail
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import strip_tags
+from freezegun import freeze_time
 from swapper import load_model
 
 from ...device.tests import DeviceMonitoringTestCase
@@ -18,6 +19,7 @@ OrganizationUser = load_model('openwisp_users', 'OrganizationUser')
 notification_queryset = Notification.objects.order_by('timestamp')
 start_time = timezone.now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
+ten_minutes_after = start_time + timedelta(minutes=10)
 
 
 class TestMonitoringNotifications(DeviceMonitoringTestCase):
@@ -122,7 +124,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         admin = self._create_admin()
         m = self._create_general_metric(name='load')
         self._create_alert_settings(
-            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=1
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=5
         )
 
         with self.subTest('Test no notification is generated for healthy status'):
@@ -143,6 +145,28 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(n.actor, m)
             self.assertEqual(n.action_object, m.alertsettings)
             self.assertEqual(n.level, 'warning')
+
+        with self.subTest('Test no recovery notification yet (tolerance not passed)'):
+            m.write(50)
+            self.assertFalse(m.is_healthy)
+            self.assertEqual(Notification.objects.count(), 1)
+
+        with self.subTest('Tolerance still not passed, not expecting a recovery yet'):
+            with freeze_time(start_time + timedelta(minutes=2)):
+                m.write(51)
+            self.assertFalse(m.is_healthy)
+            self.assertEqual(Notification.objects.count(), 1)
+
+        with self.subTest('Test recovery notification after tolerance is passed'):
+            with freeze_time(ten_minutes_after):
+                m.write(50)
+            self.assertTrue(m.is_healthy)
+            self.assertEqual(Notification.objects.count(), 2)
+            n = notification_queryset.last()
+            self.assertEqual(n.recipient, admin)
+            self.assertEqual(n.actor, m)
+            self.assertEqual(n.action_object, m.alertsettings)
+            self.assertEqual(n.level, 'info')
 
     def test_object_check_threshold_crossed_immediate(self):
         admin = self._create_admin()
@@ -240,8 +264,13 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         om.write(95)
         self.assertFalse(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 1)
-        # value back to normal
+        # value back to normal but tolerance not passed yet
         om.write(60)
+        self.assertFalse(om.is_healthy)
+        self.assertEqual(Notification.objects.count(), 1)
+        # tolerance passed
+        with freeze_time(ten_minutes_after):
+            om.write(60)
         self.assertTrue(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 2)
         n = notification_queryset.last()
@@ -251,9 +280,40 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(n.target, om.content_object)
         self.assertEqual(n.level, 'info')
         # ensure double alarm not sent
-        om.write(40)
+        with freeze_time(ten_minutes_after + timedelta(minutes=5)):
+            om.write(40)
         self.assertTrue(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 2)
+
+    def test_flapping_metric_with_tolerance(self):
+        self._create_admin()
+        om = self._create_object_metric(name='ping')
+        self._create_alert_settings(
+            metric=om, custom_operator='<', custom_threshold=1, custom_tolerance=10
+        )
+        with freeze_time(start_time - timedelta(minutes=25)):
+            om.write(1)
+            self.assertEqual(Notification.objects.count(), 0)
+            self.assertTrue(om.is_healthy)
+        with freeze_time(start_time - timedelta(minutes=20)):
+            om.write(0)
+            self.assertEqual(Notification.objects.count(), 0)
+            self.assertTrue(om.is_healthy)
+        with freeze_time(start_time - timedelta(minutes=15)):
+            om.write(1)
+            self.assertEqual(Notification.objects.count(), 0)
+            self.assertTrue(om.is_healthy)
+        with freeze_time(start_time - timedelta(minutes=10)):
+            om.write(0)
+            self.assertEqual(Notification.objects.count(), 0)
+            self.assertTrue(om.is_healthy)
+        with freeze_time(start_time - timedelta(minutes=5)):
+            om.write(0)
+            self.assertEqual(Notification.objects.count(), 0)
+            self.assertTrue(om.is_healthy)
+        om.write(0)
+        self.assertEqual(Notification.objects.count(), 1)
+        self.assertFalse(om.is_healthy)
 
     def test_multiple_notifications(self):
         testorg = self._create_org()

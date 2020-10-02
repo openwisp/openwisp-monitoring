@@ -11,10 +11,11 @@ from django.core.validators import MaxValueValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
-from django.utils.timezone import make_aware, now
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from openwisp_notifications.signals import notify
 from pytz import timezone as tz
+from pytz import utc
 from swapper import get_model_name
 
 from openwisp_utils.base import TimeStampedEditableModel
@@ -551,40 +552,62 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         threshold_time = timezone.now() - timedelta(minutes=self.tolerance)
         return time < threshold_time
 
+    @property
+    def _tolerance_search_range(self):
+        """
+        Allow sufficient room for checking
+        if the tolerance has been trepassed.
+        Minimum 15 minutes, maximum self._MINUTES_MAX * 1.05
+        """
+        minutes = self.tolerance * 2
+        minutes = minutes if minutes > 15 else 15
+        minutes = minutes if minutes <= self._MINUTES_MAX else self._MINUTES_MAX * 1.05
+        return int(minutes)
+
     def _is_crossed_by(self, current_value, time=None, retention_policy=None):
-        """ do current_value and time cross the threshold? """
+        """
+        do current_value and time cross the threshold and trepass the tolerance?
+        """
         value_crossed = self._value_crossed(current_value)
         if value_crossed is NotImplemented:
             raise ValueError('Supplied value type not suppported')
-        if not value_crossed:
-            return False
-        if value_crossed and self.tolerance == 0:
-            return True
+        # no tolerance specified, return immediately
+        if self.tolerance == 0:
+            return value_crossed
+        # tolerance is set, we must go back in time
+        # to ensure the threshold is trepassed for enough time
         if time is None:
-            # retrieves latest measurements up to the maximum
-            # threshold in minutes allowed plus a small margin
-            since = f'now() - {int(self._MINUTES_MAX * 1.05)}m'
+            # retrieves latest measurements, ordered by most recent first
             points = self.metric.read(
-                since=since,
+                since=f'{self._tolerance_search_range}m',
                 limit=None,
                 order='-time',
                 retention_policy=retention_policy,
             )
+            # store a list with the results
+            results = [value_crossed]
             # loop on each measurement starting from the most recent
-            for i, point in enumerate(points):
+            for i, point in enumerate(points, 1):
                 # skip the first point because it was just added before this
                 # check started and its value coincides with ``current_value``
-                if i < 1:
+                if i <= 1:
                     continue
-                if not self._value_crossed(point[self.metric.field_name]):
-                    return False
-                if self._time_crossed(
-                    make_aware(datetime.fromtimestamp(point['time']))
-                ):
-                    return True
-                # if threshold value is crossed but threshold time is not
-                # keep iterating (explicit continue statement added
-                #                 for better algorithm readability)
+                utc_time = utc.localize(datetime.utcfromtimestamp(point['time']))
+                # did this point cross the threshold? Append to result list
+                results.append(self._value_crossed(point[self.metric.field_name]))
+                # tolerance is trepassed
+                if self._time_crossed(utc_time):
+                    # if the latest results are consistent, the metric being
+                    # monitored is not flapping and we can confidently return
+                    # wheter the value crosses the threshold or not
+                    if len(set(results)) == 1:
+                        return value_crossed
+                    # otherwise, the results are flapping, the situation has not changed
+                    # we will return a value that will not trigger changes
+                    return not self.metric.is_healthy
+                # otherwise keep looking back
                 continue
+            # the search has not yielded any conclusion
+            # return result based on the current value and time
             time = timezone.now()
-        return self._time_crossed(time)
+        return self._time_crossed(time) and value_crossed

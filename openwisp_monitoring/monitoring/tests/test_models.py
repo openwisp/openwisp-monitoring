@@ -303,3 +303,16 @@ class TestModels(TestMonitoringMixin, TestCase):
             m.write(71, time=timezone.now() - timedelta(minutes=7))
             self.assertTrue(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 2)
+
+    def test_time_crossed(self):
+        m = self._create_general_metric(name='load')
+        a = self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=5
+        )
+
+        now = timezone.now()
+        self.assertFalse(a._time_crossed(now))
+        self.assertFalse(a._time_crossed(now - timedelta(minutes=1)))
+        self.assertFalse(a._time_crossed(now - timedelta(minutes=4)))
+        self.assertTrue(a._time_crossed(now - timedelta(minutes=5)))
+        self.assertTrue(a._time_crossed(now - timedelta(minutes=6)))
