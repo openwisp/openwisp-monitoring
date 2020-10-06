@@ -110,6 +110,18 @@ class MetricInline(NestedGenericStackedInline):
 
 class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
     change_form_template = 'admin/config/device/change_form.html'
+    list_filter = ['monitoring__status'] + BaseDeviceAdmin.list_filter
+    list_select_related = ['monitoring'] + list(BaseDeviceAdmin.list_select_related)
+    list_display = list(BaseDeviceAdmin.list_display)
+    list_display.insert(list_display.index('config_status'), 'health_status')
+    readonly_fields = ['health_status'] + BaseDeviceAdmin.readonly_fields
+
+    class Media:
+        js = MetricAdmin.Media.js + (
+            'monitoring/js/percircle.js',
+            'monitoring/js/alert-settings.js',
+        )
+        css = {'all': ('monitoring/css/percircle.css',) + MetricAdmin.Media.css['all']}
 
     def get_extra_context(self, pk=None):
         ctx = super().get_extra_context(pk)
@@ -160,10 +172,11 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         return super().get_form(request, obj, **kwargs)
 
     def get_fields(self, request, obj=None):
-        fields = super().get_fields(request, obj)
+        fields = list(super().get_fields(request, obj))
+        if obj and not obj._state.adding:
+            fields.insert(fields.index('last_ip'), 'health_status')
         if not obj or obj.monitoring.status in ['ok', 'unknown']:
             return fields
-        fields = list(fields)
         fields.insert(fields.index('health_status') + 1, 'health_checks')
         return fields
 
@@ -175,41 +188,35 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         readonly_fields.append('health_checks')
         return readonly_fields
 
-
-def device_admin_get_inlines(self, request, obj):
-    # copy the list to avoid modifying the original data structure
-    inlines = list(super(DeviceAdmin, self).get_inlines(request, obj))
-    if not obj or obj._state.adding:
-        inlines.remove(MetricInline)
+    def get_inlines(self, request, obj=None):
+        # TODO: Change ``self.inlines`` to ``self.get_inlines(request, obj)``
+        # once we drop support for django 2
+        inlines = list(self.inlines + [CheckInline, MetricInline])
+        # This attribute needs to be set for nested inline
+        for inline in inlines:
+            if not hasattr(inline, 'sortable_options'):
+                inline.sortable_options = {'disabled': True}
+        if not obj or obj._state.adding:
+            inlines.remove(MetricInline)
         return inlines
-    return inlines
 
+    # TODO: Remove below method once we drop support for django 2
+    def get_inline_instances(self, request, obj=None):
+        inline_instances = []
+        for inline_class in self.get_inlines(request, obj):
+            inline = inline_class(self.model, self.admin_site)
+            if request:
+                if not (
+                    inline.has_view_or_change_permission(request, obj)
+                    or inline.has_add_permission(request, obj)
+                    or inline.has_delete_permission(request, obj)
+                ):
+                    continue
+                if not inline.has_add_permission(request, obj):
+                    inline.max_num = 0
+            inline_instances.append(inline)
+        return inline_instances
 
-DeviceAdmin.inlines += [CheckInline, MetricInline]
-# This attribute needs to be set for nested inline
-for inline in DeviceAdmin.inlines:
-    if not hasattr(inline, 'sortable_options'):
-        inline.sortable_options = {'disabled': True}
-
-DeviceAdmin.get_inlines = device_admin_get_inlines
-
-DeviceAdmin.Media.js += MetricAdmin.Media.js + (
-    'monitoring/js/percircle.js',
-    'monitoring/js/alert-settings.js',
-)
-DeviceAdmin.Media.css['all'] += (
-    'monitoring/css/percircle.css',
-) + MetricAdmin.Media.css['all']
-
-DeviceAdmin.list_display.insert(
-    DeviceAdmin.list_display.index('config_status'), 'health_status'
-)
-DeviceAdmin.list_select_related += ('monitoring',)
-DeviceAdmin.list_filter.insert(
-    0, 'monitoring__status',
-)
-DeviceAdmin.fields.insert(DeviceAdmin.fields.index('last_ip'), 'health_status')
-DeviceAdmin.readonly_fields.append('health_status')
 
 admin.site.unregister(Device)
 admin.site.register(Device, DeviceAdmin)
