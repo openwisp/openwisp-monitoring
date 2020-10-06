@@ -6,4 +6,4 @@ django-celery-email~=3.0.0
 django-cache-memoize~=0.1
 django-nested-admin~=3.3.2
 swapper~=1.1
-mac-vendor-lookup~=0.1
+netaddr~=0.8

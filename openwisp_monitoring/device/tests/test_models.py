@@ -378,6 +378,9 @@ class TestDeviceData(BaseTestCase):
         dd = self.test_save_data()
         dd = DeviceData(pk=dd.pk)
         vendor = 'Shenzhen Yunlink Technology Co., Ltd'
+        assert dd.data['interfaces']
+        assert dd.data['neighbors']
+        assert dd.data['dhcp_leases']
         for interface in dd.data['interfaces']:
             if 'wireless' not in interface and 'clients' not in interface['wireless']:
                 continue
@@ -389,7 +392,6 @@ class TestDeviceData(BaseTestCase):
             self.assertEqual(neighbor['vendor'], vendor)
         for lease in dd.data['dhcp_leases']:
             self.assertIn('vendor', lease)
-            print(lease['vendor'])
 
     @patch('openwisp_monitoring.device.settings.MAC_VENDOR_DETECTION', True)
     def test_mac_vendor_info_empty(self):

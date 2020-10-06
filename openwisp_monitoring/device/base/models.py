@@ -14,9 +14,9 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
-from mac_vendor_lookup import MacLookup
 from model_utils import Choices
 from model_utils.fields import StatusField
+from netaddr import EUI, NotRegisteredError
 from pytz import timezone as tz
 from swapper import load_model
 
@@ -30,15 +30,13 @@ from ..schema import schema
 from ..signals import health_status_changed
 from ..utils import SHORT_RP, get_device_cache_key
 
-mac_lookup = MacLookup()
-
 
 def mac_lookup_cache_timeout():
     """
-    returns a random number of hours between 12 and 36
+    returns a random number of hours between 48 and 96
     this avoids timing out most of the cache at the same time
     """
-    return 60 * 60 * random.randint(12, 36)
+    return 60 * 60 * random.randint(48, 96)
 
 
 class AbstractDeviceData(object):
@@ -169,8 +167,8 @@ class AbstractDeviceData(object):
         if not value:
             return ''
         try:
-            return mac_lookup.lookup(value)
-        except KeyError:
+            return EUI(value).oui.registration().org
+        except NotRegisteredError:
             return ''
 
     def save_data(self, time=None):
