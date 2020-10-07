@@ -189,9 +189,12 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         return readonly_fields
 
     def get_inlines(self, request, obj=None):
-        # TODO: Change ``self.inlines`` to ``self.get_inlines(request, obj)``
-        # once we drop support for django 2
-        inlines = list(self.inlines + [CheckInline, MetricInline])
+        try:
+            inlines = super().get_inlines(request, obj)
+        # TODO: remove when dropping support for django 2.2
+        except AttributeError:  # pragma: no cover
+            inlines = self.inlines
+        inlines = list(inlines + [CheckInline, MetricInline])
         # This attribute needs to be set for nested inline
         for inline in inlines:
             if not hasattr(inline, 'sortable_options'):
