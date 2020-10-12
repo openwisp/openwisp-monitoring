@@ -1,14 +1,8 @@
 from django.apps import AppConfig
 from django.conf import settings
 from django.core.cache import cache
-from django.core.exceptions import ImproperlyConfigured
 from django.db.models.signals import post_delete, post_save
 from django.utils.translation import gettext_lazy as _
-from openwisp_notifications.signals import notify
-from openwisp_notifications.types import (
-    register_notification_type,
-    unregister_notification_type,
-)
 from swapper import load_model
 
 from openwisp_controller.config.signals import checksum_requested, config_modified
@@ -29,7 +23,6 @@ class DeviceMonitoringConfig(AppConfig):
 
     def ready(self):
         manage_short_retention_policy()
-        self.register_notification_types()
         self.connect_is_working_changed()
         self.connect_device_signals()
         self.connect_config_modified()
@@ -140,54 +133,15 @@ class DeviceMonitoringConfig(AppConfig):
         if status == initial_status == 'ok':
             device_monitoring.save()
             return
-        notification_opts = dict(sender=instance, target=device)
         if not is_working:
-            notification_opts['type'] = 'connection_is_not_working'
             if initial_status == 'ok':
                 transaction_on_commit(lambda: trigger_device_checks.delay(pk=device.pk))
         else:
-            # create a notification that device is working
-            notification_opts['type'] = 'connection_is_working'
             # if checks exist trigger them else, set status as 'ok'
             if Check.objects.filter(object_id=instance.device.pk).exists():
                 transaction_on_commit(lambda: trigger_device_checks.delay(pk=device.pk))
             else:
                 device_monitoring.update_status(status)
-        notify.send(**notification_opts)
-
-    def register_notification_types(self):
-        register_notification_type(
-            'connection_is_not_working',
-            {
-                'verbose_name': 'Device Connection PROBLEM',
-                'verb': 'not working',
-                'level': 'error',
-                'email_subject': '[{site.name}] PROBLEM: Connection to device {notification.target}',
-                'message': (
-                    '{notification.actor.credentials} connection to '
-                    'device [{notification.target}]({notification.target_link}) '
-                    'is {notification.verb}. {notification.actor.failure_reason}'
-                ),
-            },
-        )
-        register_notification_type(
-            'connection_is_working',
-            {
-                'verbose_name': 'Device Connection RECOVERY',
-                'verb': 'working',
-                'level': 'info',
-                'email_subject': '[{site.name}] RECOVERY: Connection to device {notification.target}',
-                'message': (
-                    '{notification.actor.credentials} connection to '
-                    'device [{notification.target}]({notification.target_link}) '
-                    'is {notification.verb}. {notification.actor.failure_reason}'
-                ),
-            },
-        )
-        try:
-            unregister_notification_type('default')
-        except ImproperlyConfigured:
-            pass
 
     @classmethod
     def connect_config_modified(cls):

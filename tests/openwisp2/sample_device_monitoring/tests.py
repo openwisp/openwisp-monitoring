@@ -3,9 +3,6 @@ from openwisp_monitoring.device.tests import (
 )
 from openwisp_monitoring.device.tests.test_admin import TestAdmin as BaseTestAdmin
 from openwisp_monitoring.device.tests.test_api import TestDeviceApi as BaseTestDeviceApi
-from openwisp_monitoring.device.tests.test_device_notifications import (
-    TestDeviceNotifications as BaseTestDeviceNotifications,
-)
 from openwisp_monitoring.device.tests.test_models import (
     TestDeviceData as BaseTestDeviceData,
 )
@@ -55,10 +52,6 @@ class TestAdmin(BaseTestAdmin):
     pass
 
 
-class TestDeviceNotifications(BaseTestDeviceNotifications):
-    app_label = 'sample_device_monitoring'
-
-
 # this is necessary to avoid excuting the base test suites
 del BaseTestRecovery
 del DeviceMonitoringTestCase
@@ -67,5 +60,4 @@ del BaseTestDeviceMonitoring
 del BaseTestSettings
 del BaseTestDeviceApi
 del BaseTestAdmin
-del BaseTestDeviceNotifications
 del BaseTestTransactions
