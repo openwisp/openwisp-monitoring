@@ -69,8 +69,7 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
         mocked_update_status.assert_called_once()
 
     @patch.object(Check, 'perform_check')
-    @patch.object(notify, 'send')
-    def test_is_working_false_true(self, notify_send, perform_check):
+    def test_is_working_false_true(self, perform_check):
         d = self._create_device()
         dm = d.monitoring
         dm.status = 'unknown'
@@ -82,11 +81,9 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
         dc.is_working = True
         dc.save()
         perform_check.assert_called_once()
-        notify_send.assert_called_once()
 
     @patch.object(Check, 'perform_check')
-    @patch.object(notify, 'send')
-    def test_is_working_changed_to_false(self, notify_send, perform_check):
+    def test_is_working_changed_to_false(self, perform_check):
         d = self._create_device()
         dm = d.monitoring
         dm.status = 'ok'
@@ -97,7 +94,6 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
         dc.is_working = False
         dc.save()
         perform_check.assert_called_once()
-        notify_send.assert_called_once()
 
     @patch.object(Check, 'perform_check')
     @patch.object(notify, 'send')
