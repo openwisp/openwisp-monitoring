@@ -484,6 +484,14 @@ class TestDeviceData(BaseTestCase):
         update_config.delay(device.pk)
         mocked_logger_info.assert_called_once()
 
+    @patch('openwisp_controller.connection.tasks.logger.info')
+    def test_can_be_updated_unknown(self, mocked_logger_info):
+        device = self._create_device_config()
+        device.monitoring.status = 'unknown'
+        device.monitoring.save()
+        update_config.delay(device.pk)
+        mocked_logger_info.assert_called_once()
+
 
 class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
     """
