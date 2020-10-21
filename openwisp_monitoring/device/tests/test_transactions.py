@@ -128,18 +128,16 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
         dc.failure_reason = '[Errno None] Unable to connect to port 5555 on 127.0.0.1'
         dc.full_clean()
         dc.save()
-
-        notify_send.assert_not_called()
         perform_check.assert_not_called()
 
     @patch.object(Check, 'perform_check')
     @patch.object(notify, 'send')
     def test_is_working_changed_timed_out(self, notify_send, perform_check):
         ckey = self._create_credentials_with_key(port=self.ssh_server.port)
-        dc = self._create_device_connection(credentials=ckey)
+        dc = self._create_device_connection(credentials=ckey, is_working=None)
+        self.assertIsNone(dc.is_working)
         dc.is_working = True
         dc.save()
-        notify_send.assert_not_called()
         perform_check.assert_not_called()
 
         d = self.device_model.objects.first()
@@ -149,8 +147,6 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
         dc.failure_reason = 'timed out'
         dc.full_clean()
         dc.save()
-
-        notify_send.assert_not_called()
         perform_check.assert_not_called()
 
     @patch.object(Check, 'perform_check')
@@ -171,5 +167,4 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
         dc.failure_reason = ''
         dc.is_working = True
         dc.save()
-        notify_send.assert_not_called()
         perform_check.assert_not_called()
