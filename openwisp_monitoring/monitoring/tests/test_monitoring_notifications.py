@@ -35,6 +35,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
 
         with self.subTest('Test notification for metric exceeding alert settings'):
             m.write(99)
+            m.refresh_from_db()
             self.assertFalse(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
             n = notification_queryset.first()
@@ -45,11 +46,13 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
 
         with self.subTest('Test no double alarm for metric exceeding alert settings'):
             m.write(95)
+            m.refresh_from_db()
             self.assertFalse(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
 
         with self.subTest('Test notification for metric falling behind alert settings'):
             m.write(60)
+            m.refresh_from_db()
             self.assertTrue(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 2)
             n = notification_queryset.last()
@@ -62,6 +65,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             'Test no double alarm for metric falling behind alert settings'
         ):
             m.write(40)
+            m.refresh_from_db()
             self.assertTrue(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 2)
 
@@ -72,6 +76,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=1
         )
         m.write(99, time=ten_minutes_ago)
+        m.refresh_from_db()
         self.assertFalse(m.is_healthy)
         self.assertEqual(Notification.objects.count(), 1)
         n = notification_queryset.first()
@@ -129,6 +134,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
 
         with self.subTest('Test no notification is generated for healthy status'):
             m.write(89, time=ten_minutes_ago)
+            m.refresh_from_db()
             self.assertTrue(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 0)
 
@@ -138,6 +144,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
 
         with self.subTest('Test notification for metric with current timestamp'):
             m.write(92)
+            m.refresh_from_db()
             self.assertFalse(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
             n = notification_queryset.first()
@@ -148,18 +155,21 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
 
         with self.subTest('Test no recovery notification yet (tolerance not passed)'):
             m.write(50)
+            m.refresh_from_db()
             self.assertFalse(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
 
         with self.subTest('Tolerance still not passed, not expecting a recovery yet'):
             with freeze_time(start_time + timedelta(minutes=2)):
                 m.write(51)
+            m.refresh_from_db()
             self.assertFalse(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
 
         with self.subTest('Test recovery notification after tolerance is passed'):
             with freeze_time(ten_minutes_after):
                 m.write(50)
+            m.refresh_from_db()
             self.assertTrue(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 2)
             n = notification_queryset.last()
@@ -179,6 +189,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             "Test notification for object metric exceeding alert settings"
         ):
             om.write(99)
+            om.refresh_from_db()
             self.assertFalse(om.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
             n = notification_queryset.first()
@@ -192,6 +203,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             "Test no double alarm for object metric exceeding alert settings"
         ):
             om.write(95)
+            om.refresh_from_db()
             self.assertFalse(om.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
 
@@ -199,6 +211,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             "Test notification for object metric falling behind alert settings"
         ):
             om.write(60)
+            om.refresh_from_db()
             self.assertTrue(om.is_healthy)
             self.assertEqual(Notification.objects.count(), 2)
             n = notification_queryset.last()
@@ -212,6 +225,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             "Test no double alarm for object metric falling behind alert settings"
         ):
             om.write(40)
+            om.refresh_from_db()
             self.assertTrue(om.is_healthy)
             self.assertEqual(Notification.objects.count(), 2)
 
@@ -222,6 +236,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=1
         )
         om.write(99, time=ten_minutes_ago)
+        om.refresh_from_db()
         self.assertFalse(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 1)
         n = notification_queryset.first()
@@ -238,6 +253,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=1
         )
         om.write(99)
+        om.refresh_from_db()
         self.assertTrue(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 0)
 
@@ -252,6 +268,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         om.write(91, time=ten_minutes_ago, check=False)
         self.assertEqual(Notification.objects.count(), 0)
         om.write(92)
+        om.refresh_from_db()
         self.assertFalse(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 1)
         n = notification_queryset.first()
@@ -262,15 +279,18 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(n.level, 'warning')
         # ensure double alarm not sent
         om.write(95)
+        om.refresh_from_db()
         self.assertFalse(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 1)
         # value back to normal but tolerance not passed yet
         om.write(60)
+        om.refresh_from_db()
         self.assertFalse(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 1)
         # tolerance passed
         with freeze_time(ten_minutes_after):
             om.write(60)
+        om.refresh_from_db()
         self.assertTrue(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 2)
         n = notification_queryset.last()
@@ -282,6 +302,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         # ensure double alarm not sent
         with freeze_time(ten_minutes_after + timedelta(minutes=5)):
             om.write(40)
+        om.refresh_from_db()
         self.assertTrue(om.is_healthy)
         self.assertEqual(Notification.objects.count(), 2)
 
@@ -294,25 +315,31 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         with freeze_time(start_time - timedelta(minutes=25)):
             om.write(1)
             self.assertEqual(Notification.objects.count(), 0)
+            om.refresh_from_db()
             self.assertTrue(om.is_healthy)
         with freeze_time(start_time - timedelta(minutes=20)):
             om.write(0)
             self.assertEqual(Notification.objects.count(), 0)
+            om.refresh_from_db()
             self.assertTrue(om.is_healthy)
         with freeze_time(start_time - timedelta(minutes=15)):
             om.write(1)
             self.assertEqual(Notification.objects.count(), 0)
+            om.refresh_from_db()
             self.assertTrue(om.is_healthy)
         with freeze_time(start_time - timedelta(minutes=10)):
             om.write(0)
             self.assertEqual(Notification.objects.count(), 0)
+            om.refresh_from_db()
             self.assertTrue(om.is_healthy)
         with freeze_time(start_time - timedelta(minutes=5)):
             om.write(0)
             self.assertEqual(Notification.objects.count(), 0)
+            om.refresh_from_db()
             self.assertTrue(om.is_healthy)
         om.write(0)
         self.assertEqual(Notification.objects.count(), 1)
+        om.refresh_from_db()
         self.assertFalse(om.is_healthy)
 
     def test_multiple_notifications(self):
@@ -478,6 +505,8 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             is_active=False,
         )
         m.write(99, time=ten_minutes_ago)
+        m.refresh_from_db()
         self.assertFalse(m.is_healthy)
+        d.refresh_from_db()
         self.assertEqual(d.monitoring.status, 'problem')
         self.assertEqual(Notification.objects.count(), 0)

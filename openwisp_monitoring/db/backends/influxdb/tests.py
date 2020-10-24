@@ -231,6 +231,7 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
             )
             m.write(0, retention_policy=SHORT_RP)
             self.assertEqual(m.read(retention_policy=SHORT_RP)[0][m.field_name], 0)
+            m.refresh_from_db()
             self.assertFalse(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
         with self.subTest(
@@ -242,6 +243,7 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
             )
             m.write(0, retention_policy=SHORT_RP, time=now() - timedelta(minutes=2))
             self.assertEqual(m.read(retention_policy=SHORT_RP)[0][m.field_name], 0)
+            m.refresh_from_db()
             self.assertFalse(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
 

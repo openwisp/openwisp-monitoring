@@ -29,7 +29,7 @@ from ..configuration import (
     get_metric_configuration,
 )
 from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
-from ..signals import post_metric_write, pre_metric_write, threshold_crossed
+from ..signals import pre_metric_write, threshold_crossed
 from ..tasks import timeseries_write
 
 User = get_user_model()
@@ -155,6 +155,8 @@ class AbstractMetric(TimeStampedEditableModel):
             alert_settings = self.alertsettings
         except ObjectDoesNotExist:
             return
+        if isinstance(time, str):
+            time = utc.localize(datetime.strptime(time, '%Y-%m-%dT%H:%M:%S.%fZ'))
         crossed = alert_settings._is_crossed_by(value, time, retention_policy)
         first_time = False
         # situation has not changed
@@ -213,13 +215,17 @@ class AbstractMetric(TimeStampedEditableModel):
             database=database,
             retention_policy=retention_policy,
         )
-        timeseries_write.delay(name=self.key, values=values, **options)
-        post_metric_write.send(**signal_kwargs)
         # check can be disabled,
         # mostly for automated testing and debugging purposes
-        if not check:
-            return
-        self.check_threshold(value, time, retention_policy, send_alert)
+        if check:
+            options['check_threshold_kwargs'] = {
+                'value': value,
+                'time': time,
+                'retention_policy': retention_policy,
+                'send_alert': send_alert,
+            }
+            options['metric_pk'] = self.pk
+        timeseries_write.delay(name=self.key, values=values, **options)
 
     def read(self, **kwargs):
         """ reads timeseries data """
