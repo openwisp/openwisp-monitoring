@@ -230,7 +230,6 @@ schema = {
                                         "mac",
                                         "mfp",
                                         "preauth",
-                                        "signature",
                                     ],
                                     "properties": {
                                         "aid": {"type": "integer"},
