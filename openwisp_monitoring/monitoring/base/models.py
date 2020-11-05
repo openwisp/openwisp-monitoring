@@ -11,7 +11,6 @@ from django.core.validators import MaxValueValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
-from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from openwisp_notifications.signals import notify
 from pytz import timezone as tz
@@ -209,7 +208,7 @@ class AbstractMetric(TimeStampedEditableModel):
         pre_metric_write.send(**signal_kwargs)
         options = dict(
             tags=self.tags,
-            timestamp=time or now(),
+            timestamp=time or timezone.now(),
             database=database,
             retention_policy=retention_policy,
         )
