@@ -1178,9 +1178,6 @@ Example usage:
     cd tests/
     ./manage.py run_checks
 
-For more information about how to custom django management commnads work,
-please refer to the `django documentation https://docs.djangoproject.com/en/dev/howto/custom-management-commands/>`_.
-
 Installing for development
 --------------------------
 
@@ -1319,7 +1316,7 @@ ensuring also that ``openwisp_monitoring.check`` has been removed:
     ]
 
 For more information about how to work with django projects and django apps,
-please refer to the `django documentation <https://docs.djangoproject.com/en/dev/intro/tutorial01/>`_.
+please refer to the `"Tutorial: Writing your first Django app" in the django docunmentation <https://docs.djangoproject.com/en/dev/intro/tutorial01/>`_.
 
 2. Install ``openwisp-monitoring``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
