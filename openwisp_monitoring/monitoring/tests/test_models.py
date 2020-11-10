@@ -318,3 +318,8 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertFalse(a._time_crossed(now - timedelta(minutes=4)))
         self.assertTrue(a._time_crossed(now - timedelta(minutes=5)))
         self.assertTrue(a._time_crossed(now - timedelta(minutes=6)))
+
+    def test_get_time_str(self):
+        m = self._create_general_metric(name='load')
+        now = timezone.now()
+        self.assertEqual(m._get_time(now.isoformat()), now)

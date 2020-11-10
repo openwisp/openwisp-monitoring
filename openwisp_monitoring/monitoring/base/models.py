@@ -2,6 +2,7 @@ import json
 import logging
 from datetime import date, datetime, timedelta
 
+from dateutil.parser import parse as parse_date
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -146,6 +147,14 @@ class AbstractMetric(TimeStampedEditableModel):
         except AttributeError:
             return None
 
+    def _get_time(self, time):
+        """
+        If time is a string, convert it to a datetime
+        """
+        if isinstance(time, str):
+            return parse_date(time)
+        return time
+
     def check_threshold(self, value, time=None, retention_policy=None, send_alert=True):
         """
         checks if the threshold is crossed
@@ -155,8 +164,7 @@ class AbstractMetric(TimeStampedEditableModel):
             alert_settings = self.alertsettings
         except ObjectDoesNotExist:
             return
-        if isinstance(time, str):
-            time = utc.localize(datetime.strptime(time, '%Y-%m-%dT%H:%M:%S.%fZ'))
+        time = self._get_time(time)
         crossed = alert_settings._is_crossed_by(value, time, retention_policy)
         first_time = False
         # situation has not changed
