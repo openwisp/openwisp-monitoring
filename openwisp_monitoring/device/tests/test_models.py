@@ -608,6 +608,7 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'unknown')
         ping.write(1)
+        dm.refresh_from_db()
         self.assertEqual(dm.status, 'ok')
 
     def test_unknown_critical(self):
@@ -618,4 +619,5 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'unknown')
         ping.write(0)
+        dm.refresh_from_db()
         self.assertEqual(dm.status, 'critical')

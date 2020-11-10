@@ -297,10 +297,12 @@ class TestModels(TestMonitoringMixin, TestCase):
             self.assertEqual(Notification.objects.count(), 0)
         with self.subTest('tolerance trepassed, alerts expected'):
             m.write(99, time=timezone.now() - timedelta(minutes=6))
+            m.refresh_from_db()
             self.assertFalse(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 1)
         with self.subTest('value back to normal, tolerance not considered'):
             m.write(71, time=timezone.now() - timedelta(minutes=7))
+            m.refresh_from_db()
             self.assertTrue(m.is_healthy)
             self.assertEqual(Notification.objects.count(), 2)
 
@@ -316,3 +318,8 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertFalse(a._time_crossed(now - timedelta(minutes=4)))
         self.assertTrue(a._time_crossed(now - timedelta(minutes=5)))
         self.assertTrue(a._time_crossed(now - timedelta(minutes=6)))
+
+    def test_get_time_str(self):
+        m = self._create_general_metric(name='load')
+        now = timezone.now()
+        self.assertEqual(m._get_time(now.isoformat()), now)

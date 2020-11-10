@@ -1155,11 +1155,8 @@ the timeseries database.
 - ``metric``: ``Metric`` object whose data is being stored in timeseries database
 - ``values``: metric data that is being stored in the timeseries database
 
-This signal is emitted for every metric after the write operation is sent to the
-timeseries database. Since the write operation is run in the background and may be
-retried on failures, using the ``post_metric_write`` signal does not guarantee the
-receiver function will be called after the data has been written, only after the
-request to write it has been sent.
+This signal is emitted for every metric after the write operation is successfully
+executed in the background.
 
 Management commands
 -------------------

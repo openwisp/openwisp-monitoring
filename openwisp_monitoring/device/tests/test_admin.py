@@ -169,6 +169,7 @@ class TestAdmin(DeviceMonitoringTestCase):
         self.assertNotContains(r, '<label>Health checks:</label>')
         m = Metric.objects.filter(configuration='disk').first()
         m.write(m.alertsettings.threshold + 0.1)
+        m.refresh_from_db()
         self.assertFalse(m.is_healthy)
         self.assertEqual(dd.monitoring.status, 'problem')
         r = self.client.get(url)
