@@ -175,10 +175,10 @@ class AbstractDeviceData(object):
         for neighbor in self.data.get('neighbors', []):
             # in some cases the mac_address may not be present
             # eg: neighbors with "FAILED" state
-            neighbor['vendor'] = self._mac_lookup(neighbor.get('mac_address'))
+            neighbor['vendor'] = self._mac_lookup(neighbor.get('mac'))
         # add mac vendor to DHCP leases
         for lease in self.data.get('dhcp_leases', []):
-            lease['vendor'] = self._mac_lookup(lease['mac_address'])
+            lease['vendor'] = self._mac_lookup(lease['mac'])
 
     @cache_memoize(mac_lookup_cache_timeout())
     def _mac_lookup(self, value):

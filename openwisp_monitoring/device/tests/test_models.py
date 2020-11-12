@@ -193,35 +193,35 @@ class BaseTestCase(DeviceMonitoringTestCase):
         "dhcp_leases": [
             {
                 "expiry": 1586943200,
-                "mac_address": "f2:f1:3e:56:d2:77",
-                "ip_address": "192.168.66.196",
+                "mac": "f2:f1:3e:56:d2:77",
+                "ip": "192.168.66.196",
                 "client_name": "MyPhone1",
                 "client_id": "01:20:f4:78:19:3b:38",
             },
             {
                 "expiry": 1586943200,
-                "mac_address": "f2:f1:3e:56:d2:77",
-                "ip_address": "fe80::9683:c4ff:fe02:c2bf",
+                "mac": "f2:f1:3e:56:d2:77",
+                "ip": "fe80::9683:c4ff:fe02:c2bf",
                 "client_name": "MyPhone1",
                 "client_id": "01:20:f4:78:19:3b:38",
             },
         ],
         "neighbors": [
             {
-                "ip_address": "fe80::9683:c4ff:fe02:c2bf",
-                "mac_address": "44:D1:FA:4B:00:02",
+                "ip": "fe80::9683:c4ff:fe02:c2bf",
+                "mac": "44:D1:FA:4B:00:02",
                 "interface": "eth2",
                 "state": "REACHABLE",
             },
             {
-                "ip_address": "192.168.56.1",
-                "mac_address": "44:D1:FA:4B:00:03",
+                "ip": "192.168.56.1",
+                "mac": "44:D1:FA:4B:00:03",
                 "interface": "br-mng",
                 "state": "STALE",
             },
             {
-                "ip_address": "192.168.56.2",
-                "mac_address": "44:D1:FA:4B:00:04",
+                "ip": "192.168.56.2",
+                "mac": "44:D1:FA:4B:00:04",
                 "interface": "br-mng",
                 "state": "STALE",
             },
@@ -268,7 +268,7 @@ class TestDeviceData(BaseTestCase):
         dd = self._create_device_data()
         try:
             dd.data = deepcopy(self._sample_data)
-            dd.data["neighbors"][0]["ip_address"] = "invalid"
+            dd.data["neighbors"][0]["ip"] = "invalid"
             dd.validate_data()
         except ValidationError as e:
             self.assertIn('Invalid data in', e.message)
@@ -356,7 +356,7 @@ class TestDeviceData(BaseTestCase):
     def test_bad_dhcp_lease_fail(self):
         dd = self._create_device_data()
         data = deepcopy(self._sample_data)
-        data['dhcp_leases'][0]['ip_address'] = '123'
+        data['dhcp_leases'][0]['ip'] = '123'
         try:
             dd.data = data
             dd.validate_data()
@@ -398,7 +398,7 @@ class TestDeviceData(BaseTestCase):
         dd = self._create_device_data()
         dd.data = deepcopy(self._sample_data)
         dd.data['neighbors'] = [
-            {'ip_address': '2001:db80::1', 'interface': 'eth2.1', 'state': 'FAILED'},
+            {'ip': '2001:db80::1', 'interface': 'eth2.1', 'state': 'FAILED'},
         ]
         dd.save_data()
         self.assertEqual(dd.data['neighbors'][0]['vendor'], '')
