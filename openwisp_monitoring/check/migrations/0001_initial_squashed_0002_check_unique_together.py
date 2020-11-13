@@ -97,5 +97,5 @@ class Migration(migrations.Migration):
                 'swappable': swapper.swappable_setting('check', 'Check'),
                 'unique_together': {('name', 'object_id', 'content_type')},
             },
-        ),
+        )
     ]

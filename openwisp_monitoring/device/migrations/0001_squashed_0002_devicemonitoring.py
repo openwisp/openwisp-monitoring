@@ -124,6 +124,6 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.RunPython(
-            code=create_device_monitoring, reverse_code=migrations.RunPython.noop,
+            code=create_device_monitoring, reverse_code=migrations.RunPython.noop
         ),
     ]
