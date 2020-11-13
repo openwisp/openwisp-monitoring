@@ -43,7 +43,7 @@ class AbstractMetric(TimeStampedEditableModel):
     )
     field_name = models.CharField(max_length=16, default='value')
     configuration = models.CharField(
-        max_length=16, null=True, choices=METRIC_CONFIGURATION_CHOICES,
+        max_length=16, null=True, choices=METRIC_CONFIGURATION_CHOICES
     )
     content_type = models.ForeignKey(
         ContentType, on_delete=models.CASCADE, null=True, blank=True
@@ -255,13 +255,7 @@ class AbstractChart(TimeStampedEditableModel):
     configuration = models.CharField(
         max_length=16, null=True, choices=CHART_CONFIGURATION_CHOICES
     )
-    GROUP_MAP = {
-        '1d': '10m',
-        '3d': '20m',
-        '7d': '1h',
-        '30d': '24h',
-        '365d': '24h',
-    }
+    GROUP_MAP = {'1d': '10m', '3d': '20m', '7d': '1h', '30d': '24h', '365d': '24h'}
     DEFAULT_TIME = '7d'
 
     class Meta:
@@ -506,7 +500,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         blank=True,
     )
     custom_threshold = models.FloatField(
-        _('threshold value'), help_text=_('threshold value'), blank=True, null=True,
+        _('threshold value'), help_text=_('threshold value'), blank=True, null=True
     )
     custom_tolerance = models.PositiveIntegerField(
         _('threshold tolerance'),

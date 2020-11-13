@@ -93,5 +93,5 @@ class Migration(migrations.Migration):
                 'abstract': False,
                 'swappable': swapper.swappable_setting('check', 'Check'),
             },
-        ),
+        )
     ]

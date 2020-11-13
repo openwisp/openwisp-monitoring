@@ -99,10 +99,7 @@ class Ping(BaseCheck):
         except (IndexError, ValueError) as e:
             message = 'Unrecognized fping output:\n\n{0}'.format(output)
             raise OperationalError(message) from e
-        result = {
-            'reachable': int(loss < 100),
-            'loss': loss,
-        }
+        result = {'reachable': int(loss < 100), 'loss': loss}
         if result['reachable']:
             result.update(
                 {'rtt_min': float(min), 'rtt_avg': float(avg), 'rtt_max': float(max)}

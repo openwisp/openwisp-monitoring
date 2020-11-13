@@ -21,10 +21,6 @@ def unregister_content_type(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('monitoring', '0010_rename_threshold_alert_settings'),
-    ]
+    dependencies = [('monitoring', '0010_rename_threshold_alert_settings')]
 
-    operations = [
-        migrations.RunPython(register_content_type, unregister_content_type),
-    ]
+    operations = [migrations.RunPython(register_content_type, unregister_content_type)]

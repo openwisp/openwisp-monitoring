@@ -6,19 +6,17 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('monitoring', '0018_alertsettings_is_active'),
-    ]
+    dependencies = [('monitoring', '0018_alertsettings_is_active')]
 
     operations = [
         migrations.RenameField(
-            model_name='alertsettings', old_name='operator', new_name='custom_operator',
+            model_name='alertsettings', old_name='operator', new_name='custom_operator'
         ),
         migrations.RenameField(
-            model_name='alertsettings', old_name='value', new_name='custom_threshold',
+            model_name='alertsettings', old_name='value', new_name='custom_threshold'
         ),
         migrations.RenameField(
-            model_name='alertsettings', old_name='seconds', new_name='custom_tolerance',
+            model_name='alertsettings', old_name='seconds', new_name='custom_tolerance'
         ),
         migrations.AlterField(
             model_name='alertsettings',

@@ -221,15 +221,13 @@ class TestMonitoringMixin(TestOrganizationMixin):
         alert_s.save()
         return alert_s
 
-    def _create_chart(
-        self, metric=None, test_data=True, configuration='dummy',
-    ):
+    def _create_chart(self, metric=None, test_data=True, configuration='dummy'):
         m = metric or self._create_object_metric()
         if test_data:
             m.write(3, time=now() - timedelta(days=2))
             m.write(6, time=now() - timedelta(days=1))
             m.write(9, time=now())
-        c = Chart(metric=m, configuration=configuration,)
+        c = Chart(metric=m, configuration=configuration)
         c.full_clean()
         c.save()
         return c

@@ -5,9 +5,7 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('monitoring', '0011_alert_settings_contenttype_registration'),
-    ]
+    dependencies = [('monitoring', '0011_alert_settings_contenttype_registration')]
 
     operations = [
         migrations.AlterModelTable(name='graph', table='monitoring_chart'),

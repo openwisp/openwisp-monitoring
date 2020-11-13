@@ -5,9 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('monitoring', '0004_move_notifications'),
-    ]
+    dependencies = [('monitoring', '0004_move_notifications')]
 
     operations = [
         migrations.AlterField(
@@ -16,5 +14,5 @@ class Migration(migrations.Migration):
             field=models.BooleanField(
                 db_index=True, default=None, null=True, blank=True
             ),
-        ),
+        )
     ]

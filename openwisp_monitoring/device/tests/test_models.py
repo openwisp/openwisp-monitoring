@@ -45,7 +45,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
                     'mount_point': '/',
                     'used_percent': 7,
                     'size_bytes': 258016,
-                },
+                }
             ],
             "swap": {"free": 0, "total": 0},
         },
@@ -103,7 +103,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
                             "wds": False,
                             "wmm": True,
                             "wps": False,
-                        },
+                        }
                     ],
                 },
             },
@@ -159,7 +159,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
                             "wds": False,
                             "wmm": True,
                             "wps": False,
-                        },
+                        }
                     ],
                 },
                 "addresses": [
@@ -307,7 +307,7 @@ class TestDeviceData(BaseTestCase):
 
     def test_device_deleted(self):
         d = self._create_device()
-        metric = self._create_object_metric(name='test', content_object=d,)
+        metric = self._create_object_metric(name='test', content_object=d)
         metric.full_clean()
         metric.save()
         d.delete()
@@ -398,7 +398,7 @@ class TestDeviceData(BaseTestCase):
         dd = self._create_device_data()
         dd.data = deepcopy(self._sample_data)
         dd.data['neighbors'] = [
-            {'ip': '2001:db80::1', 'interface': 'eth2.1', 'state': 'FAILED'},
+            {'ip': '2001:db80::1', 'interface': 'eth2.1', 'state': 'FAILED'}
         ]
         dd.save_data()
         self.assertEqual(dd.data['neighbors'][0]['vendor'], '')

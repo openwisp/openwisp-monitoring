@@ -6,12 +6,10 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('monitoring', '0009_allow_float_threshold'),
-    ]
+    dependencies = [('monitoring', '0009_allow_float_threshold')]
 
     operations = [
-        migrations.AlterModelTable(name='threshold', table='monitoring_alertsettings',),
+        migrations.AlterModelTable(name='threshold', table='monitoring_alertsettings'),
         migrations.RenameModel('Threshold', 'AlertSettings'),
         migrations.AlterField(
             model_name='alertsettings',

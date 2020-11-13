@@ -5,11 +5,9 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('monitoring', '0003_graph_type'),
-    ]
+    dependencies = [('monitoring', '0003_graph_type')]
 
     operations = [
-        migrations.RemoveField(model_name='notificationuser', name='user',),
-        migrations.DeleteModel(name='NotificationUser',),
+        migrations.RemoveField(model_name='notificationuser', name='user'),
+        migrations.DeleteModel(name='NotificationUser'),
     ]

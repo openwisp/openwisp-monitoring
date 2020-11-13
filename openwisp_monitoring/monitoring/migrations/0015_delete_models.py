@@ -5,9 +5,7 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('monitoring', '0014_data_migration'),
-    ]
+    dependencies = [('monitoring', '0014_data_migration')]
 
     operations = [
         migrations.DeleteModel(name='Graph'),

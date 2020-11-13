@@ -31,10 +31,6 @@ def undo_migrate(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('monitoring', '0013_create_chart_alertsettings'),
-    ]
+    dependencies = [('monitoring', '0013_create_chart_alertsettings')]
 
-    operations = [
-        migrations.RunPython(migrate_data, undo_migrate),
-    ]
+    operations = [migrations.RunPython(migrate_data, undo_migrate)]

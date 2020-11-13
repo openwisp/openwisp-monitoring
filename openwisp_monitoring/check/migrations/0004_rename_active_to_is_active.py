@@ -7,13 +7,11 @@ from ..settings import CHECK_CLASSES
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('check', '0003_create_ping'),
-    ]
+    dependencies = [('check', '0003_create_ping')]
 
     operations = [
         migrations.RenameField(
-            model_name='check', old_name='active', new_name='is_active',
+            model_name='check', old_name='active', new_name='is_active'
         ),
         migrations.AlterField(
             model_name='check',

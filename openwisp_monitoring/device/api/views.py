@@ -251,14 +251,12 @@ class DeviceMetricView(GenericAPIView):
             'load_15': float(load[2]),
         }
         metric, created = Metric._get_or_create(
-            object_id=primary_key, content_type=content_type, configuration='cpu',
+            object_id=primary_key, content_type=content_type, configuration='cpu'
         )
         if created:
             self._create_resources_chart(metric, resource='cpu')
             self._create_resources_alert_settings(metric, resource='cpu')
-        metric.write(
-            100 * float(load[0] / cpus), extra_values=extra_values,
-        )
+        metric.write(100 * float(load[0] / cpus), extra_values=extra_values)
 
     def _write_disk(self, disk_list, primary_key, content_type):
         used_bytes, size_bytes, available_bytes = 0, 0, 0
@@ -267,7 +265,7 @@ class DeviceMetricView(GenericAPIView):
             size_bytes += disk['size_bytes']
             available_bytes += disk['available_bytes']
         metric, created = Metric._get_or_create(
-            object_id=primary_key, content_type=content_type, configuration='disk',
+            object_id=primary_key, content_type=content_type, configuration='disk'
         )
         if created:
             self._create_resources_chart(metric, resource='disk')
@@ -294,7 +292,7 @@ class DeviceMetricView(GenericAPIView):
                     1 - (memory['available'] + memory['buffered']) / memory['total']
                 )
         metric, created = Metric._get_or_create(
-            object_id=primary_key, content_type=content_type, configuration='memory',
+            object_id=primary_key, content_type=content_type, configuration='memory'
         )
         if created:
             self._create_resources_chart(metric, resource='memory')

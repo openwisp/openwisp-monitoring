@@ -76,10 +76,7 @@ INSTALLED_APPS = [
     'channels',
 ]
 
-EXTENDED_APPS = [
-    'django_x509',
-    'django_loci',
-]
+EXTENDED_APPS = ['django_x509', 'django_loci']
 
 AUTH_USER_MODEL = 'openwisp_users.User'
 SITE_ID = 1
@@ -103,9 +100,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'openwisp2.urls'
 
 ASGI_APPLICATION = 'openwisp_controller.geo.channels.routing.channel_routing'
-CHANNEL_LAYERS = {
-    'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'},
-}
+CHANNEL_LAYERS = {'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}}
 
 TIME_ZONE = 'Europe/Rome'
 LANGUAGE_CODE = 'en-gb'
@@ -155,7 +150,7 @@ CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': f'redis://{redis_host}/0',
-        'OPTIONS': {'CLIENT_CLASS': 'django_redis.client.DefaultClient',},
+        'OPTIONS': {'CLIENT_CLASS': 'django_redis.client.DefaultClient'},
     }
 }
 
@@ -175,7 +170,7 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': timedelta(minutes=5),
         'args': None,
         'relative': True,
-    },
+    }
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
@@ -183,15 +178,13 @@ CELERY_EMAIL_BACKEND = EMAIL_BACKEND
 
 ASGI_APPLICATION = 'openwisp2.routing.application'
 if TESTING:
-    CHANNEL_LAYERS = {
-        'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'},
-    }
+    CHANNEL_LAYERS = {'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}}
 else:
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG': {'hosts': ['redis://localhost/7'],},
-        },
+            'CONFIG': {'hosts': ['redis://localhost/7']},
+        }
     }
 
 # avoid slowing down the test suite with mac vendor lookups

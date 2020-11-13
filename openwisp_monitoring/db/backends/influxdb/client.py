@@ -109,11 +109,7 @@ class DatabaseClient(object):
         )
 
     def write(self, name, values, **kwargs):
-        point = {
-            'measurement': name,
-            'tags': kwargs.get('tags'),
-            'fields': values,
-        }
+        point = {'measurement': name, 'tags': kwargs.get('tags'), 'fields': values}
         timestamp = kwargs.get('timestamp') or now()
         if isinstance(timestamp, datetime):
             timestamp = timestamp.isoformat(sep='T', timespec='microseconds')

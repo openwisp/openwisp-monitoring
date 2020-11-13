@@ -20,7 +20,7 @@ class TestConfiguration(TestMonitoringMixin, TestCase):
                 register_metric(list(), {})
         with self.subTest('Test Invalid Metric Configuration'):
             with self.assertRaisesMessage(
-                ImproperlyConfigured, 'Metric configuration should be type "dict".',
+                ImproperlyConfigured, 'Metric configuration should be type "dict".'
             ):
                 register_metric('dummy_test', list())
 
@@ -32,7 +32,7 @@ class TestConfiguration(TestMonitoringMixin, TestCase):
                 unregister_metric(list())
         with self.subTest('Test unregister unregistered metric configuration'):
             with self.assertRaisesMessage(
-                ImproperlyConfigured, 'No such Chart configuation "invalid".',
+                ImproperlyConfigured, 'No such Chart configuation "invalid".'
             ):
                 unregister_metric('invalid')
 
@@ -65,7 +65,7 @@ class TestConfiguration(TestMonitoringMixin, TestCase):
                             "'{content_type}' AND object_id = '{object_id}'"
                         )
                     },
-                },
+                }
             },
         }
         register_metric('histogram', metric_config)

@@ -7,9 +7,7 @@ from ..configuration import CHART_CONFIGURATION_CHOICES
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('monitoring', '0005_metric_is_heathy_unknown'),
-    ]
+    dependencies = [('monitoring', '0005_metric_is_heathy_unknown')]
 
     operations = [
         migrations.AddField(
@@ -18,5 +16,5 @@ class Migration(migrations.Migration):
             field=models.CharField(
                 choices=CHART_CONFIGURATION_CHOICES, max_length=16, null=True
             ),
-        ),
+        )
     ]

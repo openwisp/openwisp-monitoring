@@ -27,7 +27,7 @@ class TestAdmin(DeviceMonitoringTestCase):
     def test_device_admin(self):
         dd = self.create_test_data()
         check = Check.objects.create(
-            name='Ping check', check=CHECK_CLASSES[0][0], content_object=dd, params={},
+            name='Ping check', check=CHECK_CLASSES[0][0], content_object=dd, params={}
         )
         url = reverse('admin:config_device_change', args=[dd.pk])
         self._login_admin()

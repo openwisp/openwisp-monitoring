@@ -27,7 +27,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(
-            create_device_ping, reverse_code=migrations.RunPython.noop
-        ),
+        migrations.RunPython(create_device_ping, reverse_code=migrations.RunPython.noop)
     ]

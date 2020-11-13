@@ -19,7 +19,7 @@ if not TIMESERIES_DB:
     }
     logger.warning(
         'The previous method to define Timeseries Database has been deprecated. Please refer to the docs:\n'
-        'https://github.com/openwisp/openwisp-monitoring#setup-integrate-in-an-existing-django-project',
+        'https://github.com/openwisp/openwisp-monitoring#setup-integrate-in-an-existing-django-project'
     )
 
 
