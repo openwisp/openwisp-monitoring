@@ -12,7 +12,6 @@ urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'', include('openwisp_controller.urls')),
     url(r'', include('openwisp_monitoring.urls')),
-    url(r'', include('openwisp_notifications.urls')),
     url(r'^$', redirect_view, name='index'),
     url(r'^api/v1/', include('openwisp_utils.api.urls')),
 ]
