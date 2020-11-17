@@ -257,6 +257,91 @@ schema = {
                             },
                         },
                     },
+                    "mobile": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": [
+                            "imei",
+                            "operator_code",
+                            "operator_name",
+                            "connection_status",
+                            "power_status",
+                            "manufacturer",
+                            "model",
+                        ],
+                        "properties": {
+                            "imei": {
+                                "type": "string",
+                                "minLength": 15,
+                                "maxLength": 17,
+                                "pattern": "^[0-9]*$",
+                            },
+                            "operator_name": {"type": "string"},
+                            "operator_code": {
+                                "type": "string",
+                                "minLength": 4,
+                                "maxLength": 6,
+                                "pattern": "^[0-9]*$",
+                            },
+                            "connection_status": {"type": "string"},
+                            "power_status": {"type": "string"},
+                            "manufacturer": {"type": "string"},
+                            "model": {"type": "string"},
+                            "signal": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "properties": {
+                                    "cdma1x": {
+                                        "type": "object",
+                                        "additionalProperties": False,
+                                        "required": ["rssi", "ecio"],
+                                        "properties": {
+                                            "rssi": {"type": "number"},
+                                            "ecio": {"type": "number"},
+                                        },
+                                    },
+                                    "evdo": {
+                                        "type": "object",
+                                        "additionalProperties": False,
+                                        "required": ["rssi", "ecio", "io", "sinr"],
+                                        "properties": {
+                                            "rssi": {"type": "number"},
+                                            "ecio": {"type": "number"},
+                                            "io": {"type": "number"},
+                                            "sinr": {"type": "number"},
+                                        },
+                                    },
+                                    "gsm": {
+                                        "type": "object",
+                                        "additionalProperties": False,
+                                        "required": ["rssi"],
+                                        "properties": {"rssi": {"type": "number"}},
+                                    },
+                                    "lte": {
+                                        "type": "object",
+                                        "additionalProperties": False,
+                                        "required": ["rssi", "rsrp", "rsrq", "snr"],
+                                        "properties": {
+                                            "rssi": {"type": "number"},
+                                            "rsrp": {"type": "number"},
+                                            "rsrq": {"type": "number"},
+                                            "snr": {"type": "number"},
+                                        },
+                                    },
+                                    "umts": {
+                                        "type": "object",
+                                        "additionalProperties": False,
+                                        "required": ["rssi", "rscp", "ecio"],
+                                        "properties": {
+                                            "rssi": {"type": "number"},
+                                            "rscp": {"type": "number"},
+                                            "ecio": {"type": "number"},
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
                     "addresses": {
                         "type": "array",
                         "title": "Addresses",

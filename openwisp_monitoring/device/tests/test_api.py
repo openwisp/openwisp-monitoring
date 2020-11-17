@@ -428,3 +428,106 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             number += 1
             with self.subTest(garbage_interface):
                 self.assertEqual(r.status_code, 400)
+
+    def test_mobile_properties(self):
+        org = self._create_org()
+        device = self._create_device(organization=org)
+        data = {
+            'type': 'DeviceMonitoring',
+            'interfaces': [
+                {
+                    'name': 'mobile0',
+                    'mac': '00:00:00:00:00:00',
+                    'mtu': 1900,
+                    'multicast': True,
+                    'txqueuelen': 1000,
+                    'type': 'modem-manager',
+                    'up': True,
+                    'mobile': {
+                        'connection_status': 'connected',
+                        'imei': '300000001234567',
+                        'manufacturer': 'Sierra Wireless, Incorporated',
+                        'model': 'MC7430',
+                        'operator_code': '50502',
+                        'operator_name': 'YES OPTUS',
+                        'power_status': 'on',
+                        'signal': {
+                            'lte': {'rsrp': -75, 'rsrq': -8, 'rssi': -51, 'snr': 13}
+                        },
+                    },
+                }
+            ],
+        }
+        response = self._post_data(device.id, device.key, data)
+        self.assertEqual(response.status_code, 200)
+        mobile_data = DeviceData(pk=device.pk).data['interfaces'][0]['mobile']
+        with self.subTest('check mobile interface static properties'):
+            self.assertEqual(mobile_data['connection_status'], 'connected')
+            self.assertEqual(mobile_data['imei'], '300000001234567')
+            self.assertEqual(mobile_data['model'], 'MC7430')
+            self.assertEqual(mobile_data['operator_code'], '50502')
+            self.assertEqual(mobile_data['operator_name'], 'YES OPTUS')
+            self.assertEqual(mobile_data['power_status'], 'on')
+        with self.subTest('ensure signal data is converted to float'):
+            # ensure numbers are stored as floats,
+            # lua cannot be forced to send floats so we need to force it
+            self.assertIsInstance(mobile_data['signal']['lte']['rsrp'], float)
+            self.assertIsInstance(mobile_data['signal']['lte']['rsrq'], float)
+            self.assertIsInstance(mobile_data['signal']['lte']['rssi'], float)
+            self.assertIsInstance(mobile_data['signal']['lte']['snr'], float)
+            self.assertDictEqual(
+                mobile_data['signal'],
+                {'lte': {'rsrp': -75.00, 'rsrq': -8.00, 'rssi': -51.00, 'snr': 13.00}},
+            )
+
+    def test_garbage_mobile_properties(self):
+        o = self._create_org()
+        d = self._create_device(organization=o)
+        interface = {
+            'name': 'mobile',
+            'mac': '00:00:00:00:00:00',
+            'mtu': 1900,
+            'multicast': True,
+            'txqueuelen': 1000,
+            'type': 'modem-manager',
+            'up': True,
+        }
+        garbage_data = [
+            {'connection_status': 'connected'},
+            {'imei': '300000001234567'},
+            {
+                'connection_status': 'connected',
+                'imei': '300000001234567',
+                'manufacturer': 'Sierra Wireless, Incorporated',
+                'model': 'MC7430',
+                'operator_code': '50502',
+                'operator_name': 'YES OPTUS',
+                'power_status': 'on',
+                'signal': {'lte': {'rsrp': -75}},
+            },
+            {
+                'connection_status': 'connected',
+                'imei': '300000001234567',
+                'manufacturer': 'Sierra Wireless, Incorporated',
+                'model': 'MC7430',
+                'operator_code': '50502',
+                'operator_name': 'YES OPTUS',
+                'power_status': 'on',
+                'signal': {
+                    'lte': {'rsrp': '-75', 'rsrq': '-8', 'rssi': '-51', 'snr': '13'}
+                },
+            },
+        ]
+        number = 0
+        for mobile_data in garbage_data:
+            interface_data = interface.copy()
+            interface_data['mobile'] = mobile_data
+            interface_data['name'] += str(number)
+            r = self._post_data(
+                d.id,
+                d.key,
+                {'type': 'DeviceMonitoring', 'interfaces': [interface_data]},
+            )
+            number += 1
+            with self.subTest(interface_data['name']):
+                self.assertEqual(r.status_code, 400)

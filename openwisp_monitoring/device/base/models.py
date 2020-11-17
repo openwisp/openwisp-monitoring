@@ -149,16 +149,34 @@ class AbstractDeviceData(object):
             )
             raise ValidationError(message)
 
-    def add_mac_vendor_info(self):
+    def _transform_data(self):
+        """
+        performs corrections or additions to the device data
+        """
+        mac_detection = app_settings.MAC_VENDOR_DETECTION
         for interface in self.data.get('interfaces', []):
-            if 'wireless' not in interface or 'clients' not in interface['wireless']:
+            # loop over mobile signal values to convert them to float
+            if 'mobile' in interface and 'signal' in interface['mobile']:
+                for signal_key, signal_values in interface['mobile']['signal'].items():
+                    for key, value in signal_values.items():
+                        signal_values[key] = float(value)
+            # add mac vendor to wireless clients if present
+            if (
+                not mac_detection
+                or 'wireless' not in interface
+                or 'clients' not in interface['wireless']
+            ):
                 continue
             for client in interface['wireless']['clients']:
                 client['vendor'] = self._mac_lookup(client['mac'])
+        if not mac_detection:
+            return
+        # add mac vendor to neighbors
         for neighbor in self.data.get('neighbors', []):
             # in some cases the mac_address may not be present
             # eg: neighbors with "FAILED" state
             neighbor['vendor'] = self._mac_lookup(neighbor.get('mac_address'))
+        # add mac vendor to DHCP leases
         for lease in self.data.get('dhcp_leases', []):
             lease['vendor'] = self._mac_lookup(lease['mac_address'])
 
@@ -176,8 +194,7 @@ class AbstractDeviceData(object):
         validates and saves data to Timeseries Database
         """
         self.validate_data()
-        if app_settings.MAC_VENDOR_DETECTION:
-            self.add_mac_vendor_info()
+        self._transform_data()
         time = time or now()
         options = dict(tags={'pk': self.pk}, timestamp=time, retention_policy=SHORT_RP)
         timeseries_write.delay(name=self.__key, values={'data': self.json()}, **options)

@@ -121,6 +121,47 @@ class TestAdmin(DeviceMonitoringTestCase):
         self.assertContains(r1, 'tap0, wlan0, wlan1')
         self.assertContains(r1, 'Spanning Tree Protocol')
 
+    def test_interface_mobile_admin(self):
+        self._login_admin()
+        d = self._create_device(organization=self._create_org())
+        self._post_data(
+            d.id,
+            d.key,
+            {
+                'type': 'DeviceMonitoring',
+                'interfaces': [
+                    {
+                        'name': 'mobile0',
+                        'mac': '00:00:00:00:00:00',
+                        'mtu': 1900,
+                        'multicast': True,
+                        'txqueuelen': 1000,
+                        'type': 'modem-manager',
+                        'up': True,
+                        'mobile': {
+                            'connection_status': 'connected',
+                            'imei': '300000001234567',
+                            'manufacturer': 'Sierra Wireless, Incorporated',
+                            'model': 'MC7430',
+                            'operator_code': '50502',
+                            'operator_name': 'YES OPTUS',
+                            'power_status': 'on',
+                            'signal': {
+                                'lte': {'rsrp': -75, 'rsrq': -8, 'rssi': -51, 'snr': 13}
+                            },
+                        },
+                    }
+                ],
+            },
+        )
+        url = reverse('admin:config_device_change', args=[d.id])
+        r1 = self.client.get(url, follow=True)
+        self.assertEqual(r1.status_code, 200)
+        self.assertContains(r1, 'Signal Strength (LTE)')
+        self.assertContains(r1, 'Signal Power (LTE)')
+        self.assertContains(r1, 'Signal Quality (LTE)')
+        self.assertContains(r1, 'Signal to noise ratio (LTE)')
+
     def test_uuid_bug(self):
         dd = self.create_test_data(no_resources=True)
         uuid = str(dd.pk).replace('-', '')

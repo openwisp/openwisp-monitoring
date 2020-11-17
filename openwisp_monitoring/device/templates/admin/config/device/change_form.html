@@ -182,6 +182,146 @@
                   </div>
                   {% endif %}
                   {% endif %}
+                  {% if interface.mobile %}
+                  <div class="form-row">
+                      <label>{% trans 'Connection status' %}:</label>
+                      <div class="readonly">
+                          {{ interface.mobile.connection_status }}
+                      </div>
+                  </div>
+                  <div class="form-row">
+                      <label>{% trans 'Power status' %}:</label>
+                      <div class="readonly">
+                          {{ interface.mobile.power_status }}
+                      </div>
+                  </div>
+                  <div class="form-row">
+                      <label>{% trans 'Operator name' %}:</label>
+                      <div class="readonly">
+                          {{ interface.mobile.operator_name }}
+                      </div>
+                  </div>
+                  <div class="form-row">
+                      <label>{% trans 'Operator code' %}:</label>
+                      <div class="readonly">
+                          {{ interface.mobile.operator_code }}
+                      </div>
+                  </div>
+                  <div class="form-row">
+                      <label>{% trans 'Manufacturer' %}:</label>
+                      <div class="readonly">
+                          {{ interface.mobile.manufacturer }}
+                      </div>
+                  </div>
+                  <div class="form-row">
+                      <label>{% trans 'Model' %}:</label>
+                      <div class="readonly">
+                          {{ interface.mobile.model }}
+                      </div>
+                  </div>
+                  <div class="form-row">
+                      <label>{% trans 'IMEI' %}:</label>
+                      <div class="readonly">
+                          {{ interface.mobile.imei }}
+                      </div>
+                  </div>
+                  {% if interface.mobile.signal %}
+                      {% if interface.mobile.signal.cdma1x %}
+                      <div class="form-row">
+                          <label>{% trans 'Signal Strength' %} (CDMA2000 1X):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.cdma1x.rssi }} dBm
+                          </div>
+                      </div>
+                      <div class="form-row">
+                          <label>{% trans 'Energy to Interference Ratio' %} (CDMA2000 1X):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.cdma1x.ecio }} dB
+                          </div>
+                      </div>
+                      {% endif %}
+                      {% if interface.mobile.signal.evdo %}
+                      <div class="form-row">
+                          <label>{% trans 'Signal Strength' %} (EVDO):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.evdo.rssi }} dBm
+                          </div>
+                      </div>
+                      <div class="form-row">
+                          <label>{% trans 'Energy to Interference Ratio' %} (EVDO):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.evdo.ecio }} dB
+                          </div>
+                      </div>
+                      <div class="form-row">
+                          <label>{% trans 'Interference' %} (EVDO):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.evdo.io }} dBm
+                          </div>
+                      </div>
+                      <div class="form-row">
+                          <label>{% trans 'Signal to Interference­ + ­Noise Ratio' %} (EVDO):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.evdo.sinr }} dB
+                          </div>
+                      </div>
+                      {% endif %}
+                      {% if interface.mobile.signal.gsm %}
+                      <div class="form-row">
+                          <label>{% trans 'Signal Strength' %} (GSM):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.gsm.rssi }} dBm
+                          </div>
+                      </div>
+                      {% endif %}
+                      {% if interface.mobile.signal.lte %}
+                      <div class="form-row">
+                          <label>{% trans 'Signal Strength' %} (LTE):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.lte.rssi }} dBm
+                          </div>
+                      </div>
+                      <div class="form-row">
+                          <label>{% trans 'Signal Power' %} (LTE):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.lte.rsrp }} dBm
+                          </div>
+                      </div>
+                      <div class="form-row">
+                          <label>{% trans 'Signal Quality' %} (LTE):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.lte.rsrq }} dB
+                          </div>
+                      </div>
+                      <div class="form-row">
+                          <label>{% trans 'Signal to noise ratio' %} (LTE):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.lte.snr }} dB
+                          </div>
+                      </div>
+                      {% endif %}
+                      {% if interface.mobile.signal.umts %}
+                      <div class="form-row">
+                          <label>{% trans 'Signal Strength' %} (UMTS):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.umts.rssi }} dBm
+                          </div>
+                      </div>
+                      <div class="form-row">
+                          <label>{% trans 'Received Signal Code Power' %} (UMTS):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.umts.rscp }} dBm
+                          </div>
+                      </div>
+                      <div class="form-row">
+                          <label>{% trans 'Energy to Interference Ratio' %} (UMTS):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.umts.ecio }} dB
+                          </div>
+                      </div>
+                      {% endif %}
+                  {% endif %}
+                  {% endif %}
                   {% if interface.type == 'ethernet' and interface.speed %}
                   <div class="form-row">
                       <label>{% trans 'Speed' %}:</label>
