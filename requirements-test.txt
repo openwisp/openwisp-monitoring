@@ -1,4 +1,4 @@
-openwisp-utils[qa]~=0.6.0
+openwisp-utils[qa]~=0.7.0
 redis
 django-redis
 mock-ssh-server~=0.8.0

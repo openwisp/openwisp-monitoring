@@ -1,4 +1,4 @@
-openwisp-controller~=0.7.post1
+openwisp-controller~=0.8
 # openwisp-utils[rest] is left unpinned so the version used is the one dictated by openwisp-controller
 openwisp-utils[rest]
 influxdb~=5.3
