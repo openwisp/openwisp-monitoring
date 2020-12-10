@@ -13,12 +13,10 @@ def delete_resources_metric_data(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('monitoring', '0021_resources_threshold_values'),
-    ]
+    dependencies = [('monitoring', '0021_resources_threshold_values')]
 
     operations = [
         migrations.RunPython(
-            delete_resources_metric_data, reverse_code=migrations.RunPython.noop,
-        ),
+            delete_resources_metric_data, reverse_code=migrations.RunPython.noop
+        )
     ]

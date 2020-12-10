@@ -171,7 +171,7 @@ DEFAULT_METRICS = {
                 'unit': _(' GB'),
                 'order': 240,
                 'query': chart_query['traffic'],
-            },
+            }
         },
     },
     'clients': {
@@ -191,7 +191,7 @@ DEFAULT_METRICS = {
                 'unit': '',
                 'order': 230,
                 'query': chart_query['wifi_clients'],
-            },
+            }
         },
     },
     'disk': {
@@ -211,7 +211,7 @@ DEFAULT_METRICS = {
                 'colors': [DEFAULT_COLORS[-1]],
                 'order': 270,
                 'query': chart_query['disk'],
-            },
+            }
         },
         'alert_settings': {'operator': '>', 'threshold': 80, 'tolerance': 0},
         'notification': {
@@ -266,7 +266,7 @@ DEFAULT_METRICS = {
                 'colors': [DEFAULT_COLORS[4]],
                 'order': 250,
                 'query': chart_query['memory'],
-            },
+            }
         },
         'alert_settings': {'operator': '>', 'threshold': 95, 'tolerance': 0},
         'notification': {
@@ -316,7 +316,7 @@ DEFAULT_METRICS = {
                 'colors': [DEFAULT_COLORS[-3]],
                 'order': 260,
                 'query': chart_query['cpu'],
-            },
+            }
         },
         'alert_settings': {'operator': '>', 'threshold': 90, 'tolerance': 0},
         'notification': {

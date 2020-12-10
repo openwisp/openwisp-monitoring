@@ -15,9 +15,7 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-        ('config', '0027_add_indexes_on_ip_fields'),
-    ]
+    dependencies = [('config', '0027_add_indexes_on_ip_fields')]
 
     operations = [
         migrations.CreateModel(

@@ -38,13 +38,11 @@ def reverse_alertsettings_threshold(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('monitoring', '0020_make_alertsettings_fields_null'),
-    ]
+    dependencies = [('monitoring', '0020_make_alertsettings_fields_null')]
 
     operations = [
         migrations.RunPython(
             standardize_alertsettings_threshold,
             reverse_code=reverse_alertsettings_threshold,
-        ),
+        )
     ]

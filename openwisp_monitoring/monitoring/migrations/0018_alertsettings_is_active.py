@@ -5,9 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('monitoring', '0017_merge_traffic_metrics_and_fill_metric_config'),
-    ]
+    dependencies = [('monitoring', '0017_merge_traffic_metrics_and_fill_metric_config')]
 
     operations = [
         migrations.AddField(

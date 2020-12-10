@@ -5,12 +5,10 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('notifications', '0004_data_migration'),
-    ]
+    dependencies = [('notifications', '0004_data_migration')]
 
     operations = [
-        migrations.RemoveField(model_name='notificationuser', name='user',),
-        migrations.DeleteModel(name='Notification',),
-        migrations.DeleteModel(name='NotificationUser',),
+        migrations.RemoveField(model_name='notificationuser', name='user'),
+        migrations.DeleteModel(name='Notification'),
+        migrations.DeleteModel(name='NotificationUser'),
     ]

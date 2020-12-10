@@ -112,7 +112,7 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.AlterIndexTogether(
-            name='notification', index_together={('recipient', 'unread')},
+            name='notification', index_together={('recipient', 'unread')}
         ),
         migrations.CreateModel(
             name='NotificationUser',

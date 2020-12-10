@@ -22,7 +22,7 @@ class ConfigApplied(BaseCheck):
         send_alert = self.related_object.config.status != 'error'
         if store:
             self._get_metric().write(
-                result, retention_policy=SHORT_RP, send_alert=send_alert,
+                result, retention_policy=SHORT_RP, send_alert=send_alert
             )
         return result
 

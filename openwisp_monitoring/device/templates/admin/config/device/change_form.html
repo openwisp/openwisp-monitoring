@@ -472,8 +472,8 @@
                   <tbody>
                       {% for lease in device_data.dhcp_leases %}
                       <tr>
-                          <td class="ip">{{ lease.ip_address }}</td>
-                          <td class="mac">{{ lease.mac_address }}</td>
+                          <td class="ip">{{ lease.ip }}</td>
+                          <td class="mac">{{ lease.mac }}</td>
                           {% if MAC_VENDOR_DETECTION %}
                           <td class="vendor">{{ lease.vendor }}</td>
                           {% endif %}
@@ -502,8 +502,8 @@
                   <tbody>
                       {% for neighbor in device_data.neighbors %}
                       <tr>
-                          <td class="ip">{{ neighbor.ip_address }}</td>
-                          <td class="mac">{{ neighbor.mac_address }}</td>
+                          <td class="ip">{{ neighbor.ip }}</td>
+                          <td class="mac">{{ neighbor.mac }}</td>
                           {% if MAC_VENDOR_DETECTION %}
                           <td class="vendor">{{ neighbor.vendor }}</td>
                           {% endif %}

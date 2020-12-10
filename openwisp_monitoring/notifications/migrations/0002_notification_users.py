@@ -22,5 +22,5 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(
             create_notificationuser_settings, reverse_code=migrations.RunPython.noop
-        ),
+        )
     ]

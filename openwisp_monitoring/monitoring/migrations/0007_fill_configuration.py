@@ -27,12 +27,8 @@ def fill_configuration(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('monitoring', '0006_add_configuration'),
-    ]
+    dependencies = [('monitoring', '0006_add_configuration')]
 
     operations = [
-        migrations.RunPython(
-            fill_configuration, reverse_code=migrations.RunPython.noop
-        ),
+        migrations.RunPython(fill_configuration, reverse_code=migrations.RunPython.noop)
     ]

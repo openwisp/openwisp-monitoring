@@ -42,6 +42,4 @@ class Migration(migrations.Migration):
         ('openwisp_notifications', '0002_default_permissions'),
     ]
 
-    operations = [
-        migrations.RunPython(migrate_data, undo_migrate),
-    ]
+    operations = [migrations.RunPython(migrate_data, undo_migrate)]

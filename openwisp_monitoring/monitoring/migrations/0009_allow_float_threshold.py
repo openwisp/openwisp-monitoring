@@ -5,14 +5,12 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('monitoring', '0008_remove_graph_fields'),
-    ]
+    dependencies = [('monitoring', '0008_remove_graph_fields')]
 
     operations = [
         migrations.AlterField(
             model_name='threshold',
             name='value',
             field=models.FloatField(help_text='threshold value'),
-        ),
+        )
     ]

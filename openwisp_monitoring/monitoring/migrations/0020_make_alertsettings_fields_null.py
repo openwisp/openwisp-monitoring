@@ -101,5 +101,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(make_fields_null, reverse_code=reverse_null_fields),
+        migrations.RunPython(make_fields_null, reverse_code=reverse_null_fields)
     ]

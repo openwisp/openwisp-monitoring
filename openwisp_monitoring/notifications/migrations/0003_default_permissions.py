@@ -42,12 +42,10 @@ def create_default_groups(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [
-        ('notifications', '0002_notification_users'),
-    ]
+    dependencies = [('notifications', '0002_notification_users')]
 
     operations = [
         migrations.RunPython(
             create_default_groups, reverse_code=migrations.RunPython.noop
-        ),
+        )
     ]

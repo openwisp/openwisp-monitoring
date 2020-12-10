@@ -202,7 +202,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
 
     def test_wifi_hostapd(self):
         m = self._create_object_metric(
-            name='wifi associations', key='hostapd', field_name='mac_address'
+            name='wifi associations', key='hostapd', field_name='mac'
         )
         c = self._create_chart(metric=m, test_data=False, configuration='wifi_clients')
         now_ = now()
@@ -244,7 +244,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
 
     def test_bad_json_query_returns_none(self):
         m = self._create_object_metric(
-            name='wifi associations', key='hostapd', field_name='mac_address'
+            name='wifi associations', key='hostapd', field_name='mac'
         )
         c = self._create_chart(metric=m, test_data=False, configuration='wifi_clients')
         m.write('00:14:5c:00:00:00')

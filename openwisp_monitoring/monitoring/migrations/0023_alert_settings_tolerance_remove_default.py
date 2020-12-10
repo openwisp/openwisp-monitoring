@@ -6,9 +6,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('monitoring', '0022_delete_resources_metric_data'),
-    ]
+    dependencies = [('monitoring', '0022_delete_resources_metric_data')]
 
     operations = [
         migrations.AlterField(
@@ -23,5 +21,5 @@ class Migration(migrations.Migration):
                 validators=[django.core.validators.MaxValueValidator(10080)],
                 verbose_name='threshold tolerance',
             ),
-        ),
+        )
     ]

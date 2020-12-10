@@ -384,9 +384,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(Notification.objects.count(), 2)
             n = notification_queryset.first()
             self._check_notification_parameters(n, admin, om, d)
-            self.assertIn(
-                'is not reachable.', n.message,
-            )
+            self.assertIn('is not reachable.', n.message)
             n = notification_queryset.last()
             self._check_notification_parameters(n, staff, om, d)
             Notification.objects.all().delete()
@@ -479,7 +477,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(n.level, 'warning')
             self.assertEqual(n.verb, 'crossed the threshold')
             self.assertEqual(
-                n.email_subject, f'[example.com] PROBLEM: {n.actor.name} {n.target}',
+                n.email_subject, f'[example.com] PROBLEM: {n.actor.name} {n.target}'
             )
             self.assertEqual(n.message, exp_message.format(n=n))
 
@@ -489,7 +487,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(n.level, 'info')
             self.assertEqual(n.verb, 'returned within the threshold')
             self.assertEqual(
-                n.email_subject, f'[example.com] RECOVERY: {n.actor.name} {n.target}',
+                n.email_subject, f'[example.com] RECOVERY: {n.actor.name} {n.target}'
             )
             self.assertEqual(n.message, exp_message.format(n=n))
 

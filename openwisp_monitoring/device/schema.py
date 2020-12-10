@@ -376,22 +376,16 @@ schema = {
                 "additionalProperties": False,
                 "properties": {
                     "expiry": {"type": "number"},
-                    "ip_address": {
+                    "ip": {
                         "type": "string",
                         "anyOf": [{"format": "ipv4"}, {"format": "ipv6"}],
                     },
-                    "mac_address": {"type": "string"},
+                    "mac": {"type": "string"},
                     "vendor": {"type": "string"},
                     "client_name": {"type": "string"},
                     "client_id": {"type": "string"},
                 },
-                "required": [
-                    "expiry",
-                    "ip_address",
-                    "mac_address",
-                    "client_name",
-                    "client_id",
-                ],
+                "required": ["expiry", "ip", "mac", "client_name", "client_id"],
             },
         },
         "neighbors": {
@@ -403,16 +397,16 @@ schema = {
                 "title": "Neighbor",
                 "additionalProperties": False,
                 "properties": {
-                    "ip_address": {
+                    "ip": {
                         "type": "string",
                         "anyOf": [{"format": "ipv4"}, {"format": "ipv6"}],
                     },
-                    "mac_address": {"type": "string"},
+                    "mac": {"type": "string"},
                     "vendor": {"type": "string"},
                     "interface": {"type": "string"},
                     "state": {"type": "string"},
                 },
-                "required": ["ip_address", "interface"],
+                "required": ["ip", "interface"],
             },
         },
     },

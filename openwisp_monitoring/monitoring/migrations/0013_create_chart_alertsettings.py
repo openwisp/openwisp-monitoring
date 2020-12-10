@@ -14,9 +14,7 @@ from ..configuration import get_chart_configuration_choices
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('monitoring', '0012_rename_graph_chart'),
-    ]
+    dependencies = [('monitoring', '0012_rename_graph_chart')]
 
     operations = [
         migrations.RenameModel(old_name='Chart', new_name='Graph'),

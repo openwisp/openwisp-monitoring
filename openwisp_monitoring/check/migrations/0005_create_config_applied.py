@@ -39,5 +39,5 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(
             add_config_applied_checks, reverse_code=remove_config_applied_checks
-        ),
+        )
     ]

@@ -83,7 +83,7 @@ def auto_create_config_check(
     Check = check_model or get_check_model()
     config_check_path = 'openwisp_monitoring.check.classes.ConfigApplied'
     has_check = Check.objects.filter(
-        object_id=object_id, content_type__model='device', check=config_check_path,
+        object_id=object_id, content_type__model='device', check=config_check_path
     ).exists()
     # create new check only if necessary
     if has_check:
