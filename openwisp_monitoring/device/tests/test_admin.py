@@ -43,6 +43,43 @@ class TestAdmin(DeviceMonitoringTestCase):
         self.assertContains(r, check.name)
         self.assertContains(r, check.params)
 
+    def test_status_data(self):
+        d = self._create_device(organization=self._create_org())
+        data = self._data()
+        data.update(
+            {
+                "dhcp_leases": [
+                    {
+                        "expiry": 1586943200,
+                        "mac": "f2:f1:3e:56:d2:77",
+                        "ip": "192.168.66.196",
+                        "client_name": "MyPhone1",
+                        "client_id": "01:20:f4:78:19:3b:38",
+                    },
+                ],
+                "neighbors": [
+                    {
+                        "mac": "44:D1:FA:4B:00:02",
+                        "ip": "fe80::9683:c4ff:fe02:c2bf",
+                        "interface": "eth2",
+                        "state": "REACHABLE",
+                    }
+                ],
+            }
+        )
+        self._post_data(d.id, d.key, data)
+        url = reverse('admin:config_device_change', args=[d.pk])
+        self._login_admin()
+        r = self.client.get(url)
+        with self.subTest('DHCP lease MAC is shown'):
+            self.assertContains(r, 'f2:f1:3e:56:d2:77')
+        with self.subTest('DHCP lease IP is shown'):
+            self.assertContains(r, '192.168.66.196')
+        with self.subTest('Neighbor MAC is shown'):
+            self.assertContains(r, '44:D1:FA:4B:00:02')
+        with self.subTest('Neighbor IP is shown'):
+            self.assertContains(r, 'fe80::9683:c4ff:fe02:c2bf')
+
     def test_no_device_data(self):
         d = self._create_device(organization=self._create_org())
         url = reverse('admin:config_device_change', args=[d.pk])
