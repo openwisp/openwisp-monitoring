@@ -4,7 +4,6 @@ openwisp-controller @ https://github.com/openwisp/openwisp-controller/tarball/ma
 # openwisp-utils[rest] is left unpinned so the version used
 # is the one dictated by openwisp-controller
 influxdb~=5.3.1
-django-celery-email~=3.0.0
 django-cache-memoize~=0.1.0
 django-nested-admin~=3.4.0
 netaddr~=0.8

@@ -223,9 +223,6 @@ Configure celery (you may use a different broker if you want):
         },
     }
 
-    INSTALLED_APPS.append('djcelery_email')
-    EMAIL_BACKEND = 'djcelery_email.backends.CeleryEmailBackend'
-
 If you decide to use redis (as shown in these examples),
 install the requierd python packages::
 
