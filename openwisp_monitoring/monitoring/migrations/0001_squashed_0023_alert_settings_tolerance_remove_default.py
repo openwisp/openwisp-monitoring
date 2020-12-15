@@ -158,7 +158,7 @@ class Migration(migrations.Migration):
                 (
                     'configuration',
                     models.CharField(
-                        choices=CHART_CONFIGURATION_CHOICES, max_length=16, null=True,
+                        choices=CHART_CONFIGURATION_CHOICES, max_length=16, null=True
                     ),
                 ),
                 (
