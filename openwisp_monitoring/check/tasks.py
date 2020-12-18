@@ -7,6 +7,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from swapper import load_model
 
+from ..utils import fix_async
+
 logger = logging.getLogger(__name__)
 
 
@@ -41,11 +43,11 @@ def perform_check(uuid):
     and calls ``check.perform_check()``
     """
     try:
-        check = get_check_model().objects.get(pk=uuid)
+        check = fix_async(lambda: get_check_model().objects.get(pk=uuid))
     except ObjectDoesNotExist:
         logger.warning(f'The check with uuid {uuid} has been deleted')
         return
-    result = check.perform_check()
+    result = fix_async(lambda: check.perform_check())
     if settings.DEBUG:  # pragma: nocover
         print(json.dumps(result, indent=4, sort_keys=True))
 

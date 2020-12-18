@@ -4,6 +4,7 @@ from swapper import load_model
 
 from ..db import timeseries_db
 from ..db.exceptions import TimeseriesWriteException
+from ..utils import fix_async
 from .settings import RETRY_OPTIONS
 from .signals import post_metric_write
 
@@ -19,12 +20,14 @@ def timeseries_write(
     if not metric_pk or not check_threshold_kwargs:
         return
     try:
-        metric = load_model('monitoring', 'Metric').objects.get(pk=metric_pk)
+        metric = fix_async(
+            lambda: load_model('monitoring', 'Metric').objects.get(pk=metric_pk)
+        )
     except ObjectDoesNotExist:
         # The metric can be deleted by the time threshold is being checked.
         # This can happen as the task is being run async.
         pass
     else:
-        metric.check_threshold(**check_threshold_kwargs)
+        fix_async(lambda: metric.check_threshold(**check_threshold_kwargs))
         signal_kwargs = dict(sender=metric.__class__, metric=metric, values=values)
         post_metric_write.send(**signal_kwargs)
