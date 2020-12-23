@@ -1005,6 +1005,17 @@ An example usage is shown below.
 **Note**: It will raise ``ImproperlyConfigured`` exception if the concerned chart
 configuration is not registered.
 
+Registering new notification types
+----------------------------------
+
+You can define your own notification types using ``register_notification_type`` function from OpenWISP
+Notifications. For more information, see the relevant `openwisp-notifications section about registering notification types
+<https://github.com/openwisp/openwisp-notifications#registering--unregistering-notification-types>`_.
+
+Once a new notification type is registered, you have to use the `"notify" signal provided in
+openwisp-notifications <https://github.com/openwisp/openwisp-notifications#sending-notifications>`_
+to send notifications for this type.
+
 Exceptions
 ----------
 
@@ -1650,17 +1661,6 @@ Step 3: add an URL route pointing to your custom view in ``urls.py`` file:
         # ... other URLs
         url(r'^(?P<path>.*)$', DeviceMetricView.as_view(), name='api_device_metric',),
     ]
-
-Registering new notification types
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You can define your own notification types using ``register_notification_type`` function from OpenWISP
-Notifications. For more information, see the relevant `openwisp-notifications section about registering notification types
-<https://github.com/openwisp/openwisp-notifications#registering--unregistering-notification-types>`_.
-
-Once a new notification type is registered, you have to use the `"notify" signal provided in
-openwisp-notifications <https://github.com/openwisp/openwisp-notifications#sending-notifications>`_
-to send notifications for this type.
 
 Contributing
 ------------
