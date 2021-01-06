@@ -1,5 +1,7 @@
 from collections import OrderedDict
 
+# Use a pre-defined UUID so the template can be upgraded via migration scripts if needed
+TEMPLATE_MONITORING_UUID = '00000000-defa-defa-defa-000000000000'
 TEMPLATE_OPENWISP_MONITORING_01 = OrderedDict(
     {
         "path": "/usr/sbin/openwisp-monitoring",

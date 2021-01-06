@@ -8,6 +8,7 @@ from django.db.models import Q
 
 from . import (
     TEMPLATE_CRONTAB_MONITORING_01,
+    TEMPLATE_MONITORING_UUID,
     TEMPLATE_NETJSON_MONITORING_01,
     TEMPLATE_OPENWISP_MONITORING_01,
     TEMPLATE_POST_RELOAD_HOOK_01,
@@ -24,8 +25,7 @@ def migrate_data(apps, schema_editor):
     ).exists():
         return
     default_template = Template(
-        # The UUID has been fixed so that the template could be auto-updated
-        pk=uuid.UUID('00000000-defa-defa-defa-000000000000'),
+        pk=uuid.UUID(TEMPLATE_MONITORING_UUID),
         name='Monitoring (default)',
         default=True,
         organization=None,
@@ -45,7 +45,7 @@ def migrate_data(apps, schema_editor):
                         {
                             'config_name': 'monitoring',
                             'config_value': 'monitoring',
-                            'included_interface': 'tun0 wlan0 wlan1 br-lan',
+                            'included_interface': 'tun0 tap0 tap1 wlan0 wlan1 br-lan eth1',
                         }
                     )
                 ],
