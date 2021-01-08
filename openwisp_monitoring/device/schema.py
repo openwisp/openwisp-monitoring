@@ -216,7 +216,7 @@ schema = {
                                 "items": {
                                     "type": "object",
                                     "title": "Client",
-                                    "additionalProperties": False,
+                                    "additionalProperties": True,
                                     "required": [
                                         "aid",
                                         "assoc",
