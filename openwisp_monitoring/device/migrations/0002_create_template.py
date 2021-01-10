@@ -45,7 +45,7 @@ def migrate_data(apps, schema_editor):
                         {
                             'config_name': 'monitoring',
                             'config_value': 'monitoring',
-                            'included_interface': 'tun0 tap0 tap1 wlan0 wlan1 br-lan eth1',
+                            'included_interfaces': 'tun0 tap0 tap1 wlan0 wlan1 br-lan eth1',
                         }
                     )
                 ],
