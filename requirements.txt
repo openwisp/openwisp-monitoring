@@ -1,6 +1,9 @@
 openwisp-controller~=0.8
 # openwisp-utils[rest] is left unpinned so the version used is the one dictated by openwisp-controller
-openwisp-utils[rest]
+# Needed for the custom dashboard
+# TODO: remove when the new version of openwisp-utils is released
+# TODO: update below link before merging
+openwisp-utils[rest] @ https://github.com/openwisp/openwisp-utils/tarball/dashboard
 influxdb~=5.3
 django-celery-email~=3.0.0
 django-cache-memoize~=0.1

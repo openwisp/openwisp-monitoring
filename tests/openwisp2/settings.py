@@ -144,6 +144,7 @@ ACCOUNT_LOGOUT_REDIRECT_URL = LOGIN_REDIRECT_URL
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 OPENWISP_MONITORING_MANAGEMENT_IP_ONLY = False
+OPENWISP_ADMIN_DASHBOARD_ENABLED = True
 
 redis_host = os.getenv('REDIS_HOST', 'localhost')
 CACHES = {

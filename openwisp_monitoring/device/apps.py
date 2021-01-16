@@ -8,6 +8,7 @@ from swapper import load_model
 from openwisp_controller.config.signals import checksum_requested, config_status_changed
 from openwisp_controller.connection import settings as connection_settings
 from openwisp_controller.connection.signals import is_working_changed
+from openwisp_utils.admin_theme import register_dashboard_element
 
 from ..check import settings as check_settings
 from ..utils import transaction_on_commit
@@ -28,6 +29,7 @@ class DeviceMonitoringConfig(AppConfig):
         self.connect_config_status_changed()
         self.device_recovery_detection()
         self.set_update_config_model()
+        self.register_dashboard_elements()
 
     def connect_device_signals(self):
         Device = load_model('config', 'Device')
@@ -171,3 +173,22 @@ class DeviceMonitoringConfig(AppConfig):
                 'UPDATE_CONFIG_MODEL',
                 'device_monitoring.DeviceData',
             )
+
+    def register_dashboard_elements(self):
+        register_dashboard_element(
+            position=0,
+            element_config={
+                'name': 'Monitoring Status',
+                'query_params': {
+                    'app_label': 'config',
+                    'model': 'device',
+                    'group_by': 'monitoring__status',
+                },
+                'colors': {
+                    'unknown': 'grey',
+                    'ok': 'green',
+                    'critical': 'orange',
+                    'problem': 'red',
+                },
+            },
+        )
