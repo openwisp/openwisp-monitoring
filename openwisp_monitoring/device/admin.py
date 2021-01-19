@@ -189,11 +189,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         return readonly_fields
 
     def get_inlines(self, request, obj=None):
-        try:
-            inlines = super().get_inlines(request, obj)
-        # TODO: remove when dropping support for django 2.2
-        except AttributeError:  # pragma: no cover
-            inlines = self.inlines
+        inlines = super().get_inlines(request, obj)
         inlines = list(inlines + [CheckInline, MetricInline])
         # This attribute needs to be set for nested inline
         for inline in inlines:
@@ -202,23 +198,6 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         if not obj or obj._state.adding:
             inlines.remove(MetricInline)
         return inlines
-
-    # TODO: Remove below method once we drop support for django 2
-    def get_inline_instances(self, request, obj=None):
-        inline_instances = []
-        for inline_class in self.get_inlines(request, obj):
-            inline = inline_class(self.model, self.admin_site)
-            if request:
-                if not (
-                    inline.has_view_or_change_permission(request, obj)
-                    or inline.has_add_permission(request, obj)
-                    or inline.has_delete_permission(request, obj)
-                ):
-                    continue
-                if not inline.has_add_permission(request, obj):
-                    inline.max_num = 0
-            inline_instances.append(inline)
-        return inline_instances
 
 
 admin.site.unregister(Device)
