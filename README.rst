@@ -1,9 +1,9 @@
 openwisp-monitoring
 ===================
 
-.. image:: https://api.travis-ci.org/openwisp/openwisp-monitoring.svg?branch=master
-    :target: https://travis-ci.org/github/openwisp/openwisp-monitoring
-    :alt: ci build
+.. image:: https://github.com/openwisp/openwisp-monitoring/workflows/OpenWISP%20Monitoring%20CI%20Build/badge.svg?branch=master
+    :target: https://github.com/openwisp/openwisp-monitoring/actions?query=workflow%3A%22OpenWISP+Monitoring+CI+Build%22
+    :alt: CI build status
 
 .. image:: https://coveralls.io/repos/github/openwisp/openwisp-monitoring/badge.svg?branch=master
     :target: https://coveralls.io/github/openwisp/openwisp-monitoring?branch=master
