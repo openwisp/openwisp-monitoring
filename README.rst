@@ -1483,7 +1483,7 @@ For example, for ``check`` app you can do it as:
 
 .. code-block:: python
 
-    from openwisp_monitoring.check.admin import CheckAdmin
+    from openwisp_monitoring.monitoring.check.admin import CheckAdmin
 
     CheckAdmin.list_display.insert(1, 'my_custom_field')
     CheckAdmin.ordering = ['-my_custom_field']
@@ -1520,10 +1520,10 @@ For ``check`` app,
 
     from django.contrib import admin
 
-    from openwisp_monitoring.check.admin import CheckAdmin as BaseCheckAdmin
+    from openwisp_monitoring.monitoring.check.admin import CheckAdmin as BaseCheckAdmin
     from swapper import load_model
 
-    Check = load_model('check', 'Check')
+    Check = load_model('monitoring', 'Check')
 
     admin.site.unregister(Check)
 

@@ -7,12 +7,12 @@ from django.utils.timezone import now
 from freezegun import freeze_time
 from swapper import load_model
 
-from ...device.tests import TestDeviceMonitoringMixin
+from openwisp_monitoring.device.tests import TestDeviceMonitoringMixin
 from .. import settings as app_settings
 from ..classes import ConfigApplied, Ping
 from ..tasks import auto_create_config_check, auto_create_ping
 
-Check = load_model('check', 'Check')
+Check = load_model('monitoring', 'Check')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 Device = load_model('config', 'device')

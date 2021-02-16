@@ -9,7 +9,7 @@ from openwisp_controller.config.signals import checksum_requested, config_modifi
 from openwisp_controller.connection import settings as connection_settings
 from openwisp_controller.connection.signals import is_working_changed
 
-from ..check import settings as check_settings
+from ..monitoring.check import settings as check_settings
 from ..utils import transaction_on_commit
 from . import settings as app_settings
 from .signals import device_metrics_received, health_status_changed
@@ -113,7 +113,7 @@ class DeviceMonitoringConfig(AppConfig):
     ):
         from .tasks import trigger_device_checks
 
-        Check = load_model('check', 'Check')
+        Check = load_model('monitoring', 'Check')
         device = instance.device
         device_monitoring = device.monitoring
         # if old_is_working is None, it's a new device connection which wasn't
@@ -156,7 +156,7 @@ class DeviceMonitoringConfig(AppConfig):
 
     @classmethod
     def config_modified_receiver(cls, sender, instance, **kwargs):
-        from ..check.tasks import perform_check
+        from ..monitoring.check.tasks import perform_check
 
         DeviceData = load_model('device_monitoring', 'DeviceData')
         device = DeviceData.objects.get(config=instance)

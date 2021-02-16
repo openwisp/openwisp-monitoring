@@ -2,7 +2,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from swapper import load_model
 
-Check = load_model('check', 'Check')
+Check = load_model('monitoring', 'Check')
 Metric = load_model('monitoring', 'Metric')
 Device = load_model('config', 'Device')
 

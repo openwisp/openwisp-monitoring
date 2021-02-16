@@ -1,4 +1,4 @@
-from openwisp_monitoring.check.apps import CheckConfig
+from openwisp_monitoring.monitoring.check.apps import CheckConfig
 
 
 class SampleCheckConfig(CheckConfig):

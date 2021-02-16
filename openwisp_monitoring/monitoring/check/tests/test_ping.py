@@ -5,7 +5,7 @@ from django.test import TransactionTestCase
 from swapper import load_model
 
 from ... import settings as monitoring_settings
-from ...device.tests import TestDeviceMonitoringMixin
+from openwisp_monitoring.device.tests import TestDeviceMonitoringMixin
 from .. import settings
 from ..classes import Ping
 from ..exceptions import OperationalError
@@ -14,7 +14,7 @@ from . import _FPING_REACHABLE, _FPING_UNREACHABLE
 Chart = load_model('monitoring', 'Chart')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 Metric = load_model('monitoring', 'Metric')
-Check = load_model('check', 'Check')
+Check = load_model('monitoring', 'Check')
 
 
 class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):

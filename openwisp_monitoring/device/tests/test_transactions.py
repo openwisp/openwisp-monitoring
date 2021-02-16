@@ -13,11 +13,11 @@ from ...check.tests import _FPING_REACHABLE, _FPING_UNREACHABLE
 from ..tasks import trigger_device_checks
 from . import DeviceMonitoringTransactionTestcase
 
-Check = load_model('check', 'Check')
+Check = load_model('monitoring', 'Check')
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 DeviceConnection = load_model('connection', 'DeviceConnection')
 Credentials = load_model('connection', 'Credentials')
-Check = load_model('check', 'Check')
+Check = load_model('monitoring', 'Check')
 
 
 class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestcase):

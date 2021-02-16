@@ -9,7 +9,7 @@ import jsonfield.fields
 import model_utils.fields
 from django.db import migrations, models
 
-from openwisp_monitoring.check.settings import CHECK_CLASSES
+from openwisp_monitoring.monitoring.check.settings import CHECK_CLASSES
 
 
 class Migration(migrations.Migration):

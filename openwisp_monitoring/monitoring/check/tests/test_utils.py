@@ -4,14 +4,14 @@ from django.core import management
 from django.test import TransactionTestCase
 from swapper import load_model
 
-from ...device.tests import TestDeviceMonitoringMixin
+from openwisp_monitoring.device.tests import TestDeviceMonitoringMixin
 from ..classes import Ping
 from ..settings import CHECK_CLASSES
 from ..tasks import perform_check
 from ..utils import run_checks_async
 from . import _FPING_REACHABLE
 
-Check = load_model('check', 'Check')
+Check = load_model('monitoring', 'Check')
 
 
 class TestUtils(TestDeviceMonitoringMixin, TransactionTestCase):

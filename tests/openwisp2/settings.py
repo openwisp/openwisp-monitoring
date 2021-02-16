@@ -52,7 +52,6 @@ INSTALLED_APPS = [
     # monitoring
     'openwisp_monitoring.monitoring',
     'openwisp_monitoring.device',
-    'openwisp_monitoring.check',
     # notifications
     'openwisp_notifications',
     # admin
@@ -221,7 +220,6 @@ if not TESTING:
 if os.environ.get('SAMPLE_APP', False):
     for app in [
         'openwisp_monitoring.monitoring',
-        'openwisp_monitoring.check',
         'openwisp_monitoring.device',
     ]:
         INSTALLED_APPS.remove(app)

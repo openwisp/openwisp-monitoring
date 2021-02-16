@@ -8,6 +8,7 @@ from openwisp_utils.admin import TimeReadonlyAdminMixin
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
+Check = load_model('monitoring', 'Check')
 
 
 class AlertSettingsForm(ModelForm):
@@ -53,3 +54,11 @@ class MetricAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
     class Media:
         css = {'all': ('monitoring/css/monitoring.css',)}
         js = ('monitoring/js/plotly-cartesian.min.js', 'monitoring/js/chart.js')
+
+
+@admin.register(Check)
+class CheckAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
+    list_display = ['__str__', 'check', 'created', 'modified']
+    search_fields = ['name', 'object_id']
+    # TODO: filters
+    save_on_top = True

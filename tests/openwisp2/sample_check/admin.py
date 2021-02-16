@@ -1,1 +1,1 @@
-from openwisp_monitoring.check.admin import CheckAdmin  # noqa
+from openwisp_monitoring.monitoring.check.admin import CheckAdmin  # noqa

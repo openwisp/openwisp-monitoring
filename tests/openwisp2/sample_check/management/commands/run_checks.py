@@ -1,4 +1,4 @@
-from openwisp_monitoring.check.management.commands import BaseRunChecksCommand
+from openwisp_monitoring.monitoring.check.management.commands import BaseRunChecksCommand
 
 
 class Command(BaseRunChecksCommand):
