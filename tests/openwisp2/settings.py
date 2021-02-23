@@ -144,7 +144,6 @@ ACCOUNT_LOGOUT_REDIRECT_URL = LOGIN_REDIRECT_URL
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 OPENWISP_MONITORING_MANAGEMENT_IP_ONLY = False
-OPENWISP_ADMIN_DASHBOARD_ENABLED = True
 
 redis_host = os.getenv('REDIS_HOST', 'localhost')
 CACHES = {
@@ -194,6 +193,8 @@ if TESTING:
 
 # Temporarily added to identify slow tests
 TEST_RUNNER = 'openwisp_utils.tests.TimeLoggingTestRunner'
+
+LEAFLET_CONFIG = {'RESET_VIEW': False}
 
 LOGGING = {
     'version': 1,

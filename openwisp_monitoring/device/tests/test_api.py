@@ -1,7 +1,10 @@
 from unittest.mock import patch
 
+from django.contrib.auth import get_user_model
+from django.urls import reverse
 from swapper import load_model
 
+from openwisp_controller.geo.tests.utils import TestGeoMixin
 from openwisp_utils.tests import catch_signal
 
 from ... import settings as monitoring_settings
@@ -11,6 +14,10 @@ from . import DeviceMonitoringTestCase
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 DeviceData = load_model('device_monitoring', 'DeviceData')
+# needed for config.geo
+Device = load_model('config', 'Device')
+DeviceLocation = load_model('geo', 'DeviceLocation')
+Location = load_model('geo', 'Location')
 
 
 class TestDeviceApi(DeviceMonitoringTestCase):
@@ -527,3 +534,46 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             number += 1
             with self.subTest(interface_data['name']):
                 self.assertEqual(r.status_code, 400)
+
+
+class TestGeoApi(TestGeoMixin, DeviceMonitoringTestCase):
+    location_model = Location
+    object_location_model = DeviceLocation
+    object_model = Device
+
+    def _login_admin(self):
+        User = get_user_model()
+        admin = User.objects.create_superuser('admin', 'admin', 'test@test.com')
+        self.client.force_login(admin)
+
+    def test_api_location_geojson(self):
+        device_location = self._create_object_location()
+        device_location.device.monitoring.update_status('ok')
+        self._login_admin()
+        url = reverse('monitoring:api_location_geojson')
+        response = self.client.get(url)
+        data = response.data
+        self.assertEqual(data['count'], 1)
+        self.assertEqual(len(data['features']), 1)
+        self.assertEqual(data['features'][0]['properties']['device_count'], 1)
+        self.assertEqual(data['features'][0]['properties']['ok_count'], 1)
+        self.assertEqual(data['features'][0]['properties']['problem_count'], 0)
+        self.assertEqual(data['features'][0]['properties']['critical_count'], 0)
+        self.assertEqual(data['features'][0]['properties']['unknown_count'], 0)
+
+    def test_api_location_device_list(self):
+        device_location = self._create_object_location()
+        device_location.device.monitoring.update_status('ok')
+        location = device_location.location
+        self._login_admin()
+        url = reverse('monitoring:api_location_device_list', args=[location.pk])
+        response = self.client.get(url)
+        data = response.data
+        self.assertEqual(data['count'], 1)
+        self.assertEqual(len(data['results']), 1)
+        self.assertEqual(data['results'][0]['id'], str(device_location.device.id))
+        self.assertIn('monitoring', data['results'][0])
+        self.assertIsInstance(data['results'][0]['monitoring'], dict)
+        self.assertDictEqual(
+            data['results'][0]['monitoring'], {'status': 'ok', 'status_label': 'ok'}
+        )

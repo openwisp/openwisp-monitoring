@@ -1,4 +1,5 @@
-openwisp-utils[qa]~=0.7.0
+# unpinned, the version is dictated by openwisp-controller
+openwisp-utils[qa]
 redis
 django-redis
 mock-ssh-server~=0.8.0

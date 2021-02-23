@@ -60,6 +60,9 @@ Other popular building blocks that are part of the OpenWISP ecosystem are:
 - `openwisp-ipam <https://github.com/openwisp/openwisp-ipam>`_:
   it allows to manage the IP address space of networks
 
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/dashboard.png
+  :align: center
+
 .. figure:: https://drive.google.com/uc?export=view&id=1GuB5HsyiZejBzXKZJnM8QJCUJt1Z5IkJ
   :align: center
 
@@ -76,6 +79,9 @@ Available Features
 * Charts can be viewed at resolutions of 1 day, 3 days, a week, a month and a year
 * Configurable alerts
 * CSV Export of monitoring data
+* An overview of the status of the network is shown in the admin dashboard,
+  a chart shows the percentages of devices which are online, offline or having issues;
+  a geographic map is also available for those who use the geographic features of OpenWISP
 * Possibility to configure additional `Metrics <#openwisp_monitoring_metrics>`_ and `Charts <#openwisp_monitoring_charts>`_
 * Extensible active check system: it's possible to write additional checks that
   are run periodically using python classes
@@ -609,6 +615,29 @@ This feature makes the monitoring system resilient to temporary outages and help
 For more information regarding these settings, consult the `celery documentation
 regarding automatic retries for known errors
 <https://docs.celeryproject.org/en/stable/userguide/tasks.html#automatic-retry-for-known-exceptions>`_.
+
+``OPENWISP_MONITORING_DASHBOARD_MAP``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``bool``    |
++--------------+-------------+
+| **default**: | ``True``    |
++--------------+-------------+
+
+Whether the geographic map in the dashboard is enabled or not.
+This feature provides a geographic map which shows the locations
+which have devices installed in and provides a visual representation
+of the monitoring status of the devices, this allows to get
+an overview of the network at glance.
+
+This feature is enabled by default and depends on the setting
+``OPENWISP_ADMIN_DASHBOARD_ENABLED`` from
+`openwisp-utils <https://github.com/openwisp/openwisp-utils>`__
+being set to ``True`` (which is the default).
+
+You can turn this off if you do not use the geographic features
+of OpenWISP.
 
 ``OPENWISP_MONITORING_METRICS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1216,13 +1245,7 @@ Install your forked repo:
 
     git clone git://github.com/<your_fork>/openwisp-monitoring
     cd openwisp-monitoring/
-    python setup.py develop
-
-Install development dependencies:
-
-.. code-block:: shell
-
-    ./install-dev.sh
+    pip install -e .
 
 Install test requirements:
 

@@ -1,6 +1,3 @@
-from openwisp_monitoring.device.tests.test_app import (
-    TestCustomAdminDashboard as BaseTestCustomAdminDashboard,
-)
 from openwisp_monitoring.monitoring.tests.test_charts import (
     TestCharts as BaseTestCharts,
 )
@@ -44,13 +41,8 @@ class TestMonitoringNotifications(BaseTestMonitoringNotifications):
     pass
 
 
-class TestCustomAdminDashboard(BaseTestCustomAdminDashboard):
-    pass
-
-
 # this is necessary to avoid excuting the base test suites
 del BaseTestDatabase
 del BaseTestCharts
 del BaseTestModels
 del BaseTestMonitoringNotifications
-del BaseTestCustomAdminDashboard

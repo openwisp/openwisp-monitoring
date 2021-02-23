@@ -39,15 +39,6 @@ jobs:
           - django~=3.1
 
     steps:
-      - uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-
       - name: Install system packages
         run: |
           sudo apt update &&
@@ -61,14 +52,26 @@ jobs:
           spatialite-bin \
           libsqlite3-mod-spatialite
 
-      - name: Install python dependencies
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install python system packages
         run: |
           pip install -U "pip==20.2.4" wheel setuptools
-          pip install -U -r requirements-test.txt
 
       - name: Install openwisp-monitoring
         run: |
           pip install -U -I -e .
+
+      - name: Install test dependencies
+        run: |
+          pip install -r requirements-test.txt
           pip install ${{ matrix.django-version }}
 
       - name: QA checks

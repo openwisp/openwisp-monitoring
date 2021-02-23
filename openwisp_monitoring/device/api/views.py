@@ -8,6 +8,7 @@ from io import StringIO
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.db.models import Count, Q
 from django.http import HttpResponse
 from pytz import timezone as tz
 from pytz.exceptions import UnknownTimeZoneError
@@ -16,6 +17,13 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from swapper import load_model
+
+from openwisp_controller.geo.api.views import (
+    GeoJsonLocationList,
+    GeoJsonLocationSerializer,
+    LocationDeviceList,
+    LocationDeviceSerializer,
+)
 
 from ... import settings as monitoring_settings
 from ...monitoring.exceptions import InvalidChartConfigException
@@ -27,7 +35,9 @@ Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 Device = load_model('config', 'Device')
+DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 DeviceData = load_model('device_monitoring', 'DeviceData')
+Location = load_model('geo', 'Location')
 
 
 class DevicePermission(BasePermission):
@@ -357,3 +367,65 @@ class DeviceMetricView(GenericAPIView):
 
 
 device_metric = DeviceMetricView.as_view()
+
+
+class MonitoringGeoJsonLocationSerializer(GeoJsonLocationSerializer):
+    ok_count = serializers.IntegerField()
+    problem_count = serializers.IntegerField()
+    critical_count = serializers.IntegerField()
+    unknown_count = serializers.IntegerField()
+
+
+class MonitoringGeoJsonLocationList(GeoJsonLocationList):
+    serializer_class = MonitoringGeoJsonLocationSerializer
+    queryset = (
+        Location.objects.filter(devicelocation__isnull=False)
+        .annotate(
+            device_count=Count('devicelocation'),
+            ok_count=Count(
+                'devicelocation',
+                filter=Q(devicelocation__content_object__monitoring__status='ok'),
+            ),
+            problem_count=Count(
+                'devicelocation',
+                filter=Q(devicelocation__content_object__monitoring__status='problem'),
+            ),
+            critical_count=Count(
+                'devicelocation',
+                filter=Q(devicelocation__content_object__monitoring__status='critical'),
+            ),
+            unknown_count=Count(
+                'devicelocation',
+                filter=Q(devicelocation__content_object__monitoring__status='unknown'),
+            ),
+        )
+        .order_by('-created')
+    )
+
+
+monitoring_geojson_location_list = MonitoringGeoJsonLocationList.as_view()
+
+
+class DeviceMonitoringSerializer(serializers.ModelSerializer):
+    status_label = serializers.SerializerMethodField()
+
+    def get_status_label(self, obj):
+        return obj.get_status_display()
+
+    class Meta:
+        fields = ('status', 'status_label')
+        model = DeviceMonitoring
+
+
+class MonitoringDeviceSerializer(LocationDeviceSerializer):
+    monitoring = DeviceMonitoringSerializer()
+
+
+class MonitoringLocationDeviceList(LocationDeviceList):
+    serializer_class = MonitoringDeviceSerializer
+
+    def get_queryset(self):
+        return super().get_queryset().select_related('monitoring').order_by('name')
+
+
+monitoring_location_device_list = MonitoringLocationDeviceList.as_view()

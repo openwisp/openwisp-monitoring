@@ -4,6 +4,8 @@ from django.urls import reverse
 from django.utils.timezone import now
 from swapper import get_model_name, load_model
 
+from openwisp_controller.geo.tests.utils import TestGeoMixin
+
 from ...check.settings import CHECK_CLASSES
 from ..admin import CheckInline, CheckInlineFormSet
 from . import DeviceMonitoringTestCase
@@ -13,6 +15,10 @@ Metric = load_model('monitoring', 'Metric')
 DeviceData = load_model('device_monitoring', 'DeviceData')
 User = get_user_model()
 Check = load_model('check', 'Check')
+# needed for config.geo
+Device = load_model('config', 'Device')
+DeviceLocation = load_model('geo', 'DeviceLocation')
+Location = load_model('geo', 'Location')
 
 
 class TestAdmin(DeviceMonitoringTestCase):
@@ -267,3 +273,28 @@ class TestAdmin(DeviceMonitoringTestCase):
                 f'<li><img src="/static/admin/img/icon-{health}.svg" '
                 f'alt="health"> {metric.name}</li>',
             )
+
+
+class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
+    location_model = Location
+    object_location_model = DeviceLocation
+    object_model = Device
+
+    def test_dashboard(self):
+        admin = User.objects.create_superuser('admin', 'admin', 'test@test.com')
+        self.client.force_login(admin)
+        self._create_object_location()
+        response = self.client.get(reverse('admin:index'))
+        static_files = [
+            'monitoring/css/device-map.css',
+            'leaflet/leaflet.css',
+            'monitoring/css/leaflet.fullscreen.css',
+            'monitoring/js/device-map.js',
+            'leaflet/leaflet.js',
+            'leaflet/leaflet.extras.js',
+            'monitoring/js/leaflet.fullscreen.min.js',
+        ]
+        for static_file in static_files:
+            self.assertContains(response, static_file)
+        self.assertContains(response, 'Monitoring Status')
+        self.assertContains(response, '#267126')
