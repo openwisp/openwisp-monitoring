@@ -3,6 +3,7 @@ import sys
 from datetime import timedelta
 
 TESTING = 'test' in sys.argv
+SHELL = 'shell' in sys.argv or 'shell_plus' in sys.argv
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DEBUG = True
@@ -215,8 +216,18 @@ LOGGING = {
     },
 }
 
-if not TESTING:
-    LOGGING.update({'root': {'level': 'INFO', 'handlers': ['console']}})
+if not TESTING and SHELL:
+    LOGGING.update(
+        {
+            'loggers': {
+                'django.db.backends': {
+                    'level': 'DEBUG',
+                    'handlers': ['console'],
+                    'propagate': False,
+                },
+            }
+        }
+    )
 
 if os.environ.get('SAMPLE_APP', False):
     for app in [
