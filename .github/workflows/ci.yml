@@ -22,7 +22,7 @@ jobs:
         ports:
           - 6379:6379
       influxdb:
-        image: influxdb:alpine
+        image: influxdb:1.8.4-alpine
         options: >-
           --name "influxdb"
         ports:
