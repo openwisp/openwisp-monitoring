@@ -5,7 +5,7 @@ from django.db.models.signals import post_delete, post_save
 from django.utils.translation import gettext_lazy as _
 from swapper import load_model
 
-from openwisp_controller.config.signals import checksum_requested, config_modified
+from openwisp_controller.config.signals import checksum_requested, config_status_changed
 from openwisp_controller.connection import settings as connection_settings
 from openwisp_controller.connection.signals import is_working_changed
 
@@ -25,7 +25,7 @@ class DeviceMonitoringConfig(AppConfig):
         manage_short_retention_policy()
         self.connect_is_working_changed()
         self.connect_device_signals()
-        self.connect_config_modified()
+        self.connect_config_status_changed()
         self.device_recovery_detection()
         self.set_update_config_model()
 
@@ -144,18 +144,18 @@ class DeviceMonitoringConfig(AppConfig):
                 device_monitoring.update_status(status)
 
     @classmethod
-    def connect_config_modified(cls):
+    def connect_config_status_changed(cls):
         Config = load_model('config', 'Config')
 
         if check_settings.AUTO_CONFIG_CHECK:
-            config_modified.connect(
-                cls.config_modified_receiver,
+            config_status_changed.connect(
+                cls.config_status_changed_receiver,
                 sender=Config,
-                dispatch_uid='config_modified',
+                dispatch_uid='monitoring.config_status_changed_receiver',
             )
 
     @classmethod
-    def config_modified_receiver(cls, sender, instance, **kwargs):
+    def config_status_changed_receiver(cls, sender, instance, **kwargs):
         from ..check.tasks import perform_check
 
         DeviceData = load_model('device_monitoring', 'DeviceData')

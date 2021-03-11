@@ -431,6 +431,11 @@ is running and applying configuration changes in a timely manner.
 You may choose to disable auto creation of this check by using the
 setting `OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK <#OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK>`_.
 
+This check runs periodically, but it is also triggered whenever the
+configuration status of a device changes, this ensures the check reacts
+quickly to events happening in the network and informs the user promptly
+if there's anything that is not working as intended.
+
 Settings
 --------
 

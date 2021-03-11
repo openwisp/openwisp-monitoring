@@ -4,7 +4,7 @@ from django.urls import reverse
 from openwisp_notifications.signals import notify
 from swapper import load_model
 
-from openwisp_controller.config.signals import config_modified
+from openwisp_controller.config.signals import config_status_changed
 from openwisp_controller.connection.tests.base import CreateConnectionsMixin
 from openwisp_utils.tests import catch_signal
 
@@ -26,11 +26,11 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
         self.assertEqual(Check.objects.count(), 1)
 
     @patch('openwisp_monitoring.check.tasks.perform_check.delay')
-    def test_config_modified_receiver(self, mock_method):
+    def test_config_status_changed_receiver(self, mock_method):
         c = self._create_config(status='applied', organization=self._create_org())
         c.config = {'general': {'description': 'test'}}
         c.full_clean()
-        with catch_signal(config_modified) as handler:
+        with catch_signal(config_status_changed) as handler:
             c.save()
             handler.assert_called_once()
         self.assertEqual(c.status, 'modified')
