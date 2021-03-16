@@ -1,11 +1,12 @@
+'use strict';
+
 (function ($) {
-    'use strict';
     window.createChart = function (data, x, id, title, type) {
         if (data === false) {
             alert(gettext('error while receiving data from server'));
             return;
         }
-        if (!x) {x = data.x}
+        if (!x) {x = data.x;}
         var mode = x.length > 30 ? 'lines' : 'markers+lines',
             layout = {
                 showlegend: true,
@@ -32,7 +33,6 @@
             plotlyContainer = container.find('.js-plotly-plot').get(0),
             notApplicable = gettext('N/A'),
             unit = data.unit,
-            labels = [],
             summaryLabels = [],
             fixedY = false,
             fixedYMax = 100,
@@ -50,12 +50,13 @@
         if (type === 'histogram') {
             layout.hovermode = 'closest';
         }
+        var map, mapped, label, fixedValue, key;
         // given a value, returns its color and description
         // according to the color map configuration of this chart
         function findInColorMap(value) {
             var desc, color, controlVal, n,
                 map = data.colorscale.map;
-            if (!map) { return false };
+            if (!map) { return false; }
             for (n in map) {
                 controlVal = map[n][0];
                 if (controlVal === null || value >= controlVal) {
@@ -68,9 +69,9 @@
         }
         // loop over traces to put them on the chart
         for (var i=0; i<data.traces.length; i++) {
-            var key = data.traces[i][0],
-                label = data.traces[i][0].replace(/_/g, ' ');
-            data.summary_labels && summaryLabels.push([key, data.summary_labels[i]]);
+            key = data.traces[i][0];
+            label = data.traces[i][0].replace(/_/g, ' ');
+            if (data.summary_labels){ summaryLabels.push([key, data.summary_labels[i]]);}
             var options = {
                     name: label,
                     type: type,
@@ -90,16 +91,16 @@
             }
 
             if (data.colorscale) {
-                var config = data.colorscale,
-                    map = data.colorscale.map,
-                    fixedValue = data.colorscale.fixed_value;
+                var config = data.colorscale;
+                map = data.colorscale.map;
+                fixedValue = data.colorscale.fixed_value;
                 options.marker = {
                     cmax: config.max,
                     cmin: config.min,
                     colorbar: {title: config.label},
                     colorscale: config.scale,
                     color: []
-                }
+                };
                 if (map) {
                     layout.showlegend = false;
                     layout.margin.b = 45;
@@ -114,10 +115,10 @@
                     hovertemplate;
                 // if colorscale and map are supplied
                 if (data.colorscale && map) {
-                    var mapped = findInColorMap(val);
+                    mapped = findInColorMap(val);
                     // same bar length feature
                     if (typeof(fixedValue) !== undefined && val !== null) {
-                        val = fixedValue
+                        val = fixedValue;
                     }
                     options.marker.color.push(mapped.color);
                     desc = mapped.desc;
@@ -147,11 +148,11 @@
         // custom legends when using color map
         if (data.colorscale && data.colorscale.map) {
             container.append('<div class="custom-legend"></div>');
-            var map = data.colorscale.map,
-                customLegend = container.find('.custom-legend');
-            for (var i = map.length-1; i >= 0; i--) {
-                var color = map[i][1],
-                    label = map[i][2];
+            map = data.colorscale.map;
+            var customLegend = container.find('.custom-legend');
+            for (i = map.length-1; i >= 0; i--) {
+                var color = map[i][1];
+                label = map[i][2];
                 customLegend.append(
                     '<div class="legend"><span style="background:' + color + '"></span> ' + label + '</div>'
                 );
@@ -160,14 +161,12 @@
         container.find('.circle').remove();
         // add summary
         if (data.summary && type != 'histogram') {
-            for (var i=0; i<summaryLabels.length; i++) {
+            for (i=0; i<summaryLabels.length; i++) {
                 var el = summaryLabels[i],
-                    key = el[0],
-                    traceLabel = key.replace(/_/g, ' '),
-                    label = el[1],
                     percircleOptions = {progressBarColor: data.colors[i]},
-                    value = data.summary[key],
-                    mapped;
+                    value = data.summary[key];
+                key = el[0];
+                label = el[1];
                 if (unit === '%') {
                     percircleOptions.percent = value;
                     if (value === 0) {
@@ -189,7 +188,7 @@
                 );
                 container.find('.circle').eq(-1)
                          .percircle(percircleOptions);
-            };
+            }
         }
         // do not add heading, help and tooltip if already done
         // or if there's not title and description to show
@@ -203,7 +202,7 @@
         // add help icon
         heading.append('<a class="chart-help">?</a>');
         help = heading.find('a');
-        help.attr('title', gettext('Click to show chart description'))
+        help.attr('title', gettext('Click to show chart description'));
         // add tooltip
         container.find('.svg-container')
                  .append('<p class="tooltip"></p>');

@@ -1,5 +1,11 @@
 #!/bin/bash
 set -e
+
+jshint openwisp_monitoring/device/static/monitoring/js/alert-settings.js
+jshint openwisp_monitoring/monitoring/static/monitoring/js/chart.js
+stylelint openwisp_monitoring/device/static/monitoring/css/monitoring.css
+
+
 openwisp-qa-check \
   --migration-path "./openwisp_monitoring/check/migrations \
                     ./openwisp_monitoring/device/migrations \
