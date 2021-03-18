@@ -1,5 +1,3 @@
-from contextlib import redirect_stderr
-from io import StringIO
 from unittest.mock import patch
 
 from swapper import load_model
@@ -347,15 +345,13 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         )
 
     def test_invalid_chart_config(self):
-        # Tests if chart_config is invalid, then it is skipped and not failed
+        # Tests if chart_config is invalid, then it is skipped and API does not fail
         d = self._create_device(organization=self._create_org())
         m = self._create_object_metric(name='test_metric', content_object=d)
         c = self._create_chart(metric=m, test_data=None)
         c.configuration = 'invalid'
         c.save()
-        with redirect_stderr(StringIO()) as stderr:
-            response = self.client.get(self._url(d.pk.hex, d.key))
-        self.assertIn('InvalidChartConfigException', stderr.getvalue())
+        response = self.client.get(self._url(d.pk.hex, d.key))
         self.assertEqual(response.status_code, 200)
 
     def test_available_memory(self):

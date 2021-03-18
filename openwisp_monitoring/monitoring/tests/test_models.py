@@ -9,7 +9,7 @@ from swapper import load_model
 
 from openwisp_utils.tests import catch_signal
 
-from ..exceptions import InvalidMetricConfigException
+from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
 from . import TestMonitoringMixin
 
@@ -44,6 +44,12 @@ class TestModels(TestMonitoringMixin, TestCase):
         m.configuration = 'invalid'
         with self.assertRaises(InvalidMetricConfigException):
             m.full_clean()
+
+    def test_invalid_chart_config(self):
+        c = self._create_chart(test_data=False)
+        c.configuration = 'invalid'
+        with self.assertRaises(InvalidChartConfigException):
+            c.config_dict
 
     def test_metric_related_fields(self):
         m = self._create_object_metric()
