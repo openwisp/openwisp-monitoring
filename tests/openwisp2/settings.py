@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'openwisp_monitoring.monitoring',
     'openwisp_monitoring.device',
     'openwisp_monitoring.check',
+    'nested_admin',
     # notifications
     'openwisp_notifications',
     # admin
@@ -67,7 +68,6 @@ INSTALLED_APPS = [
     'reversion',
     'leaflet',
     'flat_json_widget',
-    'nested_admin',
     # rest framework
     'rest_framework',
     'rest_framework_gis',

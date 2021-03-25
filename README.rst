@@ -143,6 +143,7 @@ Follow the setup instructions of `openwisp-controller
         'openwisp_monitoring.monitoring',
         'openwisp_monitoring.device',
         'openwisp_monitoring.check',
+        'nested_admin',
         # notifications
         'openwisp_notifications',
         # openwisp2 admin theme (must be loaded here)
@@ -1365,6 +1366,7 @@ ensuring also that ``openwisp_monitoring.check`` has been removed:
         'mycheck',
         'mydevicemonitoring',
         'mymonitoring',
+        'nested_admin',
     ]
 
 For more information about how to work with django projects and django apps,
