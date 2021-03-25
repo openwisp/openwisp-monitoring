@@ -211,7 +211,7 @@ Configure celery (you may use a different broker if you want):
     CELERY_BROKER_URL = 'redis://localhost/1'
     CELERY_BEAT_SCHEDULE = {
         'run_checks': {
-            'task': 'openwisp_monitoring.check.tasks.run_check',
+            'task': 'openwisp_monitoring.check.tasks.run_checks',
             'schedule': timedelta(minutes=5),
         },
     }
