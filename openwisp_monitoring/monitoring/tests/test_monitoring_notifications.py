@@ -1,5 +1,4 @@
 from datetime import timedelta
-from unittest.mock import patch
 
 from django.core import mail
 from django.urls import reverse
@@ -103,20 +102,26 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
 
     def test_cpu_metric_threshold_crossed(self):
         admin = self._create_admin()
-        test_data_path = (
-            'openwisp_monitoring.device.tests.DeviceMonitoringTestCase._data'
-        )
+        org = self._create_org()
+        device = self._create_device(organization=org)
+        # creates metric and alert settings
         data = self._data()
         data['resources']['load'] = [0.99, 0.99, 0.99]
-        with patch(test_data_path, return_value=data):
-            self.create_test_data()
-            m = Metric.objects.get(name='CPU usage')
-            self.assertEqual(Notification.objects.count(), 1)
-            n = Notification.objects.first()
-            self.assertEqual(n.recipient, admin)
-            self.assertEqual(n.actor, m)
-            self.assertEqual(n.action_object, m.alertsettings)
-            self.assertEqual(n.level, 'warning')
+        response = self._post_data(device.id, device.key, data)
+        self.assertEqual(response.status_code, 200)
+        # retrieve created metric
+        metric = Metric.objects.get(name='CPU usage')
+        # simplify test by setting tolerance to 0
+        metric.alertsettings.custom_tolerance = 0
+        metric.alertsettings.save()
+        # trigger alert
+        metric.write(99.0)
+        self.assertEqual(Notification.objects.count(), 1)
+        n = Notification.objects.first()
+        self.assertEqual(n.recipient, admin)
+        self.assertEqual(n.actor, metric)
+        self.assertEqual(n.action_object, metric.alertsettings)
+        self.assertEqual(n.level, 'warning')
 
     def test_general_check_threshold_crossed_for_long_time(self):
         """

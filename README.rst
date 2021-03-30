@@ -674,7 +674,7 @@ For example, if you want to change only the default alert settings of
 
     OPENWISP_MONITORING_METRICS = {
         'memory': {
-            'alert_settings': {'threshold': 75, 'tolerance': 5}
+            'alert_settings': {'threshold': 75, 'tolerance': 10}
         },
     }
 

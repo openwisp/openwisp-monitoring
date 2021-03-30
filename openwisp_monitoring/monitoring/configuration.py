@@ -213,7 +213,7 @@ DEFAULT_METRICS = {
                 'query': chart_query['disk'],
             }
         },
-        'alert_settings': {'operator': '>', 'threshold': 80, 'tolerance': 0},
+        'alert_settings': {'operator': '>', 'threshold': 90, 'tolerance': 0},
         'notification': {
             'problem': {
                 'verbose_name': 'Disk usage PROBLEM',
@@ -268,7 +268,7 @@ DEFAULT_METRICS = {
                 'query': chart_query['memory'],
             }
         },
-        'alert_settings': {'operator': '>', 'threshold': 95, 'tolerance': 0},
+        'alert_settings': {'operator': '>', 'threshold': 95, 'tolerance': 5},
         'notification': {
             'problem': {
                 'verbose_name': 'Memory usage PROBLEM',
@@ -318,7 +318,7 @@ DEFAULT_METRICS = {
                 'query': chart_query['cpu'],
             }
         },
-        'alert_settings': {'operator': '>', 'threshold': 90, 'tolerance': 0},
+        'alert_settings': {'operator': '>', 'threshold': 90, 'tolerance': 5},
         'notification': {
             'problem': {
                 'verbose_name': 'CPU usage PROBLEM',
