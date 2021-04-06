@@ -1,6 +1,6 @@
 # TODO: put back the standard pypi release when
 # next point version of openwisp-controller is released
-openwisp-controller @ https://github.com/ManishShah120/openwisp-controller/tarball/issues/414-separate-serializer-classes
+openwisp-controller @ https://github.com/openwisp/openwisp-controller/tarball/master
 # openwisp-utils[rest] is left unpinned so the version used
 # is the one dictated by openwisp-controller
 influxdb~=5.3
