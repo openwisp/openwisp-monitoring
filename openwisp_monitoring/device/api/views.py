@@ -18,17 +18,13 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from swapper import load_model
 
-from openwisp_controller.geo.api.views import (
-    GeoJsonLocationList,
-    GeoJsonLocationSerializer,
-    LocationDeviceList,
-    LocationDeviceSerializer,
-)
+from openwisp_controller.geo.api.views import GeoJsonLocationList, LocationDeviceList
 
 from ... import settings as monitoring_settings
 from ...monitoring.exceptions import InvalidChartConfigException
 from ..schema import schema
 from ..signals import device_metrics_received
+from .serializers import MonitoringDeviceSerializer, MonitoringGeoJsonLocationSerializer
 
 logger = logging.getLogger(__name__)
 Chart = load_model('monitoring', 'Chart')
@@ -369,13 +365,6 @@ class DeviceMetricView(GenericAPIView):
 device_metric = DeviceMetricView.as_view()
 
 
-class MonitoringGeoJsonLocationSerializer(GeoJsonLocationSerializer):
-    ok_count = serializers.IntegerField()
-    problem_count = serializers.IntegerField()
-    critical_count = serializers.IntegerField()
-    unknown_count = serializers.IntegerField()
-
-
 class MonitoringGeoJsonLocationList(GeoJsonLocationList):
     serializer_class = MonitoringGeoJsonLocationSerializer
     queryset = (
@@ -404,21 +393,6 @@ class MonitoringGeoJsonLocationList(GeoJsonLocationList):
 
 
 monitoring_geojson_location_list = MonitoringGeoJsonLocationList.as_view()
-
-
-class DeviceMonitoringSerializer(serializers.ModelSerializer):
-    status_label = serializers.SerializerMethodField()
-
-    def get_status_label(self, obj):
-        return obj.get_status_display()
-
-    class Meta:
-        fields = ('status', 'status_label')
-        model = DeviceMonitoring
-
-
-class MonitoringDeviceSerializer(LocationDeviceSerializer):
-    monitoring = DeviceMonitoringSerializer()
 
 
 class MonitoringLocationDeviceList(LocationDeviceList):
