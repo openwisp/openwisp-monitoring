@@ -804,6 +804,18 @@ In case you just want to change the colors used in a chart here's how to do it:
         }
     }
 
+``OPENWISP_MONITORING_AUTO_CLEAR_MANAGEMENT_IP``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``bool``    |
++--------------+-------------+
+| **default**: | ``True``    |
++--------------+-------------+
+
+This setting allows you to automatically clear management_ip of a device
+when it goes offline. It is enabled by default.
+
 Registering / Unregistering Metric Configuration
 ------------------------------------------------
 

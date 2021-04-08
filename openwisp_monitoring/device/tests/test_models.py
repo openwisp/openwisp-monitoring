@@ -590,6 +590,16 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         load.check_threshold(80)
         self.assertEqual(dm.status, 'ok')
 
+    def test_management_ip_clear_device_offline(self):
+        dm, ping, load, process_count = self._create_env()
+        dm.device.management_ip = '0.0.0.0'
+        dm.device.save()
+        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.device.management_ip, '0.0.0.0')
+        ping.check_threshold(0)
+        self.assertEqual(dm.status, 'critical')
+        self.assertIsNone(dm.device.management_ip)
+
     def _set_env_unknown(self, load, process_count, ping, dm):
         dm.status = 'unknown'
         dm.save()
