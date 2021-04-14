@@ -18,6 +18,7 @@ WORKDIR /opt/openwisp/tests/
 ENV NAME=openwisp-monitoring \
     PYTHONBUFFERED=1 \
     INFLUXDB_HOST=influxdb \
-    REDIS_HOST=redis
+    REDIS_HOST=redis \
+    ELASTICSEARCH_HOST=es01
 CMD ["sh", "docker-entrypoint.sh"]
 EXPOSE 8000

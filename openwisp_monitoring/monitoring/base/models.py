@@ -20,7 +20,7 @@ from swapper import get_model_name
 
 from openwisp_utils.base import TimeStampedEditableModel
 
-from ...db import default_chart_query, timeseries_db
+from ...db import timeseries_db
 from ..configuration import (
     CHART_CONFIGURATION_CHOICES,
     DEFAULT_COLORS,
@@ -338,10 +338,8 @@ class AbstractChart(TimeStampedEditableModel):
 
     @property
     def _default_query(self):
-        q = default_chart_query[0]
-        if self.metric.object_id:
-            q += default_chart_query[1]
-        return q
+        tags = True if self.metric.object_id else False
+        return timeseries_db.default_chart_query(tags)
 
     def get_query(
         self,
@@ -362,10 +360,10 @@ class AbstractChart(TimeStampedEditableModel):
         Returns list of top ``number`` of fields (highest sum) of a
         measurement in the specified time range (descending order).
         """
-        q = self._default_query.replace('{field_name}', '{fields}')
         params = self._get_query_params(self.DEFAULT_TIME)
         return timeseries_db._get_top_fields(
-            query=q,
+            default_query=self._default_query,
+            query=self.get_query(),
             chart_type=self.type,
             group_map=self.GROUP_MAP,
             number=number,
@@ -410,16 +408,23 @@ class AbstractChart(TimeStampedEditableModel):
         try:
             query_kwargs = dict(time=time, timezone=timezone)
             if self.top_fields:
-                fields = self.get_top_fields(self.top_fields)
-                data_query = self.get_query(fields=fields, **query_kwargs)
-                summary_query = self.get_query(
-                    fields=fields, summary=True, **query_kwargs
+                points = summary = timeseries_db._get_top_fields(
+                    default_query=self._default_query,
+                    chart_type=self.type,
+                    group_map=self.GROUP_MAP,
+                    number=self.top_fields,
+                    params=self._get_query_params(self.DEFAULT_TIME),
+                    time=time,
+                    query=self.query,
+                    get_fields=False,
                 )
             else:
                 data_query = self.get_query(**query_kwargs)
                 summary_query = self.get_query(summary=True, **query_kwargs)
-            points = timeseries_db.get_list_query(data_query)
-            summary = timeseries_db.get_list_query(summary_query)
+                points = timeseries_db.get_list_query(data_query, key=self.metric.key)
+                summary = timeseries_db.get_list_query(
+                    summary_query, key=self.metric.key
+                )
         except timeseries_db.client_error as e:
             logging.error(e, exc_info=True)
             raise e
@@ -471,7 +476,11 @@ class AbstractChart(TimeStampedEditableModel):
         control = 1.0 / 10 ** decimal_places
         if value < control:
             decimal_places += 2
-        return round(value, decimal_places)
+        value = round(value, decimal_places)
+        # added for Elasticsearch division outputs (traffic metric)
+        if isinstance(value, float) and value.is_integer():
+            value = int(value)
+        return value
 
 
 class AbstractAlertSettings(TimeStampedEditableModel):

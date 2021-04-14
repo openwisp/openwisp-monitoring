@@ -11,6 +11,8 @@ services:
     depends_on:
       - influxdb
       - redis
+      - es01
+      - es02
 
   influxdb:
     image: influxdb:1.8-alpine
@@ -22,6 +24,45 @@ services:
       INFLUXDB_DB: openwisp2
       INFLUXDB_USER: openwisp
       INFLUXDB_USER_PASSWORD: openwisp
+  # clustered version of elasticsearch is used as that might be used in production
+  es01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.8.0
+    container_name: es01
+    environment:
+      - "node.name=es01"
+      - "discovery.seed_hosts=es02"
+      - "cluster.initial_master_nodes=es01,es02"
+      - "cluster.name=openwisp2"
+      - "bootstrap.memory_lock=true"
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata01:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+    networks:
+      - esnet
+  es02:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.8.0
+    container_name: es02
+    environment:
+      - "node.name=es02"
+      - "discovery.seed_hosts=es01"
+      - "cluster.initial_master_nodes=es01,es02"
+      - "cluster.name=openwisp2"
+      - "bootstrap.memory_lock=true"
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata02:/usr/share/elasticsearch/data
+    networks:
+      - esnet
 
   redis:
     image: redis:5.0-alpine
@@ -31,3 +72,10 @@ services:
 
 volumes:
   influxdb-data: {}
+  esdata01:
+    driver: local
+  esdata02:
+    driver: local
+
+networks:
+  esnet:

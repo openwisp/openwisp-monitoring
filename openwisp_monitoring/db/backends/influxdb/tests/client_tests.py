@@ -1,7 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from unittest.mock import patch
 
 from celery.exceptions import Retry
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils.timezone import now
@@ -15,8 +16,8 @@ from openwisp_monitoring.device.settings import SHORT_RETENTION_POLICY
 from openwisp_monitoring.device.utils import SHORT_RP, manage_short_retention_policy
 from openwisp_monitoring.monitoring.tests import TestMonitoringMixin
 
-from ...exceptions import TimeseriesWriteException
-from .. import timeseries_db
+from ....exceptions import TimeseriesWriteException
+from ... import timeseries_db
 
 Chart = load_model('monitoring', 'Chart')
 Notification = load_model('openwisp_notifications', 'Notification')
@@ -45,16 +46,6 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         custom_q = c._default_query.replace('{field_name}', '{fields}')
         q = c.get_query(query=custom_q, fields=['SUM(*)'])
         self.assertIn('SELECT SUM(*) FROM', q)
-
-    def test_is_aggregate_bug(self):
-        m = self._create_object_metric(name='summary_avg')
-        c = Chart(metric=m, configuration='dummy')
-        self.assertFalse(timeseries_db._is_aggregate(c.query))
-
-    def test_is_aggregate_fields_function(self):
-        m = self._create_object_metric(name='is_aggregate_func')
-        c = Chart(metric=m, configuration='uptime')
-        self.assertTrue(timeseries_db._is_aggregate(c.query))
 
     def test_get_query_fields_function(self):
         c = self._create_chart(test_data=None, configuration='histogram')
@@ -150,21 +141,6 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         measurement = timeseries_db.get_list_query(q)[0]
         self.assertEqual(measurement['upload'], 100)
 
-    def test_delete_metric_data(self):
-        m = self._create_general_metric(name='test_metric')
-        m.write(100)
-        self.assertEqual(m.read()[0]['value'], 100)
-        timeseries_db.delete_metric_data(key=m.key)
-        self.assertEqual(m.read(), [])
-        om = self._create_object_metric(name='dummy')
-        om.write(50)
-        m.write(100)
-        self.assertEqual(m.read()[0]['value'], 100)
-        self.assertEqual(om.read()[0]['value'], 50)
-        timeseries_db.delete_metric_data()
-        self.assertEqual(m.read(), [])
-        self.assertEqual(om.read(), [])
-
     def test_get_query_1d(self):
         c = self._create_chart(test_data=None, configuration='uptime')
         q = c.get_query(time='1d')
@@ -197,27 +173,11 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         )
         self.assertEqual(c.query, expected)
         self.assertEqual(
-            ''.join(timeseries_db.queries.default_chart_query[0:2]), c._default_query
+            ''.join(timeseries_db.default_chart_query(tags=c.metric.tags)),
+            c._default_query,
         )
         c.metric.object_id = None
-        self.assertEqual(timeseries_db.queries.default_chart_query[0], c._default_query)
-
-    def test_read_order(self):
-        m = self._create_general_metric(name='dummy')
-        m.write(30)
-        m.write(40, time=now() - timedelta(days=2))
-        with self.subTest('Test ascending read order'):
-            metric_data = m.read(limit=2, order='time')
-            self.assertEqual(metric_data[0]['value'], 40)
-            self.assertEqual(metric_data[1]['value'], 30)
-        with self.subTest('Test descending read order'):
-            metric_data = m.read(limit=2, order='-time')
-            self.assertEqual(metric_data[0]['value'], 30)
-            self.assertEqual(metric_data[1]['value'], 40)
-        with self.subTest('Test invalid read order'):
-            with self.assertRaises(timeseries_db.client_error) as e:
-                metric_data = m.read(limit=2, order='invalid')
-                self.assertIn('Invalid order "invalid" passed.', str(e))
+        self.assertEqual(timeseries_db.default_chart_query(tags=None), c._default_query)
 
     def test_read_with_rp(self):
         self._create_admin()
@@ -293,3 +253,59 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
     def _retry_task(self, task_signature):
         task_kwargs = task_signature.kwargs
         task_signature.type.run(**task_kwargs)
+
+    def test_get_query(self):
+        c = self._create_chart(test_data=False)
+        m = c.metric
+        now_ = now()
+        today = date(now_.year, now_.month, now_.day)
+        time = today - timedelta(days=6)
+        expected = c.query.format(
+            field_name=m.field_name,
+            key=m.key,
+            content_type=m.content_type_key,
+            object_id=m.object_id,
+            time=str(time),
+        )
+        expected = "{0} tz('{1}')".format(expected, settings.TIME_ZONE)
+        self.assertEqual(c.get_query(), expected)
+
+    def test_read(self):
+        c = self._create_chart()
+        data = c.read()
+        key = c.metric.field_name
+        self.assertIn('x', data)
+        self.assertIn('traces', data)
+        self.assertEqual(len(data['x']), 3)
+        charts = data['traces']
+        self.assertEqual(charts[0][0], key)
+        self.assertEqual(len(charts[0][1]), 3)
+        self.assertEqual(charts[0][1], [3, 6, 9])
+
+    def test_read_multiple(self):
+        c = self._create_chart(test_data=None, configuration='multiple_test')
+        m1 = c.metric
+        m2 = self._create_object_metric(
+            name='test metric 2',
+            key='test_metric',
+            field_name='value2',
+            content_object=m1.content_object,
+        )
+        now_ = now()
+        for n in range(0, 3):
+            time = now_ - timedelta(days=n)
+            m1.write(n + 1, time=time)
+            m2.write(n + 2, time=time)
+        data = c.read()
+        f1 = m1.field_name
+        f2 = 'value2'
+        self.assertIn('x', data)
+        self.assertIn('traces', data)
+        self.assertEqual(len(data['x']), 3)
+        charts = data['traces']
+        self.assertIn(f1, charts[0][0])
+        self.assertIn(f2, charts[1][0])
+        self.assertEqual(len(charts[0][1]), 3)
+        self.assertEqual(len(charts[1][1]), 3)
+        self.assertEqual(charts[0][1], [3, 2, 1])
+        self.assertEqual(charts[1][1], [4, 3, 2])

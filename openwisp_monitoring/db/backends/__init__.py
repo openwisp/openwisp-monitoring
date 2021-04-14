@@ -48,7 +48,8 @@ def load_backend_module(backend_name=TIMESERIES_DB['BACKEND'], module=None):
     except ImportError as e:
         # The database backend wasn't found. Display a helpful error message
         # listing all built-in database backends.
-        builtin_backends = ['influxdb']
+        builtin_backends = ['influxdb', 'elasticsearch']
+        raise e
         if backend_name not in [
             f'openwisp_monitoring.db.backends.{b}' for b in builtin_backends
         ]:

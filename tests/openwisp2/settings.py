@@ -19,7 +19,7 @@ DATABASES = {
     }
 }
 
-TIMESERIES_DATABASE = {
+INFLUXDB_SETTINGS = {
     'BACKEND': 'openwisp_monitoring.db.backends.influxdb',
     'USER': 'openwisp',
     'PASSWORD': 'openwisp',
@@ -27,6 +27,20 @@ TIMESERIES_DATABASE = {
     'HOST': os.getenv('INFLUXDB_HOST', 'localhost'),
     'PORT': '8086',
 }
+
+ELASTICSEARCH_SETTINGS = {
+    'BACKEND': 'openwisp_monitoring.db.backends.elasticsearch',
+    'USER': 'openwisp',
+    'PASSWORD': 'openwisp',
+    'NAME': 'openwisp2',
+    'HOST': os.getenv('ELASTICSEARCH_HOST', 'localhost'),
+    'PORT': '9200',
+}
+
+if os.environ.get('elasticsearch', False):
+    TIMESERIES_DATABASE = ELASTICSEARCH_SETTINGS
+else:
+    TIMESERIES_DATABASE = INFLUXDB_SETTINGS
 
 SECRET_KEY = 'fn)t*+$)ugeyip6-#txyy$5wf2ervc0d2n#h)qb)y5@ly$t*@w'
 
