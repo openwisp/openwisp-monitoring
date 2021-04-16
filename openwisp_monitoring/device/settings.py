@@ -50,6 +50,10 @@ CRITICAL_DEVICE_METRICS = get_critical_device_metrics()
 
 HEALTH_STATUS_LABELS = get_health_status_labels()
 
+AUTO_CLEAR_MANAGEMENT_IP = getattr(
+    settings, 'OPENWISP_MONITORING_AUTO_CLEAR_MANAGEMENT_IP', True
+)
+
 # Triggers spontaneous recovery of device based on corresponding signals
 DEVICE_RECOVERY_DETECTION = getattr(
     settings, 'OPENWISP_MONITORING_DEVICE_RECOVERY_DETECTION', True
