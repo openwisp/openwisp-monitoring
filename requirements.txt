@@ -5,7 +5,7 @@ openwisp-controller @ https://github.com/openwisp/openwisp-controller/tarball/ma
 # is the one dictated by openwisp-controller
 influxdb~=5.3
 django-celery-email~=3.0.0
-django-cache-memoize~=0.1
+django-cache-memoize~=0.1.0
 django-nested-admin~=3.3.2
 swapper~=1.1
 netaddr~=0.8
