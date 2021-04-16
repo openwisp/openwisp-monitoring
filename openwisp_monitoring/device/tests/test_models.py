@@ -592,10 +592,10 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
 
     def test_management_ip_clear_device_offline(self):
         dm, ping, load, process_count = self._create_env()
-        dm.device.management_ip = '0.0.0.0'
+        dm.device.management_ip = '10.10.0.5'
         dm.device.save()
         self.assertEqual(dm.status, 'ok')
-        self.assertEqual(dm.device.management_ip, '0.0.0.0')
+        self.assertEqual(dm.device.management_ip, '10.10.0.5')
         ping.check_threshold(0)
         self.assertEqual(dm.status, 'critical')
         self.assertIsNone(dm.device.management_ip)
@@ -603,10 +603,10 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
     @patch('openwisp_monitoring.device.settings.AUTO_CLEAR_MANAGEMENT_IP', False)
     def test_management_ip_not_clear_device_online(self):
         dm, ping, load, process_count = self._create_env()
-        dm.device.management_ip = '0.0.0.0'
+        dm.device.management_ip = '10.10.0.5'
         dm.device.save()
         self.assertEqual(dm.status, 'ok')
-        self.assertEqual(dm.device.management_ip, '0.0.0.0')
+        self.assertEqual(dm.device.management_ip, '10.10.0.5')
         ping.check_threshold(0)
         self.assertEqual(dm.status, 'critical')
         self.assertIsNotNone(dm.device.management_ip)
