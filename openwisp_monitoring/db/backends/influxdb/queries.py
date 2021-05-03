@@ -57,6 +57,22 @@ chart_query = {
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
+    'signal_strength': {
+        'influxdb': (
+            "SELECT MEAN(signal_strength) AS signal_strength, "
+            "MEAN(signal_power) AS signal_power FROM {key} WHERE "
+            "time >= '{time}' AND content_type = '{content_type}' AND "
+            "object_id = '{object_id}' GROUP BY time(1d)"
+        )
+    },
+    'signal_quality': {
+        'influxdb': (
+            "SELECT MEAN(signal_quality) AS signal_quality, "
+            "MEAN(snr) AS signal_to_noise_ratio FROM {key} WHERE "
+            "time >= '{time}' AND content_type = '{content_type}' AND "
+            "object_id = '{object_id}' GROUP BY time(1d)"
+        )
+    },
 }
 
 default_chart_query = [

@@ -174,6 +174,58 @@ DEFAULT_METRICS = {
             }
         },
     },
+    'signal_strength': {
+        'label': _('Signal Strength'),
+        'name': '{name}',
+        'key': '{key}',
+        'field_name': 'signal_strength',
+        'related_fields': ['signal_power'],
+        'charts': {
+            'signal_strength': {
+                'type': 'scatter',
+                'title': _('Signal Strength: {metric.key}'),
+                'label': _('Signal Strength'),
+                'colors': DEFAULT_COLORS,
+                'description': _(
+                    'Signal strength and power measured on '
+                    'the interface "{metric.key}", measured in dBm.'
+                ),
+                'summary_labels': [
+                    _('Total signal strength'),
+                    _('Total signal power'),
+                ],
+                'unit': _(' dBm'),
+                'order': 290,
+                'query': chart_query['signal_strength'],
+            }
+        },
+    },
+    'signal_quality': {
+        'label': _('Signal Quality'),
+        'name': '{name}',
+        'key': '{key}',
+        'field_name': 'signal_quality',
+        'related_fields': ['snr'],
+        'charts': {
+            'signal_quality': {
+                'type': 'scatter',
+                'title': _('Signal Quality: {metric.key}'),
+                'label': _('Signal Quality'),
+                'colors': DEFAULT_COLORS[1:],
+                'description': _(
+                    'Signal quality and signal-noise ratio (SNR), measured '
+                    'on the interface "{metric.key}", measured in dB.'
+                ),
+                'summary_labels': [
+                    _('Total signal quality'),
+                    _('Total signal to noise ratio'),
+                ],
+                'unit': _(' dB'),
+                'order': 300,
+                'query': chart_query['signal_quality'],
+            }
+        },
+    },
     'clients': {
         'label': _('Clients'),
         'name': '{name}',

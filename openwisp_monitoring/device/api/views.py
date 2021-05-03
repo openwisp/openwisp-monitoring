@@ -193,6 +193,52 @@ class DeviceMetricView(GenericAPIView):
         data = self.instance.data
         ct = ContentType.objects.get_for_model(Device)
         for interface in data.get('interfaces', []):
+            if 'mobile' in interface:
+                for iftype in interface['mobile']['signal'].keys():
+                    # create signal strength chart
+                    signal_data = interface['mobile']['signal'][iftype]
+                    signal_power = signal_strength = None
+                    if iftype in ['lte', '5g']:
+                        signal_power = signal_data['rsrp']
+                    elif iftype == 'umts':
+                        signal_power = signal_data['rscp']
+                    if iftype in ['cdma1x', 'evdo', 'gsm', 'lte', 'umts']:
+                        signal_strength = signal_data['rssi']
+                    if signal_strength is not None and signal_power is not None:
+                        extra_values = {'signal_power': signal_power}
+                        name = f'{iftype} signal strength'
+                        metric, created = Metric._get_or_create(
+                            object_id=pk,
+                            content_type=ct,
+                            configuration='signal_strength',
+                            name=name,
+                            key=iftype,
+                        )
+                        metric.write(signal_strength, extra_values=extra_values)
+                        if created:
+                            self._create_signal_strength_chart(metric)
+                    # create signal quality chart
+                    snr = signal_quality = None
+                    if iftype in ['lte', '5g']:
+                        snr = signal_data['snr']
+                        signal_quality = signal_data['rsrq']
+                    elif iftype == 'evdo':
+                        snr = signal_data['sinr']
+                    if iftype == 'umts':
+                        signal_quality = signal_data['rscp']
+                    if snr is not None and signal_quality is not None:
+                        extra_values = {'snr': snr}
+                        name = f'{iftype} signal quality'
+                        metric, created = Metric._get_or_create(
+                            object_id=pk,
+                            content_type=ct,
+                            configuration='signal_quality',
+                            name=name,
+                            key=iftype,
+                        )
+                        metric.write(signal_quality, extra_values=extra_values)
+                        if created:
+                            self._create_signal_quality_chart(metric)
             ifname = interface['name']
             ifstats = interface.get('statistics', {})
             # Explicitly stated None to avoid skipping in case the stats are zero
@@ -336,6 +382,22 @@ class DeviceMetricView(GenericAPIView):
         if 'traffic' not in monitoring_settings.AUTO_CHARTS:
             return
         chart = Chart(metric=metric, configuration='traffic')
+        chart.full_clean()
+        chart.save()
+
+    def _create_signal_strength_chart(self, metric):
+        """
+        creates "Signal Strength" chart
+        """
+        chart = Chart(metric=metric, configuration='signal_strength')
+        chart.full_clean()
+        chart.save()
+
+    def _create_signal_quality_chart(self, metric):
+        """
+        creates "Signal Quality" chart
+        """
+        chart = Chart(metric=metric, configuration='signal_quality')
         chart.full_clean()
         chart.save()
 

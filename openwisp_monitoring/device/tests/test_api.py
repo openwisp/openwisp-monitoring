@@ -535,6 +535,47 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             with self.subTest(interface_data['name']):
                 self.assertEqual(r.status_code, 400)
 
+    def test_mobile_charts(self):
+        org = self._create_org()
+        device = self._create_device(organization=org)
+        data = {
+            'type': 'DeviceMonitoring',
+            'interfaces': [
+                {
+                    'name': 'mobile0',
+                    'mac': '00:00:00:00:00:00',
+                    'mtu': 1900,
+                    'multicast': True,
+                    'txqueuelen': 1000,
+                    'type': 'modem-manager',
+                    'up': True,
+                    'mobile': {
+                        'connection_status': 'connected',
+                        'imei': '300000001234567',
+                        'manufacturer': 'Sierra Wireless, Incorporated',
+                        'model': 'MC7430',
+                        'operator_code': '50502',
+                        'operator_name': 'YES OPTUS',
+                        'power_status': 'on',
+                        'signal': {
+                            'lte': {'rsrp': -75, 'rsrq': -8, 'rssi': -51, 'snr': 13},
+                            'umts': {'ecio': 2, 'rscp': -14, 'rssi': -80},
+                        },
+                    },
+                }
+            ],
+        }
+        self._post_data(device.id, device.key, data)
+        response = self.client.get(self._url(device.pk.hex, device.key))
+        self.assertEqual(response.status_code, 200)
+        charts = response.data['charts']
+        self.assertEqual(charts[0]['summary']['signal_strength'], -51.0)
+        self.assertEqual(charts[0]['summary']['signal_power'], -75.0)
+        self.assertEqual(charts[1]['summary']['signal_strength'], -80.0)
+        self.assertEqual(charts[1]['summary']['signal_power'], -14.0)
+        self.assertEqual(charts[2]['summary']['signal_quality'], -8.0)
+        self.assertEqual(charts[2]['summary']['signal_to_noise_ratio'], 13.0)
+
 
 class TestGeoApi(TestGeoMixin, DeviceMonitoringTestCase):
     location_model = Location
