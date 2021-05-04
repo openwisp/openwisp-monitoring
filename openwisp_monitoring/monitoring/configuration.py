@@ -250,9 +250,9 @@ DEFAULT_METRICS = {
                 'type': 'bar',
                 'title': _('Access Technology'),
                 'description': _(
-                    'A value of 100% means reachable, 0% means unreachable, values in '
-                    'between 0% and 100% indicate the average reachability in the '
-                    'period observed. Obtained with the fping linux program.'
+                    'Shows the technology being used to collect mobile signal information '
+                    '(like LTE, UTMS, CDMA1x, etc.) to be used in Signal Strength and '
+                    'Signal Quality charts.'
                 ),
                 'order': 310,
                 'unit': '',
