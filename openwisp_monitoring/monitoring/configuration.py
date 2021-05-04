@@ -183,16 +183,13 @@ DEFAULT_METRICS = {
         'charts': {
             'signal_strength': {
                 'type': 'scatter',
-                'title': _('Signal Strength: {metric.key}'),
+                'title': _('Signal Strength'),
                 'label': _('Signal Strength'),
                 'colors': DEFAULT_COLORS,
-                'description': _(
-                    'Signal strength and power measured on '
-                    'the interface "{metric.key}", measured in dBm.'
-                ),
+                'description': _('Signal strength and signal power, measured in dBm.'),
                 'summary_labels': [
-                    _('Total signal strength'),
                     _('Total signal power'),
+                    _('Total signal strength'),
                 ],
                 'unit': _(' dBm'),
                 'order': 290,
@@ -209,12 +206,11 @@ DEFAULT_METRICS = {
         'charts': {
             'signal_quality': {
                 'type': 'scatter',
-                'title': _('Signal Quality: {metric.key}'),
+                'title': _('Signal Quality'),
                 'label': _('Signal Quality'),
                 'colors': DEFAULT_COLORS[1:],
                 'description': _(
-                    'Signal quality and signal-noise ratio (SNR), measured '
-                    'on the interface "{metric.key}", measured in dB.'
+                    'Signal quality and signal-noise ratio (SNR), measured in dB.'
                 ),
                 'summary_labels': [
                     _('Total signal quality'),

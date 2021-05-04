@@ -538,6 +538,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
     def test_mobile_charts(self):
         org = self._create_org()
         device = self._create_device(organization=org)
+        charts_count = Chart.objects.count()
         data = {
             'type': 'DeviceMonitoring',
             'interfaces': [
@@ -559,22 +560,24 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                         'power_status': 'on',
                         'signal': {
                             'lte': {'rsrp': -75, 'rsrq': -8, 'rssi': -51, 'snr': 13},
-                            'umts': {'ecio': 2, 'rscp': -14, 'rssi': -80},
                         },
                     },
                 }
             ],
         }
         self._post_data(device.id, device.key, data)
+        data['interfaces'][0]['mobile']['signal'].update(
+            {'umts': {'ecio': 2, 'rscp': -14, 'rssi': -80}}
+        )
+        self._post_data(device.id, device.key, data)
         response = self.client.get(self._url(device.pk.hex, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data['charts']
         self.assertEqual(charts[0]['summary']['signal_strength'], -51.0)
         self.assertEqual(charts[0]['summary']['signal_power'], -75.0)
-        self.assertEqual(charts[1]['summary']['signal_strength'], -80.0)
-        self.assertEqual(charts[1]['summary']['signal_power'], -14.0)
-        self.assertEqual(charts[2]['summary']['signal_quality'], -8.0)
-        self.assertEqual(charts[2]['summary']['signal_to_noise_ratio'], 13.0)
+        self.assertEqual(charts[1]['summary']['signal_quality'], -8.0)
+        self.assertEqual(charts[1]['summary']['signal_to_noise_ratio'], 13.0)
+        self.assertEqual(Chart.objects.count(), charts_count + 2)
 
 
 class TestGeoApi(TestGeoMixin, DeviceMonitoringTestCase):
