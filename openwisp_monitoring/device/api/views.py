@@ -21,6 +21,7 @@ from swapper import load_model
 from openwisp_controller.geo.api.views import GeoJsonLocationList, LocationDeviceList
 
 from ... import settings as monitoring_settings
+from ...monitoring.configuration import ACCESS_TECHNOLOGIES
 from ...monitoring.exceptions import InvalidChartConfigException
 from ..schema import schema
 from ..signals import device_metrics_received
@@ -238,6 +239,17 @@ class DeviceMetricView(GenericAPIView):
                     metric.write(signal_quality, extra_values=extra_values)
                     if created:
                         self._create_signal_quality_chart(metric)
+                # create access technology chart
+                metric, created = Metric._get_or_create(
+                    object_id=pk,
+                    content_type=ct,
+                    configuration='access_tech',
+                    name='access technology',
+                    key=ifname,
+                )
+                metric.write(list(ACCESS_TECHNOLOGIES.keys()).index(iftype))
+                if created:
+                    self._create_access_tech_chart(metric)
             ifstats = interface.get('statistics', {})
             # Explicitly stated None to avoid skipping in case the stats are zero
             if (
@@ -396,6 +408,14 @@ class DeviceMetricView(GenericAPIView):
         creates "Signal Quality" chart
         """
         chart = Chart(metric=metric, configuration='signal_quality')
+        chart.full_clean()
+        chart.save()
+
+    def _create_access_tech_chart(self, metric):
+        """
+        creates "Access Technology" chart
+        """
+        chart = Chart(metric=metric, configuration='access_tech')
         chart.full_clean()
         chart.save()
 

@@ -577,7 +577,19 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(charts[0]['summary']['signal_power'], -75.0)
         self.assertEqual(charts[1]['summary']['signal_quality'], -8.0)
         self.assertEqual(charts[1]['summary']['signal_to_noise_ratio'], 13.0)
-        self.assertEqual(Chart.objects.count(), charts_count + 2)
+        self.assertEqual(charts[2]['summary']['access_tech'], 3.0)
+        # ensure correct color-coding
+        self.assertEqual(
+            charts[2]['colorscale']['map'],
+            [
+                [4, '#b42a0c', 'umts'],
+                [3, '#25b262', 'lte'],
+                [2, '#df7514', 'gsm'],
+                [1, '#efdd50', 'evdo'],
+                [0, '#0e7371', 'cdma1x'],
+            ],
+        )
+        self.assertEqual(Chart.objects.count(), charts_count + 3)
 
 
 class TestGeoApi(TestGeoMixin, DeviceMonitoringTestCase):

@@ -100,7 +100,8 @@
                 options.marker = {
                     cmax: config.max,
                     cmin: config.min,
-                    colorbar: {title: config.label},
+                    colorbar:
+                        config.hide_colorbar === true ? null : {title: config.label},
                     colorscale: config.scale,
                     color: []
                 };

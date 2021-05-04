@@ -23,6 +23,23 @@ DEFAULT_COLORS = [
     '#17becf',  # blue-teal
 ]
 
+ACCESS_TECHNOLOGIES = {
+    'cdma1x': '#0e7371',
+    'evdo': '#efdd50',
+    'gsm': '#df7514',
+    'lte': '#25b262',
+    'umts': '#b42a0c',
+}
+
+
+def _get_access_tech():
+    res = []
+    keys_list = list(ACCESS_TECHNOLOGIES.keys())
+    for i in reversed(keys_list):
+        res.append([keys_list.index(i), ACCESS_TECHNOLOGIES[i], i])
+    return res
+
+
 # under discussion
 DEFAULT_METRICS = {
     'ping': {
@@ -222,6 +239,33 @@ DEFAULT_METRICS = {
             }
         },
     },
+    'access_tech': {
+        'label': _('Access Technology'),
+        'name': '{name}',
+        'key': '{key}',
+        'field_name': 'access_tech',
+        'related_fields': ['snr'],
+        'charts': {
+            'access_tech': {
+                'type': 'bar',
+                'title': _('Access Technology'),
+                'description': _(
+                    'A value of 100% means reachable, 0% means unreachable, values in '
+                    'between 0% and 100% indicate the average reachability in the '
+                    'period observed. Obtained with the fping linux program.'
+                ),
+                'order': 310,
+                'unit': '',
+                'colorscale': {
+                    'label': _('Access Technology'),
+                    'map': _get_access_tech(),
+                    'hide_colorbar': True,
+                    'fixed_value': 1,
+                },
+                'query': chart_query['access_tech'],
+            }
+        },
+    },
     'clients': {
         'label': _('Clients'),
         'name': '{name}',
@@ -416,10 +460,11 @@ def _validate_chart_configuration(chart_config):
     if chart_config['query'] is None:
         assert 'unit' in chart_config
     if 'colorscale' in chart_config:
-        assert 'max' in chart_config['colorscale']
-        assert 'min' in chart_config['colorscale']
-        assert 'label' in chart_config['colorscale']
-        assert 'scale' in chart_config['colorscale']
+        if not chart_config.get('hide_colorbar', True):
+            assert 'max' in chart_config['colorscale']
+            assert 'min' in chart_config['colorscale']
+            assert 'label' in chart_config['colorscale']
+            assert 'scale' in chart_config['colorscale']
 
 
 def register_metric_notifications(metric_name, metric_config):

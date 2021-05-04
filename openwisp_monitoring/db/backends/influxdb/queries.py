@@ -73,6 +73,13 @@ chart_query = {
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
+    'access_tech': {
+        'influxdb': (
+            "SELECT MODE(access_tech) AS access_tech FROM {key} WHERE "
+            "time >= '{time}' AND content_type = '{content_type}' AND "
+            "object_id = '{object_id}' GROUP BY time(1d)"
+        )
+    },
 }
 
 default_chart_query = [
