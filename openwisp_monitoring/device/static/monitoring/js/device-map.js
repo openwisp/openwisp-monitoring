@@ -5,7 +5,7 @@ function owGeoMapInit (map, options) {
   $ = django.jQuery,
   loadingOverlay = $('#device-map-container .ow-loading-spinner'),
   localStorageKey = 'ow-map-shown',
-  mapContainer = $('#device-map-container');
+  mapContainer = $('#device-map-container'),
   colors = {
     ok: '#267126',
     problem: '#ffb442',
@@ -141,7 +141,7 @@ ${pagination}
     }
     var geojsonLayer = L.geoJSON(data, {
       pointToLayer: function (feature, latlng) {
-        var marker = L.circleMarker(latlng, {
+        return L.circleMarker(latlng, {
           radius: 9,
           fillColor: getColor(feature.properties),
           color: "rgba(0, 0, 0, 0.3)",
@@ -149,23 +149,27 @@ ${pagination}
           opacity: 1,
           fillOpacity: 0.7
         });
-        // setting the URL as a property allows to reopen the
-        // pop up at the same page where it was closed
-        // marker.devicesUrl = getLocationDeviceUrl(feature.id);
-        marker.on('mouseover', function(){
+      },
+      onEachFeature: function (feature, layer) {
+        layer.on('mouseover', function(){
           this.unbindTooltip();
           if(!this.isPopupOpen()) {
             this.bindTooltip(feature.properties.name).openTooltip();
-          };
+          }
         });
-        marker.on('click', function(){
+        layer.on('click', function(){
           this.unbindTooltip();
           this.unbindPopup();
-          loadPopUpContent(marker);
+          loadPopUpContent(layer);
         });
-        return marker;
       }
     }).addTo(map);
+
+    //move points to top of polygons
+    geojsonLayer.eachLayer(function (layer) {
+      layer[layer.feature.geometry.type == 'Point' ? 'bringToFront' : 'bringToBack']();
+    });
+
     map.addControl(new L.Control.Fullscreen());
 
     if (geojsonLayer.getLayers().length === 1) {
