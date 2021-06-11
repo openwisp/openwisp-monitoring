@@ -71,7 +71,10 @@
         for (var i=0; i<data.traces.length; i++) {
             key = data.traces[i][0];
             label = data.traces[i][0].replace(/_/g, ' ');
-            if (data.summary_labels){ summaryLabels.push([key, data.summary_labels[i]]);}
+
+            if (data.summary_labels){
+              summaryLabels.push([key, data.summary_labels[i]]);
+            }
             var options = {
                     name: label,
                     type: type,
@@ -163,10 +166,11 @@
         if (data.summary && type != 'histogram') {
             for (i=0; i<summaryLabels.length; i++) {
                 var el = summaryLabels[i],
-                    percircleOptions = {progressBarColor: data.colors[i]},
-                    value = data.summary[key];
+                    percircleOptions = {progressBarColor: data.colors[i]};
                 key = el[0];
                 label = el[1];
+                var value = data.summary[key];
+
                 if (unit === '%') {
                     percircleOptions.percent = value;
                     if (value === 0) {
