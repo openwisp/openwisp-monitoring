@@ -97,6 +97,9 @@ class DeviceMetricView(GenericAPIView):
                 chart_dict['summary_labels'] = chart.summary_labels
                 chart_dict['colors'] = chart.colors
                 chart_dict['colorscale'] = chart.colorscale
+                fill = chart.fill
+                if fill:
+                    chart_dict['fill'] = fill
             except InvalidChartConfigException:
                 logger.exception(f'Skipped chart for metric {chart.metric}')
                 continue
@@ -253,19 +256,35 @@ class DeviceMetricView(GenericAPIView):
         if 'memory' in data['resources']:
             self._write_memory(data['resources']['memory'], pk, ct)
 
+    def _get_mobile_signal_type(self, signal):
+        # if only one access technology in use, return that
+        sections = list(signal.keys())
+        if len(sections) == 1:
+            return sections[0]
+        # if multiple access technologies are in use,
+        # return the most advanced one
+        access_technologies = list(ACCESS_TECHNOLOGIES.keys())
+        access_technologies.reverse()
+        for tech in access_technologies:
+            if tech in signal:
+                return tech
+
     def _write_mobile_signal(self, interface, ifname, ct, pk):
-        iftype = list(interface['mobile']['signal'].keys())[0]
-        signal_data = interface['mobile']['signal'][iftype]
-        # create signal strength chart
+        access_type = self._get_mobile_signal_type(interface['mobile']['signal'])
+        data = interface['mobile']['signal'][access_type]
         signal_power = signal_strength = None
-        if iftype == 'lte':
-            signal_power = signal_data['rsrp']
-        elif iftype == 'umts':
-            signal_power = signal_data['rscp']
-        if iftype in ['cdma1x', 'evdo', 'gsm', 'lte', 'umts']:
-            signal_strength = signal_data['rssi']
-        if signal_strength is not None and signal_power is not None:
-            extra_values = {'signal_power': signal_power}
+        extra_values = {}
+        if 'rssi' in data:
+            signal_strength = data['rssi']
+        if 'rsrp' in data:
+            signal_power = data['rsrp']
+        elif 'rscp' in data:
+            signal_power = data['rscp']
+        if signal_power is not None:
+            extra_values = {'signal_power': float(signal_power)}
+        if signal_strength is not None:
+            signal_strength = float(signal_strength)
+        if signal_strength is not None or signal_power is not None:
             metric, created = Metric._get_or_create(
                 object_id=pk,
                 content_type=ct,
@@ -276,17 +295,21 @@ class DeviceMetricView(GenericAPIView):
             metric.write(signal_strength, extra_values=extra_values)
             if created:
                 self._create_signal_strength_chart(metric)
-        # create signal quality chart
+
         snr = signal_quality = None
-        if iftype == 'lte':
-            snr = signal_data['snr']
-            signal_quality = signal_data['rsrq']
-        elif iftype == 'evdo':
-            snr = signal_data['sinr']
-        elif iftype == 'umts':
-            signal_quality = signal_data['rscp']
-        if snr is not None and signal_quality is not None:
-            extra_values = {'snr': snr}
+        if 'snr' in data:
+            snr = data['snr']
+        if 'sinr' in data:
+            snr = data['sinr']
+        if 'rsrq' in data:
+            signal_quality = data['rsrq']
+        if 'ecio' in data:
+            signal_quality = data['ecio']
+        if snr is not None:
+            extra_values = {'snr': float(snr)}
+        if signal_quality is not None:
+            signal_quality = float(signal_quality)
+        if snr is not None or signal_quality is not None:
             metric, created = Metric._get_or_create(
                 object_id=pk,
                 content_type=ct,
@@ -305,7 +328,7 @@ class DeviceMetricView(GenericAPIView):
             name='access technology',
             key=ifname,
         )
-        metric.write(list(ACCESS_TECHNOLOGIES.keys()).index(iftype))
+        metric.write(list(ACCESS_TECHNOLOGIES.keys()).index(access_type))
         if created:
             self._create_access_tech_chart(metric)
 
@@ -398,30 +421,6 @@ class DeviceMetricView(GenericAPIView):
         chart.full_clean()
         chart.save()
 
-    def _create_signal_strength_chart(self, metric):
-        """
-        creates "Signal Strength" chart
-        """
-        chart = Chart(metric=metric, configuration='signal_strength')
-        chart.full_clean()
-        chart.save()
-
-    def _create_signal_quality_chart(self, metric):
-        """
-        creates "Signal Quality" chart
-        """
-        chart = Chart(metric=metric, configuration='signal_quality')
-        chart.full_clean()
-        chart.save()
-
-    def _create_access_tech_chart(self, metric):
-        """
-        creates "Access Technology" chart
-        """
-        chart = Chart(metric=metric, configuration='access_tech')
-        chart.full_clean()
-        chart.save()
-
     def _create_clients_chart(self, metric):
         """
         creates "WiFi associations" chart
@@ -443,6 +442,21 @@ class DeviceMetricView(GenericAPIView):
         alert_settings = AlertSettings(metric=metric)
         alert_settings.full_clean()
         alert_settings.save()
+
+    def _create_signal_strength_chart(self, metric):
+        chart = Chart(metric=metric, configuration='signal_strength')
+        chart.full_clean()
+        chart.save()
+
+    def _create_signal_quality_chart(self, metric):
+        chart = Chart(metric=metric, configuration='signal_quality')
+        chart.full_clean()
+        chart.save()
+
+    def _create_access_tech_chart(self, metric):
+        chart = Chart(metric=metric, configuration='access_tech')
+        chart.full_clean()
+        chart.save()
 
 
 device_metric = DeviceMetricView.as_view()

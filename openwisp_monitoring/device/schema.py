@@ -288,6 +288,12 @@ schema = {
                                 "type": "object",
                                 "additionalProperties": False,
                                 "properties": {
+                                    "gsm": {
+                                        "type": "object",
+                                        "additionalProperties": False,
+                                        "required": ["rssi"],
+                                        "properties": {"rssi": {"type": "number"}},
+                                    },
                                     "cdma1x": {
                                         "type": "object",
                                         "additionalProperties": False,
@@ -308,11 +314,15 @@ schema = {
                                             "sinr": {"type": "number"},
                                         },
                                     },
-                                    "gsm": {
+                                    "umts": {
                                         "type": "object",
                                         "additionalProperties": False,
-                                        "required": ["rssi"],
-                                        "properties": {"rssi": {"type": "number"}},
+                                        "required": ["rssi", "ecio"],
+                                        "properties": {
+                                            "rssi": {"type": "number"},
+                                            "rscp": {"type": "number"},
+                                            "ecio": {"type": "number"},
+                                        },
                                     },
                                     "lte": {
                                         "type": "object",
@@ -325,14 +335,14 @@ schema = {
                                             "snr": {"type": "number"},
                                         },
                                     },
-                                    "umts": {
+                                    "5g": {
                                         "type": "object",
                                         "additionalProperties": False,
-                                        "required": ["rssi", "rscp", "ecio"],
+                                        "required": ["rsrp", "rsrq", "snr"],
                                         "properties": {
-                                            "rssi": {"type": "number"},
-                                            "rscp": {"type": "number"},
-                                            "ecio": {"type": "number"},
+                                            "rsrp": {"type": "number"},
+                                            "rsrq": {"type": "number"},
+                                            "snr": {"type": "number"},
                                         },
                                     },
                                 },

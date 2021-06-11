@@ -16,6 +16,7 @@
                     yanchor: 'top',
                     y: -0.15,
                     x: 0.5,
+                    traceorder: 'normal'
                 },
                 xaxis: {visible: type != 'histogram'},
                 margin: {
@@ -50,6 +51,10 @@
         if (type === 'histogram') {
             layout.hovermode = 'closest';
         }
+        if (type === 'stackedbar') {
+            type = 'bar';
+            layout.barmode = 'stack';
+        }
         var map, mapped, label, fixedValue, key;
         // given a value, returns its color and description
         // according to the color map configuration of this chart
@@ -79,7 +84,7 @@
                     name: label,
                     type: type,
                     mode: mode,
-                    fill: 'tozeroy',
+                    fill: data.fill || 'tozeroy',
                     hovertemplate: [],
                     y: []
                 },
@@ -100,8 +105,7 @@
                 options.marker = {
                     cmax: config.max,
                     cmin: config.min,
-                    colorbar:
-                        config.hide_colorbar === true ? null : {title: config.label},
+                    colorbar: {title: config.label},
                     colorscale: config.scale,
                     color: []
                 };
@@ -182,6 +186,10 @@
                 else {
                     percircleOptions.text = value + data.unit;
                     percircleOptions.percent = 75;
+                }
+                if (value === null) {
+                  percircleOptions.text = 'N/A';
+                  percircleOptions.percent = 1;
                 }
                 if (data.colorscale && data.colorscale.map) {
                     mapped = findInColorMap(value);
