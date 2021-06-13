@@ -1,8 +1,6 @@
 # TODO: put back the standard pypi release when
 # next point version of openwisp-controller is released
 openwisp-controller @ https://github.com/openwisp/openwisp-controller/tarball/master
-# TODO: Remove before release
-openwisp-utils[rest] @ https://github.com/atb00ker/openwisp-utils/tarball/extraconfig
 influxdb~=5.3
 django-celery-email~=3.0.0
 django-cache-memoize~=0.1.0

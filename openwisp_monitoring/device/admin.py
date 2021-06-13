@@ -1,4 +1,5 @@
 import uuid
+from urllib.parse import urljoin
 
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline
@@ -19,6 +20,7 @@ from swapper import load_model
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
 
 from ..monitoring.admin import MetricAdmin
+from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from . import settings as app_settings
 
 DeviceData = load_model('device_monitoring', 'DeviceData')
@@ -129,7 +131,13 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         ctx = super().get_extra_context(pk)
         if pk:
             device_data = DeviceData(pk=uuid.UUID(pk))
-            api_url = reverse('monitoring:api_device_metric', args=[pk])
+            api_url = reverse(
+                'monitoring:api_device_metric',
+                urlconf=MONITORING_API_URLCONF,
+                args=[pk],
+            )
+            if MONITORING_API_BASEURL:
+                api_url = urljoin(MONITORING_API_BASEURL, api_url)
             ctx.update(
                 {
                     'device_data': device_data.data_user_friendly,

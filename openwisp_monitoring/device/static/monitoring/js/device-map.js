@@ -128,7 +128,7 @@ ${pagination}
         mapContainer.slideUp(50);
     }
 
-    $.getJSON(window._owGeoMapConfig.geoJsonUrl, function (data) {
+    function onAjaxSuccess(data) {
         // show map only if there's anything to show
         if (!data.count) {
             map.off();
@@ -187,5 +187,12 @@ ${pagination}
         }
 
         loadingOverlay.fadeOut(250);
+    }
+
+    $.ajax({
+        dataType: "json",
+        url: window._owGeoMapConfig.geoJsonUrl,
+        xhrFields: { withCredentials: true },
+        success: onAjaxSuccess
     });
 }

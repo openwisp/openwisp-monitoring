@@ -190,6 +190,8 @@ else:
 # avoid slowing down the test suite with mac vendor lookups
 if TESTING:
     OPENWISP_MONITORING_MAC_VENDOR_DETECTION = False
+    OPENWISP_MONITORING_API_URLCONF = 'openwisp_monitoring.urls'
+    OPENWISP_MONITORING_API_BASEURL = 'http://testserver'
 
 # Temporarily added to identify slow tests
 TEST_RUNNER = 'openwisp_utils.tests.TimeLoggingTestRunner'

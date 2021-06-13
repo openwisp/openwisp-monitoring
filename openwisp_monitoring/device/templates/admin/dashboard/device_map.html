@@ -1,9 +1,9 @@
 {% load leaflet_tags i18n %}
 <script type="text/javascript">
-window._owGeoMapConfig = {
-  geoJsonUrl: '{% url "monitoring:api_location_geojson" %}',
-  locationDeviceUrl: '{% url "monitoring:api_location_device_list" "000" %}?page_size=5'
-}
+  window._owGeoMapConfig = {
+    geoJsonUrl: '{{ monitoring_location_geojson_url }}',
+    locationDeviceUrl: '{{ monitoring_device_list_url }}?page_size=5'
+  }
 </script>
 <div id="device-map-container">
   {% leaflet_map "device-map" callback="owGeoMapInit" %}

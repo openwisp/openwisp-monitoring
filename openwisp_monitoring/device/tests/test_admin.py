@@ -46,8 +46,16 @@ class TestAdmin(DeviceMonitoringTestCase):
         self.assertContains(response, 'RAM status')
         self.assertContains(response, 'AlertSettings')
         self.assertContains(response, 'Is healthy')
+        self.assertContains(response, 'http://testserver/api')
         self.assertContains(response, check.name)
         self.assertContains(response, check.params)
+
+    def test_dashboard_map_on_index(self):
+        url = reverse('admin:index')
+        self._login_admin()
+        response = self.client.get(url)
+        self.assertContains(response, "geoJsonUrl: \'http://testserver/api")
+        self.assertContains(response, "locationDeviceUrl: \'http://testserver/api")
 
     def test_status_data(self):
         d = self._create_device(organization=self._create_org())

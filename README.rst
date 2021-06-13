@@ -876,6 +876,33 @@ In case you just want to change the colors used in a chart here's how to do it:
 This setting allows you to automatically clear management_ip of a device
 when it goes offline. It is enabled by default.
 
+``OPENWISP_MONITORING_API_URLCONF``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``string``  |
++--------------+-------------+
+| **default**: | ``None``    |
++--------------+-------------+
+
+Changes the urlconf option of django urls to point the monitoring API
+urls to another installed module, example, ``myapp.urls``.
+(Useful when you have a seperate API instance.)
+
+``OPENWISP_MONITORING_API_BASEURL``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``string``  |
++--------------+-------------+
+| **default**: | ``None``    |
++--------------+-------------+
+
+If you have a seperate server for API of openwisp-monitoring on a different
+domain, you can use this option to change the base of the url, this will
+enable you to point all the API urls to your openwisp-monitoring API server's
+domain, example: ``https://mymonitoring.myapp.com``.
+
 Registering / Unregistering Metric Configuration
 ------------------------------------------------
 
