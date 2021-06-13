@@ -1,7 +1,10 @@
+from urllib.parse import urljoin
+
 from django.apps import AppConfig
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models.signals import post_delete, post_save
+from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
 from swapper import load_model
 
@@ -14,6 +17,7 @@ from openwisp_utils.admin_theme import (
 )
 
 from ..check import settings as check_settings
+from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from ..utils import transaction_on_commit
 from . import settings as app_settings
 from .signals import device_metrics_received, health_status_changed
@@ -201,7 +205,20 @@ class DeviceMonitoringConfig(AppConfig):
                 },
             },
         )
+
         if app_settings.DASHBOARD_MAP:
+            loc_geojson_url = reverse_lazy(
+                "monitoring:api_location_geojson", urlconf=MONITORING_API_URLCONF
+            )
+            device_list_url = reverse_lazy(
+                "monitoring:api_location_device_list",
+                urlconf=MONITORING_API_URLCONF,
+                args=["000"],
+            )
+            if MONITORING_API_BASEURL:
+                device_list_url = urljoin(MONITORING_API_BASEURL, str(device_list_url))
+                loc_geojson_url = urljoin(MONITORING_API_BASEURL, str(loc_geojson_url))
+
             register_dashboard_template(
                 position=0,
                 config={
@@ -217,5 +234,9 @@ class DeviceMonitoringConfig(AppConfig):
                         'leaflet/leaflet.extras.js',
                         'monitoring/js/leaflet.fullscreen.min.js',
                     ),
+                },
+                extra_config={
+                    'monitoring_device_list_url': device_list_url,
+                    'monitoring_location_geojson_url': loc_geojson_url,
                 },
             )
