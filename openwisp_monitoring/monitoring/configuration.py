@@ -378,7 +378,7 @@ DEFAULT_METRICS = {
         'related_fields': ['signal_power'],
         'charts': {
             'signal_strength': {
-                'type': 'stackedbar',
+                'type': 'scatter',
                 'fill': 'none',
                 'title': _('Signal Strength'),
                 'colors': (DEFAULT_COLORS[3], DEFAULT_COLORS[0]),
@@ -388,7 +388,7 @@ DEFAULT_METRICS = {
                     _('Average Signal Strength'),
                 ],
                 'unit': _(' dBm'),
-                'order': 290,
+                'order': 205,
                 'query': chart_query['signal_strength'],
             }
         },
@@ -402,8 +402,9 @@ DEFAULT_METRICS = {
         'charts': {
             'signal_quality': {
                 'type': 'scatter',
+                'fill': 'none',
                 'title': _('Signal Quality'),
-                'colors': (DEFAULT_COLORS[2], DEFAULT_COLORS[6]),
+                'colors': (DEFAULT_COLORS[3], DEFAULT_COLORS[0]),
                 'description': _(
                     _('Signal Quality and Signal to Noise Ratio (SNR), measured in dB.')
                 ),
@@ -412,7 +413,7 @@ DEFAULT_METRICS = {
                     _('Average Signal to Noise Ratio'),
                 ],
                 'unit': _(' dB'),
-                'order': 300,
+                'order': 206,
                 'query': chart_query['signal_quality'],
             }
         },
@@ -432,7 +433,7 @@ DEFAULT_METRICS = {
                         'in use on the device at the specified time.'
                     )
                 ),
-                'order': 310,
+                'order': 207,
                 'unit': '',
                 'colorscale': {
                     'label': '',
