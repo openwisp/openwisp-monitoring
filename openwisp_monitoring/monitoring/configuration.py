@@ -380,6 +380,7 @@ DEFAULT_METRICS = {
             'signal_strength': {
                 'type': 'scatter',
                 'fill': 'none',
+                'yaxis': {'zeroline': False},
                 'title': _('Signal Strength'),
                 'colors': (DEFAULT_COLORS[3], DEFAULT_COLORS[0]),
                 'description': _('Signal Strength and Signal Power, measured in dBm.'),
@@ -403,6 +404,7 @@ DEFAULT_METRICS = {
             'signal_quality': {
                 'type': 'scatter',
                 'fill': 'none',
+                'yaxis': {'zeroline': False},
                 'title': _('Signal Quality'),
                 'colors': (DEFAULT_COLORS[3], DEFAULT_COLORS[0]),
                 'description': _(

@@ -7,6 +7,11 @@
             return;
         }
         if (!x) {x = data.x;}
+
+        var xaxis = data.xaxis || {};
+        var yaxis = data.yaxis || {};
+        xaxis.visible = type != 'histogram';
+
         var mode = x.length > 30 ? 'lines' : 'markers+lines',
             layout = {
                 showlegend: true,
@@ -18,7 +23,8 @@
                     x: 0.5,
                     traceorder: 'normal'
                 },
-                xaxis: {visible: type != 'histogram'},
+                xaxis: xaxis,
+                yaxis: yaxis,
                 margin: {
                   l: 50,
                   r: 50,
@@ -133,7 +139,12 @@
                 }
                 // prepare data shown in chart on hover
                 if (val === null) {
-                    val = 0;
+                    // set data to zero on gaps unless
+                    // the horizontal zeroline is hidden
+                    // otherwise fills get badly drawn
+                    if (layout.yaxis.zeroline !== false) {
+                        val = 0;
+                    }
                     hovertemplate = notApplicable + '<extra></extra>';
                 }
                 else {

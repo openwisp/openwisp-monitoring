@@ -294,6 +294,14 @@ class AbstractChart(TimeStampedEditableModel):
         return self.config_dict.get('fill')
 
     @property
+    def xaxis(self):
+        return self.config_dict.get('xaxis', {})
+
+    @property
+    def yaxis(self):
+        return self.config_dict.get('yaxis', {})
+
+    @property
     def label(self):
         return self.config_dict.get('label') or self.title
 

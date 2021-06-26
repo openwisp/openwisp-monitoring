@@ -97,9 +97,10 @@ class DeviceMetricView(GenericAPIView):
                 chart_dict['summary_labels'] = chart.summary_labels
                 chart_dict['colors'] = chart.colors
                 chart_dict['colorscale'] = chart.colorscale
-                fill = chart.fill
-                if fill:
-                    chart_dict['fill'] = fill
+                for attr in ['fill', 'xaxis', 'yaxis']:
+                    value = getattr(chart, attr)
+                    if value:
+                        chart_dict[attr] = value
             except InvalidChartConfigException:
                 logger.exception(f'Skipped chart for metric {chart.metric}')
                 continue
