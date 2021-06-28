@@ -47,7 +47,7 @@ class MonitoringConfig(AppConfig):
 
     def register_menu_groups(self):
         register_menu_group(
-            position=20,
+            position=80,
             config={
                 'label': 'Monitoring',
                 'items': {
@@ -55,15 +55,15 @@ class MonitoringConfig(AppConfig):
                         'label': _('Metrics'),
                         'model': get_model_name('monitoring', 'Metric'),
                         'name': 'changelist',
-                        'icon': 'metric',
+                        'icon': 'ow-metrics',
                     },
                     2: {
                         'label': _('Checks'),
                         'model': get_model_name('check', 'Check'),
                         'name': 'changelist',
-                        'icon': 'check',
+                        'icon': 'ow-monitoring-checks',
                     },
                 },
-                'icon': 'monitoring',
+                'icon': 'ow-monitoring',
             },
         )
