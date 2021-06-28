@@ -118,10 +118,12 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
 
     class Media:
         js = MetricAdmin.Media.js + (
-            'monitoring/js/percircle.js',
+            'monitoring/js/percircle.min.js',
             'monitoring/js/alert-settings.js',
         )
-        css = {'all': ('monitoring/css/percircle.css',) + MetricAdmin.Media.css['all']}
+        css = {
+            'all': ('monitoring/css/percircle.min.css',) + MetricAdmin.Media.css['all']
+        }
 
     def get_extra_context(self, pk=None):
         ctx = super().get_extra_context(pk)

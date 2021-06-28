@@ -8,6 +8,8 @@ from django.test import TestCase
 from django.utils.timezone import now
 from swapper import load_model
 
+from openwisp_utils.tests import capture_stderr
+
 from .. import settings as app_settings
 from ..configuration import (
     CHART_CONFIGURATION_CHOICES,
@@ -242,6 +244,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         c.save()
         self.assertNotIn('GROUP BY time', c.get_query())
 
+    @capture_stderr()
     def test_bad_json_query_returns_none(self):
         m = self._create_object_metric(
             name='wifi associations', key='hostapd', field_name='mac'

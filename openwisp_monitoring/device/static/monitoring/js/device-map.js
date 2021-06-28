@@ -1,8 +1,9 @@
-function owGeoMapInit(map, options) {
-    var getLocationDeviceUrl = function (pk) {
-            return _owGeoMapConfig.locationDeviceUrl.replace('000', pk);
-        },
-        $ = django.jQuery,
+"use strict";
+
+/* jshint -W098 */
+function owGeoMapInit(map, _) {
+    /* jshint +W098 */
+    var $ = django.jQuery,
         loadingOverlay = $('#device-map-container .ow-loading-spinner'),
         localStorageKey = 'ow-map-shown',
         mapContainer = $('#device-map-container'),
@@ -12,11 +13,14 @@ function owGeoMapInit(map, options) {
             critical: '#a72d1d',
             unknown: '#353c44',
         },
+        getLocationDeviceUrl = function (pk) {
+            return window._owGeoMapConfig.locationDeviceUrl.replace('000', pk);
+        },
         getColor = function (data) {
             var statuses = ['critical', 'problem', 'ok', 'unknown'],
-                deviceCount = data['device_count'],
+                deviceCount = data.device_count,
                 findResult = function (func) {
-                    for (i in statuses) {
+                    for (let i in statuses) {
                         var status = statuses[i],
                             statusCount = data[status + '_count'];
                         if (statusCount === 0) {
@@ -41,7 +45,6 @@ function owGeoMapInit(map, options) {
                     return colors[status];
                 }
             });
-            return color.unknown;
         },
         loadPopUpContent = function (layer, url) {
             // allows reopening the last page which was opened before popup close
@@ -73,8 +76,12 @@ ${device.monitoring.status_label}
                 }
                 var pagination = '', parts = [];
                 if (data.previous || data.next) {
-                    data.previous && parts.push(`<a class="prev" href="#prev" data-url="${data.previous}">&#8249; ${gettext('previous')}</a>`);
-                    data.next && parts.push(`<a class="next" href="#next" data-url="${data.next}">${gettext('next')} &#8250;</a>`);
+                    if (data.previous) {
+                        parts.push(`<a class="prev" href="#prev" data-url="${data.previous}">&#8249; ${gettext('previous')}</a>`);
+                    }
+                    if (data.next) {
+                        parts.push(`<a class="next" href="#next" data-url="${data.next}">${gettext('next')} &#8250;</a>`);
+                    }
                     pagination = `
 <p class="paginator">
 ${parts.join(' ')}
@@ -121,7 +128,7 @@ ${pagination}
         mapContainer.slideUp(50);
     }
 
-    $.getJSON(_owGeoMapConfig.geoJsonUrl, function (data) {
+    $.getJSON(window._owGeoMapConfig.geoJsonUrl, function (data) {
         // show map only if there's anything to show
         if (!data.count) {
             map.off();
@@ -138,9 +145,10 @@ ${pagination}
             localStorage.removeItem(localStorageKey);
             mapContainer.slideDown();
         }
-        var geojsonLayer = L.geoJSON(data, {
+
+        var geojsonLayer = window.L.geoJSON(data, {
             pointToLayer: function (feature, latlng) {
-                return L.circleMarker(latlng, {
+                return window.L.circleMarker(latlng, {
                     radius: 9,
                     fillColor: getColor(feature.properties),
                     color: "rgba(0, 0, 0, 0.3)",
@@ -169,7 +177,7 @@ ${pagination}
             layer[layer.feature.geometry.type == 'Point' ? 'bringToFront' : 'bringToBack']();
         });
 
-        map.addControl(new L.Control.Fullscreen());
+        map.addControl(new window.L.Control.Fullscreen());
 
         if (geojsonLayer.getLayers().length === 1) {
             map.setView(geojsonLayer.getBounds().getCenter(), 10);

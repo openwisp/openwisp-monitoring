@@ -3,8 +3,8 @@
 .health-problem{ color: orange }
 .health-critical{ color: red }
 .health-status{
-  font-weight:bold;
-  text-transform:uppercase
+  font-weight: bold;
+  text-transform: uppercase
 }
 .map-detail .paginator a {
   padding: 3px 7px;
@@ -33,8 +33,7 @@
   top: 41%;
   left: 49%;
 }
-
-.no-data{
+.no-data {
   display: none;
   position: absolute;
   z-index: 99;
@@ -43,7 +42,6 @@
   text-align: center;
   padding-top: 115px;
 }
-
 .no-data a.button {
   color: #fff;
   padding: 5px 10px;
