@@ -1,12 +1,11 @@
-from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+
+from ..settings import get_settings_value
 
 
 def get_critical_device_metrics():
-    critical_metrics = getattr(
-        settings,
-        'OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS',
-        [{'key': 'ping', 'field_name': 'reachable'}],
+    critical_metrics = get_settings_value(
+        'CRITICAL_DEVICE_METRICS', [{'key': 'ping', 'field_name': 'reachable'}],
     )
     for item in critical_metrics:  # pragma: no cover
         try:
@@ -20,9 +19,8 @@ def get_critical_device_metrics():
 
 
 def get_health_status_labels():
-    labels = getattr(
-        settings,
-        'OPENWISP_MONITORING_HEALTH_STATUS_LABELS',
+    labels = get_settings_value(
+        'HEALTH_STATUS_LABELS',
         {
             'unknown': 'unknown',
             'ok': 'ok',
@@ -43,24 +41,11 @@ def get_health_status_labels():
     return labels
 
 
-SHORT_RETENTION_POLICY = getattr(
-    settings, 'OPENWISP_MONITORING_SHORT_RETENTION_POLICY', '24h0m0s'
-)
+SHORT_RETENTION_POLICY = get_settings_value('SHORT_RETENTION_POLICY', '24h0m0s')
 CRITICAL_DEVICE_METRICS = get_critical_device_metrics()
-
 HEALTH_STATUS_LABELS = get_health_status_labels()
-
-AUTO_CLEAR_MANAGEMENT_IP = getattr(
-    settings, 'OPENWISP_MONITORING_AUTO_CLEAR_MANAGEMENT_IP', True
-)
-
+AUTO_CLEAR_MANAGEMENT_IP = get_settings_value('AUTO_CLEAR_MANAGEMENT_IP', True)
 # Triggers spontaneous recovery of device based on corresponding signals
-DEVICE_RECOVERY_DETECTION = getattr(
-    settings, 'OPENWISP_MONITORING_DEVICE_RECOVERY_DETECTION', True
-)
-
-MAC_VENDOR_DETECTION = getattr(
-    settings, 'OPENWISP_MONITORING_MAC_VENDOR_DETECTION', True
-)
-
-DASHBOARD_MAP = getattr(settings, 'OPENWISP_MONITORING_DASHBOARD_MAP', True)
+DEVICE_RECOVERY_DETECTION = get_settings_value('DEVICE_RECOVERY_DETECTION', True)
+MAC_VENDOR_DETECTION = get_settings_value('MAC_VENDOR_DETECTION', True)
+DASHBOARD_MAP = get_settings_value('DASHBOARD_MAP', True)
