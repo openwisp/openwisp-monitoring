@@ -1,11 +1,10 @@
-from django.conf import settings
+from ..settings import get_settings_value
 
-ADDITIONAL_CHARTS = getattr(settings, 'OPENWISP_MONITORING_CHARTS', {})
-ADDITIONAL_METRICS = getattr(settings, 'OPENWISP_MONITORING_METRICS', {})
+ADDITIONAL_CHARTS = get_settings_value('CHARTS', {})
+ADDITIONAL_METRICS = get_settings_value('METRICS', {})
 
-RETRY_OPTIONS = getattr(
-    settings,
-    'OPENWISP_MONITORING_WRITE_RETRY_OPTIONS',
+RETRY_OPTIONS = get_settings_value(
+    'WRITE_RETRY_OPTIONS',
     dict(
         max_retries=None, retry_backoff=True, retry_backoff_max=600, retry_jitter=True
     ),
