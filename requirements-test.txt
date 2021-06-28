@@ -1,5 +1,6 @@
 # unpinned, the version is dictated by openwisp-controller
-openwisp-utils[qa]
+# TODO: Remove before release
+openwisp-utils[qa] @ https://github.com/atb00ker/openwisp-utils/tarball/extraconfig
 redis
 django-redis
 mock-ssh-server~=0.8.0

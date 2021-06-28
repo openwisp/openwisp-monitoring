@@ -14,6 +14,7 @@ from swapper import load_model
 from openwisp_monitoring.device.settings import SHORT_RETENTION_POLICY
 from openwisp_monitoring.device.utils import SHORT_RP, manage_short_retention_policy
 from openwisp_monitoring.monitoring.tests import TestMonitoringMixin
+from openwisp_utils.tests import capture_stderr
 
 from ...exceptions import TimeseriesWriteException
 from .. import timeseries_db
@@ -258,6 +259,7 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
     @patch.object(
         InfluxDBClient, 'write', side_effect=InfluxDBServerError('Server error')
     )
+    @capture_stderr()
     def test_write_retry(self, mock_write):
         with self.assertRaises(TimeseriesWriteException):
             timeseries_db.write('test_write', {'value': 1})
@@ -268,6 +270,7 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
     @patch.object(
         InfluxDBClient, 'write', side_effect=InfluxDBServerError('Server error')
     )
+    @capture_stderr()
     def test_timeseries_write_params(self, mock_write):
         with freeze_time('Jan 14th, 2020') as frozen_datetime:
             m = self._create_general_metric(name='Test metric')

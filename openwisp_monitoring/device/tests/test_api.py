@@ -5,7 +5,7 @@ from django.urls import reverse
 from swapper import load_model
 
 from openwisp_controller.geo.tests.utils import TestGeoMixin
-from openwisp_utils.tests import catch_signal
+from openwisp_utils.tests import capture_any_output, catch_signal
 
 from ... import settings as monitoring_settings
 from ..signals import device_metrics_received
@@ -351,6 +351,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             signal=device_metrics_received,
         )
 
+    @capture_any_output()
     def test_invalid_chart_config(self):
         # Tests if chart_config is invalid, then it is skipped and API does not fail
         d = self._create_device(organization=self._create_org())

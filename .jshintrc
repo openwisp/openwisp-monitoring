@@ -8,7 +8,7 @@
         "advancedJSONEditor": true,
         "alert": true,
         "django": true,
-        "Plotly" : false,
+        "Plotly": false,
         "gettext": true,
         "JSONEditor": true,
         "ReconnectingWebSocket": true
