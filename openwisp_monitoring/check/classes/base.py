@@ -5,6 +5,7 @@ from swapper import load_model
 Check = load_model('check', 'Check')
 Metric = load_model('monitoring', 'Metric')
 Device = load_model('config', 'Device')
+DeviceData = load_model('device_monitoring', 'DeviceData')
 
 
 class BaseCheck(object):

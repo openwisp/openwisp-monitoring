@@ -8,7 +8,7 @@ from openwisp_controller.config.signals import config_status_changed
 from openwisp_controller.connection.tests.base import CreateConnectionsMixin
 from openwisp_utils.tests import catch_signal
 
-from ...check.classes import Ping
+from ...check.classes import Ping, SnmpDeviceMonitoring
 from ...check.tests import _FPING_REACHABLE, _FPING_UNREACHABLE
 from ..tasks import trigger_device_checks
 from . import DeviceMonitoringTransactionTestcase
@@ -54,10 +54,11 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
             self._post_data(d.id, d.key, data)
             mock.assert_called_once()
 
+    @patch.object(SnmpDeviceMonitoring, 'netengine_instance')
     @patch.object(Ping, '_command', return_value=_FPING_UNREACHABLE)
     @patch.object(DeviceMonitoring, 'update_status')
     def test_trigger_device_recovery_task_regression(
-        self, mocked_update_status, mocked_ping
+        self, mocked_update_status, mocked_ping, mocked_snmp
     ):
         dm = self._create_device_monitoring()
         dm.device.management_ip = None

@@ -5,7 +5,7 @@ from django.test import TransactionTestCase
 from swapper import load_model
 
 from ...device.tests import TestDeviceMonitoringMixin
-from ..classes import Ping
+from ..classes import Ping, SnmpDeviceMonitoring
 from ..settings import CHECK_CLASSES
 from ..tasks import perform_check
 from ..utils import run_checks_async
@@ -24,12 +24,14 @@ class TestUtils(TestDeviceMonitoringMixin, TransactionTestCase):
         # check is automatically created via django signal
 
     @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
-    def test_run_checks_async_success(self, mocked_method):
+    @patch.object(SnmpDeviceMonitoring, 'netengine_instance')
+    def test_run_checks_async_success(self, mocked_netengine, mocked_method):
         self._create_check()
         run_checks_async()
 
+    @patch.object(SnmpDeviceMonitoring, 'netengine_instance')
     @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
-    def test_management_command(self, mocked_method):
+    def test_management_command(self, mocked_method, mocked_netengine):
         self._create_check()
         management.call_command('run_checks')
 

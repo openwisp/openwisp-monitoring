@@ -9,7 +9,11 @@ from django.utils.translation import gettext_lazy as _
 from jsonfield import JSONField
 
 from openwisp_monitoring.check import settings as app_settings
-from openwisp_monitoring.check.tasks import auto_create_config_check, auto_create_ping
+from openwisp_monitoring.check.tasks import (
+    auto_create_config_check,
+    auto_create_ping,
+    auto_create_snmp_devicemonitoring,
+)
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...utils import transaction_on_commit
@@ -111,6 +115,24 @@ def auto_config_check_receiver(sender, instance, created, **kwargs):
         return
     transaction_on_commit(
         lambda: auto_create_config_check.delay(
+            model=sender.__name__.lower(),
+            app_label=sender._meta.app_label,
+            object_id=str(instance.pk),
+        )
+    )
+
+
+def auto_snmp_devicemonitoring_receiver(sender, instance, created, **kwargs):
+    """
+    Implements OPENWISP_MONITORING_AUTO_DEVICE_SNMP_DEVICEMONITORING
+    The creation step is executed in the background
+    """
+    # we need to skip this otherwise this task will be executed
+    # every time the configuration is requested via checksum
+    if not created:
+        return
+    transaction_on_commit(
+        lambda: auto_create_snmp_devicemonitoring.delay(
             model=sender.__name__.lower(),
             app_label=sender._meta.app_label,
             object_id=str(instance.pk),
