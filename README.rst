@@ -71,11 +71,17 @@ Available Features
 
 * Collection of monitoring information in a timeseries database (currently only influxdb is supported)
 * Allows to browse alerts easily from the user interface with one click
-* Collects and displays `device status <#device-status>`_ information like uptime, RAM status, CPU load averages,
+* Collects and displays `device status <#device-status>`_ information like
+  uptime, RAM status, CPU load averages,
   Interface properties and addresses, WiFi interface status and associated clients,
   Neighbors information, DHCP Leases, Disk/Flash status
-* Monitoring charts for uptime, packet loss, round trip time (latency), associated wifi clients, interface traffic,
-  RAM usage, CPU load, flash/disk usage
+* Monitoring charts for `uptime <#ping>`_, `packet loss <#ping>`_,
+  `round trip time (latency) <#ping>`_,
+  `associated wifi clients <#wifi-clients>`_, `interface traffic <#traffic>`_,
+  `RAM usage <#memory-usage>`_, `CPU load <#cpu-load>`_, `flash/disk usage <#disk-usage>`_,
+  mobile signal (LTE/UMTS/GSM `signal strength <#mobile-signal-strength>`_,
+  `signal quality <#mobile-signal-quality>`_,
+  `access technology in use <#mobile-access-technology-in-use>`_)
 * Charts can be viewed at resolutions of 1 day, 3 days, a week, a month and a year
 * Configurable alerts
 * CSV Export of monitoring data
@@ -398,6 +404,60 @@ Disk Usage
 +--------------------+-------------------+
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/disk-usage.png
+  :align: center
+
+Mobile Signal Strength
+~~~~~~~~~~~~~~~~~~~~~~
+
++--------------------+-----------------------------------------+
+| **measurement**:   | ``signal_strength``                     |
++--------------------+-----------------------------------------+
+| **type**:          | ``float``                               |
++--------------------+-----------------------------------------+
+| **fields**:        | ``signal_strength``, ``signal_power``   |
++--------------------+-----------------------------------------+
+| **configuration**: | ``signal_strength``                     |
++--------------------+-----------------------------------------+
+| **charts**:        | ``signal_strength``                     |
++--------------------+-----------------------------------------+
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/signal-strength.png
+  :align: center
+
+Mobile Signal Quality
+~~~~~~~~~~~~~~~~~~~~~~
+
++--------------------+-----------------------------------------+
+| **measurement**:   | ``signal_quality``                      |
++--------------------+-----------------------------------------+
+| **type**:          | ``float``                               |
++--------------------+-----------------------------------------+
+| **fields**:        | ``signal_quality``, ``signal_quality``  |
++--------------------+-----------------------------------------+
+| **configuration**: | ``signal_quality``                      |
++--------------------+-----------------------------------------+
+| **charts**:        | ``signal_quality``                      |
++--------------------+-----------------------------------------+
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/signal-quality.png
+  :align: center
+
+Mobile Access Technology in use
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------------+-------------------+
+| **measurement**:   | ``access_tech``   |
++--------------------+-------------------+
+| **type**:          | ``int``           |
++--------------------+-------------------+
+| **fields**:        | ``access_tech``   |
++--------------------+-------------------+
+| **configuration**: | ``access_tech``   |
++--------------------+-------------------+
+| **charts**:        | ``access_tech``   |
++--------------------+-------------------+
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/access-technology.png
   :align: center
 
 Default Alerts / Notifications

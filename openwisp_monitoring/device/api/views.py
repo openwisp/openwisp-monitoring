@@ -21,6 +21,7 @@ from swapper import load_model
 from openwisp_controller.geo.api.views import GeoJsonLocationList, LocationDeviceList
 
 from ... import settings as monitoring_settings
+from ...monitoring.configuration import ACCESS_TECHNOLOGIES
 from ...monitoring.exceptions import InvalidChartConfigException
 from ..schema import schema
 from ..signals import device_metrics_received
@@ -96,6 +97,10 @@ class DeviceMetricView(GenericAPIView):
                 chart_dict['summary_labels'] = chart.summary_labels
                 chart_dict['colors'] = chart.colors
                 chart_dict['colorscale'] = chart.colorscale
+                for attr in ['fill', 'xaxis', 'yaxis']:
+                    value = getattr(chart, attr)
+                    if value:
+                        chart_dict[attr] = value
             except InvalidChartConfigException:
                 logger.exception(f'Skipped chart for metric {chart.metric}')
                 continue
@@ -194,6 +199,8 @@ class DeviceMetricView(GenericAPIView):
         ct = ContentType.objects.get_for_model(Device)
         for interface in data.get('interfaces', []):
             ifname = interface['name']
+            if 'mobile' in interface:
+                self._write_mobile_signal(interface, ifname, ct, pk)
             ifstats = interface.get('statistics', {})
             # Explicitly stated None to avoid skipping in case the stats are zero
             if (
@@ -249,6 +256,82 @@ class DeviceMetricView(GenericAPIView):
             self._write_disk(data['resources']['disk'], pk, ct)
         if 'memory' in data['resources']:
             self._write_memory(data['resources']['memory'], pk, ct)
+
+    def _get_mobile_signal_type(self, signal):
+        # if only one access technology in use, return that
+        sections = list(signal.keys())
+        if len(sections) == 1:
+            return sections[0]
+        # if multiple access technologies are in use,
+        # return the most advanced one
+        access_technologies = list(ACCESS_TECHNOLOGIES.keys())
+        access_technologies.reverse()
+        for tech in access_technologies:
+            if tech in signal:
+                return tech
+
+    def _write_mobile_signal(self, interface, ifname, ct, pk):
+        access_type = self._get_mobile_signal_type(interface['mobile']['signal'])
+        data = interface['mobile']['signal'][access_type]
+        signal_power = signal_strength = None
+        extra_values = {}
+        if 'rssi' in data:
+            signal_strength = data['rssi']
+        if 'rsrp' in data:
+            signal_power = data['rsrp']
+        elif 'rscp' in data:
+            signal_power = data['rscp']
+        if signal_power is not None:
+            extra_values = {'signal_power': float(signal_power)}
+        if signal_strength is not None:
+            signal_strength = float(signal_strength)
+        if signal_strength is not None or signal_power is not None:
+            metric, created = Metric._get_or_create(
+                object_id=pk,
+                content_type=ct,
+                configuration='signal_strength',
+                name='signal strength',
+                key=ifname,
+            )
+            metric.write(signal_strength, extra_values=extra_values)
+            if created:
+                self._create_signal_strength_chart(metric)
+
+        snr = signal_quality = None
+        if 'snr' in data:
+            snr = data['snr']
+        if 'sinr' in data:
+            snr = data['sinr']
+        if 'rsrq' in data:
+            signal_quality = data['rsrq']
+        if 'ecio' in data:
+            signal_quality = data['ecio']
+        if snr is not None:
+            extra_values = {'snr': float(snr)}
+        if signal_quality is not None:
+            signal_quality = float(signal_quality)
+        if snr is not None or signal_quality is not None:
+            metric, created = Metric._get_or_create(
+                object_id=pk,
+                content_type=ct,
+                configuration='signal_quality',
+                name='signal quality',
+                key=ifname,
+            )
+            metric.write(signal_quality, extra_values=extra_values)
+            if created:
+                self._create_signal_quality_chart(metric)
+        # create access technology chart
+        metric, created = Metric._get_or_create(
+            object_id=pk,
+            content_type=ct,
+            configuration='access_tech',
+            name='access technology',
+            key=ifname,
+        )
+        metric.write(list(ACCESS_TECHNOLOGIES.keys()).index(access_type))
+        if created:
+            self._create_access_tech_chart(metric)
 
     def _write_cpu(self, load, cpus, primary_key, content_type):
         extra_values = {
@@ -360,6 +443,21 @@ class DeviceMetricView(GenericAPIView):
         alert_settings = AlertSettings(metric=metric)
         alert_settings.full_clean()
         alert_settings.save()
+
+    def _create_signal_strength_chart(self, metric):
+        chart = Chart(metric=metric, configuration='signal_strength')
+        chart.full_clean()
+        chart.save()
+
+    def _create_signal_quality_chart(self, metric):
+        chart = Chart(metric=metric, configuration='signal_quality')
+        chart.full_clean()
+        chart.save()
+
+    def _create_access_tech_chart(self, metric):
+        chart = Chart(metric=metric, configuration='access_tech')
+        chart.full_clean()
+        chart.save()
 
 
 device_metric = DeviceMetricView.as_view()

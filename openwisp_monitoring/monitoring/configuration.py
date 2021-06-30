@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import gettext_lazy as _
 from openwisp_notifications.types import (
@@ -22,6 +24,26 @@ DEFAULT_COLORS = [
     '#bcbd22',  # curry yellow-green
     '#17becf',  # blue-teal
 ]
+
+ACCESS_TECHNOLOGIES = OrderedDict(
+    (
+        ('gsm', '#b42a0c'),
+        ('cdma1x', '#dd5817'),
+        ('evdo', '#df7514'),
+        ('umts', '#efdd50'),
+        ('lte', '#67c368'),
+        ('5g', '#377873'),
+    )
+)
+
+
+def _get_access_tech():
+    res = []
+    keys_list = list(ACCESS_TECHNOLOGIES.keys())
+    for i in reversed(keys_list):
+        res.append([keys_list.index(i), ACCESS_TECHNOLOGIES[i], i])
+    return res
+
 
 # under discussion
 DEFAULT_METRICS = {
@@ -345,6 +367,93 @@ DEFAULT_METRICS = {
                     'CPU usage {notification.verb}.'
                 ),
             },
+        },
+    },
+    # modem-manager charts
+    'signal_strength': {
+        'label': _('Signal Strength'),
+        'name': '{name}',
+        'key': '{key}',
+        'field_name': 'signal_strength',
+        'related_fields': ['signal_power'],
+        'charts': {
+            'signal_strength': {
+                'type': 'scatter',
+                'fill': 'none',
+                'yaxis': {'zeroline': False},
+                'title': _('Signal Strength'),
+                'colors': (DEFAULT_COLORS[3], DEFAULT_COLORS[0]),
+                'description': _('Signal Strength and Signal Power, measured in dBm.'),
+                'summary_labels': [
+                    _('Average Signal Power'),
+                    _('Average Signal Strength'),
+                ],
+                'unit': _(' dBm'),
+                'order': 205,
+                'query': chart_query['signal_strength'],
+            }
+        },
+    },
+    'signal_quality': {
+        'label': _('Signal Quality'),
+        'name': '{name}',
+        'key': '{key}',
+        'field_name': 'signal_quality',
+        'related_fields': ['snr'],
+        'charts': {
+            'signal_quality': {
+                'type': 'scatter',
+                'fill': 'none',
+                'yaxis': {'zeroline': False},
+                'title': _('Signal Quality'),
+                'colors': (DEFAULT_COLORS[3], DEFAULT_COLORS[0]),
+                'description': _(
+                    _('Signal Quality and Signal to Noise Ratio (SNR), measured in dB.')
+                ),
+                'summary_labels': [
+                    _('Average Signal Quality'),
+                    _('Average Signal to Noise Ratio'),
+                ],
+                'unit': _(' dB'),
+                'order': 206,
+                'query': chart_query['signal_quality'],
+            }
+        },
+    },
+    'access_tech': {
+        'label': _('Access Technology'),
+        'name': '{name}',
+        'key': '{key}',
+        'field_name': 'access_tech',
+        'charts': {
+            'access_tech': {
+                'type': 'bar',
+                'title': _('Access Technology'),
+                'description': _(
+                    _(
+                        'Shows the access technology (LTE, UTMS, CDMA1x, etc.) '
+                        'in use on the device at the specified time.'
+                    )
+                ),
+                'order': 207,
+                'unit': '',
+                'colorscale': {
+                    'label': '',
+                    'map': _get_access_tech(),
+                    'max': 5,
+                    'min': 0,
+                    'scale': (
+                        (0, '#b42a0c'),
+                        (0.1, '#dd5817'),
+                        (0.2, '#df7514'),
+                        (0.5, '#efdd50'),
+                        (0.8, '#67c368'),
+                        (1, '#377873'),
+                    ),
+                    'fixed_value': 100,
+                },
+                'query': chart_query['access_tech'],
+            }
         },
     },
 }

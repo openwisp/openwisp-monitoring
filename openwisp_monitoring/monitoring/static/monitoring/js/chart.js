@@ -7,6 +7,11 @@
             return;
         }
         if (!x) {x = data.x;}
+
+        var xaxis = data.xaxis || {};
+        var yaxis = data.yaxis || {};
+        xaxis.visible = type != 'histogram';
+
         var mode = x.length > 30 ? 'lines' : 'markers+lines',
             layout = {
                 showlegend: true,
@@ -16,8 +21,10 @@
                     yanchor: 'top',
                     y: -0.15,
                     x: 0.5,
+                    traceorder: 'normal'
                 },
-                xaxis: {visible: type != 'histogram'},
+                xaxis: xaxis,
+                yaxis: yaxis,
                 margin: {
                   l: 50,
                   r: 50,
@@ -50,6 +57,10 @@
         if (type === 'histogram') {
             layout.hovermode = 'closest';
         }
+        if (type === 'stackedbar') {
+            type = 'bar';
+            layout.barmode = 'stack';
+        }
         var map, mapped, label, fixedValue, key;
         // given a value, returns its color and description
         // according to the color map configuration of this chart
@@ -79,7 +90,7 @@
                     name: label,
                     type: type,
                     mode: mode,
-                    fill: 'tozeroy',
+                    fill: data.fill || 'tozeroy',
                     hovertemplate: [],
                     y: []
                 },
@@ -128,7 +139,12 @@
                 }
                 // prepare data shown in chart on hover
                 if (val === null) {
-                    val = 0;
+                    // set data to zero on gaps unless
+                    // the horizontal zeroline is hidden
+                    // otherwise fills get badly drawn
+                    if (layout.yaxis.zeroline !== false) {
+                        val = 0;
+                    }
                     hovertemplate = notApplicable + '<extra></extra>';
                 }
                 else {
@@ -181,6 +197,10 @@
                 else {
                     percircleOptions.text = value + data.unit;
                     percircleOptions.percent = 75;
+                }
+                if (value === null) {
+                  percircleOptions.text = 'N/A';
+                  percircleOptions.percent = 1;
                 }
                 if (data.colorscale && data.colorscale.map) {
                     mapped = findInColorMap(value);
