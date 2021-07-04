@@ -317,7 +317,7 @@ schema = {
                                     "umts": {
                                         "type": "object",
                                         "additionalProperties": False,
-                                        "required": ["rssi", "ecio"],
+                                        "required": ["ecio"],
                                         "properties": {
                                             "rssi": {"type": "number"},
                                             "rscp": {"type": "number"},
