@@ -633,7 +633,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(charts[1]['summary']['signal_to_noise_ratio'], 12.0)
         self.assertEqual(charts[2]['summary']['access_tech'], 5)
 
-    def test_umts_special_charts(self):
+    def test_umts_rscp_missing(self):
         org = self._create_org()
         device = self._create_device(organization=org)
         data = {
@@ -668,8 +668,47 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(len(charts), 3)
         self.assertEqual(charts[0]['summary']['signal_strength'], -69.0)
         self.assertEqual(charts[0]['summary']['signal_power'], None)
-        self.assertEqual(charts[1]['summary']['signal_quality'], -5.0)
-        self.assertEqual(charts[1]['summary']['signal_to_noise_ratio'], None)
+        self.assertEqual(charts[1]['summary']['signal_quality'], None)
+        self.assertEqual(charts[1]['summary']['signal_to_noise_ratio'], -5.0)
+        self.assertEqual(charts[2]['summary']['access_tech'], 3.0)
+
+    def test_umts_rssi_missing(self):
+        org = self._create_org()
+        device = self._create_device(organization=org)
+        data = {
+            'type': 'DeviceMonitoring',
+            'interfaces': [
+                {
+                    'name': 'mobile0',
+                    'mac': '00:00:00:00:00:00',
+                    'mtu': 1900,
+                    'multicast': True,
+                    'txqueuelen': 1000,
+                    'type': 'modem-manager',
+                    'up': True,
+                    'mobile': {
+                        'connection_status': 'connected',
+                        'imei': '300000001234567',
+                        'manufacturer': 'Sierra Wireless, Incorporated',
+                        'model': 'MC7430',
+                        'operator_code': '50502',
+                        'operator_name': 'YES OPTUS',
+                        'power_status': 'on',
+                        'signal': {'umts': {'ecio': -3.50, 'rscp': -96.00}},
+                    },
+                }
+            ],
+        }
+        response = self._post_data(device.id, device.key, data)
+        self.assertEqual(response.status_code, 200)
+        response = self.client.get(self._url(device.pk.hex, device.key))
+        self.assertEqual(response.status_code, 200)
+        charts = response.data['charts']
+        self.assertEqual(len(charts), 3)
+        self.assertEqual(charts[0]['summary']['signal_strength'], None)
+        self.assertEqual(charts[0]['summary']['signal_power'], -96.00)
+        self.assertEqual(charts[1]['summary']['signal_quality'], None)
+        self.assertEqual(charts[1]['summary']['signal_to_noise_ratio'], -4)
         self.assertEqual(charts[2]['summary']['access_tech'], 3.0)
 
     def test_cdma_charts(self):
@@ -707,8 +746,8 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(len(charts), 3)
         self.assertEqual(charts[0]['summary']['signal_strength'], -69.0)
         self.assertEqual(charts[0]['summary']['signal_power'], None)
-        self.assertEqual(charts[1]['summary']['signal_quality'], -5.0)
-        self.assertEqual(charts[1]['summary']['signal_to_noise_ratio'], None)
+        self.assertEqual(charts[1]['summary']['signal_quality'], None)
+        self.assertEqual(charts[1]['summary']['signal_to_noise_ratio'], -5.0)
         self.assertEqual(charts[2]['summary']['access_tech'], 1.0)
 
     def test_evdo_charts(self):
@@ -734,7 +773,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
                         'operator_name': 'YES OPTUS',
                         'power_status': 'on',
                         'signal': {
-                            'evdo': {'ecio': -5, 'rssi': -69, "io": -70, "sinr": -11},
+                            'evdo': {'ecio': -5, 'rssi': -69, 'io': -70, 'sinr': -11},
                         },
                     },
                 }
@@ -748,7 +787,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(len(charts), 3)
         self.assertEqual(charts[0]['summary']['signal_strength'], -69.0)
         self.assertEqual(charts[0]['summary']['signal_power'], None)
-        self.assertEqual(charts[1]['summary']['signal_quality'], -5.0)
+        self.assertEqual(charts[1]['summary']['signal_quality'], None)
         self.assertEqual(charts[1]['summary']['signal_to_noise_ratio'], -11.0)
         self.assertEqual(charts[2]['summary']['access_tech'], 2.0)
 

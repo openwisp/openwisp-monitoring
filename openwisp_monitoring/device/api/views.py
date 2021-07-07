@@ -298,14 +298,15 @@ class DeviceMetricView(GenericAPIView):
                 self._create_signal_strength_chart(metric)
 
         snr = signal_quality = None
+        extra_values = {}
         if 'snr' in data:
             snr = data['snr']
-        if 'sinr' in data:
-            snr = data['sinr']
         if 'rsrq' in data:
             signal_quality = data['rsrq']
         if 'ecio' in data:
-            signal_quality = data['ecio']
+            snr = data['ecio']
+        if 'sinr' in data:
+            snr = data['sinr']
         if snr is not None:
             extra_values = {'snr': float(snr)}
         if signal_quality is not None:
