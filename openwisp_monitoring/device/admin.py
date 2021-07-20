@@ -121,8 +121,8 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
     class Media:
         js = (
             tuple(BaseDeviceAdmin.Media.js)
+            + ('monitoring/js/percircle.min.js', 'monitoring/js/alert-settings.js',)
             + MetricAdmin.Media.js
-            + ('monitoring/js/percircle.js', 'monitoring/js/alert-settings.js',)
         )
         css = {
             'all': ('monitoring/css/percircle.min.css',) + MetricAdmin.Media.css['all']
