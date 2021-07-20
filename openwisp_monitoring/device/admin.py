@@ -119,9 +119,10 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
     readonly_fields = ['health_status'] + BaseDeviceAdmin.readonly_fields
 
     class Media:
-        js = MetricAdmin.Media.js + (
-            'monitoring/js/percircle.min.js',
-            'monitoring/js/alert-settings.js',
+        js = (
+            tuple(BaseDeviceAdmin.Media.js)
+            + MetricAdmin.Media.js
+            + ('monitoring/js/percircle.js', 'monitoring/js/alert-settings.js',)
         )
         css = {
             'all': ('monitoring/css/percircle.min.css',) + MetricAdmin.Media.css['all']
