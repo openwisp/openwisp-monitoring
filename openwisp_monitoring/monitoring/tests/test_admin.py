@@ -31,3 +31,18 @@ class TestAdmin(TestMonitoringMixin, TestCase):
         self.assertContains(r, '<option value="&lt;" selected>less than</option>')
         self.assertContains(r, 'name="alertsettings-0-custom_threshold" value="1"')
         self.assertContains(r, 'name="alertsettings-0-custom_tolerance" value="0"')
+
+    def test_admin_menu_groups(self):
+        # Test menu group (openwisp-utils menu group) for Metric and Check models
+        self._login_admin()
+        response = self.client.get(reverse('admin:index'))
+        with self.subTest('test_admin_group_for_check_model'):
+            url = reverse('admin:check_check_changelist')
+            self.assertContains(response, f'<a class="mg-link" href="{url}">')
+        with self.subTest('test_admin_group_for_metric_model'):
+            url = reverse('admin:monitoring_metric_changelist')
+            self.assertContains(response, f'<a class="mg-link" href="{url}">')
+        with self.subTest('test_monitoring_group_is_registered'):
+            self.assertContains(
+                response, '<div class="mg-dropdown-label">Monitoring </div>', html=True,
+            )
