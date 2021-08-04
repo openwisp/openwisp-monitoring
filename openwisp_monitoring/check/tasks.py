@@ -7,38 +7,11 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from swapper import load_model
 
-from openwisp_controller.connection import settings as app_settings
-
 logger = logging.getLogger(__name__)
 
 
 def get_check_model():
     return load_model('check', 'Check')
-
-
-def _get_or_create_credentials(device_id, **kwargs):
-    Credentials = load_model('connection', 'Credentials')
-    cred = Credentials.objects.filter(
-        deviceconnection__device_id=device_id,
-        connector='openwisp_controller.connection.connectors.snmp.Snmp',
-    ).last()
-    if cred is not None:
-        return cred
-
-    # if credentials don't exist, create new SNMP credentials
-    Device = load_model('config', 'Device')
-    opts = dict(
-        name='Default SNMP Credentials',
-        connector=app_settings.DEFAULT_CONNECTORS[1][0],
-        params={'community': 'public', 'agent': 'default', 'port': 161},
-    )
-    opts.update(kwargs)
-    if 'organization' not in opts:
-        opts['organization'] = Device.objects.get(id=device_id).organization
-    c = Credentials(**opts)
-    c.full_clean()
-    c.save()
-    return c
 
 
 @shared_task
@@ -146,13 +119,11 @@ def auto_create_snmp_devicemonitoring(
         return
     content_type_model = content_type_model or ContentType
     ct = content_type_model.objects.get(app_label=app_label, model=model)
-    cred = _get_or_create_credentials(object_id)
     check = Check(
         name='SNMP Device Monitoring',
         check=devicemonitoring_path,
         content_type=ct,
         object_id=object_id,
-        params={'credential_params': cred.get_params()},
     )
     check.full_clean()
     check.save()

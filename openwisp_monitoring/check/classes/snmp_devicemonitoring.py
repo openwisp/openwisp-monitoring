@@ -1,19 +1,18 @@
 from copy import deepcopy
 
-from django.contrib.contenttypes.models import ContentType
 from django.utils.functional import cached_property
 from netengine.backends.snmp.openwrt import OpenWRT
 from swapper import load_model
 
 from openwisp_monitoring.device.api.views import MetricChartsMixin
 
-from ... import settings as monitoring_settings
 from .. import settings as app_settings
 from .base import BaseCheck
 
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 Device = load_model('config', 'Device')
+Credentials = load_model('connection', 'Credentials')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 
 
@@ -35,9 +34,19 @@ class SnmpDeviceMonitoring(BaseCheck, MetricChartsMixin):
 
     @cached_property
     def netengine_instance(self):
-        params = self.params['credential_params']
         ip = self._get_ip()
-        return OpenWRT(host=ip, **params)
+        return OpenWRT(host=ip, **self.credential_params)
+
+    @cached_property
+    def credential_params(self):
+        params = {}
+        cred = Credentials.objects.filter(
+            deviceconnection__device_id=self.related_object,
+            connector='openwisp_controller.connection.connectors.snmp.Snmp',
+        ).last()
+        if cred is not None:
+            params.update(cred.params)
+        return params
 
     def _get_ip(self):
         """
