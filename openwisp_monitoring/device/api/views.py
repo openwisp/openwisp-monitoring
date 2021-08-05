@@ -54,12 +54,10 @@ class MetricChartsMixin:
         """
         write metrics to database
         """
-        try:
+        if data is None:
             # saves raw device data
             self.instance.save_data()
             data = self.instance.data
-        except AttributeError:
-            pass
         ct = ContentType.objects.get_for_model(Device)
         device_extra_tags = self._get_extra_tags(self.instance)
         for interface in data.get('interfaces', []):
@@ -360,6 +358,20 @@ class MetricChartsMixin:
         chart.full_clean()
         chart.save()
 
+    def _init_previous_data(self, data=None):
+        """
+        makes NetJSON interfaces of previous
+        snapshots more easy to access
+        """
+        if data is None:
+            data = self.instance.data or {}
+        if data:
+            data = deepcopy(data)
+            data['interfaces_dict'] = {}
+        for interface in data.get('interfaces', []):
+            data['interfaces_dict'][interface['name']] = interface
+        self._previous_data = data
+
 
 class DeviceMetricView(GenericAPIView, MetricChartsMixin):
     model = DeviceData
@@ -490,19 +502,6 @@ class DeviceMetricView(GenericAPIView, MetricChartsMixin):
             sender=self.model, instance=self.instance, request=request
         )
         return Response(None)
-
-    def _init_previous_data(self):
-        """
-        makes NetJSON interfaces of previous
-        snapshots more easy to access
-        """
-        data = self.instance.data or {}
-        if data:
-            data = deepcopy(data)
-            data['interfaces_dict'] = {}
-        for interface in data.get('interfaces', []):
-            data['interfaces_dict'][interface['name']] = interface
-        self._previous_data = data
 
 
 device_metric = DeviceMetricView.as_view()

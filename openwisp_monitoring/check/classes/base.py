@@ -2,6 +2,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from swapper import load_model
 
+from .. import settings as app_settings
+
 Check = load_model('check', 'Check')
 Metric = load_model('monitoring', 'Metric')
 Device = load_model('config', 'Device')
@@ -49,3 +51,13 @@ class BaseCheck(object):
         )
         metric, created = Metric._get_or_create(**options)
         return metric, created
+
+    def _get_ip(self):
+        """
+        Figures out ip to use or fails raising OperationalError
+        """
+        device = self.related_object
+        ip = device.management_ip
+        if not ip and not app_settings.MANAGEMENT_IP_ONLY:
+            ip = device.last_ip
+        return ip
