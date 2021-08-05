@@ -3,6 +3,7 @@ from copy import deepcopy
 
 from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
+from django.utils.timezone import now
 from swapper import load_model
 
 from openwisp_controller.config.tests.utils import CreateConfigTemplateMixin
@@ -27,14 +28,18 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
         super().setUpClass()
         manage_short_retention_policy()
 
-    def _url(self, pk, key=None):
+    def _url(self, pk, key=None, time=None):
         url = reverse('monitoring:api_device_metric', args=[pk])
         if key:
             url = '{0}?key={1}'.format(url, key)
+        if time:
+            url = '{0}&time={1}'.format(url, time)
         return url
 
-    def _post_data(self, id, key, data):
-        url = self._url(id, key)
+    def _post_data(self, id, key, data, time=None):
+        if not time:
+            time = now().utcnow().strftime('%d-%m-%Y_%H:%M:%S.%f')
+        url = self._url(id, key, time)
         netjson = json.dumps(data)
         return self.client.post(url, netjson, content_type='application/json')
 

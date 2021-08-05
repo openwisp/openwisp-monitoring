@@ -3,6 +3,7 @@ import logging
 import uuid
 from collections import OrderedDict
 from copy import deepcopy
+from datetime import datetime
 from io import StringIO
 
 from django.conf import settings
@@ -10,6 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
 from django.http import HttpResponse
+from pytz import UTC
 from pytz import timezone as tz
 from pytz.exceptions import UnknownTimeZoneError
 from rest_framework import serializers, status
@@ -165,6 +167,12 @@ class DeviceMetricView(GenericAPIView):
         except ValidationError as e:
             logger.info(e.message)
             return Response(e.message, status=status.HTTP_400_BAD_REQUEST)
+        time_obj = request.query_params.get('time')
+        if time_obj:
+            time = datetime.strptime(time_obj, '%d-%m-%Y_%H:%M:%S.%f')
+            self.time = time.replace(tzinfo=UTC)
+        else:
+            self.time = None
         try:
             # write data
             self._write(request, self.instance.pk)
@@ -223,7 +231,7 @@ class DeviceMetricView(GenericAPIView):
                     name=name,
                     key=ifname,
                 )
-                metric.write(field_value, extra_values=extra_values)
+                metric.write(field_value, time=self.time, extra_values=extra_values)
                 if created:
                     self._create_traffic_chart(metric)
             try:
@@ -293,7 +301,7 @@ class DeviceMetricView(GenericAPIView):
                 name='signal strength',
                 key=ifname,
             )
-            metric.write(signal_strength, extra_values=extra_values)
+            metric.write(signal_strength, time=self.time, extra_values=extra_values)
             if created:
                 self._create_signal_strength_chart(metric)
 
@@ -319,7 +327,7 @@ class DeviceMetricView(GenericAPIView):
                 name='signal quality',
                 key=ifname,
             )
-            metric.write(signal_quality, extra_values=extra_values)
+            metric.write(signal_quality, time=self.time, extra_values=extra_values)
             if created:
                 self._create_signal_quality_chart(metric)
         # create access technology chart
@@ -330,7 +338,9 @@ class DeviceMetricView(GenericAPIView):
             name='access technology',
             key=ifname,
         )
-        metric.write(list(ACCESS_TECHNOLOGIES.keys()).index(access_type))
+        metric.write(
+            list(ACCESS_TECHNOLOGIES.keys()).index(access_type), time=self.time
+        )
         if created:
             self._create_access_tech_chart(metric)
 
@@ -346,7 +356,9 @@ class DeviceMetricView(GenericAPIView):
         if created:
             self._create_resources_chart(metric, resource='cpu')
             self._create_resources_alert_settings(metric, resource='cpu')
-        metric.write(100 * float(load[0] / cpus), extra_values=extra_values)
+        metric.write(
+            100 * float(load[0] / cpus), time=self.time, extra_values=extra_values
+        )
 
     def _write_disk(self, disk_list, primary_key, content_type):
         used_bytes, size_bytes, available_bytes = 0, 0, 0
@@ -360,7 +372,7 @@ class DeviceMetricView(GenericAPIView):
         if created:
             self._create_resources_chart(metric, resource='disk')
             self._create_resources_alert_settings(metric, resource='disk')
-        metric.write(100 * used_bytes / size_bytes)
+        metric.write(100 * used_bytes / size_bytes, time=self.time)
 
     def _write_memory(self, memory, primary_key, content_type):
         extra_values = {
@@ -387,7 +399,7 @@ class DeviceMetricView(GenericAPIView):
         if created:
             self._create_resources_chart(metric, resource='memory')
             self._create_resources_alert_settings(metric, resource='memory')
-        metric.write(percent_used, extra_values=extra_values)
+        metric.write(percent_used, time=self.time, extra_values=extra_values)
 
     def _calculate_increment(self, ifname, stat, value):
         """
