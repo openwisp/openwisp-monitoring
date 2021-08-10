@@ -893,6 +893,16 @@ configuration status of a device changes, this ensures the check reacts
 quickly to events happening in the network and informs the user promptly
 if there's anything that is not working as intended.
 
+SNMP DeviceMonitoring
+~~~~~~~~~~~~~~~~~~~~~
+
+This check provides an alternative protocol to collect monitoring information from devices that don't have
+the ability to use `openwisp-config agent <https://github.com/openwisp/openwisp-config/>`_.
+The information is collected via SNMP using `netengine <https://github.com/openwisp/netengine/>`_. The devices
+need to have an SNMP daemon in order for this to work.
+This check is disabled by default, you may choose to enable auto creation of this check by setting
+`OPENWISP_MONITORING_AUTO_SNMP_DEVICEMONITORING <#OPENWISP_MONITORING_AUTO_SNMP_DEVICEMONITORING>`_ to ``True``.
+
 Settings
 --------
 
@@ -975,6 +985,18 @@ validating custom parameters of a ``Check`` object.
 
 This setting allows you to choose whether `config_applied <#configuration-applied>`_ checks should be
 created automatically for newly registered devices. It's enabled by default.
+
+``OPENWISP_MONITORING_AUTO_SNMP_DEVICEMONITORING``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``bool``    |
++--------------+-------------+
+| **default**: | ``False``   |
++--------------+-------------+
+
+Whether SNMP checks are created automatically for devices. The devices need to have an snmp daemon
+installed in order for this check to work.
 
 ``OPENWISP_MONITORING_AUTO_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
