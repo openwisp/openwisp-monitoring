@@ -43,13 +43,13 @@
 #ow-device-status .form-row,
 #ow-device-status table th,
 #ow-device-status table td{
-  padding: 15px 20px
+  padding: 15px 20px !important;
 }
 #ow-device-status .form-row label,
 #ow-device-status .form-row div,
 #ow-device-status table td,
 #ow-device-status table th {
-  font-size: 13px;
+  font-size: 15px !important;
 }
 #ow-device-status .form-row label {
   padding-top: 2px;
@@ -61,6 +61,10 @@
 #ow-device-status table{
   width: 100%;
   margin: 0;
+}
+#ow-device-status th {
+  border-top: 0 none;
+  background: #f9f9f9 !important;
 }
 td.field-health_status,
 .field-health_status .readonly{
