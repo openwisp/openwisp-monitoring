@@ -9,6 +9,7 @@ from .base import BaseCheck
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 Device = load_model('config', 'Device')
+DeviceData = load_model('device_monitoring', 'DeviceData')
 Credentials = load_model('connection', 'Credentials')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 
@@ -27,6 +28,9 @@ class SnmpDeviceMonitoring(BaseCheck, MetricChartsMixin):
         store result in the DB
         """
         pk = self.related_object.pk
+        device_data = DeviceData.objects.get(pk=pk)
+        device_data.data = data
+        device_data.save_data()
         self._write(pk, data)
 
     @cached_property

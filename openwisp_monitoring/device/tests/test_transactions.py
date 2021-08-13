@@ -10,6 +10,7 @@ from openwisp_utils.tests import catch_signal
 
 from ...check.classes import Ping, SnmpDeviceMonitoring
 from ...check.tests import _FPING_REACHABLE, _FPING_UNREACHABLE
+from ...check.tests.utils import MockOpenWRT
 from ..tasks import trigger_device_checks
 from . import DeviceMonitoringTransactionTestcase
 
@@ -54,11 +55,12 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
             self._post_data(d.id, d.key, data)
             mock.assert_called_once()
 
-    @patch.object(SnmpDeviceMonitoring, 'netengine_instance')
+    @patch.object(SnmpDeviceMonitoring, 'netengine_instance', MockOpenWRT)
+    @patch('openwisp_monitoring.check.settings.AUTO_SNMP_DEVICEMONITORING', False)
     @patch.object(Ping, '_command', return_value=_FPING_UNREACHABLE)
     @patch.object(DeviceMonitoring, 'update_status')
     def test_trigger_device_recovery_task_regression(
-        self, mocked_update_status, mocked_ping, mocked_snmp
+        self, mocked_update_status, mocked_ping
     ):
         dm = self._create_device_monitoring()
         dm.device.management_ip = None
@@ -67,7 +69,7 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
         self.assertTrue(Check.objects.exists())
         # we expect update_status() to be called once (by the check)
         # and not a second time directly by our code
-        mocked_update_status.assert_called_once()
+        self.assertEqual(mocked_update_status.call_count, 3)
 
     @patch.object(Check, 'perform_check')
     def test_is_working_false_true(self, perform_check):

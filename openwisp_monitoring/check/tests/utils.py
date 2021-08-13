@@ -5,7 +5,8 @@ class MockOpenWRT:
     def __init__(self, *args, **kwargs):
         pass
 
-    def to_dict(self):
+    @classmethod
+    def to_dict(*args, **kwargs):
         res = OrderedDict(
             [
                 ('type', 'DeviceMonitoring'),
