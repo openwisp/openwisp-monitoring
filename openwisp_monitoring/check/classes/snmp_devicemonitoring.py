@@ -1,4 +1,5 @@
 from django.utils.functional import cached_property
+from netengine.backends.snmp.airos import AirOS
 from netengine.backends.snmp.openwrt import OpenWRT
 from swapper import load_model
 
@@ -36,11 +37,25 @@ class SnmpDeviceMonitoring(BaseCheck, MetricChartsMixin):
     @cached_property
     def netengine_instance(self):
         ip = self._get_ip()
-        return OpenWRT(host=ip, **self._get_credential_params())
+        connector = self._get_connnector()
+        return connector(host=ip, **self._get_credential_params())
+
+    @cached_property
+    def credential_instance(self):
+        return Credentials.objects.filter(
+            deviceconnection__device_id=self.related_object, connector__endswith='Snmp',
+        ).last()
+
+    def _get_connnector(self):
+        connectors = {
+            'openwisp_controller.connection.connectors.snmp.Snmp': OpenWRT,
+            'openwisp_controller.connection.connectors.airos.snmp.Snmp': AirOS,
+        }
+        try:
+            return connectors.get(self.credential_instance.connector, OpenWRT)
+        except AttributeError:
+            # in case credentials are not available
+            return OpenWRT
 
     def _get_credential_params(self):
-        cred = Credentials.objects.filter(
-            deviceconnection__device_id=self.related_object,
-            connector='openwisp_controller.connection.connectors.snmp.Snmp',
-        ).last()
-        return getattr(cred, 'params', {})
+        return getattr(self.credential_instance, 'params', {})

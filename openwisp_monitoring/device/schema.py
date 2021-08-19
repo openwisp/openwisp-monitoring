@@ -40,7 +40,6 @@ schema = {
                         "shared": {"type": "integer"},
                         "available": {"type": "integer"},
                     },
-                    "required": ["total", "free", "buffered", "shared"],
                 },
                 "disk": {
                     "type": "array",
