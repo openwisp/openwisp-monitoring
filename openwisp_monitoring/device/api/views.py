@@ -170,12 +170,12 @@ class DeviceMetricView(GenericAPIView):
         time_obj = request.query_params.get('time')
         if time_obj:
             time = datetime.strptime(time_obj, '%d-%m-%Y_%H:%M:%S.%f')
-            self.time = time.replace(tzinfo=UTC)
+            time = time.replace(tzinfo=UTC)
         else:
-            self.time = None
+            time = None
         try:
             # write data
-            self._write(request, self.instance.pk)
+            self._write(request, self.instance.pk, time=time)
         except ValidationError as e:
             logger.info(e.message_dict)
             return Response(e.message_dict, status=status.HTTP_400_BAD_REQUEST)
@@ -197,7 +197,7 @@ class DeviceMetricView(GenericAPIView):
             data['interfaces_dict'][interface['name']] = interface
         self._previous_data = data
 
-    def _write(self, request, pk):
+    def _write(self, request, pk, time=None):
         """
         write metrics to database
         """
@@ -208,7 +208,7 @@ class DeviceMetricView(GenericAPIView):
         for interface in data.get('interfaces', []):
             ifname = interface['name']
             if 'mobile' in interface:
-                self._write_mobile_signal(interface, ifname, ct, pk)
+                self._write_mobile_signal(interface, ifname, ct, pk, time=time)
             ifstats = interface.get('statistics', {})
             # Explicitly stated None to avoid skipping in case the stats are zero
             if (
@@ -231,7 +231,7 @@ class DeviceMetricView(GenericAPIView):
                     name=name,
                     key=ifname,
                 )
-                metric.write(field_value, time=self.time, extra_values=extra_values)
+                metric.write(field_value, time=time, extra_values=extra_values)
                 if created:
                     self._create_traffic_chart(metric)
             try:
@@ -249,7 +249,7 @@ class DeviceMetricView(GenericAPIView):
                 key=ifname,
             )
             # avoid tsdb overwrite clients
-            client_time = self.time
+            client_time = time
             for client in clients:
                 if 'mac' not in client:
                     continue
@@ -261,12 +261,12 @@ class DeviceMetricView(GenericAPIView):
             return
         if 'load' in data['resources'] and 'cpus' in data['resources']:
             self._write_cpu(
-                data['resources']['load'], data['resources']['cpus'], pk, ct
+                data['resources']['load'], data['resources']['cpus'], pk, ct, time=time
             )
         if 'disk' in data['resources']:
-            self._write_disk(data['resources']['disk'], pk, ct)
+            self._write_disk(data['resources']['disk'], pk, ct, time=time)
         if 'memory' in data['resources']:
-            self._write_memory(data['resources']['memory'], pk, ct)
+            self._write_memory(data['resources']['memory'], pk, ct, time=time)
 
     def _get_mobile_signal_type(self, signal):
         # if only one access technology in use, return that
@@ -281,7 +281,7 @@ class DeviceMetricView(GenericAPIView):
             if tech in signal:
                 return tech
 
-    def _write_mobile_signal(self, interface, ifname, ct, pk):
+    def _write_mobile_signal(self, interface, ifname, ct, pk, time=None):
         access_type = self._get_mobile_signal_type(interface['mobile']['signal'])
         data = interface['mobile']['signal'][access_type]
         signal_power = signal_strength = None
@@ -304,7 +304,7 @@ class DeviceMetricView(GenericAPIView):
                 name='signal strength',
                 key=ifname,
             )
-            metric.write(signal_strength, time=self.time, extra_values=extra_values)
+            metric.write(signal_strength, time=time, extra_values=extra_values)
             if created:
                 self._create_signal_strength_chart(metric)
 
@@ -330,7 +330,7 @@ class DeviceMetricView(GenericAPIView):
                 name='signal quality',
                 key=ifname,
             )
-            metric.write(signal_quality, time=self.time, extra_values=extra_values)
+            metric.write(signal_quality, time=time, extra_values=extra_values)
             if created:
                 self._create_signal_quality_chart(metric)
         # create access technology chart
@@ -341,13 +341,11 @@ class DeviceMetricView(GenericAPIView):
             name='access technology',
             key=ifname,
         )
-        metric.write(
-            list(ACCESS_TECHNOLOGIES.keys()).index(access_type), time=self.time
-        )
+        metric.write(list(ACCESS_TECHNOLOGIES.keys()).index(access_type), time=time)
         if created:
             self._create_access_tech_chart(metric)
 
-    def _write_cpu(self, load, cpus, primary_key, content_type):
+    def _write_cpu(self, load, cpus, primary_key, content_type, time=None):
         extra_values = {
             'load_1': float(load[0]),
             'load_5': float(load[1]),
@@ -359,11 +357,9 @@ class DeviceMetricView(GenericAPIView):
         if created:
             self._create_resources_chart(metric, resource='cpu')
             self._create_resources_alert_settings(metric, resource='cpu')
-        metric.write(
-            100 * float(load[0] / cpus), time=self.time, extra_values=extra_values
-        )
+        metric.write(100 * float(load[0] / cpus), time=time, extra_values=extra_values)
 
-    def _write_disk(self, disk_list, primary_key, content_type):
+    def _write_disk(self, disk_list, primary_key, content_type, time=None):
         used_bytes, size_bytes, available_bytes = 0, 0, 0
         for disk in disk_list:
             used_bytes += disk['used_bytes']
@@ -375,9 +371,9 @@ class DeviceMetricView(GenericAPIView):
         if created:
             self._create_resources_chart(metric, resource='disk')
             self._create_resources_alert_settings(metric, resource='disk')
-        metric.write(100 * used_bytes / size_bytes, time=self.time)
+        metric.write(100 * used_bytes / size_bytes, time=time)
 
-    def _write_memory(self, memory, primary_key, content_type):
+    def _write_memory(self, memory, primary_key, content_type, time=None):
         extra_values = {
             'total_memory': memory['total'],
             'free_memory': memory['free'],
@@ -402,7 +398,7 @@ class DeviceMetricView(GenericAPIView):
         if created:
             self._create_resources_chart(metric, resource='memory')
             self._create_resources_alert_settings(metric, resource='memory')
-        metric.write(percent_used, time=self.time, extra_values=extra_values)
+        metric.write(percent_used, time=time, extra_values=extra_values)
 
     def _calculate_increment(self, ifname, stat, value):
         """
