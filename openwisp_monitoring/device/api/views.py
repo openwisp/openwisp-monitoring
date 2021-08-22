@@ -3,7 +3,7 @@ import logging
 import uuid
 from collections import OrderedDict
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import StringIO
 
 from django.conf import settings
@@ -248,10 +248,13 @@ class DeviceMetricView(GenericAPIView):
                 name=name,
                 key=ifname,
             )
+            # avoid tsdb overwrite clients
+            client_time = self.time
             for client in clients:
                 if 'mac' not in client:
                     continue
-                metric.write(client['mac'])
+                metric.write(client['mac'], time=client_time)
+                client_time += timedelta(microseconds=1)
             if created:
                 self._create_clients_chart(metric)
         if 'resources' not in data:
