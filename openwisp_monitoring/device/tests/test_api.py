@@ -2,15 +2,18 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from django.utils import timezone
 from swapper import load_model
 
 from openwisp_controller.geo.tests.utils import TestGeoMixin
 from openwisp_utils.tests import capture_any_output, catch_signal
 
 from ... import settings as monitoring_settings
+from ...monitoring.signals import post_metric_write, pre_metric_write
 from ..signals import device_metrics_received
 from . import DeviceMonitoringTestCase
 
+start_time = timezone.now()
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 DeviceData = load_model('device_monitoring', 'DeviceData')
@@ -42,7 +45,11 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         d = self._create_device(organization=o)
         r = self._post_data(d.id, d.key, {'interfaces': []})
         self.assertEqual(r.status_code, 400)
-        r = self._post_data(d.id, d.key, {'type': 'wrong'})
+        r = self._post_data(d.id, d.key, {'interfaces': []})
+        self.assertEqual(r.status_code, 400)
+        r = self._post_data(
+            d.id, d.key, {'type': 'DeviceMonitoring'}, time='23-08-2021 06:25:45'
+        )
         self.assertEqual(r.status_code, 400)
         r = self._post_data(
             d.id, d.key, {'type': 'DeviceMonitoring', 'interfaces': [{}]}
@@ -341,14 +348,17 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         dd = DeviceData(name='test-device', pk=d.pk)
         data = self._data()
         self._create_object_metric(name='ping', configuration='ping', content_object=d)
+        time = start_time.strftime('%d-%m-%Y_%H:%M:%S.%f')
         with catch_signal(device_metrics_received) as handler:
-            response = self._post_data(d.id, d.key, data)
+            response = self._post_data(d.id, d.key, data, time=time)
         request = response.renderer_context['request']
         handler.assert_called_once_with(
             instance=dd,
             request=request,
             sender=DeviceData,
             signal=device_metrics_received,
+            time=start_time,
+            is_latest=False,
         )
 
     @capture_any_output()
@@ -827,6 +837,44 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(len(charts), 2)
         self.assertEqual(charts[0]['summary']['signal_power'], None)
         self.assertEqual(charts[0]['summary']['signal_strength'], -70.0)
+
+    def test_pre_metric_write_signal(self):
+        d = self._create_device(organization=self._create_org())
+        data = {'type': 'DeviceMonitoring', 'resources': {'cpus': 1, 'load': [0, 0, 0]}}
+        om = self._create_object_metric(
+            name='CPU usage', configuration='cpu', object_id=d.id
+        )
+        values = {'cpu_usage': 0.0, 'load_1': 0.0, 'load_5': 0.0, 'load_15': 0.0}
+        time = start_time.strftime('%d-%m-%Y_%H:%M:%S.%f')
+        with catch_signal(pre_metric_write) as handler:
+            self._post_data(d.id, d.key, data, time=time)
+        handler.assert_called_once_with(
+            sender=Metric,
+            signal=pre_metric_write,
+            metric=om,
+            is_latest=False,
+            values=values,
+            time=start_time,
+        )
+
+    def test_post_metric_write_signal(self):
+        d = self._create_device(organization=self._create_org())
+        data = {'type': 'DeviceMonitoring', 'resources': {'cpus': 1, 'load': [0, 0, 0]}}
+        om = self._create_object_metric(
+            name='CPU usage', configuration='cpu', object_id=d.id
+        )
+        values = {'cpu_usage': 0.0, 'load_1': 0.0, 'load_5': 0.0, 'load_15': 0.0}
+        time = start_time.strftime('%d-%m-%Y_%H:%M:%S.%f')
+        with catch_signal(post_metric_write) as handler:
+            self._post_data(d.id, d.key, data, time=time)
+        handler.assert_called_once_with(
+            sender=Metric,
+            signal=post_metric_write,
+            metric=om,
+            is_latest=False,
+            values=values,
+            time=start_time.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+        )
 
 
 class TestGeoApi(TestGeoMixin, DeviceMonitoringTestCase):

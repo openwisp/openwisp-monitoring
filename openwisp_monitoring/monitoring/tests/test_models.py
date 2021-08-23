@@ -250,17 +250,21 @@ class TestModels(TestMonitoringMixin, TestCase):
                 metric=om,
                 values={om.field_name: 3},
                 signal=pre_metric_write,
+                time=None,
+                is_latest=False,
             )
 
     def test_metric_post_write_signals_emitted(self):
         om = self._create_object_metric()
         with catch_signal(post_metric_write) as handler:
-            om.write(3)
+            om.write(3, is_latest=True, time=start_time)
             handler.assert_called_once_with(
                 sender=Metric,
                 metric=om,
                 values={om.field_name: 3},
                 signal=post_metric_write,
+                time=start_time.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+                is_latest=True,
             )
 
     def test_clean_default_threshold_values(self):

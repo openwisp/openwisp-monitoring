@@ -26,5 +26,11 @@ def timeseries_write(
         pass
     else:
         metric.check_threshold(**check_threshold_kwargs)
-        signal_kwargs = dict(sender=metric.__class__, metric=metric, values=values)
+        signal_kwargs = dict(
+            sender=metric.__class__,
+            metric=metric,
+            values=values,
+            time=kwargs.get('timestamp'),
+            is_latest=kwargs.get('is_latest', 'False'),
+        )
         post_metric_write.send(**signal_kwargs)

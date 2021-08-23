@@ -1224,9 +1224,15 @@ Collect device metrics and status
 
 .. code-block:: text
 
-    POST /v1/monitoring/device/{pk}/?key={key}
+    POST /v1/monitoring/device/{pk}/?key={key}&time={time}
 
 The format used for Device Status is inspired by `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_.
+
+**Note**: Device data will be saved with time passed in timeseries database.
+It should be in `%d-%m-%Y_%H:%M:%S.%f` format, else Bad Response(400) will be returned. 
+If request is made without passing time, then server time will be used.
+
+``time`` parameter is used to [send the data that is collected](https://github.com/openwisp/openwrt-openwisp-monitoring#collecting-vs-sending) when device was not reachable.
 
 Signals
 -------
@@ -1240,6 +1246,10 @@ Signals
 
 - ``instance``: instance of ``Device`` whose metrics have been received
 - ``request``: the HTTP request object
+- ``time``: time with which metrics will be saved. If none, then server time will be used
+- ``is_latest``: whether the data is latest or not
+
+If none, then server time will be used.
 
 This signal is emitted when device metrics are received to the ``DeviceMetric``
 view (only when using HTTP POST).
@@ -1286,6 +1296,8 @@ alert settings is crossed.
 
 - ``metric``: ``Metric`` object whose data shall be stored in timeseries database
 - ``values``: metric data that shall be stored in the timeseries database
+- ``time``: time with which metrics will be saved
+- ``is_latest``: whether the data is latest or not
 
 This signal is emitted for every metric before the write operation is sent to
 the timeseries database.
@@ -1299,6 +1311,8 @@ the timeseries database.
 
 - ``metric``: ``Metric`` object whose data is being stored in timeseries database
 - ``values``: metric data that is being stored in the timeseries database
+- ``time``: time with which metrics will be saved
+- ``is_latest``: whether the data is latest or not
 
 This signal is emitted for every metric after the write operation is successfully
 executed in the background.
