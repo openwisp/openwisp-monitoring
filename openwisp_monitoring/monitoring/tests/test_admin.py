@@ -38,10 +38,10 @@ class TestAdmin(TestMonitoringMixin, TestCase):
         response = self.client.get(reverse('admin:index'))
         with self.subTest('test_admin_group_for_check_model'):
             url = reverse('admin:check_check_changelist')
-            self.assertContains(response, f'<a class="mg-link" href="{url}">')
+            self.assertContains(response, f'<a class="mg-link" href="{url}"')
         with self.subTest('test_admin_group_for_metric_model'):
             url = reverse('admin:monitoring_metric_changelist')
-            self.assertContains(response, f'<a class="mg-link" href="{url}">')
+            self.assertContains(response, f'<a class="mg-link" href="{url}"')
         with self.subTest('test_monitoring_group_is_registered'):
             self.assertContains(
                 response, '<div class="mg-dropdown-label">Monitoring </div>', html=True,
