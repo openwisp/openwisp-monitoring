@@ -175,7 +175,7 @@ class DeviceMetricView(GenericAPIView):
                 tzinfo=UTC
             )
         except ValueError:
-            return Response({'detail': 'Incorrect format'}, status=400)
+            return Response({'detail': 'Incorrect time format'}, status=400)
         try:
             # write data
             self._write(request, self.instance.pk, time=time)

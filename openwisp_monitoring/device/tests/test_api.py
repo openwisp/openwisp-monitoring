@@ -841,7 +841,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
     def test_pre_metric_write_signal(self):
         d = self._create_device(organization=self._create_org())
         data = {'type': 'DeviceMonitoring', 'resources': {'cpus': 1, 'load': [0, 0, 0]}}
-        om = self._create_object_metric(
+        self._create_object_metric(
             name='CPU usage', configuration='cpu', object_id=d.id
         )
         values = {'cpu_usage': 0.0, 'load_1': 0.0, 'load_5': 0.0, 'load_15': 0.0}
@@ -866,7 +866,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
     def test_post_metric_write_signal(self):
         d = self._create_device(organization=self._create_org())
         data = {'type': 'DeviceMonitoring', 'resources': {'cpus': 1, 'load': [0, 0, 0]}}
-        om = self._create_object_metric(
+        self._create_object_metric(
             name='CPU usage', configuration='cpu', object_id=d.id
         )
         values = {'cpu_usage': 0.0, 'load_1': 0.0, 'load_5': 0.0, 'load_15': 0.0}

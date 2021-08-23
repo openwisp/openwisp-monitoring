@@ -1226,13 +1226,19 @@ Collect device metrics and status
 
     POST /v1/monitoring/device/{pk}/?key={key}&time={time}
 
+If data is latest then an additional parameter current can also be passed. For e.g.:
+
+.. code-block:: text
+
+    POST /v1/monitoring/device/{pk}/?key={key}&time={time}&current=true
+
 The format used for Device Status is inspired by `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_.
 
 **Note**: Device data will be saved with time passed in timeseries database.
 It should be in `%d-%m-%Y_%H:%M:%S.%f` format, else Bad Response(400) will be returned. 
 If request is made without passing time, then server time will be used.
 
-``time`` parameter is used to [send the data that is collected](https://github.com/openwisp/openwrt-openwisp-monitoring#collecting-vs-sending) when device was not reachable.
+``time`` parameter is used to [send the data collected](https://github.com/openwisp/openwrt-openwisp-monitoring#collecting-vs-sending) from device. 
 
 Signals
 -------
@@ -1248,8 +1254,6 @@ Signals
 - ``request``: the HTTP request object
 - ``time``: time with which metrics will be saved. If none, then server time will be used
 - ``is_latest``: whether the data is latest or not
-
-If none, then server time will be used.
 
 This signal is emitted when device metrics are received to the ``DeviceMetric``
 view (only when using HTTP POST).
