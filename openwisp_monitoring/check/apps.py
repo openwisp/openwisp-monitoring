@@ -33,11 +33,11 @@ class CheckConfig(AppConfig):
                 dispatch_uid='auto_config_check',
             )
 
-        if app_settings.AUTO_SNMP_DEVICEMONITORING:
-            from .base.models import auto_snmp_devicemonitoring_receiver
+        if app_settings.AUTO_SNMP:
+            from .base.models import auto_snmp_receiver
 
             post_save.connect(
-                auto_snmp_devicemonitoring_receiver,
+                auto_snmp_receiver,
                 sender=load_model('config', 'Device'),
-                dispatch_uid='auto_snmp_devicemonitoring',
+                dispatch_uid='auto_snmp',
             )

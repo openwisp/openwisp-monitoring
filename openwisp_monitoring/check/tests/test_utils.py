@@ -6,7 +6,7 @@ from swapper import load_model
 
 from ...check.tests.utils import MockOpenWRT
 from ...device.tests import TestDeviceMonitoringMixin
-from ..classes import Ping, SnmpDeviceMonitoring
+from ..classes import Ping, Snmp
 from ..settings import CHECK_CLASSES
 from ..tasks import perform_check
 from ..utils import run_checks_async
@@ -25,12 +25,12 @@ class TestUtils(TestDeviceMonitoringMixin, TransactionTestCase):
         # check is automatically created via django signal
 
     @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
-    @patch.object(SnmpDeviceMonitoring, 'netengine_instance', MockOpenWRT)
+    @patch.object(Snmp, 'netengine_instance', MockOpenWRT)
     def test_run_checks_async_success(self, mocked_method):
         self._create_check()
         run_checks_async()
 
-    @patch.object(SnmpDeviceMonitoring, 'netengine_instance', MockOpenWRT)
+    @patch.object(Snmp, 'netengine_instance', MockOpenWRT)
     @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
     def test_management_command(self, mocked_method):
         self._create_check()

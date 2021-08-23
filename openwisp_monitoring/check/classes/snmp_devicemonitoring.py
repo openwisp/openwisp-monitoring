@@ -15,7 +15,7 @@ Credentials = load_model('connection', 'Credentials')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 
 
-class SnmpDeviceMonitoring(BaseCheck, MetricChartsMixin):
+class Snmp(BaseCheck, MetricChartsMixin):
     def check(self, store=True):
         result = self.netengine_instance.to_dict()
         self._init_previous_data(data=getattr(self.related_object, 'data', {}))

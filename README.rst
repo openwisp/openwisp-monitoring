@@ -103,6 +103,7 @@ Available Features
 * Extensible metrics and charts: it's possible to define new metrics and new charts
 * API to retrieve the chart metrics and status information of each device
   based on `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_
+* Collection of monitoring information via `SNMP`_
 
 ------------
 
@@ -893,15 +894,29 @@ configuration status of a device changes, this ensures the check reacts
 quickly to events happening in the network and informs the user promptly
 if there's anything that is not working as intended.
 
-SNMP DeviceMonitoring
-~~~~~~~~~~~~~~~~~~~~~
+SNMP
+~~~~
 
-This check provides an alternative protocol to collect monitoring information from devices that don't have
-the ability to use `openwisp-config agent <https://github.com/openwisp/openwisp-config/>`_.
+This check provides an alternative way to collect monitoring information from devices that don't have
+the ability to use `openwisp-monitoring agent <https://github.com/openwisp/openwrt-openwisp-monitoring>`_.
 The information is collected via SNMP using `netengine <https://github.com/openwisp/netengine/>`_. The devices
 need to have an SNMP daemon in order for this to work.
 This check is disabled by default, you may choose to enable auto creation of this check by setting
-`OPENWISP_MONITORING_AUTO_SNMP_DEVICEMONITORING <#OPENWISP_MONITORING_AUTO_SNMP_DEVICEMONITORING>`_ to ``True``.
+`OPENWISP_MONITORING_AUTO_SNMP <#OPENWISP_MONITORING_AUTO_SNMP>`_ to ``True``.
+
+Instructions to use this feature:
+
+1. Register your device to OpenWISP via admin or `api <https://github.com/openwisp/openwisp-controller/#create-device>`_.
+2. Create SNMP access credentials and add them to your device:
+
+   In the admin, go to ``Access Credentials > Add Access Credentials`` and select a type suitable for your device's backend.
+   Then either enable ``Auto Add``, or add it to your device manually.
+   Alternatively, use the `api endpoint <https://github.com/openwisp/openwisp-controller/#create-credential>`_.
+3. Create an SNMP check:
+
+   In the admin, go to ``Check > Add Check``. Choose ``content type: config | Device``, ``Check type: SNMP Device Monitoring``
+   and write your device's UUID in the ``Object id`` section.
+   You can alternatively use the setting `OPENWISP_MONITORING_AUTO_SNMP <#OPENWISP_MONITORING_AUTO_SNMP>`_.
 
 Settings
 --------
@@ -986,8 +1001,8 @@ validating custom parameters of a ``Check`` object.
 This setting allows you to choose whether `config_applied <#configuration-applied>`_ checks should be
 created automatically for newly registered devices. It's enabled by default.
 
-``OPENWISP_MONITORING_AUTO_SNMP_DEVICEMONITORING``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``OPENWISP_MONITORING_AUTO_SNMP``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +--------------+-------------+
 | **type**:    | ``bool``    |

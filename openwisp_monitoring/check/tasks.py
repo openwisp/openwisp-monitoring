@@ -107,10 +107,10 @@ def auto_create_snmp_devicemonitoring(
     model, app_label, object_id, check_model=None, content_type_model=None
 ):
     """
-    Called by openwisp_monitoring.check.models.auto_snmp_devicemonitoring_receiver
+    Called by openwisp_monitoring.check.models.auto_snmp_receiver
     """
     Check = check_model or get_check_model()
-    devicemonitoring_path = 'openwisp_monitoring.check.classes.SnmpDeviceMonitoring'
+    devicemonitoring_path = 'openwisp_monitoring.check.classes.Snmp'
     has_check = Check.objects.filter(
         object_id=object_id, content_type__model='device', check=devicemonitoring_path
     ).exists()

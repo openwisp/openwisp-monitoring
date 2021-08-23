@@ -122,7 +122,7 @@ def auto_config_check_receiver(sender, instance, created, **kwargs):
     )
 
 
-def auto_snmp_devicemonitoring_receiver(sender, instance, created, **kwargs):
+def auto_snmp_receiver(sender, instance, created, **kwargs):
     """
     Implements OPENWISP_MONITORING_AUTO_DEVICE_SNMP_DEVICEMONITORING
     The creation step is executed in the background
