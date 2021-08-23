@@ -848,14 +848,20 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         time = start_time.strftime('%d-%m-%Y_%H:%M:%S.%f')
         with catch_signal(pre_metric_write) as handler:
             self._post_data(d.id, d.key, data, time=time)
-        handler.assert_called_once_with(
-            sender=Metric,
+        signal_calls = handler.call_args_list
+        # assert signal is called once
+        self.assertEqual(len(signal_calls), 1)
+        signal_arguments = signal_calls[0][1]
+        # remove metric from signal arguments
+        del signal_arguments['metric']
+        expected_arguments = dict(
             signal=pre_metric_write,
-            metric=om,
-            is_latest=False,
+            sender=Metric,
             values=values,
             time=start_time,
+            is_latest=False,
         )
+        self.assertEqual(signal_calls[0][1], expected_arguments)
 
     def test_post_metric_write_signal(self):
         d = self._create_device(organization=self._create_org())
@@ -867,14 +873,20 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         time = start_time.strftime('%d-%m-%Y_%H:%M:%S.%f')
         with catch_signal(post_metric_write) as handler:
             self._post_data(d.id, d.key, data, time=time)
-        handler.assert_called_once_with(
-            sender=Metric,
+        signal_calls = handler.call_args_list
+        # assert signal is called once
+        self.assertEqual(len(signal_calls), 1)
+        signal_arguments = signal_calls[0][1]
+        # remove metric from signal arguments
+        del signal_arguments['metric']
+        expected_arguments = dict(
             signal=post_metric_write,
-            metric=om,
-            is_latest=False,
+            sender=Metric,
             values=values,
             time=start_time.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+            is_latest=False,
         )
+        self.assertEqual(signal_calls[0][1], expected_arguments)
 
 
 class TestGeoApi(TestGeoMixin, DeviceMonitoringTestCase):
