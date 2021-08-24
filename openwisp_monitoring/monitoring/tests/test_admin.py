@@ -36,13 +36,13 @@ class TestAdmin(TestMonitoringMixin, TestCase):
         # Test menu group (openwisp-utils menu group) for Metric and Check models
         self._login_admin()
         response = self.client.get(reverse('admin:index'))
-        with self.subTest('test_admin_group_for_check_model'):
+        with self.subTest('test menu group link for check model'):
             url = reverse('admin:check_check_changelist')
-            self.assertContains(response, f'<a class="mg-link" href="{url}"')
-        with self.subTest('test_admin_group_for_metric_model'):
+            self.assertContains(response, f'class="mg-link" href="{url}"')
+        with self.subTest('test menu group link for metric model'):
             url = reverse('admin:monitoring_metric_changelist')
-            self.assertContains(response, f'<a class="mg-link" href="{url}"')
-        with self.subTest('test_monitoring_group_is_registered'):
+            self.assertContains(response, f'class="mg-link" href="{url}"')
+        with self.subTest('test "monitoring" group is registered'):
             self.assertContains(
                 response, '<div class="mg-dropdown-label">Monitoring </div>', html=True,
             )
