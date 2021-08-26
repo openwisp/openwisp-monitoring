@@ -103,7 +103,7 @@ Available Features
 * Extensible metrics and charts: it's possible to define new metrics and new charts
 * API to retrieve the chart metrics and status information of each device
   based on `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_
-* Collection of monitoring information via `SNMP`_
+* Collection of monitoring information via `SNMP <#snmp>`_
 
 ------------
 
@@ -1010,7 +1010,7 @@ created automatically for newly registered devices. It's enabled by default.
 | **default**: | ``False``   |
 +--------------+-------------+
 
-Whether SNMP checks are created automatically for devices. The devices need to have an snmp daemon
+Whether `SNMP <#snmp>`_ checks are created automatically for devices. The devices need to have an snmp daemon
 installed in order for this check to work.
 
 ``OPENWISP_MONITORING_AUTO_CHARTS``

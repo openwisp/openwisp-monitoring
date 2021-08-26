@@ -124,7 +124,7 @@ def auto_config_check_receiver(sender, instance, created, **kwargs):
 
 def auto_snmp_receiver(sender, instance, created, **kwargs):
     """
-    Implements OPENWISP_MONITORING_AUTO_DEVICE_SNMP_DEVICEMONITORING
+    Implements OPENWISP_MONITORING_AUTO_SNMP
     The creation step is executed in the background
     """
     # we need to skip this otherwise this task will be executed
