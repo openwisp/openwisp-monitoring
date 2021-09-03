@@ -1234,11 +1234,12 @@ If data is latest then an additional parameter current can also be passed. For e
 
 The format used for Device Status is inspired by `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_.
 
-**Note**: Device data will be saved with time passed in timeseries database.
-It should be in `%d-%m-%Y_%H:%M:%S.%f` format, else Bad Response(400) will be returned. 
-If request is made without passing time, then server time will be used.
+**Note**: Device data will be saved with in timeseries database with the specified ``time``,
+this should be in the format ``%d-%m-%Y_%H:%M:%S.%f``, otherwise 400 Bad Response will be returned.
 
-``time`` parameter is used to [send the data collected](https://github.com/openwisp/openwrt-openwisp-monitoring#collecting-vs-sending) from device. 
+If the request is made without passing the ``time`` argument, the server local time will be used.
+
+The ``time`` parameter was added to support `resilient collection and sending of data by the OpenWISP Monitoring Agent <https://github.com/openwisp/openwrt-openwisp-monitoring#collecting-vs-sending>`_.
 
 Signals
 -------
