@@ -31,6 +31,6 @@ def timeseries_write(
             metric=metric,
             values=values,
             time=kwargs.get('timestamp'),
-            is_latest=kwargs.get('is_latest', 'False'),
+            current=kwargs.get('current', 'False'),
         )
         post_metric_write.send(**signal_kwargs)

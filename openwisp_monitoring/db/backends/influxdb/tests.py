@@ -291,7 +291,7 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
                 tags={},
                 # this should be the original time at the moment of first failure
                 timestamp='2020-01-14T00:00:00Z',
-                is_latest=False,
+                current=False,
             )
 
     def _retry_task(self, task_signature):

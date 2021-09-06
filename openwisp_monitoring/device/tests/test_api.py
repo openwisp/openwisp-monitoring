@@ -358,7 +358,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             sender=DeviceData,
             signal=device_metrics_received,
             time=start_time,
-            is_latest=False,
+            current=False,
         )
 
     @capture_any_output()
@@ -859,7 +859,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             sender=Metric,
             values=values,
             time=start_time,
-            is_latest=False,
+            current=False,
         )
         self.assertEqual(signal_calls[0][1], expected_arguments)
 
@@ -884,7 +884,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
             sender=Metric,
             values=values,
             time=start_time.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
-            is_latest=False,
+            current=False,
         )
         self.assertEqual(signal_calls[0][1], expected_arguments)
 

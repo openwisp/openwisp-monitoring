@@ -200,7 +200,7 @@ class AbstractMetric(TimeStampedEditableModel):
     def write(
         self,
         value,
-        is_latest=False,
+        current=False,
         time=None,
         database=None,
         check=True,
@@ -220,7 +220,7 @@ class AbstractMetric(TimeStampedEditableModel):
             metric=self,
             values=values,
             time=time,
-            is_latest=is_latest,
+            current=current,
         )
         pre_metric_write.send(**signal_kwargs)
         options = dict(
@@ -228,7 +228,7 @@ class AbstractMetric(TimeStampedEditableModel):
             timestamp=time or timezone.now(),
             database=database,
             retention_policy=retention_policy,
-            is_latest=is_latest,
+            current=current,
         )
         # check can be disabled,
         # mostly for automated testing and debugging purposes

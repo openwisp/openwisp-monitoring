@@ -1254,7 +1254,7 @@ Signals
 - ``instance``: instance of ``Device`` whose metrics have been received
 - ``request``: the HTTP request object
 - ``time``: time with which metrics will be saved. If none, then server time will be used
-- ``is_latest``: whether the data is latest or not
+- ``current``: whether the data has just been collected or was collected previously and sent now due to network connectivity issues
 
 This signal is emitted when device metrics are received to the ``DeviceMetric``
 view (only when using HTTP POST).
@@ -1302,7 +1302,7 @@ alert settings is crossed.
 - ``metric``: ``Metric`` object whose data shall be stored in timeseries database
 - ``values``: metric data that shall be stored in the timeseries database
 - ``time``: time with which metrics will be saved
-- ``is_latest``: whether the data is latest or not
+- ``current``: whether the data has just been collected or was collected previously and sent now due to network connectivity issues
 
 This signal is emitted for every metric before the write operation is sent to
 the timeseries database.
@@ -1317,7 +1317,7 @@ the timeseries database.
 - ``metric``: ``Metric`` object whose data is being stored in timeseries database
 - ``values``: metric data that is being stored in the timeseries database
 - ``time``: time with which metrics will be saved
-- ``is_latest``: whether the data is latest or not
+- ``current``: whether the data has just been collected or was collected previously and sent now due to network connectivity issues
 
 This signal is emitted for every metric after the write operation is successfully
 executed in the background.
