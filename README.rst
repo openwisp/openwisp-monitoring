@@ -1224,9 +1224,22 @@ Collect device metrics and status
 
 .. code-block:: text
 
-    POST /v1/monitoring/device/{pk}/?key={key}
+    POST /v1/monitoring/device/{pk}/?key={key}&time={time}
+
+If data is latest then an additional parameter current can also be passed. For e.g.:
+
+.. code-block:: text
+
+    POST /v1/monitoring/device/{pk}/?key={key}&time={time}&current=true
 
 The format used for Device Status is inspired by `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_.
+
+**Note**: Device data will be saved with in timeseries database with the specified ``time``,
+this should be in the format ``%d-%m-%Y_%H:%M:%S.%f``, otherwise 400 Bad Response will be returned.
+
+If the request is made without passing the ``time`` argument, the server local time will be used.
+
+The ``time`` parameter was added to support `resilient collection and sending of data by the OpenWISP Monitoring Agent <https://github.com/openwisp/openwrt-openwisp-monitoring#collecting-vs-sending>`_.
 
 Signals
 -------
@@ -1240,6 +1253,8 @@ Signals
 
 - ``instance``: instance of ``Device`` whose metrics have been received
 - ``request``: the HTTP request object
+- ``time``: time with which metrics will be saved. If none, then server time will be used
+- ``current``: whether the data has just been collected or was collected previously and sent now due to network connectivity issues
 
 This signal is emitted when device metrics are received to the ``DeviceMetric``
 view (only when using HTTP POST).
@@ -1286,6 +1301,8 @@ alert settings is crossed.
 
 - ``metric``: ``Metric`` object whose data shall be stored in timeseries database
 - ``values``: metric data that shall be stored in the timeseries database
+- ``time``: time with which metrics will be saved
+- ``current``: whether the data has just been collected or was collected previously and sent now due to network connectivity issues
 
 This signal is emitted for every metric before the write operation is sent to
 the timeseries database.
@@ -1299,6 +1316,8 @@ the timeseries database.
 
 - ``metric``: ``Metric`` object whose data is being stored in timeseries database
 - ``values``: metric data that is being stored in the timeseries database
+- ``time``: time with which metrics will be saved
+- ``current``: whether the data has just been collected or was collected previously and sent now due to network connectivity issues
 
 This signal is emitted for every metric after the write operation is successfully
 executed in the background.

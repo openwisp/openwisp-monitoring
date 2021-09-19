@@ -200,6 +200,7 @@ class AbstractMetric(TimeStampedEditableModel):
     def write(
         self,
         value,
+        current=False,
         time=None,
         database=None,
         check=True,
@@ -214,13 +215,20 @@ class AbstractMetric(TimeStampedEditableModel):
                 if not self.related_fields or key not in self.related_fields:
                     raise ValueError(f'"{key}" not defined in metric configuration')
             values.update(extra_values)
-        signal_kwargs = dict(sender=self.__class__, metric=self, values=values)
+        signal_kwargs = dict(
+            sender=self.__class__,
+            metric=self,
+            values=values,
+            time=time,
+            current=current,
+        )
         pre_metric_write.send(**signal_kwargs)
         options = dict(
             tags=self.tags,
             timestamp=time or timezone.now(),
             database=database,
             retention_policy=retention_policy,
+            current=current,
         )
         # check can be disabled,
         # mostly for automated testing and debugging purposes
