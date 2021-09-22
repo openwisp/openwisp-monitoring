@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -171,6 +172,15 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(data['traces'][0][1][-1], 3.0)
         # expected upload wlan1
         self.assertEqual(data['traces'][1][1][-1], 1.5)
+
+    def test_200_no_date_supplied(self):
+        o = self._create_org()
+        d = self._create_device(organization=o)
+        data = self._data()
+        netjson = json.dumps(data)
+        url = self._url(d.id, d.key)
+        r = self.client.post(url, netjson, content_type='application/json')
+        self.assertEqual(r.status_code, 200)
 
     def test_garbage_wireless_clients(self):
         o = self._create_org()

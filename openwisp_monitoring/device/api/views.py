@@ -169,7 +169,9 @@ class DeviceMetricView(GenericAPIView):
         except ValidationError as e:
             logger.info(e.message)
             return Response(e.message, status=status.HTTP_400_BAD_REQUEST)
-        time_obj = request.query_params.get('time', now())
+        time_obj = request.query_params.get(
+            'time', now().utcnow().strftime('%d-%m-%Y_%H:%M:%S.%f')
+        )
         current = request.query_params.get('current', False)
         try:
             time = datetime.strptime(time_obj, '%d-%m-%Y_%H:%M:%S.%f').replace(
