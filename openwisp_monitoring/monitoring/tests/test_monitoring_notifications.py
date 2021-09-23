@@ -1,9 +1,6 @@
 from datetime import timedelta
 
-from django.core import mail
-from django.urls import reverse
 from django.utils import timezone
-from django.utils.html import strip_tags
 from freezegun import freeze_time
 from swapper import load_model
 
@@ -373,10 +370,10 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(Notification.objects.count(), 1)
             n = notification_queryset.first()
             self._check_notification_parameters(n, admin, m, None)
-            self.assertEqual(
-                '<p>The device <a href="#">None</a> is not reachable.</p>', n.message
+            self.assertIn(
+                'The device <a href="#">None</a> is not reachable.', n.message
             )
-            Notification.objects.all().delete()
+        Notification.objects.all().delete()
 
         with self.subTest('Test object metric multiple notifications'):
             d = self._create_device(organization=testorg)
@@ -392,7 +389,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertIn('is not reachable.', n.message)
             n = notification_queryset.last()
             self._check_notification_parameters(n, staff, om, d)
-            Notification.objects.all().delete()
+        Notification.objects.all().delete()
 
         with self.subTest('Test object metric multiple notifications no org'):
             om = self._create_object_metric(name='logins', content_object=user)
@@ -413,58 +410,6 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(notification.level, 'warning')
         self.assertEqual(notification.verb, 'is not reachable')
 
-    def test_email_notification(self):
-        self._create_admin()
-        d = self._create_device(organization=self._get_org())
-        m = self._create_general_metric(name='load', content_object=d)
-        self._create_alert_settings(
-            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=0
-        )
-        exp_target_link = f'https://example.com/admin/config/device/{d.id}/change/'
-        exp_email_body = '{message}\n\nFor more information see {email_link}.'
-
-        with self.subTest('Test notification email for metric crossed alert settings'):
-            m.write(99)
-            n = notification_queryset.first()
-            url_path = reverse('notifications:notification_read_redirect', args=[n.pk])
-            email_link = f'https://example.com{url_path}'
-            email = mail.outbox.pop()
-            html_message, content_type = email.alternatives.pop()
-            self.assertEqual(email.subject, n.email_subject)
-            self.assertEqual(
-                email.body,
-                exp_email_body.format(
-                    message=strip_tags(n.message), email_link=email_link
-                ),
-            )
-            self.assertIn(
-                f'<a href="{email_link}">'
-                'For further information see "device: default.test.device".</a>',
-                html_message,
-            )
-            self.assertIn(exp_target_link, n.message)
-
-        with self.subTest('Test notification email for metric returned under threhold'):
-            m.write(50)
-            n = notification_queryset.last()
-            url_path = reverse('notifications:notification_read_redirect', args=[n.pk])
-            email_link = f'https://example.com{url_path}'
-            email = mail.outbox.pop()
-            html_message, content_type = email.alternatives.pop()
-            self.assertEqual(email.subject, n.email_subject)
-            self.assertEqual(
-                email.body,
-                exp_email_body.format(
-                    message=strip_tags(n.message), email_link=email_link
-                ),
-            )
-            self.assertIn(
-                f'<a href="{email_link}">'
-                'For further information see "device: default.test.device".</a>',
-                html_message,
-            )
-            self.assertIn(exp_target_link, n.message)
-
     def test_notification_types(self):
         self._create_admin()
         m = self._create_object_metric(name='load')
@@ -472,9 +417,9 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=0
         )
         exp_message = (
-            '<p>{n.actor.name} for device '
+            '{n.actor.name} for device '
             '<a href="https://example.com/admin/openwisp_users/user/{n.target.id}/change/">tester</a>'
-            ' {n.verb}.</p>'
+            ' {n.verb}.'
         )
         with self.subTest("Test notification for 'alert settings crossed'"):
             m.write(99)
@@ -484,7 +429,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(
                 n.email_subject, f'[example.com] PROBLEM: {n.actor.name} {n.target}'
             )
-            self.assertEqual(n.message, exp_message.format(n=n))
+            self.assertIn(exp_message.format(n=n), n.message)
 
         with self.subTest("Test notification for 'under alert settings'"):
             m.write(80)
@@ -494,7 +439,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(
                 n.email_subject, f'[example.com] RECOVERY: {n.actor.name} {n.target}'
             )
-            self.assertEqual(n.message, exp_message.format(n=n))
+            self.assertIn(exp_message.format(n=n), n.message)
 
     def test_alerts_disabled(self):
         self._create_admin()
