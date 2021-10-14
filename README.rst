@@ -122,111 +122,18 @@ Install spatialite and sqlite:
                             gdal-bin libproj-dev libgeos-dev libspatialite-dev \
                             fping
 
-Setup (integrate in an existing Django project)
------------------------------------------------
+Monitoring Package
+------------------
 
-Follow the setup instructions of `openwisp-controller
-<https://github.com/openwisp/openwisp-controller>`_, then add the settings described below.
+You can install ``openwisp_monitoring`` and ``netjson_monitoring`` package from `openwrt-openwisp-monitoring <https://github.com/openwisp/openwrt-openwisp-monitoring/tree/master#compiling-openwisp-netjson-monitoring>`_
 
-.. code-block:: python
+These packages are required to make the `checks <#available-checks>`_ and
+`metrics <#openwisp_monitoring_metrics>`_ work.
 
-    INSTALLED_APPS = [
-        # django apps
-        # all-auth
-        'django.contrib.sites',
-        'allauth',
-        'allauth.account',
-        'allauth.socialaccount',
-        'django_extensions',
-        'django_filters',
-        # openwisp2 modules
-        'openwisp_users',
-        'openwisp_controller.pki',
-        'openwisp_controller.config',
-        'openwisp_controller.connection',
-        'openwisp_controller.geo',
-        'openwisp_ipam',
-        # monitoring
-        'openwisp_monitoring.monitoring',
-        'openwisp_monitoring.device',
-        'openwisp_monitoring.check',
-        'nested_admin',
-        # notifications
-        'openwisp_notifications',
-        # openwisp2 admin theme (must be loaded here)
-        'openwisp_utils.admin_theme',
-        # admin
-        'django.contrib.admin',
-        'django.forms',
-        # other dependencies ...
-    ]
+The ``netjson-monitoring`` package collects the required data from the openwrt device in realtime. This
+data is then sent by the ``openwisp-monitoring`` daemon to the server in the form of JSON data via SSL.
 
-    # Make sure you change them in production
-    # You can select one of the backends located in openwisp_monitoring.db.backends
-    TIMESERIES_DATABASE = {
-        'BACKEND': 'openwisp_monitoring.db.backends.influxdb',
-        'USER': 'openwisp',
-        'PASSWORD': 'openwisp',
-        'NAME': 'openwisp2',
-        'HOST': 'localhost',
-        'PORT': '8086',
-    }
-
-``urls.py``:
-
-.. code-block:: python
-
-    from django.conf import settings
-    from django.urls import include, path
-    from django.contrib.staticfiles.urls import staticfiles_urlpatterns
-
-    from openwisp_utils.admin_theme.admin import admin, openwisp_admin
-
-    openwisp_admin()
-
-    urlpatterns = [
-        path('admin/', include(admin.site.urls)),
-        path('', include('openwisp_controller.urls')),
-        path('', include('openwisp_monitoring.urls')),
-    ]
-
-    urlpatterns += staticfiles_urlpatterns()
-
-Configure caching (you may use a different cache storage if you want):
-
-.. code-block:: python
-
-    CACHES = {
-        'default': {
-            'BACKEND': 'django_redis.cache.RedisCache',
-            'LOCATION': 'redis://localhost/0',
-            'OPTIONS': {
-                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            }
-        }
-    }
-
-    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-    SESSION_CACHE_ALIAS = 'default'
-
-Configure celery (you may use a different broker if you want):
-
-.. code-block:: python
-
-    # here we show how to configure celery with redis but you can
-    # use other brokers if you want, consult the celery docs
-    CELERY_BROKER_URL = 'redis://localhost/1'
-    CELERY_BEAT_SCHEDULE = {
-        'run_checks': {
-            'task': 'openwisp_monitoring.check.tasks.run_checks',
-            'schedule': timedelta(minutes=5),
-        },
-    }
-
-If you decide to use redis (as shown in these examples),
-install the requierd python packages::
-
-    pip install redis django-redis
+**Note** - Previous users using monitoring templates for monitoring are advised to `delete the migration file <https://github.com/openwisp/openwisp-monitoring/blob/master/openwisp_monitoring/device/migrations/0002_create_template.py>`_ manually.
 
 Device Health Status
 --------------------
@@ -1429,19 +1336,6 @@ Example usage:
     cd tests/
     ./manage.py run_checks
 
-Monitoring Package
-------------------
-
-You can install ``openwisp_monitoring`` and ``netjson_monitoring`` package from `openwrt-openwisp-monitoring <https://github.com/openwisp/openwrt-openwisp-monitoring/tree/master#compiling-openwisp-netjson-monitoring>`_
-
-These packages are required to make the `checks <#available-checks>`_ and
-`metrics <#openwisp_monitoring_metrics>`_ work.
-
-The ``netjson-monitoring`` package collects the required data from the openwrt device in realtime. This
-data is then sent by the ``openwisp-monitoring`` daemon to the server in the form of JSON data via SSL.
-
-**Note** - Previous users using monitoring templates for monitoring are advised to `delete the migration file <https://github.com/openwisp/openwisp-monitoring/blob/master/openwisp_monitoring/device/migrations/0002_create_template.py>`_ manually.
-
 Installing for development
 --------------------------
 
@@ -1508,6 +1402,114 @@ When running the last line of the previous example, the environment variable
 which are simple django apps that extend ``openwisp-monitoring`` with
 the sole purpose of testing its extensibility, for more information regarding
 this concept, read the following section.
+
+Setup (integrate in an existing Django project)
+-----------------------------------------------
+
+Follow the setup instructions of `openwisp-controller
+<https://github.com/openwisp/openwisp-controller>`_, then add the settings described below.
+
+.. code-block:: python
+
+    INSTALLED_APPS = [
+        # django apps
+        # all-auth
+        'django.contrib.sites',
+        'allauth',
+        'allauth.account',
+        'allauth.socialaccount',
+        'django_extensions',
+        'django_filters',
+        # openwisp2 modules
+        'openwisp_users',
+        'openwisp_controller.pki',
+        'openwisp_controller.config',
+        'openwisp_controller.connection',
+        'openwisp_controller.geo',
+        # monitoring
+        'openwisp_monitoring.monitoring',
+        'openwisp_monitoring.device',
+        'openwisp_monitoring.check',
+        'nested_admin',
+        # notifications
+        'openwisp_notifications',
+        # openwisp2 admin theme (must be loaded here)
+        'openwisp_utils.admin_theme',
+        # admin
+        'django.contrib.admin',
+        'django.forms',
+        # other dependencies ...
+    ]
+
+    # Make sure you change them in production
+    # You can select one of the backends located in openwisp_monitoring.db.backends
+    TIMESERIES_DATABASE = {
+        'BACKEND': 'openwisp_monitoring.db.backends.influxdb',
+        'USER': 'openwisp',
+        'PASSWORD': 'openwisp',
+        'NAME': 'openwisp2',
+        'HOST': 'localhost',
+        'PORT': '8086',
+    }
+
+``urls.py``:
+
+.. code-block:: python
+
+    from django.conf import settings
+    from django.conf.urls import include, url
+    from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+
+    from openwisp_utils.admin_theme.admin import admin, openwisp_admin
+
+    openwisp_admin()
+
+    urlpatterns = [
+        url(r'^admin/', include(admin.site.urls)),
+        url(r'', include('openwisp_controller.urls')),
+        url(r'', include('openwisp_monitoring.urls')),
+    ]
+
+    urlpatterns += staticfiles_urlpatterns()
+
+Configure caching (you may use a different cache storage if you want):
+
+.. code-block:: python
+
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': 'redis://localhost/0',
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            }
+        }
+    }
+
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+    SESSION_CACHE_ALIAS = 'default'
+
+Configure celery (you may use a different broker if you want):
+
+.. code-block:: python
+
+    # here we show how to configure celery with redis but you can
+    # use other brokers if you want, consult the celery docs
+    CELERY_BROKER_URL = 'redis://localhost/1'
+    CELERY_BEAT_SCHEDULE = {
+        'run_checks': {
+            'task': 'openwisp_monitoring.check.tasks.run_checks',
+            'schedule': timedelta(minutes=5),
+        },
+    }
+
+    INSTALLED_APPS.append('djcelery_email')
+    EMAIL_BACKEND = 'djcelery_email.backends.CeleryEmailBackend'
+
+If you decide to use redis (as shown in these examples),
+install the requierd python packages::
+
+    pip install redis django-redis
 
 Install and run on docker
 -------------------------
