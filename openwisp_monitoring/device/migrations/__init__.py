@@ -13,7 +13,7 @@ TEMPLATE_OPENWISP_MONITORING_02 = OrderedDict(
     {
         "path": "/usr/sbin/openwisp_monitoring",
         "mode": "0744",
-        "contents": "#!/bin/sh\n\n# exit if packages are installed\n[ -f /usr/sbin/netjson-monitoring ] && exit 0\nuuid=$(uci get openwisp.http.uuid)\nkey=$(uci get openwisp.http.key)\nbase_url=$(uci get openwisp.http.url)\nverify_ssl=$(uci get openwisp.http.verify_ssl)\nincluded_interfaces=$(uci get openwisp.monitoring.included_interfaces)\nurl=\"$base_url/api/v1/monitoring/device/$uuid/?key=$key\"\ndata=$(/usr/sbin/netjson-monitoring \"$included_interfaces\")\nif [ \"$verify_ssl\" = 0 ]; then\n    curl_command='curl -k'\nelse\n    curl_command='curl'\nfi\n# send data via POST\n$curl_command -H \"Content-Type: application/json\" \\\n              -X POST \\\n              -d \"$data\" \\\n              -v $url\n",  # noqa
+        "contents": "#!/bin/sh\n\n# exit if packages are installed\n[ -f /usr/sbin/openwisp-monitoring ] && exit 0\nuuid=$(uci get openwisp.http.uuid)\nkey=$(uci get openwisp.http.key)\nbase_url=$(uci get openwisp.http.url)\nverify_ssl=$(uci get openwisp.http.verify_ssl)\nincluded_interfaces=$(uci get openwisp.monitoring.included_interfaces)\nurl=\"$base_url/api/v1/monitoring/device/$uuid/?key=$key\"\ndata=$(/usr/sbin/netjson_monitoring \"$included_interfaces\")\nif [ \"$verify_ssl\" = 0 ]; then\n    curl_command='curl -k'\nelse\n    curl_command='curl'\nfi\n# send data via POST\n$curl_command -H \"Content-Type: application/json\" \\\n              -v -d \"$data\" $url\n",  # noqa
     }
 )
 TEMPLATE_NETJSON_MONITORING_01 = OrderedDict(
