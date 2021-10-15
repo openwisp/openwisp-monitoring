@@ -1429,21 +1429,18 @@ Example usage:
     cd tests/
     ./manage.py run_checks
 
-Monitoring scripts
+Monitoring Package
 ------------------
 
-The monitoring scripts which are automatically installed by a `migration file of device-monitoring app <https://github.com/openwisp/openwisp-monitoring/blob/master/openwisp_monitoring/device/migrations/0002_create_template.py>`_
-are required to make the `checks <https://github.com/openwisp/openwisp-monitoring#available-checks>`_ and
+You can install ``openwisp_monitoring`` and ``netjson_monitoring`` package from `openwrt-openwisp-monitoring <https://github.com/openwisp/openwrt-openwisp-monitoring/tree/master#compiling-openwisp-netjson-monitoring>`_
+
+These packages are required to make the `checks <#available-checks>`_ and
 `metrics <#openwisp_monitoring_metrics>`_ work.
 
-The ``netjson-monitoring`` script collects the required data from the openwrt device in realtime. This
-data is then sent by the ``openwisp-monitoring`` script to the server in the form of JSON data via SSL.
-All the dependencies are updated and installed (if needed) by ``update-openwisp-packages`` script.
-The OpenWRT dependencies needed for the monitoring scripts to work are ``libubus-lua``, ``lua-cjson`` and
-``rpcd-mod-iwinfo``.
+The ``netjson-monitoring`` package collects the required data from the openwrt device in realtime. This
+data is then sent by the ``openwisp-monitoring`` daemon to the server in the form of JSON data via SSL.
 
-**WARNING**: Please create a new template if you wish to implement customizations. If you modify the
-default template to create your custom template then your code can get overwritten post an update.
+**Note** - Previous users using monitoring templates for monitoring are advised to `delete the migration file <https://github.com/openwisp/openwisp-monitoring/blob/master/openwisp_monitoring/device/migrations/0002_create_template.py>`_ manually.
 
 Installing for development
 --------------------------
