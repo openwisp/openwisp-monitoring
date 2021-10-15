@@ -9,6 +9,7 @@ from . import (
     TEMPLATE_OPENWISP_MONITORING_02,
     TEMPLATE_POST_RELOAD_HOOK_02,
     TEMPLATE_RC_LOCAL_02,
+    TEMPLATE_UPDATE_OPENWISP_PACKAGES_02
 )
 
 
@@ -20,6 +21,7 @@ def migrate_data(apps, schema_editor):
         template.config['files'][1] = TEMPLATE_NETJSON_MONITORING_02
         template.config['files'][2] = TEMPLATE_CRONTAB_MONITORING_02
         template.config['files'][3] = TEMPLATE_RC_LOCAL_02
+        template.config['files'][4] = TEMPLATE_UPDATE_OPENWISP_PACKAGES_02
         template.config['files'][5] = TEMPLATE_POST_RELOAD_HOOK_02
         template.config['openwisp'][0]['included_interfaces'] = '*'
         template.full_clean()
