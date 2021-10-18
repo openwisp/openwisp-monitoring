@@ -10,6 +10,9 @@ from openwisp_monitoring.monitoring.tests.test_models import (
 from openwisp_monitoring.monitoring.tests.test_monitoring_notifications import (
     TestMonitoringNotifications as BaseTestMonitoringNotifications,
 )
+from openwisp_monitoring.monitoring.tests.test_monitoring_notifications import (
+    TestTransactionMonitoringNotifications as BaseTestTransactionMonitoringNotifications,
+)
 
 
 class TestDatabase(BaseTestDatabase):
@@ -41,8 +44,15 @@ class TestMonitoringNotifications(BaseTestMonitoringNotifications):
     pass
 
 
+class TestTransactionMonitoringNotifications(
+    BaseTestTransactionMonitoringNotifications
+):
+    pass
+
+
 # this is necessary to avoid excuting the base test suites
 del BaseTestDatabase
 del BaseTestCharts
 del BaseTestModels
 del BaseTestMonitoringNotifications
+del BaseTestTransactionMonitoringNotifications

@@ -4,7 +4,10 @@ from django.utils import timezone
 from freezegun import freeze_time
 from swapper import load_model
 
-from ...device.tests import DeviceMonitoringTestCase
+from ...device.tests import (
+    DeviceMonitoringTestCase,
+    DeviceMonitoringTransactionTestcase,
+)
 
 Metric = load_model('monitoring', 'Metric')
 Notification = load_model('openwisp_notifications', 'Notification')
@@ -344,6 +347,68 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         om.refresh_from_db()
         self.assertFalse(om.is_healthy)
 
+    def test_notification_types(self):
+        self._create_admin()
+        m = self._create_object_metric(name='load')
+        self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=0
+        )
+        exp_message = (
+            '{n.actor.name} for device '
+            '<a href="https://example.com/admin/openwisp_users/user/{n.target.id}/change/">tester</a>'
+            ' {n.verb}.'
+        )
+        with self.subTest("Test notification for 'alert settings crossed'"):
+            m.write(99)
+            n = notification_queryset.first()
+            self.assertEqual(n.level, 'warning')
+            self.assertEqual(n.verb, 'crossed the threshold')
+            self.assertEqual(
+                n.email_subject, f'[example.com] PROBLEM: {n.actor.name} {n.target}'
+            )
+            self.assertIn(exp_message.format(n=n), n.message)
+
+        with self.subTest("Test notification for 'under alert settings'"):
+            m.write(80)
+            n = notification_queryset.last()
+            self.assertEqual(n.level, 'info')
+            self.assertEqual(n.verb, 'returned within the threshold')
+            self.assertEqual(
+                n.email_subject, f'[example.com] RECOVERY: {n.actor.name} {n.target}'
+            )
+            self.assertIn(exp_message.format(n=n), n.message)
+
+    def test_alerts_disabled(self):
+        self._create_admin()
+        d = self._create_device(organization=self._get_org())
+        m = self._create_general_metric(name='load', content_object=d)
+        self._create_alert_settings(
+            metric=m,
+            custom_operator='>',
+            custom_threshold=90,
+            custom_tolerance=1,
+            is_active=False,
+        )
+        m.write(99, time=ten_minutes_ago)
+        m.refresh_from_db()
+        self.assertFalse(m.is_healthy)
+        d.refresh_from_db()
+        self.assertEqual(d.monitoring.status, 'problem')
+        self.assertEqual(Notification.objects.count(), 0)
+
+
+class TestTransactionMonitoringNotifications(DeviceMonitoringTransactionTestcase):
+    device_model = Device
+    config_model = Config
+
+    def _check_notification_parameters(self, notification, recepient, metric, target):
+        self.assertEqual(notification.recipient, recepient)
+        self.assertEqual(notification.actor, metric)
+        self.assertEqual(notification.target, target)
+        self.assertEqual(notification.action_object, metric.alertsettings)
+        self.assertEqual(notification.level, 'warning')
+        self.assertEqual(notification.verb, 'is not reachable')
+
     def test_multiple_notifications(self):
         testorg = self._create_org()
         admin = self._create_admin()
@@ -401,60 +466,3 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(Notification.objects.count(), 1)
             n = notification_queryset.first()
             self._check_notification_parameters(n, admin, om, user)
-
-    def _check_notification_parameters(self, notification, recepient, metric, target):
-        self.assertEqual(notification.recipient, recepient)
-        self.assertEqual(notification.actor, metric)
-        self.assertEqual(notification.target, target)
-        self.assertEqual(notification.action_object, metric.alertsettings)
-        self.assertEqual(notification.level, 'warning')
-        self.assertEqual(notification.verb, 'is not reachable')
-
-    def test_notification_types(self):
-        self._create_admin()
-        m = self._create_object_metric(name='load')
-        self._create_alert_settings(
-            metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=0
-        )
-        exp_message = (
-            '{n.actor.name} for device '
-            '<a href="https://example.com/admin/openwisp_users/user/{n.target.id}/change/">tester</a>'
-            ' {n.verb}.'
-        )
-        with self.subTest("Test notification for 'alert settings crossed'"):
-            m.write(99)
-            n = notification_queryset.first()
-            self.assertEqual(n.level, 'warning')
-            self.assertEqual(n.verb, 'crossed the threshold')
-            self.assertEqual(
-                n.email_subject, f'[example.com] PROBLEM: {n.actor.name} {n.target}'
-            )
-            self.assertIn(exp_message.format(n=n), n.message)
-
-        with self.subTest("Test notification for 'under alert settings'"):
-            m.write(80)
-            n = notification_queryset.last()
-            self.assertEqual(n.level, 'info')
-            self.assertEqual(n.verb, 'returned within the threshold')
-            self.assertEqual(
-                n.email_subject, f'[example.com] RECOVERY: {n.actor.name} {n.target}'
-            )
-            self.assertIn(exp_message.format(n=n), n.message)
-
-    def test_alerts_disabled(self):
-        self._create_admin()
-        d = self._create_device(organization=self._get_org())
-        m = self._create_general_metric(name='load', content_object=d)
-        self._create_alert_settings(
-            metric=m,
-            custom_operator='>',
-            custom_threshold=90,
-            custom_tolerance=1,
-            is_active=False,
-        )
-        m.write(99, time=ten_minutes_ago)
-        m.refresh_from_db()
-        self.assertFalse(m.is_healthy)
-        d.refresh_from_db()
-        self.assertEqual(d.monitoring.status, 'problem')
-        self.assertEqual(Notification.objects.count(), 0)
