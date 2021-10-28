@@ -122,10 +122,10 @@ Install spatialite and sqlite:
                             gdal-bin libproj-dev libgeos-dev libspatialite-dev \
                             fping
 
-Monitoring Package
-------------------
+Install Monitoring Package on Device
+------------------------------------
 
-You can install ``openwisp_monitoring`` and ``netjson_monitoring`` package from `openwrt-openwisp-monitoring <https://github.com/openwisp/openwrt-openwisp-monitoring/tree/master#compiling-openwisp-netjson-monitoring>`_
+You can install ``openwisp_monitoring`` and ``netjson_monitoring`` packages on device from `openwrt-openwisp-monitoring <https://github.com/openwisp/openwrt-openwisp-monitoring/tree/master#compiling-openwisp-netjson-monitoring>`_
 
 These packages are required to make the `checks <#available-checks>`_ and
 `metrics <#openwisp_monitoring_metrics>`_ work.
@@ -133,7 +133,7 @@ These packages are required to make the `checks <#available-checks>`_ and
 The ``netjson-monitoring`` package collects the required data from the openwrt device in realtime. This
 data is then sent by the ``openwisp-monitoring`` daemon to the server in the form of JSON data via SSL.
 
-**Note** - Previous users using monitoring templates for monitoring are advised to `delete the migration file <https://github.com/openwisp/openwisp-monitoring/blob/master/openwisp_monitoring/device/migrations/0002_create_template.py>`_ manually.
+**Note** - Previous users using monitoring templates for monitoring are advised to `migrate the device app <https://github.com/openwisp/openwisp-monitoring/blob/master/openwisp_monitoring/device/migrations/0003_update_template.py>`_.
 
 Device Health Status
 --------------------
