@@ -57,14 +57,14 @@ class DatabaseClient(object):
         self.client_error = InfluxDBClientError
 
     def create_database(self):
-        """ creates database if necessary """
+        """creates database if necessary"""
         db = self.get_db
         # InfluxDB does not create a new database, neither raise an error if database exists
         db.create_database(self.db_name)
         logger.debug(f'Created InfluxDB database "{self.db_name}"')
 
     def drop_database(self):
-        """ drops database if it exists """
+        """drops database if it exists"""
         db = self.get_db
         # InfluxDB does not raise an error if database does not exist
         db.drop_database(self.db_name)
@@ -72,7 +72,7 @@ class DatabaseClient(object):
 
     @cached_property
     def get_db(self):
-        """ Returns an ``InfluxDBClient`` instance """
+        """Returns an ``InfluxDBClient`` instance"""
         return InfluxDBClient(
             TIMESERIES_DB['HOST'],
             TIMESERIES_DB['PORT'],
@@ -82,7 +82,7 @@ class DatabaseClient(object):
         )
 
     def create_or_alter_retention_policy(self, name, duration):
-        """ creates or alters existing retention policy if necessary """
+        """creates or alters existing retention policy if necessary"""
         db = self.get_db
         retention_policies = db.get_list_retention_policies()
         exists = False

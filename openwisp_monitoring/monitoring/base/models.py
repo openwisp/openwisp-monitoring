@@ -107,7 +107,7 @@ class AbstractMetric(TimeStampedEditableModel):
 
     @property
     def codename(self):
-        """ identifier stored in timeseries db """
+        """identifier stored in timeseries db"""
         return self._makekey(self.name)
 
     @property
@@ -126,7 +126,7 @@ class AbstractMetric(TimeStampedEditableModel):
     # TODO: This method needs to be refactored when adding the other db
     @staticmethod
     def _makekey(value):
-        """ makes value suited for InfluxDB key """
+        """makes value suited for InfluxDB key"""
         value = value.replace('.', '_')
         return slugify(value).replace('-', '_')
 
@@ -208,7 +208,7 @@ class AbstractMetric(TimeStampedEditableModel):
         retention_policy=None,
         send_alert=True,
     ):
-        """ write timeseries data """
+        """write timeseries data"""
         values = {self.field_name: value}
         if extra_values and isinstance(extra_values, dict):
             for key in extra_values.keys():
@@ -243,13 +243,13 @@ class AbstractMetric(TimeStampedEditableModel):
         timeseries_write.delay(name=self.key, values=values, **options)
 
     def read(self, **kwargs):
-        """ reads timeseries data """
+        """reads timeseries data"""
         return timeseries_db.read(
             key=self.key, fields=self.field_name, tags=self.tags, **kwargs
         )
 
     def _notify_users(self, notification_type, alert_settings):
-        """ creates notifications for users """
+        """creates notifications for users"""
         opts = dict(sender=self, type=notification_type, action_object=alert_settings)
         if self.content_object is not None:
             opts['target'] = self.content_object

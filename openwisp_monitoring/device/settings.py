@@ -5,7 +5,8 @@ from ..settings import get_settings_value
 
 def get_critical_device_metrics():
     critical_metrics = get_settings_value(
-        'CRITICAL_DEVICE_METRICS', [{'key': 'ping', 'field_name': 'reachable'}],
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
     )
     for item in critical_metrics:  # pragma: no cover
         try:
