@@ -8,6 +8,7 @@ from ... import settings as monitoring_settings
 from ...device.tests import TestDeviceMonitoringMixin
 from .. import settings
 from ..classes import Ping
+from ..classes.ping import get_ping_schema
 from ..exceptions import OperationalError
 from . import _FPING_REACHABLE, _FPING_UNREACHABLE
 
@@ -50,7 +51,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
             name='Ping check',
             check=self._PING,
             content_object=device,
-            params={'count': 2, 'interval': 10, 'bytes': 10, 'timeout': 50},
+            params={'count': 2, 'interval': 10, 'bytes': 12, 'timeout': 50},
         )
         result = check.perform_check(store=False)
         for key in self._RESULT_KEYS:
@@ -59,6 +60,40 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(result['loss'], 0.0)
         for key in self._RTT_KEYS:
             self.assertTrue(result[key] < 1)
+
+    @patch.object(
+        settings,
+        'PING_CHECK_CONFIG',
+        {
+            'timeout': {'default': '10000'},
+            'count': {'default': 22},
+            'bytes': {'default': 1024},
+        },
+    )
+    def test_ping_check_config(self, *args):
+        with patch.object(Ping, 'schema', get_ping_schema()):
+            device = self._create_device(organization=self._create_org())
+            # will ping localhost
+            device.management_ip = '127.0.0.1'
+            check = Check(
+                name='Ping check', check=self._PING, content_object=device, params={}
+            )
+            with patch.object(
+                Ping, '_command', return_value=_FPING_REACHABLE
+            ) as mocked_command:
+                check.perform_check(store=False)
+            mocked_command.assert_called_once_with(
+                [
+                    'fping',
+                    '-e',
+                    '-c 22',
+                    '-i 25',
+                    '-b 1024',
+                    '-t 10000',
+                    '-q',
+                    '127.0.0.1',
+                ]
+            )
 
     @patch.object(Ping, '_command', return_value=_FPING_UNREACHABLE)
     def test_check_ping_unreachable(self, mocked_method):

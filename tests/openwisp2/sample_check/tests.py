@@ -32,7 +32,7 @@ class TestModels(BaseTestModels, TestDeviceMonitoringMixin, TransactionTestCase)
             name='Ping check',
             check=self._PING,
             content_object=device,
-            params={'count': 2, 'interval': 10, 'bytes': 10, 'timeout': 50},
+            params={'count': 2, 'interval': 10, 'bytes': 12, 'timeout': 50},
         )
         check.perform_check(store=False)
         # Avoid any failures due to minor lag

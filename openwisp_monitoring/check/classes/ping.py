@@ -5,6 +5,8 @@ from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
 from swapper import load_model
 
+from openwisp_utils.utils import deep_merge_dicts
+
 from ... import settings as monitoring_settings
 from .. import settings as app_settings
 from ..exceptions import OperationalError
@@ -14,37 +16,46 @@ Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 
+DEFAULT_PING_CHECK_CONFIG = {
+    'count': {
+        'type': 'integer',
+        'default': 5,
+        'minimum': 2,
+        # chosen to avoid slowing down the queue
+        'maximum': 20,
+    },
+    'interval': {
+        'type': 'integer',
+        'default': 25,
+        'minimum': 10,
+        # chosen to avoid slowing down the queue
+        'maximum': 1000,
+    },
+    'bytes': {'type': 'integer', 'default': 56, 'minimum': 12, 'maximum': 65508},
+    'timeout': {
+        'type': 'integer',
+        'default': 800,
+        'minimum': 5,
+        # arbitrary chosen to avoid slowing down the queue
+        'maximum': 1500,
+    },
+}
 
-class Ping(BaseCheck):
+
+def get_ping_schema():
     schema = {
         '$schema': 'http://json-schema.org/draft-07/schema#',
         'type': 'object',
         'additionalProperties': False,
-        'properties': {
-            'count': {
-                'type': 'integer',
-                'default': 5,
-                'minimum': 2,
-                # chosen to avoid slowing down the queue
-                'maximum': 20,
-            },
-            'interval': {
-                'type': 'integer',
-                'default': 25,
-                'minimum': 10,
-                # chosen to avoid slowing down the queue
-                'maximum': 1000,
-            },
-            'bytes': {'type': 'integer', 'default': 56, 'minimum': 1, 'maximum': 65508},
-            'timeout': {
-                'type': 'integer',
-                'default': 800,
-                'minimum': 5,
-                # arbitrary chosen to avoid slowing down the queue
-                'maximum': 1500,
-            },
-        },
     }
+    schema['properties'] = deep_merge_dicts(
+        DEFAULT_PING_CHECK_CONFIG, app_settings.PING_CHECK_CONFIG
+    )
+    return schema
+
+
+class Ping(BaseCheck):
+    schema = get_ping_schema()
 
     def validate_params(self):
         try:
