@@ -12,6 +12,7 @@ import model_utils.fields
 import swapper
 from django.conf import settings
 from django.db import migrations, models
+from swapper import dependency, split
 
 from ..configuration import CHART_CONFIGURATION_CHOICES, METRIC_CONFIGURATION_CHOICES
 
@@ -48,9 +49,12 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('monitoring', '__first__'),
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        swapper.dependency(*swapper.split(settings.AUTH_USER_MODEL), latest=True),
         ('contenttypes', '0002_remove_content_type_name'),
-        ('openwisp_notifications', '0003_notification_notification_type'),
+        dependency(
+            *split(settings.AUTH_USER_MODEL),
+            version='0003_notification_notification_type'
+        ),
         swapper.dependency('monitoring', 'Metric'),
         swapper.dependency('monitoring', 'AlertSettings'),
         swapper.dependency('monitoring', 'Chart'),

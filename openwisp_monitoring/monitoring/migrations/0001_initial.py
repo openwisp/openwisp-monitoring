@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        swapper.dependency(*swapper.split(settings.AUTH_USER_MODEL), latest=True),
         ('contenttypes', '0002_remove_content_type_name'),
         swapper.dependency('monitoring', 'Metric'),
         swapper.dependency('monitoring', 'Threshold'),
