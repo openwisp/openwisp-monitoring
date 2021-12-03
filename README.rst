@@ -490,6 +490,9 @@ command is used to collect these metrics.
 You may choose to disable auto creation of this check by setting
 `OPENWISP_MONITORING_AUTO_PING <#OPENWISP_MONITORING_AUTO_PING>`_ to ``False``.
 
+You can change the default values used for ping checks using
+`OPENWISP_MONITORING_PING_CHECK_CONFIG <#OPENWISP_MONITORING_PING_CHECK_CONFIG>`_ setting.
+
 Configuration applied
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -531,6 +534,48 @@ in terms of disk space.
 +--------------+-------------+
 
 Whether ping checks are created automatically for devices.
+
+``OPENWISP_MONITORING_PING_CHECK_CONFIG``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``dict``    |
++--------------+-------------+
+| **default**: | ``{}``      |
++--------------+-------------+
+
+This setting allows to override the default ping check configuration defined in
+``openwisp_monitoring.check.classes.ping.DEFAULT_PING_CHECK_CONFIG``.
+
+For example, if you want to change only the **timeout** of
+``ping`` you can use:
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_PING_CHECK_CONFIG = {
+        'timeout': {
+            'default': 1000,
+        },
+    }
+
+If you are overriding the default value for any parameter
+beyond the maximum or minimum value defined in
+``openwisp_monitoring.check.classes.ping.DEFAULT_PING_CHECK_CONFIG``,
+you will also need to override the ``maximum`` or ``minimum`` fields
+as following:
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_PING_CHECK_CONFIG = {
+        'timeout': {
+            'default': 2000,
+            'minimum': 1500,
+            'maximum': 2500,
+        },
+    }
+
+**Note:** Above ``maximum`` and ``minimum`` values are only used for
+validating custom parameters of a ``Check`` object.
 
 ``OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
