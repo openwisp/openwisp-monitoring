@@ -21,6 +21,8 @@ SAMPLE_APP=1 openwisp-qa-check \
     --skip-checkendline \
     --skip-checkcommit \
     --skip-black \
+    --csslinter \
+    --jslinter \
     --migration-path "./tests/openwisp2/sample_check/migrations/ \
                       ./tests/openwisp2/sample_device_monitoring/migrations/ \
                       ./tests/openwisp2/sample_monitoring/migrations/" \
