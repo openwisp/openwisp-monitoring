@@ -78,6 +78,10 @@ class Migration(migrations.Migration):
                         blank=True, db_index=True, default=None, null=True
                     ),
                 ),
+                (
+                    'is_tolerance_healthy',
+                    models.BooleanField(blank=True, default=None, null=True),
+                ),
                 ('details', models.CharField(blank=True, max_length=64, null=True)),
                 (
                     'content_type',

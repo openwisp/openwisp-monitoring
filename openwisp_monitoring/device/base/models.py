@@ -273,7 +273,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
     @receiver(threshold_crossed, dispatch_uid='threshold_crossed_receiver')
     def threshold_crossed(sender, metric, alert_settings, target, first_time, **kwargs):
         """
-        Changes the health status of a device when a alert_settings is crossed.
+        Changes the health status of a device when a metric threshold is crossed.
         """
         DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
         if not isinstance(target, DeviceMonitoring.device.field.related_model):

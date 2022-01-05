@@ -223,6 +223,7 @@ class TestModels(TestMonitoringMixin, TestCase):
             target=None,
             sender=Metric,
             signal=threshold_crossed,
+            tolerance_crossed=True,
         )
 
     def test_object_metric_signal_emitted(self):
@@ -239,6 +240,7 @@ class TestModels(TestMonitoringMixin, TestCase):
             target=om.content_object,
             sender=Metric,
             signal=threshold_crossed,
+            tolerance_crossed=True,
         )
 
     def test_metric_pre_write_signals_emitted(self):
