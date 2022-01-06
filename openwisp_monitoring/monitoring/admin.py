@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.forms import ModelForm
 from django.utils.translation import gettext_lazy as _
+from reversion.admin import VersionAdmin
 from swapper import load_model
 
 from openwisp_utils.admin import TimeReadonlyAdminMixin
@@ -36,7 +37,7 @@ class ChartInline(admin.StackedInline):
 
 
 @admin.register(Metric)
-class MetricAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
+class MetricAdmin(TimeReadonlyAdminMixin, VersionAdmin):
     list_display = ['__str__', 'created', 'modified']
     readonly_fields = ['is_healthy']
     search_fields = ['name']
@@ -53,3 +54,19 @@ class MetricAdmin(TimeReadonlyAdminMixin, admin.ModelAdmin):
     class Media:
         css = {'all': ('monitoring/css/monitoring.css',)}
         js = ('monitoring/js/plotly-cartesian.min.js', 'monitoring/js/chart.js')
+
+    def reversion_register(self, model, **options):
+        if model == Metric:
+            options['follow'] = (
+                *(options['follow']),
+                'content_object',
+                'chart_set',
+            )
+        if model == AlertSettings:
+            options['follow'] = (
+                *(options['follow']),
+                'metric',
+            )
+        if model == Chart:
+            options['follow'] = (*options['follow'], 'metric')
+        return super().reversion_register(model, **options)
