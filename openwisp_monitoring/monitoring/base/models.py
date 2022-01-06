@@ -52,6 +52,7 @@ class AbstractMetric(TimeStampedEditableModel):
     content_object = GenericForeignKey('content_type', 'object_id')
     # NULL means the health has yet to be assessed
     is_healthy = models.BooleanField(default=None, null=True, blank=True, db_index=True)
+    # Like "is_healthy", but respects tolerance of alert settings
     is_tolerance_healthy = models.BooleanField(default=None, null=True, blank=True)
 
     class Meta:
@@ -157,10 +158,10 @@ class AbstractMetric(TimeStampedEditableModel):
 
     def _set_is_healthy(self, alert_settings, value):
         """
-        Sets the value of 'is_healthy' field if 'value'
-        crosses threshold defined in 'alert_settings'.
-        Returns 'True' if 'is_healthy' field is changed.
-        Otherwise, returns 'None'.
+        Sets the value of "is_healthy" field if "value"
+        crosses threshold defined in "alert_settings".
+        Returns "True" if "is_healthy" field is changed.
+        Otherwise, returns "None".
         """
         crossed = alert_settings._value_crossed(value)
         if (not crossed and self.is_healthy) or (crossed and self.is_healthy is False):
@@ -177,11 +178,12 @@ class AbstractMetric(TimeStampedEditableModel):
         self, alert_settings, value, time, retention_policy, send_alert
     ):
         """
-        Sets the value of 'is_tolerance_healthy' if 'value'
+        Sets the value of "is_tolerance_healthy" if "value"
         crosses threshold for tolerance defined in alert_settings.
-        Returns 'None' if value of 'is_tolerance_healthy' is unchanged.
-        Returns 'True' if it is the first metric write within threshold.
-        Returns 'False' if it is NOT the first metric write within threshold.
+        It also sends the notification if required.
+        Returns "None" if value of "is_tolerance_healthy" is unchanged.
+        Returns "True" if it is the first metric write within threshold.
+        Returns "False" in other cases.
         """
         time = self._get_time(time)
         crossed = alert_settings._is_crossed_by(value, time, retention_policy)
@@ -190,7 +192,7 @@ class AbstractMetric(TimeStampedEditableModel):
         if (not crossed and self.is_tolerance_healthy) or (
             crossed and self.is_tolerance_healthy is False
         ):
-            return False
+            return
         # problem: not within threshold limit
         elif crossed and self.is_tolerance_healthy in [True, None]:
             if self.is_tolerance_healthy is None:
@@ -217,24 +219,24 @@ class AbstractMetric(TimeStampedEditableModel):
 
     def check_threshold(self, value, time=None, retention_policy=None, send_alert=True):
         """
-        checks if the threshold is crossed
-        and notifies users accordingly
+        Checks if the threshold is crossed and notifies users accordingly
         """
         try:
             alert_settings = self.alertsettings
         except ObjectDoesNotExist:
             return
         is_healthy_changed = self._set_is_healthy(alert_settings, value)
-        is_tolerance_healthy_changed = self._set_is_tolerance_healthy(
+        tolerance_healthy_changed_first_time = self._set_is_tolerance_healthy(
             alert_settings, value, time, retention_policy, send_alert
         )
+        is_tolerance_healthy_changed = tolerance_healthy_changed_first_time is not None
         # Do nothing if none of the fields changed.
-        if is_healthy_changed is None and is_tolerance_healthy_changed is None:
+        if not is_healthy_changed and not is_tolerance_healthy_changed:
             return
         update_fields = []
         if is_healthy_changed:
             update_fields.append('is_healthy')
-        if is_tolerance_healthy_changed is not None:
+        if is_tolerance_healthy_changed:
             update_fields.append('is_tolerance_healthy')
         self.save(update_fields=update_fields)
         threshold_crossed.send(
@@ -242,10 +244,8 @@ class AbstractMetric(TimeStampedEditableModel):
             alert_settings=alert_settings,
             metric=self,
             target=self.content_object,
-            first_time=is_tolerance_healthy_changed,
-            tolerance_crossed=True
-            if is_tolerance_healthy_changed is not None
-            else False,
+            first_time=tolerance_healthy_changed_first_time,
+            tolerance_crossed=is_tolerance_healthy_changed,
         )
 
     def write(
