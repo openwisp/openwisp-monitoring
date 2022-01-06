@@ -35,11 +35,6 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-        ('config', '0012_auto_20180219_1501'),
-        ('config', '0018_config_context'),
-    ]
-
     operations = [
         migrations.CreateModel(
             name='DeviceData',

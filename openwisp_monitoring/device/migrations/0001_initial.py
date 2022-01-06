@@ -8,8 +8,6 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [('config', '0012_auto_20180219_1501')]
-
     operations = [
         migrations.CreateModel(
             name='DeviceData',

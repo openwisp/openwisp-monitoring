@@ -23,7 +23,6 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('check', '0002_check_unique_together'),
-        ('config', '0026_hardware_id_not_unique'),
     ]
 
     operations = [

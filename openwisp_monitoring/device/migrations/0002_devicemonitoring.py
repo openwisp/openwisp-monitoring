@@ -24,7 +24,6 @@ def create_device_monitoring(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('config', '0018_config_context'),
         ('device_monitoring', '0001_initial'),
     ]
     operations = [
