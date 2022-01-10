@@ -234,7 +234,7 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
             self.assertEqual(m.read(retention_policy=SHORT_RP)[0][m.field_name], 0)
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, False)
-            self.assertEqual(m.is_tolerance_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
         with self.subTest(
             'Test metric write on short retention_policy with deferred alert'
@@ -247,7 +247,7 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
             self.assertEqual(m.read(retention_policy=SHORT_RP)[0][m.field_name], 0)
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, False)
-            self.assertEqual(m.is_tolerance_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
 
     def test_metric_write_microseconds_precision(self):

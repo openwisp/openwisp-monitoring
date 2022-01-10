@@ -36,7 +36,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             m.write(99)
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, False)
-            self.assertEqual(m.is_tolerance_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
             n = notification_queryset.first()
             self.assertEqual(n.recipient, admin)
@@ -48,14 +48,14 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             m.write(95)
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, False)
-            self.assertEqual(m.is_tolerance_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
 
         with self.subTest('Test notification for metric falling behind alert settings'):
             m.write(60)
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, True)
-            self.assertEqual(m.is_tolerance_healthy, True)
+            self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 2)
             n = notification_queryset.last()
             self.assertEqual(n.recipient, admin)
@@ -69,7 +69,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             m.write(40)
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, True)
-            self.assertEqual(m.is_tolerance_healthy, True)
+            self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 2)
 
     def test_general_check_threshold_crossed_deferred(self):
@@ -81,7 +81,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         m.write(99, time=ten_minutes_ago)
         m.refresh_from_db()
         self.assertEqual(m.is_healthy, False)
-        self.assertEqual(m.is_tolerance_healthy, False)
+        self.assertEqual(m.is_healthy_tolerant, False)
         self.assertEqual(Notification.objects.count(), 1)
         n = notification_queryset.first()
         self.assertEqual(n.recipient, admin)
@@ -97,7 +97,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         )
         m.write(99)
         self.assertEqual(m.is_healthy, True)
-        self.assertEqual(m.is_tolerance_healthy, True)
+        self.assertEqual(m.is_healthy_tolerant, True)
         self.assertEqual(Notification.objects.count(), 0)
 
     def test_resources_metric_threshold_deferred_not_crossed(self):
@@ -147,7 +147,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             m.write(89, time=ten_minutes_ago)
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, True)
-            self.assertEqual(m.is_tolerance_healthy, True)
+            self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 0)
 
         with self.subTest('Test no notification is generated when check=False'):
@@ -158,7 +158,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             m.write(92)
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, False)
-            self.assertEqual(m.is_tolerance_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
             n = notification_queryset.first()
             self.assertEqual(n.recipient, admin)
@@ -170,7 +170,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             m.write(50)
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, True)
-            self.assertEqual(m.is_tolerance_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
 
         with self.subTest('Tolerance still not passed, not expecting a recovery yet'):
@@ -178,7 +178,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
                 m.write(51)
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, True)
-            self.assertEqual(m.is_tolerance_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
 
         with self.subTest('Test recovery notification after tolerance is passed'):
@@ -186,7 +186,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
                 m.write(50)
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, True)
-            self.assertEqual(m.is_tolerance_healthy, True)
+            self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 2)
             n = notification_queryset.last()
             self.assertEqual(n.recipient, admin)
@@ -207,7 +207,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             om.write(99)
             om.refresh_from_db()
             self.assertEqual(om.is_healthy, False)
-            self.assertEqual(om.is_tolerance_healthy, False)
+            self.assertEqual(om.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
             n = notification_queryset.first()
             self.assertEqual(n.recipient, admin)
@@ -222,7 +222,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             om.write(95)
             om.refresh_from_db()
             self.assertEqual(om.is_healthy, False)
-            self.assertEqual(om.is_tolerance_healthy, False)
+            self.assertEqual(om.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
 
         with self.subTest(
@@ -231,7 +231,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             om.write(60)
             om.refresh_from_db()
             self.assertEqual(om.is_healthy, True)
-            self.assertEqual(om.is_tolerance_healthy, True)
+            self.assertEqual(om.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 2)
             n = notification_queryset.last()
             self.assertEqual(n.recipient, admin)
@@ -246,7 +246,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             om.write(40)
             om.refresh_from_db()
             self.assertEqual(om.is_healthy, True)
-            self.assertEqual(om.is_tolerance_healthy, True)
+            self.assertEqual(om.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 2)
 
     def test_object_check_threshold_crossed_deferred(self):
@@ -258,7 +258,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         om.write(99, time=ten_minutes_ago)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, False)
-        self.assertEqual(om.is_tolerance_healthy, False)
+        self.assertEqual(om.is_healthy_tolerant, False)
         self.assertEqual(Notification.objects.count(), 1)
         n = notification_queryset.first()
         self.assertEqual(n.recipient, admin)
@@ -276,7 +276,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         om.write(99)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, False)
-        self.assertEqual(om.is_tolerance_healthy, True)
+        self.assertEqual(om.is_healthy_tolerant, True)
         self.assertEqual(Notification.objects.count(), 0)
 
     def test_object_check_threshold_crossed_for_long_time(self):
@@ -292,7 +292,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         om.write(92)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, False)
-        self.assertEqual(om.is_tolerance_healthy, False)
+        self.assertEqual(om.is_healthy_tolerant, False)
         self.assertEqual(Notification.objects.count(), 1)
         n = notification_queryset.first()
         self.assertEqual(n.recipient, admin)
@@ -304,20 +304,20 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         om.write(95)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, False)
-        self.assertEqual(om.is_tolerance_healthy, False)
+        self.assertEqual(om.is_healthy_tolerant, False)
         self.assertEqual(Notification.objects.count(), 1)
         # value back to normal but tolerance not passed yet
         om.write(60)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, True)
-        self.assertEqual(om.is_tolerance_healthy, False)
+        self.assertEqual(om.is_healthy_tolerant, False)
         self.assertEqual(Notification.objects.count(), 1)
         # tolerance passed
         with freeze_time(ten_minutes_after):
             om.write(60)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, True)
-        self.assertEqual(om.is_tolerance_healthy, True)
+        self.assertEqual(om.is_healthy_tolerant, True)
         self.assertEqual(Notification.objects.count(), 2)
         n = notification_queryset.last()
         self.assertEqual(n.recipient, admin)
@@ -330,7 +330,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             om.write(40)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, True)
-        self.assertEqual(om.is_tolerance_healthy, True)
+        self.assertEqual(om.is_healthy_tolerant, True)
         self.assertEqual(Notification.objects.count(), 2)
 
     def test_flapping_metric_with_tolerance(self):
@@ -344,36 +344,36 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(Notification.objects.count(), 0)
             om.refresh_from_db()
             self.assertEqual(om.is_healthy, True)
-            self.assertEqual(om.is_tolerance_healthy, True)
+            self.assertEqual(om.is_healthy_tolerant, True)
         with freeze_time(start_time - timedelta(minutes=20)):
             om.write(0)
             self.assertEqual(Notification.objects.count(), 0)
             om.refresh_from_db()
             self.assertEqual(om.is_healthy, False)
-            self.assertEqual(om.is_tolerance_healthy, True)
+            self.assertEqual(om.is_healthy_tolerant, True)
         with freeze_time(start_time - timedelta(minutes=15)):
             om.write(1)
             self.assertEqual(Notification.objects.count(), 0)
             om.refresh_from_db()
             self.assertEqual(om.is_healthy, True)
-            self.assertEqual(om.is_tolerance_healthy, True)
+            self.assertEqual(om.is_healthy_tolerant, True)
         with freeze_time(start_time - timedelta(minutes=10)):
             om.write(0)
             self.assertEqual(Notification.objects.count(), 0)
             om.refresh_from_db()
             self.assertEqual(om.is_healthy, False)
-            self.assertEqual(om.is_tolerance_healthy, True)
+            self.assertEqual(om.is_healthy_tolerant, True)
         with freeze_time(start_time - timedelta(minutes=5)):
             om.write(0)
             self.assertEqual(Notification.objects.count(), 0)
             om.refresh_from_db()
             self.assertEqual(om.is_healthy, False)
-            self.assertEqual(om.is_tolerance_healthy, True)
+            self.assertEqual(om.is_healthy_tolerant, True)
         om.write(0)
         self.assertEqual(Notification.objects.count(), 1)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, False)
-        self.assertEqual(om.is_tolerance_healthy, False)
+        self.assertEqual(om.is_healthy_tolerant, False)
 
     def test_notification_types(self):
         self._create_admin()
@@ -420,7 +420,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         m.write(99, time=ten_minutes_ago)
         m.refresh_from_db()
         self.assertEqual(m.is_healthy, False)
-        self.assertEqual(m.is_tolerance_healthy, False)
+        self.assertEqual(m.is_healthy_tolerant, False)
         d.refresh_from_db()
         self.assertEqual(d.monitoring.status, 'problem')
         self.assertEqual(Notification.objects.count(), 0)

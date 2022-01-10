@@ -266,7 +266,7 @@ class TestAdmin(DeviceMonitoringTestCase):
         m.write(m.alertsettings.threshold + 0.1)
         m.refresh_from_db()
         self.assertEqual(m.is_healthy, False)
-        self.assertEqual(m.is_tolerance_healthy, False)
+        self.assertEqual(m.is_healthy_tolerant, False)
         self.assertEqual(dd.monitoring.status, 'problem')
         r = self.client.get(url)
         self.assertContains(r, '<label>Health checks:</label>')

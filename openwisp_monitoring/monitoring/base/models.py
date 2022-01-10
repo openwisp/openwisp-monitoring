@@ -53,7 +53,7 @@ class AbstractMetric(TimeStampedEditableModel):
     # NULL means the health has yet to be assessed
     is_healthy = models.BooleanField(default=None, null=True, blank=True, db_index=True)
     # Like "is_healthy", but respects tolerance of alert settings
-    is_tolerance_healthy = models.BooleanField(default=None, null=True, blank=True)
+    is_healthy_tolerant = models.BooleanField(default=None, null=True, blank=True)
 
     class Meta:
         abstract = True
@@ -162,6 +162,10 @@ class AbstractMetric(TimeStampedEditableModel):
         crosses threshold defined in "alert_settings".
         Returns "True" if "is_healthy" field is changed.
         Otherwise, returns "None".
+
+        This method does not take into account the alert
+        settings tolerance, which is done by
+        "_set_is_healthy_tolerant" method.
         """
         crossed = alert_settings._value_crossed(value)
         if (not crossed and self.is_healthy) or (crossed and self.is_healthy is False):
@@ -174,43 +178,53 @@ class AbstractMetric(TimeStampedEditableModel):
             self.is_healthy = True
         return True
 
-    def _set_is_tolerance_healthy(
+    def _set_is_healthy_tolerant(
         self, alert_settings, value, time, retention_policy, send_alert
     ):
         """
         Sets the value of "is_tolerance_healthy" if "value"
-        crosses threshold for tolerance defined in alert_settings.
+        crosses the threshold for more than the amount of seconds
+        defined in the alert_settings "tolerance" field.
         It also sends the notification if required.
-        Returns "None" if value of "is_tolerance_healthy" is unchanged.
+        Returns "None" if value of "is_healthy_tolerant" is unchanged.
         Returns "True" if it is the first metric write within threshold.
         Returns "False" in other cases.
+
+        This method is similar to "_set_is_healthy" but it takes into
+        account the alert settings tolerance so it's slightly different
+        and more complex.
         """
         time = self._get_time(time)
         crossed = alert_settings._is_crossed_by(value, time, retention_policy)
         first_time = False
         # situation has not changed
-        if (not crossed and self.is_tolerance_healthy) or (
-            crossed and self.is_tolerance_healthy is False
+        if (not crossed and self.is_healthy_tolerant) or (
+            crossed and self.is_healthy_tolerant is False
         ):
             return
         # problem: not within threshold limit
-        elif crossed and self.is_tolerance_healthy in [True, None]:
-            if self.is_tolerance_healthy is None:
+        elif crossed and self.is_healthy_tolerant in [True, None]:
+            if self.is_healthy_tolerant is None:
                 first_time = True
-            self.is_tolerance_healthy = False
+            self.is_healthy_tolerant = False
             notification_type = f'{self.configuration}_problem'
         # ok: returned within threshold limit
-        elif not crossed and self.is_tolerance_healthy is False:
-            self.is_tolerance_healthy = True
+        elif not crossed and self.is_healthy_tolerant is False:
+            self.is_healthy_tolerant = True
             notification_type = f'{self.configuration}_recovery'
         # First metric write within threshold
-        elif not crossed and self.is_tolerance_healthy is None:
-            self.is_tolerance_healthy = True
+        elif not crossed and self.is_healthy_tolerant is None:
+            self.is_healthy_tolerant = True
             first_time = True
 
-        # Don't raise alert if it is the first metric within threshold.
+        # If we got to this point, it means we have to send an alert,
+        # because the metric has been crossed for more than the
+        # tolerated amount of time. There's one exception though:
+        # if the device is new, its status will be unknown and the metric
+        # will become healthy for the first time, in this case we do not need
+        # to send an alert.
         if (
-            not (first_time and self.is_tolerance_healthy)
+            not (first_time and self.is_healthy_tolerant)
             and alert_settings.is_active
             and send_alert
         ):
@@ -226,18 +240,18 @@ class AbstractMetric(TimeStampedEditableModel):
         except ObjectDoesNotExist:
             return
         is_healthy_changed = self._set_is_healthy(alert_settings, value)
-        tolerance_healthy_changed_first_time = self._set_is_tolerance_healthy(
+        tolerance_healthy_changed_first_time = self._set_is_healthy_tolerant(
             alert_settings, value, time, retention_policy, send_alert
         )
-        is_tolerance_healthy_changed = tolerance_healthy_changed_first_time is not None
+        is_healthy_tolerant_changed = tolerance_healthy_changed_first_time is not None
         # Do nothing if none of the fields changed.
-        if not is_healthy_changed and not is_tolerance_healthy_changed:
+        if not is_healthy_changed and not is_healthy_tolerant_changed:
             return
         update_fields = []
         if is_healthy_changed:
             update_fields.append('is_healthy')
-        if is_tolerance_healthy_changed:
-            update_fields.append('is_tolerance_healthy')
+        if is_healthy_tolerant_changed:
+            update_fields.append('is_healthy_tolerant')
         self.save(update_fields=update_fields)
         threshold_crossed.send(
             sender=self.__class__,
@@ -245,7 +259,7 @@ class AbstractMetric(TimeStampedEditableModel):
             metric=self,
             target=self.content_object,
             first_time=tolerance_healthy_changed_first_time,
-            tolerance_crossed=is_tolerance_healthy_changed,
+            tolerance_crossed=is_healthy_tolerant_changed,
         )
 
     def write(
@@ -682,7 +696,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
                         return value_crossed
                     # otherwise, the results are flapping, the situation has not changed
                     # we will return a value that will not trigger changes
-                    return not self.metric.is_tolerance_healthy
+                    return not self.metric.is_healthy_tolerant
                 # otherwise keep looking back
                 continue
             # the search has not yielded any conclusion

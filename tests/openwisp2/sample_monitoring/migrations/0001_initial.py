@@ -79,7 +79,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    'is_tolerance_healthy',
+                    'is_healthy_tolerant',
                     models.BooleanField(blank=True, default=None, null=True),
                 ),
                 ('details', models.CharField(blank=True, max_length=64, null=True)),

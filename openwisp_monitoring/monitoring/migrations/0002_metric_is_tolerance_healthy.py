@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name='metric',
-            name='is_tolerance_healthy',
+            name='is_healthy_tolerant',
             field=models.BooleanField(blank=True, default=None, null=True),
         ),
     ]
