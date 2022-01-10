@@ -31,7 +31,7 @@ class AbstractCheck(TimeStampedEditableModel):
     )
     object_id = models.CharField(max_length=36, db_index=True, blank=True)
     content_object = GenericForeignKey('content_type', 'object_id')
-    check = models.CharField(
+    check_type = models.CharField(
         _('check type'),
         choices=app_settings.CHECK_CLASSES,
         db_index=True,
@@ -65,7 +65,7 @@ class AbstractCheck(TimeStampedEditableModel):
         """
         returns check class
         """
-        return import_string(self.check)
+        return import_string(self.check_type)
 
     @cached_property
     def check_instance(self):

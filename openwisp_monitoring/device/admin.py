@@ -51,8 +51,8 @@ class CheckInline(GenericStackedInline):
     model = Check
     extra = 0
     formset = CheckInlineFormSet
-    fields = ['check', 'is_active']
-    readonly_fields = ['check']
+    fields = ['check_type', 'is_active']
+    readonly_fields = ['check_type']
 
     def has_add_permission(self, request, obj=None):
         return False

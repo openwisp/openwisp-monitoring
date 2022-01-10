@@ -33,7 +33,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         # will ping localhost
         device.management_ip = '127.0.0.1'
         check = Check(
-            name='Ping check', check=self._PING, content_object=device, params={}
+            name='Ping check', check_type=self._PING, content_object=device, params={}
         )
         result = check.perform_check(store=False)
         for key in self._RESULT_KEYS:
@@ -49,7 +49,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         device.management_ip = '127.0.0.1'
         check = Check(
             name='Ping check',
-            check=self._PING,
+            check_type=self._PING,
             content_object=device,
             params={'count': 2, 'interval': 10, 'bytes': 12, 'timeout': 50},
         )
@@ -76,7 +76,10 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
             # will ping localhost
             device.management_ip = '127.0.0.1'
             check = Check(
-                name='Ping check', check=self._PING, content_object=device, params={}
+                name='Ping check',
+                check_type=self._PING,
+                content_object=device,
+                params={},
             )
             with patch.object(
                 Ping, '_command', return_value=_FPING_REACHABLE
@@ -101,7 +104,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         device.management_ip = '192.168.255.255'
         check = Check(
             name='Ping check',
-            check=self._PING,
+            check_type=self._PING,
             content_object=device,
             params={'timeout': 50, 'count': 3},
         )
@@ -117,7 +120,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         device.management_ip = '127.0.0.1'
         check = Check(
             name='Ping check',
-            check=self._PING,
+            check_type=self._PING,
             content_object=device,
             params={'timeout': 50, 'count': 3},
         )
@@ -135,7 +138,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         )
         device.monitoring.update_status(status)
         check = Check(
-            name='Ping check', check=self._PING, content_object=device, params={}
+            name='Ping check', check_type=self._PING, content_object=device, params={}
         )
         result = check.perform_check(store=True)
         if not management_ip_only:
@@ -181,7 +184,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         self._check_no_ip_case('unknown', management_ip_only=True)
 
     def test_content_object_none(self):
-        check = Check(name='Ping check', check=self._PING, params={})
+        check = Check(name='Ping check', check_type=self._PING, params={})
         try:
             check.check_instance.validate()
         except ValidationError as e:
@@ -192,7 +195,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
     def test_content_object_not_device(self):
         check = Check(
             name='Ping check',
-            check=self._PING,
+            check_type=self._PING,
             content_object=self._create_user(),
             params={},
         )
@@ -218,7 +221,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         for params in invalid_params:
             check = Check(
                 name='Ping check',
-                check=self._PING,
+                check_type=self._PING,
                 content_object=device,
                 params=params,
             )
@@ -240,7 +243,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(Metric.objects.count(), 0)
         self.assertEqual(Chart.objects.count(), 0)
         self.assertEqual(AlertSettings.objects.count(), 0)
-        check = Check.objects.filter(check=self._PING).first()
+        check = Check.objects.filter(check_type=self._PING).first()
         result = check.perform_check()
         self.assertEqual(Metric.objects.count(), 1)
         self.assertEqual(Chart.objects.count(), 3)

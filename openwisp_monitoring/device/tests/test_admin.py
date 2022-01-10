@@ -33,7 +33,10 @@ class TestAdmin(DeviceMonitoringTestCase):
     def test_device_admin(self):
         dd = self.create_test_data()
         check = Check.objects.create(
-            name='Ping check', check=CHECK_CLASSES[0][0], content_object=dd, params={}
+            name='Ping check',
+            check_type=CHECK_CLASSES[0][0],
+            content_object=dd,
+            params={},
         )
         url = reverse('admin:config_device_change', args=[dd.pk])
         self._login_admin()
@@ -234,7 +237,7 @@ class TestAdmin(DeviceMonitoringTestCase):
             f'{ct}-INITIAL_FORMS': '0',
             f'{ct}-MAX_NUM_FORMS': '0',
             f'{ct}-0-name': 'Ping Check',
-            f'{ct}-0-check': CHECK_CLASSES[0][0],
+            f'{ct}-0-check_type': CHECK_CLASSES[0][0],
             f'{ct}-0-params': '{}',
             f'{ct}-0-is_active': True,
             f'{ct}-0-created': now(),

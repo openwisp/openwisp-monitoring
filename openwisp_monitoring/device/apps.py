@@ -169,7 +169,7 @@ class DeviceMonitoringConfig(AppConfig):
 
         DeviceData = load_model('device_monitoring', 'DeviceData')
         device = DeviceData.objects.get(config=instance)
-        check = device.checks.filter(check__contains='ConfigApplied').first()
+        check = device.checks.filter(check_type__contains='ConfigApplied').first()
         if check:
             transaction_on_commit(lambda: perform_check.delay(check.pk))
 

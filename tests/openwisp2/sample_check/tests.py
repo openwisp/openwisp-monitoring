@@ -30,7 +30,7 @@ class TestModels(BaseTestModels, TestDeviceMonitoringMixin, TransactionTestCase)
         device.management_ip = '127.0.0.1'
         check = Check(
             name='Ping check',
-            check=self._PING,
+            check_type=self._PING,
             content_object=device,
             params={'count': 2, 'interval': 10, 'bytes': 12, 'timeout': 50},
         )

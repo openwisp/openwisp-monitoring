@@ -28,7 +28,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(str(c), c.name)
 
     def test_check_no_content_type(self):
-        c = Check(name='Ping class check', check=self._PING)
+        c = Check(name='Ping class check', check_type=self._PING)
         m = c.check_instance._get_metric()
         self.assertEqual(m, Metric.objects.first())
 
@@ -40,17 +40,18 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
 
     def test_check_class(self):
         with self.subTest('Test Ping check Class'):
-            c = Check(name='Ping class check', check=self._PING)
+            c = Check(name='Ping class check', check_type=self._PING)
             self.assertEqual(c.check_class, Ping)
         with self.subTest('Test Configuration Applied check Class'):
             c = Check(
-                name='Configuration Applied class check', check=self._CONFIG_APPLIED
+                name='Configuration Applied class check',
+                check_type=self._CONFIG_APPLIED,
             )
             self.assertEqual(c.check_class, ConfigApplied)
 
     def test_base_check_class(self):
         path = 'openwisp_monitoring.check.classes.base.BaseCheck'
-        c = Check(name='Base check', check=path)
+        c = Check(name='Base check', check_type=path)
         i = c.check_instance
         i.validate_params()
         with self.assertRaises(NotImplementedError):
@@ -60,7 +61,10 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         obj = self._create_device(organization=self._create_org())
         with self.subTest('Test Ping check instance'):
             c = Check(
-                name='Ping class check', check=self._PING, content_object=obj, params={}
+                name='Ping class check',
+                check_type=self._PING,
+                content_object=obj,
+                params={},
             )
             i = c.check_instance
             self.assertIsInstance(i, Ping)
@@ -69,7 +73,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         with self.subTest('Test Configuration Applied check instance'):
             c = Check(
                 name='Configuration Applied class check',
-                check=self._CONFIG_APPLIED,
+                check_type=self._CONFIG_APPLIED,
                 content_object=obj,
                 params={},
             )
@@ -80,7 +84,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
 
     def test_validation(self):
         with self.subTest('Test Ping check validation'):
-            check = Check(name='Ping check', check=self._PING, params={})
+            check = Check(name='Ping check', check_type=self._PING, params={})
             try:
                 check.full_clean()
             except ValidationError as e:
@@ -88,7 +92,9 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
             else:
                 self.fail('ValidationError not raised')
         with self.subTest('Test Configuration Applied check validation'):
-            check = Check(name='Config check', check=self._CONFIG_APPLIED, params={})
+            check = Check(
+                name='Config check', check_type=self._CONFIG_APPLIED, params={}
+            )
             try:
                 check.full_clean()
             except ValidationError as e:
@@ -101,13 +107,13 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         d = self._create_device(organization=self._create_org())
         self.assertEqual(Check.objects.count(), 2)
         with self.subTest('Test AUTO_PING'):
-            c1 = Check.objects.filter(check=self._PING).first()
+            c1 = Check.objects.filter(check_type=self._PING).first()
             self.assertEqual(c1.content_object, d)
-            self.assertEqual(self._PING, c1.check)
+            self.assertEqual(self._PING, c1.check_type)
         with self.subTest('Test AUTO_CONFIG_CHECK'):
-            c2 = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+            c2 = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
             self.assertEqual(c2.content_object, d)
-            self.assertEqual(self._CONFIG_APPLIED, c2.check)
+            self.assertEqual(self._CONFIG_APPLIED, c2.check_type)
 
     def test_device_deleted(self):
         self.assertEqual(Check.objects.count(), 0)
@@ -126,7 +132,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(Check.objects.count(), 2)
         self.assertEqual(Metric.objects.count(), 0)
         self.assertEqual(AlertSettings.objects.count(), 0)
-        check = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+        check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         with freeze_time(now() - timedelta(minutes=10)):
             check.perform_check()
         self.assertEqual(Metric.objects.count(), 1)
@@ -155,7 +161,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(Check.objects.count(), 2)
         self.assertEqual(Metric.objects.count(), 0)
         self.assertEqual(AlertSettings.objects.count(), 0)
-        check = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+        check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         with freeze_time(now() - timedelta(minutes=10)):
             check.perform_check()
         # Check needs to be run again without mocking time for threshold crossed
@@ -169,7 +175,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         # Check config recovery
         dm.device.config.set_status_applied()
         # We are once again querying for the check to override the cached property check_instance
-        check = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+        check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         # must be performed multiple times to trepass tolerance
         check.perform_check()
         with freeze_time(now() + timedelta(minutes=10)):
@@ -189,7 +195,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         d = Device.objects.first()
         dm = d.monitoring
         dm.update_status('ok')
-        check = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+        check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         check.perform_check()
         self.assertEqual(Metric.objects.count(), 1)
         self.assertEqual(AlertSettings.objects.count(), 1)
@@ -223,7 +229,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         d = self.device_model.objects.first()
         d.monitoring.update_status('critical')
         self.assertEqual(Check.objects.count(), 2)
-        c2 = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+        c2 = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         c2.perform_check()
         self.assertEqual(Metric.objects.count(), 0)
         self.assertIsNone(c2.perform_check())
@@ -234,7 +240,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         d = self.device_model.objects.first()
         d.monitoring.update_status('unknown')
         self.assertEqual(Check.objects.count(), 2)
-        c2 = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+        c2 = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         c2.perform_check()
         self.assertEqual(Metric.objects.count(), 0)
         self.assertEqual(Notification.objects.count(), 0)

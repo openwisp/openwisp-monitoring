@@ -65,7 +65,7 @@ class Migration(migrations.Migration):
                     models.CharField(blank=True, db_index=True, max_length=36),
                 ),
                 (
-                    'check',
+                    'check_type',
                     models.CharField(
                         choices=CHECK_CLASSES,
                         db_index=True,

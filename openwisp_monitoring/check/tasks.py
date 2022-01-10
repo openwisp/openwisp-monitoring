@@ -61,14 +61,16 @@ def auto_create_ping(
     Check = check_model or get_check_model()
     ping_path = 'openwisp_monitoring.check.classes.Ping'
     has_check = Check.objects.filter(
-        object_id=object_id, content_type__model='device', check=ping_path
+        object_id=object_id, content_type__model='device', check_type=ping_path
     ).exists()
     # create new check only if necessary
     if has_check:
         return
     content_type_model = content_type_model or ContentType
     ct = content_type_model.objects.get(app_label=app_label, model=model)
-    check = Check(name='Ping', check=ping_path, content_type=ct, object_id=object_id)
+    check = Check(
+        name='Ping', check_type=ping_path, content_type=ct, object_id=object_id
+    )
     check.full_clean()
     check.save()
 
@@ -83,7 +85,7 @@ def auto_create_config_check(
     Check = check_model or get_check_model()
     config_check_path = 'openwisp_monitoring.check.classes.ConfigApplied'
     has_check = Check.objects.filter(
-        object_id=object_id, content_type__model='device', check=config_check_path
+        object_id=object_id, content_type__model='device', check_type=config_check_path
     ).exists()
     # create new check only if necessary
     if has_check:
@@ -92,7 +94,7 @@ def auto_create_config_check(
     ct = content_type_model.objects.get(app_label=app_label, model=model)
     check = Check(
         name='Configuration Applied',
-        check=config_check_path,
+        check_type=config_check_path,
         content_type=ct,
         object_id=object_id,
     )
