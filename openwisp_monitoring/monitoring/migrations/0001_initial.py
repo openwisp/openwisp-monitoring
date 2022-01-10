@@ -23,9 +23,6 @@ class Migration(migrations.Migration):
             *split(settings.AUTH_USER_MODEL), version='0004_default_groups'
         ),
         ('contenttypes', '0002_remove_content_type_name'),
-        swapper.dependency('monitoring', 'Metric'),
-        swapper.dependency('monitoring', 'Threshold'),
-        swapper.dependency('monitoring', 'Graph'),
     ]
 
     operations = [

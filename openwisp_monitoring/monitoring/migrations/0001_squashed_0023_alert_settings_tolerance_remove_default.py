@@ -48,15 +48,11 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('monitoring', '__first__'),
         swapper.dependency(
             *split(settings.AUTH_USER_MODEL), version='0004_default_groups'
         ),
         ('contenttypes', '0002_remove_content_type_name'),
         swapper.dependency('openwisp_notifications', 'Notifications'),
-        swapper.dependency('monitoring', 'Metric'),
-        swapper.dependency('monitoring', 'AlertSettings'),
-        swapper.dependency('monitoring', 'Chart'),
     ]
 
     operations = [
