@@ -1,5 +1,5 @@
-from django.conf.urls import include, url
+from django.urls import include, path
 
 urlpatterns = [
-    url(r'', include('openwisp_monitoring.device.api.urls', namespace='monitoring'))
+    path('', include('openwisp_monitoring.device.api.urls', namespace='monitoring'))
 ]

@@ -9,9 +9,9 @@ openwisp-monitoring
     :target: https://coveralls.io/github/openwisp/openwisp-monitoring?branch=master
     :alt: Test coverage
 
-.. image:: https://requires.io/github/openwisp/openwisp-monitoring/requirements.svg?branch=master
-   :target: https://requires.io/github/openwisp/openwisp-monitoring/requirements/?branch=master
-   :alt: Requirements Status
+.. image:: https://img.shields.io/librariesio/github/openwisp/openwisp-monitoring
+   :target: https://libraries.io/github/openwisp/openwisp-monitoring#repository_dependencies
+   :alt: Dependency monitoring
 
 .. image:: https://badge.fury.io/py/openwisp-monitoring.svg
     :target: http://badge.fury.io/py/openwisp-monitoring
@@ -176,7 +176,7 @@ Follow the setup instructions of `openwisp-controller
 .. code-block:: python
 
     from django.conf import settings
-    from django.conf.urls import include, url
+    from django.urls import include, path
     from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
     from openwisp_utils.admin_theme.admin import admin, openwisp_admin
@@ -184,9 +184,9 @@ Follow the setup instructions of `openwisp-controller
     openwisp_admin()
 
     urlpatterns = [
-        url(r'^admin/', include(admin.site.urls)),
-        url(r'', include('openwisp_controller.urls')),
-        url(r'', include('openwisp_monitoring.urls')),
+        path('admin/', include(admin.site.urls)),
+        path('', include('openwisp_controller.urls')),
+        path('', include('openwisp_monitoring.urls')),
     ]
 
     urlpatterns += staticfiles_urlpatterns()
@@ -1853,8 +1853,8 @@ Step 2: remove the following line from your root ``urls.py`` file:
 
 .. code-block:: python
 
-    url(
-        r'^api/v1/monitoring/device/(?P<pk>[^/]+)/$',
+    re_path(
+        'api/v1/monitoring/device/(?P<pk>[^/]+)/$',
         views.device_metric,
         name='api_device_metric',
     ),
@@ -1868,7 +1868,7 @@ Step 3: add an URL route pointing to your custom view in ``urls.py`` file:
 
     urlpatterns = [
         # ... other URLs
-        url(r'^(?P<path>.*)$', DeviceMetricView.as_view(), name='api_device_metric',),
+        re_path(r'^(?P<path>.*)$', DeviceMetricView.as_view(), name='api_device_metric',),
     ]
 
 Contributing

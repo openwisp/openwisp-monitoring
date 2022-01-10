@@ -38,6 +38,11 @@ jobs:
         django-version:
           - django~=3.0.0
           - django~=3.1.0
+          - django~=3.2.8
+        include:
+          - django-version: django~=4.0.0
+            python-version: 3.9
+            experimental: true
 
     steps:
       - name: Install system packages
@@ -69,13 +74,13 @@ jobs:
       - name: Install npm dependencies
         run: sudo npm install -g install jshint stylelint
 
-      - name: Install openwisp-monitoring
-        run: |
-          pip install -U -I -e .
-
       - name: Install test dependencies
         run: |
           pip install -r requirements-test.txt
+
+      - name: Install openwisp-monitoring
+        run: |
+          pip install -U -I -e .
           pip install ${{ matrix.django-version }}
 
       - name: QA checks
@@ -92,7 +97,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COVERALLS_FLAG_NAME: |
-           python-${{ matrix.python-version }}-${{ matrix.django-version }}
+            python-${{ matrix.python-version }}-${{ matrix.django-version }}
           COVERALLS_PARALLEL: true
 
   deploy:
