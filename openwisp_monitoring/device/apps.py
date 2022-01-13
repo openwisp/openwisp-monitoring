@@ -105,7 +105,8 @@ class DeviceMonitoringConfig(AppConfig):
     def trigger_device_recovery_checks(cls, instance, **kwargs):
         from .tasks import trigger_device_checks
 
-        if cache.get(get_device_cache_key(device=instance)):
+        # Cache is managed by "manage_device_recovery_cache_key".
+        if cache.get(get_device_cache_key(device=instance), False):
             transaction_on_commit(lambda: trigger_device_checks.delay(pk=instance.pk))
 
     @classmethod
