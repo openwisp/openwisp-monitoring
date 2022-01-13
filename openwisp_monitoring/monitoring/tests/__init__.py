@@ -183,6 +183,7 @@ class TestMonitoringMixin(TestOrganizationMixin):
             register_metric(key, value)
         for key, value in charts.items():
             register_chart(key, value)
+        super().setUpClass()
 
     @classmethod
     def tearDownClass(cls):
@@ -191,9 +192,11 @@ class TestMonitoringMixin(TestOrganizationMixin):
             unregister_metric(metric_name)
         for key in charts.keys():
             unregister_chart(key)
+        super().tearDownClass()
 
     def tearDown(self):
         timeseries_db.delete_metric_data()
+        super().tearDown()
 
     def _create_general_metric(self, **kwargs):
         opts = {
