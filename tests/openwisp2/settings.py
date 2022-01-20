@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'openwisp_controller.pki',
     'openwisp_controller.geo',
     'openwisp_users',
+    'openwisp_ipam',
     # monitoring
     'openwisp_monitoring.monitoring',
     'openwisp_monitoring.device',
