@@ -1331,6 +1331,8 @@ This signal is emitted only if the health status of DeviceMonitoring object gets
 - ``alert_settings``: ``AlertSettings`` related to the ``Metric``
 - ``target``: related ``Device`` object
 - ``first_time``: it will be set to true when the metric is written for the first time. It shall be set to false afterwards.
+- ``tolerance_crossed``: it will be set to true if the metric has crossed the threshold for tolerance configured in alert settings.
+  Otherwise, it will be set to false.
 
 ``first_time`` parameter can be used to avoid initiating unneeded actions.
 For example, sending recovery notifications.

@@ -203,7 +203,8 @@ class TestModels(TestMonitoringMixin, TestCase):
         )
         m.write(60)
         m.write(99)
-        self.assertTrue(m.is_healthy)
+        self.assertEqual(m.is_healthy, True)
+        self.assertEqual(m.is_healthy_tolerant, True)
 
     def test_general_check_threshold_no_exception(self):
         m = self._create_general_metric()
@@ -223,6 +224,7 @@ class TestModels(TestMonitoringMixin, TestCase):
             target=None,
             sender=Metric,
             signal=threshold_crossed,
+            tolerance_crossed=True,
         )
 
     def test_object_metric_signal_emitted(self):
@@ -239,6 +241,7 @@ class TestModels(TestMonitoringMixin, TestCase):
             target=om.content_object,
             sender=Metric,
             signal=threshold_crossed,
+            tolerance_crossed=True,
         )
 
     def test_metric_pre_write_signals_emitted(self):
@@ -300,20 +303,24 @@ class TestModels(TestMonitoringMixin, TestCase):
         )
         with self.subTest('within tolerance, no alerts expected'):
             m.write(99, time=timezone.now() - timedelta(minutes=2))
-            self.assertTrue(m.is_healthy)
+            self.assertEqual(m.is_healthy, True)
+            self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 0)
             m.write(99, time=timezone.now() - timedelta(minutes=4))
-            self.assertTrue(m.is_healthy)
+            self.assertEqual(m.is_healthy, True)
+            self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 0)
         with self.subTest('tolerance trepassed, alerts expected'):
             m.write(99, time=timezone.now() - timedelta(minutes=6))
             m.refresh_from_db()
-            self.assertFalse(m.is_healthy)
+            self.assertEqual(m.is_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
         with self.subTest('value back to normal, tolerance not considered'):
             m.write(71, time=timezone.now() - timedelta(minutes=7))
             m.refresh_from_db()
-            self.assertTrue(m.is_healthy)
+            self.assertEqual(m.is_healthy, True)
+            self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 2)
 
     def test_time_crossed(self):
