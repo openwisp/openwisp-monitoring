@@ -145,6 +145,7 @@ Follow the setup instructions of `openwisp-controller
         'openwisp_controller.config',
         'openwisp_controller.connection',
         'openwisp_controller.geo',
+        'openwisp_ipam',
         # monitoring
         'openwisp_monitoring.monitoring',
         'openwisp_monitoring.device',
