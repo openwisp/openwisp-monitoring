@@ -148,8 +148,8 @@ class Ping(BaseCheck):
         """
         Executes command (easier to mock)
         """
-        p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return p.communicate()
+        p = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return p.stdout, p.stderr
 
     def _get_metric(self):
         """
