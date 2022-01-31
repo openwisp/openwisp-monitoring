@@ -44,7 +44,5 @@ class TestAdmin(TestMonitoringMixin, TestCase):
             self.assertContains(response, f'class="mg-link" href="{url}"')
         with self.subTest('test "monitoring" group is registered'):
             self.assertContains(
-                response,
-                '<div class="mg-dropdown-label">Monitoring </div>',
-                html=True,
+                response, '<div class="mg-dropdown-label">Monitoring </div>', html=True,
             )

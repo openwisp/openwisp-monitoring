@@ -5,7 +5,7 @@ from django.db import migrations
 
 from openwisp_monitoring.monitoring.configuration import get_metric_configuration
 
-from ..migrations import get_swapped_model
+from ...migrations import get_swapped_model
 
 
 def make_fields_null(apps, schema_editor):
