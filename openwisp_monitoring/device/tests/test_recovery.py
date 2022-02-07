@@ -114,7 +114,9 @@ class TestRecoveryTransaction(DeviceMonitoringTransactionTestcase):
             device_monitoring.update_status('ok')
 
             response = self.client.post(
-                url, data=netjson, content_type='application/json',
+                url,
+                data=netjson,
+                content_type='application/json',
             )
             self.assertEqual(response.status_code, 200)
             mocked_task.assert_not_called()
@@ -124,7 +126,9 @@ class TestRecoveryTransaction(DeviceMonitoringTransactionTestcase):
         with self.subTest('Test checks are triggered if device is "critical"'):
             device_monitoring.update_status('critical')
             response = self.client.post(
-                url, data=netjson, content_type='application/json',
+                url,
+                data=netjson,
+                content_type='application/json',
             )
             self.assertEqual(response.status_code, 200)
             mocked_task.assert_called_once()
