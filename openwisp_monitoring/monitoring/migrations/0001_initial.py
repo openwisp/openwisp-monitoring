@@ -11,6 +11,7 @@ import model_utils.fields
 import swapper
 from django.conf import settings
 from django.db import migrations, models
+from swapper import split
 
 
 class Migration(migrations.Migration):
@@ -18,11 +19,10 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        swapper.dependency(
+            *split(settings.AUTH_USER_MODEL), version='0004_default_groups'
+        ),
         ('contenttypes', '0002_remove_content_type_name'),
-        swapper.dependency('monitoring', 'Metric'),
-        swapper.dependency('monitoring', 'Threshold'),
-        swapper.dependency('monitoring', 'Graph'),
     ]
 
     operations = [

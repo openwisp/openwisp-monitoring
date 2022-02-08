@@ -33,7 +33,6 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('check', '0004_rename_active_to_is_active'),
-        ('monitoring', '0016_metric_configuration'),
     ]
 
     operations = [

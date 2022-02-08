@@ -1,3 +1,4 @@
+import swapper
 from django.db import migrations
 
 from openwisp_monitoring.check.settings import AUTO_PING
@@ -23,7 +24,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('check', '0002_check_unique_together'),
-        ('config', '0026_hardware_id_not_unique'),
+        swapper.dependency('monitoring', 'Metric'),
     ]
 
     operations = [
