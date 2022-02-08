@@ -20,9 +20,8 @@ class Migration(migrations.Migration):
     replaces = [('check', '0001_initial'), ('check', '0002_check_unique_together')]
 
     dependencies = [
-        ('check', '__first__'),
         ('contenttypes', '0002_remove_content_type_name'),
-        swapper.dependency('check', 'Check'),
+        swapper.dependency('config', 'Device', '0004_add_device_model'),
     ]
 
     operations = [

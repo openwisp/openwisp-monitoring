@@ -19,7 +19,6 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('contenttypes', '0002_remove_content_type_name'),
-        swapper.dependency('check', 'Check'),
         swapper.dependency('config', 'Device', '0004_add_device_model'),
     ]
 
