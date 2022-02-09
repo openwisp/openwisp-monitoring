@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     'flat_json_widget',
     # rest framework
     'rest_framework',
+    'rest_framework.authtoken',
     'rest_framework_gis',
     'drf_yasg',
     # channels

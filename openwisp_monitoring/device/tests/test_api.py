@@ -4,9 +4,11 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
+from rest_framework.authtoken.models import Token
 from swapper import load_model
 
 from openwisp_controller.geo.tests.utils import TestGeoMixin
+from openwisp_users.tests.test_api import AuthenticationMixin
 from openwisp_utils.tests import capture_any_output, catch_signal
 
 from ... import settings as monitoring_settings
@@ -24,7 +26,7 @@ DeviceLocation = load_model('geo', 'DeviceLocation')
 Location = load_model('geo', 'Location')
 
 
-class TestDeviceApi(DeviceMonitoringTestCase):
+class TestDeviceApi(AuthenticationMixin, DeviceMonitoringTestCase):
     """
     Tests API (device metric collection)
     """
@@ -899,7 +901,7 @@ class TestDeviceApi(DeviceMonitoringTestCase):
         self.assertEqual(signal_calls[0][1], expected_arguments)
 
 
-class TestGeoApi(TestGeoMixin, DeviceMonitoringTestCase):
+class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
     location_model = Location
     object_location_model = DeviceLocation
     object_model = Device
@@ -940,3 +942,26 @@ class TestGeoApi(TestGeoMixin, DeviceMonitoringTestCase):
         self.assertDictEqual(
             data['results'][0]['monitoring'], {'status': 'ok', 'status_label': 'ok'}
         )
+
+    @capture_any_output()
+    def test_bearer_authentication(self):
+        user = self._create_admin()
+        token = Token.objects.create(user=user).key
+        device_location = self._create_object_location()
+        location = device_location.location
+
+        with self.subTest('Test MonitoringGeoJsonLocationList'):
+            response = self.client.get(
+                reverse('monitoring:api_location_geojson'),
+                content_type='application/json',
+                HTTP_AUTHORIZATION=f'Bearer {token}',
+            )
+            self.assertEqual(response.status_code, 200)
+
+        with self.subTest('Test GeoJsonLocationListView'):
+            response = self.client.get(
+                reverse('monitoring:api_location_device_list', args=[location.id]),
+                content_type='application/json',
+                HTTP_AUTHORIZATION=f'Bearer {token}',
+            )
+            self.assertEqual(response.status_code, 200)
