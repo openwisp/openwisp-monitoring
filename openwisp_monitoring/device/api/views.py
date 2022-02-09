@@ -18,11 +18,14 @@ from pytz import timezone as tz
 from pytz.exceptions import UnknownTimeZoneError
 from rest_framework import serializers, status
 from rest_framework.generics import GenericAPIView
-from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from swapper import load_model
 
-from openwisp_controller.geo.api.views import GeoJsonLocationList, LocationDeviceList
+from openwisp_controller.geo.api.views import (
+    DevicePermission,
+    GeoJsonLocationList,
+    LocationDeviceList,
+)
 
 from ... import settings as monitoring_settings
 from ...monitoring.configuration import ACCESS_TECHNOLOGIES
@@ -39,11 +42,6 @@ Device = load_model('config', 'Device')
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 DeviceData = load_model('device_monitoring', 'DeviceData')
 Location = load_model('geo', 'Location')
-
-
-class DevicePermission(BasePermission):
-    def has_object_permission(self, request, view, obj):
-        return request.query_params.get('key') == obj.key
 
 
 class DeviceMetricView(GenericAPIView):
