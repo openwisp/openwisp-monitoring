@@ -124,6 +124,14 @@ class DatabaseClient(object):
             )
         except Exception as exception:
             logger.warning(f'got exception while writing to tsdb: {exception}')
+            if isinstance(exception, self.client_error):
+                exception_code = getattr(exception, 'code', None)
+                exception_message = getattr(exception, 'content')
+                if (
+                    exception_code == 400
+                    and 'points beyond retention policy dropped' in exception_message
+                ):
+                    return
             raise TimeseriesWriteException
 
     def read(self, key, fields, tags, **kwargs):
