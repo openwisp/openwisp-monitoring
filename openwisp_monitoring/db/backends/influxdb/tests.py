@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.utils.timezone import now
 from freezegun import freeze_time
 from influxdb import InfluxDBClient
-from influxdb.exceptions import InfluxDBServerError
+from influxdb.exceptions import InfluxDBClientError, InfluxDBServerError
 from pytz import timezone as tz
 from swapper import load_model
 
@@ -268,6 +268,32 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         m = self._create_general_metric(name='Test metric')
         with self.assertRaises(Retry):
             m.write(1)
+
+    @patch.object(
+        InfluxDBClient,
+        'write',
+        side_effect=InfluxDBClientError(
+            content='{"error":"partial write: points beyond retention policy dropped=1"}',
+            code=400,
+        ),
+    )
+    @capture_stderr()
+    def test_write_skip_retry_for_retention_policy(self, mock_write):
+        try:
+            timeseries_db.write('test_write', {'value': 1})
+        except TimeseriesWriteException:
+            self.fail(
+                'TimeseriesWriteException should not be raised when data '
+                'points crosses retention policy'
+            )
+        m = self._create_general_metric(name='Test metric')
+        try:
+            m.write(1)
+        except Retry:
+            self.fail(
+                'Writing metric should not be retried when data '
+                'points crosses retention policy'
+            )
 
     @patch.object(
         InfluxDBClient, 'write', side_effect=InfluxDBServerError('Server error')
