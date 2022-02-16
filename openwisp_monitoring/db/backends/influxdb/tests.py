@@ -278,7 +278,7 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         ),
     )
     @capture_stderr()
-    def test_write_skip_retry_for_retention_ploicy(self, mock_write):
+    def test_write_skip_retry_for_retention_policy(self, mock_write):
         try:
             timeseries_db.write('test_write', {'value': 1})
         except TimeseriesWriteException:
