@@ -3,8 +3,6 @@ import operator
 import re
 from collections import OrderedDict
 from datetime import datetime
-from functools import wraps
-from time import sleep
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -14,32 +12,12 @@ from django.utils.translation import gettext_lazy as _
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 
+from openwisp_monitoring.utils import retry
+
 from ...exceptions import TimeseriesWriteException
 from .. import TIMESERIES_DB
 
 logger = logging.getLogger(__name__)
-
-MAX_RETRIES = 6
-RETRY_DELAY = 2
-
-
-def retry(method):
-    @wraps(method)
-    def wrapper(*args, **kwargs):
-        for attempt_no in range(1, MAX_RETRIES + 1):
-            try:
-                return method(*args, **kwargs)
-            except Exception as err:
-                logger.info(
-                    f'Error while executing method "{method.__name__}":\n{err}\n'
-                    f'Attempt {attempt_no} out of {MAX_RETRIES}.\n'
-                )
-                if attempt_no > 3:
-                    sleep(RETRY_DELAY)
-                if attempt_no == MAX_RETRIES:
-                    raise err
-
-    return wrapper
 
 
 class DatabaseClient(object):
@@ -80,6 +58,7 @@ class DatabaseClient(object):
         self.db_name = db_name or TIMESERIES_DB['NAME']
         self.client_error = InfluxDBClientError
 
+    @retry
     def create_database(self):
         """creates database if necessary"""
         # InfluxDB does not create a new database, neither raise an error if database exists
@@ -157,7 +136,6 @@ class DatabaseClient(object):
                     return
             raise TimeseriesWriteException
 
-    @retry
     def read(self, key, fields, tags, **kwargs):
         extra_fields = kwargs.get('extra_fields')
         since = kwargs.get('since')
@@ -196,7 +174,6 @@ class DatabaseClient(object):
             q = f'{q} LIMIT {limit}'
         return list(self.query(q, precision='s').get_points())
 
-    @retry
     def get_list_query(self, query, precision='s'):
         return list(self.query(query, precision=precision).get_points())
 
@@ -204,7 +181,6 @@ class DatabaseClient(object):
     def get_list_retention_policies(self):
         return self.db.get_list_retention_policies()
 
-    @retry
     def delete_metric_data(self, key=None, tags=None):
         """
         deletes a specific metric based on the key and tags
@@ -213,7 +189,11 @@ class DatabaseClient(object):
         if not key and not tags:
             self.query('DROP SERIES FROM /.*/')
         else:
-            self.db.delete_series(measurement=key, tags=tags)
+            self.delete_series(key, tags)
+
+    @retry
+    def delete_series(self, key=None, tags=None):
+        self.db.delete_series(measurement=key, tags=tags)
 
     # Chart related functions below
 

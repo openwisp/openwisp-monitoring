@@ -21,3 +21,5 @@ AUTO_CHARTS = get_settings_value(
 
 MONITORING_API_URLCONF = get_settings_value('API_URLCONF', None)
 MONITORING_API_BASEURL = get_settings_value('API_BASEURL', None)
+MONITORING_INFLUXDB_MAX_RETRIES = get_settings_value('INFLUXDB_MAX_RETRIES', 6)
+MONITORING_INFLUXDB_RETRY_DELAY = get_settings_value('INFLUXDB_RETRY_DELAY', 2)

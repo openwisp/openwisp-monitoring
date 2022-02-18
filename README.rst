@@ -949,6 +949,28 @@ domain, you can use this option to change the base of the url, this will
 enable you to point all the API urls to your openwisp-monitoring API server's
 domain, example: ``https://mymonitoring.myapp.com``.
 
+``OPENWISP_MONITORING_INFLUXDB_MAX_RETRIES``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    |   ``int``   |
++--------------+-------------+
+| **default**: |    ``6``    |
++--------------+-------------+
+
+This settings allow you to configure the max retries count on failure in InfluxDB operations.
+
+``OPENWISP_MONITORING_INFLUXDB_RETRY_DELAY``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    |   ``int``   |
++--------------+-------------+
+| **default**: |    ``2``    |
++--------------+-------------+
+
+This settings allow you to configure the retry delay time (in seconds) after 3 failed attempt in InfluxDB.
+
 Registering / Unregistering Metric Configuration
 ------------------------------------------------
 
