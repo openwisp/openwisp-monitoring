@@ -3,6 +3,8 @@ import operator
 import re
 from collections import OrderedDict
 from datetime import datetime
+from functools import wraps
+from time import sleep
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -16,6 +18,28 @@ from ...exceptions import TimeseriesWriteException
 from .. import TIMESERIES_DB
 
 logger = logging.getLogger(__name__)
+
+MAX_RETRIES = 5
+RETRY_DELAY = 3
+
+
+def retry(method):
+    @wraps(method)
+    def wrapper(*args, **kwargs):
+        for attempt_no in range(1, MAX_RETRIES + 1):
+            try:
+                return method(*args, **kwargs)
+            except Exception as err:
+                logger.info(
+                    f'Got error: {err} while executing {method.__name__}. '
+                    f'Retrying again in {RETRY_DELAY} seconds '
+                    f'(attempt {attempt_no} out of {MAX_RETRIES})'
+                )
+                sleep(RETRY_DELAY)
+                if attempt_no == MAX_RETRIES:
+                    raise err
+
+    return wrapper
 
 
 class DatabaseClient(object):
@@ -62,6 +86,7 @@ class DatabaseClient(object):
         self.db.create_database(self.db_name)
         logger.debug(f'Created InfluxDB database "{self.db_name}"')
 
+    @retry
     def drop_database(self):
         """drops database if it exists"""
         # InfluxDB does not raise an error if database does not exist
@@ -79,6 +104,7 @@ class DatabaseClient(object):
             self.db_name,
         )
 
+    @retry
     def create_or_alter_retention_policy(self, name, duration):
         """creates or alters existing retention policy if necessary"""
         retention_policies = self.db.get_list_retention_policies()
@@ -94,6 +120,7 @@ class DatabaseClient(object):
         elif exists and duration_changed:
             self.db.alter_retention_policy(name=name, duration=duration)
 
+    @retry
     def query(self, query, precision=None, **kwargs):
         database = kwargs.get('database') or self.db_name
         return self.db.query(
@@ -130,6 +157,7 @@ class DatabaseClient(object):
                     return
             raise TimeseriesWriteException
 
+    @retry
     def read(self, key, fields, tags, **kwargs):
         extra_fields = kwargs.get('extra_fields')
         since = kwargs.get('since')
@@ -168,12 +196,15 @@ class DatabaseClient(object):
             q = f'{q} LIMIT {limit}'
         return list(self.query(q, precision='s').get_points())
 
+    @retry
     def get_list_query(self, query, precision='s'):
         return list(self.query(query, precision=precision).get_points())
 
+    @retry
     def get_list_retention_policies(self):
         return self.db.get_list_retention_policies()
 
+    @retry
     def delete_metric_data(self, key=None, tags=None):
         """
         deletes a specific metric based on the key and tags
