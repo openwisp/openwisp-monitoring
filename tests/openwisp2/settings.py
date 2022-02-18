@@ -211,6 +211,14 @@ LOGGING = {
         }
     },
     'loggers': {
+        '': {
+            # this sets root level logger to log debug and higher level
+            # logs to console. All other loggers inherit settings from
+            # root level logger.
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
         'django': {
             'handlers': ['console'],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
