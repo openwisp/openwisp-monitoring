@@ -19,8 +19,8 @@ from .. import TIMESERIES_DB
 
 logger = logging.getLogger(__name__)
 
-MAX_RETRIES = 5
-RETRY_DELAY = 3
+MAX_RETRIES = 6
+RETRY_DELAY = 2
 
 
 def retry(method):
@@ -31,11 +31,11 @@ def retry(method):
                 return method(*args, **kwargs)
             except Exception as err:
                 logger.info(
-                    f'Got error: {err} while executing {method.__name__}. '
-                    f'Retrying again in {RETRY_DELAY} seconds '
-                    f'(attempt {attempt_no} out of {MAX_RETRIES})'
+                    f'Error while executing method "{method.__name__}":\n{err}\n'
+                    f'Attempt {attempt_no} out of {MAX_RETRIES}.\n'
                 )
-                sleep(RETRY_DELAY)
+                if attempt_no > 3:
+                    sleep(RETRY_DELAY)
                 if attempt_no == MAX_RETRIES:
                     raise err
 
