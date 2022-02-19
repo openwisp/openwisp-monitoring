@@ -1,12 +1,13 @@
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
-from swapper import get_model_name
+from swapper import get_model_name, load_model
 
-from openwisp_controller.config.models import Device as BaseDevice
 from openwisp_monitoring.device.base.models import (
     AbstractDeviceData,
     AbstractDeviceMonitoring,
 )
+
+BaseDevice = load_model('config', 'Device')
 
 
 class DeviceData(AbstractDeviceData, BaseDevice):

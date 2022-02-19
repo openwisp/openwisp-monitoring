@@ -1,9 +1,9 @@
 from django.contrib.contenttypes.fields import GenericRelation
-from swapper import get_model_name, swappable_setting
-
-from openwisp_controller.config.models import Device as BaseDevice
+from swapper import get_model_name, load_model, swappable_setting
 
 from .base.models import AbstractDeviceData, AbstractDeviceMonitoring
+
+BaseDevice = load_model('config', 'Device')
 
 
 class DeviceData(AbstractDeviceData, BaseDevice):
