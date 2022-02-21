@@ -723,6 +723,36 @@ For more information regarding these settings, consult the `celery documentation
 regarding automatic retries for known errors
 <https://docs.celeryproject.org/en/stable/userguide/tasks.html#automatic-retry-for-known-exceptions>`_.
 
+``OPENWISP_MONITORING_TIMESERIES_MAX_RETRIES``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    |   ``int``   |
++--------------+-------------+
+| **default**: |    ``6``    |
++--------------+-------------+
+
+This settings allow you to configure the max retries count on failure in timeseries database operations.
+
+This retry setting is used in retry mechanism to make the requests to the timeseries database resilient.
+
+This setting is independent of celery retry settings.
+
+``OPENWISP_MONITORING_TIMESERIES_RETRY_DELAY``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    |   ``int``   |
++--------------+-------------+
+| **default**: |    ``2``    |
++--------------+-------------+
+
+This settings allow you to configure the retry delay time (in seconds) after 3 failed attempt in timeseries database.
+
+This retry setting is used in retry mechanism to make the requests to the timeseries database resilient.
+
+This setting is independent of celery retry settings.
+
 ``OPENWISP_MONITORING_DASHBOARD_MAP``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -948,28 +978,6 @@ If you have a seperate server for API of openwisp-monitoring on a different
 domain, you can use this option to change the base of the url, this will
 enable you to point all the API urls to your openwisp-monitoring API server's
 domain, example: ``https://mymonitoring.myapp.com``.
-
-``OPENWISP_MONITORING_TIMESERIES_MAX_RETRIES``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-+--------------+-------------+
-| **type**:    |   ``int``   |
-+--------------+-------------+
-| **default**: |    ``6``    |
-+--------------+-------------+
-
-This settings allow you to configure the max retries count on failure in timeseries database operations.
-
-``OPENWISP_MONITORING_TIMESERIES_RETRY_DELAY``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-+--------------+-------------+
-| **type**:    |   ``int``   |
-+--------------+-------------+
-| **default**: |    ``2``    |
-+--------------+-------------+
-
-This settings allow you to configure the retry delay time (in seconds) after 3 failed attempt in timeseries database.
 
 Registering / Unregistering Metric Configuration
 ------------------------------------------------
