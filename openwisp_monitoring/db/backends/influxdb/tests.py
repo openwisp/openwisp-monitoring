@@ -14,7 +14,7 @@ from swapper import load_model
 from openwisp_monitoring.device.settings import SHORT_RETENTION_POLICY
 from openwisp_monitoring.device.utils import SHORT_RP, manage_short_retention_policy
 from openwisp_monitoring.monitoring.tests import TestMonitoringMixin
-from openwisp_monitoring.settings import MONITORING_INFLUXDB_MAX_RETRIES
+from openwisp_monitoring.settings import MONITORING_TIMESERIES_MAX_RETRIES
 from openwisp_utils.tests import capture_stderr
 
 from ...exceptions import TimeseriesWriteException
@@ -331,7 +331,7 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         InfluxDBClient, 'query', side_effect=InfluxDBServerError('Server error')
     )
     def test_retry_mechanism(self, mock_query):
-        max_retries = MONITORING_INFLUXDB_MAX_RETRIES
+        max_retries = MONITORING_TIMESERIES_MAX_RETRIES
         with patch('logging.Logger.info') as mocked_logger:
             try:
                 self.test_get_query_fields_function()

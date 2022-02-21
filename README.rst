@@ -949,8 +949,8 @@ domain, you can use this option to change the base of the url, this will
 enable you to point all the API urls to your openwisp-monitoring API server's
 domain, example: ``https://mymonitoring.myapp.com``.
 
-``OPENWISP_MONITORING_INFLUXDB_MAX_RETRIES``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``OPENWISP_MONITORING_TIMESERIES_MAX_RETRIES``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +--------------+-------------+
 | **type**:    |   ``int``   |
@@ -958,10 +958,10 @@ domain, example: ``https://mymonitoring.myapp.com``.
 | **default**: |    ``6``    |
 +--------------+-------------+
 
-This settings allow you to configure the max retries count on failure in InfluxDB operations.
+This settings allow you to configure the max retries count on failure in timeseries database operations.
 
-``OPENWISP_MONITORING_INFLUXDB_RETRY_DELAY``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``OPENWISP_MONITORING_TIMESERIES_RETRY_DELAY``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +--------------+-------------+
 | **type**:    |   ``int``   |
@@ -969,7 +969,7 @@ This settings allow you to configure the max retries count on failure in InfluxD
 | **default**: |    ``2``    |
 +--------------+-------------+
 
-This settings allow you to configure the retry delay time (in seconds) after 3 failed attempt in InfluxDB.
+This settings allow you to configure the retry delay time (in seconds) after 3 failed attempt in timeseries database.
 
 Registering / Unregistering Metric Configuration
 ------------------------------------------------

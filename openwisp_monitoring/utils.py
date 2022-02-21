@@ -6,7 +6,10 @@ from django.apps import apps
 from django.db import transaction
 from swapper import is_swapped, split
 
-from .settings import MONITORING_INFLUXDB_MAX_RETRIES, MONITORING_INFLUXDB_RETRY_DELAY
+from .settings import (
+    MONITORING_TIMESERIES_MAX_RETRIES,
+    MONITORING_TIMESERIES_RETRY_DELAY,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,17 +32,17 @@ def load_model_patched(app_label, model, require_ready=True):
 def retry(method):
     @wraps(method)
     def wrapper(*args, **kwargs):
-        for attempt_no in range(1, MONITORING_INFLUXDB_MAX_RETRIES + 1):
+        for attempt_no in range(1, MONITORING_TIMESERIES_MAX_RETRIES + 1):
             try:
                 return method(*args, **kwargs)
             except Exception as err:
                 logger.info(
                     f'Error while executing method "{method.__name__}":\n{err}\n'
-                    f'Attempt {attempt_no} out of {MONITORING_INFLUXDB_MAX_RETRIES}.\n'
+                    f'Attempt {attempt_no} out of {MONITORING_TIMESERIES_MAX_RETRIES}.\n'
                 )
                 if attempt_no > 3:
-                    sleep(MONITORING_INFLUXDB_RETRY_DELAY)
-                if attempt_no == MONITORING_INFLUXDB_MAX_RETRIES:
+                    sleep(MONITORING_TIMESERIES_RETRY_DELAY)
+                if attempt_no == MONITORING_TIMESERIES_MAX_RETRIES:
                     raise err
 
     return wrapper

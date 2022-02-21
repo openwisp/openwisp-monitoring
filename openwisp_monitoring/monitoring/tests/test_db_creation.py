@@ -6,8 +6,8 @@ from influxdb import InfluxDBClient
 from requests.exceptions import ConnectionError
 
 from openwisp_monitoring.settings import (
-    MONITORING_INFLUXDB_MAX_RETRIES,
-    MONITORING_INFLUXDB_RETRY_DELAY,
+    MONITORING_TIMESERIES_MAX_RETRIES,
+    MONITORING_TIMESERIES_RETRY_DELAY,
 )
 
 
@@ -17,7 +17,7 @@ class TestDatabase(TestCase):
     @patch.object(InfluxDBClient, 'create_database', side_effect=ConnectionError())
     @patch('openwisp_monitoring.utils.sleep')
     def test_check_retry(self, sleep_mock, mock):
-        max_retries = MONITORING_INFLUXDB_MAX_RETRIES
+        max_retries = MONITORING_TIMESERIES_MAX_RETRIES
         with patch('logging.Logger.info') as mocked_logger:
             with self.assertRaises(ConnectionError):
                 apps.get_app_config(self.app).ready()
@@ -28,4 +28,4 @@ class TestDatabase(TestCase):
             )
         self.assertEqual(mock.call_count, max_retries)
         self.assertEqual(sleep_mock.call_count, max_retries - 3)
-        sleep_mock.assert_called_with(MONITORING_INFLUXDB_RETRY_DELAY)
+        sleep_mock.assert_called_with(MONITORING_TIMESERIES_RETRY_DELAY)
