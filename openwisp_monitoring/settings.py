@@ -21,5 +21,6 @@ AUTO_CHARTS = get_settings_value(
 
 MONITORING_API_URLCONF = get_settings_value('API_URLCONF', None)
 MONITORING_API_BASEURL = get_settings_value('API_BASEURL', None)
-MONITORING_TIMESERIES_MAX_RETRIES = get_settings_value('TIMESERIES_MAX_RETRIES', 6)
-MONITORING_TIMESERIES_RETRY_DELAY = get_settings_value('TIMESERIES_RETRY_DELAY', 2)
+MONITORING_TIMESERIES_RETRY_OPTIONS = get_settings_value(
+    'TIMESERIES_RETRY_OPTIONS', dict(max_retries=6, delay=2)
+)
