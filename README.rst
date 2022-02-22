@@ -723,20 +723,35 @@ For more information regarding these settings, consult the `celery documentation
 regarding automatic retries for known errors
 <https://docs.celeryproject.org/en/stable/userguide/tasks.html#automatic-retry-for-known-exceptions>`_.
 
-``OPENWISP_MONITORING_TIMESERIES_MAX_RETRIES``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``OPENWISP_MONITORING_TIMESERIES_RETRY_OPTIONS``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-+--------------+-------------+
-| **type**:    |   ``int``   |
-+--------------+-------------+
-| **default**: |    ``6``    |
-+--------------+-------------+
++--------------+-----------+
+| **type**:    | ``dict``  |
++--------------+-----------+
+| **default**: | see below |
++--------------+-----------+
 
-This settings allow you to configure the max retries count on failure in timeseries database operations.
+.. code-block:: python
 
-This retry setting is used in retry mechanism to make the requests to the timeseries database resilient.
+    # default value of OPENWISP_MONITORING_RETRY_OPTIONS:
 
-This setting is independent of celery retry settings.
+    dict(
+        max_retries=6,
+        delay=2
+    )
+
+On busy systems, communication with the timeseries DB can occasionally fail.
+The timeseries DB backend will retry on any exception according to these settings.
+The delay kicks in only after the third consecutive attempt.
+
+This setting shall not be confused with ``OPENWISP_MONITORING_WRITE_RETRY_OPTIONS``,
+which is used to configure the infinite retrying of the celery task which writes
+metric data to the timeseries DB, while ``OPENWISP_MONITORING_TIMESERIES_RETRY_OPTIONS``
+deals with any other read/write operation on the timeseries DB which may fail.
+
+However these retries are not handled by celery but are simple python loops,
+which will eventually give up if a problem persists.
 
 ``OPENWISP_MONITORING_TIMESERIES_RETRY_DELAY``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
