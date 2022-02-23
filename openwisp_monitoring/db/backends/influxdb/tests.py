@@ -14,6 +14,7 @@ from swapper import load_model
 from openwisp_monitoring.device.settings import SHORT_RETENTION_POLICY
 from openwisp_monitoring.device.utils import SHORT_RP, manage_short_retention_policy
 from openwisp_monitoring.monitoring.tests import TestMonitoringMixin
+from openwisp_monitoring.settings import MONITORING_TIMESERIES_RETRY_OPTIONS
 from openwisp_utils.tests import capture_stderr
 
 from ...exceptions import TimeseriesWriteException
@@ -325,3 +326,19 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
     def _retry_task(self, task_signature):
         task_kwargs = task_signature.kwargs
         task_signature.type.run(**task_kwargs)
+
+    @patch.object(
+        InfluxDBClient, 'query', side_effect=InfluxDBServerError('Server error')
+    )
+    def test_retry_mechanism(self, mock_query):
+        max_retries = MONITORING_TIMESERIES_RETRY_OPTIONS.get('max_retries')
+        with patch('logging.Logger.info') as mocked_logger:
+            try:
+                self.test_get_query_fields_function()
+            except Exception:
+                pass
+            self.assertEqual(mocked_logger.call_count, max_retries)
+            mocked_logger.assert_called_with(
+                'Error while executing method "query":\nServer error\nAttempt '
+                f'{max_retries} out of {max_retries}.\n'
+            )

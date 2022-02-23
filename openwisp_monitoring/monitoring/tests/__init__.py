@@ -174,10 +174,10 @@ class TestMonitoringMixin(TestOrganizationMixin):
 
     @classmethod
     def setUpClass(cls):
-        # By default timeseries_db.get_db shall connect to the database
+        # By default timeseries_db.db shall connect to the database
         # defined in settings when apps are loaded. We don't want that while testing
         timeseries_db.db_name = cls.TEST_DB
-        del timeseries_db.get_db
+        del timeseries_db.db
         timeseries_db.create_database()
         for key, value in metrics.items():
             register_metric(key, value)

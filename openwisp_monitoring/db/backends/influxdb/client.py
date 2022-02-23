@@ -12,6 +12,8 @@ from django.utils.translation import gettext_lazy as _
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 
+from openwisp_monitoring.utils import retry
+
 from ...exceptions import TimeseriesWriteException
 from .. import TIMESERIES_DB
 
@@ -56,22 +58,22 @@ class DatabaseClient(object):
         self.db_name = db_name or TIMESERIES_DB['NAME']
         self.client_error = InfluxDBClientError
 
+    @retry
     def create_database(self):
         """creates database if necessary"""
-        db = self.get_db
         # InfluxDB does not create a new database, neither raise an error if database exists
-        db.create_database(self.db_name)
+        self.db.create_database(self.db_name)
         logger.debug(f'Created InfluxDB database "{self.db_name}"')
 
+    @retry
     def drop_database(self):
         """drops database if it exists"""
-        db = self.get_db
         # InfluxDB does not raise an error if database does not exist
-        db.drop_database(self.db_name)
+        self.db.drop_database(self.db_name)
         logger.debug(f'Dropped InfluxDB database "{self.db_name}"')
 
     @cached_property
-    def get_db(self):
+    def db(self):
         """Returns an ``InfluxDBClient`` instance"""
         return InfluxDBClient(
             TIMESERIES_DB['HOST'],
@@ -81,10 +83,10 @@ class DatabaseClient(object):
             self.db_name,
         )
 
+    @retry
     def create_or_alter_retention_policy(self, name, duration):
         """creates or alters existing retention policy if necessary"""
-        db = self.get_db
-        retention_policies = db.get_list_retention_policies()
+        retention_policies = self.db.get_list_retention_policies()
         exists = False
         duration_changed = False
         for policy in retention_policies:
@@ -93,14 +95,14 @@ class DatabaseClient(object):
                 duration_changed = policy['duration']
                 break
         if not exists:
-            db.create_retention_policy(name=name, duration=duration, replication=1)
+            self.db.create_retention_policy(name=name, duration=duration, replication=1)
         elif exists and duration_changed:
-            db.alter_retention_policy(name=name, duration=duration)
+            self.db.alter_retention_policy(name=name, duration=duration)
 
+    @retry
     def query(self, query, precision=None, **kwargs):
-        db = self.get_db
         database = kwargs.get('database') or self.db_name
-        return db.query(
+        return self.db.query(
             query,
             kwargs.get('params'),
             epoch=precision,
@@ -115,7 +117,7 @@ class DatabaseClient(object):
             timestamp = timestamp.isoformat(sep='T', timespec='microseconds')
         point['time'] = timestamp
         try:
-            self.get_db.write(
+            self.db.write(
                 {'points': [point]},
                 {
                     'db': kwargs.get('database') or self.db_name,
@@ -175,8 +177,9 @@ class DatabaseClient(object):
     def get_list_query(self, query, precision='s'):
         return list(self.query(query, precision=precision).get_points())
 
+    @retry
     def get_list_retention_policies(self):
-        return self.get_db.get_list_retention_policies()
+        return self.db.get_list_retention_policies()
 
     def delete_metric_data(self, key=None, tags=None):
         """
@@ -186,7 +189,11 @@ class DatabaseClient(object):
         if not key and not tags:
             self.query('DROP SERIES FROM /.*/')
         else:
-            self.get_db.delete_series(measurement=key, tags=tags)
+            self.delete_series(key, tags)
+
+    @retry
+    def delete_series(self, key=None, tags=None):
+        self.db.delete_series(measurement=key, tags=tags)
 
     # Chart related functions below
 
