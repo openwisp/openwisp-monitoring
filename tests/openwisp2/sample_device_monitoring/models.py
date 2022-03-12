@@ -7,7 +7,7 @@ from openwisp_monitoring.device.base.models import (
     AbstractDeviceMonitoring,
 )
 
-BaseDevice = load_model('config', 'Device')
+BaseDevice = load_model('config', 'Device', require_ready=False)
 
 
 class DeviceData(AbstractDeviceData, BaseDevice):
