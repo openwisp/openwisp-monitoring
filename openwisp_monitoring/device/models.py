@@ -1,10 +1,9 @@
 from django.contrib.contenttypes.fields import GenericRelation
-from swapper import get_model_name, swappable_setting
+from swapper import get_model_name, load_model, swappable_setting
 
-from ..utils import load_model_patched
 from .base.models import AbstractDeviceData, AbstractDeviceMonitoring
 
-BaseDevice = load_model_patched('config', 'Device', require_ready=False)
+BaseDevice = load_model('config', 'Device', require_ready=False)
 
 
 class DeviceData(AbstractDeviceData, BaseDevice):
