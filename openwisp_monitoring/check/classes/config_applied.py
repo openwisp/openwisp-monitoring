@@ -10,14 +10,10 @@ class ConfigApplied(BaseCheck):
     def check(self, store=True):
         # If the device is down or does not have a config
         # do not run config applied check
-        if (
-            self.related_object.monitoring.status
-            in [
-                'critical',
-                'unknown',
-            ]
-            or not hasattr(self.related_object, 'config')
-        ):
+        if self.related_object.monitoring.status in [
+            'critical',
+            'unknown',
+        ] or not hasattr(self.related_object, 'config'):
             return
         result = int(self.related_object.config.status == 'applied')
         # If the device config is in error status we don't need to notify

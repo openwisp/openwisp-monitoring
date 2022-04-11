@@ -553,7 +553,7 @@ class AbstractChart(TimeStampedEditableModel):
         """
         rounds value if it makes sense
         """
-        control = 1.0 / 10 ** decimal_places
+        control = 1.0 / 10**decimal_places
         if value < control:
             decimal_places += 2
         return round(value, decimal_places)
