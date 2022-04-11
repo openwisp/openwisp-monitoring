@@ -10,6 +10,7 @@ from swapper import load_model
 
 from openwisp_controller.config.signals import checksum_requested, config_status_changed
 from openwisp_controller.connection import settings as connection_settings
+from openwisp_controller.connection.apps import ConnectionConfig
 from openwisp_controller.connection.signals import is_working_changed
 from openwisp_utils.admin_theme import (
     register_dashboard_chart,
@@ -37,6 +38,7 @@ class DeviceMonitoringConfig(AppConfig):
         self.device_recovery_detection()
         self.set_update_config_model()
         self.register_dashboard_items()
+        self.add_connection_ignore_notification_reasons()
 
     def connect_device_signals(self):
         Device = load_model('config', 'Device')
@@ -241,3 +243,8 @@ class DeviceMonitoringConfig(AppConfig):
                     'monitoring_location_geojson_url': loc_geojson_url,
                 },
             )
+
+    def add_connection_ignore_notification_reasons(self):
+        ConnectionConfig._ignore_connection_notification_reasons.extend(
+            ['timed out', 'Unable to connect']
+        )
