@@ -136,6 +136,14 @@ class DatabaseClient(object):
                     return
             raise TimeseriesWriteException
 
+    def standardizeResult(self, resultObject):
+        """
+            return the query result in the form of a list of dictionaries
+            to make all the back ends uniform
+        """
+        #TODO
+        pass
+
     def read(self, key, fields, tags, **kwargs):
         extra_fields = kwargs.get('extra_fields')
         since = kwargs.get('since')

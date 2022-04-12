@@ -9,15 +9,8 @@ logger = logging.getLogger(__name__)
 
 TIMESERIES_DB = getattr(settings, 'TIMESERIES_DATABASE', None)
 if not TIMESERIES_DB:
-    TIMESERIES_DB = {
-        'BACKEND': 'openwisp_monitoring.db.backends.influxdb',
-        'USER': getattr(settings, 'INFLUXDB_USER', 'openwisp'),
-        'PASSWORD': getattr(settings, 'INFLUXDB_PASSWORD', 'openwisp'),
-        'NAME': getattr(settings, 'INFLUXDB_DATABASE', 'openwisp2'),
-        'HOST': getattr(settings, 'INFLUXDB_HOST', 'localhost'),
-        'PORT': getattr(settings, 'INFLUXDB_PORT', '8086'),
-    }
     logger.warning(
+        'Timeseries database not set up in settings'
         'The previous method to define Timeseries Database has been deprecated. Please refer to the docs:\n'
         'https://github.com/openwisp/openwisp-monitoring#setup-integrate-in-an-existing-django-project'
     )
@@ -30,11 +23,16 @@ def load_backend_module(backend_name=TIMESERIES_DB['BACKEND'], module=None):
     """
     try:
         assert 'BACKEND' in TIMESERIES_DB, 'BACKEND'
-        assert 'USER' in TIMESERIES_DB, 'USER'
-        assert 'PASSWORD' in TIMESERIES_DB, 'PASSWORD'
         assert 'NAME' in TIMESERIES_DB, 'NAME'
         assert 'HOST' in TIMESERIES_DB, 'HOST'
         assert 'PORT' in TIMESERIES_DB, 'PORT'
+        backend = TIMESERIES_DB['BACKEND']
+        if backend == 'openwisp_monitoring.db.backends.influxdb':
+            assert 'USER' in TIMESERIES_DB, 'USER'
+            assert 'PASSWORD' in TIMESERIES_DB, 'PASSWORD'
+        else if backend == 'openwisp_monitoring.db.backends.influxdb2':
+            assert 'ORG' in TIMESERIES_DB, 'ORG'
+            assert 'TOKEN' in TIMESERIES_DB, 'TOKEN'
         if module:
             return import_module(f'{backend_name}.{module}')
         else:
