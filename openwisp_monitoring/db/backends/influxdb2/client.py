@@ -48,6 +48,8 @@ class DatabaseClient(object):
             logger.debug(f'Created InfluxDB2 bucket "{self.db_name}"')
         else:
             logger.debug(f'Bucket named "{self.db_name}" found')
+        self.write_api = self.db.write_api(write_options=SYNCHRONOUS)
+        self.query_api = self.db.query_api()
 
     @retry
     def drop_database(self):
