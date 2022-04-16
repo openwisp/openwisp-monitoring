@@ -122,6 +122,18 @@ Install spatialite and sqlite:
                             gdal-bin libproj-dev libgeos-dev libspatialite-dev \
                             fping
 
+Quickstart
+----------
+
+1. Setting openwisp-config management_interface option
+
+* Make sure the management_interface setting of openwisp-config is set to the interface which is reachable by openwisp.
+* If the interface which is reachable is br-mng, add option management_interface 'br-mng' to `/etc/config/openwisp`.
+
+.. code-block:: python
+ 
+   option management_interface 'br-mng'
+
 Setup (integrate in an existing Django project)
 -----------------------------------------------
 
