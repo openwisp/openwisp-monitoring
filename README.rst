@@ -1362,10 +1362,6 @@ by making the following changes:
   script will be updated to exit if `openwisp-monitoring package <https://github.com/openwisp/openwrt-openwisp-monitoring#openwrt-openwisp-monitoring>`_
   is installed on the device.
 
-**Note:** The above changes will change the configuration status of all your devices to
-``modified``. You don't need to be alarmed because of this. This ensures that all of your
-devices have updated scripts.
-
 Install the `monitoring packages <https://github.com/openwisp/openwrt-openwisp-monitoring#openwrt-openwisp-monitoring>`_
 as mentioned in the `Install monitoring packages on device <#install-monitoring-packages-on-the-device>`_
 section of this documentation.
