@@ -103,29 +103,321 @@ Available Features
 
 ------------
 
-Install Dependencies
---------------------
+Installation instructions
+-------------------------
 
-We use InfluxDB to store metrics and Redis as celery broker (you can use a different
-broker if you want). The recommended way for development is running them using Docker
-so you will need to `install docker and docker-compose <https://docs.docker.com/engine/install/>`_
-beforehand.
+Install system dependencies
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In case you prefer not to use Docker you can `install InfluxDB <https://docs.influxdata.com/influxdb/v1.8/introduction/install/>`_
-and Redis from your repositories, but keep in mind that the version packaged by your distribution may be different.
+*openwisp-monitoring* uses InfluxDB to store metrics. Follow the
+`installation instructions from InfluxDB's official documentation <https://docs.influxdata.com/influxdb/v1.8/introduction/install/>`_.
 
-Install spatialite and sqlite:
+**Note:** Only *InfluxDB 1.8.x* is supported in *openwisp-monitoring*.
+
+Install system packages:
 
 .. code-block:: shell
 
-    sudo apt-get install -y sqlite3 libsqlite3-dev openssl libssl-dev \
-                            gdal-bin libproj-dev libgeos-dev libspatialite-dev \
-                            fping
+    sudo apt install -y openssl libssl-dev \
+                        gdal-bin libproj-dev libgeos-dev \
+                        fping
+
+Install stable version from PyPI
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Install from PyPI:
+
+.. code-block:: shell
+
+    pip install openwisp-monitoring
+
+Install development version
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Install tarball:
+
+.. code-block:: shell
+
+    pip install https://github.com/openwisp/openwisp-monitoring/tarball/master
+
+Alternatively, you can install via pip using git:
+
+.. code-block:: shell
+
+    pip install -e git+git://github.com/openwisp/openwisp-monitoring#egg=openwisp_monitoring
+
+If you want to contribute, follow the instructions in
+`"Installing for development" <#installing-for-development>`_ section.
+
+Installing for development
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Install the system dependencies as mentioned in the
+`"Install system dependencies" <#install-system-dependencies>`_ section.
+Install these additional packages that are required for development:
+
+.. code-block:: shell
+
+    sudo apt install -y sqlite3 libsqlite3-dev \
+                        libspatialite-dev libsqlite3-mod-spatialite \
+                        chromium
+
+Fork and clone the forked repository:
+
+.. code-block:: shell
+
+    git clone git://github.com/<your_fork>/openwisp-monitoring
+
+Navigate into the cloned repository:
+
+.. code-block:: shell
+
+    cd openwisp-monitoring/
+
+Start Redis and InfluxDB using Docker:
+
+.. code-block:: shell
+
+    docker-compose up -d redis influxdb
+
+Setup and activate a virtual-environment. (we'll be using  `virtualenv <https://pypi.org/project/virtualenv/>`_)
+
+.. code-block:: shell
+
+    python -m virtualenv env
+    source env/bin/activate
+
+Make sure that you are using pip version 20.2.4 before moving to the next step:
+
+.. code-block:: shell
+
+    pip install -U pip wheel setuptools
+
+Install development dependencies:
+
+.. code-block:: shell
+
+    pip install -e .
+    pip install -r requirements-test.txt
+    npm install -g jshint stylelint
+
+Install WebDriver for Chromium for your browser version from `<https://chromedriver.chromium.org/home>`_
+and extract ``chromedriver`` to one of directories from your ``$PATH`` (example: ``~/.local/bin/``).
+
+Create database:
+
+.. code-block:: shell
+
+    cd tests/
+    ./manage.py migrate
+    ./manage.py createsuperuser
+
+Run celery and celery-beat with the following commands (separate terminal windows are needed):
+
+.. code-block:: shell
+
+    cd tests/
+    celery -A openwisp2 worker -l info
+    celery -A openwisp2 beat -l info
+
+Launch development server:
+
+.. code-block:: shell
+
+    ./manage.py runserver 0.0.0.0:8000
+
+You can access the admin interface at http://127.0.0.1:8000/admin/.
+
+Run tests with:
+
+.. code-block:: shell
+
+    ./runtests.py --parallel
+
+Run quality assurance tests with:
+
+.. code-block:: shell
+
+    ./run-qa-checks
+
+Install and run on docker
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Note**: This Docker image is for development purposes only.
+For the official OpenWISP Docker images, see: `docker-openwisp
+<https://github.com/openwisp/docker-openwisp>`_.
+
+Build from the Dockerfile:
+
+.. code-block:: shell
+
+    docker-compose build
+
+Run the docker container:
+
+.. code-block:: shell
+
+    docker-compose up
+
+Setup (integrate in an existing Django project)
+-----------------------------------------------
+
+Follow the setup instructions of `openwisp-controller
+<https://github.com/openwisp/openwisp-controller>`_, then add the settings described below.
+
+.. code-block:: python
+
+    INSTALLED_APPS = [
+        # django apps
+        # all-auth
+        'django.contrib.sites',
+        'allauth',
+        'allauth.account',
+        'allauth.socialaccount',
+        'django_extensions',
+        'django_filters',
+        # openwisp2 modules
+        'openwisp_users',
+        'openwisp_controller.pki',
+        'openwisp_controller.config',
+        'openwisp_controller.connection',
+        'openwisp_controller.geo',
+        # monitoring
+        'openwisp_monitoring.monitoring',
+        'openwisp_monitoring.device',
+        'openwisp_monitoring.check',
+        'nested_admin',
+        # notifications
+        'openwisp_notifications',
+        # openwisp2 admin theme (must be loaded here)
+        'openwisp_utils.admin_theme',
+        # admin
+        'django.contrib.admin',
+        'django.forms',
+        # other dependencies ...
+    ]
+
+    # Make sure you change them in production
+    # You can select one of the backends located in openwisp_monitoring.db.backends
+    TIMESERIES_DATABASE = {
+        'BACKEND': 'openwisp_monitoring.db.backends.influxdb',
+        'USER': 'openwisp',
+        'PASSWORD': 'openwisp',
+        'NAME': 'openwisp2',
+        'HOST': 'localhost',
+        'PORT': '8086',
+    }
+
+``urls.py``:
+
+.. code-block:: python
+
+    from django.conf import settings
+    from django.conf.urls import include, url
+    from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+
+    from openwisp_utils.admin_theme.admin import admin, openwisp_admin
+
+    openwisp_admin()
+
+    urlpatterns = [
+        url(r'^admin/', include(admin.site.urls)),
+        url(r'', include('openwisp_controller.urls')),
+        url(r'', include('openwisp_monitoring.urls')),
+    ]
+
+    urlpatterns += staticfiles_urlpatterns()
+
+Configure caching (you may use a different cache storage if you want):
+
+.. code-block:: python
+
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': 'redis://localhost/0',
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            }
+        }
+    }
+
+    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+    SESSION_CACHE_ALIAS = 'default'
+
+Configure celery (you may use a different broker if you want):
+
+.. code-block:: python
+
+    # here we show how to configure celery with redis but you can
+    # use other brokers if you want, consult the celery docs
+    CELERY_BROKER_URL = 'redis://localhost/1'
+    CELERY_BEAT_SCHEDULE = {
+        'run_checks': {
+            'task': 'openwisp_monitoring.check.tasks.run_checks',
+            'schedule': timedelta(minutes=5),
+        },
+    }
+
+    INSTALLED_APPS.append('djcelery_email')
+    EMAIL_BACKEND = 'djcelery_email.backends.CeleryEmailBackend'
+
+If you decide to use Redis (as shown in these examples),
+install the following python packages.
+
+.. code-block:: shell
+
+    pip install redis django-redis
+
+
+Quickstart Guide
+----------------
+
+Install OpenWISP Monitoring
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Install *openwisp-monitoring* from one of the methods mentioned in the
+`"Installation instructions" <#installation-instructions>`_ section.
+
+Install openwisp-config on the device
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Follow the `installation instructions from openwisp-config documentation <https://github.com/openwisp/openwisp-config#install-precompiled-package>`_
+and configure the openwisp-config agent on the device.
+
+Set the ``management_interface`` in openwisp-config's configuration on the device.
+This interface will be used by OpenWISP to reach the device.
+
+E.g., if the *management interface* is ``tun0`` on the device, the openwisp-config
+configuration should look similar to the below example:
+
+.. code-block:: text
+
+    # In /etc/config/openwisp on the device
+    config controller 'http'
+        # other configuration directives
+        option management_interface 'tun0'
+
+The different modules of OpenWISP use the *management interface* for providing the following features:
+
+- `Pushing configuration changes <https://github.com/openwisp/openwisp-controller#how-to-configure-push-updates>`_
+  from OpenWISP to the device.
+- `Executing commands remotely on the device <https://github.com/openwisp/openwisp-controller#sending-commands-to-devices>`_.
+- `Running checks on the device <https://github.com/openwisp/openwisp-monitoring#available-checks>`_.
+- `Performing firmware upgrades on the device <https://github.com/openwisp/openwisp-firmware-upgrader#perform-a-firmware-upgrade-to-a-specific-device>`_
+
+It is **required** to set up the *management interface* for functioning
+of above-listed features.
+
+You can only get away from setting up a management interface
+if OpenWISP is deployed in a Layer 2 network, i.e. OpenWISP can reach the devices
+on their **Last IP**. In this scenario, set the `"OPENWISP_MONITORING_MANAGEMENT_IP_ONLY" <#openwisp-monitoring-management-ip-only>`_
+setting in OpenWISP to ``False``.
 
 Install monitoring packages on the device
------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Follow the instructions from `openwrt-openwisp-monitoring documentation <https://github.com/openwisp/openwrt-openwisp-monitoring/tree/master#install-pre-compiled-packages>`_
+Follow the `instructions from openwrt-openwisp-monitoring documentation <https://github.com/openwisp/openwrt-openwisp-monitoring/tree/master#install-pre-compiled-packages>`_
 to install ``openwisp_monitoring`` and ``netjson_monitoring``
 packages on your device. These packages collect and send the
 required data from the device and are required for the functioning
@@ -136,6 +428,27 @@ features.
 a *monitoring template* for collecting metrics, you should follow the
 instructions in `Migrating from monitoring scripts to monitoring packages <#migrating-from-monitoring-scripts-to-monitoring-packages>`_
 section of this documentation.
+
+Metric collection
+~~~~~~~~~~~~~~~~~
+
+*openwisp-monitoring* collects `different metrics of the device <https://github.com/openwisp/openwisp-monitoring#default-metrics>`_.
+Some of these metrics are collected by OpenWISP itself through means of **active checks**
+while others are sent to OpenWISP passively by the `openwisp-monitoring agent <#install-monitoring-packages-on-the-device>`_
+installed on the device.
+
+The `"Available Checks" <#available-checks>`_ section of this documentation lists
+**active checks** implemented in openwisp-monitoring.
+
+Creating checks for a device
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, *openwisp-monitoring* creates `active checks <#available-checks>`_
+for all devices. These checks are created and executed asynchronously.
+
+If you don't see checks created immediately after a device registers, don't
+be alarmed. It may take some time for the asynchronous worker(s) to create
+checks for the device. Unless you have disabled the automatic creation of a check.
 
 Device Health Status
 --------------------
@@ -1378,190 +1691,6 @@ any monitoring data.
 by *openwisp-monitoring* or you are using custom monitoring templates, then you should
 remove such templates from the device before installing the
 `monitoring packages <https://github.com/openwisp/openwrt-openwisp-monitoring#openwrt-openwisp-monitoring>`_.
-
-Installing for development
---------------------------
-
-Install your forked repo:
-
-.. code-block:: shell
-
-    git clone git://github.com/<your_fork>/openwisp-monitoring
-    cd openwisp-monitoring/
-    pip install -e .
-
-Install test requirements:
-
-.. code-block:: shell
-
-    pip install -r requirements-test.txt
-
-Start Redis and InfluxDB using docker-compose:
-
-.. code-block:: shell
-
-    docker-compose up -d redis influxdb
-
-Create the Django database:
-
-.. code-block:: shell
-
-    cd tests/
-    ./manage.py migrate
-    ./manage.py createsuperuser
-
-Launch development server:
-
-.. code-block:: shell
-
-    ./manage.py runserver 0.0.0.0:8000
-
-You can access the admin interface at http://127.0.0.1:8000/admin/.
-
-Run celery and celery-beat with the following commands
-(separate terminal windows are needed):
-
-.. code-block:: shell
-
-    # (cd tests)
-    celery -A openwisp2 worker -l info
-    celery -A openwisp2 beat -l info
-
-Run tests with:
-
-.. code-block:: shell
-
-    # run qa checks
-    ./run-qa-checks
-
-    # standard tests
-    ./runtests.py
-
-    # tests for the sample app
-    SAMPLE_APP=1 ./runtests.py
-
-When running the last line of the previous example, the environment variable
-``SAMPLE_APP`` activates the sample apps in ``/tests/openwisp2/``
-which are simple django apps that extend ``openwisp-monitoring`` with
-the sole purpose of testing its extensibility, for more information regarding
-this concept, read the following section.
-
-Setup (integrate in an existing Django project)
------------------------------------------------
-
-Follow the setup instructions of `openwisp-controller
-<https://github.com/openwisp/openwisp-controller>`_, then add the settings described below.
-
-.. code-block:: python
-
-    INSTALLED_APPS = [
-        # django apps
-        # all-auth
-        'django.contrib.sites',
-        'allauth',
-        'allauth.account',
-        'allauth.socialaccount',
-        'django_extensions',
-        'django_filters',
-        # openwisp2 modules
-        'openwisp_users',
-        'openwisp_controller.pki',
-        'openwisp_controller.config',
-        'openwisp_controller.connection',
-        'openwisp_controller.geo',
-        # monitoring
-        'openwisp_monitoring.monitoring',
-        'openwisp_monitoring.device',
-        'openwisp_monitoring.check',
-        'nested_admin',
-        # notifications
-        'openwisp_notifications',
-        # openwisp2 admin theme (must be loaded here)
-        'openwisp_utils.admin_theme',
-        # admin
-        'django.contrib.admin',
-        'django.forms',
-        # other dependencies ...
-    ]
-
-    # Make sure you change them in production
-    # You can select one of the backends located in openwisp_monitoring.db.backends
-    TIMESERIES_DATABASE = {
-        'BACKEND': 'openwisp_monitoring.db.backends.influxdb',
-        'USER': 'openwisp',
-        'PASSWORD': 'openwisp',
-        'NAME': 'openwisp2',
-        'HOST': 'localhost',
-        'PORT': '8086',
-    }
-
-``urls.py``:
-
-.. code-block:: python
-
-    from django.conf import settings
-    from django.conf.urls import include, url
-    from django.contrib.staticfiles.urls import staticfiles_urlpatterns
-
-    from openwisp_utils.admin_theme.admin import admin, openwisp_admin
-
-    openwisp_admin()
-
-    urlpatterns = [
-        url(r'^admin/', include(admin.site.urls)),
-        url(r'', include('openwisp_controller.urls')),
-        url(r'', include('openwisp_monitoring.urls')),
-    ]
-
-    urlpatterns += staticfiles_urlpatterns()
-
-Configure caching (you may use a different cache storage if you want):
-
-.. code-block:: python
-
-    CACHES = {
-        'default': {
-            'BACKEND': 'django_redis.cache.RedisCache',
-            'LOCATION': 'redis://localhost/0',
-            'OPTIONS': {
-                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            }
-        }
-    }
-
-    SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-    SESSION_CACHE_ALIAS = 'default'
-
-Configure celery (you may use a different broker if you want):
-
-.. code-block:: python
-
-    # here we show how to configure celery with redis but you can
-    # use other brokers if you want, consult the celery docs
-    CELERY_BROKER_URL = 'redis://localhost/1'
-    CELERY_BEAT_SCHEDULE = {
-        'run_checks': {
-            'task': 'openwisp_monitoring.check.tasks.run_checks',
-            'schedule': timedelta(minutes=5),
-        },
-    }
-
-    INSTALLED_APPS.append('djcelery_email')
-    EMAIL_BACKEND = 'djcelery_email.backends.CeleryEmailBackend'
-
-If you decide to use redis (as shown in these examples),
-install the requierd python packages::
-
-    pip install redis django-redis
-
-Install and run on docker
--------------------------
-
-.. code-block:: shell
-
-    # ``--build`` parameter is useful when you want to
-    # rebuild the openwisp-monitoring image with your changes.
-    docker-compose up --build
 
 Extending openwisp-monitoring
 -----------------------------
