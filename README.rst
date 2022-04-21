@@ -60,6 +60,11 @@ Other popular building blocks that are part of the OpenWISP ecosystem are:
 - `openwisp-ipam <https://github.com/openwisp/openwisp-ipam>`_:
   it allows to manage the IP address space of networks
 
+**For a more complete overview of the OpenWISP modules and architecture**,
+see the
+`OpenWISP Architecture Overview
+<https://openwisp.io/docs/general/architecture.html>`_.
+
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/dashboard.png
   :align: center
 
@@ -105,6 +110,14 @@ Available Features
 
 Installation instructions
 -------------------------
+
+Deploy it in production
+~~~~~~~~~~~~~~~~~~~~~~~
+
+See:
+
+- `ansible-openwisp2 <https://github.com/openwisp/ansible-openwisp2>`_
+- `docker-openwisp <https://github.com/openwisp/docker-openwisp>`_
 
 Install system dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -260,7 +273,7 @@ Run the docker container:
     docker-compose up
 
 Setup (integrate in an existing Django project)
------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Follow the setup instructions of `openwisp-controller
 <https://github.com/openwisp/openwisp-controller>`_, then add the settings described below.
@@ -369,86 +382,162 @@ install the following python packages.
 
     pip install redis django-redis
 
-
 Quickstart Guide
 ----------------
 
 Install OpenWISP Monitoring
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Install *openwisp-monitoring* from one of the methods mentioned in the
-`"Installation instructions" <#installation-instructions>`_ section.
+Install *OpenWISP Monitoring* using one of the methods mentioned in the
+`"Installation instructions" <#installation-instructions>`_.
 
 Install openwisp-config on the device
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Follow the `installation instructions from openwisp-config documentation <https://github.com/openwisp/openwisp-config#install-precompiled-package>`_
-and configure the openwisp-config agent on the device.
-
-Set the ``management_interface`` in openwisp-config's configuration on the device.
-This interface will be used by OpenWISP to reach the device.
-
-E.g., if the *management interface* is ``tun0`` on the device, the openwisp-config
-configuration should look similar to the below example:
-
-.. code-block:: text
-
-    # In /etc/config/openwisp on the device
-    config controller 'http'
-        # other configuration directives
-        option management_interface 'tun0'
-
-The different modules of OpenWISP use the *management interface* for providing the following features:
-
-- `Pushing configuration changes <https://github.com/openwisp/openwisp-controller#how-to-configure-push-updates>`_
-  from OpenWISP to the device.
-- `Executing commands remotely on the device <https://github.com/openwisp/openwisp-controller#sending-commands-to-devices>`_.
-- `Running checks on the device <https://github.com/openwisp/openwisp-monitoring#available-checks>`_.
-- `Performing firmware upgrades on the device <https://github.com/openwisp/openwisp-firmware-upgrader#perform-a-firmware-upgrade-to-a-specific-device>`_
-
-It is **required** to set up the *management interface* for functioning
-of above-listed features.
-
-You can only get away from setting up a management interface
-if OpenWISP is deployed in a Layer 2 network, i.e. OpenWISP can reach the devices
-on their **Last IP**. In this scenario, set the `"OPENWISP_MONITORING_MANAGEMENT_IP_ONLY" <#openwisp-monitoring-management-ip-only>`_
-setting in OpenWISP to ``False``.
+`Install the openwisp-config agent for OpenWrt
+<https://github.com/openwisp/openwisp-config#install-precompiled-package>`_
+on your device.
 
 Install monitoring packages on the device
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Follow the `instructions from openwrt-openwisp-monitoring documentation <https://github.com/openwisp/openwrt-openwisp-monitoring/tree/master#install-pre-compiled-packages>`_
-to install ``openwisp_monitoring`` and ``netjson_monitoring``
-packages on your device. These packages collect and send the
-required data from the device and are required for the functioning
-of `checks <#available-checks>`_ and `metrics <#openwisp_monitoring_metrics>`_
-features.
+`Install the openwrt-openwisp-monitoring packages
+<https://github.com/openwisp/openwrt-openwisp-monitoring/tree/master#install-pre-compiled-packages>`_
+on your device.
 
-**Note**: If you are an existing user of *openwisp-monitoring* and are using
-a *monitoring template* for collecting metrics, you should follow the
-instructions in `Migrating from monitoring scripts to monitoring packages <#migrating-from-monitoring-scripts-to-monitoring-packages>`_
-section of this documentation.
+These packages collect and send the
+monitoring data from the device to OpenWISP Monitoring and
+are required to collect `metrics <#openwisp_monitoring_metrics>`_
+like interface traffic, WiFi clients, CPU load, memory usage, etc.
 
-Metric collection
-~~~~~~~~~~~~~~~~~
+**Note**: if you are an existing user of *openwisp-monitoring* and are using
+the legacy *monitoring template* for collecting metrics, we highly recommend
+`Migrating from monitoring scripts to monitoring packages
+<#migrating-from-monitoring-scripts-to-monitoring-packages>`_.
 
-*openwisp-monitoring* collects `different metrics of the device <https://github.com/openwisp/openwisp-monitoring#default-metrics>`_.
-Some of these metrics are collected by OpenWISP itself through means of **active checks**
-while others are sent to OpenWISP passively by the `openwisp-monitoring agent <#install-monitoring-packages-on-the-device>`_
-installed on the device.
+Make sure OpenWISP can reach your devices
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The `"Available Checks" <#available-checks>`_ section of this documentation lists
-**active checks** implemented in openwisp-monitoring.
+In order to perform `active checks <#available-checks>`_ and other actions like
+`triggering the push of configuration changes
+<https://github.com/openwisp/openwisp-controller#how-to-configure-push-updates>`_,
+`executing shell commands
+<https://github.com/openwisp/openwisp-controller#sending-commands-to-devices>`_ or
+`performing firmware upgrades
+<https://github.com/openwisp/openwisp-firmware-upgrader#perform-a-firmware-upgrade-to-a-specific-device>`_,
+**the OpenWISP server needs to be able to reach the network devices**.
+
+There are mainly two deployment scenarios for OpenWISP:
+
+1. the OpenWISP server is deployed on the public internet and the devices are
+   geographically distributed across different locations:
+   **in this case a management tunnel is needed**
+2. the OpenWISP server is deployed on a computer/server which is located in
+   the same Layer 2 network (that is, in the same LAN) where the devices
+   are located.
+   **in this case a management tunnel is NOT needed**
+
+1. Public internet deployment
+#############################
+
+This is the most common scenario:
+
+- the OpenWISP server is deployed to the public internet, hence the
+  server has a public IPv4 (and IPv6) address and usually a valid
+  SSL certificate provided by Mozilla Letsencrypt or another SSL provider
+- the network devices are geographically distributed across different
+  locations (different cities, different regions, different countries)
+
+In this scenario, the OpenWISP application will not be able to reach the
+devices **unless a management tunnel** is used, for that reason having
+a management VPN like OpenVPN, Wireguard or any other tunneling solution
+is paramount, not only to allow OpenWISP to work properly, but also to
+be able to perform debugging and troubleshooting when needed.
+
+In this scenario, the following requirements are needed:
+
+- a VPN server must be installed in a way that the OpenWISP
+  server can reach the VPN peers, for more information on how to do this
+  via OpenWISP please refer to the following sections:
+
+  - `OpenVPN tunnel automation
+    <https://openwisp.io/docs/user/vpn.html>`_
+  - `Wireguard tunnel automation
+    <https://github.com/openwisp/openwisp-controller#how-to-setup-wireguard-tunnels>`_
+
+  If you prefer to use other tunneling solutions (L2TP, Softether, etc.)
+  and know how to configure those solutions on your own,
+  that's totally fine as well.
+
+  If the OpenWISP server is connected to a network infrastructure
+  which allows it to reach the devices via pre-existing tunneling or
+  Intranet solutions (eg: MPLS, SD-WAN), then setting up a VPN server
+  is not needed, as long as there's a dedicated interface on OpenWrt
+  which gets an IP address assigned to it and which is reachable from
+  the OpenWISP server.
+
+- The devices must be configured to join the management tunnel automatically,
+  either via a pre-existing configuration in the firmware or via an
+  `OpenWISP Template <https://openwisp.io/docs/user/templates.html>`_.
+
+- The `openwisp-config <https://github.com/openwisp/openwisp-config>`_
+  agent on the devices must be configured to specify
+  the ``management_interface`` option, the agent will communicate the
+  IP of the management interface to the OpenWISP Server and OpenWISP will
+  use the management IP for reaching the device.
+
+  For example, if the *management interface* is named ``tun0``,
+  the openwisp-config configuration should look like the following example:
+
+.. code-block:: text
+
+    # In /etc/config/openwisp on the device
+
+    config controller 'http'
+        # ... other configuration directives ...
+        option management_interface 'tun0'
+
+2. LAN deployment
+#################
+
+When the OpenWISP server and the network devices are deployed in the same
+L2 network (eg: an office LAN) and the OpenWISP server is reachable
+on the LAN address, OpenWISP can then use the **Last IP** field of the
+devices to reach them.
+
+In this scenario it's necessary to set the
+`"OPENWISP_MONITORING_MANAGEMENT_IP_ONLY" <#openwisp-monitoring-management-ip-only>`_
+setting to ``False``.
 
 Creating checks for a device
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-By default, *openwisp-monitoring* creates `active checks <#available-checks>`_
-for all devices. These checks are created and executed asynchronously.
+By default, the `active checks <#available-checks>`_ are created
+automatically for all devices, unless the automatic creation of some
+specific checks has been disabled, for more information on how to do this,
+refer to the `active checks <#available-checks>`_ section.
 
-If you don't see checks created immediately after a device registers, don't
-be alarmed. It may take some time for the asynchronous worker(s) to create
-checks for the device. Unless you have disabled the automatic creation of a check.
+These checks are created and executed in the background by celery workers.
+
+Passive vs Active Metric Collection
+-----------------------------------
+
+The `the different device metric
+<https://github.com/openwisp/openwisp-monitoring#default-metrics>`_
+collected by OpenWISP Monitoring can be divided in two categories:
+
+1. **metrics collected actively by OpenWISP**:
+   these metrics are collected by the celery workers running on the
+   OpenWISP server, which continuously sends network requests to the
+   devices and store the results;
+2. **metrics collected passively by OpenWISP**:
+   these metrics are sent by the
+   `openwrt-openwisp-monitoring agent <#install-monitoring-packages-on-the-device>`_
+   installed on the network devices and are collected by OpenWISP via
+   its REST API.
+
+The `"Available Checks" <#available-checks>`_ section of this document
+lists the currently implemented **active checks**.
 
 Device Health Status
 --------------------
