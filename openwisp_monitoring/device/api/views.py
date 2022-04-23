@@ -8,7 +8,7 @@ from io import StringIO
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models import Count, Q
 from django.http import HttpResponse
 from django.utils.timezone import now
@@ -46,7 +46,7 @@ Location = load_model('geo', 'Location')
 
 class DeviceMetricView(GenericAPIView):
     model = DeviceData
-    queryset = DeviceData.objects.all()
+    queryset = DeviceData.objects.select_related('devicelocation').all()
     serializer_class = serializers.Serializer
     permission_classes = [DevicePermission]
     schema = schema
@@ -213,8 +213,12 @@ class DeviceMetricView(GenericAPIView):
         self.instance.save_data()
         data = self.instance.data
         ct = ContentType.objects.get_for_model(Device)
+        device_tags = self._get_extra_tags(self.instance)
         for interface in data.get('interfaces', []):
             ifname = interface['name']
+            extra_tags = device_tags.copy()
+            extra_tags['ifname'] = ifname
+            extra_tags = Metric._sort_dict(extra_tags)
             if 'mobile' in interface:
                 self._write_mobile_signal(interface, ifname, ct, pk, current, time=time)
             ifstats = interface.get('statistics', {})
@@ -237,7 +241,8 @@ class DeviceMetricView(GenericAPIView):
                     content_type=ct,
                     configuration='traffic',
                     name=name,
-                    key=ifname,
+                    key='traffic',
+                    extra_tags=extra_tags,
                 )
                 metric.write(field_value, current, time=time, extra_values=extra_values)
                 if created:
@@ -254,7 +259,8 @@ class DeviceMetricView(GenericAPIView):
                 content_type=ct,
                 configuration='clients',
                 name=name,
-                key=ifname,
+                key='wifi_clients',
+                extra_tags=extra_tags,
             )
             # avoid tsdb overwrite clients
             client_time = time
@@ -280,6 +286,18 @@ class DeviceMetricView(GenericAPIView):
             self._write_disk(data['resources']['disk'], pk, ct, time=time)
         if 'memory' in data['resources']:
             self._write_memory(data['resources']['memory'], pk, ct, current, time=time)
+
+    def _get_extra_tags(self, device):
+        tags = {'organization_id': str(device.organization_id)}
+        try:
+            device_location = device.devicelocation
+        except ObjectDoesNotExist:
+            pass
+        else:
+            tags['location_id'] = str(device_location.location_id)
+            if device_location.floorplan_id:
+                tags['floorplan_id'] = str(device_location.floorplan_id)
+        return tags
 
     def _get_mobile_signal_type(self, signal):
         # if only one access technology in use, return that

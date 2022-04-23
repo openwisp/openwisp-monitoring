@@ -965,3 +965,6 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
                 HTTP_AUTHORIZATION=f'Bearer {token}',
             )
             self.assertEqual(response.status_code, 200)
+
+    # TODO: test device with a location
+    # TODO: test device with a location and a floorplan

@@ -134,6 +134,15 @@ class TestModels(TestMonitoringMixin, TestCase):
         ):
             m.write(1, extra_values=extra_values)
 
+    def test_tags(self):
+        extra_tags = {'a': 'a', 'b': 'b1'}
+        metric = self._create_object_metric(extra_tags=extra_tags)
+        expected_tags = extra_tags.copy()
+        expected_tags.update(
+            {'object_id': metric.object_id, 'content_type': metric.content_type_key}
+        )
+        self.assertEqual(metric.tags, expected_tags)
+
     def test_read_general_metric(self):
         m = self._create_general_metric(name='load')
         m.write(50, check=False)
