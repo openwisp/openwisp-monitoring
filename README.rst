@@ -60,6 +60,11 @@ Other popular building blocks that are part of the OpenWISP ecosystem are:
 - `openwisp-ipam <https://github.com/openwisp/openwisp-ipam>`_:
   it allows to manage the IP address space of networks
 
+**For a more complete overview of the OpenWISP modules and architecture**,
+see the
+`OpenWISP Architecture Overview
+<https://openwisp.io/docs/general/architecture.html>`_.
+
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/dashboard.png
   :align: center
 
@@ -103,27 +108,172 @@ Available Features
 
 ------------
 
-Install Dependencies
---------------------
+Installation instructions
+-------------------------
 
-We use InfluxDB to store metrics and Redis as celery broker (you can use a different
-broker if you want). The recommended way for development is running them using Docker
-so you will need to `install docker and docker-compose <https://docs.docker.com/engine/install/>`_
-beforehand.
+Deploy it in production
+~~~~~~~~~~~~~~~~~~~~~~~
 
-In case you prefer not to use Docker you can `install InfluxDB <https://docs.influxdata.com/influxdb/v1.8/introduction/install/>`_
-and Redis from your repositories, but keep in mind that the version packaged by your distribution may be different.
+See:
 
-Install spatialite and sqlite:
+- `ansible-openwisp2 <https://github.com/openwisp/ansible-openwisp2>`_
+- `docker-openwisp <https://github.com/openwisp/docker-openwisp>`_
+
+Install system dependencies
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+*openwisp-monitoring* uses InfluxDB to store metrics. Follow the
+`installation instructions from InfluxDB's official documentation <https://docs.influxdata.com/influxdb/v1.8/introduction/install/>`_.
+
+**Note:** Only *InfluxDB 1.8.x* is supported in *openwisp-monitoring*.
+
+Install system packages:
 
 .. code-block:: shell
 
-    sudo apt-get install -y sqlite3 libsqlite3-dev openssl libssl-dev \
-                            gdal-bin libproj-dev libgeos-dev libspatialite-dev \
-                            fping
+    sudo apt install -y openssl libssl-dev \
+                        gdal-bin libproj-dev libgeos-dev \
+                        fping
+
+Install stable version from PyPI
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Install from PyPI:
+
+.. code-block:: shell
+
+    pip install openwisp-monitoring
+
+Install development version
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Install tarball:
+
+.. code-block:: shell
+
+    pip install https://github.com/openwisp/openwisp-monitoring/tarball/master
+
+Alternatively, you can install via pip using git:
+
+.. code-block:: shell
+
+    pip install -e git+git://github.com/openwisp/openwisp-monitoring#egg=openwisp_monitoring
+
+If you want to contribute, follow the instructions in
+`"Installing for development" <#installing-for-development>`_ section.
+
+Installing for development
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Install the system dependencies as mentioned in the
+`"Install system dependencies" <#install-system-dependencies>`_ section.
+Install these additional packages that are required for development:
+
+.. code-block:: shell
+
+    sudo apt install -y sqlite3 libsqlite3-dev \
+                        libspatialite-dev libsqlite3-mod-spatialite \
+                        chromium
+
+Fork and clone the forked repository:
+
+.. code-block:: shell
+
+    git clone git://github.com/<your_fork>/openwisp-monitoring
+
+Navigate into the cloned repository:
+
+.. code-block:: shell
+
+    cd openwisp-monitoring/
+
+Start Redis and InfluxDB using Docker:
+
+.. code-block:: shell
+
+    docker-compose up -d redis influxdb
+
+Setup and activate a virtual-environment. (we'll be using  `virtualenv <https://pypi.org/project/virtualenv/>`_)
+
+.. code-block:: shell
+
+    python -m virtualenv env
+    source env/bin/activate
+
+Make sure that you are using pip version 20.2.4 before moving to the next step:
+
+.. code-block:: shell
+
+    pip install -U pip wheel setuptools
+
+Install development dependencies:
+
+.. code-block:: shell
+
+    pip install -e .
+    pip install -r requirements-test.txt
+    npm install -g jshint stylelint
+
+Install WebDriver for Chromium for your browser version from `<https://chromedriver.chromium.org/home>`_
+and extract ``chromedriver`` to one of directories from your ``$PATH`` (example: ``~/.local/bin/``).
+
+Create database:
+
+.. code-block:: shell
+
+    cd tests/
+    ./manage.py migrate
+    ./manage.py createsuperuser
+
+Run celery and celery-beat with the following commands (separate terminal windows are needed):
+
+.. code-block:: shell
+
+    cd tests/
+    celery -A openwisp2 worker -l info
+    celery -A openwisp2 beat -l info
+
+Launch development server:
+
+.. code-block:: shell
+
+    ./manage.py runserver 0.0.0.0:8000
+
+You can access the admin interface at http://127.0.0.1:8000/admin/.
+
+Run tests with:
+
+.. code-block:: shell
+
+    ./runtests.py --parallel
+
+Run quality assurance tests with:
+
+.. code-block:: shell
+
+    ./run-qa-checks
+
+Install and run on docker
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Note**: This Docker image is for development purposes only.
+For the official OpenWISP Docker images, see: `docker-openwisp
+<https://github.com/openwisp/docker-openwisp>`_.
+
+Build from the Dockerfile:
+
+.. code-block:: shell
+
+    docker-compose build
+
+Run the docker container:
+
+.. code-block:: shell
+
+    docker-compose up
 
 Setup (integrate in an existing Django project)
------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Follow the setup instructions of `openwisp-controller
 <https://github.com/openwisp/openwisp-controller>`_, then add the settings described below.
@@ -145,7 +295,6 @@ Follow the setup instructions of `openwisp-controller
         'openwisp_controller.config',
         'openwisp_controller.connection',
         'openwisp_controller.geo',
-        'openwisp_ipam',
         # monitoring
         'openwisp_monitoring.monitoring',
         'openwisp_monitoring.device',
@@ -177,7 +326,7 @@ Follow the setup instructions of `openwisp-controller
 .. code-block:: python
 
     from django.conf import settings
-    from django.urls import include, path
+    from django.conf.urls import include, url
     from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
     from openwisp_utils.admin_theme.admin import admin, openwisp_admin
@@ -185,9 +334,9 @@ Follow the setup instructions of `openwisp-controller
     openwisp_admin()
 
     urlpatterns = [
-        path('admin/', include(admin.site.urls)),
-        path('', include('openwisp_controller.urls')),
-        path('', include('openwisp_monitoring.urls')),
+        url(r'^admin/', include(admin.site.urls)),
+        url(r'', include('openwisp_controller.urls')),
+        url(r'', include('openwisp_monitoring.urls')),
     ]
 
     urlpatterns += staticfiles_urlpatterns()
@@ -223,10 +372,172 @@ Configure celery (you may use a different broker if you want):
         },
     }
 
-If you decide to use redis (as shown in these examples),
-install the requierd python packages::
+    INSTALLED_APPS.append('djcelery_email')
+    EMAIL_BACKEND = 'djcelery_email.backends.CeleryEmailBackend'
+
+If you decide to use Redis (as shown in these examples),
+install the following python packages.
+
+.. code-block:: shell
 
     pip install redis django-redis
+
+Quickstart Guide
+----------------
+
+Install OpenWISP Monitoring
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Install *OpenWISP Monitoring* using one of the methods mentioned in the
+`"Installation instructions" <#installation-instructions>`_.
+
+Install openwisp-config on the device
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+`Install the openwisp-config agent for OpenWrt
+<https://github.com/openwisp/openwisp-config#install-precompiled-package>`_
+on your device.
+
+Install monitoring packages on the device
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+`Install the openwrt-openwisp-monitoring packages
+<https://github.com/openwisp/openwrt-openwisp-monitoring/tree/master#install-pre-compiled-packages>`_
+on your device.
+
+These packages collect and send the
+monitoring data from the device to OpenWISP Monitoring and
+are required to collect `metrics <#openwisp_monitoring_metrics>`_
+like interface traffic, WiFi clients, CPU load, memory usage, etc.
+
+**Note**: if you are an existing user of *openwisp-monitoring* and are using
+the legacy *monitoring template* for collecting metrics, we highly recommend
+`Migrating from monitoring scripts to monitoring packages
+<#migrating-from-monitoring-scripts-to-monitoring-packages>`_.
+
+Make sure OpenWISP can reach your devices
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order to perform `active checks <#available-checks>`_ and other actions like
+`triggering the push of configuration changes
+<https://github.com/openwisp/openwisp-controller#how-to-configure-push-updates>`_,
+`executing shell commands
+<https://github.com/openwisp/openwisp-controller#sending-commands-to-devices>`_ or
+`performing firmware upgrades
+<https://github.com/openwisp/openwisp-firmware-upgrader#perform-a-firmware-upgrade-to-a-specific-device>`_,
+**the OpenWISP server needs to be able to reach the network devices**.
+
+There are mainly two deployment scenarios for OpenWISP:
+
+1. the OpenWISP server is deployed on the public internet and the devices are
+   geographically distributed across different locations:
+   **in this case a management tunnel is needed**
+2. the OpenWISP server is deployed on a computer/server which is located in
+   the same Layer 2 network (that is, in the same LAN) where the devices
+   are located.
+   **in this case a management tunnel is NOT needed**
+
+1. Public internet deployment
+#############################
+
+This is the most common scenario:
+
+- the OpenWISP server is deployed to the public internet, hence the
+  server has a public IPv4 (and IPv6) address and usually a valid
+  SSL certificate provided by Mozilla Letsencrypt or another SSL provider
+- the network devices are geographically distributed across different
+  locations (different cities, different regions, different countries)
+
+In this scenario, the OpenWISP application will not be able to reach the
+devices **unless a management tunnel** is used, for that reason having
+a management VPN like OpenVPN, Wireguard or any other tunneling solution
+is paramount, not only to allow OpenWISP to work properly, but also to
+be able to perform debugging and troubleshooting when needed.
+
+In this scenario, the following requirements are needed:
+
+- a VPN server must be installed in a way that the OpenWISP
+  server can reach the VPN peers, for more information on how to do this
+  via OpenWISP please refer to the following sections:
+
+  - `OpenVPN tunnel automation
+    <https://openwisp.io/docs/user/vpn.html>`_
+  - `Wireguard tunnel automation
+    <https://github.com/openwisp/openwisp-controller#how-to-setup-wireguard-tunnels>`_
+
+  If you prefer to use other tunneling solutions (L2TP, Softether, etc.)
+  and know how to configure those solutions on your own,
+  that's totally fine as well.
+
+  If the OpenWISP server is connected to a network infrastructure
+  which allows it to reach the devices via pre-existing tunneling or
+  Intranet solutions (eg: MPLS, SD-WAN), then setting up a VPN server
+  is not needed, as long as there's a dedicated interface on OpenWrt
+  which gets an IP address assigned to it and which is reachable from
+  the OpenWISP server.
+
+- The devices must be configured to join the management tunnel automatically,
+  either via a pre-existing configuration in the firmware or via an
+  `OpenWISP Template <https://openwisp.io/docs/user/templates.html>`_.
+
+- The `openwisp-config <https://github.com/openwisp/openwisp-config>`_
+  agent on the devices must be configured to specify
+  the ``management_interface`` option, the agent will communicate the
+  IP of the management interface to the OpenWISP Server and OpenWISP will
+  use the management IP for reaching the device.
+
+  For example, if the *management interface* is named ``tun0``,
+  the openwisp-config configuration should look like the following example:
+
+.. code-block:: text
+
+    # In /etc/config/openwisp on the device
+
+    config controller 'http'
+        # ... other configuration directives ...
+        option management_interface 'tun0'
+
+2. LAN deployment
+#################
+
+When the OpenWISP server and the network devices are deployed in the same
+L2 network (eg: an office LAN) and the OpenWISP server is reachable
+on the LAN address, OpenWISP can then use the **Last IP** field of the
+devices to reach them.
+
+In this scenario it's necessary to set the
+`"OPENWISP_MONITORING_MANAGEMENT_IP_ONLY" <#openwisp-monitoring-management-ip-only>`_
+setting to ``False``.
+
+Creating checks for a device
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, the `active checks <#available-checks>`_ are created
+automatically for all devices, unless the automatic creation of some
+specific checks has been disabled, for more information on how to do this,
+refer to the `active checks <#available-checks>`_ section.
+
+These checks are created and executed in the background by celery workers.
+
+Passive vs Active Metric Collection
+-----------------------------------
+
+The `the different device metric
+<https://github.com/openwisp/openwisp-monitoring#default-metrics>`_
+collected by OpenWISP Monitoring can be divided in two categories:
+
+1. **metrics collected actively by OpenWISP**:
+   these metrics are collected by the celery workers running on the
+   OpenWISP server, which continuously sends network requests to the
+   devices and store the results;
+2. **metrics collected passively by OpenWISP**:
+   these metrics are sent by the
+   `openwrt-openwisp-monitoring agent <#install-monitoring-packages-on-the-device>`_
+   installed on the network devices and are collected by OpenWISP via
+   its REST API.
+
+The `"Available Checks" <#available-checks>`_ section of this document
+lists the currently implemented **active checks**.
 
 Device Health Status
 --------------------
@@ -1432,94 +1743,43 @@ Example usage:
 Monitoring scripts
 ------------------
 
-The monitoring scripts which are automatically installed by a `migration file of device-monitoring app <https://github.com/openwisp/openwisp-monitoring/blob/master/openwisp_monitoring/device/migrations/0002_create_template.py>`_
-are required to make the `checks <https://github.com/openwisp/openwisp-monitoring#available-checks>`_ and
-`metrics <#openwisp_monitoring_metrics>`_ work.
+Monitoring scripts are now deprecated in favour of `monitoring packages <https://github.com/openwisp/openwrt-openwisp-monitoring#openwrt-openwisp-monitoring>`_.
+Follow the migration guide in `Migrating from monitoring scripts to monitoring packages <#migrating-from-monitoring-scripts-to-monitoring-packages>`_
+section of this documentation.
 
-The ``netjson-monitoring`` script collects the required data from the openwrt device in realtime. This
-data is then sent by the ``openwisp-monitoring`` script to the server in the form of JSON data via SSL.
-All the dependencies are updated and installed (if needed) by ``update-openwisp-packages`` script.
-The OpenWRT dependencies needed for the monitoring scripts to work are ``libubus-lua``, ``lua-cjson`` and
-``rpcd-mod-iwinfo``.
+Migrating from monitoring scripts to monitoring packages
+--------------------------------------------------------
 
-**WARNING**: Please create a new template if you wish to implement customizations. If you modify the
-default template to create your custom template then your code can get overwritten post an update.
+This section is intended for existing users of *openwisp-monitoring*.
+The older version of *openwisp-monitoring* used *monitoring scripts* that
+are now deprecated in favour of `monitoring packages <https://github.com/openwisp/openwrt-openwisp-monitoring#openwrt-openwisp-monitoring>`_.
 
-Installing for development
---------------------------
+If you already had a *monitoring template* created on your installation,
+then the migrations of *openwisp-monitoring* will update that template
+by making the following changes:
 
-Install your forked repo:
+- The file name of all scripts will be appended with ``legacy-`` keyword
+  in order to differentiate them from the scripts bundled with the new packages.
+- The ``/usr/sbin/legacy-openwisp-monitoring`` (previously ``/usr/sbin/openwisp-monitoring``)
+  script will be updated to exit if `openwisp-monitoring package <https://github.com/openwisp/openwrt-openwisp-monitoring#openwrt-openwisp-monitoring>`_
+  is installed on the device.
 
-.. code-block:: shell
+Install the `monitoring packages <https://github.com/openwisp/openwrt-openwisp-monitoring#openwrt-openwisp-monitoring>`_
+as mentioned in the `Install monitoring packages on device <#install-monitoring-packages-on-the-device>`_
+section of this documentation.
 
-    git clone git://github.com/<your_fork>/openwisp-monitoring
-    cd openwisp-monitoring/
-    pip install -e .
+After the proper configuration of the `openwisp-monitoring package <https://github.com/openwisp/openwrt-openwisp-monitoring#openwrt-openwisp-monitoring>`_
+on your device, you can remove the monitoring template from your devices.
 
-Install test requirements:
+We suggest removing the monitoring template from the devices one at a time instead
+of deleting the template. This ensures the correctness of
+*openwisp monitoring package* configuration and you'll not miss out on
+any monitoring data.
 
-.. code-block:: shell
-
-    pip install -r requirements-test.txt
-
-Start Redis and InfluxDB using docker-compose:
-
-.. code-block:: shell
-
-    docker-compose up -d redis influxdb
-
-Create the Django database:
-
-.. code-block:: shell
-
-    cd tests/
-    ./manage.py migrate
-    ./manage.py createsuperuser
-
-Launch development server:
-
-.. code-block:: shell
-
-    ./manage.py runserver 0.0.0.0:8000
-
-You can access the admin interface at http://127.0.0.1:8000/admin/.
-
-Run celery and celery-beat with the following commands
-(separate terminal windows are needed):
-
-.. code-block:: shell
-
-    # (cd tests)
-    celery -A openwisp2 worker -l info
-    celery -A openwisp2 beat -l info
-
-Run tests with:
-
-.. code-block:: shell
-
-    # run qa checks
-    ./run-qa-checks
-
-    # standard tests
-    ./runtests.py
-
-    # tests for the sample app
-    SAMPLE_APP=1 ./runtests.py
-
-When running the last line of the previous example, the environment variable
-``SAMPLE_APP`` activates the sample apps in ``/tests/openwisp2/``
-which are simple django apps that extend ``openwisp-monitoring`` with
-the sole purpose of testing its extensibility, for more information regarding
-this concept, read the following section.
-
-Install and run on docker
--------------------------
-
-.. code-block:: shell
-
-    # ``--build`` parameter is useful when you want to
-    # rebuild the openwisp-monitoring image with your changes.
-    docker-compose up --build
+**Note:** If you have made changes to the default monitoring template created
+by *openwisp-monitoring* or you are using custom monitoring templates, then you should
+remove such templates from the device before installing the
+`monitoring packages <https://github.com/openwisp/openwrt-openwisp-monitoring#openwrt-openwisp-monitoring>`_.
 
 Extending openwisp-monitoring
 -----------------------------
