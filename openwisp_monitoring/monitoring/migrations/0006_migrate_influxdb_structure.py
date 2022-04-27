@@ -20,31 +20,21 @@ DELETE_QUERY = (
     " WHERE content_type='{content_type_key}'"
     " AND object_id='{object_id}'"
 )
-EXCLUDED_MEASUREMENTS = [
-    'ping',
-    'config_applied',
-    'clients',
-    'disk',
-    'memory',
-    'cpu',
-    'signal_strength',
-    'signal_quality',
-    'access_tech',
-    'device_data',
-    'traffic',
-    'wifi_clients',
-]
+CHUNK_SIZE = 1000
 
 logger = logging.getLogger(__name__)
 
 
-def get_writable_data(read_data, metric, new_measurement):
+def get_writable_data(read_data, tags, old_measurement, new_measurement):
+    """
+    Prepares data that can be written by "timeseries_db.db.write_points"
+    """
     write_data = []
-    for data_point in read_data.get_points(measurement=metric.key):
+    for data_point in read_data.get_points(measurement=old_measurement):
         data = {
             'time': data_point.pop('time'),
             'measurement': new_measurement,
-            'tags': metric.tags,
+            'tags': tags,
         }
         data['fields'] = data_point
         write_data.append(data)
@@ -52,22 +42,22 @@ def get_writable_data(read_data, metric, new_measurement):
 
 
 def migrate_influxdb_data(
-    new_measurement, metric_qs, read_query=READ_QUERY, delete_query=DELETE_QUERY
+    configuration,
+    new_measurement,
+    read_query=READ_QUERY,
+    delete_query=DELETE_QUERY,
 ):
-    for metric in metric_qs.exclude(key__in=EXCLUDED_MEASUREMENTS).iterator():
-        extra_tags = {'ifname': metric.key}
-        try:
-            extra_tags.update(
-                {'organization_id': str(metric.content_object.organization_id)}
-            )
-        except ObjectDoesNotExist:
-            pass
-        metric.extra_tags.update(extra_tags)
-        measurement = metric.key.replace('-', '_')
+    Metric = load_model('monitoring', 'Metric')
+    metric_qs = Metric.objects.filter(
+        configuration=configuration, extra_tags__contains='old_key', key=new_measurement
+    )
+    updated_metrics = []
+    for metric in metric_qs.iterator(chunk_size=CHUNK_SIZE):
+        old_measurement = metric.extra_tags.pop('old_key')
         fields = ','.join(['time', metric.field_name, *metric.related_fields])
         query = (f"{read_query} ORDER BY time ASC LIMIT {SELECT_QUERY_LIMIT}").format(
             fields=fields,
-            measurement=measurement,
+            measurement=old_measurement,
             content_type_key=metric.content_type_key,
             object_id=metric.object_id,
         )
@@ -77,7 +67,7 @@ def migrate_influxdb_data(
         read_data = timeseries_db.query(query, epoch='s')
         while read_data:
             write_data = get_writable_data(
-                read_data, metric, new_measurement=new_measurement
+                read_data, metric.tags, old_measurement, new_measurement=new_measurement
             )
             response = timeseries_db.db.write_points(
                 write_data, tags=metric.tags, batch_size=WRITE_BATCH_SIZE
@@ -95,50 +85,49 @@ def migrate_influxdb_data(
         # Delete data that has been migrated
         timeseries_db.query(
             delete_query.format(
-                old_measurement=measurement,
+                old_measurement=old_measurement,
                 content_type_key=metric.content_type_key,
                 object_id=metric.object_id,
             )
         )
-        metric.key = new_measurement
-        metric.save()
+        updated_metrics.append(metric)
+        if len(updated_metrics) > CHUNK_SIZE:
+            Metric.objects.bulk_update(updated_metrics, fields=['extra_tags'])
+            updated_metrics = []
+    if updated_metrics:
+        Metric.objects.bulk_update(updated_metrics, fields=['extra_tags'])
 
 
 def migrate_wifi_clients():
-    Metric = load_model('monitoring', 'Metric')
     read_query = f"{READ_QUERY} AND clients != ''"
     delete_query = f"{DELETE_QUERY} AND clients != ''"
-    metric_qs = Metric.objects.filter(configuration='clients')
     migrate_influxdb_data(
         new_measurement='wifi_clients',
-        metric_qs=metric_qs,
+        configuration='clients',
         read_query=read_query,
         delete_query=delete_query,
     )
 
 
 def migrate_traffic_data():
-    Metric = load_model('monitoring', 'Metric')
-    metric_qs = Metric.objects.filter(configuration='traffic')
-    migrate_influxdb_data(new_measurement='traffic', metric_qs=metric_qs)
+    migrate_influxdb_data(new_measurement='traffic', configuration='traffic')
 
 
 def migrate_influxdb_structure(apps, schema_editor):
+    # It is required to migrate "wifi_clients" metrics first
+    # because InfluxDB cannot do comparison with NULL values.
+    # Due to this, it is not possible to delete traffic rows from
+    # the measurement without deleting wifi_clients rows.
     migrate_wifi_clients()
     migrate_traffic_data()
 
 
-def reverse_migration(apps, schema_editor):
-    Metric = load_model('monitoring', 'Metric')
-    for metric in Metric.objects.filter(key='traffic').iterator():
-        metric.key = metric.extra_tags['ifname']
-        metric.save()
-
-
 class Migration(migrations.Migration):
 
-    dependencies = [('monitoring', '0004_metric_extra_tags')]
+    dependencies = [('monitoring', '0005_migrate_metrics')]
 
     operations = [
-        migrations.RunPython(migrate_influxdb_structure, reverse_code=reverse_migration)
+        migrations.RunPython(
+            migrate_influxdb_structure, reverse_code=migrations.RunPython.noop
+        )
     ]
