@@ -34,3 +34,17 @@ def timeseries_write(
             current=kwargs.get('current', 'False'),
         )
         post_metric_write.send(**signal_kwargs)
+
+
+@shared_task
+def migrate_timeseries_database():
+    """
+    Perform migrations on timeseries database
+    asynchronously for changes introduced in
+    https://github.com/openwisp/openwisp-monitoring/pull/368
+
+    To be removed in 1.1.0 release.
+    """
+    from .migrations.influxdb.influxdb_alter_structure import migrate_influxdb_structure
+
+    migrate_influxdb_structure()
