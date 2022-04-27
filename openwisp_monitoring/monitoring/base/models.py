@@ -415,7 +415,9 @@ class AbstractChart(TimeStampedEditableModel):
 
     @property
     def description(self):
-        return self.config_dict['description'].format(metric=self.metric)
+        return self.config_dict['description'].format(
+            metric=self.metric, **self.metric.tags
+        )
 
     @property
     def title(self):
@@ -498,7 +500,11 @@ class AbstractChart(TimeStampedEditableModel):
         params = dict(field_name=m.field_name, key=m.key, time=self._get_time(time))
         if m.object_id:
             params.update(
-                {'content_type': m.content_type_key, 'object_id': m.object_id}
+                {
+                    'content_type': m.content_type_key,
+                    'object_id': m.object_id,
+                    **m.tags,
+                }
             )
         return params
 
@@ -558,7 +564,7 @@ class AbstractChart(TimeStampedEditableModel):
                 x.append(time)
         # prepare result to be returned
         # (transform chart data so its order is not random)
-        result = {'traces': self._sort_dict(traces)}
+        result = {'traces': sorted(traces.items())}
         if x_axys:
             result['x'] = x
         # add summary

@@ -14,58 +14,36 @@ READ_QUERY = (
     "SELECT {fields} FROM {measurement}"
     " WHERE content_type='{content_type_key}'"
     " AND object_id='{object_id}'"
-    " ORDER BY time ASC"
-    f" LIMIT {SELECT_QUERY_LIMIT}"
 )
-
 DELETE_QUERY = (
     "DELETE FROM {old_measurement}"
     " WHERE content_type='{content_type_key}'"
     " AND object_id='{object_id}'"
 )
+EXCLUDED_MEASUREMENTS = [
+    'ping',
+    'config_applied',
+    'clients',
+    'disk',
+    'memory',
+    'cpu',
+    'signal_strength',
+    'signal_quality',
+    'access_tech',
+    'device_data',
+    'traffic',
+    'wifi_clients',
+]
 
 logger = logging.getLogger(__name__)
 
 
-def get_all_measurements():
-    measurements = []
-    for measurement in timeseries_db.db.get_list_measurements():
-        measurements.append(measurement['name'])
-    return measurements
-
-
-def get_interface_measurements():
-    """
-    Interface names can be anything. Therefore instead of
-    performing migrations for common interface names
-    (e.g. lan, eth0, tun0, etc.), exclude measurements that
-    are used by openwisp-monitoring for other metrics. The
-    remaining measurements are assumed to be related to traffic.
-    """
-    excluded_measurements = [
-        'ping',
-        'config_applied',
-        'clients',
-        'disk',
-        'memory',
-        'cpu',
-        'signal_strength',
-        'signal_quality',
-        'access_tech',
-    ]
-    interface_measurements = []
-    for measurement in get_all_measurements():
-        if measurement not in excluded_measurements:
-            interface_measurements.append(measurement)
-    return interface_measurements
-
-
-def get_writable_data(read_data, metric):
+def get_writable_data(read_data, metric, new_measurement):
     write_data = []
     for data_point in read_data.get_points(measurement=metric.key):
         data = {
             'time': data_point.pop('time'),
-            'measurement': 'traffic',
+            'measurement': new_measurement,
             'tags': metric.tags,
         }
         data['fields'] = data_point
@@ -73,53 +51,88 @@ def get_writable_data(read_data, metric):
     return write_data
 
 
-def merge_interface_traffic_measurement(apps, schema_editor):
-    Metric = load_model('monitoring', 'Metric')
-    interface_measurements = get_interface_measurements()
-    for measurement in interface_measurements:
-        for metric in Metric.objects.filter(key=measurement).iterator():
-            extra_tags = {'ifname': metric.key}
-            try:
-                extra_tags.update(
-                    {'organization_id': str(metric.content_object.organization_id)}
+def migrate_influxdb_data(
+    new_measurement, metric_qs, read_query=READ_QUERY, delete_query=DELETE_QUERY
+):
+    for metric in metric_qs.exclude(key__in=EXCLUDED_MEASUREMENTS).iterator():
+        extra_tags = {'ifname': metric.key}
+        try:
+            extra_tags.update(
+                {'organization_id': str(metric.content_object.organization_id)}
+            )
+        except ObjectDoesNotExist:
+            pass
+        metric.extra_tags.update(extra_tags)
+        measurement = metric.key.replace('-', '_')
+        fields = ','.join(['time', metric.field_name, *metric.related_fields])
+        query = (f"{read_query} ORDER BY time ASC LIMIT {SELECT_QUERY_LIMIT}").format(
+            fields=fields,
+            measurement=measurement,
+            content_type_key=metric.content_type_key,
+            object_id=metric.object_id,
+        )
+        # Read and write data in batches to avoid loading
+        # all data in memory at once.
+        offset = 0
+        read_data = timeseries_db.query(query, epoch='s')
+        while read_data:
+            write_data = get_writable_data(
+                read_data, metric, new_measurement=new_measurement
+            )
+            response = timeseries_db.db.write_points(
+                write_data, tags=metric.tags, batch_size=WRITE_BATCH_SIZE
+            )
+            if response is True:
+                offset += SELECT_QUERY_LIMIT
+            else:
+                logger.error(
+                    'Error encountered in writing data to InfluxDB: {0}'.format(
+                        response['error']
+                    ),
                 )
-            except ObjectDoesNotExist:
-                pass
-            metric.extra_tags.update(extra_tags)
-            fields = ','.join(['time', metric.field_name, *metric.related_fields])
-            query = READ_QUERY.format(
-                fields=fields,
-                measurement=metric.key,
+            read_data = timeseries_db.query(f'{query} OFFSET {offset}', epoch='s')
+
+        # Delete data that has been migrated
+        timeseries_db.query(
+            delete_query.format(
+                old_measurement=measurement,
                 content_type_key=metric.content_type_key,
                 object_id=metric.object_id,
             )
-            # Read and write data in batches to avoid loading
-            # all data in memory at once.
-            offset = 0
-            read_data = timeseries_db.query(query, epoch='s')
-            while read_data:
-                write_data = get_writable_data(read_data, metric)
-                response = timeseries_db.db.write_points(
-                    write_data, tags=metric.tags, batch_size=WRITE_BATCH_SIZE
-                )
-                if response is True:
-                    offset += SELECT_QUERY_LIMIT
-                else:
-                    logger.error(
-                        'Error encountered in writing data to InfluxDB: {0}'.format(
-                            response['error']
-                        ),
-                    )
-                read_data = timeseries_db.query(f'{query} OFFSET {offset}', epoch='s')
+        )
+        metric.key = new_measurement
+        metric.save()
 
-            # Delete data that has been migrated
-            timeseries_db.query(
-                DELETE_QUERY.format(
-                    old_measurement=extra_tags['ifname'],
-                    content_type_key=metric.content_type_key,
-                    object_id=metric.object_id,
-                )
-            )
+
+def migrate_wifi_clients():
+    Metric = load_model('monitoring', 'Metric')
+    read_query = f"{READ_QUERY} AND clients != ''"
+    delete_query = f"{DELETE_QUERY} AND clients != ''"
+    metric_qs = Metric.objects.filter(configuration='clients')
+    migrate_influxdb_data(
+        new_measurement='wifi_clients',
+        metric_qs=metric_qs,
+        read_query=read_query,
+        delete_query=delete_query,
+    )
+
+
+def migrate_traffic_data():
+    Metric = load_model('monitoring', 'Metric')
+    metric_qs = Metric.objects.filter(configuration='traffic')
+    migrate_influxdb_data(new_measurement='traffic', metric_qs=metric_qs)
+
+
+def migrate_influxdb_structure(apps, schema_editor):
+    migrate_wifi_clients()
+    migrate_traffic_data()
+
+
+def reverse_migration(apps, schema_editor):
+    Metric = load_model('monitoring', 'Metric')
+    for metric in Metric.objects.filter(key='traffic').iterator():
+        metric.key = metric.extra_tags['ifname']
+        metric.save()
 
 
 class Migration(migrations.Migration):
@@ -127,7 +140,5 @@ class Migration(migrations.Migration):
     dependencies = [('monitoring', '0004_metric_extra_tags')]
 
     operations = [
-        migrations.RunPython(
-            merge_interface_traffic_measurement, reverse_code=migrations.RunPython.noop
-        )
+        migrations.RunPython(migrate_influxdb_structure, reverse_code=reverse_migration)
     ]

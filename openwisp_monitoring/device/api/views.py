@@ -93,7 +93,9 @@ class DeviceMetricView(GenericAPIView):
             try:
                 chart_dict = chart.read(time=time, x_axys=x_axys, timezone=timezone)
                 chart_dict['description'] = chart.description
-                chart_dict['title'] = chart.title.format(metric=chart.metric)
+                chart_dict['title'] = chart.title.format(
+                    metric=chart.metric, **chart.metric.tags
+                )
                 chart_dict['type'] = chart.type
                 chart_dict['unit'] = chart.unit
                 chart_dict['summary_labels'] = chart.summary_labels

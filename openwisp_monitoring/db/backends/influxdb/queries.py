@@ -25,7 +25,8 @@ chart_query = {
         'influxdb': (
             "SELECT COUNT(DISTINCT({field_name})) AS wifi_clients FROM {key} "
             "WHERE time >= '{time}' AND content_type = '{content_type}' "
-            "AND object_id = '{object_id}' GROUP BY time(1d)"
+            "AND object_id = '{object_id}' AND ifname = '{ifname}' "
+            "GROUP BY time(1d)"
         )
     },
     'traffic': {
@@ -33,7 +34,8 @@ chart_query = {
             "SELECT SUM(tx_bytes) / 1000000000 AS upload, "
             "SUM(rx_bytes) / 1000000000 AS download FROM {key} "
             "WHERE time >= '{time}' AND content_type = '{content_type}' "
-            "AND object_id = '{object_id}' GROUP BY time(1d)"
+            "AND object_id = '{object_id}' AND ifname = '{ifname}' "
+            "GROUP BY time(1d)"
         )
     },
     'memory': {
