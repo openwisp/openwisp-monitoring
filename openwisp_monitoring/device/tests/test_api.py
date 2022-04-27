@@ -95,13 +95,13 @@ class TestDeviceApi(AuthenticationMixin, DeviceMonitoringTestCase):
         if_dict = {'wlan0': data2['interfaces'][0], 'wlan1': data2['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
-            m = Metric.objects.get(key=ifname, field_name='rx_bytes', object_id=d.pk)
+            m = Metric.objects.get(name=f'{ifname} traffic', object_id=d.pk)
             points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
             self.assertEqual(len(points), 2)
             for field in ['rx_bytes', 'tx_bytes']:
                 expected = iface['statistics'][field] - points[1][field]
                 self.assertEqual(points[0][field], expected)
-            m = Metric.objects.get(key=ifname, field_name='clients', object_id=d.pk)
+            m = Metric.objects.get(name=f'{ifname} wifi clients', object_id=d.pk)
             points = m.read(limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
@@ -124,13 +124,13 @@ class TestDeviceApi(AuthenticationMixin, DeviceMonitoringTestCase):
         if_dict = {'wlan0': data2['interfaces'][0], 'wlan1': data2['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
-            m = Metric.objects.get(key=ifname, field_name='rx_bytes', object_id=d.pk)
+            m = Metric.objects.get(name=f'{ifname} traffic', object_id=d.pk)
             points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
             self.assertEqual(len(points), 2)
             for field in ['rx_bytes', 'tx_bytes']:
                 expected = iface['statistics'][field]
                 self.assertEqual(points[0][field], expected)
-            m = Metric.objects.get(key=ifname, field_name='clients', object_id=d.pk)
+            m = Metric.objects.get(name=f'{ifname} wifi clients', object_id=d.pk)
             points = m.read(limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
@@ -143,7 +143,7 @@ class TestDeviceApi(AuthenticationMixin, DeviceMonitoringTestCase):
             'wlan1': {'rx_bytes': 4587, 'tx_bytes': 2993},
         }
         # wlan0 traffic
-        m = Metric.objects.get(key='wlan0', field_name='rx_bytes', object_id=dd.pk)
+        m = Metric.objects.get(name='wlan0 traffic', object_id=dd.pk)
         points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
         self.assertEqual(len(points), 4)
         expected = [700000000, 100000000, 399999676, 324]
@@ -159,7 +159,7 @@ class TestDeviceApi(AuthenticationMixin, DeviceMonitoringTestCase):
         # expected upload wlan0
         self.assertEqual(data['traces'][1][1][-1], 0.6)
         # wlan1 traffic
-        m = Metric.objects.get(key='wlan1', field_name='rx_bytes', object_id=dd.pk)
+        m = Metric.objects.get(name='wlan1 traffic', object_id=dd.pk)
         points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
         self.assertEqual(len(points), 4)
         expected = [1000000000, 0, 1999997725, 2275]
