@@ -33,7 +33,6 @@ def forward_migrate_metric(metric_model, configuration, new_key):
     for metric in metric_qs.iterator(chunk_size=CHUNK_SIZE):
         extra_tags = {
             'ifname': metric.key,
-            'old_key': metric.key.replace('-', '_').replace('.', '_'),
         }
         try:
             extra_tags.update(

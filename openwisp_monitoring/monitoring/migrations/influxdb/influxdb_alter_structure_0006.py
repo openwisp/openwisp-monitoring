@@ -44,12 +44,10 @@ def migrate_influxdb_data(
     delete_query=DELETE_QUERY,
 ):
     Metric = load_model('monitoring', 'Metric')
-    metric_qs = Metric.objects.filter(
-        configuration=configuration, extra_tags__contains='old_key', key=new_measurement
-    )
+    metric_qs = Metric.objects.filter(configuration=configuration, key=new_measurement)
     updated_metrics = []
     for metric in metric_qs.iterator(chunk_size=CHUNK_SIZE):
-        old_measurement = metric.extra_tags.pop('old_key')
+        old_measurement = metric.extra_tags.get('ifname')
         fields = ','.join(['time', metric.field_name, *metric.related_fields])
         query = (f"{read_query} ORDER BY time ASC LIMIT {SELECT_QUERY_LIMIT}").format(
             fields=fields,

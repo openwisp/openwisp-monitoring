@@ -219,7 +219,7 @@ class DeviceMetricView(GenericAPIView):
         for interface in data.get('interfaces', []):
             ifname = interface['name']
             extra_tags = device_tags.copy()
-            extra_tags['ifname'] = ifname
+            extra_tags['ifname'] = Metric._makekey(ifname)
             extra_tags = Metric._sort_dict(extra_tags)
             if 'mobile' in interface:
                 self._write_mobile_signal(interface, ifname, ct, pk, current, time=time)

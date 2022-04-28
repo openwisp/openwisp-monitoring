@@ -45,6 +45,8 @@ def migrate_timeseries_database():
 
     To be removed in 1.1.0 release.
     """
-    from .migrations.influxdb.influxdb_alter_structure import migrate_influxdb_structure
+    from .migrations.influxdb.influxdb_alter_structure_0006 import (
+        migrate_influxdb_structure,
+    )
 
     migrate_influxdb_structure()
