@@ -1,6 +1,7 @@
 import json
 import logging
 from collections import OrderedDict
+from copy import deepcopy
 from datetime import date, datetime, timedelta
 
 from dateutil.parser import parse as parse_date
@@ -116,11 +117,30 @@ class AbstractMetric(TimeStampedEditableModel):
         if 'key' in kwargs:
             kwargs['key'] = cls._makekey(kwargs['key'])
         try:
-            lookup_kwargs = kwargs.copy()
+            lookup_kwargs = deepcopy(kwargs)
             if lookup_kwargs.get('name'):
                 del lookup_kwargs['name']
-            metric = cls.objects.get(**lookup_kwargs)
+            extra_tags = lookup_kwargs.pop('extra_tags', {})
+            condition = models.Q(**lookup_kwargs)
+            # extra_tags can contain different fields.
+            # The database lookup will fail if extra_tags
+            # gets updated (e.g. location is added to a device,
+            # organization of a device is changed, etc.)
+            # which results in the creation of new Metric objects.
+            # Hence, only ifname (if present) is used for the
+            # database lookup.
+            if extra_tags.get('ifname'):
+                condition &= models.Q(
+                    extra_tags__contains='"ifname": "{ifname}"'.format(
+                        ifname=extra_tags.get('ifname')
+                    )
+                )
+            metric = cls.objects.get(condition)
             created = False
+
+            if extra_tags:
+                metric.extra_tags = kwargs['extra_tags']
+                metric.save()
         except cls.DoesNotExist:
             metric = cls(**kwargs)
             metric.full_clean()

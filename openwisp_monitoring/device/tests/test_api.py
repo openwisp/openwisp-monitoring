@@ -23,13 +23,19 @@ DeviceData = load_model('device_monitoring', 'DeviceData')
 # needed for config.geo
 Device = load_model('config', 'Device')
 DeviceLocation = load_model('geo', 'DeviceLocation')
+FloorPlan = load_model('geo', 'FloorPlan')
 Location = load_model('geo', 'Location')
 
 
-class TestDeviceApi(AuthenticationMixin, DeviceMonitoringTestCase):
+class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase):
     """
     Tests API (device metric collection)
     """
+
+    location_model = Location
+    object_location_model = DeviceLocation
+    object_model = Device
+    floorplan_model = FloorPlan
 
     def test_404(self):
         r = self._post_data(self.device_model().pk, '123', self._data())
@@ -133,6 +139,32 @@ class TestDeviceApi(AuthenticationMixin, DeviceMonitoringTestCase):
             m = Metric.objects.get(name=f'{ifname} wifi clients', object_id=d.pk)
             points = m.read(limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
+
+    def test_device_with_location(self):
+        self.create_test_data(no_resources=True)
+        device = self.device_model.objects.first()
+        location = self._create_location(
+            organization=device.organization, type='indoor'
+        )
+        floorplan = self._create_floorplan(location=location)
+        self._create_object_location(
+            content_object=device, location=location, floorplan=floorplan
+        )
+        data2 = self._data()
+        # creation of resources metrics can be avoided here as it is not involved
+        # this speeds up the test by reducing requests made
+        del data2['resources']
+        response = self._post_data(device.id, device.key, data2)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Metric.objects.count(), 4)
+        self.assertEqual(Chart.objects.count(), 4)
+        for metric in Metric.objects.all():
+            points = metric.read(
+                limit=10, order='-time', extra_fields=['location_id', 'floorplan_id']
+            )
+            for point in points:
+                self.assertEqual(point['location_id'], str(location.id))
+                self.assertEqual(point['floorplan_id'], str(floorplan.id))
 
     def test_200_multiple_measurements(self):
         dd = self._create_multiple_measurements(no_resources=True)
@@ -905,6 +937,7 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
     location_model = Location
     object_location_model = DeviceLocation
     object_model = Device
+    floorplan_model = FloorPlan
 
     def _login_admin(self):
         User = get_user_model()
@@ -965,6 +998,3 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
                 HTTP_AUTHORIZATION=f'Bearer {token}',
             )
             self.assertEqual(response.status_code, 200)
-
-    # TODO: test device with a location
-    # TODO: test device with a location and a floorplan
