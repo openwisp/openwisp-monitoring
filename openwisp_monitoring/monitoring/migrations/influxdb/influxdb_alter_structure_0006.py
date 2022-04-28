@@ -45,11 +45,10 @@ def migrate_influxdb_data(
 ):
     Metric = load_model('monitoring', 'Metric')
     metric_qs = Metric.objects.filter(configuration=configuration, key=new_measurement)
-    updated_metrics = []
     for metric in metric_qs.iterator(chunk_size=CHUNK_SIZE):
         old_measurement = metric.extra_tags.get('ifname')
         fields = ','.join(['time', metric.field_name, *metric.related_fields])
-        query = (f"{read_query} ORDER BY time ASC LIMIT {SELECT_QUERY_LIMIT}").format(
+        query = (f"{read_query} ORDER BY time DESC LIMIT {SELECT_QUERY_LIMIT}").format(
             fields=fields,
             measurement=old_measurement,
             content_type_key=metric.content_type_key,
@@ -67,6 +66,13 @@ def migrate_influxdb_data(
                 write_data, tags=metric.tags, batch_size=WRITE_BATCH_SIZE
             )
             if response is True:
+                logger.info(
+                    'Successfully written points for {object_id} {old_measurement}, offset {offset}'.format(
+                        object_id=metric.object_id,
+                        old_measurement=old_measurement,
+                        offset=offset,
+                    )
+                )
                 offset += SELECT_QUERY_LIMIT
             else:
                 logger.error(
@@ -77,19 +83,13 @@ def migrate_influxdb_data(
             read_data = timeseries_db.query(f'{query} OFFSET {offset}', epoch='s')
 
         # Delete data that has been migrated
-        timeseries_db.query(
-            delete_query.format(
-                old_measurement=old_measurement,
-                content_type_key=metric.content_type_key,
-                object_id=metric.object_id,
-            )
-        )
-        updated_metrics.append(metric)
-        if len(updated_metrics) > CHUNK_SIZE:
-            Metric.objects.bulk_update(updated_metrics, fields=['extra_tags'])
-            updated_metrics = []
-    if updated_metrics:
-        Metric.objects.bulk_update(updated_metrics, fields=['extra_tags'])
+        # timeseries_db.query(
+        #     delete_query.format(
+        #         old_measurement=old_measurement,
+        #         content_type_key=metric.content_type_key,
+        #         object_id=metric.object_id,
+        #     )
+        # )
 
 
 def migrate_wifi_clients():
