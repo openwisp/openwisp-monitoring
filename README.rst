@@ -29,6 +29,10 @@ openwisp-monitoring
    :target: https://pypi.org/project/black/
    :alt: code style: black
 
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/monitoring-demo.gif
+   :target: https://github.com/openwisp/openwisp-monitoring/tree/docs/docs/monitoring-demo.gif
+   :alt: Feature Highlights
+
 ------------
 
 OpenWISP Monitoring is a network monitoring system written in Python and Django,
@@ -65,10 +69,7 @@ see the
 `OpenWISP Architecture Overview
 <https://openwisp.io/docs/general/architecture.html>`_.
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/dashboard.png
-  :align: center
-
-.. figure:: https://drive.google.com/uc?export=view&id=1GuB5HsyiZejBzXKZJnM8QJCUJt1Z5IkJ
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/dashboard.png
   :align: center
 
 Available Features
@@ -583,16 +584,16 @@ Device Status
 
 This metric stores the status of the device for viewing purposes.
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/device-status-1.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/device-status-1.png
   :align: center
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/device-status-2.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/device-status-2.png
   :align: center
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/device-status-3.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/device-status-3.png
   :align: center
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/device-status-4.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/device-status-4.png
   :align: center
 
 Ping
@@ -612,17 +613,17 @@ Ping
 
 **Uptime**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/uptime.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/uptime.png
   :align: center
 
 **Packet loss**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/packet-loss.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/packet-loss.png
   :align: center
 
 **Round Trip Time**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/rtt.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/rtt.png
   :align: center
 
 Traffic
@@ -640,7 +641,7 @@ Traffic
 | **charts**:        | ``traffic``                |
 +--------------------+----------------------------+
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/traffic.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/traffic.png
   :align: center
 
 WiFi Clients
@@ -658,7 +659,7 @@ WiFi Clients
 | **charts**:        | ``wifi_clients``         |
 +--------------------+--------------------------+
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/wifi-clients.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/wifi-clients.png
   :align: center
 
 Memory Usage
@@ -676,7 +677,7 @@ Memory Usage
 | **charts**:        | ``memory``                                                                                                                           |
 +--------------------+--------------------------------------------------------------------------------------------------------------------------------------+
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/memory.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/memory.png
   :align: center
 
 CPU Load
@@ -694,7 +695,7 @@ CPU Load
 | **charts**:        | ``load``                                           |
 +--------------------+----------------------------------------------------+
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/cpu-load.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/cpu-load.png
   :align: center
 
 Disk Usage
@@ -712,7 +713,7 @@ Disk Usage
 | **charts**:        | ``disk``          |
 +--------------------+-------------------+
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/master/docs/disk-usage.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/disk-usage.png
   :align: center
 
 Mobile Signal Strength
@@ -1583,15 +1584,15 @@ Rest API
 Live documentation
 ~~~~~~~~~~~~~~~~~~
 
-.. image:: docs/api-doc.png
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/api-doc.png
 
 A general live API documentation (following the OpenAPI specification) at ``/api/v1/docs/``.
 
 Browsable web interface
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-.. image:: docs/api-ui-1.png
-.. image:: docs/api-ui-2.png
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/api-ui-1.png
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/api-ui-2.png
 
 Additionally, opening any of the endpoints `listed below <#list-of-endpoints>`_
 directly in the browser will show the `browsable API interface of Django-REST-Framework
