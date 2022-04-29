@@ -638,7 +638,7 @@ Traffic
 | **tags**:          | .. code-block:: python                                                   |
 |                    |                                                                          |
 |                    |     {                                                                    |
-|                    |       'organization_id': '<organization-id-of-the-related-device>'       |
+|                    |       'organization_id': '<organization-id-of-the-related-device>',      |
 |                    |       'ifname': '<interface-name>',                                      |
 |                    |       # optional                                                         |
 |                    |       'location_id': '<location-id-of-the-related-device-if-present>',   |
@@ -666,7 +666,7 @@ WiFi Clients
 | **tags**:          | .. code-block:: python                                                   |
 |                    |                                                                          |
 |                    |     {                                                                    |
-|                    |       'organization_id': '<organization-id-of-the-related-device>'       |
+|                    |       'organization_id': '<organization-id-of-the-related-device>',      |
 |                    |       'ifname': '<interface-name>',                                      |
 |                    |       # optional                                                         |
 |                    |       'location_id': '<location-id-of-the-related-device-if-present>',   |

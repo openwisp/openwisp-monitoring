@@ -1,3 +1,6 @@
+# OpenWISP
+tests/openwisp2/media/floorplans/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

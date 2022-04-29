@@ -1,8 +1,11 @@
 import logging
+import time
 
+import requests
 from swapper import load_model
 
 from openwisp_monitoring.db.backends import timeseries_db
+from openwisp_monitoring.db.exceptions import TimeseriesWriteException
 
 SELECT_QUERY_LIMIT = 1000
 WRITE_BATCH_SIZE = 1000
@@ -34,7 +37,30 @@ def get_writable_data(read_data, tags, old_measurement, new_measurement):
         }
         data['fields'] = data_point
         write_data.append(data)
-    return write_data
+    return write_data, len(write_data)
+
+
+def retry_until_success(func, *args, **kwargs):
+    sleep_time = 1
+    while True:
+        try:
+            return func(*args, **kwargs)
+        except (
+            requests.exceptions.ConnectionError,
+            TimeseriesWriteException,
+            timeseries_db.client_error,
+        ) as error:
+            sleep_time *= 2
+            time.sleep(sleep_time)
+            logger.warn(
+                (
+                    f'Error encountered while executing {func.__name__}'
+                    f' with args: {args} and kwargs: {kwargs}.\n'
+                    f'Retrying after {sleep_time} seconds.\n'
+                    f'Error: {error}'
+                )
+            )
+            continue
 
 
 def migrate_influxdb_data(
@@ -57,39 +83,47 @@ def migrate_influxdb_data(
         # Read and write data in batches to avoid loading
         # all data in memory at once.
         offset = 0
-        read_data = timeseries_db.query(query, epoch='s')
+        migrated_rows = 0
+        read_data = retry_until_success(timeseries_db.query, query, epoch='s')
         while read_data:
-            write_data = get_writable_data(
+            write_data, write_data_count = get_writable_data(
                 read_data, metric.tags, old_measurement, new_measurement=new_measurement
             )
-            response = timeseries_db.db.write_points(
-                write_data, tags=metric.tags, batch_size=WRITE_BATCH_SIZE
+            start = offset
+            end = offset + min(write_data_count, SELECT_QUERY_LIMIT)
+            response = retry_until_success(
+                timeseries_db.db.write_points,
+                write_data,
+                tags=metric.tags,
+                batch_size=WRITE_BATCH_SIZE,
             )
             if response is True:
                 logger.info(
-                    'Successfully written points for {object_id} {old_measurement}, offset {offset}'.format(
-                        object_id=metric.object_id,
-                        old_measurement=old_measurement,
-                        offset=offset,
-                    )
+                    f'Successfully written rows for "{metric} (id:{metric.id})"'
+                    f' from {start} to {end}.'
                 )
+                migrated_rows += write_data_count
                 offset += SELECT_QUERY_LIMIT
             else:
-                logger.error(
-                    'Error encountered in writing data to InfluxDB: {0}'.format(
-                        response['error']
-                    ),
+                logger.warn(
+                    f'Error encountered in writing data for "{metric} (id:{metric.id})"'
+                    f' from {start} to {end}: {response["error"]}. It will be retried.'
                 )
-            read_data = timeseries_db.query(f'{query} OFFSET {offset}', epoch='s')
+            read_data = retry_until_success(
+                timeseries_db.query, f'{query} OFFSET {offset}', epoch='s'
+            )
+        logger.info(f'Migrated {migrated_rows} row(s) for "{metric} (id:{metric.id})".')
 
         # Delete data that has been migrated
-        # timeseries_db.query(
+        # retry_until_success(
+        #     timeseries_db.query,
         #     delete_query.format(
         #         old_measurement=old_measurement,
         #         content_type_key=metric.content_type_key,
         #         object_id=metric.object_id,
-        #     )
+        #     ),
         # )
+        logger.info(f'Deleted old measurements for "{metric} (id:{metric.id})".')
 
 
 def migrate_wifi_clients():
@@ -101,10 +135,12 @@ def migrate_wifi_clients():
         read_query=read_query,
         delete_query=delete_query,
     )
+    logger.info('"wifi_clients" measurements successfully migrated.')
 
 
 def migrate_traffic_data():
     migrate_influxdb_data(new_measurement='traffic', configuration='traffic')
+    logger.info('"traffic" measurements successfully migrated.')
 
 
 def migrate_influxdb_structure():
@@ -114,3 +150,4 @@ def migrate_influxdb_structure():
     # the measurement without deleting wifi_clients rows.
     migrate_wifi_clients()
     migrate_traffic_data()
+    logger.info('Timeserties data migration completed.')
