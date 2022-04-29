@@ -215,12 +215,10 @@ class DeviceMetricView(GenericAPIView):
         self.instance.save_data()
         data = self.instance.data
         ct = ContentType.objects.get_for_model(Device)
-        device_tags = self._get_extra_tags(self.instance)
+        device_extra_tags = self._get_extra_tags(self.instance)
         for interface in data.get('interfaces', []):
             ifname = interface['name']
-            extra_tags = device_tags.copy()
-            extra_tags['ifname'] = Metric._makekey(ifname)
-            extra_tags = Metric._sort_dict(extra_tags)
+            extra_tags = Metric._sort_dict(device_extra_tags)
             if 'mobile' in interface:
                 self._write_mobile_signal(interface, ifname, ct, pk, current, time=time)
             ifstats = interface.get('statistics', {})
@@ -244,6 +242,7 @@ class DeviceMetricView(GenericAPIView):
                     configuration='traffic',
                     name=name,
                     key='traffic',
+                    main_tags={'ifname': Metric._makekey(ifname)},
                     extra_tags=extra_tags,
                 )
                 metric.write(field_value, current, time=time, extra_values=extra_values)
@@ -262,6 +261,7 @@ class DeviceMetricView(GenericAPIView):
                 configuration='clients',
                 name=name,
                 key='wifi_clients',
+                main_tags={'ifname': Metric._makekey(ifname)},
                 extra_tags=extra_tags,
             )
             # avoid tsdb overwrite clients

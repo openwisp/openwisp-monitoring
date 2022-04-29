@@ -53,6 +53,14 @@ class AbstractMetric(TimeStampedEditableModel):
     )
     object_id = models.CharField(max_length=36, db_index=True, blank=True)
     content_object = GenericForeignKey('content_type', 'object_id')
+    main_tags = JSONField(
+        _('main tags'),
+        default=dict,
+        blank=True,
+        load_kwargs={'object_pairs_hook': OrderedDict},
+        dump_kwargs={'indent': 4},
+        db_index=True,
+    )
     extra_tags = JSONField(
         _('extra tags'),
         default=dict,
@@ -73,7 +81,7 @@ class AbstractMetric(TimeStampedEditableModel):
             'field_name',
             'content_type',
             'object_id',
-            'extra_tags',
+            'main_tags',
         )
 
     def __str__(self):
@@ -84,7 +92,7 @@ class AbstractMetric(TimeStampedEditableModel):
         return '{0} ({1}: {2})'.format(self.name, model_name, obj)
 
     def __setattr__(self, attrname, value):
-        if attrname == 'extra_tags':
+        if attrname in ['main_tags', 'extra_tags']:
             value = self._sort_dict(value)
         return super().__setattr__(attrname, value)
 
@@ -121,25 +129,12 @@ class AbstractMetric(TimeStampedEditableModel):
             if lookup_kwargs.get('name'):
                 del lookup_kwargs['name']
             extra_tags = lookup_kwargs.pop('extra_tags', {})
-            condition = models.Q(**lookup_kwargs)
-            # extra_tags can contain different fields.
-            # The database lookup will fail if extra_tags
-            # gets updated (e.g. location is added to a device,
-            # organization of a device is changed, etc.)
-            # which results in the creation of new Metric objects.
-            # Hence, only ifname (if present) is used for the
-            # database lookup.
-            if extra_tags.get('ifname'):
-                condition &= models.Q(
-                    extra_tags__contains='"ifname": "{ifname}"'.format(
-                        ifname=extra_tags.get('ifname')
-                    )
-                )
-            metric = cls.objects.get(condition)
+            metric = cls.objects.get(**lookup_kwargs)
             created = False
 
-            if extra_tags:
-                metric.extra_tags = kwargs['extra_tags']
+            if extra_tags != metric.extra_tags:
+                metric.extra_tags.update(kwargs['extra_tags'])
+                metric.extra_tags = cls._sort_dict(metric.extra_tags)
                 metric.save()
         except cls.DoesNotExist:
             metric = cls(**kwargs)
@@ -183,6 +178,8 @@ class AbstractMetric(TimeStampedEditableModel):
                     'object_id': str(self.object_id),
                 }
             )
+        if self.main_tags:
+            tags.update(self.main_tags)
         if self.extra_tags:
             tags.update(self.extra_tags)
         return tags

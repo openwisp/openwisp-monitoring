@@ -16,6 +16,18 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AddField(
             model_name='metric',
+            name='main_tags',
+            field=jsonfield.fields.JSONField(
+                blank=True,
+                db_index=True,
+                default=dict,
+                dump_kwargs={'indent': 4},
+                load_kwargs={'object_pairs_hook': collections.OrderedDict},
+                verbose_name='main tags',
+            ),
+        ),
+        migrations.AddField(
+            model_name='metric',
             name='extra_tags',
             field=jsonfield.fields.JSONField(
                 blank=True,
@@ -29,7 +41,7 @@ class Migration(migrations.Migration):
         migrations.AlterUniqueTogether(
             name='metric',
             unique_together={
-                ('key', 'field_name', 'content_type', 'object_id', 'extra_tags')
+                ('key', 'field_name', 'content_type', 'object_id', 'main_tags')
             },
         ),
     ]

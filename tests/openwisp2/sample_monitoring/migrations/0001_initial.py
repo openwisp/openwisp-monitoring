@@ -95,6 +95,17 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
+                    'main_tags',
+                    jsonfield.fields.JSONField(
+                        blank=True,
+                        db_index=True,
+                        default=dict,
+                        dump_kwargs={'indent': 4},
+                        load_kwargs={'object_pairs_hook': collections.OrderedDict},
+                        verbose_name='main tags',
+                    ),
+                ),
+                (
                     'extra_tags',
                     jsonfield.fields.JSONField(
                         blank=True,
@@ -109,7 +120,7 @@ class Migration(migrations.Migration):
             options={
                 'abstract': False,
                 'unique_together': {
-                    ('key', 'field_name', 'content_type', 'object_id', 'extra_tags')
+                    ('key', 'field_name', 'content_type', 'object_id', 'main_tags')
                 },
             },
         ),

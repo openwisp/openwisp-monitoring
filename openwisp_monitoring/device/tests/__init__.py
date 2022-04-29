@@ -72,11 +72,12 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
         extra_tags = {'organization_id': str(d.organization_id)}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
-            tags = extra_tags.copy()
-            tags['ifname'] = ifname
-            tags = Metric._sort_dict(tags)
             m = Metric.objects.get(
-                key='traffic', field_name='rx_bytes', object_id=d.pk, extra_tags=tags
+                key='traffic',
+                field_name='rx_bytes',
+                object_id=d.pk,
+                main_tags={'ifname': ifname},
+                extra_tags=extra_tags,
             )
             points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
             self.assertEqual(len(points), 1)
@@ -86,7 +87,8 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
                 key='wifi_clients',
                 field_name='clients',
                 object_id=d.pk,
-                extra_tags=tags,
+                extra_tags=extra_tags,
+                main_tags={'ifname': ifname},
             )
             points = m.read(limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']))

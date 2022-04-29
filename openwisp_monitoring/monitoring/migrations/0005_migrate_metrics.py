@@ -31,25 +31,25 @@ def forward_migrate_metric(metric_model, configuration, new_key):
     )
     updated_metrics = []
     for metric in metric_qs.iterator(chunk_size=CHUNK_SIZE):
-        extra_tags = {
+        try:
+            extra_tags = {'organization_id': str(metric.content_object.organization_id)}
+        except ObjectDoesNotExist:
+            extra_tags = {}
+        metric.main_tags = {
             'ifname': metric.key,
         }
-        try:
-            extra_tags.update(
-                {'organization_id': str(metric.content_object.organization_id)}
-            )
-        except ObjectDoesNotExist:
-            pass
         metric.extra_tags.update(extra_tags)
         metric.key = new_key
         updated_metrics.append(metric)
         if len(updated_metrics) > CHUNK_SIZE:
             metric_model.objects.bulk_update(
-                updated_metrics, fields=['extra_tags', 'key']
+                updated_metrics, fields=['main_tags', 'extra_tags', 'key']
             )
             updated_metrics = []
     if updated_metrics:
-        metric_model.objects.bulk_update(updated_metrics, fields=['extra_tags', 'key'])
+        metric_model.objects.bulk_update(
+            updated_metrics, fields=['main_tags', 'extra_tags', 'key']
+        )
 
 
 def forward_migration(apps, schema_editor):
@@ -67,7 +67,7 @@ def reverse_migration(apps, schema_editor):
     for metric in Metric.objects.filter(key__in=['traffic', 'wifi_clients']).iterator(
         chunk_size=CHUNK_SIZE
     ):
-        metric.key = metric.extra_tags['ifname']
+        metric.key = metric.main_tags['ifname']
         updated_metrics.append(metric)
         if len(updated_metrics) > CHUNK_SIZE:
             Metric.objects.bulk_update(updated_metrics, fields=['key'])
@@ -78,7 +78,7 @@ def reverse_migration(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
-    dependencies = [('monitoring', '0004_metric_extra_tags')]
+    dependencies = [('monitoring', '0004_metric_main_and_extra_tags')]
 
     operations = [
         migrations.RunPython(forward_migration, reverse_code=reverse_migration)

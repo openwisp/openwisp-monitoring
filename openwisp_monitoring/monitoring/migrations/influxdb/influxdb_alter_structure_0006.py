@@ -117,14 +117,14 @@ def migrate_influxdb_data(
         logger.info(f'Migrated {migrated_rows} row(s) for "{metric} (id:{metric.id})".')
 
         # Delete data that has been migrated
-        # retry_until_success(
-        #     timeseries_db.query,
-        #     delete_query.format(
-        #         old_measurement=old_measurement,
-        #         content_type_key=metric.content_type_key,
-        #         object_id=metric.object_id,
-        #     ),
-        # )
+        retry_until_success(
+            timeseries_db.query,
+            delete_query.format(
+                old_measurement=old_measurement,
+                content_type_key=metric.content_type_key,
+                object_id=metric.object_id,
+            ),
+        )
         logger.info(f'Deleted old measurements for "{metric} (id:{metric.id})".')
 
 
