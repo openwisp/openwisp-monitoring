@@ -29,6 +29,10 @@ openwisp-monitoring
    :target: https://pypi.org/project/black/
    :alt: code style: black
 
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/monitoring-demo.gif
+   :target: https://github.com/openwisp/openwisp-monitoring/tree/docs/docs/monitoring-demo.gif
+   :alt: Feature Highlights
+
 ------------
 
 OpenWISP Monitoring is a network monitoring system written in Python and Django,
@@ -66,9 +70,6 @@ see the
 <https://openwisp.io/docs/general/architecture.html>`_.
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/dashboard.png
-  :align: center
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/monitoring-demo.gif
   :align: center
 
 Available Features
