@@ -2,6 +2,7 @@ import logging
 import time
 
 import requests
+from influxdb.exceptions import InfluxDBServerError
 from swapper import load_model
 
 from openwisp_monitoring.db.backends import timeseries_db
@@ -48,6 +49,7 @@ def retry_until_success(func, *args, **kwargs):
         except (
             requests.exceptions.ConnectionError,
             TimeseriesWriteException,
+            InfluxDBServerError,
             timeseries_db.client_error,
         ) as error:
             sleep_time *= 2
