@@ -6,20 +6,8 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import migrations
 from swapper import load_model
 
-EXCLUDED_MEASUREMENTS = [
-    'ping',
-    'config_applied',
-    'clients',
-    'disk',
-    'memory',
-    'cpu',
-    'signal_strength',
-    'signal_quality',
-    'access_tech',
-    'device_data',
-    'traffic',
-    'wifi_clients',
-]
+from .influxdb.influxdb_alter_structure_0006 import EXCLUDED_MEASUREMENTS
+
 CHUNK_SIZE = 1000
 
 logger = logging.getLogger(__name__)

@@ -16,11 +16,25 @@ READ_QUERY = (
     " AND object_id='{object_id}'"
 )
 DELETE_QUERY = (
-    "DELETE FROM {old_measurement}"
+    "DROP SERIES FROM {old_measurement}"
     " WHERE content_type='{content_type_key}'"
     " AND object_id='{object_id}'"
 )
 CHUNK_SIZE = 1000
+EXCLUDED_MEASUREMENTS = [
+    'ping',
+    'config_applied',
+    'clients',
+    'disk',
+    'memory',
+    'cpu',
+    'signal_strength',
+    'signal_quality',
+    'access_tech',
+    'device_data',
+    'traffic',
+    'wifi_clients',
+]
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +88,7 @@ def migrate_influxdb_data(
     Metric = load_model('monitoring', 'Metric')
     metric_qs = Metric.objects.filter(configuration=configuration, key=new_measurement)
     for metric in metric_qs.iterator(chunk_size=CHUNK_SIZE):
-        old_measurement = metric.extra_tags.get('ifname')
+        old_measurement = metric.main_tags.get('ifname')
         fields = ','.join(['time', metric.field_name, *metric.related_fields])
         query = (f"{read_query} ORDER BY time DESC LIMIT {SELECT_QUERY_LIMIT}").format(
             fields=fields,
@@ -117,20 +131,24 @@ def migrate_influxdb_data(
         logger.info(f'Migrated {migrated_rows} row(s) for "{metric} (id:{metric.id})".')
 
         # Delete data that has been migrated
-        retry_until_success(
-            timeseries_db.query,
-            delete_query.format(
-                old_measurement=old_measurement,
-                content_type_key=metric.content_type_key,
-                object_id=metric.object_id,
-            ),
-        )
-        logger.info(f'Deleted old measurements for "{metric} (id:{metric.id})".')
+        if delete_query:
+            retry_until_success(
+                timeseries_db.query,
+                delete_query.format(
+                    old_measurement=old_measurement,
+                    content_type_key=metric.content_type_key,
+                    object_id=metric.object_id,
+                ),
+            )
+            logger.info(f'Deleted old measurements for "{metric} (id:{metric.id})".')
 
 
 def migrate_wifi_clients():
     read_query = f"{READ_QUERY} AND clients != ''"
-    delete_query = f"{DELETE_QUERY} AND clients != ''"
+    # Lookup using fields not supported in WHERE clause during deletion.
+    # Hence, we cannot perform delete operation only for rows that
+    # contains clients.
+    delete_query = None
     migrate_influxdb_data(
         new_measurement='wifi_clients',
         configuration='clients',
@@ -145,11 +163,26 @@ def migrate_traffic_data():
     logger.info('"traffic" measurements successfully migrated.')
 
 
+def requires_migration():
+    """
+    Returns "False" if all measurements presents in InfluxDB
+    are present in EXCLUDED_MEASUREMENTS. This means that there
+    are no interface specific measurements.
+    Otherwise, returns "True".
+    """
+    tsdb_measurements = timeseries_db.db.get_list_measurements()
+    for measurement in tsdb_measurements:
+        if measurement['name'] not in EXCLUDED_MEASUREMENTS:
+            return True
+    return False
+
+
 def migrate_influxdb_structure():
-    # It is required to migrate "wifi_clients" metrics first
-    # because InfluxDB cannot do comparison with NULL values.
-    # Due to this, it is not possible to delete traffic rows from
-    # the measurement without deleting wifi_clients rows.
+    if not requires_migration():
+        logger.info(
+            'Timeseries data migration is already migrated. Skipping migration!'
+        )
+        return
     migrate_wifi_clients()
     migrate_traffic_data()
-    logger.info('Timeserties data migration completed.')
+    logger.info('Timeseries data migration completed.')
