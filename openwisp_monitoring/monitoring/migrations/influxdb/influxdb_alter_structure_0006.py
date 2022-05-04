@@ -68,7 +68,7 @@ def retry_until_success(func, *args, **kwargs):
         ) as error:
             sleep_time *= 2
             time.sleep(sleep_time)
-            logger.warn(
+            logger.warning(
                 (
                     f'Error encountered while executing {func.__name__}'
                     f' with args: {args} and kwargs: {kwargs}.\n'
@@ -121,7 +121,7 @@ def migrate_influxdb_data(
                 migrated_rows += write_data_count
                 offset += SELECT_QUERY_LIMIT
             else:
-                logger.warn(
+                logger.warning(
                     f'Error encountered in writing data for "{metric} (id:{metric.id})"'
                     f' from {start} to {end}: {response["error"]}. It will be retried.'
                 )
