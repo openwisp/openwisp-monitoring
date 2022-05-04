@@ -1761,6 +1761,18 @@ Example usage:
     cd tests/
     ./manage.py run_checks
 
+``migrate_timeseries``
+~~~~~~~~~~~~~~~~~~~~~~
+
+This command triggers asynchronous migration of the time-series database.
+
+Example usage:
+
+.. code-block:: shell
+
+    cd tests/
+    ./manage.py migrate_timeseries
+
 Monitoring scripts
 ------------------
 

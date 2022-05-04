@@ -26,6 +26,9 @@ Backward incompatible changes
   The Django migrations will perform the necessary operations in the time-series
   database aysnchronously. It is recommended that you backup the time-series
   database before running the migrations.
+
+  You can use the `migrate_timeseries <https://github.com/openwisp/openwisp-monitoring#run-checks>`_
+  management command to trigger the migration of the time-series database.
 - The `interface traffic <https://github.com/openwisp/openwisp-monitoring#traffic>`_
   and `associated WiFi clients <https://github.com/openwisp/openwisp-monitoring#wifi-clients>`_
   metrics store additional tags, i.e. ``organization_id``, ``location_id`` and ``floorplan_id``.
