@@ -1,7 +1,7 @@
 Changelog
 =========
 
-Version 1.0.0 [2022-05-01]
+Version 1.0.0 [2022-05-05]
 --------------------------
 
 Features
@@ -19,6 +19,7 @@ Features
 - Added functionality to automatically clear the device's ``management_ip``
   when a device goes offline
 - Added support for specifying the time for received time-series data.
+- Made read requests to timeseries DB resilient to failures
 
 Changes
 ~~~~~~~
@@ -79,6 +80,8 @@ Other changes
   connectivity of the device changes
 - Improved UX of device's reachability (ping) chart.
   Added more colours to represent different scenarios
+- Avoid showing charts which have empty data in the REST API response
+  and in the device charts admin page
 
 Bugfixes
 --------
