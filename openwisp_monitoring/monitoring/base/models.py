@@ -1,5 +1,7 @@
 import json
 import logging
+from collections import OrderedDict
+from copy import deepcopy
 from datetime import date, datetime, timedelta
 
 from dateutil.parser import parse as parse_date
@@ -13,6 +15,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
+from jsonfield import JSONField
 from openwisp_notifications.signals import notify
 from pytz import timezone as tz
 from pytz import utc
@@ -50,6 +53,21 @@ class AbstractMetric(TimeStampedEditableModel):
     )
     object_id = models.CharField(max_length=36, db_index=True, blank=True)
     content_object = GenericForeignKey('content_type', 'object_id')
+    main_tags = JSONField(
+        _('main tags'),
+        default=dict,
+        blank=True,
+        load_kwargs={'object_pairs_hook': OrderedDict},
+        dump_kwargs={'indent': 4},
+        db_index=True,
+    )
+    extra_tags = JSONField(
+        _('extra tags'),
+        default=dict,
+        blank=True,
+        load_kwargs={'object_pairs_hook': OrderedDict},
+        dump_kwargs={'indent': 4},
+    )
     # NULL means the health has yet to be assessed
     is_healthy = models.BooleanField(default=None, null=True, blank=True, db_index=True)
     # Like "is_healthy", but respects tolerance of alert settings
@@ -57,7 +75,13 @@ class AbstractMetric(TimeStampedEditableModel):
 
     class Meta:
         abstract = True
-        unique_together = ('key', 'field_name', 'content_type', 'object_id')
+        unique_together = (
+            'key',
+            'field_name',
+            'content_type',
+            'object_id',
+            'main_tags',
+        )
 
     def __str__(self):
         obj = self.content_object
@@ -65,6 +89,11 @@ class AbstractMetric(TimeStampedEditableModel):
             return self.name
         model_name = obj.__class__.__name__
         return '{0} ({1}: {2})'.format(self.name, model_name, obj)
+
+    def __setattr__(self, attrname, value):
+        if attrname in ['main_tags', 'extra_tags']:
+            value = self._sort_dict(value)
+        return super().__setattr__(attrname, value)
 
     def clean(self):
         if (
@@ -95,11 +124,17 @@ class AbstractMetric(TimeStampedEditableModel):
         if 'key' in kwargs:
             kwargs['key'] = cls._makekey(kwargs['key'])
         try:
-            lookup_kwargs = kwargs.copy()
+            lookup_kwargs = deepcopy(kwargs)
             if lookup_kwargs.get('name'):
                 del lookup_kwargs['name']
+            extra_tags = lookup_kwargs.pop('extra_tags', {})
             metric = cls.objects.get(**lookup_kwargs)
             created = False
+
+            if extra_tags != metric.extra_tags:
+                metric.extra_tags.update(kwargs['extra_tags'])
+                metric.extra_tags = cls._sort_dict(metric.extra_tags)
+                metric.save()
         except cls.DoesNotExist:
             metric = cls(**kwargs)
             metric.full_clean()
@@ -134,12 +169,28 @@ class AbstractMetric(TimeStampedEditableModel):
 
     @property
     def tags(self):
+        tags = {}
         if self.content_type and self.object_id:
-            return {
-                'content_type': self.content_type_key,
-                'object_id': str(self.object_id),
-            }
-        return {}
+            tags.update(
+                {
+                    'content_type': self.content_type_key,
+                    'object_id': str(self.object_id),
+                }
+            )
+        if self.main_tags:
+            tags.update(self.main_tags)
+        if self.extra_tags:
+            tags.update(self.extra_tags)
+        return tags
+
+    @staticmethod
+    def _sort_dict(dict_):
+        """
+        ensures the order of the keys in the dict not random
+        """
+        if not isinstance(dict_, OrderedDict):
+            return OrderedDict(sorted(dict_.items()))
+        return dict_
 
     @property
     def content_type_key(self):
@@ -380,7 +431,9 @@ class AbstractChart(TimeStampedEditableModel):
 
     @property
     def description(self):
-        return self.config_dict['description'].format(metric=self.metric)
+        return self.config_dict['description'].format(
+            metric=self.metric, **self.metric.tags
+        )
 
     @property
     def title(self):
@@ -463,7 +516,11 @@ class AbstractChart(TimeStampedEditableModel):
         params = dict(field_name=m.field_name, key=m.key, time=self._get_time(time))
         if m.object_id:
             params.update(
-                {'content_type': m.content_type_key, 'object_id': m.object_id}
+                {
+                    'content_type': m.content_type_key,
+                    'object_id': m.object_id,
+                    **m.tags,
+                }
             )
         return params
 

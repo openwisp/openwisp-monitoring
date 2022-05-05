@@ -69,14 +69,27 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
         self.assertEqual(Metric.objects.count(), metric_count)
         self.assertEqual(Chart.objects.count(), chart_count)
         if_dict = {'wlan0': data['interfaces'][0], 'wlan1': data['interfaces'][1]}
+        extra_tags = {'organization_id': str(d.organization_id)}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
-            m = Metric.objects.get(key=ifname, field_name='rx_bytes', object_id=d.pk)
+            m = Metric.objects.get(
+                key='traffic',
+                field_name='rx_bytes',
+                object_id=d.pk,
+                main_tags={'ifname': ifname},
+                extra_tags=extra_tags,
+            )
             points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
             self.assertEqual(len(points), 1)
             for field in ['rx_bytes', 'tx_bytes']:
                 self.assertEqual(points[0][field], iface['statistics'][field])
-            m = Metric.objects.get(key=ifname, field_name='clients', object_id=d.pk)
+            m = Metric.objects.get(
+                key='wifi_clients',
+                field_name='clients',
+                object_id=d.pk,
+                extra_tags=extra_tags,
+                main_tags={'ifname': ifname},
+            )
             points = m.read(limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']))
         return dd

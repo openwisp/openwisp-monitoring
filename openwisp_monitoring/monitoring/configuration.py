@@ -188,11 +188,11 @@ DEFAULT_METRICS = {
         'charts': {
             'traffic': {
                 'type': 'scatter',
-                'title': _('Traffic: {metric.key}'),
+                'title': _('Traffic: {ifname}'),
                 'label': _('Traffic'),
                 'description': _(
                     'Network traffic, download and upload, measured on '
-                    'the interface "{metric.key}", measured in GB.'
+                    'the interface "{ifname}", measured in GB.'
                 ),
                 'summary_labels': [
                     _('Total download traffic'),
@@ -213,9 +213,9 @@ DEFAULT_METRICS = {
             'wifi_clients': {
                 'type': 'bar',
                 'label': _('WiFi clients'),
-                'title': _('WiFi clients: {metric.key}'),
+                'title': _('WiFi clients: {ifname}'),
                 'description': _(
-                    'WiFi clients associated to the wireless interface "{metric.key}".'
+                    'WiFi clients associated to the wireless interface "{ifname}".'
                 ),
                 'summary_labels': [_('Total Unique WiFi clients')],
                 'unit': '',
