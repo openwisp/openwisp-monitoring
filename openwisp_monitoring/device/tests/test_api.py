@@ -341,7 +341,7 @@ class TestDeviceApi(AuthenticationMixin, DeviceMonitoringTestCase):
         self.assertEqual(rows[-2].strip().split(','), ['http2', '100'])
         self.assertEqual(rows[-1].strip().split(','), ['ssh', '0'])
 
-    def test_get_device_empty_metric(self):
+    def test_get_device_metrics_empty(self):
         d = self._create_device(organization=self._create_org())
         m = self._create_object_metric(name='test_metric', content_object=d)
         c = Chart(metric=m, configuration='dummy')  # empty chart
@@ -350,7 +350,7 @@ class TestDeviceApi(AuthenticationMixin, DeviceMonitoringTestCase):
         self.assertEqual(Chart.objects.count(), 1)
         response = self.client.get(self._url(d.pk.hex, d.key))
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(response.data['charts'])
+        self.assertEqual(response.data['charts'], [])
 
     def test_get_device_metrics_400_bad_timezone(self):
         dd = self.create_test_data(no_resources=True)
