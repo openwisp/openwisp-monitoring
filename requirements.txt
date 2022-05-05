@@ -1,8 +1,4 @@
-# TODO: put back the standard pypi release when
-# next point version of openwisp-controller is released
-openwisp-controller @ https://github.com/openwisp/openwisp-controller/tarball/master
-# openwisp-utils[rest] is left unpinned so the version used
-# is the one dictated by openwisp-controller
+openwisp-controller~=1.0.0
 influxdb~=5.3.1
 django-cache-memoize~=0.1.0
 django-nested-admin~=3.4.0

@@ -1,6 +1,4 @@
-# unpinned, the version is dictated by openwisp-controller
-# TODO: Remove before release
-openwisp-utils[qa] @ https://github.com/openwisp/openwisp-utils/tarball/master
+openwisp-utils[qa]~=1.0.1
 redis~=3.5.3
 django-redis~=4.12.1
 mock-ssh-server~=0.9.0
