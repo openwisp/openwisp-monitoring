@@ -109,7 +109,6 @@ class Migration(migrations.Migration):
                     'extra_tags',
                     jsonfield.fields.JSONField(
                         blank=True,
-                        db_index=True,
                         default=dict,
                         dump_kwargs={'indent': 4},
                         load_kwargs={'object_pairs_hook': collections.OrderedDict},

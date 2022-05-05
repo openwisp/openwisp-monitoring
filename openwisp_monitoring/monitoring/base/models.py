@@ -67,7 +67,6 @@ class AbstractMetric(TimeStampedEditableModel):
         blank=True,
         load_kwargs={'object_pairs_hook': OrderedDict},
         dump_kwargs={'indent': 4},
-        db_index=True,
     )
     # NULL means the health has yet to be assessed
     is_healthy = models.BooleanField(default=None, null=True, blank=True, db_index=True)
