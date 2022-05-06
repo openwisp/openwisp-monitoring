@@ -84,7 +84,7 @@ Other changes
   and in the device charts admin page
 
 Bugfixes
---------
+~~~~~~~~
 
 - Fixed a bug that caused inconsistency in the order of chart summary values
 - Fixed bugs in restoring deleted devices using ``django-reversion``
