@@ -24,7 +24,7 @@ from openwisp_utils.base import TimeStampedEditableModel
 
 from ...db import device_data_query, timeseries_db
 from ...monitoring.signals import threshold_crossed
-from ...monitoring.tasks import timeseries_write
+from ...monitoring.tasks import save_wifi_clients_and_sessions, timeseries_write
 from .. import settings as app_settings
 from ..schema import schema
 from ..signals import health_status_changed
@@ -210,6 +210,7 @@ class AbstractDeviceData(object):
             ],
             timeout=86400,  # 24 hours
         )
+        save_wifi_clients_and_sessions.run(device_data=self.data, device_pk=self.pk)
 
     def json(self, *args, **kwargs):
         return json.dumps(self.data, *args, **kwargs)
