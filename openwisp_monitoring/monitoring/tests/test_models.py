@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
@@ -11,6 +12,7 @@ from swapper import load_model
 
 from openwisp_utils.tests import catch_signal
 
+from .. import settings as app_settings
 from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
 from ..tasks import delete_wifi_clients_and_session
@@ -460,3 +462,11 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         with self.subTest('Test new sessions for existing clients'):
             with self.assertNumQueries(16):
                 self._save_device_data(device_data, data)
+
+    @patch.object(app_settings, 'WIFI_SESSIONS_ENABLED', False)
+    def test_disabling_wifi_sessions(self):
+        device_data = self._create_device_data()
+        with self.assertNumQueries(0):
+            self._save_device_data(device_data)
+        self.assertEqual(WifiClient.objects.count(), 0)
+        self.assertEqual(WifiSession.objects.count(), 0)

@@ -14,6 +14,8 @@ from openwisp_users.multitenancy import MultitenantAdminMixin, MultitenantOrgFil
 from openwisp_utils.admin import ReadOnlyAdmin, TimeReadonlyAdminMixin
 from openwisp_utils.admin_theme.filters import SimpleInputFilter
 
+from . import settings as app_settings
+
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
@@ -216,4 +218,5 @@ class WifiSessionAdmin(MultitenantAdminMixin, ReadOnlyAdmin):
     related_organization.short_description = _('organization')
 
 
-admin.site.register(WifiSession, WifiSessionAdmin)
+if app_settings.WIFI_SESSIONS_ENABLED:
+    admin.site.register(WifiSession, WifiSessionAdmin)

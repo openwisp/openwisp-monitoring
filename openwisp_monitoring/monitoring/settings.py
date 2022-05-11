@@ -9,3 +9,4 @@ RETRY_OPTIONS = get_settings_value(
         max_retries=None, retry_backoff=True, retry_backoff_max=600, retry_jitter=True
     ),
 )
+WIFI_SESSIONS_ENABLED = get_settings_value('WIFI_SESSIONS_ENABLED', True)

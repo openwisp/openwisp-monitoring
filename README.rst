@@ -969,6 +969,22 @@ you can use the following configuration:
         'critical': 'offline'
     }
 
+``OPENWISP_MONITORING_WIFI_SESSIONS_ENABLED``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``bool``    |
++--------------+-------------+
+| **default**: | ``True``    |
++--------------+-------------+
+
+By default, *openwisp-monitoring* records WiFi clients connected to
+managed devices. It also maintains a record of WiFi session of these
+clients.
+
+You can disable this feature by setting ``OPENWISP_MONITORING_WIFI_SESSIONS_ENABLED``
+to ``False``.
+
 ``OPENWISP_MONITORING_MANAGEMENT_IP_ONLY``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1377,8 +1393,8 @@ An example usage has been shown below.
                     'scale': [
                         [[0, '#c13000'],
                         [0.1,'cb7222'],
-                        [0.5,'#deed0e'], 
-                        [0.9, '#7db201'], 
+                        [0.5,'#deed0e'],
+                        [0.9, '#7db201'],
                         [1, '#498b26']],
                     ],
                     'map': [

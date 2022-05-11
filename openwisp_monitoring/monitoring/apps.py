@@ -6,6 +6,7 @@ from swapper import get_model_name
 from openwisp_utils.admin_theme.menu import register_menu_group
 
 from ..db import timeseries_db
+from . import settings as app_settings
 from .configuration import get_metric_configuration, register_metric_notifications
 
 
@@ -23,24 +24,36 @@ class MonitoringConfig(AppConfig):
         self.register_menu_groups()
 
     def register_menu_groups(self):
-        register_menu_group(
-            position=80,
-            config={
-                'label': 'Monitoring',
-                'items': {
-                    1: {
-                        'label': _('Metrics'),
-                        'model': get_model_name('monitoring', 'Metric'),
-                        'name': 'changelist',
-                        'icon': 'ow-metrics',
-                    },
-                    2: {
-                        'label': _('Checks'),
-                        'model': get_model_name('check', 'Check'),
+        menu_group_config = {
+            'label': 'Monitoring',
+            'items': {
+                1: {
+                    'label': _('Metrics'),
+                    'model': get_model_name('monitoring', 'Metric'),
+                    'name': 'changelist',
+                    'icon': 'ow-metrics',
+                },
+                2: {
+                    'label': _('Checks'),
+                    'model': get_model_name('check', 'Check'),
+                    'name': 'changelist',
+                    'icon': 'ow-monitoring-checks',
+                },
+            },
+            'icon': 'ow-monitoring',
+        }
+        if app_settings.WIFI_SESSIONS_ENABLED:
+            menu_group_config['items'].update(
+                {
+                    3: {
+                        'label': _('WiFi Sessions'),
+                        'model': get_model_name('monitoring', 'WiFiSession'),
                         'name': 'changelist',
                         'icon': 'ow-monitoring-checks',
                     },
-                },
-                'icon': 'ow-monitoring',
-            },
+                }
+            )
+        register_menu_group(
+            position=80,
+            config=menu_group_config,
         )

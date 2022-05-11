@@ -23,6 +23,7 @@ from swapper import load_model
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...db import device_data_query, timeseries_db
+from ...monitoring import settings as monitoring_settings
 from ...monitoring.signals import threshold_crossed
 from ...monitoring.tasks import save_wifi_clients_and_sessions, timeseries_write
 from .. import settings as app_settings
@@ -210,7 +211,10 @@ class AbstractDeviceData(object):
             ],
             timeout=86400,  # 24 hours
         )
-        save_wifi_clients_and_sessions.delay(device_data=self.data, device_pk=self.pk)
+        if monitoring_settings.WIFI_SESSIONS_ENABLED:
+            save_wifi_clients_and_sessions.delay(
+                device_data=self.data, device_pk=self.pk
+            )
 
     def json(self, *args, **kwargs):
         return json.dumps(self.data, *args, **kwargs)
