@@ -89,6 +89,7 @@ def save_wifi_clients_and_sessions(device_data, device_pk):
                 interface_name=interface_name,
                 ssid=wireless_ssid,
                 wifi_client=client_obj,
+                stop_time=None,
             )
             active_wireless_sessions.append(session_object.pk)
 

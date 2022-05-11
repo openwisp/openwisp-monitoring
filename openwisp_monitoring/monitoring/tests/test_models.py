@@ -9,14 +9,12 @@ from django.utils import timezone
 from freezegun import freeze_time
 from swapper import load_model
 
-from openwisp_controller.config.tests.utils import CreateConfigTemplateMixin
-from openwisp_monitoring.device.utils import manage_short_retention_policy
 from openwisp_utils.tests import catch_signal
 
 from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
 from ..tasks import delete_wifi_clients_and_session
-from . import TestMonitoringMixin
+from . import TestMonitoringMixin, TestWifiClientSessionMixin
 
 start_time = timezone.now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
@@ -359,48 +357,10 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertEqual(m._get_time(now.isoformat()), now)
 
 
-class TestWifiClientSession(CreateConfigTemplateMixin, TestMonitoringMixin, TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        manage_short_retention_policy()
-
-    def _create_device_data(self):
-        device = self._create_device()
-        return DeviceData(pk=device.pk)
-
-    def _save_device_data(self, device_data=None, data=None):
-        dd = device_data or self._create_device_data()
-        dd.data = data or deepcopy(self._data())
-        dd.save_data()
-        return dd
-
-    def _create_wifi_client(self, **kwargs):
-        options = {
-            'mac_address': '22:33:44:55:66:77',
-            'vendor': '',
-            'ht': True,
-            'vht': True,
-            'wmm': False,
-            'wds': False,
-            'wps': False,
-        }
-        options.update(**kwargs)
-        wifi_client = WifiClient(**options)
-        wifi_client.full_clean()
-        wifi_client.save()
-        return wifi_client
-
-    def _create_wifi_session(self, **kwargs):
-        if 'wifi_client' not in kwargs:
-            kwargs['wifi_client'] = self._create_wifi_client()
-        if 'device' not in kwargs:
-            kwargs['device'] = self._create_device()
-        options = {'ssid': 'Free Public WiFi', 'interface_name': 'wlan0'}
-        options.update(kwargs)
-        wifi_session = WifiSession(**options)
-        wifi_session.full_clean()
-        wifi_session.save()
+class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
+    wifi_client_model = WifiClient
+    wifi_session_model = WifiSession
+    device_data_model = DeviceData
 
     def test_wifi_client_session_created(self):
         device_data = self._save_device_data()
@@ -451,18 +411,27 @@ class TestWifiClientSession(CreateConfigTemplateMixin, TestMonitoringMixin, Test
         self.assertNotEqual(wifi_client3_session.start_time, None)
         self.assertEqual(wifi_client3_session.stop_time, None)
 
-    def test_opened_wifi_session_are_closed(self):
-        data = deepcopy(self._data())
+    def test_opening_closing_existing_sessions(self):
+        data = deepcopy(self._sample_data)
         device_data = self._create_device_data()
         self._save_device_data(device_data, data)
         self.assertEqual(WifiSession.objects.filter(stop_time=None).count(), 3)
-        # Remove clients from the data.
-        # Saving this data should stop the WifiSessions created above.
-        for interface in data['interfaces']:
-            del interface['wireless']['clients']
-        self._save_device_data(device_data, data)
-        self.assertEqual(WifiSession.objects.filter(stop_time=None).count(), 0)
         self.assertEqual(WifiSession.objects.count(), 3)
+        self.assertEqual(WifiClient.objects.count(), 3)
+
+        with self.subTest('Test closing session'):
+            self._save_device_data(
+                device_data, data={'type': 'DeviceMonitoring', 'interfaces': []}
+            )
+            self.assertEqual(WifiSession.objects.filter(stop_time=None).count(), 0)
+            self.assertEqual(WifiSession.objects.count(), 3)
+            self.assertEqual(WifiClient.objects.count(), 3)
+
+        with self.subTest('Test re-opening session for exising clients'):
+            self._save_device_data(device_data, data)
+            self.assertEqual(WifiSession.objects.filter(stop_time=None).count(), 3)
+            self.assertEqual(WifiSession.objects.count(), 6)
+            self.assertEqual(WifiClient.objects.count(), 3)
 
     def test_delete_old_wifi_sessions(self):
         with freeze_time(timezone.now() - timedelta(days=6 * 31)):
@@ -470,3 +439,24 @@ class TestWifiClientSession(CreateConfigTemplateMixin, TestMonitoringMixin, Test
         self.assertEqual(WifiSession.objects.count(), 1)
         delete_wifi_clients_and_session.delay()
         self.assertEqual(WifiSession.objects.count(), 0)
+
+    def test_database_queries(self):
+        data = deepcopy(self._sample_data)
+        device_data = self._create_device_data()
+        with self.subTest('Test creating new clients and sessions'):
+            with self.assertNumQueries(28):
+                self._save_device_data(device_data, data)
+
+        with self.subTest('Test updating existing clients and sessions'):
+            with self.assertNumQueries(7):
+                self._save_device_data(device_data, data)
+
+        with self.subTest('Test closing existing sessions'):
+            with self.assertNumQueries(1):
+                self._save_device_data(
+                    device_data, data={'type': 'DeviceMonitoring', 'interface': []}
+                )
+
+        with self.subTest('Test new sessions for existing clients'):
+            with self.assertNumQueries(16):
+                self._save_device_data(device_data, data)

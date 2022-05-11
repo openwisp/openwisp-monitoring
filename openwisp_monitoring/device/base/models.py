@@ -210,7 +210,7 @@ class AbstractDeviceData(object):
             ],
             timeout=86400,  # 24 hours
         )
-        save_wifi_clients_and_sessions.run(device_data=self.data, device_pk=self.pk)
+        save_wifi_clients_and_sessions.delay(device_data=self.data, device_pk=self.pk)
 
     def json(self, *args, **kwargs):
         return json.dumps(self.data, *args, **kwargs)

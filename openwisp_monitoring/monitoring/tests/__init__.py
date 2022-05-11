@@ -1,8 +1,11 @@
+from copy import deepcopy
 from datetime import timedelta
 
 from django.utils.timezone import now
 from swapper import load_model
 
+from openwisp_controller.config.tests.utils import CreateConfigTemplateMixin
+from openwisp_monitoring.device.utils import manage_short_retention_policy
 from openwisp_users.tests.utils import TestOrganizationMixin
 
 from ...db import timeseries_db
@@ -19,6 +22,9 @@ ten_minutes_ago = start_time - timedelta(minutes=10)
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
+WifiClient = load_model('monitoring', 'WifiClient')
+WifiSession = load_model('monitoring', 'WifiSession')
+DeviceData = load_model('device_monitoring', 'DeviceData')
 
 default_message = (
     '{notification.actor.name} for device [{notification.target}]'
@@ -377,3 +383,53 @@ class TestMonitoringMixin(TestOrganizationMixin):
                 },
             ],
         }
+
+
+class TestWifiClientSessionMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        manage_short_retention_policy()
+
+    @property
+    def _sample_data(self):
+        data = deepcopy(self._data())
+        data.pop('resources')
+        return data
+
+    def _create_device_data(self, device=None):
+        device = device or self._create_device()
+        return DeviceData(pk=device.pk)
+
+    def _save_device_data(self, device_data=None, data=None):
+        dd = device_data or self._create_device_data()
+        dd.data = data or self._sample_data
+        dd.save_data()
+        return dd
+
+    def _create_wifi_client(self, **kwargs):
+        options = {
+            'mac_address': '22:33:44:55:66:77',
+            'vendor': '',
+            'ht': True,
+            'vht': True,
+            'wmm': False,
+            'wds': False,
+            'wps': False,
+        }
+        options.update(**kwargs)
+        wifi_client = WifiClient(**options)
+        wifi_client.full_clean()
+        wifi_client.save()
+        return wifi_client
+
+    def _create_wifi_session(self, **kwargs):
+        if 'wifi_client' not in kwargs:
+            kwargs['wifi_client'] = self._create_wifi_client()
+        if 'device' not in kwargs:
+            kwargs['device'] = self._create_device()
+        options = {'ssid': 'Free Public WiFi', 'interface_name': 'wlan0'}
+        options.update(kwargs)
+        wifi_session = WifiSession(**options)
+        wifi_session.full_clean()
+        wifi_session.save()

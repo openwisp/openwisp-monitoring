@@ -132,6 +132,7 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'WiFi Session',
                 'abstract': False,
+                'ordering': ('-start_time',),
             },
         ),
         migrations.CreateModel(

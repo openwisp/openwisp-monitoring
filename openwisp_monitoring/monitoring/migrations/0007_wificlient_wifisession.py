@@ -126,6 +126,7 @@ class Migration(migrations.Migration):
                 'verbose_name': 'WiFi Session',
                 'abstract': False,
                 'swappable': 'MONITORING_WIFISESSION_MODEL',
+                'ordering': ('-start_time',),
             },
         ),
     ]

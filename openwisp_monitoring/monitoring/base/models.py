@@ -816,6 +816,7 @@ class AbstractWifiSession(TimeStampedEditableModel):
     class Meta:
         abstract = True
         verbose_name = _('WiFi Session')
+        ordering = ('-start_time',)
 
     def __str__(self):
         return self.mac_address
