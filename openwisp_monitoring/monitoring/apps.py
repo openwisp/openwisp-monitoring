@@ -1,8 +1,12 @@
 from django.apps import AppConfig
 from django.conf import settings
+from django.db.models import Case, Count, Sum, When
 from django.utils.translation import gettext_lazy as _
 from swapper import get_model_name
 
+from openwisp_utils.admin_theme import (
+    register_dashboard_chart,
+)
 from openwisp_utils.admin_theme.menu import register_menu_group
 
 from ..db import timeseries_db
@@ -22,6 +26,7 @@ class MonitoringConfig(AppConfig):
         for metric_name, metric_config in metrics.items():
             register_metric_notifications(metric_name, metric_config)
         self.register_menu_groups()
+        self.register_dashboard_items()
 
     def register_menu_groups(self):
         menu_group_config = {
@@ -57,3 +62,39 @@ class MonitoringConfig(AppConfig):
             position=80,
             config=menu_group_config,
         )
+
+    def register_dashboard_items(self):
+        if app_settings.WIFI_SESSIONS_ENABLED:
+            register_dashboard_chart(
+                position=6,
+                config={
+                    'name': _('Currently Active WiFi Sessions'),
+                    'query_params': {
+                        'app_label': 'monitoring',
+                        'model': 'wifisession',
+                        'annotate': {
+                            'active': Count(
+                                Case(
+                                    When(
+                                        stop_time__isnull=True,
+                                        then=1,
+                                    )
+                                )
+                            ),
+                        },
+                        'aggregate': {
+                            'active__sum': Sum('active'),
+                        },
+                    },
+                    'filters': {
+                        'key': 'stop_time__isnull',
+                        'active__sum': 'true',
+                    },
+                    'colors': {
+                        'active__sum': '#267126',
+                    },
+                    'labels': {
+                        'active__sum': _('Currently Active WiFi Sessions'),
+                    },
+                },
+            )
