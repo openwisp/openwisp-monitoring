@@ -446,11 +446,11 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         data = deepcopy(self._sample_data)
         device_data = self._create_device_data()
         with self.subTest('Test creating new clients and sessions'):
-            with self.assertNumQueries(28):
+            with self.assertNumQueries(17):
                 self._save_device_data(device_data, data)
 
         with self.subTest('Test updating existing clients and sessions'):
-            with self.assertNumQueries(7):
+            with self.assertNumQueries(5):
                 self._save_device_data(device_data, data)
 
         with self.subTest('Test closing existing sessions'):
@@ -460,7 +460,7 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
                 )
 
         with self.subTest('Test new sessions for existing clients'):
-            with self.assertNumQueries(16):
+            with self.assertNumQueries(5):
                 self._save_device_data(device_data, data)
 
     @patch.object(app_settings, 'WIFI_SESSIONS_ENABLED', False)

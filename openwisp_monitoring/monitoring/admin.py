@@ -138,9 +138,9 @@ class WifiSessionAdmin(MultitenantAdminMixin, ReadOnlyAdmin):
     ]
     search_fields = ['wifi_client__mac_address', 'device__name', 'device__mac_address']
     list_filter = [
+        ('device__organization', MultitenantOrgFilter),
         'start_time',
         'stop_time',
-        ('device__organization', MultitenantOrgFilter),
         'device__group',
         DeviceFilter,
     ]
@@ -163,7 +163,13 @@ class WifiSessionAdmin(MultitenantAdminMixin, ReadOnlyAdmin):
         return fields
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('wifi_client', 'device')
+        return (
+            super()
+            .get_queryset(request)
+            .select_related(
+                'wifi_client', 'device', 'device__organization', 'device__group'
+            )
+        )
 
     def _get_boolean_html(self, value):
         icon = static('/admin/img/icon-{}.svg'.format('yes' if value is True else 'no'))

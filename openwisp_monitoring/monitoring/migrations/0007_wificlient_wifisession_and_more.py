@@ -7,14 +7,20 @@ import django.core.validators
 import django.db.models.deletion
 import django.utils.timezone
 import model_utils.fields
+import swapper
 from django.conf import settings
 from django.db import migrations, models
+
+from . import assign_permissions_to_groups
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        migrations.swappable_dependency(settings.CONFIG_DEVICE_MODEL),
+        swapper.dependency(
+            *swapper.split(settings.AUTH_USER_MODEL), version='0004_default_groups'
+        ),
+        swapper.dependency('config', 'Device'),
         ('monitoring', '0006_migrate_influxdb_structure'),
     ]
 
@@ -111,22 +117,32 @@ class Migration(migrations.Migration):
                     'device',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to=settings.CONFIG_DEVICE_MODEL,
+                        to=swapper.get_model_name('config', 'Device'),
                     ),
                 ),
                 (
                     'wifi_client',
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to=settings.MONITORING_WIFICLIENT_MODEL,
+                        to=swapper.get_model_name('monitoring', 'WifiClient'),
                     ),
                 ),
             ],
             options={
                 'verbose_name': 'WiFi Session',
+                'ordering': ('-start_time',),
                 'abstract': False,
                 'swappable': 'MONITORING_WIFISESSION_MODEL',
-                'ordering': ('-start_time',),
             },
+        ),
+        migrations.AddConstraint(
+            model_name='wifisession',
+            constraint=models.UniqueConstraint(
+                fields=('device', 'wifi_client', 'ssid', 'interface_name', 'stop_time'),
+                name='unique_wifi_session',
+            ),
+        ),
+        migrations.RunPython(
+            assign_permissions_to_groups, reverse_code=migrations.RunPython.noop
         ),
     ]

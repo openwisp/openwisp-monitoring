@@ -59,17 +59,18 @@ def save_wifi_clients_and_sessions(device_data, device_pk):
     WifiClient = load_model('monitoring', 'WifiClient')
     WifiSession = load_model('monitoring', 'WifiSession')
 
-    active_wireless_sessions = []
+    active_sessions = []
     interfaces = device_data.get('interfaces', [])
+    session_list = []
     for interface in interfaces:
         if interface.get('type') != 'wireless':
             continue
         interface_name = interface.get('name')
         wireless = interface.get('wireless', {})
 
-        wireless_ssid = wireless.get('ssid')
-        wireless_clients = wireless.get('clients', [])
-        for client in wireless_clients:
+        ssid = wireless.get('ssid')
+        clients = wireless.get('clients', [])
+        for client in clients:
             # Save WifiClient
             client_obj, created = WifiClient.objects.get_or_create(
                 mac_address=client.get('mac')
@@ -84,18 +85,22 @@ def save_wifi_clients_and_sessions(device_data, device_pk):
                 client_obj.save(update_fields=update_fields)
 
             # Save WifiSession
-            session_object, _ = WifiSession.objects.get_or_create(
+            session_obj = WifiSession(
                 device_id=device_pk,
                 interface_name=interface_name,
-                ssid=wireless_ssid,
+                ssid=ssid,
                 wifi_client=client_obj,
                 stop_time=None,
             )
-            active_wireless_sessions.append(session_object.pk)
+            session_list.append(session_obj)
+            active_sessions.append(session_obj.pk)
+
+    if session_list:
+        WifiSession.objects.bulk_create(session_list, ignore_conflicts=True)
 
     # Close open WifiSession
     WifiSession.objects.filter(device_id=device_pk, stop_time=None,).exclude(
-        pk__in=active_wireless_sessions
+        pk__in=active_sessions
     ).update(stop_time=now())
 
 

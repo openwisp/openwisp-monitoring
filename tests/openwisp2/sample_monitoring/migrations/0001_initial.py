@@ -135,6 +135,13 @@ class Migration(migrations.Migration):
                 'ordering': ('-start_time',),
             },
         ),
+        migrations.AddConstraint(
+            model_name='wifisession',
+            constraint=models.UniqueConstraint(
+                fields=('device', 'wifi_client', 'ssid', 'interface_name', 'stop_time'),
+                name='unique_wifi_session',
+            ),
+        ),
         migrations.CreateModel(
             name='Metric',
             fields=[

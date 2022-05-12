@@ -27,13 +27,13 @@ class MonitoringConfig(AppConfig):
         menu_group_config = {
             'label': 'Monitoring',
             'items': {
-                1: {
+                2: {
                     'label': _('Metrics'),
                     'model': get_model_name('monitoring', 'Metric'),
                     'name': 'changelist',
                     'icon': 'ow-metrics',
                 },
-                2: {
+                3: {
                     'label': _('Checks'),
                     'model': get_model_name('check', 'Check'),
                     'name': 'changelist',
@@ -45,7 +45,7 @@ class MonitoringConfig(AppConfig):
         if app_settings.WIFI_SESSIONS_ENABLED:
             menu_group_config['items'].update(
                 {
-                    3: {
+                    1: {
                         'label': _('WiFi Sessions'),
                         'model': get_model_name('monitoring', 'WiFiSession'),
                         'name': 'changelist',

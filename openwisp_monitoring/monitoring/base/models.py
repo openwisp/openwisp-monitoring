@@ -12,6 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import models
+from django.db.models.constraints import UniqueConstraint
 from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
@@ -817,6 +818,12 @@ class AbstractWifiSession(TimeStampedEditableModel):
         abstract = True
         verbose_name = _('WiFi Session')
         ordering = ('-start_time',)
+        constraints = [
+            UniqueConstraint(
+                fields=['device', 'wifi_client', 'ssid', 'interface_name', 'stop_time'],
+                name='unique_wifi_session',
+            ),
+        ]
 
     def __str__(self):
         return self.mac_address
