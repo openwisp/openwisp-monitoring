@@ -413,6 +413,16 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         self.assertNotEqual(wifi_client3_session.start_time, None)
         self.assertEqual(wifi_client3_session.stop_time, None)
 
+    def test_updating_existing_wifi_sessions(self):
+        device_data = self._create_device_data()
+        self._save_device_data(device_data=device_data)
+        self.assertEqual(WifiClient.objects.count(), 3)
+        self.assertEqual(WifiSession.objects.count(), 3)
+
+        self._save_device_data(device_data=device_data)
+        self.assertEqual(WifiClient.objects.count(), 3)
+        self.assertEqual(WifiSession.objects.count(), 3)
+
     def test_opening_closing_existing_sessions(self):
         data = deepcopy(self._sample_data)
         device_data = self._create_device_data()
@@ -446,11 +456,11 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         data = deepcopy(self._sample_data)
         device_data = self._create_device_data()
         with self.subTest('Test creating new clients and sessions'):
-            with self.assertNumQueries(17):
+            with self.assertNumQueries(28):
                 self._save_device_data(device_data, data)
 
         with self.subTest('Test updating existing clients and sessions'):
-            with self.assertNumQueries(5):
+            with self.assertNumQueries(7):
                 self._save_device_data(device_data, data)
 
         with self.subTest('Test closing existing sessions'):
@@ -460,7 +470,7 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
                 )
 
         with self.subTest('Test new sessions for existing clients'):
-            with self.assertNumQueries(5):
+            with self.assertNumQueries(16):
                 self._save_device_data(device_data, data)
 
     @patch.object(app_settings, 'WIFI_SESSIONS_ENABLED', False)

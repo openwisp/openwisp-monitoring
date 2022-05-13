@@ -4,9 +4,7 @@ from django.db.models import Case, Count, Sum, When
 from django.utils.translation import gettext_lazy as _
 from swapper import get_model_name
 
-from openwisp_utils.admin_theme import (
-    register_dashboard_chart,
-)
+from openwisp_utils.admin_theme import register_dashboard_chart
 from openwisp_utils.admin_theme.menu import register_menu_group
 
 from ..db import timeseries_db

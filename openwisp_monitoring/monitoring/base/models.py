@@ -818,12 +818,6 @@ class AbstractWifiSession(TimeStampedEditableModel):
         abstract = True
         verbose_name = _('WiFi Session')
         ordering = ('-start_time',)
-        constraints = [
-            UniqueConstraint(
-                fields=['device', 'wifi_client', 'ssid', 'interface_name', 'stop_time'],
-                name='unique_wifi_session',
-            ),
-        ]
 
     def __str__(self):
         return self.mac_address

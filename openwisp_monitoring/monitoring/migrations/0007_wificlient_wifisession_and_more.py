@@ -135,13 +135,6 @@ class Migration(migrations.Migration):
                 'swappable': 'MONITORING_WIFISESSION_MODEL',
             },
         ),
-        migrations.AddConstraint(
-            model_name='wifisession',
-            constraint=models.UniqueConstraint(
-                fields=('device', 'wifi_client', 'ssid', 'interface_name', 'stop_time'),
-                name='unique_wifi_session',
-            ),
-        ),
         migrations.RunPython(
             assign_permissions_to_groups, reverse_code=migrations.RunPython.noop
         ),
