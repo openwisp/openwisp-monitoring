@@ -1034,7 +1034,7 @@ you can use the following configuration:
 | **default**: | ``True``    |
 +--------------+-------------+
 
-Setting this to ``False`` will disable `Monitoring Wifi Sessions <#monitoring-wifi-sessions>`
+Setting this to ``False`` will disable `Monitoring Wifi Sessions <#monitoring-wifi-sessions>`_
 feature.
 
 ``OPENWISP_MONITORING_MANAGEMENT_IP_ONLY``
