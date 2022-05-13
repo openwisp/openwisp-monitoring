@@ -100,7 +100,7 @@ def save_wifi_clients_and_sessions(device_data, device_pk):
 
 
 @shared_task
-def delete_wifi_clients_and_session(days=6 * 30):
+def delete_wifi_clients_and_sessions(days=6 * 30):
     WifiClient = load_model('monitoring', 'WifiClient')
     WifiSession = load_model('monitoring', 'WifiSession')
 

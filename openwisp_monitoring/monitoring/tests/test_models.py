@@ -15,7 +15,7 @@ from openwisp_utils.tests import catch_signal
 from .. import settings as app_settings
 from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
-from ..tasks import delete_wifi_clients_and_session
+from ..tasks import delete_wifi_clients_and_sessions
 from . import TestMonitoringMixin, TestWifiClientSessionMixin
 
 start_time = timezone.now()
@@ -449,7 +449,7 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         with freeze_time(timezone.now() - timedelta(days=6 * 31)):
             self._create_wifi_session()
         self.assertEqual(WifiSession.objects.count(), 1)
-        delete_wifi_clients_and_session.delay()
+        delete_wifi_clients_and_sessions.delay()
         self.assertEqual(WifiSession.objects.count(), 0)
 
     def test_database_queries(self):
