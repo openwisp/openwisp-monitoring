@@ -1,6 +1,7 @@
 from django.apps import AppConfig
 from django.conf import settings
 from django.db.models import Case, Count, Sum, When
+from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
 from swapper import get_model_name
 
@@ -93,6 +94,10 @@ class MonitoringConfig(AppConfig):
                     },
                     'labels': {
                         'active__sum': _('Currently Active WiFi Sessions'),
+                    },
+                    'quick_link': {
+                        'url': reverse_lazy('admin:monitoring_wifisession_changelist'),
+                        'label': _('Open WiFi session list'),
                     },
                 },
             )
