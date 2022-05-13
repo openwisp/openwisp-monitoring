@@ -3,7 +3,7 @@ from django.conf import settings
 from django.db.models import Case, Count, Sum, When
 from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
-from swapper import get_model_name
+from swapper import get_model_name, load_model
 
 from openwisp_utils.admin_theme import register_dashboard_chart
 from openwisp_utils.admin_theme.menu import register_menu_group
@@ -63,6 +63,7 @@ class MonitoringConfig(AppConfig):
         )
 
     def register_dashboard_items(self):
+        Metric = load_model('monitoring', 'WifiSession')
         if app_settings.WIFI_SESSIONS_ENABLED:
             register_dashboard_chart(
                 position=6,
@@ -96,7 +97,12 @@ class MonitoringConfig(AppConfig):
                         'active__sum': _('Currently Active WiFi Sessions'),
                     },
                     'quick_link': {
-                        'url': reverse_lazy('admin:monitoring_wifisession_changelist'),
+                        'url': reverse_lazy(
+                            'admin:{app_label}_{model_name}_changelist'.format(
+                                app_label=Metric._meta.app_label,
+                                model_name=Metric._meta.model_name,
+                            )
+                        ),
                         'label': _('Open WiFi session list'),
                     },
                 },
