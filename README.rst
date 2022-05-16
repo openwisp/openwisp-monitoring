@@ -311,6 +311,7 @@ Follow the setup instructions of `openwisp-controller
         # admin
         'django.contrib.admin',
         'django.forms',
+        'import_export'
         # other dependencies ...
     ]
 

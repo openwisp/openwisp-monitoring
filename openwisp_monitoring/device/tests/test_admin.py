@@ -8,6 +8,7 @@ from django.utils.timezone import now, timedelta
 from freezegun import freeze_time
 from swapper import get_model_name, load_model
 
+from openwisp_controller.config.tests.test_admin import TestImportExportMixin
 from openwisp_controller.config.tests.utils import CreateDeviceGroupMixin
 from openwisp_controller.geo.tests.utils import TestGeoMixin
 from openwisp_users.tests.utils import TestMultitenantAdminMixin
@@ -29,10 +30,17 @@ DeviceLocation = load_model('geo', 'DeviceLocation')
 Location = load_model('geo', 'Location')
 
 
-class TestAdmin(DeviceMonitoringTestCase):
+class TestAdmin(TestImportExportMixin, DeviceMonitoringTestCase):
     """
     Test the additions of openwisp-monitoring to DeviceAdmin
     """
+
+    resources_fields = TestImportExportMixin.resource_fields
+    resources_fields.append('monitoring__status')
+    app_label = 'config'
+
+    def setUp(self):
+        self._login_admin()
 
     def _login_admin(self):
         u = User.objects.create_superuser('admin', 'admin', 'test@test.com')
@@ -47,7 +55,6 @@ class TestAdmin(DeviceMonitoringTestCase):
             params={},
         )
         url = reverse('admin:config_device_change', args=[dd.pk])
-        self._login_admin()
         response = self.client.get(url)
         self.assertContains(response, '<h2>Status</h2>')
         self.assertContains(response, '<h2>Charts</h2>')
@@ -63,7 +70,6 @@ class TestAdmin(DeviceMonitoringTestCase):
 
     def test_dashboard_map_on_index(self):
         url = reverse('admin:index')
-        self._login_admin()
         response = self.client.get(url)
         self.assertContains(response, "geoJsonUrl: \'http://testserver/api")
         self.assertContains(response, "locationDeviceUrl: \'http://testserver/api")
@@ -94,7 +100,6 @@ class TestAdmin(DeviceMonitoringTestCase):
         )
         self._post_data(d.id, d.key, data)
         url = reverse('admin:config_device_change', args=[d.pk])
-        self._login_admin()
         r = self.client.get(url)
         with self.subTest('DHCP lease MAC is shown'):
             self.assertContains(r, 'f2:f1:3e:56:d2:77')
@@ -108,13 +113,11 @@ class TestAdmin(DeviceMonitoringTestCase):
     def test_no_device_data(self):
         d = self._create_device(organization=self._create_org())
         url = reverse('admin:config_device_change', args=[d.pk])
-        self._login_admin()
         r = self.client.get(url)
         self.assertNotContains(r, '<h2>Status</h2>')
         self.assertNotContains(r, 'AlertSettings')
 
     def test_device_add_view(self):
-        self._login_admin()
         url = reverse('admin:config_device_add')
         r = self.client.get(url)
         self.assertNotContains(r, 'AlertSettings')
@@ -132,11 +135,9 @@ class TestAdmin(DeviceMonitoringTestCase):
             {'type': 'DeviceMonitoring', 'interfaces': [{'name': 'br-lan'}]},
         )
         url = reverse('admin:config_device_change', args=[dd.pk])
-        self._login_admin()
         self.client.get(url)
 
     def test_wifi_clients_admin(self):
-        self._login_admin()
         dd = self.create_test_data(no_resources=True)
         url = reverse('admin:config_device_change', args=[dd.id])
         r1 = self.client.get(url, follow=True)
@@ -144,7 +145,6 @@ class TestAdmin(DeviceMonitoringTestCase):
         self.assertContains(r1, '00:ee:ad:34:f5:3b')
 
     def test_interface_properties_admin(self):
-        self._login_admin()
         dd = self.create_test_data(no_resources=True)
         url = reverse('admin:config_device_change', args=[dd.id])
         r1 = self.client.get(url, follow=True)
@@ -156,7 +156,6 @@ class TestAdmin(DeviceMonitoringTestCase):
         self.assertContains(r1, 'MTU')
 
     def test_interface_bridge_admin(self):
-        self._login_admin()
         d = self._create_device(organization=self._create_org())
         dd = DeviceData(name='test-device', pk=d.pk)
         data = self._data()
@@ -184,7 +183,6 @@ class TestAdmin(DeviceMonitoringTestCase):
         self.assertContains(r1, 'Spanning Tree Protocol')
 
     def test_interface_mobile_admin(self):
-        self._login_admin()
         d = self._create_device(organization=self._create_org())
         self._post_data(
             d.id,
@@ -228,7 +226,6 @@ class TestAdmin(DeviceMonitoringTestCase):
         dd = self.create_test_data(no_resources=True)
         uuid = str(dd.pk).replace('-', '')
         url = reverse('admin:config_device_change', args=[uuid])
-        self._login_admin()
         r = self.client.get(url)
         self.assertContains(r, '<h2>Status</h2>')
 
@@ -267,7 +264,6 @@ class TestAdmin(DeviceMonitoringTestCase):
     def test_health_checks_list(self):
         dd = self.create_test_data()
         url = reverse('admin:config_device_change', args=[dd.pk])
-        self._login_admin()
         r = self.client.get(url)
         self.assertNotContains(r, '<label>Health checks:</label>')
         m = Metric.objects.filter(configuration='disk').first()
