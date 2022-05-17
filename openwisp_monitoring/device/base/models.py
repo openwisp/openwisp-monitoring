@@ -27,9 +27,9 @@ from ...db import device_data_query, timeseries_db
 from ...monitoring.signals import threshold_crossed
 from ...monitoring.tasks import timeseries_write
 from .. import settings as app_settings
+from .. import tasks
 from ..schema import schema
 from ..signals import health_status_changed
-from ..tasks import save_wifi_clients_and_sessions
 from ..utils import SHORT_RP, get_device_cache_key
 
 
@@ -213,7 +213,7 @@ class AbstractDeviceData(object):
             timeout=86400,  # 24 hours
         )
         if app_settings.WIFI_SESSIONS_ENABLED:
-            save_wifi_clients_and_sessions.delay(
+            tasks.save_wifi_clients_and_sessions.delay(
                 device_data=self.data, device_pk=self.pk
             )
 
@@ -388,3 +388,8 @@ class AbstractWifiSession(TimeStampedEditableModel):
     @property
     def organization(self):
         return self.device.organization
+
+    @classmethod
+    def offline_device_close_session(cls, instance, *args, **kwargs):
+        if kwargs['status'] == 'critical':
+            tasks.offline_device_close_session.delay(device_id=instance.device_id)

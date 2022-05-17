@@ -38,6 +38,7 @@ class DeviceMonitoringConfig(AppConfig):
         self.connect_is_working_changed()
         self.connect_device_signals()
         self.connect_config_status_changed()
+        self.connect_offline_device_close_wifisession()
         self.device_recovery_detection()
         self.set_update_config_model()
         self.register_dashboard_items()
@@ -169,6 +170,19 @@ class DeviceMonitoringConfig(AppConfig):
                 sender=Config,
                 dispatch_uid='monitoring.config_status_changed_receiver',
             )
+
+    @classmethod
+    def connect_offline_device_close_wifisession(cls):
+        if not app_settings.WIFI_SESSIONS_ENABLED:
+            return
+
+        DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+        WifiSession = load_model('device_monitoring', 'WifiSession')
+        health_status_changed.connect(
+            WifiSession.offline_device_close_session,
+            sender=DeviceMonitoring,
+            dispatch_uid='offline_device_close_session',
+        )
 
     @classmethod
     def config_status_changed_receiver(cls, sender, instance, **kwargs):

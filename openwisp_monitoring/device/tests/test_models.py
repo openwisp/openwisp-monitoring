@@ -771,3 +771,14 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
             self._save_device_data(device_data)
         self.assertEqual(WifiClient.objects.count(), 0)
         self.assertEqual(WifiSession.objects.count(), 0)
+
+    def test_device_offline_close_session(self):
+        device_monitoring = self._create_device_monitoring()
+        wifi_client = self._create_wifi_client()
+        self._create_wifi_session(
+            wifi_client=wifi_client, device=device_monitoring.device
+        )
+        self.assertEqual(WifiSession.objects.filter(stop_time__isnull=True).count(), 1)
+        device_monitoring.update_status('critical')
+        self.assertEqual(WifiSession.objects.filter(stop_time__isnull=True).count(), 0)
+        self.assertEqual(WifiSession.objects.count(), 1)

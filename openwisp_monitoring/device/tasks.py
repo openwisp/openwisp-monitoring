@@ -89,3 +89,11 @@ def delete_wifi_clients_and_sessions(days=6 * 30):
     WifiClient.objects.exclude(
         mac_address__in=WifiSession.objects.values_list('wifi_client')
     ).delete()
+
+
+@shared_task
+def offline_device_close_session(device_id):
+    WifiSession = load_model('device_monitoring', 'WifiSession')
+    WifiSession.objects.filter(device_id=device_id, stop_time__isnull=True).update(
+        stop_time=now()
+    )
