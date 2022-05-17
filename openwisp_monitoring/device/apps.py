@@ -265,7 +265,7 @@ class DeviceMonitoringConfig(AppConfig):
         if app_settings.WIFI_SESSIONS_ENABLED:
             WifiSession = load_model('device_monitoring', 'WifiSession')
             register_dashboard_chart(
-                position=6,
+                position=13,
                 config={
                     'name': _('Currently Active WiFi Sessions'),
                     'query_params': {
@@ -303,7 +303,7 @@ class DeviceMonitoringConfig(AppConfig):
                             )
                         ),
                         'label': _('Open WiFi session list'),
-                        'custom_css_classes': ['negative-top-20']
+                        'custom_css_classes': ['negative-top-20'],
                     },
                 },
             )
