@@ -303,6 +303,7 @@ class DeviceMonitoringConfig(AppConfig):
                             )
                         ),
                         'label': _('Open WiFi session list'),
+                        'custom_css_classes': ['negative-top-20']
                     },
                 },
             )
