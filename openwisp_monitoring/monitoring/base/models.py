@@ -21,7 +21,6 @@ from pytz import timezone as tz
 from pytz import utc
 from swapper import get_model_name
 
-from openwisp_controller.config.validators import mac_address_validator
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...db import default_chart_query, timeseries_db
@@ -761,74 +760,3 @@ class AbstractAlertSettings(TimeStampedEditableModel):
             # return result based on the current value and time
             time = timezone.now()
         return self._time_crossed(time) and value_crossed
-
-
-class AbstractWifiClient(TimeStampedEditableModel):
-    id = None
-    mac_address = models.CharField(
-        max_length=17,
-        db_index=True,
-        primary_key=True,
-        validators=[mac_address_validator],
-        help_text=_('MAC address'),
-    )
-    vendor = models.CharField(max_length=200, blank=True, null=True)
-    ht = models.BooleanField(default=False, verbose_name='HT')
-    vht = models.BooleanField(default=False, verbose_name='VHT')
-    wmm = models.BooleanField(default=False, verbose_name='WMM')
-    wds = models.BooleanField(default=False, verbose_name='WDS')
-    wps = models.BooleanField(default=False, verbose_name='WPS')
-
-    class Meta:
-        abstract = True
-        verbose_name = _('WiFi Client')
-
-
-class AbstractWifiSession(TimeStampedEditableModel):
-    created = None
-
-    device = models.ForeignKey(
-        get_model_name('config', 'Device'),
-        on_delete=models.CASCADE,
-    )
-    wifi_client = models.ForeignKey(
-        get_model_name('monitoring', 'WifiClient'),
-        on_delete=models.CASCADE,
-    )
-    ssid = models.CharField(
-        max_length=32, blank=True, null=True, verbose_name=_('SSID')
-    )
-    interface_name = models.CharField(
-        max_length=15,
-    )
-    start_time = models.DateTimeField(
-        verbose_name=_('start time'),
-        db_index=True,
-        auto_now=True,
-    )
-    stop_time = models.DateTimeField(
-        verbose_name=_('stop time'),
-        db_index=True,
-        null=True,
-        blank=True,
-    )
-
-    class Meta:
-        abstract = True
-        verbose_name = _('WiFi Session')
-        ordering = ('-start_time',)
-
-    def __str__(self):
-        return self.mac_address
-
-    @property
-    def mac_address(self):
-        return self.wifi_client.mac_address
-
-    @property
-    def vendor(self):
-        return self.wifi_client.vendor
-
-    @property
-    def organization(self):
-        return self.device.organization

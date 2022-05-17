@@ -4,8 +4,6 @@ from openwisp_monitoring.monitoring.base.models import (
     AbstractAlertSettings,
     AbstractChart,
     AbstractMetric,
-    AbstractWifiClient,
-    AbstractWifiSession,
 )
 
 
@@ -28,14 +26,4 @@ class Chart(DetailsModel, AbstractChart):
 
 class AlertSettings(DetailsModel, AbstractAlertSettings):
     class Meta(AbstractAlertSettings.Meta):
-        abstract = False
-
-
-class WifiClient(DetailsModel, AbstractWifiClient):
-    class Meta(AbstractWifiClient.Meta):
-        abstract = False
-
-
-class WifiSession(DetailsModel, AbstractWifiSession):
-    class Meta(AbstractWifiSession.Meta):
         abstract = False

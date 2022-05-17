@@ -1,6 +1,3 @@
-from openwisp_monitoring.monitoring.tests.test_admin import (
-    TestWifiSessionAdmin as BaseTestWifiSessionAdmin,
-)
 from openwisp_monitoring.monitoring.tests.test_charts import (
     TestCharts as BaseTestCharts,
 )
@@ -9,9 +6,6 @@ from openwisp_monitoring.monitoring.tests.test_db_creation import (
 )
 from openwisp_monitoring.monitoring.tests.test_models import (
     TestModels as BaseTestModels,
-)
-from openwisp_monitoring.monitoring.tests.test_models import (
-    TestWifiClientSession as BaseTestWifiClientSession,
 )
 from openwisp_monitoring.monitoring.tests.test_monitoring_notifications import (
     TestMonitoringNotifications as BaseTestMonitoringNotifications,
@@ -40,14 +34,6 @@ class TestModels(BaseTestModels):
         self.assertEqual(alert_s.details, f'Related metric name is {m.name}')
         c = self._create_chart(metric=m)
         self.assertEqual(c.details, None)
-
-
-class TestWifiClientSession(BaseTestWifiClientSession):
-    pass
-
-
-class TestWifiSessionAdmin(BaseTestWifiSessionAdmin):
-    pass
 
 
 class TestCharts(BaseTestCharts):

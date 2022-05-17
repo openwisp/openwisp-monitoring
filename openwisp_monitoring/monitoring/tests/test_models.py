@@ -1,30 +1,22 @@
-from copy import deepcopy
 from datetime import timedelta
-from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
-from freezegun import freeze_time
 from swapper import load_model
 
 from openwisp_utils.tests import catch_signal
 
-from .. import settings as app_settings
 from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
-from ..tasks import delete_wifi_clients_and_sessions
-from . import TestMonitoringMixin, TestWifiClientSessionMixin
+from . import TestMonitoringMixin
 
 start_time = timezone.now()
 ten_minutes_ago = start_time - timedelta(minutes=10)
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
-WifiClient = load_model('monitoring', 'WifiClient')
-WifiSession = load_model('monitoring', 'WifiSession')
-DeviceData = load_model('device_monitoring', 'DeviceData')
 Notification = load_model('openwisp_notifications', 'Notification')
 
 
@@ -357,126 +349,3 @@ class TestModels(TestMonitoringMixin, TestCase):
         m = self._create_general_metric(name='load')
         now = timezone.now()
         self.assertEqual(m._get_time(now.isoformat()), now)
-
-
-class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
-    wifi_client_model = WifiClient
-    wifi_session_model = WifiSession
-    device_data_model = DeviceData
-
-    def test_wifi_client_session_created(self):
-        device_data = self._save_device_data()
-        self.assertEqual(WifiClient.objects.count(), 3)
-        self.assertEqual(WifiSession.objects.count(), 3)
-        wifi_client1 = WifiClient.objects.get(mac_address='00:ee:ad:34:f5:3b')
-        self.assertEqual(wifi_client1.vendor, None)
-        self.assertEqual(wifi_client1.ht, True)
-        self.assertEqual(wifi_client1.vht, False)
-        self.assertEqual(wifi_client1.wmm, True)
-        self.assertEqual(wifi_client1.wds, False)
-        self.assertEqual(wifi_client1.wps, False)
-
-        wifi_client2 = WifiClient.objects.get(mac_address='b0:e1:7e:30:16:44')
-        self.assertEqual(wifi_client2.vendor, None)
-        self.assertEqual(wifi_client2.ht, True)
-        self.assertEqual(wifi_client2.vht, False)
-        self.assertEqual(wifi_client2.wmm, True)
-        self.assertEqual(wifi_client2.wds, False)
-        self.assertEqual(wifi_client2.wps, False)
-
-        wifi_client3 = WifiClient.objects.get(mac_address='c0:ee:fb:34:f5:4b')
-        self.assertEqual(wifi_client3.vendor, None)
-        self.assertEqual(wifi_client3.ht, True)
-        self.assertEqual(wifi_client3.vht, False)
-        self.assertEqual(wifi_client3.wmm, True)
-        self.assertEqual(wifi_client3.wds, False)
-        self.assertEqual(wifi_client3.wps, False)
-
-        wifi_client1_session = WifiSession.objects.get(wifi_client=wifi_client1)
-        self.assertEqual(wifi_client1_session.device, device_data)
-        self.assertEqual(wifi_client1_session.ssid, 'testnet')
-        self.assertEqual(wifi_client1_session.interface_name, 'wlan0')
-        self.assertNotEqual(wifi_client1_session.start_time, None)
-        self.assertEqual(wifi_client1_session.stop_time, None)
-
-        wifi_client2_session = WifiSession.objects.get(wifi_client=wifi_client2)
-        self.assertEqual(wifi_client2_session.device, device_data)
-        self.assertEqual(wifi_client2_session.ssid, 'testnet')
-        self.assertEqual(wifi_client2_session.interface_name, 'wlan1')
-        self.assertNotEqual(wifi_client2_session.start_time, None)
-        self.assertEqual(wifi_client2_session.stop_time, None)
-
-        wifi_client3_session = WifiSession.objects.get(wifi_client=wifi_client3)
-        self.assertEqual(wifi_client3_session.device, device_data)
-        self.assertEqual(wifi_client3_session.ssid, 'testnet')
-        self.assertEqual(wifi_client3_session.interface_name, 'wlan1')
-        self.assertNotEqual(wifi_client3_session.start_time, None)
-        self.assertEqual(wifi_client3_session.stop_time, None)
-
-    def test_updating_existing_wifi_sessions(self):
-        device_data = self._create_device_data()
-        self._save_device_data(device_data=device_data)
-        self.assertEqual(WifiClient.objects.count(), 3)
-        self.assertEqual(WifiSession.objects.count(), 3)
-
-        self._save_device_data(device_data=device_data)
-        self.assertEqual(WifiClient.objects.count(), 3)
-        self.assertEqual(WifiSession.objects.count(), 3)
-
-    def test_opening_closing_existing_sessions(self):
-        data = deepcopy(self._sample_data)
-        device_data = self._create_device_data()
-        self._save_device_data(device_data, data)
-        self.assertEqual(WifiSession.objects.filter(stop_time=None).count(), 3)
-        self.assertEqual(WifiSession.objects.count(), 3)
-        self.assertEqual(WifiClient.objects.count(), 3)
-
-        with self.subTest('Test closing session'):
-            self._save_device_data(
-                device_data, data={'type': 'DeviceMonitoring', 'interfaces': []}
-            )
-            self.assertEqual(WifiSession.objects.filter(stop_time=None).count(), 0)
-            self.assertEqual(WifiSession.objects.count(), 3)
-            self.assertEqual(WifiClient.objects.count(), 3)
-
-        with self.subTest('Test re-opening session for exising clients'):
-            self._save_device_data(device_data, data)
-            self.assertEqual(WifiSession.objects.filter(stop_time=None).count(), 3)
-            self.assertEqual(WifiSession.objects.count(), 6)
-            self.assertEqual(WifiClient.objects.count(), 3)
-
-    def test_delete_old_wifi_sessions(self):
-        with freeze_time(timezone.now() - timedelta(days=6 * 31)):
-            self._create_wifi_session()
-        self.assertEqual(WifiSession.objects.count(), 1)
-        delete_wifi_clients_and_sessions.delay()
-        self.assertEqual(WifiSession.objects.count(), 0)
-
-    def test_database_queries(self):
-        data = deepcopy(self._sample_data)
-        device_data = self._create_device_data()
-        with self.subTest('Test creating new clients and sessions'):
-            with self.assertNumQueries(28):
-                self._save_device_data(device_data, data)
-
-        with self.subTest('Test updating existing clients and sessions'):
-            with self.assertNumQueries(7):
-                self._save_device_data(device_data, data)
-
-        with self.subTest('Test closing existing sessions'):
-            with self.assertNumQueries(1):
-                self._save_device_data(
-                    device_data, data={'type': 'DeviceMonitoring', 'interface': []}
-                )
-
-        with self.subTest('Test new sessions for existing clients'):
-            with self.assertNumQueries(16):
-                self._save_device_data(device_data, data)
-
-    @patch.object(app_settings, 'WIFI_SESSIONS_ENABLED', False)
-    def test_disabling_wifi_sessions(self):
-        device_data = self._create_device_data()
-        with self.assertNumQueries(0):
-            self._save_device_data(device_data)
-        self.assertEqual(WifiClient.objects.count(), 0)
-        self.assertEqual(WifiSession.objects.count(), 0)

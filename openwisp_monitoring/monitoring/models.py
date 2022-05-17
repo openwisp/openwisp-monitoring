@@ -1,12 +1,6 @@
 from swapper import swappable_setting
 
-from .base.models import (
-    AbstractAlertSettings,
-    AbstractChart,
-    AbstractMetric,
-    AbstractWifiClient,
-    AbstractWifiSession,
-)
+from .base.models import AbstractAlertSettings, AbstractChart, AbstractMetric
 
 
 class Metric(AbstractMetric):
@@ -25,15 +19,3 @@ class AlertSettings(AbstractAlertSettings):
     class Meta(AbstractAlertSettings.Meta):
         abstract = False
         swappable = swappable_setting('monitoring', 'AlertSettings')
-
-
-class WifiClient(AbstractWifiClient):
-    class Meta(AbstractWifiClient.Meta):
-        abstract = False
-        swappable = swappable_setting('monitoring', 'WifiClient')
-
-
-class WifiSession(AbstractWifiSession):
-    class Meta(AbstractWifiSession.Meta):
-        abstract = False
-        swappable = swappable_setting('monitoring', 'WifiSession')
