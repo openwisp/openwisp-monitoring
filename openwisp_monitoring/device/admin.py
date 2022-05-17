@@ -5,7 +5,9 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline
 from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q
 from django.forms import ModelForm
+from django.templatetags.static import static
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -18,12 +20,16 @@ from nested_admin.nested import (
 from swapper import load_model
 
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
+from openwisp_users.multitenancy import MultitenantAdminMixin, MultitenantOrgFilter
+from openwisp_utils.admin import ReadOnlyAdmin
+from openwisp_utils.admin_theme.filters import SimpleInputFilter
 
 from ..monitoring.admin import MetricAdmin
 from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from . import settings as app_settings
 
 DeviceData = load_model('device_monitoring', 'DeviceData')
+WifiSession = load_model('device_monitoring', 'WifiSession')
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 Chart = load_model('monitoring', 'Chart')
@@ -31,6 +37,7 @@ Device = load_model('config', 'Device')
 Metric = load_model('monitoring', 'Metric')
 Notification = load_model('openwisp_notifications', 'Notification')
 Check = load_model('check', 'Check')
+Organization = load_model('openwisp_users', 'Organization')
 
 
 class CheckInlineFormSet(BaseGenericInlineFormSet):
@@ -216,3 +223,145 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
 
 admin.site.unregister(Device)
 admin.site.register(Device, DeviceAdmin)
+
+
+class DeviceFilter(SimpleInputFilter):
+    """
+    Filters WifiSession queryset for input device name
+    or primary key
+    """
+
+    parameter_name = 'device'
+    title = _('device name or ID')
+
+    def queryset(self, request, queryset):
+        if self.value() is not None:
+            try:
+                uuid.UUID(self.value())
+            except ValueError:
+                lookup = Q(device__name=self.value())
+            else:
+                lookup = Q(device_id=self.value())
+            return queryset.filter(lookup)
+
+
+class WifiSessionAdmin(MultitenantAdminMixin, ReadOnlyAdmin):
+    multitenant_parent = 'device'
+    model = WifiSession
+    list_display = [
+        'mac_address',
+        'vendor',
+        'related_organization',
+        'related_device',
+        'ssid',
+        'ht',
+        'vht',
+        'start_time',
+        'get_stop_time',
+    ]
+    fields = [
+        'related_organization',
+        'mac_address',
+        'vendor',
+        'related_device',
+        'ssid',
+        'interface_name',
+        'ht',
+        'vht',
+        'wmm',
+        'wds',
+        'wps',
+        'start_time',
+        'get_stop_time',
+        'modified',
+    ]
+    search_fields = ['wifi_client__mac_address', 'device__name', 'device__mac_address']
+    list_filter = [
+        ('device__organization', MultitenantOrgFilter),
+        'start_time',
+        'stop_time',
+        'device__group',
+        DeviceFilter,
+    ]
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = super().get_readonly_fields(request, obj)
+        fields += [
+            'related_organization',
+            'mac_address',
+            'vendor',
+            'ht',
+            'vht',
+            'wmm',
+            'wds',
+            'wps',
+            'get_stop_time',
+            'modified',
+            'related_device',
+        ]
+        return fields
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .select_related(
+                'wifi_client', 'device', 'device__organization', 'device__group'
+            )
+        )
+
+    def _get_boolean_html(self, value):
+        icon = static('admin/img/icon-{}.svg'.format('yes' if value is True else 'no'))
+        return mark_safe(f'<img src="{icon}">')
+
+    def ht(self, obj):
+        return self._get_boolean_html(obj.wifi_client.ht)
+
+    ht.short_description = 'HT'
+
+    def vht(self, obj):
+        return self._get_boolean_html(obj.wifi_client.vht)
+
+    vht.short_description = 'VHT'
+
+    def wmm(self, obj):
+        return self._get_boolean_html(obj.wifi_client.wmm)
+
+    wmm.short_description = 'WMM'
+
+    def wds(self, obj):
+        return self._get_boolean_html(obj.wifi_client.wds)
+
+    wds.short_description = 'WDS'
+
+    def wps(self, obj):
+        return self._get_boolean_html(obj.wifi_client.wps)
+
+    wps.short_description = 'WPS'
+
+    def get_stop_time(self, obj):
+        if obj.stop_time is None:
+            return mark_safe('<strong style="color:green;">online</strong>')
+        return obj.stop_time
+
+    get_stop_time.short_description = _('stop time')
+
+    def related_device(self, obj):
+        app_label = Device._meta.app_label
+        url = reverse(f'admin:{app_label}_device_change', args=[obj.device_id])
+        return mark_safe(f'<a href="{url}">{obj.device}</a>')
+
+    related_device.short_description = _('device')
+
+    def related_organization(self, obj):
+        app_label = Organization._meta.app_label
+        url = reverse(
+            f'admin:{app_label}_organization_change', args=[obj.organization.id]
+        )
+        return mark_safe(f'<a href="{url}">{obj.organization}</a>')
+
+    related_organization.short_description = _('organization')
+
+
+if app_settings.WIFI_SESSIONS_ENABLED:
+    admin.site.register(WifiSession, WifiSessionAdmin)

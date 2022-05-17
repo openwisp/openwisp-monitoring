@@ -1,18 +1,26 @@
+from copy import deepcopy
+
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.forms import generic_inlineformset_factory
+from django.test import TestCase
 from django.urls import reverse
-from django.utils.timezone import now
+from django.utils.timezone import now, timedelta
+from freezegun import freeze_time
 from swapper import get_model_name, load_model
 
+from openwisp_controller.config.tests.utils import CreateDeviceGroupMixin
 from openwisp_controller.geo.tests.utils import TestGeoMixin
+from openwisp_users.tests.utils import TestMultitenantAdminMixin
 
 from ...check.settings import CHECK_CLASSES
 from ..admin import CheckInline, CheckInlineFormSet
-from . import DeviceMonitoringTestCase
+from . import DeviceMonitoringTestCase, TestWifiClientSessionMixin
 
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 DeviceData = load_model('device_monitoring', 'DeviceData')
+WifiClient = load_model('device_monitoring', 'WifiClient')
+WifiSession = load_model('device_monitoring', 'WifiSession')
 User = get_user_model()
 Check = load_model('check', 'Check')
 # needed for config.geo
@@ -310,3 +318,154 @@ class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
             self.assertContains(response, static_file)
         self.assertContains(response, 'Monitoring Status')
         self.assertContains(response, '#267126')
+
+
+class TestWifiSessionAdmin(
+    CreateDeviceGroupMixin,
+    TestMultitenantAdminMixin,
+    TestWifiClientSessionMixin,
+    TestCase,
+):
+    def setUp(self):
+        admin = self._create_admin()
+        self.client.force_login(admin)
+
+    def test_changelist_filters_and_multitenancy(self):
+        url = reverse(
+            'admin:{app_label}_{model_name}_changelist'.format(
+                app_label=WifiSession._meta.app_label,
+                model_name=WifiSession._meta.model_name,
+            )
+        )
+        org1 = self._create_org(name='org1', slug='org1')
+        org1_device_group = self._create_device_group(
+            name='Org1 Routers', organization=org1
+        )
+        org1_device = self._create_device(
+            name='org1-device', organization=org1, group=org1_device_group
+        )
+        org1_dd = self._create_device_data(device=org1_device)
+        org1_interface_data = deepcopy(self._sample_data['interfaces'][0])
+        org1_interface_data['name'] = 'org1_wlan0'
+        org1_interface_data['wireless']['ssid'] = 'org1_wifi'
+        org1_interface_data['wireless']['clients'][0]['mac'] = '00:ee:ad:34:f5:3b'
+
+        org2 = self._create_org(name='org1', slug='org2')
+        org2_device_group = self._create_device_group(
+            name='Org2 Routers', organization=org2
+        )
+        org2_device = self._create_device(
+            name='org2-device', organization=org2, group=org2_device_group
+        )
+        org2_dd = self._create_device_data(device=org2_device)
+        org2_interface_data = deepcopy(self._sample_data['interfaces'][0])
+        org2_interface_data['name'] = 'org2_wlan0'
+        org2_interface_data['wireless']['ssid'] = 'org2_wifi'
+        org2_interface_data['wireless']['clients'][0]['mac'] = '00:ee:ad:34:f5:3c'
+
+        self._save_device_data(
+            device_data=org1_dd,
+            data={'type': 'DeviceMonitoring', 'interfaces': [org1_interface_data]},
+        )
+        self.assertEqual(WifiClient.objects.count(), 1)
+        self.assertEqual(
+            WifiSession.objects.filter(device__organization=org1).count(), 1
+        )
+        WifiSession.objects.filter(device__organization=org1).update(stop_time=now())
+
+        with freeze_time(now() - timedelta(days=2)):
+            self._save_device_data(
+                device_data=org2_dd,
+                data={'type': 'DeviceMonitoring', 'interfaces': [org2_interface_data]},
+            )
+        self.assertEqual(WifiClient.objects.count(), 2)
+        self.assertEqual(
+            WifiSession.objects.filter(device__organization=org2).count(), 1
+        )
+
+        def _assert_org2_wifi_session_in_response(
+            response, org1_interface_data, org2_interface_data
+        ):
+            self.assertContains(
+                response, '<p class="paginator">\n\n1 WiFi Session\n\n\n</p>'
+            )
+            self.assertContains(
+                response,
+                '<td class="field-ssid">{}</td>'.format(
+                    org2_interface_data['wireless']['ssid']
+                ),
+            )
+            self.assertContains(
+                response, org2_interface_data['wireless']['clients'][0]['mac']
+            )
+            self.assertNotContains(
+                response,
+                '<td class="field-ssid">{}</td>'.format(
+                    org1_interface_data['wireless']['ssid']
+                ),
+            )
+            self.assertNotContains(
+                response, org1_interface_data['wireless']['clients'][0]['mac']
+            )
+
+        with self.subTest('Test without filters'):
+            response = self.client.get(url)
+            self.assertContains(
+                response, '<p class="paginator">\n\n2 WiFi Sessions\n\n\n</p>'
+            )
+
+        with self.subTest('Test start_time filter'):
+            response = self.client.get(
+                url, {'start_time__lte': now() - timedelta(days=1)}
+            )
+            _assert_org2_wifi_session_in_response(
+                response, org1_interface_data, org2_interface_data
+            )
+
+        with self.subTest('Test stop_time filter'):
+            response = self.client.get(url, {'stop_time__isnull': 'True'})
+            _assert_org2_wifi_session_in_response(
+                response, org1_interface_data, org2_interface_data
+            )
+
+        with self.subTest('Test organization filter'):
+            response = self.client.get(
+                url, {'device__organization__id__exact': str(org2.pk)}
+            )
+            _assert_org2_wifi_session_in_response(
+                response, org1_interface_data, org2_interface_data
+            )
+
+        with self.subTest('Test device_group filter'):
+            response = self.client.get(
+                url, {'device__group__id__exact': str(org2_device_group.pk)}
+            )
+            _assert_org2_wifi_session_in_response(
+                response, org1_interface_data, org2_interface_data
+            )
+
+        with self.subTest('Test device filter'):
+            # Filter by device name
+            response = self.client.get(url, {'device': org2_device.name})
+            _assert_org2_wifi_session_in_response(
+                response, org1_interface_data, org2_interface_data
+            )
+            # Filter by device pk
+            response = self.client.get(url, {'device': str(org2_device.pk)})
+            _assert_org2_wifi_session_in_response(
+                response, org1_interface_data, org2_interface_data
+            )
+
+        with self.subTest('Test multitenancy'):
+            administrator = self._create_administrator(organizations=[org2])
+            self.client.force_login(administrator)
+            _assert_org2_wifi_session_in_response(
+                response, org1_interface_data, org2_interface_data
+            )
+
+    def test_wifi_session_chart_on_index(self):
+        url = reverse('admin:index')
+        self._create_wifi_session()
+        response = self.client.get(url)
+        self.assertContains(response, 'Currently Active WiFi Sessions')
+        self.assertContains(response, 'Open WiFi session list')

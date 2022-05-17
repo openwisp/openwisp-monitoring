@@ -9,6 +9,9 @@ from openwisp_utils.admin import TimeReadonlyAdminMixin
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
+WifiSession = load_model('device_monitoring', 'WifiSession')
+Device = load_model('config', 'Device')
+Organization = load_model('openwisp_users', 'Organization')
 
 
 class AlertSettingsForm(ModelForm):

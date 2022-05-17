@@ -20,12 +20,14 @@ from netaddr import EUI, NotRegisteredError
 from pytz import timezone as tz
 from swapper import load_model
 
+from openwisp_controller.config.validators import mac_address_validator
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...db import device_data_query, timeseries_db
 from ...monitoring.signals import threshold_crossed
 from ...monitoring.tasks import timeseries_write
 from .. import settings as app_settings
+from .. import tasks
 from ..schema import schema
 from ..signals import health_status_changed
 from ..utils import SHORT_RP, get_device_cache_key
@@ -210,6 +212,10 @@ class AbstractDeviceData(object):
             ],
             timeout=86400,  # 24 hours
         )
+        if app_settings.WIFI_SESSIONS_ENABLED:
+            tasks.save_wifi_clients_and_sessions.delay(
+                device_data=self.data, device_pk=self.pk
+            )
 
     def json(self, *args, **kwargs):
         return json.dumps(self.data, *args, **kwargs)
@@ -311,3 +317,79 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
             ):
                 return True
         return False
+
+
+class AbstractWifiClient(TimeStampedEditableModel):
+    id = None
+    mac_address = models.CharField(
+        max_length=17,
+        db_index=True,
+        primary_key=True,
+        validators=[mac_address_validator],
+        help_text=_('MAC address'),
+    )
+    vendor = models.CharField(max_length=200, blank=True, null=True)
+    ht = models.BooleanField(default=False, verbose_name='HT')
+    vht = models.BooleanField(default=False, verbose_name='VHT')
+    wmm = models.BooleanField(default=False, verbose_name='WMM')
+    wds = models.BooleanField(default=False, verbose_name='WDS')
+    wps = models.BooleanField(default=False, verbose_name='WPS')
+
+    class Meta:
+        abstract = True
+        verbose_name = _('WiFi Client')
+
+
+class AbstractWifiSession(TimeStampedEditableModel):
+    created = None
+
+    device = models.ForeignKey(
+        swapper.get_model_name('config', 'Device'),
+        on_delete=models.CASCADE,
+    )
+    wifi_client = models.ForeignKey(
+        swapper.get_model_name('device_monitoring', 'WifiClient'),
+        on_delete=models.CASCADE,
+    )
+    ssid = models.CharField(
+        max_length=32, blank=True, null=True, verbose_name=_('SSID')
+    )
+    interface_name = models.CharField(
+        max_length=15,
+    )
+    start_time = models.DateTimeField(
+        verbose_name=_('start time'),
+        db_index=True,
+        auto_now=True,
+    )
+    stop_time = models.DateTimeField(
+        verbose_name=_('stop time'),
+        db_index=True,
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        abstract = True
+        verbose_name = _('WiFi Session')
+        ordering = ('-start_time',)
+
+    def __str__(self):
+        return self.mac_address
+
+    @property
+    def mac_address(self):
+        return self.wifi_client.mac_address
+
+    @property
+    def vendor(self):
+        return self.wifi_client.vendor
+
+    @property
+    def organization(self):
+        return self.device.organization
+
+    @classmethod
+    def offline_device_close_session(cls, instance, *args, **kwargs):
+        if kwargs['status'] == 'critical':
+            tasks.offline_device_close_session.delay(device_id=instance.device_id)

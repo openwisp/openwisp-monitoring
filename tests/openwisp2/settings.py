@@ -258,6 +258,8 @@ if os.environ.get('SAMPLE_APP', False):
     MONITORING_CHART_MODEL = 'sample_monitoring.Chart'
     MONITORING_METRIC_MODEL = 'sample_monitoring.Metric'
     MONITORING_ALERTSETTINGS_MODEL = 'sample_monitoring.AlertSettings'
+    DEVICE_MONITORING_WIFICLIENT_MODEL = 'sample_device_monitoring.WifiClient'
+    DEVICE_MONITORING_WIFISESSION_MODEL = 'sample_device_monitoring.WifiSession'
     DEVICE_MONITORING_DEVICEDATA_MODEL = 'sample_device_monitoring.DeviceData'
     DEVICE_MONITORING_DEVICEMONITORING_MODEL = (
         'sample_device_monitoring.DeviceMonitoring'

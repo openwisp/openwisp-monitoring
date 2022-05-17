@@ -3,10 +3,11 @@ from urllib.parse import urljoin
 from django.apps import AppConfig
 from django.conf import settings
 from django.core.cache import cache
+from django.db.models import Case, Count, Sum, When
 from django.db.models.signals import post_delete, post_save
 from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
-from swapper import load_model
+from swapper import get_model_name, load_model
 
 from openwisp_controller.config.signals import checksum_requested, config_status_changed
 from openwisp_controller.connection import settings as connection_settings
@@ -16,6 +17,7 @@ from openwisp_utils.admin_theme import (
     register_dashboard_chart,
     register_dashboard_template,
 )
+from openwisp_utils.admin_theme.menu import register_menu_subitem
 
 from ..check import settings as check_settings
 from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
@@ -35,9 +37,11 @@ class DeviceMonitoringConfig(AppConfig):
         self.connect_is_working_changed()
         self.connect_device_signals()
         self.connect_config_status_changed()
+        self.connect_offline_device_close_wifisession()
         self.device_recovery_detection()
         self.set_update_config_model()
         self.register_dashboard_items()
+        self.register_menu_groups()
         self.add_connection_ignore_notification_reasons()
 
     def connect_device_signals(self):
@@ -167,6 +171,19 @@ class DeviceMonitoringConfig(AppConfig):
             )
 
     @classmethod
+    def connect_offline_device_close_wifisession(cls):
+        if not app_settings.WIFI_SESSIONS_ENABLED:
+            return
+
+        DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+        WifiSession = load_model('device_monitoring', 'WifiSession')
+        health_status_changed.connect(
+            WifiSession.offline_device_close_session,
+            sender=DeviceMonitoring,
+            dispatch_uid='offline_device_close_session',
+        )
+
+    @classmethod
     def config_status_changed_receiver(cls, sender, instance, **kwargs):
         from ..check.tasks import perform_check
 
@@ -241,6 +258,65 @@ class DeviceMonitoringConfig(AppConfig):
                 extra_config={
                     'monitoring_device_list_url': device_list_url,
                     'monitoring_location_geojson_url': loc_geojson_url,
+                },
+            )
+
+        if app_settings.WIFI_SESSIONS_ENABLED:
+            WifiSession = load_model('device_monitoring', 'WifiSession')
+            register_dashboard_chart(
+                position=13,
+                config={
+                    'name': _('Currently Active WiFi Sessions'),
+                    'query_params': {
+                        'app_label': WifiSession._meta.app_label,
+                        'model': WifiSession._meta.model_name,
+                        'annotate': {
+                            'active': Count(
+                                Case(
+                                    When(
+                                        stop_time__isnull=True,
+                                        then=1,
+                                    )
+                                )
+                            ),
+                        },
+                        'aggregate': {
+                            'active__sum': Sum('active'),
+                        },
+                    },
+                    'filters': {
+                        'key': 'stop_time__isnull',
+                        'active__sum': 'true',
+                    },
+                    'colors': {
+                        'active__sum': '#267126',
+                    },
+                    'labels': {
+                        'active__sum': _('Currently Active WiFi Sessions'),
+                    },
+                    'quick_link': {
+                        'url': reverse_lazy(
+                            'admin:{app_label}_{model_name}_changelist'.format(
+                                app_label=WifiSession._meta.app_label,
+                                model_name=WifiSession._meta.model_name,
+                            )
+                        ),
+                        'label': _('Open WiFi session list'),
+                        'custom_css_classes': ['negative-top-20'],
+                    },
+                },
+            )
+
+    def register_menu_groups(self):
+        if app_settings.WIFI_SESSIONS_ENABLED:
+            register_menu_subitem(
+                group_position=80,
+                item_position=0,
+                config={
+                    'label': _('WiFi Sessions'),
+                    'model': get_model_name('device_monitoring', 'WifiSession'),
+                    'name': 'changelist',
+                    'icon': 'ow-monitoring-wifi',
                 },
             )
 

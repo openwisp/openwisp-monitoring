@@ -88,6 +88,9 @@ Available Features
   mobile signal (LTE/UMTS/GSM `signal strength <#mobile-signal-strength>`_,
   `signal quality <#mobile-signal-quality>`_,
   `access technology in use <#mobile-access-technology-in-use>`_)
+* Maintains a record of `WiFi sessions <#monitoring-wifi-sessions>`_ with clients'
+  MAC address and vendor, session start and stop time and connected device
+  along with other information
 * Charts can be viewed at resolutions of 1 day, 3 days, a week, a month and a year
 * Configurable alerts
 * CSV Export of monitoring data
@@ -370,6 +373,11 @@ Configure celery (you may use a different broker if you want):
         'run_checks': {
             'task': 'openwisp_monitoring.check.tasks.run_checks',
             'schedule': timedelta(minutes=5),
+        },
+        # Delete old WifiSession
+        'delete_wifi_clients_and_sessions': {
+            'task': 'openwisp_monitoring.monitoring.tasks.delete_wifi_clients_and_sessions',
+            'schedule': timedelta(days=180),
         },
     }
 
@@ -791,6 +799,54 @@ Mobile Access Technology in use
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/access-technology.png
   :align: center
 
+Monitoring WiFi Sessions
+------------------------
+
+OpenWISP Monitoring maintains a record of WiFi sessions created by clients
+joined to a radio of managed devices. The WiFi sessions are created
+asynchronously from the monitoring data received from the device.
+
+You can filter both currently open sessions and past sessions by their
+*start* or *stop* time or *organization* or *group* of the device clients
+are connected to or even directly by a *device* name or ID.
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/wifi-session-changelist.png
+  :align: center
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/wifi-session-change.png
+  :align: center
+
+You can disable this feature by configuring
+`OPENWISP_MONITORING_WIFI_SESSIONS_ENABLED <#openwisp_monitoring_wifi_sessions_enabled>`_
+setting.
+
+Scheduled deletion of WiFi sessions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+OpenWISP Monitoring provides a celery task to automatically delete
+WiFi sessions older than a pre-configured number of days. In order to run this
+task periodically, you will need to configure ``CELERY_BEAT_SCHEDULE`` setting as shown
+in `setup instructions <#setup-integrate-in-an-existing-django-project>`_.
+
+The celery task takes only one argument, i.e. number of days. You can provide
+any number of days in `args` key while configuring ``CELERY_BEAT_SCHEDULE`` setting.
+
+E.g., if you want WiFi Sessions older than 30 days to get deleted automatically,
+then configure ``CELERY_BEAT_SCHEDULE`` as follows:
+
+.. code-block:: python
+
+    CELERY_BEAT_SCHEDULE = {
+        'delete_wifi_clients_and_sessions': {
+            'task': 'openwisp_monitoring.monitoring.tasks.delete_wifi_clients_and_sessions',
+            'schedule': timedelta(days=1),
+            'args': (30,), # Here we have defined 30 instead of 180 as shown in setup instructions
+        },
+    }
+
+Please refer to `"Periodic Tasks" section of Celery's documentation <https://docs.celeryproject.org/en/stable/userguide/periodic-tasks.html>`_
+to learn more.
+
 Default Alerts / Notifications
 ------------------------------
 
@@ -968,6 +1024,18 @@ you can use the following configuration:
         'problem': 'problem',
         'critical': 'offline'
     }
+
+``OPENWISP_MONITORING_WIFI_SESSIONS_ENABLED``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``bool``    |
++--------------+-------------+
+| **default**: | ``True``    |
++--------------+-------------+
+
+Setting this to ``False`` will disable `Monitoring Wifi Sessions <#monitoring-wifi-sessions>`_
+feature.
 
 ``OPENWISP_MONITORING_MANAGEMENT_IP_ONLY``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1377,8 +1445,8 @@ An example usage has been shown below.
                     'scale': [
                         [[0, '#c13000'],
                         [0.1,'cb7222'],
-                        [0.5,'#deed0e'], 
-                        [0.9, '#7db201'], 
+                        [0.5,'#deed0e'],
+                        [0.9, '#7db201'],
                         [1, '#498b26']],
                     ],
                     'map': [
@@ -1981,6 +2049,8 @@ Add the following to your ``settings.py``:
     # For extending device_monitoring app
     DEVICE_MONITORING_DEVICEDATA_MODEL = 'YOUR_MODULE_NAME.DeviceData'
     DEVICE_MONITORING_DEVICEMONITORING_MODEL = 'YOUR_MODULE_NAME.DeviceMonitoring'
+    DEVICE_MONITORING_WIFICLIENT_MODEL = 'YOUR_MODULE_NAME.WifiClient'
+    DEVICE_MONITORING_WIFISESSION_MODEL = 'YOUR_MODULE_NAME.WifiSession'
 
 Substitute ``<YOUR_MODULE_NAME>`` with your actual django app name
 (also known as ``app_label``).
@@ -2028,10 +2098,11 @@ Similarly for ``device_monitoring`` app, you can do it as:
 
 .. code-block:: python
 
-    from openwisp_monitoring.device.admin import DeviceAdmin
+    from openwisp_monitoring.device.admin import DeviceAdmin, WifiSessionAdmin
 
     DeviceAdmin.list_display.insert(1, 'my_custom_field')
     DeviceAdmin.ordering = ['-my_custom_field']
+    WifiSessionAdmin.fields += ['my_custom_field']
 
 Similarly for ``monitoring`` app, you can do it as:
 
@@ -2074,14 +2145,21 @@ For ``device_monitoring`` app,
     from django.contrib import admin
 
     from openwisp_monitoring.device_monitoring.admin import DeviceAdmin as BaseDeviceAdmin
+    from openwisp_monitoring.device_monitoring.admin import WifiSessionAdmin as BaseWifiSessionAdmin
     from swapper import load_model
 
     Device = load_model('config', 'Device')
+    WifiSession = load_model('device_monitoring', 'WifiSession')
 
     admin.site.unregister(Device)
+    admin.site.unregister(WifiSession)
 
     @admin.register(Device)
     class DeviceAdmin(BaseDeviceAdmin):
+        # add your changes here
+
+    @admin.register(WifiSession)
+    class WifiSessionAdmin(BaseWifiSessionAdmin):
         # add your changes here
 
 For ``monitoring`` app,
