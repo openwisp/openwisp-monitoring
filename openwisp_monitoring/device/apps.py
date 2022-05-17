@@ -1,4 +1,3 @@
-from copy import deepcopy
 from urllib.parse import urljoin
 
 from django.apps import AppConfig
@@ -317,7 +316,7 @@ class DeviceMonitoringConfig(AppConfig):
                     'label': _('WiFi Sessions'),
                     'model': get_model_name('device_monitoring', 'WifiSession'),
                     'name': 'changelist',
-                    'icon': 'ow-monitoring-checks',
+                    'icon': 'ow-monitoring-wifi',
                 },
             )
 
