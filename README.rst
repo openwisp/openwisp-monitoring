@@ -90,7 +90,7 @@ Available Features
   `access technology in use <#mobile-access-technology-in-use>`_)
 * Maintains a record of `WiFi sessions <#monitoring-wifi-sessions>`_ with clients'
   MAC address and vendor, session start and stop time and connected device
-  along with other information.
+  along with other information
 * Charts can be viewed at resolutions of 1 day, 3 days, a week, a month and a year
 * Configurable alerts
 * CSV Export of monitoring data
@@ -802,13 +802,13 @@ Mobile Access Technology in use
 Monitoring WiFi Sessions
 ------------------------
 
-*openwisp-monitoring* maintains a record of WiFi sessions created by clients
+OpenWISP Monitoring maintains a record of WiFi sessions created by clients
 joined to a radio of managed devices. The WiFi sessions are created
 asynchronously from the monitoring data received from the device.
 
-You can filter these sessions by their *start* or *stop* time or
-*organization* or *group* of the device clients are connected to or
-even directly by a *device* name or ID.
+You can filter both currently open sessions and past sessions by their
+*start* or *stop* time or *organization* or *group* of the device clients
+are connected to or even directly by a *device* name or ID.
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/wifi-session-changelist.png
   :align: center
@@ -823,7 +823,7 @@ setting.
 Scheduled deletion of WiFi sessions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-*openwisp-monitoring* provides a celery task to automatically delete
+OpenWISP Monitoring provides a celery task to automatically delete
 WiFi sessions older than a pre-configured number of days. In order to run this
 task periodically, you will need to configure ``CELERY_BEAT_SCHEDULE`` setting as shown
 in `setup instructions <#setup-integrate-in-an-existing-django-project>`_.
@@ -2049,6 +2049,8 @@ Add the following to your ``settings.py``:
     # For extending device_monitoring app
     DEVICE_MONITORING_DEVICEDATA_MODEL = 'YOUR_MODULE_NAME.DeviceData'
     DEVICE_MONITORING_DEVICEMONITORING_MODEL = 'YOUR_MODULE_NAME.DeviceMonitoring'
+    DEVICE_MONITORING_WIFICLIENT_MODEL = 'YOUR_MODULE_NAME.WifiClient'
+    DEVICE_MONITORING_WIFISESSION_MODEL = 'YOUR_MODULE_NAME.WifiSession'
 
 Substitute ``<YOUR_MODULE_NAME>`` with your actual django app name
 (also known as ``app_label``).
@@ -2096,10 +2098,11 @@ Similarly for ``device_monitoring`` app, you can do it as:
 
 .. code-block:: python
 
-    from openwisp_monitoring.device.admin import DeviceAdmin
+    from openwisp_monitoring.device.admin import DeviceAdmin, WifiSessionAdmin
 
     DeviceAdmin.list_display.insert(1, 'my_custom_field')
     DeviceAdmin.ordering = ['-my_custom_field']
+    WifiSessionAdmin.fields += ['my_custom_field']
 
 Similarly for ``monitoring`` app, you can do it as:
 
@@ -2142,14 +2145,21 @@ For ``device_monitoring`` app,
     from django.contrib import admin
 
     from openwisp_monitoring.device_monitoring.admin import DeviceAdmin as BaseDeviceAdmin
+    from openwisp_monitoring.device_monitoring.admin import WifiSessionAdmin as BaseWifiSessionAdmin
     from swapper import load_model
 
     Device = load_model('config', 'Device')
+    WifiSession = load_model('device_monitoring', 'WifiSession')
 
     admin.site.unregister(Device)
+    admin.site.unregister(WifiSession)
 
     @admin.register(Device)
     class DeviceAdmin(BaseDeviceAdmin):
+        # add your changes here
+
+    @admin.register(WifiSession)
+    class WifiSessionAdmin(BaseWifiSessionAdmin):
         # add your changes here
 
 For ``monitoring`` app,
