@@ -311,7 +311,7 @@ class WifiSessionAdmin(MultitenantAdminMixin, ReadOnlyAdmin):
         )
 
     def _get_boolean_html(self, value):
-        icon = static('/admin/img/icon-{}.svg'.format('yes' if value is True else 'no'))
+        icon = static('admin/img/icon-{}.svg'.format('yes' if value is True else 'no'))
         return mark_safe(f'<img src="{icon}">')
 
     def ht(self, obj):
