@@ -11,8 +11,6 @@ import swapper
 from django.conf import settings
 from django.db import migrations, models
 
-from . import assign_permissions_to_groups
-
 
 class Migration(migrations.Migration):
 
@@ -134,8 +132,5 @@ class Migration(migrations.Migration):
                 'abstract': False,
                 'swappable': 'DEVICE_MONITORING_WIFISESSION_MODEL',
             },
-        ),
-        migrations.RunPython(
-            assign_permissions_to_groups, reverse_code=migrations.RunPython.noop
         ),
     ]
