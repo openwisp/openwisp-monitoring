@@ -18,7 +18,7 @@ from openwisp_utils.admin_theme import (
     register_dashboard_chart,
     register_dashboard_template,
 )
-from openwisp_utils.admin_theme.menu import register_menu_group
+from openwisp_utils.admin_theme.menu import register_menu_subitem
 
 from ..check import settings as check_settings
 from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
@@ -309,22 +309,17 @@ class DeviceMonitoringConfig(AppConfig):
             )
 
     def register_menu_groups(self):
-        from ..monitoring.apps import MonitoringConfig
-
-        menu_config = deepcopy(MonitoringConfig.menu_group_config)
         if app_settings.WIFI_SESSIONS_ENABLED:
-            menu_config['items'].update(
-                {
-                    1: {
-                        'label': _('WiFi Sessions'),
-                        'model': get_model_name('device_monitoring', 'WifiSession'),
-                        'name': 'changelist',
-                        'icon': 'ow-monitoring-checks',
-                    },
-                }
+            register_menu_subitem(
+                group_position=80,
+                item_position=0,
+                config={
+                    'label': _('WiFi Sessions'),
+                    'model': get_model_name('device_monitoring', 'WifiSession'),
+                    'name': 'changelist',
+                    'icon': 'ow-monitoring-checks',
+                },
             )
-        register_menu_group(position=80, config=menu_config)
-        del MonitoringConfig
 
     def add_connection_ignore_notification_reasons(self):
         ConnectionConfig._ignore_connection_notification_reasons.extend(
