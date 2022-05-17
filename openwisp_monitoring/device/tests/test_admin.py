@@ -462,3 +462,10 @@ class TestWifiSessionAdmin(
             _assert_org2_wifi_session_in_response(
                 response, org1_interface_data, org2_interface_data
             )
+
+    def test_wifi_session_chart_on_index(self):
+        url = reverse('admin:index')
+        self._create_wifi_session()
+        response = self.client.get(url)
+        self.assertContains(response, 'Currently Active WiFi Sessions')
+        self.assertContains(response, 'Open WiFi session list')
