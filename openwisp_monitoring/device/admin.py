@@ -12,6 +12,7 @@ from django.urls import resolve, reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
+from import_export.admin import ImportExportMixin
 from nested_admin.nested import (
     NestedGenericStackedInline,
     NestedModelAdmin,
@@ -20,6 +21,7 @@ from nested_admin.nested import (
 from swapper import load_model
 
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
+from openwisp_controller.config.admin import DeviceResource as BaseDeviceResource
 from openwisp_users.multitenancy import MultitenantAdminMixin, MultitenantOrgFilter
 from openwisp_utils.admin import ReadOnlyAdmin
 from openwisp_utils.admin_theme.filters import SimpleInputFilter
@@ -221,8 +223,21 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         return inlines
 
 
-admin.site.unregister(Device)
-admin.site.register(Device, DeviceAdmin)
+_exportable_fields = BaseDeviceResource.Meta.fields[:]  # copy
+_exportable_fields.insert(
+    _exportable_fields.index('config__status'), 'monitoring__status'
+)
+
+
+class DeviceResource(BaseDeviceResource):
+    class Meta:
+        model = Device
+        fields = _exportable_fields
+        export_order = fields
+
+
+class DeviceAdminExportable(ImportExportMixin, DeviceAdmin):
+    resource_class = DeviceResource
 
 
 class DeviceFilter(SimpleInputFilter):
@@ -416,6 +431,9 @@ class WifiSessionAdmin(
             )
         )
 
+
+admin.site.unregister(Device)
+admin.site.register(Device, DeviceAdminExportable)
 
 if app_settings.WIFI_SESSIONS_ENABLED:
     admin.site.register(WifiSession, WifiSessionAdmin)
