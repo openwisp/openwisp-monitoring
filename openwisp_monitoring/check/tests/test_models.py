@@ -54,7 +54,10 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
             )
             self.assertEqual(c.check_class, ConfigApplied)
         with self.subTest('Test DeviceMonitoring check Class'):
-            c = Check(name='Snmp class check', check=self._SNMP_DEVICEMONITORING,)
+            c = Check(
+                name='Snmp class check',
+                check_type=self._SNMP_DEVICEMONITORING,
+            )
             self.assertEqual(c.check_class, Snmp)
 
     def test_base_check_class(self):
@@ -92,7 +95,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         with self.subTest('Test DeviceMonitoring check instance'):
             c = Check(
                 name='DeviceMonitoring class check',
-                check=self._SNMP_DEVICEMONITORING,
+                check_type=self._SNMP_DEVICEMONITORING,
                 content_object=obj,
                 params={},
             )
@@ -254,7 +257,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         d = self.device_model.objects.first()
         d.monitoring.update_status('critical')
         self.assertEqual(Check.objects.count(), 2)
-        c2 = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+        c2 = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         c2.perform_check()
         self.assertEqual(Metric.objects.count(), 0)
         self.assertIsNone(c2.perform_check())
@@ -265,7 +268,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         d = self.device_model.objects.first()
         d.monitoring.update_status('unknown')
         self.assertEqual(Check.objects.count(), 2)
-        c2 = Check.objects.filter(check=self._CONFIG_APPLIED).first()
+        c2 = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         c2.perform_check()
         self.assertEqual(Metric.objects.count(), 0)
         self.assertEqual(Notification.objects.count(), 0)

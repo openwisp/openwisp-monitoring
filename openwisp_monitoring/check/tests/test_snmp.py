@@ -20,7 +20,11 @@ class TestSnmp(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTes
     def test_snmp_perform_check(self):
         device = self._create_device()
         device.management_ip = '192.168.1.1'
-        check = Check(check=self._SNMPDEVICEMONITORING, content_object=device)
+        check = Check(
+            name='SNMP check',
+            check_type=self._SNMPDEVICEMONITORING,
+            content_object=device,
+        )
         with patch(
             'openwisp_monitoring.check.classes.snmp_devicemonitoring.OpenWRT'
         ) as p:
@@ -31,11 +35,15 @@ class TestSnmp(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTes
     def test_snmp_perform_check_with_credentials(self):
         device = self._create_device()
         device.management_ip = '192.168.1.1'
-        check = Check(check=self._SNMPDEVICEMONITORING, content_object=device)
+        check = Check(
+            name='SNMP check',
+            check_type=self._SNMPDEVICEMONITORING,
+            content_object=device,
+        )
         params = {'community': 'public', 'agent': 'my-agent', 'port': 161}
         cred = self._create_credentials(
             params=params,
-            connector='openwisp_controller.connection.connectors.snmp.Snmp',
+            connector='openwisp_controller.connection.connectors.openwrt.snmp.OpenWRTSnmp',
         )
         self._create_device_connection(
             credentials=cred, device=device, update_strategy=UPDATE_STRATEGIES[1][0]

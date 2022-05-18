@@ -18,7 +18,7 @@ AlertSettings = load_model('monitoring', 'AlertSettings')
 class Snmp(BaseCheck, MetricChartsMixin):
     def check(self, store=True):
         result = self.netengine_instance.to_dict()
-        self._init_previous_data(data=getattr(self.related_object, 'data', {}))
+        self._init_previous_data()
         self.related_object.data = result
         if store:
             self.store_result(result)
@@ -32,7 +32,7 @@ class Snmp(BaseCheck, MetricChartsMixin):
         device_data = DeviceData.objects.get(pk=pk)
         device_data.data = data
         device_data.save_data()
-        self._write(pk, data)
+        self._write(pk)
 
     @cached_property
     def netengine_instance(self):
@@ -43,13 +43,14 @@ class Snmp(BaseCheck, MetricChartsMixin):
     @cached_property
     def credential_instance(self):
         return Credentials.objects.filter(
-            deviceconnection__device_id=self.related_object, connector__endswith='Snmp',
+            deviceconnection__device_id=self.related_object,
+            connector__endswith='OpenWRTSnmp',
         ).last()
 
     def _get_connnector(self):
         connectors = {
-            'openwisp_controller.connection.connectors.snmp.Snmp': OpenWRT,
-            'openwisp_controller.connection.connectors.airos.snmp.Snmp': AirOS,
+            'openwisp_controller.connection.connectors.openwrt.snmp.OpenWRTSnmp': OpenWRT,
+            'openwisp_controller.connection.connectors.airos.snmp.AirOsSnmp': AirOS,
         }
         try:
             return connectors.get(self.credential_instance.connector, OpenWRT)

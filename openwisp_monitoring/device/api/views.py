@@ -18,6 +18,7 @@ from pytz import timezone as tz
 from pytz.exceptions import UnknownTimeZoneError
 from rest_framework import serializers, status
 from rest_framework.generics import GenericAPIView
+from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from swapper import load_model
 
@@ -36,6 +37,7 @@ from .serializers import MonitoringDeviceSerializer, MonitoringGeoJsonLocationSe
 
 logger = logging.getLogger(__name__)
 Chart = load_model('monitoring', 'Chart')
+Check = load_model('check', 'Check')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 Device = load_model('config', 'Device')
@@ -44,22 +46,28 @@ DeviceData = load_model('device_monitoring', 'DeviceData')
 Location = load_model('geo', 'Location')
 
 
-class DevicePermission(BasePermission):
+class DevicePermission(BasePermission):  # noqa
     def has_object_permission(self, request, view, obj):
         return request.query_params.get('key') == obj.key
 
 
 class MetricChartsMixin:
-    def _write(self, pk, data=None):
+    def _write(self, pk, time=None, current=False):
         """
         write metrics to database
         """
-        if data is None:
-            # saves raw device data
+        # If object not of type check ie. It is DeviceData
+        if not hasattr(self, 'check_instance'):
             self.instance.save_data()
             data = self.instance.data
+            device_extra_tags = self._get_extra_tags(self.instance)
+        # Get data attribute from DeviceData object
+        else:
+            devicedata_instance = DeviceData.objects.get(pk=pk)
+            data = getattr(devicedata_instance, 'data', {})
+            device_extra_tags = self._get_extra_tags(devicedata_instance)
+
         ct = ContentType.objects.get_for_model(Device)
-        device_extra_tags = self._get_extra_tags(self.instance)
         for interface in data.get('interfaces', []):
             ifname = interface['name']
             extra_tags = Metric._sort_dict(device_extra_tags)
@@ -358,13 +366,19 @@ class MetricChartsMixin:
         chart.full_clean()
         chart.save()
 
-    def _init_previous_data(self, data=None):
+    def _init_previous_data(self):
         """
         makes NetJSON interfaces of previous
         snapshots more easy to access
         """
-        if data is None:
+
+        # If object not of type check
+        if not hasattr(self, 'check_instance'):
             data = self.instance.data or {}
+        # Get data attribute from Device object
+        else:
+            data = getattr(self.related_object, 'data', {})
+
         if data:
             data = deepcopy(data)
             data['interfaces_dict'] = {}
@@ -375,7 +389,7 @@ class MetricChartsMixin:
 
 class DeviceMetricView(GenericAPIView, MetricChartsMixin):
     model = DeviceData
-    queryset = DeviceData.objects.all()
+    queryset = DeviceData.objects.select_related('devicelocation').all()
     serializer_class = serializers.Serializer
     permission_classes = [DevicePermission]
     schema = schema
@@ -421,13 +435,21 @@ class DeviceMetricView(GenericAPIView, MetricChartsMixin):
             # prepare chart dict
             try:
                 chart_dict = chart.read(time=time, x_axys=x_axys, timezone=timezone)
+                if not chart_dict['traces']:
+                    continue
                 chart_dict['description'] = chart.description
-                chart_dict['title'] = chart.title.format(metric=chart.metric)
+                chart_dict['title'] = chart.title.format(
+                    metric=chart.metric, **chart.metric.tags
+                )
                 chart_dict['type'] = chart.type
                 chart_dict['unit'] = chart.unit
                 chart_dict['summary_labels'] = chart.summary_labels
                 chart_dict['colors'] = chart.colors
                 chart_dict['colorscale'] = chart.colorscale
+                for attr in ['fill', 'xaxis', 'yaxis']:
+                    value = getattr(chart, attr)
+                    if value:
+                        chart_dict[attr] = value
             except InvalidChartConfigException:
                 logger.exception(f'Skipped chart for metric {chart.metric}')
                 continue
@@ -492,14 +514,28 @@ class DeviceMetricView(GenericAPIView, MetricChartsMixin):
         except ValidationError as e:
             logger.info(e.message)
             return Response(e.message, status=status.HTTP_400_BAD_REQUEST)
+        time_obj = request.query_params.get(
+            'time', now().utcnow().strftime('%d-%m-%Y_%H:%M:%S.%f')
+        )
+        current = request.query_params.get('current', False)
+        try:
+            time = datetime.strptime(time_obj, '%d-%m-%Y_%H:%M:%S.%f').replace(
+                tzinfo=UTC
+            )
+        except ValueError:
+            return Response({'detail': _('Incorrect time format')}, status=400)
         try:
             # write data
-            self._write(self.instance.pk)
+            self._write(self.instance.pk, time=time)
         except ValidationError as e:
             logger.info(e.message_dict)
             return Response(e.message_dict, status=status.HTTP_400_BAD_REQUEST)
         device_metrics_received.send(
-            sender=self.model, instance=self.instance, request=request
+            sender=self.model,
+            instance=self.instance,
+            request=request,
+            time=time,
+            current=current,
         )
         return Response(None)
 

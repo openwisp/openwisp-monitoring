@@ -265,7 +265,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         device = self._create_device(organization=self._create_org())
         device.last_ip = '127.0.0.1'
         device.save()
-        check = Check.objects.filter(check=self._PING).first()
+        check = Check.objects.filter(check_type=self._PING).first()
         self.assertEqual(Chart.objects.count(), 0)
         check.perform_check()
         self.assertEqual(Chart.objects.count(), 0)
