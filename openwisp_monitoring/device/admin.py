@@ -321,6 +321,7 @@ class WiFiSessionInline(WifiSessionAdminHelperMixin, admin.TabularInline):
         'get_mac_address',
         'vendor',
         'ssid',
+        'interface_name',
         'ht',
         'vht',
         'start_time',
@@ -332,7 +333,7 @@ class WiFiSessionInline(WifiSessionAdminHelperMixin, admin.TabularInline):
     template = 'admin/config/device/wifisession_tabular.html'
 
     class Media:
-        css = {'all': ('monitoring/css/wifi-session.css',)}
+        css = {'all': ('monitoring/css/wifi-sessions.css',)}
         js = ['monitoring/js/wifi-session-inline.js']
 
     def has_add_permission(self, request, obj=None):

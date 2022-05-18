@@ -293,21 +293,20 @@ class TestAdmin(
             )
 
     def test_wifisession_inline(self):
-        self._login_admin()
         device = self._create_device()
         path = reverse('admin:config_device_change', args=[device.id])
 
         with self.subTest('Test inline absent when no WiFiSession is present'):
             response = self.client.get(path)
-            self.assertNotContains(response, 'WiFi Sessions</a>')
-            self.assertNotContains(response, 'View all WiFi Sessions</a>')
+            self.assertNotContains(response, '<h2>WiFi Sessions</h2>')
+            self.assertNotContains(response, 'inline-wifisession-quick-link')
 
         wifi_session = self._create_wifi_session(device=device)
 
         with self.subTest('Test inline present when WiFiSession is open'):
             response = self.client.get(path)
-            self.assertContains(response, 'WiFi Sessions</a>')
-            self.assertContains(response, 'View all WiFi Sessions</a>')
+            self.assertContains(response, '<h2>WiFi Sessions</h2>')
+            self.assertContains(response, 'inline-wifisession-quick-link')
             self.assertContains(response, 'id="id_wifisession_set-0-id"')
 
         wifi_session.stop_time = now()
@@ -315,8 +314,8 @@ class TestAdmin(
 
         with self.subTest('Test inline present when WiFiSession is closed'):
             response = self.client.get(path)
-            self.assertNotContains(response, 'WiFi Sessions</a>')
-            self.assertNotContains(response, 'View all WiFi Sessions</a>')
+            self.assertNotContains(response, '<h2>WiFi Sessions</h2>')
+            self.assertNotContains(response, 'inline-wifisession-quick-link')
             self.assertNotContains(response, 'id="id_wifisession_set-0-id"')
 
 
