@@ -29,7 +29,7 @@ DeviceLocation = load_model('geo', 'DeviceLocation')
 Location = load_model('geo', 'Location')
 
 
-class TestAdmin(DeviceMonitoringTestCase):
+class TestAdmin(TestWifiClientSessionMixin, DeviceMonitoringTestCase):
     """
     Test the additions of openwisp-monitoring to DeviceAdmin
     """
@@ -293,6 +293,33 @@ class TestAdmin(DeviceMonitoringTestCase):
                 f'<li><img src="/static/admin/img/icon-{health}.svg" '
                 f'alt="health"> {metric.name}</li>',
             )
+
+    def test_wifisession_inline(self):
+        self._login_admin()
+        device = self._create_device()
+        path = reverse('admin:config_device_change', args=[device.id])
+
+        with self.subTest('Test inline absent when no WiFiSession is present'):
+            response = self.client.get(path)
+            self.assertNotContains(response, 'WiFi Sessions</a>')
+            self.assertNotContains(response, 'View all WiFi Sessions</a>')
+
+        wifi_session = self._create_wifi_session(device=device)
+
+        with self.subTest('Test inline present when WiFiSession is open'):
+            response = self.client.get(path)
+            self.assertContains(response, 'WiFi Sessions</a>')
+            self.assertContains(response, 'View all WiFi Sessions</a>')
+            self.assertContains(response, 'id="id_wifisession_set-0-id"')
+
+        wifi_session.stop_time = now()
+        wifi_session.save()
+
+        with self.subTest('Test inline present when WiFiSession is closed'):
+            response = self.client.get(path)
+            self.assertNotContains(response, 'WiFi Sessions</a>')
+            self.assertNotContains(response, 'View all WiFi Sessions</a>')
+            self.assertNotContains(response, 'id="id_wifisession_set-0-id"')
 
 
 class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
