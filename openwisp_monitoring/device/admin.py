@@ -8,7 +8,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.forms import ModelForm
 from django.templatetags.static import static
-from django.urls import reverse
+from django.urls import resolve, reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
@@ -245,7 +245,113 @@ class DeviceFilter(SimpleInputFilter):
             return queryset.filter(lookup)
 
 
-class WifiSessionAdmin(MultitenantAdminMixin, ReadOnlyAdmin):
+class WifiSessionAdminHelperMixin:
+    def _get_boolean_html(self, value):
+        icon = static('admin/img/icon-{}.svg'.format('yes' if value is True else 'no'))
+        return mark_safe(f'<img src="{icon}">')
+
+    def ht(self, obj):
+        return self._get_boolean_html(obj.wifi_client.ht)
+
+    ht.short_description = 'HT'
+
+    def vht(self, obj):
+        return self._get_boolean_html(obj.wifi_client.vht)
+
+    vht.short_description = 'VHT'
+
+    def wmm(self, obj):
+        return self._get_boolean_html(obj.wifi_client.wmm)
+
+    wmm.short_description = 'WMM'
+
+    def wds(self, obj):
+        return self._get_boolean_html(obj.wifi_client.wds)
+
+    wds.short_description = 'WDS'
+
+    def wps(self, obj):
+        return self._get_boolean_html(obj.wifi_client.wps)
+
+    wps.short_description = 'WPS'
+
+    def get_stop_time(self, obj):
+        if obj.stop_time is None:
+            return mark_safe('<strong style="color:green;">online</strong>')
+        return obj.stop_time
+
+    get_stop_time.short_description = _('stop time')
+
+    def related_device(self, obj):
+        app_label = Device._meta.app_label
+        url = reverse(f'admin:{app_label}_device_change', args=[obj.device_id])
+        return mark_safe(f'<a href="{url}">{obj.device}</a>')
+
+    related_device.short_description = _('device')
+
+    def related_organization(self, obj):
+        app_label = Organization._meta.app_label
+        url = reverse(
+            f'admin:{app_label}_organization_change', args=[obj.organization.id]
+        )
+        return mark_safe(f'<a href="{url}">{obj.organization}</a>')
+
+    related_organization.short_description = _('organization')
+
+
+class WiFiSessionInline(WifiSessionAdminHelperMixin, admin.TabularInline):
+    model = WifiSession
+    fk_name = 'device'
+    fields = [
+        'get_mac_address',
+        'vendor',
+        'ssid',
+        'ht',
+        'vht',
+        'start_time',
+        'get_stop_time',
+    ]
+    readonly_fields = fields
+    can_delete = False
+    extra = 0
+    template = 'admin/config/device/wifisession_tabular.html'
+
+    class Media:
+        css = {'all': ('monitoring/css/wifi-session.css',)}
+        js = ['monitoring/js/wifi-session-inline.js']
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_queryset(self, request, select_related=True):
+        qs = super().get_queryset(request).filter(stop_time__isnull=True)
+        resolved = resolve(request.path_info)
+        if 'object_id' in resolved.kwargs:
+            qs = qs.filter(device_id=resolved.kwargs['object_id'])
+        if select_related:
+            qs = qs.select_related('wifi_client')
+        return qs
+
+    def _get_conditional_queryset(self, request, obj, select_related=False):
+        return self.get_queryset(request, select_related=select_related).exists()
+
+    def get_mac_address(self, obj):
+        app_label = WifiSession._meta.app_label
+        url = reverse(f'admin:{app_label}_wifisession_change', args=[obj.id])
+        return mark_safe(f'<a href="{url}">{obj.mac_address}</a>')
+
+    get_mac_address.short_description = _('MAC address')
+
+
+class WifiSessionAdmin(
+    WifiSessionAdminHelperMixin, MultitenantAdminMixin, ReadOnlyAdmin
+):
     multitenant_parent = 'device'
     model = WifiSession
     list_display = [
@@ -310,58 +416,7 @@ class WifiSessionAdmin(MultitenantAdminMixin, ReadOnlyAdmin):
             )
         )
 
-    def _get_boolean_html(self, value):
-        icon = static('admin/img/icon-{}.svg'.format('yes' if value is True else 'no'))
-        return mark_safe(f'<img src="{icon}">')
-
-    def ht(self, obj):
-        return self._get_boolean_html(obj.wifi_client.ht)
-
-    ht.short_description = 'HT'
-
-    def vht(self, obj):
-        return self._get_boolean_html(obj.wifi_client.vht)
-
-    vht.short_description = 'VHT'
-
-    def wmm(self, obj):
-        return self._get_boolean_html(obj.wifi_client.wmm)
-
-    wmm.short_description = 'WMM'
-
-    def wds(self, obj):
-        return self._get_boolean_html(obj.wifi_client.wds)
-
-    wds.short_description = 'WDS'
-
-    def wps(self, obj):
-        return self._get_boolean_html(obj.wifi_client.wps)
-
-    wps.short_description = 'WPS'
-
-    def get_stop_time(self, obj):
-        if obj.stop_time is None:
-            return mark_safe('<strong style="color:green;">online</strong>')
-        return obj.stop_time
-
-    get_stop_time.short_description = _('stop time')
-
-    def related_device(self, obj):
-        app_label = Device._meta.app_label
-        url = reverse(f'admin:{app_label}_device_change', args=[obj.device_id])
-        return mark_safe(f'<a href="{url}">{obj.device}</a>')
-
-    related_device.short_description = _('device')
-
-    def related_organization(self, obj):
-        app_label = Organization._meta.app_label
-        url = reverse(
-            f'admin:{app_label}_organization_change', args=[obj.organization.id]
-        )
-        return mark_safe(f'<a href="{url}">{obj.organization}</a>')
-
-    related_organization.short_description = _('organization')
-
 
 if app_settings.WIFI_SESSIONS_ENABLED:
     admin.site.register(WifiSession, WifiSessionAdmin)
+    DeviceAdmin.conditional_inlines.append(WiFiSessionInline)
