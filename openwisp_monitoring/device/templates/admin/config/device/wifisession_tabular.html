@@ -1,8 +1,8 @@
 {% load i18n %}
 
+{% include "admin/edit_inline/tabular.html" %}
 <div id="inline-wifisession-quick-link-container">
     {% comment %} The device filter is added using JS {% endcomment %}
     <a href="{% url "admin:device_monitoring_wifisession_changelist" %}" class="button"
         id="inline-wifisession-quick-link">{% trans "View all WiFi Sessions" %}</a>
 </div>
-{% include "admin/edit_inline/tabular.html" %}

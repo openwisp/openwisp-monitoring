@@ -3,5 +3,8 @@ td.original p {
 }
 #inline-wifisession-quick-link-container {
   text-align: center;
-  margin: 15px auto;
+  margin-bottom: 50px;
+}
+#wifisession_set-group {
+  margin-bottom: 0px;
 }
