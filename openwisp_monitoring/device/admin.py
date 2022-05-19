@@ -431,6 +431,9 @@ class WifiSessionAdmin(
                 'wifi_client', 'device', 'device__organization', 'device__group'
             )
         )
+     
+    def has_delete_permission(self, request, obj=None):
+        return super(admin.ModelAdmin, self).has_delete_permission(request, obj)
 
 
 admin.site.unregister(Device)

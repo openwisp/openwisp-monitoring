@@ -491,3 +491,10 @@ class TestWifiSessionAdmin(
         response = self.client.get(url)
         self.assertContains(response, 'Currently Active WiFi Sessions')
         self.assertContains(response, 'Open WiFi session list')
+
+    def test_deleting_device_with_wifisessions(self):
+        device_data = self._save_device_data()
+        path = reverse('admin:config_device_delete', args=[device_data.pk])
+        response = self.client.post(path, {'post': 'yes'}, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Device.objects.count(), 0)
