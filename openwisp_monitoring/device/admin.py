@@ -334,7 +334,7 @@ class WiFiSessionInline(WifiSessionAdminHelperMixin, admin.TabularInline):
 
     class Media:
         css = {'all': ('monitoring/css/wifi-sessions.css',)}
-        js = ['monitoring/js/wifi-session-inline.js']
+        js = ['admin/js/jquery.init.js', 'monitoring/js/wifi-session-inline.js']
 
     def has_add_permission(self, request, obj=None):
         return False

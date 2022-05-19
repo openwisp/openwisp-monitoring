@@ -299,24 +299,22 @@ class TestAdmin(
         with self.subTest('Test inline absent when no WiFiSession is present'):
             response = self.client.get(path)
             self.assertNotContains(response, '<h2>WiFi Sessions</h2>')
-            self.assertNotContains(response, 'inline-wifisession-quick-link')
+            self.assertNotContains(response, 'monitoring-wifisession-changelist-url')
 
         wifi_session = self._create_wifi_session(device=device)
 
         with self.subTest('Test inline present when WiFiSession is open'):
             response = self.client.get(path)
             self.assertContains(response, '<h2>WiFi Sessions</h2>')
-            self.assertContains(response, 'inline-wifisession-quick-link')
-            self.assertContains(response, 'id="id_wifisession_set-0-id"')
+            self.assertContains(response, 'monitoring-wifisession-changelist-url')
 
         wifi_session.stop_time = now()
         wifi_session.save()
 
-        with self.subTest('Test inline present when WiFiSession is closed'):
+        with self.subTest('Test inline absent when WiFiSession is closed'):
             response = self.client.get(path)
             self.assertNotContains(response, '<h2>WiFi Sessions</h2>')
-            self.assertNotContains(response, 'inline-wifisession-quick-link')
-            self.assertNotContains(response, 'id="id_wifisession_set-0-id"')
+            self.assertNotContains(response, 'monitoring-wifisession-changelist-url')
 
 
 class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):

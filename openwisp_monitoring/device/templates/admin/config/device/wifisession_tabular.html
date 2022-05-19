@@ -1,13 +1,9 @@
 {% load i18n %}
 
 {% include "admin/edit_inline/tabular.html" %}
-<div id="inline-wifisession-quick-link-container">
-    {% comment %} The device filter is added using JS {% endcomment %}
-    <a href="{% url "admin:device_monitoring_wifisession_changelist" %}"
-       class="button"
-       id="inline-wifisession-quick-link"
-       title="{% trans 'View all the the WiFi sessions of this Device' %}"
-    >
-        {% trans "View Full History of WiFi Sessions" %}
-    </a>
-</div>
+
+{% comment %}
+    Use Django to generate the URL and add the button using JS.
+{% endcomment %}
+<span id="monitoring-wifisession-changelist-url"
+      data-url="{% url "admin:device_monitoring_wifisession_changelist" %}"></span>
