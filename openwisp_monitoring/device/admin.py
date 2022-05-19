@@ -377,6 +377,9 @@ class WifiSessionAdmin(MultitenantAdminMixin, ReadOnlyAdmin):
 
     related_organization.short_description = _('organization')
 
+    def has_delete_permission(self, request, obj=None):
+        return super(admin.ModelAdmin, self).has_delete_permission(request, obj)
+
 
 admin.site.unregister(Device)
 admin.site.register(Device, DeviceAdminExportable)
