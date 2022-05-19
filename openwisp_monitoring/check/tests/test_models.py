@@ -127,7 +127,8 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
     def test_auto_check_creation(self):
         self.assertEqual(Check.objects.count(), 0)
         d = self._create_device(organization=self._create_org())
-        self.assertEqual(Check.objects.count(), 2)
+        # check is automatically created via django signal
+        self.assertEqual(Check.objects.count(), 3)
         with self.subTest('Test AUTO_PING'):
             c1 = Check.objects.filter(check_type=self._PING).first()
             self.assertEqual(c1.content_object, d)
@@ -136,6 +137,10 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
             c2 = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
             self.assertEqual(c2.content_object, d)
             self.assertEqual(self._CONFIG_APPLIED, c2.check_type)
+        with self.subTest('Test AUTO_SNMP'):
+            c3 = Check.objects.filter(check_type=self._SNMP_DEVICEMONITORING).first()
+            self.assertEqual(c3.content_object, d)
+            self.assertEqual(self._SNMP_DEVICEMONITORING, c3.check_type)
 
     def test_device_deleted(self):
         self.assertEqual(Check.objects.count(), 0)

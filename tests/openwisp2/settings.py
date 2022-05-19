@@ -194,6 +194,8 @@ if TESTING:
     OPENWISP_MONITORING_MAC_VENDOR_DETECTION = False
     OPENWISP_MONITORING_API_URLCONF = 'openwisp_monitoring.urls'
     OPENWISP_MONITORING_API_BASEURL = 'http://testserver'
+    # for testing AUTO_SNMP
+    OPENWISP_MONITORING_AUTO_SNMP = True
 
 # Temporarily added to identify slow tests
 TEST_RUNNER = 'openwisp_utils.tests.TimeLoggingTestRunner'
