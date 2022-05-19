@@ -1,0 +1,9 @@
+{% load i18n %}
+
+{% include "admin/edit_inline/tabular.html" %}
+
+{% comment %}
+    Use Django to generate the URL and add the button using JS.
+{% endcomment %}
+<span id="monitoring-wifisession-changelist-url"
+      data-url="{% url "admin:device_monitoring_wifisession_changelist" %}"></span>

@@ -821,6 +821,12 @@ You can disable this feature by configuring
 `OPENWISP_MONITORING_WIFI_SESSIONS_ENABLED <#openwisp_monitoring_wifi_sessions_enabled>`_
 setting.
 
+You can also view open WiFi sessions of a device directly from the device's change admin
+under the "WiFi Sessions" tab.
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/device-wifi-session-inline.png
+  :align: center
+
 Scheduled deletion of WiFi sessions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

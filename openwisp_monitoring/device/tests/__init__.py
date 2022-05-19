@@ -334,3 +334,4 @@ class TestWifiClientSessionMixin(TestDeviceMonitoringMixin):
         wifi_session = WifiSession(**options)
         wifi_session.full_clean()
         wifi_session.save()
+        return wifi_session
