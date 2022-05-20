@@ -236,6 +236,27 @@ DEFAULT_METRICS = {
             }
         },
     },
+    'general_clients': {
+        'label': _('Clients'),
+        'name': '{name}',
+        'key': 'cliwifi_clientsents',
+        'field_name': 'clients',
+        'charts': {
+            'gen_wifi_clients': {
+                'type': 'bar',
+                'label': _('WiFi clients'),
+                'title': _('WiFi clients'),
+                'description': _('WiFi clients associated to the wireless interface.'),
+                'summary_labels': [_('Total Unique WiFi clients')],
+                'unit': '',
+                'order': 230,
+                'query': chart_query['general_wifi_clients'],
+                'query_default_param': {
+                    'organization_lookup': '',
+                },
+            }
+        },
+    },
     'disk': {
         'label': _('Disk usage'),
         'name': 'Disk usage',

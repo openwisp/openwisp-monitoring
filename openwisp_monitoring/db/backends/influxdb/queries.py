@@ -29,6 +29,13 @@ chart_query = {
             "GROUP BY time(1d)"
         )
     },
+    'general_wifi_clients': {
+        'influxdb': (
+            "SELECT COUNT(DISTINCT({field_name})) AS wifi_clients FROM {key} "
+            "WHERE time >= '{time}' {organization_lookup} "
+            "GROUP BY time(1d)"
+        )
+    },
     'traffic': {
         'influxdb': (
             "SELECT SUM(tx_bytes) / 1000000000 AS upload, "

@@ -1,17 +1,16 @@
 import logging
-from datetime import datetime
+from collections import OrderedDict
 
 from django.conf import settings
 from django.http import HttpResponse
 from pytz import timezone as tz
 from pytz.exceptions import UnknownTimeZoneError
-from rest_framework.generics import get_object_or_404
+from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from swapper import load_model
 
-from ...db import default_chart_query, timeseries_db
-from ..configuration import DEFAULT_METRICS
+from ...monitoring.exceptions import InvalidChartConfigException
 
 logger = logging.getLogger(__name__)
 Chart = load_model('monitoring', 'Chart')
@@ -21,27 +20,40 @@ Organization = load_model('openwisp_users', 'Organization')
 
 class DashboardTimeseriesView(APIView):
     def _get_organization_lookup(self):
-        query_org = self.request.query_params.get('organization_slug')
-        if query_org:
-            org = get_object_or_404(Organization, slug=query_org)
-            if (
-                self.request.user.is_superuser
-                or org.id in self.request.user.organizations_managed
+        query_orgs = self.request.query_params.get('organization_slug', '')
+        if query_orgs:
+            query_orgs = query_orgs.split(',')
+            org_ids = Organization.objects.filter(slug__in=query_orgs).values_list(
+                'id', flat=True
+            )
+            if len(org_ids) != len(query_orgs):
+                raise NotFound
+            if self.request.user.is_superuser or all(
+                [str(id) in self.request.user.organizations_managed for id in org_ids]
             ):
-                return [org.id]
+                orgs = org_ids
+            else:
+                raise PermissionDenied
         else:
             if self.request.user.is_superuser:
-                return None
+                orgs = []
+            elif self.request.user.organizations_managed:
+                orgs = self.request.user.organizations_managed
             else:
-                return self.request.user.organizations_managed
+                raise PermissionDenied
+
+        if not orgs:
+            return ''
+        org_lookup = []
+        for org in orgs:
+            org_lookup.append(f"organization_id = '{org}'")
+        return 'AND ({org_lookup})'.format(org_lookup=' OR '.join(org_lookup))
 
     def get(self, request):
-        metric = request.get('metric')
-        if metric not in DEFAULT_METRICS.keys():
-            return Response(
-                {'detail': '"metric" query parameter is required'}, status=400
-            )
-        # determine time range
+        org_lookup = self._get_organization_lookup()
+        charts = Chart.objects.filter(
+            metric__object_id=None, metric__content_type=None
+        ).select_related('metric')
         time = request.query_params.get('time', Chart.DEFAULT_TIME)
         if time not in Chart.GROUP_MAP.keys():
             return Response({'detail': 'Time range not supported'}, status=400)
@@ -52,111 +64,58 @@ class DashboardTimeseriesView(APIView):
         except UnknownTimeZoneError:
             return Response('Unkown Time Zone', status=400)
         # prepare response data
-        data = self.read(metric, time=time, timezone=timezone)
+        data = self._get_charts_data(charts, time, timezone, org_lookup)
         # csv export has a different response
         if request.query_params.get('csv'):
             response = HttpResponse(self._get_csv(data), content_type='text/csv')
             response['Content-Disposition'] = 'attachment; filename=data.csv'
             return response
-        # add device data if requested
-        if request.query_params.get('status', False):
-            data['data'] = self.instance.data
         return Response(data)
 
-    def read(
-        self,
-        metric,
-        decimal_places=2,
-        time=Chart.DEFAULT_TIME,
-        x_axys=True,
-        timezone=settings.TIME_ZONE,
-    ):
-        traces = {}
-        if x_axys:
-            x = []
-        try:
-            top_fields = DEFAULT_METRICS[metric].get('top_fields')
-            query_kwargs = dict(time=time, timezone=timezone)
-            if top_fields:
-                fields = self.get_top_fields(top_fields)
-                data_query = self.get_query(fields=fields, **query_kwargs)
-                summary_query = self.get_query(
-                    fields=fields, summary=True, **query_kwargs
+    def _get_charts_data(self, charts, time, timezone, org_lookup):
+        chart_map = {}
+        x_axys = True
+        data = OrderedDict({'charts': []})
+        for chart in charts:
+            # prepare chart dict
+            try:
+                chart_dict = chart.read(
+                    time=time,
+                    x_axys=x_axys,
+                    timezone=timezone,
+                    additional_query_kwargs={
+                        'additional_params': {'organization_lookup': org_lookup}
+                    },
                 )
-            else:
-                data_query = self.get_query(**query_kwargs)
-                summary_query = self.get_query(summary=True, **query_kwargs)
-            points = timeseries_db.get_list_query(data_query)
-            summary = timeseries_db.get_list_query(summary_query)
-        except timeseries_db.client_error as e:
-            logging.error(e, exc_info=True)
-            raise e
-        for point in points:
-            for key, value in point.items():
-                if key == 'time':
+                if not chart_dict['traces']:
                     continue
-                traces.setdefault(key, [])
-                traces[key].append(value)
-            time = datetime.fromtimestamp(point['time'], tz=tz(timezone)).strftime(
-                '%Y-%m-%d %H:%M'
-            )
-            if x_axys:
-                x.append(time)
-        # prepare result to be returned
-        # (transform chart data so its order is not random)
-        result = {'traces': sorted(traces.items())}
-        if x_axys:
-            result['x'] = x
-        # add summary
-        if len(summary) > 0:
-            result['summary'] = {}
-            for key, value in summary[0].items():
-                if key == 'time':
-                    continue
-                if not timeseries_db.validate_query(self.query):
-                    value = None
-                result['summary'][key] = value
-        return result
-
-    def get_top_fields(self, number):
-        """
-        Returns list of top ``number`` of fields (highest sum) of a
-        measurement in the specified time range (descending order).
-        """
-        query = default_chart_query[0].replace('{field_name}', '{fields}')
-        params = self._get_query_params(self.DEFAULT_TIME)
-        return timeseries_db._get_top_fields(
-            query=query,
-            chart_type=self.type,
-            group_map=self.GROUP_MAP,
-            number=number,
-            params=params,
-            time=self.DEFAULT_TIME,
-        )
-
-    def get_query(
-        self,
-        metric,
-        time=Chart.DEFAULT_TIME,
-        summary=False,
-        fields=None,
-        query=None,
-        timezone=settings.TIME_ZONE,
-    ):
-        query = DEFAULT_METRICS[metric].get('query')
-        params = self._get_query_params(time)
-        return timeseries_db.get_query(
-            self.type, params, time, self.GROUP_MAP, summary, fields, query, timezone
-        )
-
-    def _get_query_params(self, metric, time):
-        params = dict(
-            field_name=DEFAULT_METRICS[metric].get('field_name'),
-            key=DEFAULT_METRICS[metric].get('key'),
-            time=self._get_time(time),
-            organization=self._get_organization_lookup(),
-        )
-        return params
+                chart_dict['description'] = chart.description
+                chart_dict['title'] = chart.title.format(
+                    metric=chart.metric, **chart.metric.tags
+                )
+                chart_dict['type'] = chart.type
+                chart_dict['unit'] = chart.unit
+                chart_dict['summary_labels'] = chart.summary_labels
+                chart_dict['colors'] = chart.colors
+                chart_dict['colorscale'] = chart.colorscale
+                for attr in ['fill', 'xaxis', 'yaxis']:
+                    value = getattr(chart, attr)
+                    if value:
+                        chart_dict[attr] = value
+            except InvalidChartConfigException:
+                logger.exception(f'Skipped chart for metric {chart.metric}')
+                continue
+            # get x axys (only once)
+            if x_axys and chart_dict['x'] and chart.type != 'histogram':
+                data['x'] = chart_dict.pop('x')
+                x_axys = False
+            # prepare to sort the items according to
+            # the order in the chart configuration
+            key = f'{chart.order} {chart_dict["title"]}'
+            chart_map[key] = chart_dict
+        # add sorted chart list to chart data
+        data['charts'] = list(OrderedDict(sorted(chart_map.items())).values())
+        return data
 
 
 dashboard_timeseries = DashboardTimeseriesView.as_view()

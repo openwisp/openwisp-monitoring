@@ -31,7 +31,7 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
         manage_short_retention_policy()
 
     def _url(self, pk, key=None, time=None):
-        url = reverse('monitoring:api_device_metric', args=[pk])
+        url = reverse('device_monitoring:api_device_metric', args=[pk])
         if key:
             url = '{0}?key={1}'.format(url, key)
         if time:
@@ -68,8 +68,10 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
             metric_count, chart_count = 4, 4
         else:
             metric_count, chart_count = 7, 7
-        self.assertEqual(Metric.objects.count(), metric_count)
-        self.assertEqual(Chart.objects.count(), chart_count)
+        # Add 1 for the general metric
+        self.assertEqual(Metric.objects.count(), metric_count + 1)
+        # Add 1 for the general chart
+        self.assertEqual(Chart.objects.count(), chart_count + 1)
         if_dict = {'wlan0': data['interfaces'][0], 'wlan1': data['interfaces'][1]}
         extra_tags = {'organization_id': str(d.organization_id)}
         for ifname in ['wlan0', 'wlan1']:

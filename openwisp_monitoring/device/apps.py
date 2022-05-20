@@ -228,10 +228,10 @@ class DeviceMonitoringConfig(AppConfig):
 
         if app_settings.DASHBOARD_MAP:
             loc_geojson_url = reverse_lazy(
-                "monitoring:api_location_geojson", urlconf=MONITORING_API_URLCONF
+                "device_monitoring:api_location_geojson", urlconf=MONITORING_API_URLCONF
             )
             device_list_url = reverse_lazy(
-                "monitoring:api_location_device_list",
+                "device_monitoring:api_location_device_list",
                 urlconf=MONITORING_API_URLCONF,
                 args=["000"],
             )

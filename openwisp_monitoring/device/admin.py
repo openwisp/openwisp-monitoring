@@ -145,7 +145,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         if pk:
             device_data = DeviceData(pk=uuid.UUID(pk))
             api_url = reverse(
-                'monitoring:api_device_metric',
+                'device_monitoring:api_device_metric',
                 urlconf=MONITORING_API_URLCONF,
                 args=[pk],
             )

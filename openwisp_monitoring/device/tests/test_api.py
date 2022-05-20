@@ -71,13 +71,15 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         data = {'type': 'DeviceMonitoring', 'interfaces': []}
         r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(Metric.objects.count(), 0)
-        self.assertEqual(Chart.objects.count(), 0)
+        # Add 1 for general metric and chart
+        self.assertEqual(Metric.objects.count(), 0 + 1)
+        self.assertEqual(Chart.objects.count(), 0 + 1)
         data = {'type': 'DeviceMonitoring'}
         r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(Metric.objects.count(), 0)
-        self.assertEqual(Chart.objects.count(), 0)
+        # Add 1 for general metric and chart
+        self.assertEqual(Metric.objects.count(), 0 + 1)
+        self.assertEqual(Chart.objects.count(), 0 + 1)
 
     def test_200_create(self):
         self.create_test_data(no_resources=True)
@@ -96,8 +98,9 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         r = self._post_data(d.id, d.key, data2)
         self.assertEqual(r.status_code, 200)
         self.assertDictEqual(dd.data, data2)
-        self.assertEqual(Metric.objects.count(), 4)
-        self.assertEqual(Chart.objects.count(), 4)
+        # Add 1 for general metric and chart
+        self.assertEqual(Metric.objects.count(), 4 + 1)
+        self.assertEqual(Chart.objects.count(), 4 + 1)
         if_dict = {'wlan0': data2['interfaces'][0], 'wlan1': data2['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
@@ -125,8 +128,9 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         r = self._post_data(d.id, d.key, data2)
         self.assertEqual(r.status_code, 200)
         self.assertDictEqual(dd.data, data2)
-        self.assertEqual(Metric.objects.count(), 4)
-        self.assertEqual(Chart.objects.count(), 4)
+        # Add 1 for general metric and chart
+        self.assertEqual(Metric.objects.count(), 4 + 1)
+        self.assertEqual(Chart.objects.count(), 4 + 1)
         if_dict = {'wlan0': data2['interfaces'][0], 'wlan1': data2['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
@@ -156,9 +160,10 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         del data2['resources']
         response = self._post_data(device.id, device.key, data2)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(Metric.objects.count(), 4)
-        self.assertEqual(Chart.objects.count(), 4)
-        for metric in Metric.objects.all():
+        # Add 1 for general metric and chart
+        self.assertEqual(Metric.objects.count(), 4 + 1)
+        self.assertEqual(Chart.objects.count(), 4 + 1)
+        for metric in Metric.objects.filter(object_id__isnull=False):
             points = metric.read(
                 limit=10, order='-time', extra_fields=['location_id', 'floorplan_id']
             )
@@ -168,8 +173,9 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
 
     def test_200_multiple_measurements(self):
         dd = self._create_multiple_measurements(no_resources=True)
-        self.assertEqual(Metric.objects.count(), 4)
-        self.assertEqual(Chart.objects.count(), 4)
+        # Add 1 for general metric and chart
+        self.assertEqual(Metric.objects.count(), 4 + 1)
+        self.assertEqual(Chart.objects.count(), 4 + 1)
         expected = {
             'wlan0': {'rx_bytes': 10000, 'tx_bytes': 6000},
             'wlan1': {'rx_bytes': 4587, 'tx_bytes': 2993},
@@ -239,11 +245,13 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
 
     @patch.object(monitoring_settings, 'AUTO_CHARTS', return_value=[])
     def test_auto_chart_disabled(self, *args):
-        self.assertEqual(Chart.objects.count(), 0)
+        # Add 1 for general chart
+        self.assertEqual(Chart.objects.count(), 0 + 1)
         o = self._create_org()
         d = self._create_device(organization=o)
         self._post_data(d.id, d.key, self._data())
-        self.assertEqual(Chart.objects.count(), 0)
+        # Add 1 for general chart
+        self.assertEqual(Chart.objects.count(), 0 + 1)
 
     def test_get_device_metrics_200(self):
         dd = self.create_test_data()
@@ -387,7 +395,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         c = Chart(metric=m, configuration='dummy')  # empty chart
         c.full_clean()
         c.save()
-        self.assertEqual(Chart.objects.count(), 1)
+        # Add 1 for general chart
+        self.assertEqual(Chart.objects.count(), 1 + 1)
         response = self.client.get(self._url(d.pk.hex, d.key))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['charts'], [])
@@ -967,7 +976,7 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
         device_location = self._create_object_location()
         device_location.device.monitoring.update_status('ok')
         self._login_admin()
-        url = reverse('monitoring:api_location_geojson')
+        url = reverse('device_monitoring:api_location_geojson')
         response = self.client.get(url)
         data = response.data
         self.assertEqual(data['count'], 1)
@@ -983,7 +992,7 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
         device_location.device.monitoring.update_status('ok')
         location = device_location.location
         self._login_admin()
-        url = reverse('monitoring:api_location_device_list', args=[location.pk])
+        url = reverse('device_monitoring:api_location_device_list', args=[location.pk])
         response = self.client.get(url)
         data = response.data
         self.assertEqual(data['count'], 1)
@@ -1004,7 +1013,7 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
 
         with self.subTest('Test MonitoringGeoJsonLocationList'):
             response = self.client.get(
-                reverse('monitoring:api_location_geojson'),
+                reverse('device_monitoring:api_location_geojson'),
                 content_type='application/json',
                 HTTP_AUTHORIZATION=f'Bearer {token}',
             )
@@ -1012,7 +1021,9 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
 
         with self.subTest('Test GeoJsonLocationListView'):
             response = self.client.get(
-                reverse('monitoring:api_location_device_list', args=[location.id]),
+                reverse(
+                    'device_monitoring:api_location_device_list', args=[location.id]
+                ),
                 content_type='application/json',
                 HTTP_AUTHORIZATION=f'Bearer {token}',
             )

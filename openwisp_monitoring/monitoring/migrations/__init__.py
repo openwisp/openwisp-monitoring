@@ -1,3 +1,4 @@
+import swapper
 from django.contrib.auth.models import Permission
 
 from openwisp_controller.migrations import create_default_permissions, get_swapped_model
@@ -34,3 +35,25 @@ def assign_permissions_to_groups(apps, schema_editor):
                     codename='{}_{}'.format(operation, model_name)
                 ).pk
             )
+
+
+def create_general_metric(apps, schema_editor):
+    Chart = swapper.load_model('monitoring', 'Chart')
+    Metric = swapper.load_model('monitoring', 'Metric')
+
+    metric, created = Metric._get_or_create(
+        configuration='general_clients',
+        name='General Clients',
+        key='wifi_clients',
+        object_id=None,
+        content_type=None,
+    )
+    if created:
+        chart = Chart(metric=metric, configuration='gen_wifi_clients')
+        chart.full_clean()
+        chart.save()
+
+
+def delete_general_metric(apps, schema_editor):
+    Metric = apps.get_model('monitoring', 'Metric')
+    Metric.objects.filter(content_type__isnull=True, object_id__isnull=True).delete()

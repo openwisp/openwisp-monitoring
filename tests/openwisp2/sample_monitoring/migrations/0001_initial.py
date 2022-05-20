@@ -72,7 +72,9 @@ class Migration(migrations.Migration):
                 ('field_name', models.CharField(default='value', max_length=16)),
                 (
                     'object_id',
-                    models.CharField(blank=True, db_index=True, max_length=36),
+                    models.CharField(
+                        blank=True, null=True, db_index=True, max_length=36
+                    ),
                 ),
                 (
                     'is_healthy',

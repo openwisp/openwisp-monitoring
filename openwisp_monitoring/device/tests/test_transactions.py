@@ -48,7 +48,7 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
         del data['interfaces']
         self._delete_non_ping_checks()
         d.monitoring.update_status('critical')
-        url = reverse('monitoring:api_device_metric', args=[d.pk.hex])
+        url = reverse('device_monitoring:api_device_metric', args=[d.pk.hex])
         url = '{0}?key={1}'.format(url, d.key)
         with patch.object(Check, 'perform_check') as mock:
             self._post_data(d.id, d.key, data)

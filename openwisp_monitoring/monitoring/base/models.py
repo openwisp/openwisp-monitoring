@@ -51,7 +51,7 @@ class AbstractMetric(TimeStampedEditableModel):
     content_type = models.ForeignKey(
         ContentType, on_delete=models.CASCADE, null=True, blank=True
     )
-    object_id = models.CharField(max_length=36, db_index=True, blank=True)
+    object_id = models.CharField(max_length=36, db_index=True, blank=True, null=True)
     content_object = GenericForeignKey('content_type', 'object_id')
     main_tags = JSONField(
         _('main tags'),
@@ -496,9 +496,12 @@ class AbstractChart(TimeStampedEditableModel):
         fields=None,
         query=None,
         timezone=settings.TIME_ZONE,
+        additional_params=None,
     ):
         query = query or self.query
+        additional_params = additional_params or {}
         params = self._get_query_params(time)
+        params.update(additional_params)
         return timeseries_db.get_query(
             self.type, params, time, self.GROUP_MAP, summary, fields, query, timezone
         )
@@ -530,12 +533,15 @@ class AbstractChart(TimeStampedEditableModel):
                     **m.tags,
                 }
             )
+        for key, value in self.config_dict.get('query_default_param', {}).items():
+            params.setdefault(key, value)
         return params
 
-    def _get_time(self, time):
+    @classmethod
+    def _get_time(cls, time):
         if not isinstance(time, str):
             return str(time)
-        if time in self.GROUP_MAP.keys():
+        if time in cls.GROUP_MAP.keys():
             days = int(time.strip('d'))
             now = timezone.now()
             if days > 3:
@@ -553,12 +559,15 @@ class AbstractChart(TimeStampedEditableModel):
         time=DEFAULT_TIME,
         x_axys=True,
         timezone=settings.TIME_ZONE,
+        additional_query_kwargs=None,
     ):
+        additional_query_kwargs = additional_query_kwargs or {}
         traces = {}
         if x_axys:
             x = []
         try:
             query_kwargs = dict(time=time, timezone=timezone)
+            query_kwargs.update(additional_query_kwargs)
             if self.top_fields:
                 fields = self.get_top_fields(self.top_fields)
                 data_query = self.get_query(fields=fields, **query_kwargs)
