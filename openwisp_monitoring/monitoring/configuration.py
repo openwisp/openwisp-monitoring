@@ -216,31 +216,34 @@ DEFAULT_METRICS = {
             }
         },
     },
-    # 'general_traffic': {
-    #     'label': _('General Traffic'),
-    #     'name': '{name}',
-    #     'key': '{key}',
-    #     'field_name': 'rx_bytes',
-    #     'related_fields': ['tx_bytes'],
-    #     'charts': {
-    #         'general_traffic': {
-    #             'type': 'scatter',
-    #             'title': _('General Traffic'),
-    #             'label': _('General Traffic'),
-    #             'description': _(
-    #                 'Network traffic, download and upload, '
-    #                 'measured in GB.'
-    #             ),
-    #             'summary_labels': [
-    #                 _('Total download traffic'),
-    #                 _('Total upload traffic'),
-    #             ],
-    #             'unit': _(' GB'),
-    #             'order': 240,
-    #             'query': chart_query['traffic'],
-    #         }
-    #     },
-    # },
+    'general_traffic': {
+        'label': _('General Traffic'),
+        'name': 'General Traffic',
+        'key': 'traffic',
+        'field_name': 'rx_bytes',
+        'related_fields': ['tx_bytes'],
+        'charts': {
+            'general_traffic': {
+                'type': 'scatter',
+                'title': _('General Traffic'),
+                'label': _('General Traffic'),
+                'description': _(
+                    'Network traffic, download and upload, ' 'measured in GB.'
+                ),
+                'summary_labels': [
+                    _('Total download traffic'),
+                    _('Total upload traffic'),
+                ],
+                'unit': _(' GB'),
+                'order': 240,
+                'query': chart_query['general_traffic'],
+                'query_default_param': {
+                    'organization_lookup': '',
+                    'ifname_lookup': '',
+                },
+            }
+        },
+    },
     'clients': {
         'label': _('Clients'),
         'name': '{name}',
@@ -263,8 +266,8 @@ DEFAULT_METRICS = {
     },
     'general_clients': {
         'label': _('Clients'),
-        'name': '{name}',
-        'key': 'cliwifi_clientsents',
+        'name': 'General Clients',
+        'key': 'wifi_clients',
         'field_name': 'clients',
         'charts': {
             'gen_wifi_clients': {
@@ -526,6 +529,8 @@ DEFAULT_METRICS = {
 
 DEFAULT_CHARTS = {}
 
+DEFAULT_DASHBOARD_TRAFFIC_CHART = {'__all__': ['wan']}
+
 
 def _validate_metric_configuration(metric_config):
     assert 'label' in metric_config
@@ -686,5 +691,6 @@ def _unregister_chart_configuration_choice(chart_name):
             return
 
 
+DEFAULT_DASHBOARD_TRAFFIC_CHART.update(app_settings.ADDITIONAL_DASHBOARD_TRAFFIC_CHART)
 METRIC_CONFIGURATION_CHOICES = get_metric_configuration_choices()
 CHART_CONFIGURATION_CHOICES = get_chart_configuration_choices()

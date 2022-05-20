@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 from swapper import load_model
 
 from ...monitoring.exceptions import InvalidChartConfigException
+from ..configuration import DEFAULT_DASHBOARD_TRAFFIC_CHART
 
 logger = logging.getLogger(__name__)
 Chart = load_model('monitoring', 'Chart')
@@ -19,7 +20,7 @@ Organization = load_model('openwisp_users', 'Organization')
 
 
 class DashboardTimeseriesView(APIView):
-    def _get_organization_lookup(self):
+    def _get_organizations(self):
         query_orgs = self.request.query_params.get('organization_slug', '')
         if query_orgs:
             query_orgs = query_orgs.split(',')
@@ -31,23 +32,49 @@ class DashboardTimeseriesView(APIView):
             if self.request.user.is_superuser or all(
                 [str(id) in self.request.user.organizations_managed for id in org_ids]
             ):
-                orgs = org_ids
+                return org_ids
             else:
                 raise PermissionDenied
         else:
             if self.request.user.is_superuser:
-                orgs = []
+                return []
             elif self.request.user.organizations_managed:
-                orgs = self.request.user.organizations_managed
+                return self.request.user.organizations_managed
             else:
                 raise PermissionDenied
 
-        if not orgs:
+    def _get_query_clause(self, field, items):
+        if not items:
             return ''
-        org_lookup = []
-        for org in orgs:
-            org_lookup.append(f"organization_id = '{org}'")
-        return 'AND ({org_lookup})'.format(org_lookup=' OR '.join(org_lookup))
+        lookup = []
+        for item in items:
+            lookup.append(f"{field} = '{item}'")
+        return 'AND ({lookup})'.format(lookup=' OR '.join(lookup))
+
+    def _get_organization_lookup(self):
+        orgs = self._get_organizations()
+        return self._get_query_clause('organization_id', orgs)
+
+    def _get_ifname_lookup(self):
+        orgs = self._get_organizations()
+        interfaces = []
+        if len(orgs) == 1:
+            org_slug = self.request.GET.get(
+                'organization_slug', Organization.objects.get(id=orgs[0]).slug
+            )
+            interfaces = DEFAULT_DASHBOARD_TRAFFIC_CHART.get(org_slug, [])
+        if not interfaces:
+            interfaces = DEFAULT_DASHBOARD_TRAFFIC_CHART.get('__all__')
+        return self._get_query_clause('ifname', interfaces)
+
+    def _get_chart_additional_query_kwargs(self, chart):
+        org_lookup = self._get_organization_lookup()
+        additional_params = {
+            'organization_lookup': org_lookup,
+        }
+        if chart.configuration == 'general_traffic':
+            additional_params['ifname_lookup'] = self._get_ifname_lookup()
+        return {'additional_params': additional_params}
 
     def get(self, request):
         org_lookup = self._get_organization_lookup()
@@ -83,9 +110,9 @@ class DashboardTimeseriesView(APIView):
                     time=time,
                     x_axys=x_axys,
                     timezone=timezone,
-                    additional_query_kwargs={
-                        'additional_params': {'organization_lookup': org_lookup}
-                    },
+                    additional_query_kwargs=self._get_chart_additional_query_kwargs(
+                        chart
+                    ),
                 )
                 if not chart_dict['traces']:
                     continue

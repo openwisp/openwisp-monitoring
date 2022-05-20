@@ -37,7 +37,7 @@ def assign_permissions_to_groups(apps, schema_editor):
             )
 
 
-def create_general_metric(apps, schema_editor):
+def create_general_metrics(apps, schema_editor):
     Chart = swapper.load_model('monitoring', 'Chart')
     Metric = swapper.load_model('monitoring', 'Metric')
 
@@ -53,7 +53,19 @@ def create_general_metric(apps, schema_editor):
         chart.full_clean()
         chart.save()
 
+    metric, created = Metric._get_or_create(
+        configuration='general_traffic',
+        name='General Traffic',
+        key='traffic',
+        object_id=None,
+        content_type=None,
+    )
+    if created:
+        chart = Chart(metric=metric, configuration='general_traffic')
+        chart.full_clean()
+        chart.save()
 
-def delete_general_metric(apps, schema_editor):
+
+def delete_general_metrics(apps, schema_editor):
     Metric = apps.get_model('monitoring', 'Metric')
     Metric.objects.filter(content_type__isnull=True, object_id__isnull=True).delete()
