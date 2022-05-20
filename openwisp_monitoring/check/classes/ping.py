@@ -134,16 +134,6 @@ class Ping(BaseCheck):
         """
         return self.params.get(param, self.schema['properties'][param]['default'])
 
-    def _get_ip(self):
-        """
-        Figures out ip to use or fails raising OperationalError
-        """
-        device = self.related_object
-        ip = device.management_ip
-        if not ip and not app_settings.MANAGEMENT_IP_ONLY:
-            ip = device.last_ip
-        return ip
-
     def _command(self, command):
         """
         Executes command (easier to mock)

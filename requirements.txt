@@ -5,3 +5,4 @@ django-nested-admin~=3.4.0
 netaddr~=0.8
 python-dateutil>=2.7,<3.0
 openwisp-utils[rest] @ https://github.com/openwisp/openwisp-utils/tarball/master
+netengine @ https://github.com/openwisp/netengine/tarball/netjson-compliance

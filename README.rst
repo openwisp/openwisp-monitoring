@@ -103,6 +103,7 @@ Available Features
 * Extensible metrics and charts: it's possible to define new metrics and new charts
 * API to retrieve the chart metrics and status information of each device
   based on `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_
+* Collection of monitoring information via `SNMP <#snmp>`_
 
 ------------
 
@@ -900,6 +901,69 @@ configuration status of a device changes, this ensures the check reacts
 quickly to events happening in the network and informs the user promptly
 if there's anything that is not working as intended.
 
+SNMP
+~~~~
+
+This check provides an alternative way to collect monitoring information from devices that don't have
+the ability to use `openwisp-monitoring agent <https://github.com/openwisp/openwrt-openwisp-monitoring>`_.
+The information is collected via SNMP using `netengine <https://github.com/openwisp/netengine/>`_. The devices
+need to have an SNMP daemon in order for this to work.
+This check is disabled by default, you may choose to enable auto creation of this check by setting
+`OPENWISP_MONITORING_AUTO_SNMP <#OPENWISP_MONITORING_AUTO_SNMP>`_ to ``True``.
+
+Instructions to configure an SNMP Check
+---------------------------------------
+
+The following steps will help you use the SNMP Check feature:
+
+1. Register your device to OpenWISP
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Register your device making sure the ``mac address`` and ``management ip`` are correct:
+
+.. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/issues/297-snmp-check/docs/snmp-check/snmp-check-1.png
+  :alt: Creating a device example
+
+It is recommended to keep the `OPENWISP_MONITORING_AUTO_CLEAR_MANAGEMENT_IP <#OPENWISP_MONITORING_AUTO_CLEAR_MANAGEMENT_IP>`_
+setting off to avoid losing the ``management ip``. This is important for the check to work.
+
+1. Create SNMP access credentials and add them to your device
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In the admin, go to ``Access Credentials > Add Access Credentials`` and select a type suitable for your device's backend.
+
+.. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/issues/297-snmp-check/docs/snmp-check/snmp-check-2.png
+  :alt: Creating access credentials example
+
+Then either enable ``Auto Add`` (it needs to have the same organization as the device for this to work), or add it to
+your device manually as shown below.
+
+.. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/issues/297-snmp-check/docs/snmp-check/snmp-check-3.png
+  :alt: Adding access credentials to device example
+
+3. Create an SNMP check
+~~~~~~~~~~~~~~~~~~~~~~~
+
+You can skip this step and let OpenWISP do this automatically if you have the setting
+`OPENWISP_MONITORING_AUTO_SNMP <#OPENWISP_MONITORING_AUTO_SNMP>`_ enabled.
+
+To create the check manually, in the admin, go to ``Check > Add Check``. Now create a check as shown below:
+
+.. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/issues/297-snmp-check/docs/snmp-check/snmp-check-4.png
+  :alt: Creating SNMP check example
+
+Here, ``Object id`` is the UUID of the device you just created.
+
+4. Run the check
+~~~~~~~~~~~~~~~~
+
+This should happen automatically if you have celery running in the background. For testing, you can
+run this check manually using the `run_checks <#run_checks>`_ command. After that, you should see the
+device charts and status instantly.
+
+.. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/issues/297-snmp-check/docs/snmp-check/snmp-check-5.png
+  :alt: Device status collected by snmp example
+
 Settings
 --------
 
@@ -982,6 +1046,18 @@ validating custom parameters of a ``Check`` object.
 
 This setting allows you to choose whether `config_applied <#configuration-applied>`_ checks should be
 created automatically for newly registered devices. It's enabled by default.
+
+``OPENWISP_MONITORING_AUTO_SNMP``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``bool``    |
++--------------+-------------+
+| **default**: | ``False``   |
++--------------+-------------+
+
+Whether `SNMP <#snmp>`_ checks are created automatically for devices. The devices need to have an snmp daemon
+installed in order for this check to work.
 
 ``OPENWISP_MONITORING_AUTO_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -9,8 +9,12 @@ from swapper import load_model
 
 from ...device.tests import TestDeviceMonitoringMixin
 from .. import settings as app_settings
-from ..classes import ConfigApplied, Ping
-from ..tasks import auto_create_config_check, auto_create_ping
+from ..classes import ConfigApplied, Ping, Snmp
+from ..tasks import (
+    auto_create_config_check,
+    auto_create_ping,
+    auto_create_snmp_devicemonitoring,
+)
 
 Check = load_model('check', 'Check')
 Metric = load_model('monitoring', 'Metric')
@@ -22,6 +26,7 @@ Notification = load_model('openwisp_notifications', 'Notification')
 class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
     _PING = app_settings.CHECK_CLASSES[0][0]
     _CONFIG_APPLIED = app_settings.CHECK_CLASSES[1][0]
+    _SNMP_DEVICEMONITORING = app_settings.CHECK_CLASSES[2][0]
 
     def test_check_str(self):
         c = Check(name='Test check')
@@ -48,6 +53,12 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
                 check_type=self._CONFIG_APPLIED,
             )
             self.assertEqual(c.check_class, ConfigApplied)
+        with self.subTest('Test DeviceMonitoring check Class'):
+            c = Check(
+                name='Snmp class check',
+                check_type=self._SNMP_DEVICEMONITORING,
+            )
+            self.assertEqual(c.check_class, Snmp)
 
     def test_base_check_class(self):
         path = 'openwisp_monitoring.check.classes.base.BaseCheck'
@@ -81,6 +92,17 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
             self.assertIsInstance(i, ConfigApplied)
             self.assertEqual(i.related_object, obj)
             self.assertEqual(i.params, c.params)
+        with self.subTest('Test DeviceMonitoring check instance'):
+            c = Check(
+                name='DeviceMonitoring class check',
+                check_type=self._SNMP_DEVICEMONITORING,
+                content_object=obj,
+                params={},
+            )
+            i = c.check_instance
+            self.assertIsInstance(i, Snmp)
+            self.assertEqual(i.related_object, obj)
+            self.assertEqual(i.params, c.params)
 
     def test_validation(self):
         with self.subTest('Test Ping check validation'):
@@ -105,7 +127,8 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
     def test_auto_check_creation(self):
         self.assertEqual(Check.objects.count(), 0)
         d = self._create_device(organization=self._create_org())
-        self.assertEqual(Check.objects.count(), 2)
+        # check is automatically created via django signal
+        self.assertEqual(Check.objects.count(), 3)
         with self.subTest('Test AUTO_PING'):
             c1 = Check.objects.filter(check_type=self._PING).first()
             self.assertEqual(c1.content_object, d)
@@ -114,11 +137,15 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
             c2 = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
             self.assertEqual(c2.content_object, d)
             self.assertEqual(self._CONFIG_APPLIED, c2.check_type)
+        with self.subTest('Test AUTO_SNMP'):
+            c3 = Check.objects.filter(check_type=self._SNMP_DEVICEMONITORING).first()
+            self.assertEqual(c3.content_object, d)
+            self.assertEqual(self._SNMP_DEVICEMONITORING, c3.check_type)
 
     def test_device_deleted(self):
         self.assertEqual(Check.objects.count(), 0)
         d = self._create_device(organization=self._create_org())
-        self.assertEqual(Check.objects.count(), 2)
+        self.assertEqual(Check.objects.count(), 3)
         d.delete()
         self.assertEqual(Check.objects.count(), 0)
 
@@ -129,7 +156,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self._create_config(status='modified', organization=self._create_org())
         d = Device.objects.first()
         d.monitoring.update_status('ok')
-        self.assertEqual(Check.objects.count(), 2)
+        self.assertEqual(Check.objects.count(), 3)
         self.assertEqual(Metric.objects.count(), 0)
         self.assertEqual(AlertSettings.objects.count(), 0)
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
@@ -159,7 +186,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self._create_config(status='error', organization=self._create_org())
         dm = Device.objects.first().monitoring
         dm.update_status('ok')
-        self.assertEqual(Check.objects.count(), 2)
+        self.assertEqual(Check.objects.count(), 3)
         self.assertEqual(Metric.objects.count(), 0)
         self.assertEqual(AlertSettings.objects.count(), 0)
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
@@ -192,7 +219,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
     @patch('openwisp_monitoring.check.settings.AUTO_PING', False)
     def test_config_check_critical_metric(self):
         self._create_config(status='modified', organization=self._create_org())
-        self.assertEqual(Check.objects.count(), 2)
+        self.assertEqual(Check.objects.count(), 3)
         d = Device.objects.first()
         dm = d.monitoring
         dm.update_status('ok')
@@ -211,7 +238,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
 
     def test_no_duplicate_check_created(self):
         self._create_config(organization=self._create_org())
-        self.assertEqual(Check.objects.count(), 2)
+        self.assertEqual(Check.objects.count(), 3)
         d = Device.objects.first()
         auto_create_config_check.delay(
             model=Device.__name__.lower(),
@@ -223,13 +250,18 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
             app_label=Device._meta.app_label,
             object_id=str(d.pk),
         )
-        self.assertEqual(Check.objects.count(), 2)
+        auto_create_snmp_devicemonitoring.delay(
+            model=Device.__name__.lower(),
+            app_label=Device._meta.app_label,
+            object_id=str(d.pk),
+        )
+        self.assertEqual(Check.objects.count(), 3)
 
     def test_device_unreachable_no_config_check(self):
         self._create_config(status='modified', organization=self._create_org())
         d = self.device_model.objects.first()
         d.monitoring.update_status('critical')
-        self.assertEqual(Check.objects.count(), 2)
+        self.assertEqual(Check.objects.count(), 3)
         c2 = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         c2.perform_check()
         self.assertEqual(Metric.objects.count(), 0)
@@ -240,7 +272,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self._create_config(status='modified', organization=self._create_org())
         d = self.device_model.objects.first()
         d.monitoring.update_status('unknown')
-        self.assertEqual(Check.objects.count(), 2)
+        self.assertEqual(Check.objects.count(), 3)
         c2 = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         c2.perform_check()
         self.assertEqual(Metric.objects.count(), 0)
