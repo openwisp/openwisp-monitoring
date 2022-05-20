@@ -24,38 +24,31 @@ class DashboardTimeseriesView(APIView):
         query_orgs = self.request.query_params.get('organization_slug', '')
         if query_orgs:
             query_orgs = query_orgs.split(',')
-            org_ids = Organization.objects.filter(slug__in=query_orgs).values_list(
-                'id', flat=True
+            org_ids = list(
+                Organization.objects.filter(slug__in=query_orgs).values_list(
+                    'id', flat=True
+                )
             )
             if len(org_ids) != len(query_orgs):
+                # Request query_params contains slugs of non-existing organization
                 raise NotFound
             if self.request.user.is_superuser or all(
                 [str(id) in self.request.user.organizations_managed for id in org_ids]
             ):
                 return org_ids
-            else:
-                raise PermissionDenied
+            # Request query_params contains slugs for organizations that user
+            # doesn't manage
+            raise PermissionDenied
         else:
             if self.request.user.is_superuser:
                 return []
             elif self.request.user.organizations_managed:
                 return self.request.user.organizations_managed
             else:
+                # The user does not manage any organization
                 raise PermissionDenied
 
-    def _get_query_clause(self, field, items):
-        if not items:
-            return ''
-        lookup = []
-        for item in items:
-            lookup.append(f"{field} = '{item}'")
-        return 'AND ({lookup})'.format(lookup=' OR '.join(lookup))
-
-    def _get_organization_lookup(self):
-        orgs = self._get_organizations()
-        return self._get_query_clause('organization_id', orgs)
-
-    def _get_ifname_lookup(self):
+    def _get_interface(self):
         orgs = self._get_organizations()
         interfaces = []
         if len(orgs) == 1:
@@ -65,19 +58,17 @@ class DashboardTimeseriesView(APIView):
             interfaces = DEFAULT_DASHBOARD_TRAFFIC_CHART.get(org_slug, [])
         if not interfaces:
             interfaces = DEFAULT_DASHBOARD_TRAFFIC_CHART.get('__all__')
-        return self._get_query_clause('ifname', interfaces)
+        return interfaces
 
     def _get_chart_additional_query_kwargs(self, chart):
-        org_lookup = self._get_organization_lookup()
         additional_params = {
-            'organization_lookup': org_lookup,
+            'organization_id': self._get_organizations(),
         }
         if chart.configuration == 'general_traffic':
-            additional_params['ifname_lookup'] = self._get_ifname_lookup()
+            additional_params['ifname'] = self._get_interface()
         return {'additional_params': additional_params}
 
     def get(self, request):
-        org_lookup = self._get_organization_lookup()
         charts = Chart.objects.filter(
             metric__object_id=None, metric__content_type=None
         ).select_related('metric')
@@ -91,7 +82,7 @@ class DashboardTimeseriesView(APIView):
         except UnknownTimeZoneError:
             return Response('Unkown Time Zone', status=400)
         # prepare response data
-        data = self._get_charts_data(charts, time, timezone, org_lookup)
+        data = self._get_charts_data(charts, time, timezone)
         # csv export has a different response
         if request.query_params.get('csv'):
             response = HttpResponse(self._get_csv(data), content_type='text/csv')
@@ -99,7 +90,7 @@ class DashboardTimeseriesView(APIView):
             return response
         return Response(data)
 
-    def _get_charts_data(self, charts, time, timezone, org_lookup):
+    def _get_charts_data(self, charts, time, timezone):
         chart_map = {}
         x_axys = True
         data = OrderedDict({'charts': []})

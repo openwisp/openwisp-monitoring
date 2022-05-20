@@ -238,8 +238,8 @@ DEFAULT_METRICS = {
                 'order': 240,
                 'query': chart_query['general_traffic'],
                 'query_default_param': {
-                    'organization_lookup': '',
-                    'ifname_lookup': '',
+                    'organization_id': '',
+                    'ifname': '',
                 },
             }
         },
@@ -280,7 +280,7 @@ DEFAULT_METRICS = {
                 'order': 230,
                 'query': chart_query['general_wifi_clients'],
                 'query_default_param': {
-                    'organization_lookup': '',
+                    'organization_id': '',
                 },
             }
         },
