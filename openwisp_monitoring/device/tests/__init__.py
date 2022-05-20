@@ -31,7 +31,7 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
         manage_short_retention_policy()
 
     def _url(self, pk, key=None, time=None):
-        url = reverse('device_monitoring:api_device_metric', args=[pk])
+        url = reverse('monitoring:api_device_metric', args=[pk])
         if key:
             url = '{0}?key={1}'.format(url, key)
         if time:

@@ -976,7 +976,7 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
         device_location = self._create_object_location()
         device_location.device.monitoring.update_status('ok')
         self._login_admin()
-        url = reverse('device_monitoring:api_location_geojson')
+        url = reverse('monitoring:api_location_geojson')
         response = self.client.get(url)
         data = response.data
         self.assertEqual(data['count'], 1)
@@ -992,7 +992,7 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
         device_location.device.monitoring.update_status('ok')
         location = device_location.location
         self._login_admin()
-        url = reverse('device_monitoring:api_location_device_list', args=[location.pk])
+        url = reverse('monitoring:api_location_device_list', args=[location.pk])
         response = self.client.get(url)
         data = response.data
         self.assertEqual(data['count'], 1)
@@ -1013,7 +1013,7 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
 
         with self.subTest('Test MonitoringGeoJsonLocationList'):
             response = self.client.get(
-                reverse('device_monitoring:api_location_geojson'),
+                reverse('monitoring:api_location_geojson'),
                 content_type='application/json',
                 HTTP_AUTHORIZATION=f'Bearer {token}',
             )
@@ -1021,9 +1021,7 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
 
         with self.subTest('Test GeoJsonLocationListView'):
             response = self.client.get(
-                reverse(
-                    'device_monitoring:api_location_device_list', args=[location.id]
-                ),
+                reverse('monitoring:api_location_device_list', args=[location.id]),
                 content_type='application/json',
                 HTTP_AUTHORIZATION=f'Bearer {token}',
             )

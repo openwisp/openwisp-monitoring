@@ -216,6 +216,31 @@ DEFAULT_METRICS = {
             }
         },
     },
+    # 'general_traffic': {
+    #     'label': _('General Traffic'),
+    #     'name': '{name}',
+    #     'key': '{key}',
+    #     'field_name': 'rx_bytes',
+    #     'related_fields': ['tx_bytes'],
+    #     'charts': {
+    #         'general_traffic': {
+    #             'type': 'scatter',
+    #             'title': _('General Traffic'),
+    #             'label': _('General Traffic'),
+    #             'description': _(
+    #                 'Network traffic, download and upload, '
+    #                 'measured in GB.'
+    #             ),
+    #             'summary_labels': [
+    #                 _('Total download traffic'),
+    #                 _('Total upload traffic'),
+    #             ],
+    #             'unit': _(' GB'),
+    #             'order': 240,
+    #             'query': chart_query['traffic'],
+    #         }
+    #     },
+    # },
     'clients': {
         'label': _('Clients'),
         'name': '{name}',

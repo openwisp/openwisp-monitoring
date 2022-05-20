@@ -56,7 +56,7 @@ class TestDashboardTimeseriesView(
                 extra_tags={'organization_id': str(org.id)},
             )
 
-        path = reverse('monitoring:api_dashboard_timeseries')
+        path = reverse('monitoring_general:api_dashboard_timeseries')
         org1 = self._create_org(name='org1', slug='org1')
         org2 = self._create_org(name='org2', slug='org2')
         org3 = self._create_org(name='org3', slug='org3')

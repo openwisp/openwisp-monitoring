@@ -46,6 +46,14 @@ chart_query = {
             "GROUP BY time(1d)"
         )
     },
+    # 'general_traffic': {
+    #     'influxdb': (
+    #         "SELECT SUM(tx_bytes) / 1000000000 AS upload, "
+    #         "SUM(rx_bytes) / 1000000000 AS download FROM {key} "
+    #         "WHERE time >= '{time}' "
+    #         "GROUP BY time(1d)"
+    #     )
+    # },
     'memory': {
         'influxdb': (
             "SELECT MEAN(percent_used) AS memory_usage "
