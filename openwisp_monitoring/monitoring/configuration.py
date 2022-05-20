@@ -265,14 +265,14 @@ DEFAULT_METRICS = {
         },
     },
     'general_clients': {
-        'label': _('Clients'),
+        'label': _('General Clients'),
         'name': 'General Clients',
         'key': 'wifi_clients',
         'field_name': 'clients',
         'charts': {
             'gen_wifi_clients': {
                 'type': 'bar',
-                'label': _('WiFi clients'),
+                'label': _('General Clients'),
                 'title': _('WiFi clients'),
                 'description': _('WiFi clients associated to the wireless interface.'),
                 'summary_labels': [_('Total Unique WiFi clients')],
@@ -529,7 +529,7 @@ DEFAULT_METRICS = {
 
 DEFAULT_CHARTS = {}
 
-DEFAULT_DASHBOARD_TRAFFIC_CHART = {'__all__': ['wan']}
+DEFAULT_DASHBOARD_TRAFFIC_CHART = {'__all__': ['eth0_1']}
 
 
 def _validate_metric_configuration(metric_config):
