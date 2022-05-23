@@ -5,6 +5,7 @@ from django.urls import reverse
 from swapper import load_model
 
 from openwisp_controller.config.tests.utils import CreateConfigTemplateMixin
+from openwisp_controller.geo.tests.utils import TestGeoMixin
 
 from ..configuration import DEFAULT_DASHBOARD_TRAFFIC_CHART
 from . import TestMonitoringMixin
@@ -13,11 +14,20 @@ Organization = load_model('openwisp_users', 'Organization')
 Metric = load_model('monitoring', 'Metric')
 OrganizationUser = load_model('openwisp_users', 'OrganizationUser')
 Group = load_model('openwisp_users', 'Group')
+DeviceLocation = load_model('geo', 'DeviceLocation')
+FloorPlan = load_model('geo', 'FloorPlan')
+Location = load_model('geo', 'Location')
+Device = load_model('config', 'Device')
 
 
 class TestDashboardTimeseriesView(
-    CreateConfigTemplateMixin, TestMonitoringMixin, TestCase
+    CreateConfigTemplateMixin, TestMonitoringMixin, TestGeoMixin, TestCase
 ):
+    location_model = Location
+    object_location_model = DeviceLocation
+    object_model = Device
+    floorplan_model = FloorPlan
+
     def setUp(self):
         super().setUp()
 
@@ -37,6 +47,37 @@ class TestDashboardTimeseriesView(
             self.assertIn('colors', chart)
             self.assertIn('colorscale', chart)
 
+    def _create_org_wifi_client_metric(self, org, **kwargs):
+        extra_tags = {'organization_id': str(org.id)}
+        extra_tags.update(kwargs)
+        return self._create_general_metric(
+            name='wifi_clients',
+            configuration='general_clients',
+            field_name='clients',
+            main_tags={'ifname': 'wlan0'},
+            extra_tags=extra_tags,
+        )
+
+    def _create_org_traffic_metric(self, org, interface_name):
+        return self._create_general_metric(
+            name='traffic',
+            configuration='general_traffic',
+            field_name='rx_bytes',
+            main_tags={'ifname': interface_name},
+            extra_tags={'organization_id': str(org.id)},
+        )
+
+    def _create_test_users(self, org):
+        admin = self._create_admin()
+        org2_administrator = self._create_user()
+        OrganizationUser.objects.create(
+            user=org2_administrator, organization=org, is_admin=True
+        )
+        groups = Group.objects.filter(name='Administrator')
+        org2_administrator.groups.set(groups)
+        operator = self._create_operator()
+        return admin, org2_administrator, operator
+
     def test_wifi_client_chart(self):
         def _test_chart_properties(chart):
             self.assertEqual(chart['title'], 'WiFi clients')
@@ -50,38 +91,22 @@ class TestDashboardTimeseriesView(
                 'WiFi clients associated to the wireless interface.',
             )
 
-        def _create_org_wifi_client_metric(org):
-            return self._create_general_metric(
-                name='wifi_clients',
-                configuration='general_clients',
-                field_name='clients',
-                main_tags={'ifname': 'wlan0'},
-                extra_tags={'organization_id': str(org.id)},
-            )
-
         path = reverse('monitoring_general:api_dashboard_timeseries')
         org1 = self._create_org(name='org1', slug='org1')
         org2 = self._create_org(name='org2', slug='org2')
         org3 = self._create_org(name='org3', slug='org3')
-        org1_metric = _create_org_wifi_client_metric(org1)
-        org2_metric = _create_org_wifi_client_metric(org2)
-        org3_metric = _create_org_wifi_client_metric(org3)
+        org1_metric = self._create_org_wifi_client_metric(org1)
+        org2_metric = self._create_org_wifi_client_metric(org2)
+        org3_metric = self._create_org_wifi_client_metric(org3)
 
         org1_metric.write('00:23:4a:00:00:00')
         org2_metric.write('00:23:4b:00:00:00')
         org3_metric.write('00:14:5c:00:00:00')
 
-        admin = self._create_admin()
-        org2_administrator = self._create_user()
-        OrganizationUser.objects.create(
-            user=org2_administrator, organization=org2, is_admin=True
-        )
+        admin, org2_administrator, operator = self._create_test_users(org2)
         OrganizationUser.objects.create(
             user=org2_administrator, organization=org3, is_admin=True
         )
-        groups = Group.objects.filter(name='Administrator')
-        org2_administrator.groups.set(groups)
-        operator = self._create_operator()
 
         self.client.force_login(admin)
         with self.subTest('Test superuser retrieves metric for all organizations'):
@@ -190,24 +215,15 @@ class TestDashboardTimeseriesView(
                 'Network traffic, download and upload, measured in GB.',
             )
 
-        def _create_org_traffic_metric(org, interface_name):
-            return self._create_general_metric(
-                name='traffic',
-                configuration='general_traffic',
-                field_name='rx_bytes',
-                main_tags={'ifname': interface_name},
-                extra_tags={'organization_id': str(org.id)},
-            )
-
         path = reverse('monitoring_general:api_dashboard_timeseries')
         org1 = self._create_org(name='org1', slug='org1')
         org2 = self._create_org(name='org2', slug='org2')
         org3 = self._create_org(name='org3', slug='org3')
-        org1_wan_metric = _create_org_traffic_metric(org1, 'wan')
-        org2_wan_metric = _create_org_traffic_metric(org2, 'wan')
-        org2_eth1_metric = _create_org_traffic_metric(org2, 'eth1')
-        org3_wan_metric = _create_org_traffic_metric(org3, 'wan')
-        org3_eth1_metric = _create_org_traffic_metric(org3, 'eth1')
+        org1_wan_metric = self._create_org_traffic_metric(org1, 'wan')
+        org2_wan_metric = self._create_org_traffic_metric(org2, 'wan')
+        org2_eth1_metric = self._create_org_traffic_metric(org2, 'eth1')
+        org3_wan_metric = self._create_org_traffic_metric(org3, 'wan')
+        org3_eth1_metric = self._create_org_traffic_metric(org3, 'eth1')
         traffic_metrics = {
             'org1': {'wan': 10000000000},
             'org2': {'wan': 20000000000, 'eth1': 60000000000},
@@ -220,17 +236,10 @@ class TestDashboardTimeseriesView(
         org3_wan_metric.write(traffic_metrics['org3']['wan'])
         org3_eth1_metric.write(traffic_metrics['org3']['eth1'])
 
-        admin = self._create_admin()
-        org2_administrator = self._create_user()
-        OrganizationUser.objects.create(
-            user=org2_administrator, organization=org2, is_admin=True
-        )
+        admin, org2_administrator, operator = self._create_test_users(org2)
         OrganizationUser.objects.create(
             user=org2_administrator, organization=org3, is_admin=True
         )
-        groups = Group.objects.filter(name='Administrator')
-        org2_administrator.groups.set(groups)
-        operator = self._create_operator()
 
         self.client.force_login(admin)
         with self.subTest('Test superuser retrieves metric for all organizations'):
@@ -414,3 +423,83 @@ class TestDashboardTimeseriesView(
         with self.subTest('Test non-org admin retrieve metric'):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 403)
+
+    def test_exporting_data_as_csv(self):
+        def _test_csv_response(response):
+            self.assertEqual(
+                response.get('Content-Disposition'), 'attachment; filename=data.csv'
+            )
+            self.assertEqual(response.get('Content-Type'), 'text/csv')
+            rows = response.content.decode('utf8').strip().split('\n')
+            header = rows[0].strip().split(',')
+            self.assertEqual(
+                header,
+                [
+                    'time',
+                    'wifi_clients - WiFi clients',
+                    'download - General Traffic',
+                    'upload - General Traffic',
+                ],
+            )
+            last_line = rows[-1].strip().split(',')
+            return last_line
+
+        path = reverse('monitoring_general:api_dashboard_timeseries')
+        org1 = self._create_org(name='org1', slug='org1')
+        org2 = self._create_org(name='org2', slug='org2')
+        org1_wifi_metric = self._create_org_wifi_client_metric(org1)
+        org2_wifi_metric = self._create_org_wifi_client_metric(org2)
+        org1_wan_metric = self._create_org_traffic_metric(org1, 'wan')
+        org2_wan_metric = self._create_org_traffic_metric(org2, 'wan')
+
+        org1_wifi_metric.write('00:23:4a:00:00:00')
+        org2_wifi_metric.write('00:23:4b:00:00:00')
+        org2_wifi_metric.write('00:14:5c:00:00:00')
+        org1_wan_metric.write(1000000000)
+        org2_wan_metric.write(2000000000)
+
+        admin, org2_administrator, operator = self._create_test_users(org2)
+
+        self.client.force_login(admin)
+        with self.subTest('Test superuser exporting csv'):
+            response = self.client.get(path, {'csv': '1'})
+            last_line = _test_csv_response(response)
+            self.assertEqual(
+                last_line,
+                [last_line[0], '3', '3.0', ''],
+            )
+
+        self.client.force_login(org2_administrator)
+        with self.subTest('Test organization admin exporting csv'):
+            response = self.client.get(path, {'csv': '1'})
+            last_line = _test_csv_response(response)
+            self.assertEqual(
+                last_line,
+                [last_line[0], '2', '2.0', ''],
+            )
+
+        self.client.force_login(operator)
+        with self.subTest('Test non-organization admin exporting csv'):
+            response = self.client.get(path, {'csv': 1})
+            self.assertEqual(response.status_code, 403)
+
+        self.client.logout()
+        with self.subTest('Test unauthenticated user exporting csv'):
+            response = self.client.get(path, {'csv': 1})
+            self.assertEqual(response.status_code, 403)
+
+    def test_filter_with_location_id(self):
+        pass
+
+    def test_group_by_time(self):
+        admin = self._create_admin()
+        self.client.force_login(admin)
+        path = reverse('monitoring_general:api_dashboard_timeseries')
+        with self.subTest('Test with valid group time'):
+            response = self.client.get(path, {'time': '1d'})
+            self.assertEqual(response.status_code, 200)
+            self.assertIsInstance(response.data['charts'], list)
+
+        with self.subTest('Test with invalid group time'):
+            response = self.client.get(path, {'time': '3w'})
+            self.assertEqual(response.status_code, 400)

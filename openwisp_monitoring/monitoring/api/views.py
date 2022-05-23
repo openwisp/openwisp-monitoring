@@ -1,11 +1,14 @@
+import csv
 import logging
 from collections import OrderedDict
+from io import StringIO
 
 from django.conf import settings
 from django.http import HttpResponse
 from pytz import timezone as tz
 from pytz.exceptions import UnknownTimeZoneError
 from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from swapper import load_model
@@ -20,6 +23,8 @@ Organization = load_model('openwisp_users', 'Organization')
 
 
 class DashboardTimeseriesView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def _get_organizations(self):
         query_orgs = self.request.query_params.get('organization_slug', '')
         if query_orgs:
@@ -134,6 +139,45 @@ class DashboardTimeseriesView(APIView):
         # add sorted chart list to chart data
         data['charts'] = list(OrderedDict(sorted(chart_map.items())).values())
         return data
+
+    def _get_csv(self, data):
+        header = ['time']
+        columns = [data.get('x')]
+        histograms = []
+        for chart in data['charts']:
+            if chart['type'] == 'histogram':
+                histograms.append(chart)
+                continue
+            for trace in chart['traces']:
+                header.append(self._get_csv_header(chart, trace))
+                columns.append(trace[1])
+        rows = [header]
+        for index, element in enumerate(data.get('x', [])):
+            row = []
+            for column in columns:
+                row.append(column[index])
+            rows.append(row)
+        for chart in histograms:
+            rows.append([])
+            rows.append([chart['title']])
+            # Export value as 0 if it is None
+            for key, value in chart['summary'].items():
+                if chart['summary'][key] is None:
+                    chart['summary'][key] = 0
+            # Sort Histogram on the basis of value in the descending order
+            sorted_charts = sorted(
+                chart['summary'].items(), key=lambda x: x[1], reverse=True
+            )
+            for field, value in sorted_charts:
+                rows.append([field, value])
+        # write CSV to in-memory file object
+        fileobj = StringIO()
+        csv.writer(fileobj).writerows(rows)
+        return fileobj.getvalue()
+
+    def _get_csv_header(self, chart, trace):
+        header = trace[0]
+        return f'{header} - {chart["title"]}'
 
 
 dashboard_timeseries = DashboardTimeseriesView.as_view()

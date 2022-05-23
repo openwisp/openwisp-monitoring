@@ -529,7 +529,7 @@ DEFAULT_METRICS = {
 
 DEFAULT_CHARTS = {}
 
-DEFAULT_DASHBOARD_TRAFFIC_CHART = {'__all__': ['eth0_1']}
+DEFAULT_DASHBOARD_TRAFFIC_CHART = {'__all__': ['wan']}
 
 
 def _validate_metric_configuration(metric_config):
