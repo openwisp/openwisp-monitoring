@@ -22,7 +22,7 @@ def populate_is_healthy_tolerant(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('monitoring', '0002_metric_is_healthy_tolerance'),
+        ('monitoring', '0024_metric_is_healthy_tolerance'),
     ]
 
     operations = [
