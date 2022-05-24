@@ -213,6 +213,7 @@
         var percircles = [];
         // add summary
         if (data.summary && type != 'histogram') {
+            let percircleContainer = $('<div></div>');
             for (i=0; i<summaryLabels.length; i++) {
                 var el = summaryLabels[i],
                     percircleOptions = {progressBarColor: data.colors[i], _key: el[0]};
@@ -247,12 +248,13 @@
             }
             percircles = sortByTraceOrder(data.trace_order, percircles, '_key');
             for (i=0; i<percircles.length; ++i) {
-                container.append(
+                percircleContainer.append(
                     '<div class="small circle" title="' + percircles[i].htmlTitle + '"></div>'
                 );
-                container.find('.circle').eq(-1)
+                percircleContainer.find('.circle').eq(-1)
                          .percircle(percircles[i]);
             }
+            container.append(percircleContainer);
         }
         // do not add heading, help and tooltip if already done
         // or if there's not title and description to show

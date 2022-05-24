@@ -1,0 +1,77 @@
+'use strict';
+const timeRangeKey = 'ow2-chart-time-range';
+
+django.jQuery(function ($) {
+  $(document).ready(function () {
+    var chartContents = $('#ow-chart-contents'),
+      fallback = $('#ow-chart-fallback'),
+      defaultTimeRange = localStorage.getItem(timeRangeKey) || $('#monitoring-timeseries-default-time').data('value'),
+      timeButtons = $('#ow-chart-time a.time'),
+      apiUrl = $('#monitoring-timeseries-api-url').data('value'),
+      originalKey = $('#monitoring-timeseries-original-key').data('value'),
+      baseUrl = `${apiUrl}?key=${originalKey}&time=`,
+      loadingOverlay = $('#loading-overlay'),
+      loadCharts = function (time, showLoading) {
+        var url = baseUrl + time;
+        if (showLoading) {
+          loadingOverlay.show();
+        }
+        $.getJSON(url).done(function (data) {
+          if (data.charts.length) {
+            chartContents.show();
+            fallback.hide();
+          } else {
+            chartContents.hide();
+            fallback.show();
+          }
+          $.each(data.charts, function (i, chart) {
+            var htmlId = 'chart-' + i,
+              chartDiv = $('#' + htmlId);
+            if (!chartDiv.length) {
+              chartContents.append(
+                '<div id="' + htmlId + '" class="ow-chart">' +
+                '<div class="js-plotly-plot"></div></div>'
+              );
+            }
+            createChart(chart, data.x, htmlId, chart.title, chart.type);
+          });
+          if (showLoading) {
+            loadingOverlay.fadeOut(200);
+          }
+        }).fail(function () {
+          if (showLoading) {
+            loadingOverlay.fadeOut(200);
+          }
+          alert('Something went wrong while loading the charts');
+        });
+      };
+    window.triggerChartLoading = function() {
+      var range = localStorage.getItem(timeRangeKey) || defaultTimeRange;
+      $('#ow-chart-time a[data-time=' + range + ']').trigger('click');
+    };
+    // try adding the browser timezone to the querystring
+    try {
+      var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      baseUrl = baseUrl.replace('time=', 'timezone=' + timezone + '&time=');
+      // ignore failures (older browsers do not support this)
+    } catch (e) {}
+    timeButtons.click(function () {
+      var timeRange = $(this).attr('data-time');
+      loadCharts(timeRange, true);
+      localStorage.setItem(timeRangeKey, timeRange);
+      timeButtons.removeClass('active');
+      $(this).addClass('active');
+      // refresh every 2.5 minutes
+      clearInterval(window.owChartRefresh);
+      window.owChartRefresh = setInterval(loadCharts,
+        1000 * 60 * 2.5,
+        timeRange,
+        false);
+    });
+    // bind export button
+    $('#ow-chart-time a.export').click(function () {
+      var time = localStorage.getItem(timeRangeKey);
+      location.href = baseUrl + time + '&csv=1';
+    });
+  });
+}(django.jQuery));

@@ -55,7 +55,7 @@ class MetricAdmin(TimeReadonlyAdminMixin, VersionAdmin):
     ]
 
     class Media:
-        css = {'all': ('monitoring/css/monitoring.css',)}
+        css = {'all': ('monitoring/css/monitoring.css', 'monitoring/css/chart.css')}
         js = ('monitoring/js/plotly-cartesian.min.js', 'monitoring/js/chart.js')
 
     def reversion_register(self, model, **options):
