@@ -96,6 +96,7 @@ Available Features
 * CSV Export of monitoring data
 * An overview of the status of the network is shown in the admin dashboard,
   a chart shows the percentages of devices which are online, offline or having issues;
+  timeseries charts are shown for WiFi sessions and Traffic of all managed devices,
   a geographic map is also available for those who use the geographic features of OpenWISP
 * Possibility to configure additional `Metrics <#openwisp_monitoring_metrics>`_ and `Charts <#openwisp_monitoring_charts>`_
 * Extensible active check system: it's possible to write additional checks that
@@ -1195,6 +1196,44 @@ being set to ``True`` (which is the default).
 
 You can turn this off if you do not use the geographic features
 of OpenWISP.
+
+``OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+--------------------------+
+| **type**:    | ``dict``                 |
++--------------+--------------------------+
+| **default**: | ``{'__all__': ['wan']}`` |
++--------------+--------------------------+
+
+This settings allows to configure the interfaces which should
+be included in the **General Traffic** chart in the admin dashboard.
+
+This setting should be defined in the following format:
+
+.. code-block::python
+
+    OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART = {
+        '<organization-slug>': ['<list-of-interfaces>']
+    }
+
+E.g., if you want the **General Traffic** chart to show data from
+two interfaces for an organization, you need to configure this setting
+as follows:
+
+.. code-block::python
+
+    OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART = {
+        # organization slugs
+        'default': ['eth1', 'eth2']
+    }
+
+**Note**: The value of ``__all__`` key is used if an organization
+does not have list of interfaces defined in ``OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART``.
+
+**Note**: If a user can manage more that one organizations (e.g. superusers),
+then the **General Traffic** chart will always show data from interfaces
+of ``__all__`` configuration. 
 
 ``OPENWISP_MONITORING_METRICS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
