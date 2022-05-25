@@ -11,7 +11,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from swapper import load_model
 
 from openwisp_controller.connection.tests.utils import CreateConnectionsMixin
-from openwisp_controller.tests.utils import SeleniumTestMixin
+from openwisp_controller.tests.utils import SeleniumTestMixin as BaseSeleniumTestMixin
 from openwisp_monitoring.device.tests import TestDeviceMonitoringMixin
 
 Device = load_model('config', 'Device')
@@ -23,13 +23,7 @@ Chart = load_model('monitoring', 'Chart')
 Check = load_model('check', 'Check')
 
 
-class TestDeviceConnectionInlineAdmin(
-    SeleniumTestMixin,
-    TestDeviceMonitoringMixin,
-    CreateConnectionsMixin,
-    StaticLiveServerTestCase,
-):
-    config_app_label = 'config'
+class SeleniumTestMixin(BaseSeleniumTestMixin):
     admin_username = 'admin'
     admin_password = 'password'
 
@@ -58,6 +52,15 @@ class TestDeviceConnectionInlineAdmin(
             username=self.admin_username, password=self.admin_password
         )
         super().setUp()
+
+
+class TestDeviceConnectionInlineAdmin(
+    SeleniumTestMixin,
+    TestDeviceMonitoringMixin,
+    CreateConnectionsMixin,
+    StaticLiveServerTestCase,
+):
+    config_app_label = 'config'
 
     def tearDown(self):
         # Accept unsaved changes alert to allow other tests to run
@@ -124,7 +127,7 @@ class TestDeviceConnectionInlineAdmin(
         self.assertEqual(Device.objects.count(), 0)
         self.assertEqual(DeviceConnection.objects.count(), 0)
         self.assertEqual(Check.objects.count(), 0)
-        self.assertEqual(Metric.objects.count(), 0)
+        self.assertEqual(Metric.objects.exclude(object_id=None).count(), 0)
 
         version_obj = Version.objects.get_deleted(model=Device).first()
 
@@ -153,3 +156,63 @@ class TestDeviceConnectionInlineAdmin(
             AlertSettings.objects.filter(id__in=device_alert_setting_ids).count(), 2
         )
         self.assertEqual(Chart.objects.filter(id__in=device_chart_ids).count(), 3)
+
+
+class TestDashboardCharts(
+    SeleniumTestMixin, TestDeviceMonitoringMixin, StaticLiveServerTestCase
+):
+    def test_dashboard_timeseries_charts(self):
+        self.login()
+        try:
+            WebDriverWait(self.web_driver, 5).until(
+                EC.visibility_of_element_located(
+                    (By.XPATH, '//*[@id="ow-chart-inner-container"]')
+                )
+            )
+        except TimeoutException:
+            self.fail('Timeseries chart container not found on dashboard')
+        try:
+            WebDriverWait(self.web_driver, 5).until(
+                EC.visibility_of_element_located((By.XPATH, '//*[@id="ow-chart-time"]'))
+            )
+        except TimeoutException:
+            self.fail('Timeseries chart time filter not found on dashboard')
+
+        try:
+            WebDriverWait(self.web_driver, 5).until(
+                EC.visibility_of_element_located(
+                    (By.XPATH, '//*[@id="ow-chart-fallback"]')
+                )
+            )
+        except TimeoutException:
+            self.fail('Fallback message for charts did not render')
+        else:
+            self.assertIn(
+                'Insufficient data for selected time period.',
+                self.web_driver.find_element_by_xpath(
+                    '//*[@id="ow-chart-fallback"]'
+                ).get_attribute('innerHTML'),
+            )
+        self.create_test_data()
+        self.web_driver.refresh()
+        try:
+            WebDriverWait(self.web_driver, 5).until(
+                EC.visibility_of_element_located(
+                    (By.XPATH, '//*[@id="ow-chart-contents"]')
+                )
+            )
+        except TimeoutException:
+            self.fail('Timeseries charts did not render')
+
+        self.assertIn(
+            'WiFi clients',
+            self.web_driver.find_element_by_xpath(
+                '//*[@id="chart-0"]/h3'
+            ).get_attribute('innerHTML'),
+        )
+        self.assertIn(
+            'General Traffic',
+            self.web_driver.find_element_by_xpath(
+                '//*[@id="chart-1"]/h3'
+            ).get_attribute('innerHTML'),
+        )

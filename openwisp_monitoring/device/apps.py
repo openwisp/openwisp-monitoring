@@ -203,6 +203,7 @@ class DeviceMonitoringConfig(AppConfig):
 
     def register_dashboard_items(self):
         WifiSession = load_model('device_monitoring', 'WifiSession')
+        Chart = load_model('monitoring', 'Chart')
         register_dashboard_chart(
             position=0,
             config={
@@ -280,6 +281,7 @@ class DeviceMonitoringConfig(AppConfig):
             },
             extra_config={
                 'api_url': reverse_lazy('monitoring_general:api_dashboard_timeseries'),
+                'default_time': Chart.DEFAULT_TIME,
                 'chart_quick_links': {
                     'WiFi clients': {
                         'url': reverse_lazy(
