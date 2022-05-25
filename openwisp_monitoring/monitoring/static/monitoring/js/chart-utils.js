@@ -3,7 +3,7 @@ const timeRangeKey = 'ow2-chart-time-range';
 
 django.jQuery(function ($) {
   $(document).ready(function () {
-    var chartContents = $('#ow-chart-contents'),
+    var chartQuickLinks, chartContents = $('#ow-chart-contents'),
       fallback = $('#ow-chart-fallback'),
       defaultTimeRange = localStorage.getItem(timeRangeKey) || $('#monitoring-timeseries-default-time').data('value'),
       timeButtons = $('#ow-chart-time a.time'),
@@ -26,14 +26,15 @@ django.jQuery(function ($) {
           }
           $.each(data.charts, function (i, chart) {
             var htmlId = 'chart-' + i,
-              chartDiv = $('#' + htmlId);
+              chartDiv = $('#' + htmlId),
+              chartQuickLink = chartQuickLinks[chart.title];
             if (!chartDiv.length) {
               chartContents.append(
                 '<div id="' + htmlId + '" class="ow-chart">' +
                 '<div class="js-plotly-plot"></div></div>'
               );
             }
-            createChart(chart, data.x, htmlId, chart.title, chart.type);
+            createChart(chart, data.x, htmlId, chart.title, chart.type, chartQuickLink);
           });
           if (showLoading) {
             loadingOverlay.fadeOut(200);
@@ -45,6 +46,11 @@ django.jQuery(function ($) {
           alert('Something went wrong while loading the charts');
         });
       };
+    try {
+      chartQuickLinks = JSON.parse($('#monitoring-chart-quick-links').html());
+    } catch (error) {
+      chartQuickLinks = {};
+    }
     window.triggerChartLoading = function() {
       var range = localStorage.getItem(timeRangeKey) || defaultTimeRange;
       $('#ow-chart-time a[data-time=' + range + ']').trigger('click');

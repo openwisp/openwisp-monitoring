@@ -4,3 +4,6 @@
 #ow-chart-inner-container .js-plotly-plot {
   width: 100%;
 }
+#ow-chart-inner-container .quick-link-container {
+  margin-top: 10px;
+}

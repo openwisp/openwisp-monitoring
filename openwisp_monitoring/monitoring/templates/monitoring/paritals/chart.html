@@ -16,4 +16,7 @@
     <div id="ow-chart-fallback" class="form-row">
         {% trans 'Insufficient data for selected time period' %}.
     </div>
+    {% if chart_quick_links %}
+        {{ chart_quick_links|json_script:"monitoring-chart-quick-links" }}
+    {% endif %}
 </div>

@@ -16,7 +16,7 @@
         }
         return newArr;
     }
-    window.createChart = function (data, x, id, title, type) {
+    window.createChart = function (data, x, id, title, type, quickLink) {
         if (data === false) {
             alert(gettext('error while receiving data from server'));
             return;
@@ -209,11 +209,16 @@
                 );
             }
         }
-        container.find('.circle').remove();
-        var percircles = [];
         // add summary
         if (data.summary && type != 'histogram') {
-            let percircleContainer = $('<div></div>');
+            var percircles = [], percircleContainer;
+            if (container.find('.percircle-container').length) {
+                percircleContainer = $(container.find('.percircle-container').get(0));
+                percircleContainer.empty();
+            } else {
+                percircleContainer = $('<div class="percircle-container"></div>');
+                $(container.find('.js-plotly-plot').get(0)).after(percircleContainer);
+            }
             for (i=0; i<summaryLabels.length; i++) {
                 var el = summaryLabels[i],
                     percircleOptions = {progressBarColor: data.colors[i], _key: el[0]};
@@ -254,7 +259,19 @@
                 percircleContainer.find('.circle').eq(-1)
                          .percircle(percircles[i]);
             }
-            container.append(percircleContainer);
+        }
+        // add quick link button
+        if (quickLink) {
+            if (!container.find('.quick-link-container').length){
+                container.append(
+                    $(
+                        '<div id="'+ id + '-quick-link-container" ' +
+                        'class="quick-link-container"><a href="' +
+                        quickLink.url + '" class="button quick-link" id="' +
+                        id + '-inline-wifisession-quick-link" title="' +
+                        quickLink.title + '">' + quickLink.label  +'</a></div>')
+                );
+            }
         }
         // do not add heading, help and tooltip if already done
         // or if there's not title and description to show
