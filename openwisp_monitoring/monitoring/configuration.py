@@ -184,10 +184,22 @@ DEFAULT_METRICS = {
         'name': '{name}',
         'key': '{key}',
         'field_name': 'rx_bytes',
-        'related_fields': ['tx_bytes'],
+        'related_fields': ['tx_bytes','total_bytes'],
         'charts': {
             'traffic': {
-                'type': 'scatter',
+                 'upload': {
+                    'type': 'stackedbar',
+                    'title': _('Upload'),
+                },
+                'download': {
+                    'type': 'stackedbar',
+                    'title': _('Download'),
+                },
+                'total': {
+                    'type': 'scatter',
+                    'title': _('Total'),
+                },
+                'type': 'stackedbar',
                 'title': _('Traffic: {ifname}'),
                 'label': _('Traffic'),
                 'description': _(
@@ -197,6 +209,7 @@ DEFAULT_METRICS = {
                 'summary_labels': [
                     _('Total download traffic'),
                     _('Total upload traffic'),
+                    _('Total traffic'),
                 ],
                 'unit': _(' GB'),
                 'order': 240,

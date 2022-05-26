@@ -183,6 +183,7 @@ schema = {
                             "tx_packets": {"type": "integer"},
                             "rx_errors": {"type": "integer"},
                             "tx_bytes": {"type": "integer"},
+                            "total_bytes":{"type": "integer"},
                             "tx_window_errors": {"type": "integer"},
                             "rx_fifo_errors": {"type": "integer"},
                             "tx_carrier_errors": {"type": "integer"},
