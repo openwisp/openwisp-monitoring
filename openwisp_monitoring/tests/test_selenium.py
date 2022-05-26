@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.conf import settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.urls.base import reverse
@@ -13,6 +15,7 @@ from swapper import load_model
 from openwisp_controller.connection.tests.utils import CreateConnectionsMixin
 from openwisp_controller.tests.utils import SeleniumTestMixin as BaseSeleniumTestMixin
 from openwisp_monitoring.device.tests import TestDeviceMonitoringMixin
+from openwisp_monitoring.monitoring.configuration import DEFAULT_DASHBOARD_TRAFFIC_CHART
 from openwisp_monitoring.monitoring.migrations import create_general_metrics
 
 Device = load_model('config', 'Device')
@@ -166,9 +169,11 @@ class TestDashboardCharts(
         super().setUp()
         # TransactionTestCase flushes the data, hence the metrics created
         # with migrations are lost. Only create general metrics if required.
-        if Metric.objects.filter(object_id=None).count() == 0:
+        if Metric.objects.filter(object_id=None).count() != 2:
             create_general_metrics(None, None)
+        self.assertEqual(Metric.objects.filter(object_id=None).count(), 2)
 
+    @patch.dict(DEFAULT_DASHBOARD_TRAFFIC_CHART, {'__all__': ['wlan0', 'wlan1']})
     def test_dashboard_timeseries_charts(self):
         self.login()
         try:
@@ -208,6 +213,12 @@ class TestDashboardCharts(
                 EC.visibility_of_element_located(
                     (By.CSS_SELECTOR, '#ow-chart-contents')
                 )
+            )
+            WebDriverWait(self.web_driver, 20).until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, '#chart-0'))
+            )
+            WebDriverWait(self.web_driver, 60).until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, '#chart-1'))
             )
         except TimeoutException:
             self.fail('Timeseries charts did not render')

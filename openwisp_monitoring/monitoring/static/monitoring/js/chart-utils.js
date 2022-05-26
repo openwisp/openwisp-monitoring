@@ -10,40 +10,50 @@ django.jQuery(function ($) {
       apiUrl = $('#monitoring-timeseries-api-url').data('value'),
       originalKey = $('#monitoring-timeseries-original-key').data('value'),
       baseUrl = `${apiUrl}?key=${originalKey}&time=`,
-      loadingOverlay = $('#loading-overlay'),
+      globalLoadingOverlay = $('#loading-overlay'),
+      localLoadingOverlay = $('#chart-loading-overlay'),
       loadCharts = function (time, showLoading) {
         var url = baseUrl + time;
-        if (showLoading) {
-          loadingOverlay.show();
-        }
-        $.getJSON(url).done(function (data) {
-          if (data.charts.length) {
-            chartContents.show();
-            fallback.hide();
-          } else {
+        $.ajax(url, {
+          dataType: 'json',
+          beforeSend: function(){
             chartContents.hide();
-            fallback.show();
-          }
-          $.each(data.charts, function (i, chart) {
-            var htmlId = 'chart-' + i,
-              chartDiv = $('#' + htmlId),
-              chartQuickLink = chartQuickLinks[chart.title];
-            if (!chartDiv.length) {
-              chartContents.append(
-                '<div id="' + htmlId + '" class="ow-chart">' +
-                '<div class="js-plotly-plot"></div></div>'
-              );
+            fallback.hide();
+            if (showLoading) {
+              globalLoadingOverlay.show();
             }
-            createChart(chart, data.x, htmlId, chart.title, chart.type, chartQuickLink);
-          });
-          if (showLoading) {
-            loadingOverlay.fadeOut(200);
+            localLoadingOverlay.show();
+          },
+          success: function(data){
+            localLoadingOverlay.hide();
+            if (data.charts.length) {
+              chartContents.show();
+            } else {
+              fallback.show();
+            }
+            $.each(data.charts, function (i, chart) {
+              var htmlId = 'chart-' + i,
+                chartDiv = $('#' + htmlId),
+                chartQuickLink = chartQuickLinks[chart.title];
+              if (!chartDiv.length) {
+                chartContents.append(
+                  '<div id="' + htmlId + '" class="ow-chart">' +
+                  '<div class="js-plotly-plot"></div></div>'
+                );
+              }
+              createChart(chart, data.x, htmlId, chart.title, chart.type, chartQuickLink);
+            });
+          },
+          error: function(){
+            alert('Something went wrong while loading the charts');
+          },
+          complete: function() {
+            localLoadingOverlay.fadeOut(200, function(){
+              if (showLoading) {
+                globalLoadingOverlay.fadeOut(200);
+              }
+            });
           }
-        }).fail(function () {
-          if (showLoading) {
-            loadingOverlay.fadeOut(200);
-          }
-          alert('Something went wrong while loading the charts');
         });
       };
     try {
