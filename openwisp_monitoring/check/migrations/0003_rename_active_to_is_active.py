@@ -7,7 +7,7 @@ from ..settings import CHECK_CLASSES
 
 class Migration(migrations.Migration):
 
-    dependencies = [('check', '0003_create_ping')]
+    dependencies = [('check', '0002_create_ping')]
 
     operations = [
         migrations.RenameField(

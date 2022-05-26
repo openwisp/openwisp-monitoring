@@ -23,7 +23,7 @@ def create_device_ping(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('check', '0002_check_unique_together'),
+        ('check', '0001_initial_squashed_0002_check_unique_together'),
         swapper.dependency('monitoring', 'Metric'),
     ]
 

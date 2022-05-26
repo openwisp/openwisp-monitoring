@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('check', '0005_create_config_applied'),
+        ('check', '0004_create_config_applied'),
     ]
 
     operations = [

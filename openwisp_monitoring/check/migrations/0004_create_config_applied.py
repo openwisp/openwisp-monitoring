@@ -32,7 +32,7 @@ def remove_config_applied_checks(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('check', '0004_rename_active_to_is_active'),
+        ('check', '0003_rename_active_to_is_active'),
     ]
 
     operations = [
