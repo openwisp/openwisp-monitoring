@@ -32,7 +32,8 @@ chart_query = {
     'traffic': {
         'influxdb': (
             "SELECT SUM(tx_bytes) / 1000000000 AS upload, "
-            "SUM(rx_bytes) / 1000000000 AS download FROM {key} "
+            "SUM(rx_bytes) / 1000000000 AS download, " 
+            "(SUM(tx_bytes) / 1000000000) + (SUM(rx_bytes) / 1000000000) AS total FROM {key} "
             "WHERE time >= '{time}' AND content_type = '{content_type}' "
             "AND object_id = '{object_id}' AND ifname = '{ifname}' "
             "GROUP BY time(1d)"
