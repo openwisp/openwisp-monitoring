@@ -20,6 +20,7 @@ Location = load_model('geo', 'Location')
 Device = load_model('config', 'Device')
 
 
+@patch.dict(DEFAULT_DASHBOARD_TRAFFIC_CHART, {'__all__': ['wan']})
 class TestDashboardTimeseriesView(
     CreateConfigTemplateMixin, TestMonitoringMixin, TestGeoMixin, TestCase
 ):
@@ -80,7 +81,7 @@ class TestDashboardTimeseriesView(
 
     def test_wifi_client_chart(self):
         def _test_chart_properties(chart):
-            self.assertEqual(chart['title'], 'WiFi clients')
+            self.assertEqual(chart['title'], 'General WiFi Clients')
             self.assertEqual(chart['type'], 'bar')
             self.assertEqual(chart['unit'], '')
             self.assertEqual(chart['summary_labels'], ['Total Unique WiFi clients'])
@@ -88,7 +89,7 @@ class TestDashboardTimeseriesView(
             self.assertEqual(chart['colorscale'], None)
             self.assertEqual(
                 chart['description'],
-                'WiFi clients associated to the wireless interface.',
+                'WiFi clients associated to the wireless interface of all devices.',
             )
 
         path = reverse('monitoring_general:api_dashboard_timeseries')
@@ -212,7 +213,7 @@ class TestDashboardTimeseriesView(
             self.assertEqual(chart['colorscale'], None)
             self.assertEqual(
                 chart['description'],
-                'Network traffic, download and upload, measured in GB.',
+                'Network traffic (download and upload) of the network, measured in GB.',
             )
 
         path = reverse('monitoring_general:api_dashboard_timeseries')
@@ -436,7 +437,7 @@ class TestDashboardTimeseriesView(
                 header,
                 [
                     'time',
-                    'wifi_clients - WiFi clients',
+                    'wifi_clients - General WiFi Clients',
                     'download - General Traffic',
                     'upload - General Traffic',
                 ],

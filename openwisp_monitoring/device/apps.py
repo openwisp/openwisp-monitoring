@@ -290,8 +290,8 @@ class DeviceMonitoringConfig(AppConfig):
                                 model_name=WifiSession._meta.model_name,
                             )
                         ),
-                        'label': 'Open WiFi Session',
-                        'title': 'View full history of WiFi Sessions',
+                        'label': _('Open WiFi session list'),
+                        'title': _('View full history of WiFi Sessions'),
                     }
                 },
             },
@@ -338,6 +338,7 @@ class DeviceMonitoringConfig(AppConfig):
                             )
                         ),
                         'label': _('Open WiFi session list'),
+                        'title': _('View full history of WiFi Sessions'),
                         'custom_css_classes': ['negative-top-20'],
                     },
                 },

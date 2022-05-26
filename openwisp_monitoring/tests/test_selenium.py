@@ -13,6 +13,7 @@ from swapper import load_model
 from openwisp_controller.connection.tests.utils import CreateConnectionsMixin
 from openwisp_controller.tests.utils import SeleniumTestMixin as BaseSeleniumTestMixin
 from openwisp_monitoring.device.tests import TestDeviceMonitoringMixin
+from openwisp_monitoring.monitoring.migrations import create_general_metrics
 
 Device = load_model('config', 'Device')
 DeviceConnection = load_model('connection', 'DeviceConnection')
@@ -161,19 +162,26 @@ class TestDeviceConnectionInlineAdmin(
 class TestDashboardCharts(
     SeleniumTestMixin, TestDeviceMonitoringMixin, StaticLiveServerTestCase
 ):
+    def setUp(self):
+        super().setUp()
+        # TransactionTestCase flushes the data, hence the metrics created
+        # with migrations are lost. Only create general metrics if required.
+        if Metric.objects.filter(object_id=None).count() == 0:
+            create_general_metrics(None, None)
+
     def test_dashboard_timeseries_charts(self):
         self.login()
         try:
             WebDriverWait(self.web_driver, 5).until(
                 EC.visibility_of_element_located(
-                    (By.XPATH, '//*[@id="ow-chart-inner-container"]')
+                    (By.CSS_SELECTOR, '#ow-chart-inner-container')
                 )
             )
         except TimeoutException:
             self.fail('Timeseries chart container not found on dashboard')
         try:
             WebDriverWait(self.web_driver, 5).until(
-                EC.visibility_of_element_located((By.XPATH, '//*[@id="ow-chart-time"]'))
+                EC.visibility_of_element_located((By.CSS_SELECTOR, '#ow-chart-time'))
             )
         except TimeoutException:
             self.fail('Timeseries chart time filter not found on dashboard')
@@ -181,7 +189,7 @@ class TestDashboardCharts(
         try:
             WebDriverWait(self.web_driver, 5).until(
                 EC.visibility_of_element_located(
-                    (By.XPATH, '//*[@id="ow-chart-fallback"]')
+                    (By.CSS_SELECTOR, '#ow-chart-fallback')
                 )
             )
         except TimeoutException:
@@ -189,30 +197,30 @@ class TestDashboardCharts(
         else:
             self.assertIn(
                 'Insufficient data for selected time period.',
-                self.web_driver.find_element_by_xpath(
-                    '//*[@id="ow-chart-fallback"]'
+                self.web_driver.find_element_by_css_selector(
+                    '#ow-chart-fallback'
                 ).get_attribute('innerHTML'),
             )
         self.create_test_data()
         self.web_driver.refresh()
         try:
-            WebDriverWait(self.web_driver, 5).until(
+            WebDriverWait(self.web_driver, 20).until(
                 EC.visibility_of_element_located(
-                    (By.XPATH, '//*[@id="ow-chart-contents"]')
+                    (By.CSS_SELECTOR, '#ow-chart-contents')
                 )
             )
         except TimeoutException:
             self.fail('Timeseries charts did not render')
 
         self.assertIn(
-            'WiFi clients',
-            self.web_driver.find_element_by_xpath(
-                '//*[@id="chart-0"]/h3'
-            ).get_attribute('innerHTML'),
+            'General WiFi Clients',
+            self.web_driver.find_element_by_css_selector('#chart-0 > h3').get_attribute(
+                'innerHTML'
+            ),
         )
         self.assertIn(
             'General Traffic',
-            self.web_driver.find_element_by_xpath(
-                '//*[@id="chart-1"]/h3'
-            ).get_attribute('innerHTML'),
+            self.web_driver.find_element_by_css_selector('#chart-1 > h3').get_attribute(
+                'innerHTML'
+            ),
         )

@@ -13,7 +13,6 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import models
 from django.utils import timezone
-from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from jsonfield import JSONField
 from openwisp_notifications.signals import notify
@@ -21,6 +20,7 @@ from pytz import timezone as tz
 from pytz import utc
 from swapper import get_model_name
 
+from openwisp_monitoring.monitoring.utils import clean_timeseries_data_key
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...db import default_chart_query, timeseries_db
@@ -164,8 +164,7 @@ class AbstractMetric(TimeStampedEditableModel):
     @staticmethod
     def _makekey(value):
         """makes value suited for InfluxDB key"""
-        value = value.replace('.', '_')
-        return slugify(value).replace('-', '_')
+        return clean_timeseries_data_key(value)
 
     @property
     def tags(self):

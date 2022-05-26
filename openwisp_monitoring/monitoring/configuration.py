@@ -8,6 +8,7 @@ from openwisp_notifications.types import (
 )
 
 from openwisp_monitoring.db import chart_query
+from openwisp_monitoring.monitoring.utils import clean_timeseries_data_key
 from openwisp_utils.utils import deep_merge_dicts
 
 from . import settings as app_settings
@@ -228,7 +229,8 @@ DEFAULT_METRICS = {
                 'title': _('General Traffic'),
                 'label': _('General Traffic'),
                 'description': _(
-                    'Network traffic, download and upload, ' 'measured in GB.'
+                    'Network traffic (download and upload) of the network, '
+                    'measured in GB.'
                 ),
                 'summary_labels': [
                     _('Total download traffic'),
@@ -265,16 +267,18 @@ DEFAULT_METRICS = {
         },
     },
     'general_clients': {
-        'label': _('General Clients'),
-        'name': 'General Clients',
+        'label': _('General WiFi Clients'),
+        'name': _('General WiFi Clients'),
         'key': 'wifi_clients',
         'field_name': 'clients',
         'charts': {
             'gen_wifi_clients': {
                 'type': 'bar',
-                'label': _('General Clients'),
-                'title': _('WiFi clients'),
-                'description': _('WiFi clients associated to the wireless interface.'),
+                'label': _('General WiFi Clients'),
+                'title': _('General WiFi Clients'),
+                'description': _(
+                    'WiFi clients associated to the wireless interface of all devices.'
+                ),
                 'summary_labels': [_('Total Unique WiFi clients')],
                 'unit': '',
                 'order': 230,
@@ -529,7 +533,7 @@ DEFAULT_METRICS = {
 
 DEFAULT_CHARTS = {}
 
-DEFAULT_DASHBOARD_TRAFFIC_CHART = {'__all__': ['wan']}
+DEFAULT_DASHBOARD_TRAFFIC_CHART = {'__all__': ['wan', 'eth1', 'eth0_2']}
 
 
 def _validate_metric_configuration(metric_config):
@@ -691,6 +695,13 @@ def _unregister_chart_configuration_choice(chart_name):
             return
 
 
-DEFAULT_DASHBOARD_TRAFFIC_CHART.update(app_settings.ADDITIONAL_DASHBOARD_TRAFFIC_CHART)
+def _add_additional_dashboard_traffic_chart(config):
+    for interfaces in config.values():
+        for index in range(len(interfaces)):
+            interfaces[index] = clean_timeseries_data_key(interfaces[index])
+    DEFAULT_DASHBOARD_TRAFFIC_CHART.update(config)
+
+
+_add_additional_dashboard_traffic_chart(app_settings.ADDITIONAL_DASHBOARD_TRAFFIC_CHART)
 METRIC_CONFIGURATION_CHOICES = get_metric_configuration_choices()
 CHART_CONFIGURATION_CHOICES = get_chart_configuration_choices()
