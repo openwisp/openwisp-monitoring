@@ -237,7 +237,7 @@ class DeviceMetricView(GenericAPIView):
                         ifname, 'tx_bytes', ifstats['tx_bytes']
                     ),
                     'total_bytes': self._calculate_increment(
-                        ifname, 'total_bytes', ifstats['rx_bytes']+ifstats['tx_bytes']
+                        ifname, 'total_bytes', ifstats['rx_bytes'] + ifstats['tx_bytes']
                     ),
                 }
                 name = f'{ifname} traffic'
