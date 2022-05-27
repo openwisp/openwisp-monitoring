@@ -1812,6 +1812,72 @@ If the request is made without passing the ``time`` argument, the server local t
 
 The ``time`` parameter was added to support `resilient collection and sending of data by the OpenWISP Monitoring Agent <https://github.com/openwisp/openwrt-openwisp-monitoring#collecting-vs-sending>`_.
 
+List wifi session
+#################
+
+.. code-block:: text
+   
+   GET /api/v1/monitoring/wifi-session/
+
+Create wifi session
+###################
+
+.. code-block:: text
+   
+   POST /api/v1/monitoring/wifi-session/
+
+Get wifi session
+################
+
+.. code-block:: text
+   
+   GET /api/v1/monitoring/wifi-session/{id}/
+
+Change wifi session
+###################
+
+.. code-block:: text
+   
+   PUT /api/v1/monitoring/wifi-session/{id}/
+
+List wifi client
+################
+
+.. code-block:: text
+   
+   GET /api/v1/monitoring/wifi-client/
+
+Create wifi client
+##################
+
+.. code-block:: text
+   
+   POST /api/v1/monitoring/wifi-client/
+
+Get wifi client
+###############
+
+.. code-block:: text
+   
+   GET /api/v1/monitoring/wifi-client/{id}/
+
+Change wifi client
+##################
+
+.. code-block:: text
+   
+   PUT /api/v1/monitoring/wifi-client/{id}/
+
+Pagination
+##########
+
+Wifi session & Wifi client list endpoints support the `page_size` parameter that allows paginating the results in conjunction with the page parameter.
+
+.. code-block:: text
+   
+   GET /api/v1/monitoring/wifi-session/?page_size=10
+   GET /api/v1/monitoring/wifi-session/?page_size=10&page=1
+
 Signals
 -------
 

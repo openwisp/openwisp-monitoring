@@ -8,9 +8,14 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models import Count, Q
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
+from django_filters.rest_framework import DjangoFilterBackend
 from pytz import UTC
-from rest_framework import serializers, status
-from rest_framework.generics import GenericAPIView
+from rest_framework import pagination, serializers, status
+from rest_framework.generics import (
+    GenericAPIView,
+    ListCreateAPIView,
+    RetrieveUpdateAPIView,
+)
 from rest_framework.response import Response
 from swapper import load_model
 
@@ -19,13 +24,19 @@ from openwisp_controller.geo.api.views import (
     GeoJsonLocationList,
     LocationDeviceList,
 )
+from openwisp_controller.mixins import ProtectedAPIMixin
 
 from ... import settings as monitoring_settings
 from ...monitoring.configuration import ACCESS_TECHNOLOGIES
 from ...views import MonitoringApiViewMixin
 from ..schema import schema
 from ..signals import device_metrics_received
-from .serializers import MonitoringDeviceSerializer, MonitoringGeoJsonLocationSerializer
+from .serializers import (
+    MonitoringDeviceSerializer,
+    MonitoringGeoJsonLocationSerializer,
+    WifiClientSerializer,
+    WifiSessionSerializer,
+)
 
 logger = logging.getLogger(__name__)
 Chart = load_model('monitoring', 'Chart')
@@ -35,6 +46,14 @@ Device = load_model('config', 'Device')
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 DeviceData = load_model('device_monitoring', 'DeviceData')
 Location = load_model('geo', 'Location')
+WifiSession = load_model('device_monitoring', 'WifiSession')
+WifiClient = load_model('device_monitoring', 'WifiClient')
+
+
+class ListViewPagination(pagination.PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
@@ -421,6 +440,55 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
 
 
 device_metric = DeviceMetricView.as_view()
+
+
+class WifiSessionListCreateView(ProtectedAPIMixin, ListCreateAPIView):
+    serializer_class = WifiSessionSerializer
+    queryset = WifiSession.objects.all()
+    filter_backends = [DjangoFilterBackend]
+    pagination_class = ListViewPagination
+    filterset_fields = [
+        'device',
+        'device__organization',
+        'device__group',
+        'start_time',
+        'stop_time',
+    ]
+
+
+wifi_session_list = WifiSessionListCreateView.as_view()
+
+
+class WifiSessionDetailView(ProtectedAPIMixin, RetrieveUpdateAPIView):
+    serializer_class = WifiSessionSerializer
+    queryset = WifiSession.objects.all()
+
+
+wifi_session_detail = WifiSessionDetailView.as_view()
+
+
+class WifiClientListCreateView(ProtectedAPIMixin, ListCreateAPIView):
+    serializer_class = WifiClientSerializer
+    queryset = WifiClient.objects.all()
+    filter_backends = [DjangoFilterBackend]
+    pagination_class = ListViewPagination
+    filterset_fields = [
+        'wifisession__device',
+        'wifisession__device__organization',
+        'mac_address',
+        'vendor',
+    ]
+
+
+wifi_client_list = WifiClientListCreateView.as_view()
+
+
+class WifiClientDetailView(ProtectedAPIMixin, RetrieveUpdateAPIView):
+    serializer_class = WifiClientSerializer
+    queryset = WifiClient.objects.all()
+
+
+wifi_client_detail = WifiClientDetailView.as_view()
 
 
 class MonitoringGeoJsonLocationList(GeoJsonLocationList):

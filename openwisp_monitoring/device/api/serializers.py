@@ -7,6 +7,8 @@ from openwisp_controller.geo.api.serializers import (
 )
 
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+WifiSession = load_model('device_monitoring', 'WifiSession')
+WifiClient = load_model('device_monitoring', 'WifiClient')
 
 
 class DeviceMonitoringSerializer(serializers.ModelSerializer):
@@ -18,6 +20,26 @@ class DeviceMonitoringSerializer(serializers.ModelSerializer):
     class Meta:
         fields = ('status', 'status_label')
         model = DeviceMonitoring
+
+
+class WifiSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        fields = [
+            'id',
+            'device',
+            'wifi_client',
+            'ssid',
+            'interface_name',
+            'start_time',
+            'stop_time',
+        ]
+        model = WifiSession
+
+
+class WifiClientSerializer(serializers.ModelSerializer):
+    class Meta:
+        fields = ['mac_address', 'vendor', 'ht', 'vht', 'wmm', 'wds', 'wps']
+        model = WifiClient
 
 
 class MonitoringDeviceSerializer(LocationDeviceSerializer):
