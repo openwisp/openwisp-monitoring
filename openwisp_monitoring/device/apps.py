@@ -283,7 +283,7 @@ class DeviceMonitoringConfig(AppConfig):
                 'api_url': reverse_lazy('monitoring_general:api_dashboard_timeseries'),
                 'default_time': Chart.DEFAULT_TIME,
                 'chart_quick_links': {
-                    'WiFi clients': {
+                    'General WiFi Clients': {
                         'url': reverse_lazy(
                             'admin:{app_label}_{model_name}_changelist'.format(
                                 app_label=WifiSession._meta.app_label,

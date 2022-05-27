@@ -235,3 +235,9 @@ class TestDashboardCharts(
                 'innerHTML'
             ),
         )
+        self.assertIn(
+            'Open WiFi session list',
+            self.web_driver.find_element_by_css_selector(
+                '#chart-0-quick-link-container'
+            ).get_attribute('innerHTML'),
+        )

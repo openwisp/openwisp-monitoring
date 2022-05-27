@@ -533,7 +533,7 @@ DEFAULT_METRICS = {
 
 DEFAULT_CHARTS = {}
 
-DEFAULT_DASHBOARD_TRAFFIC_CHART = {'__all__': ['wan', 'eth1', 'eth0_2']}
+DEFAULT_DASHBOARD_TRAFFIC_CHART = {'__all__': ['wan', 'eth1', 'eth0.2']}
 
 
 def _validate_metric_configuration(metric_config):
@@ -695,13 +695,13 @@ def _unregister_chart_configuration_choice(chart_name):
             return
 
 
-def _add_additional_dashboard_traffic_chart(config):
-    for interfaces in config.values():
+def _clean_dashboard_traffic_chart():
+    for interfaces in DEFAULT_DASHBOARD_TRAFFIC_CHART.values():
         for index in range(len(interfaces)):
             interfaces[index] = clean_timeseries_data_key(interfaces[index])
-    DEFAULT_DASHBOARD_TRAFFIC_CHART.update(config)
 
 
-_add_additional_dashboard_traffic_chart(app_settings.ADDITIONAL_DASHBOARD_TRAFFIC_CHART)
+DEFAULT_DASHBOARD_TRAFFIC_CHART.update(app_settings.ADDITIONAL_DASHBOARD_TRAFFIC_CHART)
+_clean_dashboard_traffic_chart()
 METRIC_CONFIGURATION_CHOICES = get_metric_configuration_choices()
 CHART_CONFIGURATION_CHOICES = get_chart_configuration_choices()
