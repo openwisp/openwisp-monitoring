@@ -206,8 +206,10 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         data = c.read()
         # expected download wlan1
         self.assertEqual(data['traces'][0][1][-1], 3.0)
+        # expected total wlan1
+        self.assertEqual(data['traces'][1][1][-1], 4.5)
         # expected upload wlan1
-        self.assertEqual(data['traces'][1][1][-1], 1.5)
+        self.assertEqual(data['traces'][2][1][-1], 1.5)
 
     def test_200_no_date_supplied(self):
         o = self._create_org()
@@ -343,8 +345,10 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 '1',
                 '2',
                 '0.4',
+                '0.5',
                 '0.1',
                 '2.0',
+                '3.0',
                 '1.0',
                 '9.73',
                 '0.0',
