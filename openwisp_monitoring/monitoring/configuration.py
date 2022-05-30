@@ -184,7 +184,7 @@ DEFAULT_METRICS = {
         'name': '{name}',
         'key': '{key}',
         'field_name': 'rx_bytes',
-        'related_fields': ['tx_bytes', 'total_bytes'],
+        'related_fields': ['tx_bytes'],
         'charts': {
             'traffic': {
                 'upload': {
