@@ -1771,11 +1771,12 @@ Retrieve general monitoring charts
     GET /api/v1/monitoring/dashboard/
 
 This API endpoint is used to show dashboard monitoring charts. It supports
-multi-tenancy and allows filtering monitoring data with `organization_slug`, e.g.:
+multi-tenancy and allows filtering monitoring data with ``organization_slug``,
+``location_id`` and ``floorplan_id`` e.g.:
 
 .. code-block:: text
 
-    GET /api/v1/monitoring/dashboard/?organization_slug=<org1-slug>,<org2-slug>
+    GET /api/v1/monitoring/dashboard/?organization_slug=<org1-slug>,<org2-slug>&location_id=<location1-id>,<location2-id>&floorplan_id=<floorplan1-id>,<floorplan2-id>
 
 Retrieve device charts and device status data
 #############################################

@@ -242,6 +242,8 @@ DEFAULT_METRICS = {
                 'query_default_param': {
                     'organization_id': '',
                     'ifname': '',
+                    'location_id': '',
+                    'floorplan_id': '',
                 },
             }
         },
@@ -285,6 +287,8 @@ DEFAULT_METRICS = {
                 'query': chart_query['general_wifi_clients'],
                 'query_default_param': {
                     'organization_id': '',
+                    'location_id': '',
+                    'floorplan_id': '',
                 },
             }
         },

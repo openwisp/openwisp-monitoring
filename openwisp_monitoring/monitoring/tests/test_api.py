@@ -25,8 +25,6 @@ class TestDashboardTimeseriesView(
     CreateConfigTemplateMixin, TestMonitoringMixin, TestGeoMixin, TestCase
 ):
     location_model = Location
-    object_location_model = DeviceLocation
-    object_model = Device
     floorplan_model = FloorPlan
 
     def setUp(self):
@@ -490,7 +488,175 @@ class TestDashboardTimeseriesView(
             self.assertEqual(response.status_code, 403)
 
     def test_filter_with_location_id(self):
-        pass
+        path = reverse('monitoring_general:api_dashboard_timeseries')
+        org1 = self._create_org(name='org1', slug='org1')
+        org2 = self._create_org(name='org2', slug='org2')
+        org3 = self._create_org(name='org3', slug='org3')
+        org1_location = self._create_location(organization=org1)
+        org2_location = self._create_location(organization=org2)
+        org3_location = self._create_location(organization=org3)
+        org1_metric = self._create_org_wifi_client_metric(
+            org1, location_id=str(org1_location.id)
+        )
+        org2_metric = self._create_org_wifi_client_metric(
+            org2, location_id=str(org2_location.id)
+        )
+        org3_metric = self._create_org_wifi_client_metric(
+            org3, location_id=str(org3_location.id)
+        )
+
+        org1_metric.write('00:23:4a:00:00:00')
+        org2_metric.write('00:23:4b:00:00:00')
+        org3_metric.write('00:14:5c:00:00:00')
+
+        admin, org2_administrator, operator = self._create_test_users(org2)
+        OrganizationUser.objects.create(
+            user=org2_administrator, organization=org3, is_admin=True
+        )
+
+        self.client.force_login(admin)
+        with self.subTest('Test superuser filter with one location_id'):
+            response = self.client.get(path, {'location_id': str(org1_location.id)})
+            self.assertEqual(response.status_code, 200)
+            chart = response.data['charts'][0]
+            self.assertEqual(chart['traces'][0][1][-1], 1)
+            self.assertEqual(chart['summary']['wifi_clients'], 1)
+
+        with self.subTest('Test superuser filter with multiple location_id'):
+            response = self.client.get(
+                path, {'location_id': f'{org1_location.id},{org2_location.id}'}
+            )
+            self.assertEqual(response.status_code, 200)
+            chart = response.data['charts'][0]
+            self.assertEqual(chart['traces'][0][1][-1], 2)
+            self.assertEqual(chart['summary']['wifi_clients'], 2)
+
+        self.client.force_login(org2_administrator)
+        with self.subTest('Test organization admin filter with one location_id'):
+            response = self.client.get(path, {'location_id': str(org2_location.id)})
+            self.assertEqual(response.status_code, 200)
+            chart = response.data['charts'][0]
+            self.assertEqual(chart['traces'][0][1][-1], 1)
+            self.assertEqual(chart['summary']['wifi_clients'], 1)
+
+        with self.subTest('Test organization admin filter with multiple location_ids'):
+            response = self.client.get(
+                path, {'location_id': f'{org2_location.id},{org3_location.id}'}
+            )
+            self.assertEqual(response.status_code, 200)
+            chart = response.data['charts'][0]
+            self.assertEqual(chart['traces'][0][1][-1], 2)
+            self.assertEqual(chart['summary']['wifi_clients'], 2)
+
+        with self.subTest(
+            'Test organization admin filter location_id of another organization'
+        ):
+            response = self.client.get(path, {'location_id': str(org1_location.id)})
+            self.assertEqual(response.status_code, 404)
+
+        with self.subTest(
+            'Test organization admin filter with multiple location_ids (includes other org)'
+        ):
+            response = self.client.get(
+                path, {'location_id': f'{org1_location.id},{org2_location.id}'}
+            )
+            self.assertEqual(response.status_code, 404)
+
+        self.client.force_login(operator)
+        with self.subTest('Test non-organization admin filter location_id'):
+            response = self.client.get(path, {'location_id': str(org1_location.id)})
+            self.assertEqual(response.status_code, 403)
+
+        with self.subTest('Test unauthenticated user filter location_id'):
+            response = self.client.get(path, {'location_id': str(org1_location.id)})
+            self.assertEqual(response.status_code, 403)
+
+    def test_filter_with_floorplan_id(self):
+        path = reverse('monitoring_general:api_dashboard_timeseries')
+        org1 = self._create_org(name='org1', slug='org1')
+        org2 = self._create_org(name='org2', slug='org2')
+        org3 = self._create_org(name='org3', slug='org3')
+        org1_location = self._create_location(organization=org1, type='indoor')
+        org1_floorplan = self._create_floorplan(location=org1_location)
+        org2_location = self._create_location(organization=org2, type='indoor')
+        org2_floorplan = self._create_floorplan(location=org2_location)
+        org3_location = self._create_location(organization=org3, type='indoor')
+        org3_floorplan = self._create_floorplan(location=org3_location)
+        org1_metric = self._create_org_wifi_client_metric(
+            org1, floorplan_id=str(org1_floorplan.id), location=str(org1_floorplan.id)
+        )
+        org2_metric = self._create_org_wifi_client_metric(
+            org2, floorplan_id=str(org2_floorplan.id), location=str(org2_floorplan.id)
+        )
+        org3_metric = self._create_org_wifi_client_metric(
+            org3, floorplan_id=str(org3_floorplan.id), location=str(org3_floorplan.id)
+        )
+
+        org1_metric.write('00:23:4a:00:00:00')
+        org2_metric.write('00:23:4b:00:00:00')
+        org3_metric.write('00:14:5c:00:00:00')
+
+        admin, org2_administrator, operator = self._create_test_users(org2)
+        OrganizationUser.objects.create(
+            user=org2_administrator, organization=org3, is_admin=True
+        )
+
+        self.client.force_login(admin)
+        with self.subTest('Test superuser filter with one floorplan_id'):
+            response = self.client.get(path, {'floorplan_id': str(org1_floorplan.id)})
+            self.assertEqual(response.status_code, 200)
+            chart = response.data['charts'][0]
+            self.assertEqual(chart['traces'][0][1][-1], 1)
+            self.assertEqual(chart['summary']['wifi_clients'], 1)
+
+        with self.subTest('Test superuser filter with multiple floorplan_id'):
+            response = self.client.get(
+                path, {'floorplan_id': f'{org1_floorplan.id},{org2_floorplan.id}'}
+            )
+            self.assertEqual(response.status_code, 200)
+            chart = response.data['charts'][0]
+            self.assertEqual(chart['traces'][0][1][-1], 2)
+            self.assertEqual(chart['summary']['wifi_clients'], 2)
+
+        self.client.force_login(org2_administrator)
+        with self.subTest('Test organization admin filter with one floorplan_id'):
+            response = self.client.get(path, {'floorplan_id': str(org2_floorplan.id)})
+            self.assertEqual(response.status_code, 200)
+            chart = response.data['charts'][0]
+            self.assertEqual(chart['traces'][0][1][-1], 1)
+            self.assertEqual(chart['summary']['wifi_clients'], 1)
+
+        with self.subTest('Test organization admin filter with multiple floorplan_ids'):
+            response = self.client.get(
+                path, {'floorplan_id': f'{org2_floorplan.id},{org3_floorplan.id}'}
+            )
+            self.assertEqual(response.status_code, 200)
+            chart = response.data['charts'][0]
+            self.assertEqual(chart['traces'][0][1][-1], 2)
+            self.assertEqual(chart['summary']['wifi_clients'], 2)
+
+        with self.subTest(
+            'Test organization admin filter floorplan_id of another organization'
+        ):
+            response = self.client.get(path, {'floorplan_id': str(org1_floorplan.id)})
+            self.assertEqual(response.status_code, 404)
+
+        with self.subTest(
+            'Test organization admin filter with multiple floorplan_ids (includes other org)'
+        ):
+            response = self.client.get(
+                path, {'floorplan_id': f'{org1_floorplan.id},{org2_floorplan.id}'}
+            )
+            self.assertEqual(response.status_code, 404)
+
+        self.client.force_login(operator)
+        with self.subTest('Test non-organization admin filter floorplan_id'):
+            response = self.client.get(path, {'floorplan_id': str(org1_floorplan.id)})
+            self.assertEqual(response.status_code, 403)
+
+        with self.subTest('Test unauthenticated user filter floorplan_id'):
+            response = self.client.get(path, {'floorplan_id': str(org1_floorplan.id)})
+            self.assertEqual(response.status_code, 403)
 
     def test_group_by_time(self):
         admin = self._create_admin()
