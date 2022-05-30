@@ -23,6 +23,7 @@ DEFAULT_COLORS = [
     '#7f7f7f',  # middle gray
     '#bcbd22',  # curry yellow-green
     '#17becf',  # blue-teal
+    '#6F6F6F',
 ]
 
 ACCESS_TECHNOLOGIES = OrderedDict(
@@ -209,7 +210,7 @@ DEFAULT_METRICS = {
                 'order': 240,
                 'query': chart_query['traffic'],
                 'colors': [
-                    '#6F6F6F',
+                    DEFAULT_COLORS[10],
                     DEFAULT_COLORS[0],
                     DEFAULT_COLORS[1],
                 ],
@@ -250,7 +251,7 @@ DEFAULT_METRICS = {
                 ),
                 'summary_labels': [_('Disk Usage')],
                 'unit': '%',
-                'colors': [DEFAULT_COLORS[-1]],
+                'colors': [DEFAULT_COLORS[9]],
                 'order': 270,
                 'query': chart_query['disk'],
             }
