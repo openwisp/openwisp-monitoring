@@ -1,6 +1,21 @@
 'use strict';
 
 (function ($) {
+    function sortByTraceOrder(traceOrder, arr, propertyName){
+        if (traceOrder === undefined) {
+            return arr;
+        }
+        var newArr = [];
+        for (var traceIndex=0; traceIndex<traceOrder.length; ++traceIndex) {
+            for (var arrIndex=0; arrIndex<arr.length; ++arrIndex) {
+                if (traceOrder[traceIndex] === arr[arrIndex][propertyName]){
+                    newArr.push(arr[arrIndex]);
+                    break;
+                }
+            }
+        }
+        return newArr;
+    }
     window.createChart = function (data, x, id, title, type) {
         if (data === false) {
             alert(gettext('error while receiving data from server'));
@@ -57,10 +72,6 @@
         if (type === 'histogram') {
             layout.hovermode = 'closest';
         }
-        if (type === 'stackedbar') {
-            type = 'bar';
-            layout.barmode = 'stack';
-        }
         var map, mapped, label, fixedValue, key;
         // given a value, returns its color and description
         // according to the color map configuration of this chart
@@ -84,7 +95,12 @@
             label = data.traces[i][0].replace(/_/g, ' ');
 
             if (data.summary_labels){
-              summaryLabels.push([key, data.summary_labels[i]]);
+                if (data.trace_order) {
+                    summaryLabels.push([key, data.summary_labels[data.trace_order.indexOf(key)]]);
+                }
+                else {
+                  summaryLabels.push([key, data.summary_labels[i]]);
+                }
             }
             var options = {
                     name: label,
@@ -92,7 +108,8 @@
                     mode: mode,
                     fill: data.fill || 'tozeroy',
                     hovertemplate: [],
-                    y: []
+                    y: [],
+                    _key: key,
                 },
                 yValuesRaw = data.traces[i][1];
             if (type !== 'histogram') {
@@ -103,7 +120,18 @@
                 options.x = [''];
                 options.histfunc = 'sum';
             }
-
+            if (type.includes('stackedbar')) {
+                layout.barmode = 'stack';
+                options.type = 'bar';
+                if (type === 'stackedbar+lines') {
+                    if (data.trace_type[key] === 'lines') {
+                        options.type = 'scatter';
+                        options.mode = 'lines+markers';
+                        options.line = {shape: 'hvh'};
+                        options.fill = "none";
+                    }
+                }
+            }
             if (data.colorscale) {
                 var config = data.colorscale;
                 map = data.colorscale.map;
@@ -157,8 +185,12 @@
                 options.y.push(val);
                 options.hovertemplate.push(hovertemplate);
             }
+            if (data.trace_order){
+                options.marker = {color: data.colors[data.trace_order.indexOf(key)]};
+            }
             charts.push(options);
         }
+        charts = sortByTraceOrder(data.trace_order, charts, '_key');
         if (fixedY) { layout.yaxis = {range: [0, fixedYMax]}; }
 
         Plotly.newPlot(plotlyContainer, charts, layout, {responsive: true});
@@ -178,13 +210,14 @@
             }
         }
         container.find('.circle').remove();
+        var percircles = [];
         // add summary
         if (data.summary && type != 'histogram') {
             for (i=0; i<summaryLabels.length; i++) {
                 var el = summaryLabels[i],
-                    percircleOptions = {progressBarColor: data.colors[i]};
+                    percircleOptions = {progressBarColor: data.colors[i], _key: el[0]};
                 key = el[0];
-                label = el[1];
+                percircleOptions.htmlTitle = el[1];
                 var value = data.summary[key];
 
                 if (unit === '%') {
@@ -205,13 +238,20 @@
                 if (data.colorscale && data.colorscale.map) {
                     mapped = findInColorMap(value);
                     percircleOptions.progressBarColor = mapped.color;
-                    label = label + ': ' + mapped.desc;
+                    percircleOptions.htmlTitle = percircleOptions.htmlTitle + ': ' + mapped.desc;
                 }
+                if (data.trace_order){
+                    percircleOptions.progressBarColor = data.colors[data.trace_order.indexOf(key)];
+                }
+                percircles.push(percircleOptions);
+            }
+            percircles = sortByTraceOrder(data.trace_order, percircles, '_key');
+            for (i=0; i<percircles.length; ++i) {
                 container.append(
-                    '<div class="small circle" title="' + label + '"></div>'
+                    '<div class="small circle" title="' + percircles[i].htmlTitle + '"></div>'
                 );
                 container.find('.circle').eq(-1)
-                         .percircle(percircleOptions);
+                         .percircle(percircles[i]);
             }
         }
         // do not add heading, help and tooltip if already done

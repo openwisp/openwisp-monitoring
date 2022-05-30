@@ -430,6 +430,14 @@ class AbstractChart(TimeStampedEditableModel):
         return self.config_dict.get('label') or self.title
 
     @property
+    def trace_type(self):
+        return self.config_dict.get('trace_type', {})
+
+    @property
+    def trace_order(self):
+        return self.config_dict.get('trace_order', [])
+
+    @property
     def description(self):
         return self.config_dict['description'].format(
             metric=self.metric, **self.metric.tags
@@ -600,7 +608,14 @@ class AbstractChart(TimeStampedEditableModel):
         try:
             # unit needs to be passed for chart_inline
             data = self.read(time=time)
-            data.update({'unit': self.unit})
+            data.update(
+                {
+                    'unit': self.unit,
+                    'trace_type': self.trace_type,
+                    'trace_order': self.trace_order,
+                    'colors': self.colors,
+                }
+            )
             return json.dumps(data, **kwargs, default=str)
         except KeyError as e:
             logger.warning(f'Got KeyError in Chart.json method: {e}')
