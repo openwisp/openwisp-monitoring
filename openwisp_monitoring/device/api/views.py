@@ -107,6 +107,10 @@ class DeviceMetricView(GenericAPIView):
                     value = getattr(chart, attr)
                     if value:
                         chart_dict[attr] = value
+                if chart.trace_type:
+                    chart_dict['trace_type'] = chart.trace_type
+                if chart.trace_order:
+                    chart_dict['trace_order'] = chart.trace_order
             except InvalidChartConfigException:
                 logger.exception(f'Skipped chart for metric {chart.metric}')
                 continue

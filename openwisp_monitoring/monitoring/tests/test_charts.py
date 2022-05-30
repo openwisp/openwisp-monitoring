@@ -170,7 +170,14 @@ class TestCharts(TestMonitoringMixin, TestCase):
         for i, chart in enumerate(data['traces']):
             data['traces'][i] = list(chart)
         # update data with unit
-        data.update({'unit': c.unit})
+        data.update(
+            {
+                'unit': c.unit,
+                'trace_type': c.trace_type,
+                'trace_order': c.trace_order,
+                'colors': c.colors,
+            }
+        )
         self.assertDictEqual(json.loads(c.json()), data)
 
     def test_read_bad_query(self):

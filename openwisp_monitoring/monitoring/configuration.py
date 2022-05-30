@@ -187,19 +187,13 @@ DEFAULT_METRICS = {
         'related_fields': ['tx_bytes'],
         'charts': {
             'traffic': {
-                'upload': {
-                    'type': 'stackedbar',
-                    'title': _('Upload'),
+                'type': 'stackedbar+lines',
+                'trace_type': {
+                    'download': 'stackedbar',
+                    'upload': 'stackedbar',
+                    'total': 'lines',
                 },
-                'download': {
-                    'type': 'stackedbar',
-                    'title': _('Download'),
-                },
-                'total': {
-                    'type': 'scatter',
-                    'title': _('Total'),
-                },
-                'type': 'stackedbar',
+                'trace_order': ['total', 'download', 'upload'],
                 'title': _('Traffic: {ifname}'),
                 'label': _('Traffic'),
                 'description': _(
@@ -207,13 +201,18 @@ DEFAULT_METRICS = {
                     'the interface "{ifname}", measured in GB.'
                 ),
                 'summary_labels': [
+                    _('Total traffic'),
                     _('Total download traffic'),
                     _('Total upload traffic'),
-                    _('Total traffic'),
                 ],
                 'unit': _(' GB'),
                 'order': 240,
                 'query': chart_query['traffic'],
+                'colors': [
+                    '#6F6F6F',
+                    DEFAULT_COLORS[0],
+                    DEFAULT_COLORS[1],
+                ],
             }
         },
     },

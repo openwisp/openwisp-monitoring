@@ -188,8 +188,10 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         data = c.read()
         # expected download wlan0
         self.assertEqual(data['traces'][0][1][-1], 1.2)
+        # expected total wlan0
+        self.assertEqual(data['traces'][1][1][-1], 1.8)
         # expected upload wlan0
-        self.assertEqual(data['traces'][1][1][-1], 0.6)
+        self.assertEqual(data['traces'][2][1][-1], 0.6)
         # wlan1 traffic
         m = Metric.objects.get(name='wlan1 traffic', object_id=dd.pk)
         points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
@@ -323,8 +325,10 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 'wifi_clients - WiFi clients: wlan0',
                 'wifi_clients - WiFi clients: wlan1',
                 'download - Traffic: wlan0',
+                'total - Traffic: wlan0',
                 'upload - Traffic: wlan0',
                 'download - Traffic: wlan1',
+                'total - Traffic: wlan1',
                 'upload - Traffic: wlan1',
                 'memory_usage - Memory Usage',
                 'CPU_load - CPU Load',
