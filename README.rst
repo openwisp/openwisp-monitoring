@@ -660,7 +660,7 @@ Traffic
 | **charts**:        | ``traffic``                                                              |
 +--------------------+--------------------------------------------------------------------------+
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/traffic.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/traffic.png
   :align: center
 
 WiFi Clients
