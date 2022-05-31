@@ -225,7 +225,13 @@ DEFAULT_METRICS = {
         'related_fields': ['tx_bytes'],
         'charts': {
             'general_traffic': {
-                'type': 'scatter',
+                'type': 'stackedbar+lines',
+                'trace_type': {
+                    'download': 'stackedbar',
+                    'upload': 'stackedbar',
+                    'total': 'lines',
+                },
+                'trace_order': ['total', 'download', 'upload'],
                 'title': _('General Traffic'),
                 'label': _('General Traffic'),
                 'description': _(
@@ -233,6 +239,7 @@ DEFAULT_METRICS = {
                     'measured in GB.'
                 ),
                 'summary_labels': [
+                    _('Total traffic'),
                     _('Total download traffic'),
                     _('Total upload traffic'),
                 ],
@@ -245,6 +252,11 @@ DEFAULT_METRICS = {
                     'location_id': '',
                     'floorplan_id': '',
                 },
+                'colors': [
+                    DEFAULT_COLORS[7],
+                    DEFAULT_COLORS[0],
+                    DEFAULT_COLORS[1],
+                ],
             }
         },
     },

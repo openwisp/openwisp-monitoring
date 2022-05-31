@@ -18,6 +18,7 @@ django.jQuery(function ($) {
           dataType: 'json',
           beforeSend: function(){
             chartContents.hide();
+            chartContents.empty();
             fallback.hide();
             if (showLoading) {
               globalLoadingOverlay.show();

@@ -201,13 +201,13 @@ class TestDashboardTimeseriesView(
     def test_traffic_chart(self):
         def _test_chart_properties(chart):
             self.assertEqual(chart['title'], 'General Traffic')
-            self.assertEqual(chart['type'], 'scatter')
+            self.assertEqual(chart['type'], 'stackedbar+lines')
             self.assertEqual(chart['unit'], ' GB')
             self.assertEqual(
                 chart['summary_labels'],
-                ['Total download traffic', 'Total upload traffic'],
+                ['Total traffic', 'Total download traffic', 'Total upload traffic'],
             )
-            self.assertEqual(chart['colors'], ['#1f77b4', '#ff7f0e'])
+            self.assertEqual(chart['colors'], ['#7f7f7f', '#1f77b4', '#ff7f0e'])
             self.assertEqual(chart['colorscale'], None)
             self.assertEqual(
                 chart['description'],
@@ -437,6 +437,7 @@ class TestDashboardTimeseriesView(
                     'time',
                     'wifi_clients - General WiFi Clients',
                     'download - General Traffic',
+                    'total - General Traffic',
                     'upload - General Traffic',
                 ],
             )
@@ -465,7 +466,7 @@ class TestDashboardTimeseriesView(
             last_line = _test_csv_response(response)
             self.assertEqual(
                 last_line,
-                [last_line[0], '3', '3.0', ''],
+                [last_line[0], '3', '3.0', '', ''],
             )
 
         self.client.force_login(org2_administrator)
@@ -474,7 +475,7 @@ class TestDashboardTimeseriesView(
             last_line = _test_csv_response(response)
             self.assertEqual(
                 last_line,
-                [last_line[0], '2', '2.0', ''],
+                [last_line[0], '2', '2.0', '', ''],
             )
 
         self.client.force_login(operator)
