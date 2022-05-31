@@ -805,7 +805,7 @@ Mobile Access Technology in use
 Dashboard Monitoring Charts
 ---------------------------
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/dashboard-charts.png
+.. figure:: hhttps://raw.githubusercontent.com/openwisp/openwisp-controller/docs/docs/1.1/dashboard-charts.png
   :align: center
 
 OpenWISP Monitoring adds two timeseries charts to the admin dashboard:

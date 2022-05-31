@@ -109,6 +109,8 @@
                     fill: data.fill || 'tozeroy',
                     hovertemplate: [],
                     y: [],
+                    // We use the "_key" field to sort the charts
+                    // according to the order defined in "data.trace_order"
                     _key: key,
                 },
                 yValuesRaw = data.traces[i][1];
@@ -221,7 +223,12 @@
             }
             for (i=0; i<summaryLabels.length; i++) {
                 var el = summaryLabels[i],
-                    percircleOptions = {progressBarColor: data.colors[i], _key: el[0]};
+                    percircleOptions = {
+                        progressBarColor: data.colors[i],
+                        // We use the "_key" field to sort the summary
+                        // charts according to the order defined in "data.trace_order"
+                        _key: el[0]
+                    };
                 key = el[0];
                 percircleOptions.htmlTitle = el[1];
                 var value = data.summary[key];
