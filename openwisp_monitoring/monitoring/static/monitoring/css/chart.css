@@ -121,62 +121,6 @@
   font-weight: normal;
   color: #434B62;
 }
-.ow-chart {
-  margin-top: 1.5em;
-  padding-top: 1.5em;
-  border-top: 1px dotted rgba(0, 0, 0, 0.2);
-  text-align: center;
-}
-.ow-chart:first-child{
-  border: 0 none;
-  padding-top: 0;
-  margin-top: 2.25em;
-}
-.ow-chart .summary {
-  text-align: right;
-  margin: 0;
-}
-.ow-chart .circle {
-  display: inline-block;
-  float: none;
-  margin: 0em 0.15em 0 0.15em;
-  background: rgba(0, 0, 0, 0.125);
-}
-#ow-chart-contents .percircle:hover > span {
-  transform: scale(1.15) translateY(-50%);
-  letter-spacing: -0.3px;
-}
-.percircle:hover:after {
-  transform: scale(1.05);
-}
-.percircle.small {
-  font-size: 90px;
-}
-.ow-chart .custom-legend {
-  margin: 0 0 1.5em;
-}
-.ow-chart .legend {
-  display: inline-block;
-  margin: 0 0.5em;
-  font-size: 13px;
-  cursor: default;
-}
-.ow-chart .legend span {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  margin-right: 2px;
-}
-#ow-chart-contents .circle > span {
-  font-size: .15em;
-  word-spacing: -0.75px;
-  color: rgba(0, 0, 0, 0.6) !important;
-  font-size: 13px;
-  font-weight: bold;
-}
-#ow-chart-contents b{
-  background-color: #000 !important;
-}
 #chart-loading-overlay {
   width: 100%;
   margin: 25px auto;
