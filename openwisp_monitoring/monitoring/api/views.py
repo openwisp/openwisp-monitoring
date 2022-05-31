@@ -56,10 +56,7 @@ class DashboardTimeseriesView(MonitoringApiViewMixin, APIView):
         orgs = self._get_organizations()
         interfaces = []
         if len(orgs) == 1:
-            org_slug = self.request.GET.get(
-                'organization_slug', Organization.objects.get(id=orgs[0]).slug
-            )
-            interfaces = DEFAULT_DASHBOARD_TRAFFIC_CHART.get(org_slug, [])
+            interfaces = DEFAULT_DASHBOARD_TRAFFIC_CHART.get(str(orgs[0]), [])
         if not interfaces:
             interfaces = DEFAULT_DASHBOARD_TRAFFIC_CHART.get('__all__')
         return interfaces

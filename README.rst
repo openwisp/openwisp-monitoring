@@ -1231,7 +1231,7 @@ This setting should be defined in the following format:
 .. code-block::python
 
     OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART = {
-        '<organization-slug>': ['<list-of-interfaces>']
+        '<organization-uuid>': ['<list-of-interfaces>']
     }
 
 E.g., if you want the **General Traffic** chart to show data from
@@ -1241,14 +1241,14 @@ as follows:
 .. code-block::python
 
     OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART = {
-        # organization slugs
-        'default': ['eth1', 'eth2']
+        # organization uuid
+        'f9601bbd-b6d5-4704-85e3-5851894437bf': ['eth1', 'eth2']
     }
 
 **Note**: The value of ``__all__`` key is used if an organization
 does not have list of interfaces defined in ``OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART``.
 
-**Note**: If a user can manage more that one organizations (e.g. superusers),
+**Note**: If a user can manage more than one organization (e.g. superusers),
 then the **General Traffic** chart will always show data from interfaces
 of ``__all__`` configuration.
 

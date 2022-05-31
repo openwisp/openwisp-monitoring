@@ -1,3 +1,4 @@
+import uuid
 from unittest.mock import patch
 
 from django.test import TestCase
@@ -26,6 +27,8 @@ class TestDashboardTimeseriesView(
 ):
     location_model = Location
     floorplan_model = FloorPlan
+    org2_id = str(uuid.uuid4())
+    org3_id = str(uuid.uuid4())
 
     def setUp(self):
         super().setUp()
@@ -196,7 +199,7 @@ class TestDashboardTimeseriesView(
 
     @patch.dict(
         DEFAULT_DASHBOARD_TRAFFIC_CHART,
-        {'__all__': ['wan'], 'org2': ['eth1'], 'org3': ['wan', 'eth1']},
+        {'__all__': ['wan'], org2_id: ['eth1'], org3_id: ['wan', 'eth1']},
     )
     def test_traffic_chart(self):
         def _test_chart_properties(chart):
@@ -216,8 +219,8 @@ class TestDashboardTimeseriesView(
 
         path = reverse('monitoring_general:api_dashboard_timeseries')
         org1 = self._create_org(name='org1', slug='org1')
-        org2 = self._create_org(name='org2', slug='org2')
-        org3 = self._create_org(name='org3', slug='org3')
+        org2 = self._create_org(name='org2', slug='org2', id=self.org2_id)
+        org3 = self._create_org(name='org3', slug='org3', id=self.org3_id)
         org1_wan_metric = self._create_org_traffic_metric(org1, 'wan')
         org2_wan_metric = self._create_org_traffic_metric(org2, 'wan')
         org2_eth1_metric = self._create_org_traffic_metric(org2, 'eth1')
