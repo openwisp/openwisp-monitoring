@@ -197,8 +197,8 @@ DEFAULT_METRICS = {
                 'title': _('Traffic: {ifname}'),
                 'label': _('Traffic'),
                 'description': _(
-                    'Network traffic, download and upload, measured on '
-                    'the interface "{ifname}", measured in GB.'
+                    'Network traffic (total, download and upload) '
+                    'of the interface "{ifname}", measured in GB.'
                 ),
                 'summary_labels': [
                     _('Total traffic'),
