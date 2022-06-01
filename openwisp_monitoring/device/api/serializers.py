@@ -5,6 +5,7 @@ from openwisp_controller.geo.api.serializers import (
     GeoJsonLocationSerializer,
     LocationDeviceSerializer,
 )
+from openwisp_utils.api.serializers import ValidatedModelSerializer
 
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 WifiSession = load_model('device_monitoring', 'WifiSession')
@@ -22,24 +23,48 @@ class DeviceMonitoringSerializer(serializers.ModelSerializer):
         model = DeviceMonitoring
 
 
-class WifiSessionSerializer(serializers.ModelSerializer):
+class WifiClientSerializer(ValidatedModelSerializer):
     class Meta:
+        fields = '__all__'
+        model = WifiClient
+        read_only_fields = (
+            'created',
+            'modified',
+        )
+
+
+class WifiSessionCreateUpdateSerializer(ValidatedModelSerializer):
+    class Meta:
+        model = WifiSession
+        fields = ['device', 'wifi_client', 'ssid', 'interface_name']
+
+
+class WifiSessionReadSerializer(ValidatedModelSerializer):
+    client = WifiClientSerializer(source='wifi_client')
+    device_name = serializers.CharField(source='device.name', read_only=True)
+    organization_id = serializers.CharField(
+        source='device.organization.id', read_only=True
+    )
+    organization_name = serializers.CharField(
+        source='device.organization', read_only=True
+    )
+
+    class Meta:
+        model = WifiSession
         fields = [
             'id',
+            'device_name',
             'device',
-            'wifi_client',
+            'organization_name',
+            'organization_id',
+            'client',
             'ssid',
             'interface_name',
             'start_time',
             'stop_time',
+            'modified',
         ]
-        model = WifiSession
-
-
-class WifiClientSerializer(serializers.ModelSerializer):
-    class Meta:
-        fields = ['mac_address', 'vendor', 'ht', 'vht', 'wmm', 'wds', 'wps']
-        model = WifiClient
+        read_only_fields = ('stop_time', 'modified')
 
 
 class MonitoringDeviceSerializer(LocationDeviceSerializer):

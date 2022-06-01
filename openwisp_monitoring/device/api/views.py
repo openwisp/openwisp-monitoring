@@ -35,7 +35,8 @@ from .serializers import (
     MonitoringDeviceSerializer,
     MonitoringGeoJsonLocationSerializer,
     WifiClientSerializer,
-    WifiSessionSerializer,
+    WifiSessionCreateUpdateSerializer,
+    WifiSessionReadSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -443,8 +444,12 @@ device_metric = DeviceMetricView.as_view()
 
 
 class WifiSessionListCreateView(ProtectedAPIMixin, ListCreateAPIView):
-    serializer_class = WifiSessionSerializer
-    queryset = WifiSession.objects.all()
+    queryset = WifiSession.objects.select_related(
+        'device',
+        'wifi_client',
+        'device__organization',
+        'device__group',
+    )
     filter_backends = [DjangoFilterBackend]
     pagination_class = ListViewPagination
     filterset_fields = [
@@ -455,13 +460,26 @@ class WifiSessionListCreateView(ProtectedAPIMixin, ListCreateAPIView):
         'stop_time',
     ]
 
+    def get_serializer_class(self):
+        if self.request.method in ['GET']:
+            return WifiSessionReadSerializer
+        return WifiSessionCreateUpdateSerializer
+
 
 wifi_session_list = WifiSessionListCreateView.as_view()
 
 
 class WifiSessionDetailView(ProtectedAPIMixin, RetrieveUpdateAPIView):
-    serializer_class = WifiSessionSerializer
-    queryset = WifiSession.objects.all()
+    queryset = WifiSession.objects.select_related(
+        'device',
+        'wifi_client',
+        'device__organization',
+    )
+
+    def get_serializer_class(self):
+        if self.request.method in ['GET']:
+            return WifiSessionReadSerializer
+        return WifiSessionCreateUpdateSerializer
 
 
 wifi_session_detail = WifiSessionDetailView.as_view()
