@@ -1819,33 +1819,33 @@ List wifi session
    
    GET /api/v1/monitoring/wifi-session/
 
-**Available filters**:
+**Available filters**
 
-You can filter using `device_id` to get list of wifi sessions related to that particular device.
+You can filter using ``device_id`` to get list of wifi sessions related to that particular device.
 
 .. code-block:: text
    
    GET /api/v1/monitoring/wifi-session/?device={device_id}
 
-You can filter using `organization_id` to get list of wifi sessions belongs to an organization.
+You can filter using ``organization_id`` to get list of wifi sessions belongs to an organization.
 
 .. code-block:: text
    
    GET /api/v1/monitoring/wifi-session/?device__organization={organization_id}
 
-You can filter using `group_id` to get list of wifi sessions belongs to a group.
+You can filter using ``group_id`` to get list of wifi sessions belongs to a group.
 
 .. code-block:: text
    
    GET /api/v1/monitoring/wifi-session/?device__group={group_id}
 
-You can filter to get list of wifi sessions using `start_time`.
+You can filter to get list of wifi sessions using ``start_time``.
 
 .. code-block:: text
    
    GET /api/v1/monitoring/wifi-session/?start_time={start_time}
 
-You can filter to get list of wifi sessions using `stop_time`.
+You can filter to get list of wifi sessions using ``stop_time``.
 
 .. code-block:: text
    
@@ -1879,27 +1879,27 @@ List wifi client
    
    GET /api/v1/monitoring/wifi-client/
 
-**Available filters**:
+**Available filters**
 
-You can filter using `device_id` to get list of wifi clients related to that particular device.
+You can filter using ``device_id`` to get list of wifi clients related to that particular device.
 
 .. code-block:: text
    
    GET /api/v1/monitoring/wifi-client/?wifisession__device={device_id}
 
-You can filter using `organization_id` to get list of wifi clients belongs to an organization.
+You can filter using ``organization_id`` to get list of wifi clients belongs to an organization.
 
 .. code-block:: text
    
    GET /api/v1/monitoring/wifi-client/?wifisession__device__organization={organization_id}
 
-You can filter using `mac_address` to get particular wifi client.
+You can filter using ``mac_address`` to get particular wifi client.
 
 .. code-block:: text
    
    GET /api/v1/monitoring/wifi-client/?mac_address={mac_address}
 
-You can filter to get list of wifi clients using `vendor`.
+You can filter to get list of wifi clients using ``vendor``.
 
 .. code-block:: text
    
@@ -1929,7 +1929,7 @@ Change wifi client
 Pagination
 ##########
 
-Wifi session & Wifi client list endpoints support the `page_size` parameter that allows paginating the results in conjunction with the page parameter.
+Wifi session & Wifi client list endpoints support the ``page_size`` parameter that allows paginating the results in conjunction with the page parameter.
 
 .. code-block:: text
    
