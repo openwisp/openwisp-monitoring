@@ -8,6 +8,7 @@ from openwisp_controller.geo.api.serializers import (
 from openwisp_utils.api.serializers import ValidatedModelSerializer
 
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+Device = load_model('config', 'Device')
 WifiSession = load_model('device_monitoring', 'WifiSession')
 WifiClient = load_model('device_monitoring', 'WifiClient')
 
@@ -25,7 +26,17 @@ class DeviceMonitoringSerializer(serializers.ModelSerializer):
 
 class WifiClientSerializer(ValidatedModelSerializer):
     class Meta:
-        fields = '__all__'
+        fields = [
+            "mac_address",
+            "vendor",
+            "ht",
+            "vht",
+            "wmm",
+            "wds",
+            "wps",
+            "modified",
+            "created",
+        ]
         model = WifiClient
         read_only_fields = (
             'created',
@@ -34,6 +45,16 @@ class WifiClientSerializer(ValidatedModelSerializer):
 
 
 class WifiSessionCreateUpdateSerializer(ValidatedModelSerializer):
+    # When a relationship or ChoiceField has too many items,
+    # rendering the widget containing all the options can become very slow,
+    # and cause the browsable API rendering to perform poorly, Changed select field to input.
+    device = serializers.PrimaryKeyRelatedField(
+        queryset=Device.objects.all(), style={'base_template': 'input.html'}
+    )
+    wifi_client = serializers.PrimaryKeyRelatedField(
+        queryset=WifiClient.objects.all(), style={'base_template': 'input.html'}
+    )
+
     class Meta:
         model = WifiSession
         fields = ['device', 'wifi_client', 'ssid', 'interface_name']

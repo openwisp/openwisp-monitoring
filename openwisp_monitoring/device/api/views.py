@@ -8,7 +8,7 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models import Count, Q
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
-from django_filters.rest_framework import DjangoFilterBackend
+from django_filters.rest_framework import DjangoFilterBackend, FilterSet
 from pytz import UTC
 from rest_framework import pagination, serializers, status
 from rest_framework.generics import (
@@ -445,10 +445,7 @@ device_metric = DeviceMetricView.as_view()
 
 class WifiSessionListCreateView(ProtectedAPIMixin, ListCreateAPIView):
     queryset = WifiSession.objects.select_related(
-        'device',
-        'wifi_client',
-        'device__organization',
-        'device__group',
+        'device', 'wifi_client', 'device__organization', 'device__group'
     )
     filter_backends = [DjangoFilterBackend]
     pagination_class = ListViewPagination
@@ -471,9 +468,7 @@ wifi_session_list = WifiSessionListCreateView.as_view()
 
 class WifiSessionDetailView(ProtectedAPIMixin, RetrieveUpdateAPIView):
     queryset = WifiSession.objects.select_related(
-        'device',
-        'wifi_client',
-        'device__organization',
+        'device', 'wifi_client', 'device__organization'
     )
 
     def get_serializer_class(self):
@@ -485,17 +480,30 @@ class WifiSessionDetailView(ProtectedAPIMixin, RetrieveUpdateAPIView):
 wifi_session_detail = WifiSessionDetailView.as_view()
 
 
+class WifiClientFilter(FilterSet):
+    class Meta:
+        model = WifiClient
+        fields = [
+            'wifisession__device',
+            'wifisession__device__organization',
+            'mac_address',
+            'vendor',
+        ]
+
+    def __init__(self, *args, **kwargs):
+        super(WifiClientFilter, self).__init__(*args, **kwargs)
+        # [invalid_name] displaying when not filtering on a model field.
+        # Need to explicitly provide the label.
+        self.filters['wifisession__device'].label = "Device"
+        self.filters['wifisession__device__organization'].label = "Device organization"
+
+
 class WifiClientListCreateView(ProtectedAPIMixin, ListCreateAPIView):
     serializer_class = WifiClientSerializer
     queryset = WifiClient.objects.all()
     filter_backends = [DjangoFilterBackend]
     pagination_class = ListViewPagination
-    filterset_fields = [
-        'wifisession__device',
-        'wifisession__device__organization',
-        'mac_address',
-        'vendor',
-    ]
+    filterset_class = WifiClientFilter
 
 
 wifi_client_list = WifiClientListCreateView.as_view()
