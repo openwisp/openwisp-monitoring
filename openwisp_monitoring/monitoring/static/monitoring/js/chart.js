@@ -197,12 +197,17 @@
 
         Plotly.newPlot(plotlyContainer, charts, layout, {responsive: true});
 
-        container.find('.custom-legend').remove();
         // custom legends when using color map
         if (data.colorscale && data.colorscale.map) {
-            container.append('<div class="custom-legend"></div>');
+            var customLegend;
+            if (container.find('.custom-legend').length) {
+                customLegend = $(container.find('.percircle-container').get(0));
+                customLegend.empty();
+            } else {
+                customLegend = $('<div class="custom-legend"></div>');
+                $(container.find('.js-plotly-plot').get(0)).after(customLegend);
+            }
             map = data.colorscale.map;
-            var customLegend = container.find('.custom-legend');
             for (i = map.length-1; i >= 0; i--) {
                 var color = map[i][1];
                 label = map[i][2];
@@ -210,6 +215,9 @@
                     '<div class="legend"><span style="background:' + color + '"></span> ' + label + '</div>'
                 );
             }
+        }
+        else {
+            container.find('.custom-legend').remove();
         }
         // add summary
         if (data.summary && type != 'histogram') {
@@ -219,7 +227,7 @@
                 percircleContainer.empty();
             } else {
                 percircleContainer = $('<div class="percircle-container"></div>');
-                $(container.find('.js-plotly-plot').get(0)).after(percircleContainer);
+                container.append(percircleContainer);
             }
             for (i=0; i<summaryLabels.length; i++) {
                 var el = summaryLabels[i],
@@ -266,6 +274,8 @@
                 percircleContainer.find('.circle').eq(-1)
                          .percircle(percircles[i]);
             }
+        } else {
+            container.find('.percircle-container').remove();
         }
         // add quick link button
         if (quickLink) {

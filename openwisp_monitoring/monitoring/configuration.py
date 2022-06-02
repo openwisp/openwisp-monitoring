@@ -235,8 +235,8 @@ DEFAULT_METRICS = {
                 'title': _('General Traffic'),
                 'label': _('General Traffic'),
                 'description': _(
-                    'Network traffic (download and upload) of the network, '
-                    'measured in GB.'
+                    'Network traffic of the whole network'
+                    ' (total, download, upload) measured in GB.'
                 ),
                 'summary_labels': [
                     _('Total traffic'),
@@ -290,9 +290,7 @@ DEFAULT_METRICS = {
                 'type': 'bar',
                 'label': _('General WiFi Clients'),
                 'title': _('General WiFi Clients'),
-                'description': _(
-                    'WiFi clients associated to the wireless interface of all devices.'
-                ),
+                'description': _('Unique WiFi clients count of the entire network.'),
                 'summary_labels': [_('Total Unique WiFi clients')],
                 'unit': '',
                 'order': 230,

@@ -90,7 +90,7 @@ class TestDashboardTimeseriesView(
             self.assertEqual(chart['colorscale'], None)
             self.assertEqual(
                 chart['description'],
-                'WiFi clients associated to the wireless interface of all devices.',
+                'Unique WiFi clients count of the entire network.',
             )
 
         path = reverse('monitoring_general:api_dashboard_timeseries')
@@ -214,7 +214,7 @@ class TestDashboardTimeseriesView(
             self.assertEqual(chart['colorscale'], None)
             self.assertEqual(
                 chart['description'],
-                'Network traffic (download and upload) of the network, measured in GB.',
+                'Network traffic of the whole network (total, download, upload) measured in GB.',
             )
 
         path = reverse('monitoring_general:api_dashboard_timeseries')
