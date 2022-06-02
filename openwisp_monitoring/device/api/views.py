@@ -447,6 +447,7 @@ class WifiSessionListCreateView(ProtectedAPIMixin, ListCreateAPIView):
     queryset = WifiSession.objects.select_related(
         'device', 'wifi_client', 'device__organization', 'device__group'
     )
+    organization_field = 'device__organization'
     filter_backends = [DjangoFilterBackend]
     pagination_class = ListViewPagination
     filterset_fields = [
@@ -470,6 +471,7 @@ class WifiSessionDetailView(ProtectedAPIMixin, RetrieveUpdateAPIView):
     queryset = WifiSession.objects.select_related(
         'device', 'wifi_client', 'device__organization'
     )
+    organization_field = 'device__organization'
 
     def get_serializer_class(self):
         if self.request.method in ['GET']:
@@ -500,6 +502,7 @@ class WifiClientFilter(FilterSet):
 
 class WifiClientListCreateView(ProtectedAPIMixin, ListCreateAPIView):
     serializer_class = WifiClientSerializer
+    organization_field = 'wifisession__device__organization'
     queryset = WifiClient.objects.all()
     filter_backends = [DjangoFilterBackend]
     pagination_class = ListViewPagination
@@ -511,6 +514,7 @@ wifi_client_list = WifiClientListCreateView.as_view()
 
 class WifiClientDetailView(ProtectedAPIMixin, RetrieveUpdateAPIView):
     serializer_class = WifiClientSerializer
+    organization_field = 'wifisession__device__organization'
     queryset = WifiClient.objects.all()
 
 

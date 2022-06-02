@@ -5,6 +5,7 @@ from openwisp_controller.geo.api.serializers import (
     GeoJsonLocationSerializer,
     LocationDeviceSerializer,
 )
+from openwisp_users.api.mixins import FilterByOrganizationManaged
 from openwisp_utils.api.serializers import ValidatedModelSerializer
 
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
@@ -24,7 +25,7 @@ class DeviceMonitoringSerializer(serializers.ModelSerializer):
         model = DeviceMonitoring
 
 
-class WifiClientSerializer(ValidatedModelSerializer):
+class WifiClientSerializer(FilterByOrganizationManaged, ValidatedModelSerializer):
     class Meta:
         fields = [
             "mac_address",
@@ -44,7 +45,9 @@ class WifiClientSerializer(ValidatedModelSerializer):
         )
 
 
-class WifiSessionCreateUpdateSerializer(ValidatedModelSerializer):
+class WifiSessionCreateUpdateSerializer(
+    FilterByOrganizationManaged, ValidatedModelSerializer
+):
     # When a relationship or ChoiceField has too many items,
     # rendering the widget containing all the options can become very slow,
     # and cause the browsable API rendering to perform poorly, Changed select field to input.
@@ -60,7 +63,7 @@ class WifiSessionCreateUpdateSerializer(ValidatedModelSerializer):
         fields = ['device', 'wifi_client', 'ssid', 'interface_name']
 
 
-class WifiSessionReadSerializer(ValidatedModelSerializer):
+class WifiSessionReadSerializer(FilterByOrganizationManaged, ValidatedModelSerializer):
     client = WifiClientSerializer(source='wifi_client')
     device_name = serializers.CharField(source='device.name', read_only=True)
     organization_id = serializers.CharField(
