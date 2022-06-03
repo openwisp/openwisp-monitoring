@@ -338,6 +338,7 @@ class AbstractWifiClient(TimeStampedEditableModel):
     class Meta:
         abstract = True
         verbose_name = _('WiFi Client')
+        ordering = ('-created',)
 
 
 class AbstractWifiSession(TimeStampedEditableModel):

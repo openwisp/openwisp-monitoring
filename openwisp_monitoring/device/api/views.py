@@ -496,10 +496,8 @@ class WifiClientFilter(FilterSet):
         super(WifiClientFilter, self).__init__(*args, **kwargs)
         # [invalid_name] displaying when not filtering on a model field.
         # Need to explicitly provide the label.
-        self.filters['wifisession__device'].label = "Device"  # pragma: no cover
-        self.filters[
-            'wifisession__device__organization'
-        ].label = "Device organization"  # pragma: no cover
+        self.filters['wifisession__device'].label = "Device"
+        self.filters['wifisession__device__organization'].label = "Device organization"
 
 
 class WifiClientListCreateView(ProtectedAPIMixin, ListCreateAPIView):
