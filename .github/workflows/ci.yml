@@ -6,10 +6,12 @@ on:
     branches:
       - master
       - dev
+      - gsoc22-iperf
   pull_request:
     branches:
       - master
       - dev
+      - gsoc22-iperf
 
 jobs:
   build:
