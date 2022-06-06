@@ -89,6 +89,8 @@ class TestDeviceConnectionInlineAdmin(
         org = self._get_org()
         self._create_credentials(auto_add=True, organization=org)
         device = self._create_config(organization=org).device
+        # Delete iperf check to prevent unnecessary response timeout
+        Check.objects.filter(check_type__endswith='Iperf').delete()
         device_data = DeviceData.objects.get(id=device.id)
         device_checks = device_data.checks.all()
         for check in device_checks:
