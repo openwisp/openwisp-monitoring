@@ -481,6 +481,7 @@ class TestWifiSessionAdmin(
         with self.subTest('Test multitenancy'):
             administrator = self._create_administrator(organizations=[org2])
             self.client.force_login(administrator)
+            response = self.client.get(url)
             _assert_org2_wifi_session_in_response(
                 response, org1_interface_data, org2_interface_data
             )

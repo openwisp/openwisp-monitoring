@@ -307,9 +307,9 @@ class WifiSessionAdminHelperMixin:
     def related_organization(self, obj):
         app_label = Organization._meta.app_label
         url = reverse(
-            f'admin:{app_label}_organization_change', args=[obj.organization.id]
+            f'admin:{app_label}_organization_change', args=[obj.device.organization_id]
         )
-        return mark_safe(f'<a href="{url}">{obj.organization}</a>')
+        return mark_safe(f'<a href="{url}">{obj.device.organization}</a>')
 
     related_organization.short_description = _('organization')
 
