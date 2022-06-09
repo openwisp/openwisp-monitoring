@@ -385,10 +385,6 @@ class AbstractWifiSession(TimeStampedEditableModel):
     def vendor(self):
         return self.wifi_client.vendor
 
-    @property
-    def organization(self):
-        return self.device.organization
-
     @classmethod
     def offline_device_close_session(cls, instance, *args, **kwargs):
         if kwargs['status'] == 'critical':
