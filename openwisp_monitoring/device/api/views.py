@@ -8,6 +8,7 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models import Count, Q
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
+from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend
 from pytz import UTC
 from rest_framework import pagination, serializers, status
@@ -443,6 +444,22 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
 device_metric = DeviceMetricView.as_view()
 
 
+class WifiSessionFilter(filters.FilterSet):
+    organization_slug = filters.CharFilter(
+        field_name='device__organization__slug', label='Organization slug'
+    )
+
+    class Meta:
+        model = WifiSession
+        fields = [
+            'device',
+            'organization_slug',
+            'device__group',
+            'start_time',
+            'stop_time',
+        ]
+
+
 class WifiSessionListCreateView(ProtectedAPIMixin, ListCreateAPIView):
     queryset = WifiSession.objects.select_related(
         'device', 'wifi_client', 'device__organization', 'device__group'
@@ -450,13 +467,7 @@ class WifiSessionListCreateView(ProtectedAPIMixin, ListCreateAPIView):
     organization_field = 'device__organization'
     filter_backends = [DjangoFilterBackend]
     pagination_class = ListViewPagination
-    filterset_fields = [
-        'device',
-        'device__organization',
-        'device__group',
-        'start_time',
-        'stop_time',
-    ]
+    filterset_class = WifiSessionFilter
 
     def get_serializer_class(self):
         if self.request.method in ['GET']:

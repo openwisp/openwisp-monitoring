@@ -1827,11 +1827,11 @@ You can filter using ``device_id`` to get list of wifi sessions related to that 
    
    GET /api/v1/monitoring/wifi-session/?device={device_id}
 
-You can filter using ``organization_id`` to get list of wifi sessions belongs to an organization.
+You can filter using ``organization_slug`` to get list of wifi sessions belongs to an organization.
 
 .. code-block:: text
    
-   GET /api/v1/monitoring/wifi-session/?device__organization={organization_id}
+   GET /api/v1/monitoring/wifi-session/?organization_slug={organization_slug}
 
 You can filter using ``group_id`` to get list of wifi sessions belongs to a device group.
 
@@ -1880,24 +1880,6 @@ List wifi client
    GET /api/v1/monitoring/wifi-client/
 
 **Available filters**
-
-You can filter using ``device_id`` to get list of wifi clients related to that particular device.
-
-.. code-block:: text
-   
-   GET /api/v1/monitoring/wifi-client/?wifisession__device={device_id}
-
-You can filter using ``organization_id`` to get list of wifi clients belongs to an organization.
-
-.. code-block:: text
-   
-   GET /api/v1/monitoring/wifi-client/?wifisession__device__organization={organization_id}
-
-You can filter using ``mac_address`` to get particular wifi client.
-
-.. code-block:: text
-   
-   GET /api/v1/monitoring/wifi-client/?mac_address={mac_address}
 
 You can filter to get list of wifi clients using ``vendor``.
 
