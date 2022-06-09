@@ -1833,7 +1833,7 @@ You can filter using ``organization_id`` to get list of wifi sessions belongs to
    
    GET /api/v1/monitoring/wifi-session/?device__organization={organization_id}
 
-You can filter using ``group_id`` to get list of wifi sessions belongs to a group.
+You can filter using ``group_id`` to get list of wifi sessions belongs to a device group.
 
 .. code-block:: text
    

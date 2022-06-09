@@ -48,19 +48,16 @@ class WifiClientSerializer(FilterByOrganizationManaged, ValidatedModelSerializer
 class WifiSessionCreateUpdateSerializer(
     FilterByOrganizationManaged, ValidatedModelSerializer
 ):
-    # When a relationship or ChoiceField has too many items,
-    # rendering the widget containing all the options can become very slow,
-    # and cause the browsable API rendering to perform poorly, Changed select field to input.
-    device = serializers.PrimaryKeyRelatedField(
-        queryset=Device.objects.all(), style={'base_template': 'input.html'}
-    )
-    wifi_client = serializers.PrimaryKeyRelatedField(
-        queryset=WifiClient.objects.all(), style={'base_template': 'input.html'}
-    )
-
     class Meta:
         model = WifiSession
         fields = ['device', 'wifi_client', 'ssid', 'interface_name']
+        # When a relationship or ChoiceField has too many items,
+        # rendering the widget containing all the options can become very slow,
+        # and cause the browsable API rendering to perform poorly, Changed select field to input.
+        extra_kwargs = {
+            'device': {'style': {'base_template': 'input.html'}},
+            'wifi_client': {'style': {'base_template': 'input.html'}},
+        }
 
 
 class WifiSessionReadSerializer(FilterByOrganizationManaged, ValidatedModelSerializer):

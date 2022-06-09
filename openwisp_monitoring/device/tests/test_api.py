@@ -1043,7 +1043,6 @@ class TestWifiClientSessionApi(
         admin = User.objects.create_superuser('admin', 'admin', 'test@test.com')
         self.client.force_login(admin)
 
-    # Wifi sessions
     def test_wifisession_unauthorized_api_access(self):
         device = self._create_device()
         wifi_session = self._create_wifi_session(device=device)
@@ -1055,7 +1054,7 @@ class TestWifiClientSessionApi(
         self.assertEqual(response.status_code, 401)
         response = self.client.patch(
             reverse('monitoring:api_wifi_session_detail', args=(wifi_session.id,)),
-            data=json.dumps({'ssid': 'Free Public Wifi Updated'}),
+            data={'ssid': 'Free Public Wifi Updated'},
             content_type='application/json',
         )
         self.assertEqual(response.status_code, 401)
@@ -1068,7 +1067,7 @@ class TestWifiClientSessionApi(
         }
         response = self.client.post(
             reverse('monitoring:api_wifi_session_list'),
-            data=json.dumps(wifi_session_post_data),
+            data=wifi_session_post_data,
             content_type='application/json',
         )
         # Unauthorized response
@@ -1083,12 +1082,19 @@ class TestWifiClientSessionApi(
         data = response.data
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(data), 11)
-        self.assertEqual(data['device_name'], 'default.test.device')
+        self.assertEqual(data['id'], str(wifi_session.pk))
+        self.assertEqual(data['device_name'], device.name)
+        self.assertEqual(data['device'], device.pk)
+        self.assertEqual(data['organization_name'], str(device.organization))
+        self.assertEqual(data['organization_id'], str(device.organization.pk))
         self.assertEqual(data['interface_name'], 'wlan0')
         self.assertEqual(len(data['client']), 9)
         self.assertEqual(data['client']['mac_address'], '22:33:44:55:66:77')
-        self.assertContains(response, 'created')
-        self.assertContains(response, 'modified')
+        self.assertIn('created', data['client'])
+        self.assertIn('modified', data['client'])
+        self.assertIn('start_time', data)
+        self.assertIn('stop_time', data)
+        self.assertIn('modified', data)
 
     def test_wifisession_detail_update(self):
         device = self._create_device()
@@ -1097,38 +1103,57 @@ class TestWifiClientSessionApi(
         url = reverse('monitoring:api_wifi_session_detail', args=(wifi_session.id,))
         response = self.client.patch(
             url,
-            data=json.dumps({'ssid': 'Free Public Wifi Updated'}),
+            data={'ssid': 'Free Public Wifi Updated'},
             content_type='application/json',
         )
+        data = response.data
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 4)
-        self.assertEqual(response.data['ssid'], 'Free Public Wifi Updated')
+        self.assertEqual(len(data), 4)
+        self.assertEqual(data['device'], device.pk)
+        self.assertEqual(data['wifi_client'], wifi_session.wifi_client.pk)
+        self.assertEqual(data['ssid'], 'Free Public Wifi Updated')
+        self.assertEqual(data['interface_name'], wifi_session.interface_name)
 
     def test_wifisession_list_get(self):
         device = self._create_device()
-        self._create_wifi_session(device=device)
+        wifi_session = self._create_wifi_session(device=device)
+        wifi_client = wifi_session.wifi_client
         self._login_admin()
         url = reverse('monitoring:api_wifi_session_list')
         response = self.client.get(url)
         data = response.data
         self.assertEqual(response.status_code, 200)
+        self.assertIsNone(data['next'])
+        self.assertIsNone(data['previous'])
+        self.assertEqual(data['count'], 1)
         self.assertEqual(len(data['results'][0]), 11)
-        self.assertEqual(data['results'][0]['device_name'], 'default.test.device')
-        self.assertEqual(data['results'][0]['organization_name'], 'test org')
-        self.assertEqual(data['results'][0]['ssid'], 'Free Public WiFi')
-        self.assertEqual(data['results'][0]['interface_name'], 'wlan0')
-        self.assertEqual(data['results'][0]['stop_time'], None)
-        self.assertEqual(len(data['results'][0]['client']), 9)
+        self.assertEqual(data['results'][0]['id'], str(wifi_session.pk))
+        self.assertEqual(data['results'][0]['device_name'], device.name)
+        self.assertEqual(data['results'][0]['device'], device.pk)
         self.assertEqual(
-            data['results'][0]['client']['mac_address'], '22:33:44:55:66:77'
+            data['results'][0]['organization_name'], str(device.organization)
         )
-        self.assertEqual(data['results'][0]['client']['vendor'], '')
-        self.assertEqual(data['results'][0]['client']['ht'], True)
-        self.assertEqual(data['results'][0]['client']['wmm'], False)
-        self.assertContains(response, 'created')
-        self.assertContains(response, 'modified')
-        self.assertIsNone(response.data['next'])
-        self.assertIsNone(response.data['previous'])
+        self.assertEqual(
+            data['results'][0]['organization_id'], str(device.organization.pk)
+        )
+
+        self.assertEqual(len(data['results'][0]['client']), 9)
+        self.assertEqual(data['results'][0]['client']['mac_address'], wifi_client.pk)
+        self.assertEqual(data['results'][0]['client']['vendor'], wifi_client.vendor)
+        self.assertEqual(data['results'][0]['client']['ht'], wifi_client.ht)
+        self.assertEqual(data['results'][0]['client']['vht'], wifi_client.vht)
+        self.assertEqual(data['results'][0]['client']['wmm'], wifi_client.wmm)
+        self.assertEqual(data['results'][0]['client']['wds'], wifi_client.wds)
+        self.assertEqual(data['results'][0]['client']['wps'], wifi_client.wps)
+        self.assertIn('created', data['results'][0]['client'])
+        self.assertIn('modified', data['results'][0]['client'])
+        self.assertEqual(data['results'][0]['ssid'], wifi_session.ssid)
+        self.assertEqual(
+            data['results'][0]['interface_name'], wifi_session.interface_name
+        )
+        self.assertIn('start_time', data['results'][0])
+        self.assertIn('stop_time', data['results'][0])
+        self.assertIn('modified', data['results'][0])
 
     def test_wifisession_list_create(self):
         device = self._create_device()
@@ -1143,14 +1168,21 @@ class TestWifiClientSessionApi(
         }
         response = self.client.post(
             url,
-            data=json.dumps(wifi_session_post_data),
+            data=wifi_session_post_data,
             content_type='application/json',
         )
-        self.assertEqual(len(response.data), 4)
+        data = response.data
+        self.assertEqual(len(data), 4)
         self.assertEqual(response.status_code, 201)
+        self.assertEqual(WifiSession.objects.count(), 1)
         self.assertEqual(response.data['ssid'], 'Free Public Wifi Created')
+        self.assertEqual(data['device'], device.pk)
+        self.assertEqual(data['wifi_client'], wifi_client.pk)
+        self.assertEqual(data['ssid'], wifi_session_post_data['ssid'])
+        self.assertEqual(
+            data['interface_name'], wifi_session_post_data['interface_name']
+        )
 
-    # Wifi clients
     def test_wificlient_unauthorized_api_access(self):
         wifi_client = self._create_wifi_client()
         response = self.client.get(
@@ -1165,13 +1197,11 @@ class TestWifiClientSessionApi(
             reverse(
                 'monitoring:api_wifi_client_detail', args=(wifi_client.mac_address,)
             ),
-            data=json.dumps(
-                {
-                    'mac_address': '11:22:33:44:55:66',
-                    'vendor': 'Test vendor',
-                    'ht': False,
-                }
-            ),
+            data={
+                'mac_address': '11:22:33:44:55:66',
+                'vendor': 'Test vendor',
+                'ht': False,
+            },
             content_type='application/json',
         )
         self.assertEqual(response.status_code, 401)
@@ -1203,15 +1233,15 @@ class TestWifiClientSessionApi(
         data = response.data
         self.assertEqual(len(data), 9)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(data['mac_address'], '22:33:44:55:66:77')
-        self.assertEqual(data['vendor'], '')
-        self.assertEqual(data['ht'], True)
-        self.assertEqual(data['vht'], True)
-        self.assertEqual(data['wmm'], False)
-        self.assertEqual(data['wds'], False)
-        self.assertEqual(data['wps'], False)
-        self.assertContains(response, 'created')
-        self.assertContains(response, 'modified')
+        self.assertEqual(data['mac_address'], wifi_client.pk)
+        self.assertEqual(data['vendor'], wifi_client.vendor)
+        self.assertEqual(data['ht'], wifi_client.ht)
+        self.assertEqual(data['vht'], wifi_client.vht)
+        self.assertEqual(data['wmm'], wifi_client.wmm)
+        self.assertEqual(data['wds'], wifi_client.wds)
+        self.assertEqual(data['wps'], wifi_client.wps)
+        self.assertIn('created', data)
+        self.assertIn('modified', data)
 
     def test_wificlient_detail_update(self):
         wifi_client = self._create_wifi_client()
@@ -1220,38 +1250,42 @@ class TestWifiClientSessionApi(
             reverse(
                 'monitoring:api_wifi_client_detail', args=(wifi_client.mac_address,)
             ),
-            data=json.dumps(
-                {
-                    'mac_address': '11:22:33:44:55:66',
-                    'vendor': 'Test vendor',
-                    'ht': False,
-                }
-            ),
+            data={
+                'mac_address': '11:22:33:44:55:66',
+                'vendor': 'Test vendor',
+                'ht': False,
+            },
             content_type='application/json',
         )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 9)
-        self.assertEqual(response.data['mac_address'], '11:22:33:44:55:66')
-        self.assertEqual(response.data['vendor'], 'Test vendor')
-        self.assertEqual(response.data['ht'], False)
+        data = response.data
+        self.assertEqual(data['mac_address'], '11:22:33:44:55:66')
+        self.assertEqual(data['vendor'], 'Test vendor')
+        self.assertEqual(data['ht'], False)
+        self.assertEqual(data['vht'], wifi_client.vht)
+        self.assertEqual(data['wmm'], wifi_client.wmm)
+        self.assertEqual(data['wds'], wifi_client.wds)
+        self.assertEqual(data['wps'], wifi_client.wps)
+        self.assertIn('created', data)
+        self.assertIn('modified', data)
 
     def test_wificlient_list_get(self):
-        self._create_wifi_client()
+        wifi_client = self._create_wifi_client()
         self._login_admin()
         response = self.client.get(reverse('monitoring:api_wifi_client_list'))
         data = response.data
         self.assertEqual(data['count'], 1)
-        self.assertIsNone(response.data['next'])
-        self.assertIsNone(response.data['previous'])
+        self.assertIsNone(data['next'])
+        self.assertIsNone(data['previous'])
         self.assertEqual(len(data['results'][0]), 9)
-        self.assertEqual(data['results'][0]['vendor'], '')
-        self.assertEqual(data['results'][0]['ht'], True)
-        self.assertEqual(data['results'][0]['vht'], True)
-        self.assertEqual(data['results'][0]['wmm'], False)
-        self.assertEqual(data['results'][0]['wds'], False)
-        self.assertEqual(data['results'][0]['wps'], False)
-        self.assertContains(response, 'created')
-        self.assertContains(response, 'modified')
+        self.assertEqual(data['results'][0]['mac_address'], wifi_client.pk)
+        self.assertEqual(data['results'][0]['vendor'], wifi_client.vendor)
+        self.assertEqual(data['results'][0]['ht'], wifi_client.ht)
+        self.assertEqual(data['results'][0]['vht'], wifi_client.vht)
+        self.assertEqual(data['results'][0]['wmm'], wifi_client.wmm)
+        self.assertEqual(data['results'][0]['wds'], wifi_client.wds)
+        self.assertEqual(data['results'][0]['wps'], wifi_client.wps)
+        self.assertIn('created', data['results'][0])
+        self.assertIn('modified', data['results'][0])
 
     def test_wificlient_list_create(self):
         self._login_admin()
@@ -1266,14 +1300,20 @@ class TestWifiClientSessionApi(
         }
         response = self.client.post(
             reverse('monitoring:api_wifi_client_list'),
-            data=json.dumps(wifi_client_post_data),
+            data=wifi_client_post_data,
             content_type='application/json',
         )
-        self.assertEqual(len(response.data), 9)
+        data = response.data
+        self.assertEqual(len(data), 9)
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data['mac_address'], '22:33:44:55:66:88')
-        self.assertEqual(response.data['vendor'], 'Test vendor')
-        self.assertEqual(response.data['ht'], True)
-        self.assertEqual(response.data['wmm'], False)
+        self.assertEqual(WifiClient.objects.count(), 1)
+        self.assertEqual(data['mac_address'], wifi_client_post_data['mac_address'])
+        self.assertEqual(data['vendor'], wifi_client_post_data['vendor'])
+        self.assertEqual(data['ht'], wifi_client_post_data['ht'])
+        self.assertEqual(data['wmm'], wifi_client_post_data['wmm'])
+        self.assertEqual(data['wds'], wifi_client_post_data['wds'])
+        self.assertEqual(data['wps'], wifi_client_post_data['wps'])
+        self.assertIn('created', data)
+        self.assertIn('modified', data)
 
     # Todo test multitenancy & filters
