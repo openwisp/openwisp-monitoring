@@ -1839,17 +1839,25 @@ You can filter using ``group_id`` to get list of wifi sessions belongs to a devi
    
    GET /api/v1/monitoring/wifi-session/?device__group={group_id}
 
-You can filter to get list of wifi sessions using ``start_time``.
+You can filter to get list of wifi sessions using ``start_time`` **(gt, gte, lt, lte).**
 
 .. code-block:: text
-   
+
+   # Exact start_time
    GET /api/v1/monitoring/wifi-session/?start_time={start_time}
+   
+   # Greater than start_time
+   GET /api/v1/monitoring/wifi-session/?start_time__gt={start_time}
 
-You can filter to get list of wifi sessions using ``stop_time``.
+You can filter to get list of wifi sessions using ``stop_time`` **(gt, gte, lt, lte).**
 
 .. code-block:: text
    
+   # Exact stop_time
    GET /api/v1/monitoring/wifi-session/?stop_time={stop_time}
+
+   # Less than stop_time
+   GET /api/v1/monitoring/wifi-session/?stop_time__lt={stop_time}
 
 Create wifi session
 ###################
