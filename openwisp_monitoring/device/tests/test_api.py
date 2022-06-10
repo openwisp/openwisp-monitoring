@@ -1241,7 +1241,9 @@ class TestWifiClientSessionApi(
     def test_wifisession_list_create(self):
         device = self._create_device()
         wifi_client = self._create_wifi_client()
-        self._login_admin()
+        user = self._create_admin()
+        self._create_org_user(user=user, is_admin=True)
+        self.client.force_login(user)
         url = reverse('monitoring:api_wifi_session_list')
         wifi_session_post_data = {
             'device': str(device.pk),
@@ -1265,6 +1267,31 @@ class TestWifiClientSessionApi(
         self.assertEqual(
             data['interface_name'], wifi_session_post_data['interface_name']
         )
+
+        with self.subTest(
+            'Test wifisession creation from device not in user managed org'
+        ):
+            user = self._create_admin(username='test-admin', email='test2@test2.com')
+            self._create_org_user(user=user)
+            self.client.force_login(user)
+            url = reverse('monitoring:api_wifi_session_list')
+            wifi_session_post_data = {
+                'device': str(device.pk),
+                'wifi_client': str(wifi_client.pk),
+                'ssid': 'Free Public Wifi Created',
+                'interface_name': 'wlan0',
+            }
+            response = self.client.post(
+                url,
+                data=wifi_session_post_data,
+                content_type='application/json',
+            )
+            data = response.data
+            self.assertEqual(response.status_code, 400)
+            self.assertIn(
+                'Device organization must be in user managed organization',
+                str(response.content),
+            )
 
     def test_wificlient_unauthorized_api_access(self):
         wifi_client = self._create_wifi_client()

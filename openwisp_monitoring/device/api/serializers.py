@@ -1,3 +1,4 @@
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from swapper import load_model
 
@@ -58,6 +59,14 @@ class WifiSessionCreateUpdateSerializer(
             'device': {'style': {'base_template': 'input.html'}},
             'wifi_client': {'style': {'base_template': 'input.html'}},
         }
+
+    def validate_device(self, device):
+        user = self.context['request'].user
+        if user and not user.is_manager(device.organization.pk):
+            raise serializers.ValidationError(
+                _('Device organization must be in user managed organization')
+            )
+        return device
 
 
 class WifiSessionReadSerializer(FilterByOrganizationManaged, ValidatedModelSerializer):
