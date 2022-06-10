@@ -451,13 +451,12 @@ class WifiSessionFilter(filters.FilterSet):
 
     class Meta:
         model = WifiSession
-        fields = [
-            'device',
-            'organization_slug',
-            'device__group',
-            'start_time',
-            'stop_time',
-        ]
+        fields = {
+            'device': ['exact'],
+            'device__group': ['exact'],
+            'start_time': ['exact', 'gt', 'gte', 'lt', 'lte'],
+            'stop_time': ['exact', 'gt', 'gte', 'lt', 'lte'],
+        }
 
 
 class WifiSessionListCreateView(ProtectedAPIMixin, ListCreateAPIView):

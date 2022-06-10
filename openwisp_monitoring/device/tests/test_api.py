@@ -2,12 +2,12 @@ import json
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from swapper import load_model
 
+from openwisp_controller.config.tests.utils import CreateDeviceGroupMixin
 from openwisp_controller.geo.tests.utils import TestGeoMixin
 from openwisp_users.tests.test_api import AuthenticationMixin
 from openwisp_utils.tests import capture_any_output, catch_signal
@@ -1036,7 +1036,10 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
 
 
 class TestWifiClientSessionApi(
-    AuthenticationMixin, TestWifiClientSessionMixin, TestCase
+    TestWifiClientSessionMixin,
+    AuthenticationMixin,
+    CreateDeviceGroupMixin,
+    DeviceMonitoringTestCase,
 ):
     def _login_admin(self):
         User = get_user_model()
@@ -1076,6 +1079,7 @@ class TestWifiClientSessionApi(
     def test_wifisession_detail_get(self):
         device = self._create_device()
         wifi_session = self._create_wifi_session(device=device)
+        wifi_client = wifi_session.wifi_client
         self._login_admin()
         url = reverse('monitoring:api_wifi_session_detail', args=(wifi_session.id,))
         response = self.client.get(url)
@@ -1089,12 +1093,12 @@ class TestWifiClientSessionApi(
         self.assertEqual(data['organization_id'], str(device.organization.pk))
         self.assertEqual(data['interface_name'], 'wlan0')
         self.assertEqual(len(data['client']), 9)
-        self.assertEqual(data['client']['mac_address'], '22:33:44:55:66:77')
+        self.assertEqual(data['client']['mac_address'], wifi_client.mac_address)
         self.assertIn('created', data['client'])
         self.assertIn('modified', data['client'])
-        self.assertIn('start_time', data)
-        self.assertIn('stop_time', data)
-        self.assertIn('modified', data)
+        self.assertIn('start_time', data.keys())
+        self.assertIn('stop_time', data.keys())
+        self.assertIn('modified', data.keys())
 
     def test_wifisession_detail_update(self):
         device = self._create_device()
@@ -1115,6 +1119,15 @@ class TestWifiClientSessionApi(
         self.assertEqual(data['interface_name'], wifi_session.interface_name)
 
     def test_wifisession_list_get(self):
+        org2 = self._create_org(name='test org 2')
+        device_group_2 = self._create_device_group(organization=org2)
+        device_2 = self._create_device(
+            mac_address='00:11:22:33:44:66', group=device_group_2, organization=org2
+        )
+        wifi_client_2 = self._create_wifi_client(mac_address='22:33:44:55:66:88')
+        wifi_session_2 = self._create_wifi_session(
+            device=device_2, wifi_client=wifi_client_2
+        )
         device = self._create_device()
         wifi_session = self._create_wifi_session(device=device)
         wifi_client = wifi_session.wifi_client
@@ -1125,7 +1138,7 @@ class TestWifiClientSessionApi(
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(data['next'])
         self.assertIsNone(data['previous'])
-        self.assertEqual(data['count'], 1)
+        self.assertEqual(data['count'], 2)
         self.assertEqual(len(data['results'][0]), 11)
         self.assertEqual(data['results'][0]['id'], str(wifi_session.pk))
         self.assertEqual(data['results'][0]['device_name'], device.name)
@@ -1145,15 +1158,85 @@ class TestWifiClientSessionApi(
         self.assertEqual(data['results'][0]['client']['wmm'], wifi_client.wmm)
         self.assertEqual(data['results'][0]['client']['wds'], wifi_client.wds)
         self.assertEqual(data['results'][0]['client']['wps'], wifi_client.wps)
-        self.assertIn('created', data['results'][0]['client'])
-        self.assertIn('modified', data['results'][0]['client'])
+        self.assertIn('created', data['results'][0]['client'].keys())
+        self.assertIn('modified', data['results'][0]['client'].keys())
         self.assertEqual(data['results'][0]['ssid'], wifi_session.ssid)
         self.assertEqual(
             data['results'][0]['interface_name'], wifi_session.interface_name
         )
-        self.assertIn('start_time', data['results'][0])
-        self.assertIn('stop_time', data['results'][0])
-        self.assertIn('modified', data['results'][0])
+        self.assertIn('start_time', data['results'][0].keys())
+        self.assertIn('stop_time', data['results'][0].keys())
+        self.assertIn('modified', data['results'][0].keys())
+
+        with self.subTest('Test filtering using device'):
+            url = reverse('monitoring:api_wifi_session_list')
+            response = self.client.get(f'{url}?device={device.pk}')
+            data = response.data
+            self.assertEqual(data['count'], 1)
+            self.assertEqual(data['results'][0]['id'], str(wifi_session.pk))
+            self.assertEqual(data['results'][0]['device'], device.pk)
+            response = self.client.get(f'{url}?device={device_2.pk}')
+            data = response.data
+            self.assertEqual(data['count'], 1)
+            self.assertEqual(data['results'][0]['id'], str(wifi_session_2.pk))
+            self.assertEqual(data['results'][0]['device'], device_2.pk)
+
+        with self.subTest('Test filtering using organization slug'):
+            url = reverse('monitoring:api_wifi_session_list')
+            response = self.client.get(
+                f'{url}?organization_slug={device.organization.slug}'
+            )
+            data = response.data
+            self.assertEqual(data['count'], 1)
+            self.assertEqual(data['results'][0]['id'], str(wifi_session.pk))
+            self.assertEqual(data['results'][0]['device'], device.pk)
+            response = self.client.get(
+                f'{url}?organization_slug={device_2.organization.slug}'
+            )
+            data = response.data
+            self.assertEqual(data['count'], 1)
+            self.assertEqual(data['results'][0]['id'], str(wifi_session_2.pk))
+            self.assertEqual(data['results'][0]['device'], device_2.pk)
+
+        with self.subTest('Test filtering using device group'):
+            url = reverse('monitoring:api_wifi_session_list')
+            response = self.client.get(f'{url}?device__group={device_group_2.pk}')
+            data = response.data
+            self.assertEqual(data['count'], 1)
+            self.assertEqual(data['results'][0]['id'], str(wifi_session_2.pk))
+            self.assertEqual(data['results'][0]['device'], device_2.pk)
+
+        with self.subTest('Test filtering using start time'):
+            url = reverse('monitoring:api_wifi_session_list')
+            filter_time = wifi_session_2.start_time.strftime(('%Y-%m-%dT%H:%M:%S.%fZ'))
+            response = self.client.get(f"{url}?start_time={filter_time}")
+            self.assertEqual(response.data['count'], 1)
+            response = self.client.get(f"{url}?start_time__gt={filter_time}")
+            self.assertEqual(response.data['count'], 1)
+            response = self.client.get(f"{url}?start_time__gte={filter_time}")
+            self.assertEqual(response.data['count'], 2)
+            response = self.client.get(f"{url}?start_time__lt={filter_time}")
+            self.assertEqual(response.data['count'], 0)
+            response = self.client.get(f"{url}?start_time__lte={filter_time}")
+            self.assertEqual(response.data['count'], 1)
+
+        with self.subTest('Test filtering using stop time'):
+            url = reverse('monitoring:api_wifi_session_list')
+            wifi_session_2.stop_time = timezone.now()
+            wifi_session_2.save()
+            wifi_session.stop_time = timezone.now()
+            wifi_session.save()
+            filter_time = wifi_session_2.stop_time.strftime(('%Y-%m-%dT%H:%M:%S.%fZ'))
+            response = self.client.get(f"{url}?stop_time={filter_time}")
+            self.assertEqual(response.data['count'], 1)
+            response = self.client.get(f"{url}?stop_time__gt={filter_time}")
+            self.assertEqual(response.data['count'], 1)
+            response = self.client.get(f"{url}?stop_time__gte={filter_time}")
+            self.assertEqual(response.data['count'], 2)
+            response = self.client.get(f"{url}?stop_time__lt={filter_time}")
+            self.assertEqual(response.data['count'], 0)
+            response = self.client.get(f"{url}?stop_time__lte={filter_time}")
+            self.assertEqual(response.data['count'], 1)
 
     def test_wifisession_list_create(self):
         device = self._create_device()
@@ -1240,8 +1323,8 @@ class TestWifiClientSessionApi(
         self.assertEqual(data['wmm'], wifi_client.wmm)
         self.assertEqual(data['wds'], wifi_client.wds)
         self.assertEqual(data['wps'], wifi_client.wps)
-        self.assertIn('created', data)
-        self.assertIn('modified', data)
+        self.assertIn('created', data.keys())
+        self.assertIn('modified', data.keys())
 
     def test_wificlient_detail_update(self):
         wifi_client = self._create_wifi_client()
@@ -1265,15 +1348,18 @@ class TestWifiClientSessionApi(
         self.assertEqual(data['wmm'], wifi_client.wmm)
         self.assertEqual(data['wds'], wifi_client.wds)
         self.assertEqual(data['wps'], wifi_client.wps)
-        self.assertIn('created', data)
-        self.assertIn('modified', data)
+        self.assertIn('created', data.keys())
+        self.assertIn('modified', data.keys())
 
     def test_wificlient_list_get(self):
+        wifi_client_2 = self._create_wifi_client(
+            mac_address='22:33:44:55:66:88', vendor='Test vendor'
+        )
         wifi_client = self._create_wifi_client()
         self._login_admin()
         response = self.client.get(reverse('monitoring:api_wifi_client_list'))
         data = response.data
-        self.assertEqual(data['count'], 1)
+        self.assertEqual(data['count'], 2)
         self.assertIsNone(data['next'])
         self.assertIsNone(data['previous'])
         self.assertEqual(len(data['results'][0]), 9)
@@ -1284,8 +1370,16 @@ class TestWifiClientSessionApi(
         self.assertEqual(data['results'][0]['wmm'], wifi_client.wmm)
         self.assertEqual(data['results'][0]['wds'], wifi_client.wds)
         self.assertEqual(data['results'][0]['wps'], wifi_client.wps)
-        self.assertIn('created', data['results'][0])
-        self.assertIn('modified', data['results'][0])
+        self.assertIn('created', data['results'][0].keys())
+        self.assertIn('modified', data['results'][0].keys())
+
+        with self.subTest('Test filtering using vendor'):
+            url = reverse('monitoring:api_wifi_client_list')
+            response = self.client.get(f'{url}?vendor={wifi_client_2.vendor}')
+            data = response.data
+            self.assertEqual(data['count'], 1)
+            self.assertEqual(data['results'][0]['mac_address'], str(wifi_client_2.pk))
+            self.assertEqual(data['results'][0]['vendor'], wifi_client_2.vendor)
 
     def test_wificlient_list_create(self):
         self._login_admin()
@@ -1313,7 +1407,5 @@ class TestWifiClientSessionApi(
         self.assertEqual(data['wmm'], wifi_client_post_data['wmm'])
         self.assertEqual(data['wds'], wifi_client_post_data['wds'])
         self.assertEqual(data['wps'], wifi_client_post_data['wps'])
-        self.assertIn('created', data)
-        self.assertIn('modified', data)
-
-    # Todo test multitenancy & filters
+        self.assertIn('created', data.keys())
+        self.assertIn('modified', data.keys())
