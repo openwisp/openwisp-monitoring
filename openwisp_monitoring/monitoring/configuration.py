@@ -542,6 +542,56 @@ DEFAULT_METRICS = {
             }
         },
     },
+    'iperf': {
+        'label': _('Iperf'),
+        'name': 'Iperf',
+        'key': 'iperf',
+        'field_name': 'iperf_result',
+        'related_fields': [
+            'sent_bps',
+            'received_bps',
+            'sent_bytes',
+            'received_bytes',
+            'retransmits',
+        ],
+        'charts': {
+            'bitrate': {
+                'type': 'stackedbar',
+                'title': _('Bandwidth'),
+                'description': _('Iperf3 bitrate in TCP mode.'),
+                'summary_labels': [
+                    _('Sent bitrate'),
+                    _('Received bitrate'),
+                ],
+                'unit': _(' Gbps'),
+                'order': 280,
+                'query': chart_query['bitrate'],
+                'colors': (DEFAULT_COLORS[5], DEFAULT_COLORS[9]),
+            },
+            'transfer': {
+                'type': 'stackedbar',
+                'title': _('Transfer'),
+                'description': _('Iperf3 transfer in TCP mode.'),
+                'summary_labels': [
+                    _('Sent bytes'),
+                    _('Received bytes'),
+                ],
+                'unit': _(' GB'),
+                'order': 290,
+                'query': chart_query['transfer'],
+                'colors': (DEFAULT_COLORS[2], DEFAULT_COLORS[4]),
+            },
+            'retransmits': {
+                'type': 'bar',
+                'title': _('Retransmits'),
+                'colors': (DEFAULT_COLORS[4]),
+                'description': _('No. of retransmits during Iperf3 test in TCP mode.'),
+                'unit': '',
+                'order': 300,
+                'query': chart_query['retransmits'],
+            },
+        },
+    },
 }
 
 DEFAULT_CHARTS = {}

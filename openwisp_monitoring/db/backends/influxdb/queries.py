@@ -100,6 +100,29 @@ chart_query = {
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
+    'bitrate': {
+        'influxdb': (
+            "SELECT MEAN(sent_bps) AS sent, "
+            "MEAN(received_bps) AS received FROM {key} WHERE "
+            "time >= '{time}' AND content_type = '{content_type}' AND "
+            "object_id = '{object_id}' GROUP BY time(1d)"
+        )
+    },
+    'transfer': {
+        'influxdb': (
+            "SELECT MEAN(sent_bytes) AS sent, "
+            "MEAN(received_bytes) AS received FROM {key} WHERE "
+            "time >= '{time}' AND content_type = '{content_type}' AND "
+            "object_id = '{object_id}' GROUP BY time(1d)"
+        )
+    },
+    'retransmits': {
+        'influxdb': (
+            "SELECT MEAN(retransmits) AS retransmits FROM {key} "
+            "WHERE time >= '{time}' AND content_type = '{content_type}' "
+            "AND object_id = '{object_id}' GROUP BY time(1d)"
+        )
+    },
 }
 
 default_chart_query = [
