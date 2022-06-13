@@ -523,102 +523,27 @@
 <div class="inline-group" id="ow-chart-container">
     <fieldset class="module">
         <h2>{% trans 'Charts' %}</h2>
-        <div id="ow-chart-time">
-          <a class="time" data-time="1d">1 {% trans 'day' %}</a>
-          <a class="time" data-time="3d">3 {% trans 'days' %}</a>
-          <a class="time" data-time="7d">1 {% trans 'week' %}</a>
-          <a class="time" data-time="30d">1 {% trans 'month' %}</a>
-          <a class="time" data-time="365d">1 {% trans 'year' %}</a>
-          <a class="export">{% trans 'export data' %}</a>
-        </div>
-        <div id="ow-chart-contents"></div>
-        <div id="ow-chart-fallback" class="form-row">
-            {% trans 'No charts to show at the moment' %}.
-        </div>
+        {% include 'monitoring/paritals/chart.html' %}
     </fieldset>
 </div>
 <script>
   django.jQuery(function($) {
-    var chartContents = $('#ow-chart-contents'),
-        fallback = $('#ow-chart-fallback'),
-        timeButtonsContainer = $('#ow-chart-time'),
-        timeButtons = $('#ow-chart-time a.time'),
-        timeRangeKey = 'ow2-chart-time-range',
-        defaultTimeRange = localStorage.getItem(timeRangeKey) || '{{ default_time }}',
-        baseUrl = '{{ api_url }}?key={{ original.key }}&time=',
-        loadingOverlay = $('#loading-overlay'),
-        loadCharts = function (time, showLoading) {
-          var url = baseUrl + time;
-          if (showLoading) {
-            loadingOverlay.show();
+    $(document).ready(function() {
+        // load charts only when tab is shown
+        $(document).on('tabshown', function(e){
+          if (e.tabId === '#ow-chart-container') {
+            triggerChartLoading();
+          } else {
+            clearInterval(window.owChartRefresh);
           }
-          $.getJSON(url).done(function (data) {
-            if (data.charts.length) {
-                timeButtonsContainer.show();
-                fallback.hide();
-            } else {
-                timeButtonsContainer.hide();
-                fallback.show()
-            }
-            $.each(data.charts, function (i, chart) {
-              var htmlId = 'chart-' + i,
-                  chartDiv = $('#' + htmlId);
-              if (!chartDiv.length) {
-                chartContents.append(
-                    '<div id="' + htmlId + '" class="ow-chart">' +
-                    '<div class="js-plotly-plot"></div></div>'
-                );
-              }
-              createChart(chart, data.x, htmlId, chart.title, chart.type);
-            });
-            if (showLoading) { loadingOverlay.fadeOut(200); }
-          }).fail(function (){
-            if (showLoading) { loadingOverlay.fadeOut(200); }
-            alert('Something went wrong while loading the charts');
-          });
-        },
-        triggerClick = function() {
-          var range = localStorage.getItem(timeRangeKey) || defaultTimeRange;
-          $('#ow-chart-time a[data-time=' + range + ']').trigger('click');
-        };
-    // try adding the browser timezone to the querystring
-    try {
-      var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      baseUrl = baseUrl.replace('time=', 'timezone=' + timezone + '&time=');
-    // ignore failures (older browsers do not support this)
-    } catch (e) {}
-    timeButtons.click(function () {
-      var timeRange = $(this).attr('data-time');
-      loadCharts(timeRange, true);
-      localStorage.setItem(timeRangeKey, timeRange);
-      timeButtons.removeClass('active');
-      $(this).addClass('active');
-      // refresh every 2.5 minutes
-      clearInterval(window.owChartRefresh);
-      window.owChartRefresh = setInterval(loadCharts,
-                                          1000 * 60 * 2.5,
-                                          timeRange,
-                                          false);
-    });
-    // load charts only when tab is shown
-    $(document).on('tabshown', function(e){
-      if (e.tabId === '#ow-chart-container') {
-        triggerClick();
-      } else {
-        clearInterval(window.owChartRefresh);
-      }
-    });
-    if (window.location.hash == '#ow-chart-container') {
-        $.event.trigger({
-          type: 'tabshown',
-          tabId: window.location.hash,
         });
-    }
-    // bind export button
-    $('#ow-chart-time a.export').click(function() {
-      var time = localStorage.getItem(timeRangeKey);
-      location.href = baseUrl + time + '&csv=1';
-    })
+        if (window.location.hash == '#ow-chart-container') {
+            $.event.trigger({
+              type: 'tabshown',
+              tabId: window.location.hash,
+            });
+        }
+    });
   });
 </script>
 {% endif %}

@@ -1,9 +1,10 @@
 #!/bin/bash
 set -e
 
-jshint openwisp_monitoring/device/static/monitoring/js/alert-settings.js
-jshint openwisp_monitoring/monitoring/static/monitoring/js/chart.js
-stylelint openwisp_monitoring/device/static/monitoring/css/monitoring.css
+jshint openwisp_monitoring/device/static/monitoring/js/*.js
+jshint openwisp_monitoring/monitoring/static/monitoring/js/*.js
+stylelint openwisp_monitoring/device/static/monitoring/css/*.css
+stylelint openwisp_monitoring/monitoring/static/monitoring/css/*.css
 
 
 openwisp-qa-check \

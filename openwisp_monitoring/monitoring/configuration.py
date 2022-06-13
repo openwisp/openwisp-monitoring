@@ -8,6 +8,7 @@ from openwisp_notifications.types import (
 )
 
 from openwisp_monitoring.db import chart_query
+from openwisp_monitoring.monitoring.utils import clean_timeseries_data_key
 from openwisp_utils.utils import deep_merge_dicts
 
 from . import settings as app_settings
@@ -216,6 +217,49 @@ DEFAULT_METRICS = {
             }
         },
     },
+    'general_traffic': {
+        'label': _('General Traffic'),
+        'name': 'General Traffic',
+        'key': 'traffic',
+        'field_name': 'rx_bytes',
+        'related_fields': ['tx_bytes'],
+        'charts': {
+            'general_traffic': {
+                'type': 'stackedbar+lines',
+                'trace_type': {
+                    'download': 'stackedbar',
+                    'upload': 'stackedbar',
+                    'total': 'lines',
+                },
+                'trace_order': ['total', 'download', 'upload'],
+                'title': _('General Traffic'),
+                'label': _('General Traffic'),
+                'description': _(
+                    'Network traffic of the whole network'
+                    ' (total, download, upload) measured in GB.'
+                ),
+                'summary_labels': [
+                    _('Total traffic'),
+                    _('Total download traffic'),
+                    _('Total upload traffic'),
+                ],
+                'unit': _(' GB'),
+                'order': 240,
+                'query': chart_query['general_traffic'],
+                'query_default_param': {
+                    'organization_id': '',
+                    'ifname': '',
+                    'location_id': '',
+                    'floorplan_id': '',
+                },
+                'colors': [
+                    DEFAULT_COLORS[7],
+                    DEFAULT_COLORS[0],
+                    DEFAULT_COLORS[1],
+                ],
+            }
+        },
+    },
     'clients': {
         'label': _('Clients'),
         'name': '{name}',
@@ -233,6 +277,29 @@ DEFAULT_METRICS = {
                 'unit': '',
                 'order': 230,
                 'query': chart_query['wifi_clients'],
+            }
+        },
+    },
+    'general_clients': {
+        'label': _('General WiFi Clients'),
+        'name': _('General WiFi Clients'),
+        'key': 'wifi_clients',
+        'field_name': 'clients',
+        'charts': {
+            'gen_wifi_clients': {
+                'type': 'bar',
+                'label': _('General WiFi Clients'),
+                'title': _('General WiFi Clients'),
+                'description': _('Unique WiFi clients count of the entire network.'),
+                'summary_labels': [_('Total Unique WiFi clients')],
+                'unit': '',
+                'order': 230,
+                'query': chart_query['general_wifi_clients'],
+                'query_default_param': {
+                    'organization_id': '',
+                    'location_id': '',
+                    'floorplan_id': '',
+                },
             }
         },
     },
@@ -480,6 +547,8 @@ DEFAULT_METRICS = {
 
 DEFAULT_CHARTS = {}
 
+DEFAULT_DASHBOARD_TRAFFIC_CHART = {'__all__': ['wan', 'eth1', 'eth0.2']}
+
 
 def _validate_metric_configuration(metric_config):
     assert 'label' in metric_config
@@ -640,5 +709,13 @@ def _unregister_chart_configuration_choice(chart_name):
             return
 
 
+def _clean_dashboard_traffic_chart():
+    for interfaces in DEFAULT_DASHBOARD_TRAFFIC_CHART.values():
+        for index in range(len(interfaces)):
+            interfaces[index] = clean_timeseries_data_key(interfaces[index])
+
+
+DEFAULT_DASHBOARD_TRAFFIC_CHART.update(app_settings.ADDITIONAL_DASHBOARD_TRAFFIC_CHART)
+_clean_dashboard_traffic_chart()
 METRIC_CONFIGURATION_CHOICES = get_metric_configuration_choices()
 CHART_CONFIGURATION_CHOICES = get_chart_configuration_choices()

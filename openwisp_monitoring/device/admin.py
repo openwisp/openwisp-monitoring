@@ -135,6 +135,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
                 'monitoring/js/alert-settings.js',
             )
             + MetricAdmin.Media.js
+            + ('monitoring/js/chart-utils.js',)
         )
         css = {
             'all': ('monitoring/css/percircle.min.css',) + MetricAdmin.Media.css['all']

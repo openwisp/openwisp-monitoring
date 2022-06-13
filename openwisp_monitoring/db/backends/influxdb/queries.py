@@ -29,6 +29,13 @@ chart_query = {
             "GROUP BY time(1d)"
         )
     },
+    'general_wifi_clients': {
+        'influxdb': (
+            "SELECT COUNT(DISTINCT({field_name})) AS wifi_clients FROM {key} "
+            "WHERE time >= '{time}' {organization_id} {location_id} {floorplan_id} "
+            "GROUP BY time(1d)"
+        )
+    },
     'traffic': {
         'influxdb': (
             "SELECT SUM(tx_bytes) / 1000000000 AS upload, "
@@ -36,6 +43,16 @@ chart_query = {
             "((SUM(tx_bytes) + SUM(rx_bytes)) / 1000000000) AS total FROM {key} "
             "WHERE time >= '{time}' AND content_type = '{content_type}' "
             "AND object_id = '{object_id}' AND ifname = '{ifname}' "
+            "GROUP BY time(1d)"
+        )
+    },
+    'general_traffic': {
+        'influxdb': (
+            "SELECT SUM(tx_bytes) / 1000000000 AS upload, "
+            "SUM(rx_bytes) / 1000000000 AS download, "
+            "((SUM(tx_bytes) + SUM(rx_bytes)) / 1000000000) AS total FROM {key} "
+            "WHERE time >= '{time}' {organization_id} {location_id} "
+            "{floorplan_id} {ifname} "
             "GROUP BY time(1d)"
         )
     },

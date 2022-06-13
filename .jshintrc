@@ -11,7 +11,9 @@
         "Plotly": false,
         "gettext": true,
         "JSONEditor": true,
-        "ReconnectingWebSocket": true
+        "ReconnectingWebSocket": true,
+        "createChart": true,
+        "triggerChartLoading": true
     },
     "browser": true
 }

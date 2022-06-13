@@ -13,6 +13,7 @@ from openwisp_utils.tests import capture_stderr
 from .. import settings as app_settings
 from ..configuration import (
     CHART_CONFIGURATION_CHOICES,
+    DEFAULT_DASHBOARD_TRAFFIC_CHART,
     get_chart_configuration,
     register_chart,
     unregister_chart,
@@ -305,4 +306,10 @@ class TestCharts(TestMonitoringMixin, TestCase):
         with patch.object(app_settings, 'ADDITIONAL_CHARTS', chart):
             self.assertEqual(
                 get_chart_configuration()['dummy_test'], chart['dummy_test']
+            )
+
+    def test_clean_dashboard_traffic_chart(self):
+        with self.subTest('Test default dashboard traffic chart interfaces'):
+            self.assertDictEqual(
+                DEFAULT_DASHBOARD_TRAFFIC_CHART, {'__all__': ['wan', 'eth1', 'eth0_2']}
             )

@@ -36,6 +36,10 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     object_location_model = DeviceLocation
     object_model = Device
     floorplan_model = FloorPlan
+    # Exclude general metrics from the query
+    metric_queryset = Metric.objects.exclude(object_id=None)
+    # Exclude general charts from the query
+    chart_queryset = Chart.objects.exclude(metric__object_id=None)
 
     def test_404(self):
         r = self._post_data(self.device_model().pk, '123', self._data())
@@ -71,13 +75,15 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         data = {'type': 'DeviceMonitoring', 'interfaces': []}
         r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(Metric.objects.count(), 0)
-        self.assertEqual(Chart.objects.count(), 0)
+        # Add 1 for general metric and chart
+        self.assertEqual(self.metric_queryset.count(), 0)
+        self.assertEqual(self.chart_queryset.count(), 0)
         data = {'type': 'DeviceMonitoring'}
         r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(Metric.objects.count(), 0)
-        self.assertEqual(Chart.objects.count(), 0)
+        # Add 1 for general metric and chart
+        self.assertEqual(self.metric_queryset.count(), 0)
+        self.assertEqual(self.chart_queryset.count(), 0)
 
     def test_200_create(self):
         self.create_test_data(no_resources=True)
@@ -96,18 +102,19 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         r = self._post_data(d.id, d.key, data2)
         self.assertEqual(r.status_code, 200)
         self.assertDictEqual(dd.data, data2)
-        self.assertEqual(Metric.objects.count(), 4)
-        self.assertEqual(Chart.objects.count(), 4)
+        # Add 1 for general metric and chart
+        self.assertEqual(self.metric_queryset.count(), 4)
+        self.assertEqual(self.chart_queryset.count(), 4)
         if_dict = {'wlan0': data2['interfaces'][0], 'wlan1': data2['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
-            m = Metric.objects.get(name=f'{ifname} traffic', object_id=d.pk)
+            m = self.metric_queryset.get(name=f'{ifname} traffic', object_id=d.pk)
             points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
             self.assertEqual(len(points), 2)
             for field in ['rx_bytes', 'tx_bytes']:
                 expected = iface['statistics'][field] - points[1][field]
                 self.assertEqual(points[0][field], expected)
-            m = Metric.objects.get(name=f'{ifname} wifi clients', object_id=d.pk)
+            m = self.metric_queryset.get(name=f'{ifname} wifi clients', object_id=d.pk)
             points = m.read(limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
@@ -125,18 +132,19 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         r = self._post_data(d.id, d.key, data2)
         self.assertEqual(r.status_code, 200)
         self.assertDictEqual(dd.data, data2)
-        self.assertEqual(Metric.objects.count(), 4)
-        self.assertEqual(Chart.objects.count(), 4)
+        # Add 1 for general metric and chart
+        self.assertEqual(self.metric_queryset.count(), 4)
+        self.assertEqual(self.chart_queryset.count(), 4)
         if_dict = {'wlan0': data2['interfaces'][0], 'wlan1': data2['interfaces'][1]}
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
-            m = Metric.objects.get(name=f'{ifname} traffic', object_id=d.pk)
+            m = self.metric_queryset.get(name=f'{ifname} traffic', object_id=d.pk)
             points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
             self.assertEqual(len(points), 2)
             for field in ['rx_bytes', 'tx_bytes']:
                 expected = iface['statistics'][field]
                 self.assertEqual(points[0][field], expected)
-            m = Metric.objects.get(name=f'{ifname} wifi clients', object_id=d.pk)
+            m = self.metric_queryset.get(name=f'{ifname} wifi clients', object_id=d.pk)
             points = m.read(limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
@@ -156,9 +164,10 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         del data2['resources']
         response = self._post_data(device.id, device.key, data2)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(Metric.objects.count(), 4)
-        self.assertEqual(Chart.objects.count(), 4)
-        for metric in Metric.objects.all():
+        # Add 1 for general metric and chart
+        self.assertEqual(self.metric_queryset.count(), 4)
+        self.assertEqual(self.chart_queryset.count(), 4)
+        for metric in self.metric_queryset.filter(object_id__isnull=False):
             points = metric.read(
                 limit=10, order='-time', extra_fields=['location_id', 'floorplan_id']
             )
@@ -168,14 +177,15 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
 
     def test_200_multiple_measurements(self):
         dd = self._create_multiple_measurements(no_resources=True)
-        self.assertEqual(Metric.objects.count(), 4)
-        self.assertEqual(Chart.objects.count(), 4)
+        # Add 1 for general metric and chart
+        self.assertEqual(self.metric_queryset.count(), 4)
+        self.assertEqual(self.chart_queryset.count(), 4)
         expected = {
             'wlan0': {'rx_bytes': 10000, 'tx_bytes': 6000},
             'wlan1': {'rx_bytes': 4587, 'tx_bytes': 2993},
         }
         # wlan0 traffic
-        m = Metric.objects.get(name='wlan0 traffic', object_id=dd.pk)
+        m = self.metric_queryset.get(name='wlan0 traffic', object_id=dd.pk)
         points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
         self.assertEqual(len(points), 4)
         expected = [700000000, 100000000, 399999676, 324]
@@ -193,7 +203,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         # expected upload wlan0
         self.assertEqual(data['traces'][2][1][-1], 0.6)
         # wlan1 traffic
-        m = Metric.objects.get(name='wlan1 traffic', object_id=dd.pk)
+        m = self.metric_queryset.get(name='wlan1 traffic', object_id=dd.pk)
         points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
         self.assertEqual(len(points), 4)
         expected = [1000000000, 0, 1999997725, 2275]
@@ -239,11 +249,13 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
 
     @patch.object(monitoring_settings, 'AUTO_CHARTS', return_value=[])
     def test_auto_chart_disabled(self, *args):
-        self.assertEqual(Chart.objects.count(), 0)
+        # Add 1 for general chart
+        self.assertEqual(self.chart_queryset.count(), 0)
         o = self._create_org()
         d = self._create_device(organization=o)
         self._post_data(d.id, d.key, self._data())
-        self.assertEqual(Chart.objects.count(), 0)
+        # Add 1 for general chart
+        self.assertEqual(self.chart_queryset.count(), 0)
 
     def test_get_device_metrics_200(self):
         dd = self.create_test_data()
@@ -387,7 +399,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         c = Chart(metric=m, configuration='dummy')  # empty chart
         c.full_clean()
         c.save()
-        self.assertEqual(Chart.objects.count(), 1)
+        # Add 1 for general chart
+        self.assertEqual(self.chart_queryset.count(), 1)
         response = self.client.get(self._url(d.pk.hex, d.key))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['charts'], [])
@@ -443,7 +456,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         with self.subTest('Test without available memory'):
             del data['resources']['memory']['available']
             r = self._post_data(d.id, d.key, data)
-            m = Metric.objects.get(key='memory')
+            m = self.metric_queryset.get(key='memory')
             metric_data = m.read(order='-time', extra_fields='*')[0]
             self.assertEqual(metric_data['percent_used'], 9.729419481797308)
             self.assertIsNone(metric_data.get('available_memory'))
@@ -458,7 +471,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         with self.subTest('Test when available memory is greater than free memory'):
             data['resources']['memory']['available'] = 225567664
             r = self._post_data(d.id, d.key, data)
-            m = Metric.objects.get(key='memory')
+            m = self.metric_queryset.get(key='memory')
             metric_data = m.read(order='-time', extra_fields='*')[0]
             self.assertEqual(metric_data['percent_used'], 9.301032356920302)
             self.assertEqual(metric_data['available_memory'], 225567664)
@@ -612,7 +625,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     def test_mobile_charts(self):
         org = self._create_org()
         device = self._create_device(organization=org)
-        charts_count = Chart.objects.count()
+        charts_count = self.chart_queryset.count()
         data = {
             'type': 'DeviceMonitoring',
             'interfaces': [
@@ -664,7 +677,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 [0, '#b42a0c', 'gsm'],
             ],
         )
-        self.assertEqual(Chart.objects.count(), charts_count + 3)
+        self.assertEqual(self.chart_queryset.count(), charts_count + 3)
 
     def test_5g_charts(self):
         org = self._create_org()

@@ -211,6 +211,20 @@ class DatabaseClient(object):
                 return True
         return False
 
+    def _clean_params(self, params):
+        for key, value in params.items():
+            if isinstance(value, list) or isinstance(value, tuple):
+                params[key] = self._get_where_query(key, value)
+        return params
+
+    def _get_where_query(self, field, items):
+        if not items:
+            return ''
+        lookup = []
+        for item in items:
+            lookup.append(f"{field} = '{item}'")
+        return 'AND ({lookup})'.format(lookup=' OR '.join(lookup))
+
     def get_query(
         self,
         chart_type,
@@ -223,6 +237,7 @@ class DatabaseClient(object):
         timezone=settings.TIME_ZONE,
     ):
         query = self._fields(fields, query, params['field_name'])
+        params = self._clean_params(params)
         query = query.format(**params)
         query = self._group_by(query, time, chart_type, group_map, strip=summary)
         if summary:

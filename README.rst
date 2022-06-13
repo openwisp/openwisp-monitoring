@@ -96,6 +96,8 @@ Available Features
 * CSV Export of monitoring data
 * An overview of the status of the network is shown in the admin dashboard,
   a chart shows the percentages of devices which are online, offline or having issues;
+  there are also `two timeseries charts which show the total unique WiFI clients and
+  the traffic flowing to the network <dashboard-monitoring-charts>`_,
   a geographic map is also available for those who use the geographic features of OpenWISP
 * Possibility to configure additional `Metrics <#openwisp_monitoring_metrics>`_ and `Charts <#openwisp_monitoring_charts>`_
 * Extensible active check system: it's possible to write additional checks that
@@ -800,6 +802,22 @@ Mobile Access Technology in use
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/access-technology.png
   :align: center
 
+Dashboard Monitoring Charts
+---------------------------
+
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-controller/docs/docs/1.1/dashboard-charts.png
+  :align: center
+
+OpenWISP Monitoring adds two timeseries charts to the admin dashboard:
+
+- **General WiFi clients Chart**: Shows the number of connected clients to the WiFi
+  interfaces of devices in the network.
+- **General traffic Chart**: Shows the amount of traffic flowing in the network.
+
+You can configure the interfaces included in the **General traffic chart** using
+the `"OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART"
+<#openwisp_monitoring_dashboard_traffic_chart>`_ setting.
+
 Monitoring WiFi Sessions
 ------------------------
 
@@ -1195,6 +1213,44 @@ being set to ``True`` (which is the default).
 
 You can turn this off if you do not use the geographic features
 of OpenWISP.
+
+``OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+--------------------------------------------+
+| **type**:    | ``dict``                                   |
++--------------+--------------------------------------------+
+| **default**: | ``{'__all__': ['wan', 'eth1', 'eth0.2']}`` |
++--------------+--------------------------------------------+
+
+This settings allows to configure the interfaces which should
+be included in the **General Traffic** chart in the admin dashboard.
+
+This setting should be defined in the following format:
+
+.. code-block::python
+
+    OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART = {
+        '<organization-uuid>': ['<list-of-interfaces>']
+    }
+
+E.g., if you want the **General Traffic** chart to show data from
+two interfaces for an organization, you need to configure this setting
+as follows:
+
+.. code-block::python
+
+    OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART = {
+        # organization uuid
+        'f9601bbd-b6d5-4704-85e3-5851894437bf': ['eth1', 'eth2']
+    }
+
+**Note**: The value of ``__all__`` key is used if an organization
+does not have list of interfaces defined in ``OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART``.
+
+**Note**: If a user can manage more than one organization (e.g. superusers),
+then the **General Traffic** chart will always show data from interfaces
+of ``__all__`` configuration.
 
 ``OPENWISP_MONITORING_METRICS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1707,12 +1763,27 @@ and in the `Browsable web page <#browsable-web-interface>`_ of each point,
 here we'll provide just a list of the available endpoints,
 for further information please open the URL of the endpoint in your browser.
 
+Retrieve general monitoring charts
+##################################
+
+.. code-block:: text
+
+    GET /api/v1/monitoring/dashboard/
+
+This API endpoint is used to show dashboard monitoring charts. It supports
+multi-tenancy and allows filtering monitoring data with ``organization_slug``,
+``location_id`` and ``floorplan_id`` e.g.:
+
+.. code-block:: text
+
+    GET /api/v1/monitoring/dashboard/?organization_slug=<org1-slug>,<org2-slug>&location_id=<location1-id>,<location2-id>&floorplan_id=<floorplan1-id>,<floorplan2-id>
+
 Retrieve device charts and device status data
 #############################################
 
 .. code-block:: text
 
-    GET /v1/monitoring/device/{pk}/?key={key}&status=true
+    GET /api/v1/monitoring/device/{pk}/?key={key}&status=true
 
 The format used for Device Status is inspired by `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_.
 
@@ -1724,13 +1795,13 @@ Collect device metrics and status
 
 .. code-block:: text
 
-    POST /v1/monitoring/device/{pk}/?key={key}&time={time}
+    POST /api/v1/monitoring/device/{pk}/?key={key}&time={time}
 
 If data is latest then an additional parameter current can also be passed. For e.g.:
 
 .. code-block:: text
 
-    POST /v1/monitoring/device/{pk}/?key={key}&time={time}&current=true
+    POST /api/v1/monitoring/device/{pk}/?key={key}&time={time}&current=true
 
 The format used for Device Status is inspired by `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_.
 

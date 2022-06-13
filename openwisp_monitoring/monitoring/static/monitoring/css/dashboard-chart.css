@@ -1,0 +1,19 @@
+#ow-chart-inner-container {
+  padding: 0px 40px;
+}
+#ow-chart-inner-container .js-plotly-plot {
+  width: 100%;
+}
+#ow-chart-inner-container .quick-link-container {
+  margin-top: 10px;
+}
+#ow-chart-time {
+  margin-top: 9px;
+}
+.ow-chart:first-child {
+  margin-top: 45px;
+}
+#ow-chart-contents .ow-chart + .ow-chart {
+  margin-top: 23px;
+  padding-top: 23px;
+}

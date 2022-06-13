@@ -202,6 +202,8 @@ class DeviceMonitoringConfig(AppConfig):
             )
 
     def register_dashboard_items(self):
+        WifiSession = load_model('device_monitoring', 'WifiSession')
+        Chart = load_model('monitoring', 'Chart')
         register_dashboard_chart(
             position=0,
             config={
@@ -261,8 +263,42 @@ class DeviceMonitoringConfig(AppConfig):
                 },
             )
 
+        register_dashboard_template(
+            position=55,
+            config={
+                'template': 'monitoring/paritals/chart.html',
+                'css': (
+                    'monitoring/css/percircle.min.css',
+                    'monitoring/css/chart.css',
+                    'monitoring/css/dashboard-chart.css',
+                ),
+                'js': (
+                    'monitoring/js/percircle.min.js',
+                    'monitoring/js/chart.js',
+                    'monitoring/js/chart-utils.js',
+                    'monitoring/js/dashboard-chart.js',
+                ),
+            },
+            extra_config={
+                'api_url': reverse_lazy('monitoring_general:api_dashboard_timeseries'),
+                'default_time': Chart.DEFAULT_TIME,
+                'chart_quick_links': {
+                    'General WiFi Clients': {
+                        'url': reverse_lazy(
+                            'admin:{app_label}_{model_name}_changelist'.format(
+                                app_label=WifiSession._meta.app_label,
+                                model_name=WifiSession._meta.model_name,
+                            )
+                        ),
+                        'label': _('Open WiFi session list'),
+                        'title': _('View full history of WiFi Sessions'),
+                    }
+                },
+            },
+            after_charts=True,
+        )
+
         if app_settings.WIFI_SESSIONS_ENABLED:
-            WifiSession = load_model('device_monitoring', 'WifiSession')
             register_dashboard_chart(
                 position=13,
                 config={
@@ -302,6 +338,7 @@ class DeviceMonitoringConfig(AppConfig):
                             )
                         ),
                         'label': _('Open WiFi session list'),
+                        'title': _('View full history of WiFi Sessions'),
                         'custom_css_classes': ['negative-top-20'],
                     },
                 },

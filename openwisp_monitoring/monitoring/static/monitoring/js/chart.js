@@ -16,7 +16,7 @@
         }
         return newArr;
     }
-    window.createChart = function (data, x, id, title, type) {
+    window.createChart = function (data, x, id, title, type, quickLink) {
         if (data === false) {
             alert(gettext('error while receiving data from server'));
             return;
@@ -109,6 +109,8 @@
                     fill: data.fill || 'tozeroy',
                     hovertemplate: [],
                     y: [],
+                    // We use the "_key" field to sort the charts
+                    // according to the order defined in "data.trace_order"
                     _key: key,
                 },
                 yValuesRaw = data.traces[i][1];
@@ -195,12 +197,17 @@
 
         Plotly.newPlot(plotlyContainer, charts, layout, {responsive: true});
 
-        container.find('.custom-legend').remove();
         // custom legends when using color map
         if (data.colorscale && data.colorscale.map) {
-            container.append('<div class="custom-legend"></div>');
+            var customLegend;
+            if (container.find('.custom-legend').length) {
+                customLegend = $(container.find('.percircle-container').get(0));
+                customLegend.empty();
+            } else {
+                customLegend = $('<div class="custom-legend"></div>');
+                $(container.find('.js-plotly-plot').get(0)).after(customLegend);
+            }
             map = data.colorscale.map;
-            var customLegend = container.find('.custom-legend');
             for (i = map.length-1; i >= 0; i--) {
                 var color = map[i][1];
                 label = map[i][2];
@@ -209,13 +216,27 @@
                 );
             }
         }
-        container.find('.circle').remove();
-        var percircles = [];
+        else {
+            container.find('.custom-legend').remove();
+        }
         // add summary
         if (data.summary && type != 'histogram') {
+            var percircles = [], percircleContainer;
+            if (container.find('.percircle-container').length) {
+                percircleContainer = $(container.find('.percircle-container').get(0));
+                percircleContainer.empty();
+            } else {
+                percircleContainer = $('<div class="percircle-container"></div>');
+                container.append(percircleContainer);
+            }
             for (i=0; i<summaryLabels.length; i++) {
                 var el = summaryLabels[i],
-                    percircleOptions = {progressBarColor: data.colors[i], _key: el[0]};
+                    percircleOptions = {
+                        progressBarColor: data.colors[i],
+                        // We use the "_key" field to sort the summary
+                        // charts according to the order defined in "data.trace_order"
+                        _key: el[0]
+                    };
                 key = el[0];
                 percircleOptions.htmlTitle = el[1];
                 var value = data.summary[key];
@@ -247,11 +268,26 @@
             }
             percircles = sortByTraceOrder(data.trace_order, percircles, '_key');
             for (i=0; i<percircles.length; ++i) {
-                container.append(
+                percircleContainer.append(
                     '<div class="small circle" title="' + percircles[i].htmlTitle + '"></div>'
                 );
-                container.find('.circle').eq(-1)
+                percircleContainer.find('.circle').eq(-1)
                          .percircle(percircles[i]);
+            }
+        } else {
+            container.find('.percircle-container').remove();
+        }
+        // add quick link button
+        if (quickLink) {
+            if (!container.find('.quick-link-container').length){
+                container.append(
+                    $(
+                        '<div id="'+ id + '-quick-link-container" ' +
+                        'class="quick-link-container"><a href="' +
+                        quickLink.url + '" class="button quick-link" id="' +
+                        id + '-inline-wifisession-quick-link" title="' +
+                        quickLink.title + '">' + quickLink.label  +'</a></div>')
+                );
             }
         }
         // do not add heading, help and tooltip if already done

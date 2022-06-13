@@ -68,8 +68,12 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
             metric_count, chart_count = 4, 4
         else:
             metric_count, chart_count = 7, 7
-        self.assertEqual(Metric.objects.count(), metric_count)
-        self.assertEqual(Chart.objects.count(), chart_count)
+        # Exclude general metrics from the query
+        self.assertEqual(Metric.objects.exclude(object_id=None).count(), metric_count)
+        # Exclude general charts from the query
+        self.assertEqual(
+            Chart.objects.exclude(metric__object_id=None).count(), chart_count
+        )
         if_dict = {'wlan0': data['interfaces'][0], 'wlan1': data['interfaces'][1]}
         extra_tags = {'organization_id': str(d.organization_id)}
         for ifname in ['wlan0', 'wlan1']:
