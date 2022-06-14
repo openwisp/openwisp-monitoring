@@ -335,7 +335,7 @@
                       <label>{% trans 'Bridge Members' %}:</label>
                       <div class="readonly">
                           {% for element in interface.bridge_members %}
-                          <a class="bridge-member" href="javascript:scrollToElement('status-if-{{ interface.name }}')">{{ element }}</a>{% if not forloop.last %}, {% endif %}
+                          <a class="bridge-member" href="javascript:scrollToElement('status-if-{{ element }}')">{{ element }}</a>{% if not forloop.last %}, {% endif %}
                           {% endfor %}
                       </div>
                   </div>

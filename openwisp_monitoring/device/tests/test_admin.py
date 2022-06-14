@@ -185,7 +185,7 @@ class TestAdmin(
             r1,
             """
                 <a class="bridge-member"
-                   href="javascript:scrollToElement("tap0")">
+                   href="javascript:scrollToElement('status-if-tap0')">
                     tap0
                 </a>
             """,
@@ -195,7 +195,7 @@ class TestAdmin(
             r1,
             """
                 <a class="bridge-member"
-                    href="javascript:scrollToElement("wlan0")">
+                    href="javascript:scrollToElement('status-if-wlan0')">
                      wlan0
                 </a>
             """,
@@ -205,7 +205,7 @@ class TestAdmin(
             r1,
             """
                 <a class="bridge-member"
-                   href="javascript:scrollToElement("wlan1")">
+                   href="javascript:scrollToElement('status-if-wlan1')">
                     wlan1
                 </a>
             """,
