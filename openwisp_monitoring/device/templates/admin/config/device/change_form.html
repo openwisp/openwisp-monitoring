@@ -110,7 +110,7 @@
               {% endif %}
               {% if device_data.interfaces %}
               {% for interface in device_data.interfaces %}
-              <div class="inline-group">
+              <div class="inline-group" id="status-if-{{ interface.name }}">
                   <h2>{% trans 'Interface status' %}: {{ interface.name }}</h2>
                   {% if interface.mac %}
                   <div class="form-row">
@@ -334,7 +334,9 @@
                   <div class="form-row">
                       <label>{% trans 'Bridge Members' %}:</label>
                       <div class="readonly">
-                          {{ interface.bridge_members|join:", " }}
+                          {% for element in interface.bridge_members %}
+                          <a class="bridge-member" href="javascript:scrollToElement('status-if-{{ element }}')">{{ element }}</a>{% if not forloop.last %}, {% endif %}
+                          {% endfor %}
                       </div>
                   </div>
                   {% endif %}
@@ -545,6 +547,9 @@
         }
     });
   });
+  function scrollToElement(id) {
+    document.getElementById(id).scrollIntoView();
+  }
 </script>
 {% endif %}
 {% endblock %}

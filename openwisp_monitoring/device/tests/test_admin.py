@@ -181,7 +181,36 @@ class TestAdmin(
         r1 = self.client.get(url, follow=True)
         self.assertEqual(r1.status_code, 200)
         self.assertContains(r1, 'Bridge Members')
-        self.assertContains(r1, 'tap0, wlan0, wlan1')
+        self.assertContains(
+            r1,
+            """
+                <a class="bridge-member"
+                   href="javascript:scrollToElement('status-if-tap0')">
+                    tap0
+                </a>
+            """,
+            html=True,
+        )
+        self.assertContains(
+            r1,
+            """
+                <a class="bridge-member"
+                    href="javascript:scrollToElement('status-if-wlan0')">
+                     wlan0
+                </a>
+            """,
+            html=True,
+        )
+        self.assertContains(
+            r1,
+            """
+                <a class="bridge-member"
+                   href="javascript:scrollToElement('status-if-wlan1')">
+                    wlan1
+                </a>
+            """,
+            html=True,
+        )
         self.assertContains(r1, 'Spanning Tree Protocol')
 
     def test_interface_mobile_admin(self):
