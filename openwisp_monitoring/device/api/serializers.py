@@ -6,7 +6,7 @@ from openwisp_controller.geo.api.serializers import (
     GeoJsonLocationSerializer,
     LocationDeviceSerializer,
 )
-from openwisp_users.api.mixins import FilterByOrganizationManaged
+from openwisp_users.api.mixins import FilterSerializerByOrgManaged
 from openwisp_utils.api.serializers import ValidatedModelSerializer
 
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
@@ -26,7 +26,7 @@ class DeviceMonitoringSerializer(serializers.ModelSerializer):
         model = DeviceMonitoring
 
 
-class WifiClientSerializer(FilterByOrganizationManaged, ValidatedModelSerializer):
+class WifiClientSerializer(FilterSerializerByOrgManaged, ValidatedModelSerializer):
     class Meta:
         fields = [
             "mac_address",
@@ -47,7 +47,7 @@ class WifiClientSerializer(FilterByOrganizationManaged, ValidatedModelSerializer
 
 
 class WifiSessionCreateUpdateSerializer(
-    FilterByOrganizationManaged, ValidatedModelSerializer
+    FilterSerializerByOrgManaged, ValidatedModelSerializer
 ):
     class Meta:
         model = WifiSession
@@ -69,7 +69,7 @@ class WifiSessionCreateUpdateSerializer(
         return device
 
 
-class WifiSessionReadSerializer(FilterByOrganizationManaged, ValidatedModelSerializer):
+class WifiSessionReadSerializer(FilterSerializerByOrgManaged, ValidatedModelSerializer):
     client = WifiClientSerializer(source='wifi_client')
     device_name = serializers.CharField(source='device.name', read_only=True)
     organization_id = serializers.CharField(
