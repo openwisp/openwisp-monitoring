@@ -10,6 +10,7 @@ from swapper import load_model
 from openwisp_controller.config.tests.utils import CreateDeviceGroupMixin
 from openwisp_controller.geo.tests.utils import TestGeoMixin
 from openwisp_users.tests.test_api import AuthenticationMixin
+from openwisp_users.tests.utils import TestMultitenantAdminMixin
 from openwisp_utils.tests import capture_any_output, catch_signal
 
 from ... import settings as monitoring_settings
@@ -1036,15 +1037,14 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
 
 
 class TestWifiClientSessionApi(
-    TestWifiClientSessionMixin,
     AuthenticationMixin,
+    TestMultitenantAdminMixin,
+    TestWifiClientSessionMixin,
     CreateDeviceGroupMixin,
     DeviceMonitoringTestCase,
 ):
     def _login_admin(self):
-        User = get_user_model()
-        admin = User.objects.create_superuser('admin', 'admin', 'test@test.com')
-        self.client.force_login(admin)
+        self._login()
 
     def test_wifisession_unauthorized_api_access(self):
         device = self._create_device()
@@ -1244,10 +1244,25 @@ class TestWifiClientSessionApi(
             response = self.client.get(f'{url}?stop_time__lte={filter_time}')
             self.assertEqual(response.data['count'], 1)
 
+    def test_wifisesssion_list_administrator_non_superuser(self):
+        org = self._create_org(name='test org')
+        device = self._create_device(organization=org)
+        self._create_wifi_session(device=device)
+        administrator = self._create_administrator(organizations=[org])
+        self.client.force_login(administrator)
+        url = reverse('monitoring:api_wifi_session_list')
+        response = self.client.get(url, HTTP_ACCEPT='text/html')
+        data = response.data
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(data['next'])
+        self.assertIsNone(data['previous'])
+        self.assertEqual(data['count'], 1)
+        self.assertEqual(len(data['results'][0]), 11)
+
     def test_wifisession_list_create(self):
         device = self._create_device()
         wifi_client = self._create_wifi_client()
-        user = self._create_admin()
+        user = self._create_admin(username='admin2', email='admin2@admin2.com')
         self._create_org_user(user=user, is_admin=True)
         self.client.force_login(user)
         url = reverse('monitoring:api_wifi_session_list')

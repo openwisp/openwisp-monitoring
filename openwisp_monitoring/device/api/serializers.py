@@ -49,6 +49,8 @@ class WifiClientSerializer(FilterSerializerByOrgManaged, ValidatedModelSerialize
 class WifiSessionCreateUpdateSerializer(
     FilterSerializerByOrgManaged, ValidatedModelSerializer
 ):
+    organization_lookup = 'wifisession__device__organization__in'
+
     class Meta:
         model = WifiSession
         fields = ['device', 'wifi_client', 'ssid', 'interface_name']
