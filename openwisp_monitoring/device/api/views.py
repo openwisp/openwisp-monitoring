@@ -12,11 +12,13 @@ from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend
 from pytz import UTC
 from rest_framework import pagination, serializers, status
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.generics import (
     GenericAPIView,
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
 )
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from swapper import load_model
 
@@ -25,8 +27,9 @@ from openwisp_controller.geo.api.views import (
     GeoJsonLocationList,
     LocationDeviceList,
 )
-from openwisp_controller.mixins import ProtectedAPIMixin
-from openwisp_users.api.permissions import IsOrganizationManager
+from openwisp_users.api.authentication import BearerAuthentication
+from openwisp_users.api.mixins import FilterByOrganizationManaged
+from openwisp_users.api.permissions import DjangoModelPermissions, IsOrganizationManager
 
 from ... import settings as monitoring_settings
 from ...monitoring.configuration import ACCESS_TECHNOLOGIES
@@ -57,6 +60,23 @@ class ListViewPagination(pagination.PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 100
+
+
+class WifiSessionProtectedAPIMixin(FilterByOrganizationManaged):
+    authentication_classes = [BearerAuthentication, SessionAuthentication]
+    permission_classes = [
+        IsAuthenticated,
+        IsOrganizationManager,
+        DjangoModelPermissions,
+    ]
+
+
+class WifiClientProtectedAPIMixin:
+    authentication_classes = [BearerAuthentication, SessionAuthentication]
+    permission_classes = [
+        IsAuthenticated,
+        DjangoModelPermissions,
+    ]
 
 
 class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
@@ -460,7 +480,7 @@ class WifiSessionFilter(filters.FilterSet):
         }
 
 
-class WifiSessionListCreateView(ProtectedAPIMixin, ListCreateAPIView):
+class WifiSessionListCreateView(WifiSessionProtectedAPIMixin, ListCreateAPIView):
     queryset = WifiSession.objects.select_related(
         'device', 'wifi_client', 'device__organization', 'device__group'
     )
@@ -468,7 +488,6 @@ class WifiSessionListCreateView(ProtectedAPIMixin, ListCreateAPIView):
     filter_backends = [DjangoFilterBackend]
     pagination_class = ListViewPagination
     filterset_class = WifiSessionFilter
-    permission_classes = ProtectedAPIMixin.permission_classes + [IsOrganizationManager]
 
     def get_serializer_class(self):
         if self.request.method in ['GET', 'OPTIONS']:
@@ -479,12 +498,11 @@ class WifiSessionListCreateView(ProtectedAPIMixin, ListCreateAPIView):
 wifi_session_list = WifiSessionListCreateView.as_view()
 
 
-class WifiSessionDetailView(ProtectedAPIMixin, RetrieveUpdateDestroyAPIView):
+class WifiSessionDetailView(WifiSessionProtectedAPIMixin, RetrieveUpdateDestroyAPIView):
     queryset = WifiSession.objects.select_related(
         'device', 'wifi_client', 'device__organization'
     )
     organization_field = 'device__organization'
-    permission_classes = ProtectedAPIMixin.permission_classes + [IsOrganizationManager]
 
     def get_serializer_class(self):
         if self.request.method in ['GET', 'OPTIONS']:
@@ -495,24 +513,20 @@ class WifiSessionDetailView(ProtectedAPIMixin, RetrieveUpdateDestroyAPIView):
 wifi_session_detail = WifiSessionDetailView.as_view()
 
 
-class WifiClientListCreateView(ProtectedAPIMixin, ListCreateAPIView):
+class WifiClientListCreateView(WifiClientProtectedAPIMixin, ListCreateAPIView):
     serializer_class = WifiClientSerializer
     queryset = WifiClient.objects.all()
-    organization_field = 'wifisession__device__organization'
     filter_backends = [DjangoFilterBackend]
     pagination_class = ListViewPagination
     filterset_fields = ['vendor']
-    permission_classes = ProtectedAPIMixin.permission_classes + [IsOrganizationManager]
 
 
 wifi_client_list = WifiClientListCreateView.as_view()
 
 
-class WifiClientDetailView(ProtectedAPIMixin, RetrieveUpdateDestroyAPIView):
+class WifiClientDetailView(WifiClientProtectedAPIMixin, RetrieveUpdateDestroyAPIView):
     serializer_class = WifiClientSerializer
     queryset = WifiClient.objects.all()
-    organization_field = 'wifisession__device__organization'
-    permission_classes = ProtectedAPIMixin.permission_classes + [IsOrganizationManager]
 
 
 wifi_client_detail = WifiClientDetailView.as_view()
