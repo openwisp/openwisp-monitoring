@@ -28,18 +28,18 @@ class DeviceMonitoringSerializer(serializers.ModelSerializer):
 
 class WifiClientSerializer(FilterSerializerByOrgManaged, ValidatedModelSerializer):
     class Meta:
-        fields = [
-            "mac_address",
-            "vendor",
-            "ht",
-            "vht",
-            "wmm",
-            "wds",
-            "wps",
-            "modified",
-            "created",
-        ]
         model = WifiClient
+        fields = [
+            'mac_address',
+            'vendor',
+            'ht',
+            'vht',
+            'wmm',
+            'wds',
+            'wps',
+            'modified',
+            'created',
+        ]
         read_only_fields = (
             'created',
             'modified',
@@ -62,7 +62,7 @@ class WifiSessionCreateUpdateSerializer(
 
     def validate_device(self, device):
         user = self.context['request'].user
-        if user and not user.is_manager(device.organization.pk):
+        if user and not user.is_manager(device.organization_id):
             raise serializers.ValidationError(
                 _('Device organization must be in user managed organization')
             )

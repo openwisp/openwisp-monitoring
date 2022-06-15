@@ -26,6 +26,7 @@ from openwisp_controller.geo.api.views import (
     LocationDeviceList,
 )
 from openwisp_controller.mixins import ProtectedAPIMixin
+from openwisp_users.api.permissions import IsOrganizationManager
 
 from ... import settings as monitoring_settings
 from ...monitoring.configuration import ACCESS_TECHNOLOGIES
@@ -467,6 +468,7 @@ class WifiSessionListCreateView(ProtectedAPIMixin, ListCreateAPIView):
     filter_backends = [DjangoFilterBackend]
     pagination_class = ListViewPagination
     filterset_class = WifiSessionFilter
+    permission_classes = ProtectedAPIMixin.permission_classes + [IsOrganizationManager]
 
     def get_serializer_class(self):
         if self.request.method in ['GET']:
@@ -482,6 +484,7 @@ class WifiSessionDetailView(ProtectedAPIMixin, RetrieveUpdateAPIView):
         'device', 'wifi_client', 'device__organization'
     )
     organization_field = 'device__organization'
+    permission_classes = ProtectedAPIMixin.permission_classes + [IsOrganizationManager]
 
     def get_serializer_class(self):
         if self.request.method in ['GET']:
@@ -494,11 +497,12 @@ wifi_session_detail = WifiSessionDetailView.as_view()
 
 class WifiClientListCreateView(ProtectedAPIMixin, ListCreateAPIView):
     serializer_class = WifiClientSerializer
-    organization_field = 'wifisession__device__organization'
     queryset = WifiClient.objects.all()
+    organization_field = 'wifisession__device__organization'
     filter_backends = [DjangoFilterBackend]
     pagination_class = ListViewPagination
     filterset_fields = ['vendor']
+    permission_classes = ProtectedAPIMixin.permission_classes + [IsOrganizationManager]
 
 
 wifi_client_list = WifiClientListCreateView.as_view()
@@ -506,8 +510,9 @@ wifi_client_list = WifiClientListCreateView.as_view()
 
 class WifiClientDetailView(ProtectedAPIMixin, RetrieveUpdateAPIView):
     serializer_class = WifiClientSerializer
-    organization_field = 'wifisession__device__organization'
     queryset = WifiClient.objects.all()
+    organization_field = 'wifisession__device__organization'
+    permission_classes = ProtectedAPIMixin.permission_classes + [IsOrganizationManager]
 
 
 wifi_client_detail = WifiClientDetailView.as_view()
