@@ -15,7 +15,7 @@ from rest_framework import pagination, serializers, status
 from rest_framework.generics import (
     GenericAPIView,
     ListCreateAPIView,
-    RetrieveUpdateAPIView,
+    RetrieveUpdateDestroyAPIView,
 )
 from rest_framework.response import Response
 from swapper import load_model
@@ -471,7 +471,7 @@ class WifiSessionListCreateView(ProtectedAPIMixin, ListCreateAPIView):
     permission_classes = ProtectedAPIMixin.permission_classes + [IsOrganizationManager]
 
     def get_serializer_class(self):
-        if self.request.method in ['GET']:
+        if self.request.method in ['GET', 'OPTIONS']:
             return WifiSessionReadSerializer
         return WifiSessionCreateUpdateSerializer
 
@@ -479,7 +479,7 @@ class WifiSessionListCreateView(ProtectedAPIMixin, ListCreateAPIView):
 wifi_session_list = WifiSessionListCreateView.as_view()
 
 
-class WifiSessionDetailView(ProtectedAPIMixin, RetrieveUpdateAPIView):
+class WifiSessionDetailView(ProtectedAPIMixin, RetrieveUpdateDestroyAPIView):
     queryset = WifiSession.objects.select_related(
         'device', 'wifi_client', 'device__organization'
     )
@@ -487,7 +487,7 @@ class WifiSessionDetailView(ProtectedAPIMixin, RetrieveUpdateAPIView):
     permission_classes = ProtectedAPIMixin.permission_classes + [IsOrganizationManager]
 
     def get_serializer_class(self):
-        if self.request.method in ['GET']:
+        if self.request.method in ['GET', 'OPTIONS']:
             return WifiSessionReadSerializer
         return WifiSessionCreateUpdateSerializer
 
@@ -508,7 +508,7 @@ class WifiClientListCreateView(ProtectedAPIMixin, ListCreateAPIView):
 wifi_client_list = WifiClientListCreateView.as_view()
 
 
-class WifiClientDetailView(ProtectedAPIMixin, RetrieveUpdateAPIView):
+class WifiClientDetailView(ProtectedAPIMixin, RetrieveUpdateDestroyAPIView):
     serializer_class = WifiClientSerializer
     queryset = WifiClient.objects.all()
     organization_field = 'wifisession__device__organization'

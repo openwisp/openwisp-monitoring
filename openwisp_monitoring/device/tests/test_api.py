@@ -1120,6 +1120,17 @@ class TestWifiClientSessionApi(
         self.assertEqual(data['ssid'], 'Free Public Wifi Updated')
         self.assertEqual(data['interface_name'], wifi_session.interface_name)
 
+    def test_wifisession_detail_delete(self):
+        device = self._create_device()
+        wifi_session = self._create_wifi_session(device=device)
+        self._login_admin()
+        self.assertEqual(WifiSession.objects.count(), 1)
+        response = self.client.delete(
+            reverse('monitoring:api_wifi_session_detail', args=(wifi_session.id,))
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(WifiSession.objects.count(), 0)
+
     def test_wifisession_list_get(self):
         org2 = self._create_org(name='test org 2')
         device_group_2 = self._create_device_group(organization=org2)
@@ -1400,6 +1411,18 @@ class TestWifiClientSessionApi(
         self.assertEqual(data['wps'], wifi_client.wps)
         self.assertIn('created', data.keys())
         self.assertIn('modified', data.keys())
+
+    def test_wificlient_detail_delete(self):
+        wifi_client = self._create_wifi_client()
+        self._login_admin()
+        self.assertEqual(WifiClient.objects.count(), 1)
+        response = self.client.delete(
+            reverse(
+                'monitoring:api_wifi_client_detail', args=(wifi_client.mac_address,)
+            )
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(WifiClient.objects.count(), 0)
 
     def test_wificlient_list_get(self):
         wifi_client_2 = self._create_wifi_client(
