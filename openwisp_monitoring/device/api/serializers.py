@@ -26,7 +26,7 @@ class DeviceMonitoringSerializer(serializers.ModelSerializer):
         model = DeviceMonitoring
 
 
-class WifiClientSerializer(ValidatedModelSerializer):
+class WifiClientSerializer(FilterSerializerByOrgManaged, ValidatedModelSerializer):
     class Meta:
         model = WifiClient
         fields = [

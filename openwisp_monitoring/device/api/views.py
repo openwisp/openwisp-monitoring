@@ -18,7 +18,7 @@ from rest_framework.generics import (
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
 )
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 from swapper import load_model
 
@@ -64,17 +64,15 @@ class ListViewPagination(pagination.PageNumberPagination):
 
 class WifiSessionProtectedAPIMixin(FilterByOrganizationManaged):
     authentication_classes = [BearerAuthentication, SessionAuthentication]
-    permission_classes = [
-        IsAuthenticated,
+    permission_classes = list(FilterByOrganizationManaged.permission_classes) + [
         IsOrganizationManager,
         DjangoModelPermissions,
     ]
 
 
-class WifiClientProtectedAPIMixin:
+class WifiClientProtectedAPIMixin(FilterByOrganizationManaged):
     authentication_classes = [BearerAuthentication, SessionAuthentication]
-    permission_classes = [
-        IsAuthenticated,
+    permission_classes = list(FilterByOrganizationManaged.permission_classes) + [
         DjangoModelPermissions,
     ]
 
@@ -490,7 +488,7 @@ class WifiSessionListCreateView(WifiSessionProtectedAPIMixin, ListCreateAPIView)
     filterset_class = WifiSessionFilter
 
     def get_serializer_class(self):
-        if self.request.method in ['GET', 'OPTIONS']:
+        if self.request.method in SAFE_METHODS:
             return WifiSessionReadSerializer
         return WifiSessionCreateUpdateSerializer
 
@@ -505,7 +503,7 @@ class WifiSessionDetailView(WifiSessionProtectedAPIMixin, RetrieveUpdateDestroyA
     organization_field = 'device__organization'
 
     def get_serializer_class(self):
-        if self.request.method in ['GET', 'OPTIONS']:
+        if self.request.method in SAFE_METHODS:
             return WifiSessionReadSerializer
         return WifiSessionCreateUpdateSerializer
 
@@ -519,6 +517,14 @@ class WifiClientListCreateView(WifiClientProtectedAPIMixin, ListCreateAPIView):
     filter_backends = [DjangoFilterBackend]
     pagination_class = ListViewPagination
     filterset_fields = ['vendor']
+    organization_field = 'wifisession__device__organization'
+
+    def get_permissions(self):
+        if self.request.method in ['GET']:
+            self.permission_classes = WifiClientProtectedAPIMixin.permission_classes + [
+                IsOrganizationManager
+            ]
+        return [permission() for permission in self.permission_classes]
 
 
 wifi_client_list = WifiClientListCreateView.as_view()
@@ -527,6 +533,7 @@ wifi_client_list = WifiClientListCreateView.as_view()
 class WifiClientDetailView(WifiClientProtectedAPIMixin, RetrieveUpdateDestroyAPIView):
     serializer_class = WifiClientSerializer
     queryset = WifiClient.objects.all()
+    organization_field = 'wifisession__device__organization'
 
 
 wifi_client_detail = WifiClientDetailView.as_view()
