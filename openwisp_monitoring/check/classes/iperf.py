@@ -11,7 +11,7 @@ from .base import BaseCheck
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 Device = load_model('config', 'Device')
-DeviceData = load_model('device_monitoring', 'DeviceData')
+DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 Credentials = load_model('connection', 'Credentials')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 DeviceConnection = load_model('connection', 'DeviceConnection')
@@ -30,29 +30,33 @@ class Iperf(BaseCheck):
                 res, exit_code = device_connection.connector_instance.exec_command(
                     command, raise_unexpected_exit=False
                 )
-                if exit_code != 0:
-                    print('---- Command Failed ----')
-                    if store:
-                        self.store_result(
-                            {
-                                'iperf_result': 0,
-                                'sent_bps': 0.0,
-                                'received_bps': 0.0,
-                                'sent_bytes': 0.0,
-                                'received_bytes': 0.0,
-                                'retransmits': 0,
-                            }
-                        )
+                if store and exit_code != 0:
+                    print('---- Command Failed (TCP)----')
+                    self.store_result_fail()
                     device_connection.disconnect()
                     return
                 else:
-                    result_dict = self._get_iperf_result(res)
-                    print('---- Command Output ----')
-                    print(result_dict)
-                    if store:
-                        self.store_result(result_dict)
+                    result_dict_tcp = self._get_iperf_result(res, mode='TCP')
+                    print('---- Command Output (TCP) ----')
+                    print(result_dict_tcp)
+                    # UDP
+                    command = f'iperf3 -c {servers[0]} -u -J'
+                    res, exit_code = device_connection.connector_instance.exec_command(
+                        command, raise_unexpected_exit=False
+                    )
+                    if store and exit_code != 0:
+                        print('---- Command Failed (UDP) ----')
+                        self.store_result_fail()
+                        device_connection.disconnect()
+                        return
+                    else:
+                        result_dict_udp = self._get_iperf_result(res, mode='UDP')
+                        print('---- Command Output (UDP) ----')
+                        print(result_dict_udp)
+                        if store:
+                            self.store_result({**result_dict_tcp, **result_dict_udp})
                     device_connection.disconnect()
-                    return result_dict
+                    return {**result_dict_tcp, **result_dict_udp}
             else:
                 print(
                     f'{self.related_object}: connection not properly set, Iperf skipped!'
@@ -69,8 +73,13 @@ class Iperf(BaseCheck):
         """
         openwrt_ssh = UPDATE_STRATEGIES[0][0]
         device_connection = DeviceConnection.objects.get(device_id=device.id)
+        device_monitoring = DeviceMonitoring.objects.get(device_id=device.id)
         if device_connection.update_strategy == openwrt_ssh:
-            if device_connection.enabled and device_connection.is_working:
+            if (
+                device_connection.enabled
+                and device_connection.is_working
+                and device_monitoring.status in ['ok', 'problem']
+            ):
                 return device_connection
             else:
                 return False
@@ -84,12 +93,12 @@ class Iperf(BaseCheck):
         org_servers = app_settings.IPERF_SERVERS.get(str(organization))
         return org_servers
 
-    def _get_iperf_result(self, res, mode=None):
+    def _get_iperf_result(self, res, mode):
         """
         Get iperf test result
         """
         res_dict = json.loads(res)
-        if mode is None:
+        if mode == 'TCP':
             # Gbps = Gigabits per second
             # GB = GigaBytes
             sent_json = res_dict['end']['sum_sent']
@@ -114,8 +123,18 @@ class Iperf(BaseCheck):
             }
             return result
         # For UDP
-        else:
-            pass
+        elif mode == 'UDP':
+            jitter_ms = res_dict['end']['sum']['jitter_ms']
+            packets = res_dict['end']['sum']['packets']
+            lost_packets = res_dict['end']['sum']['lost_packets']
+            lost_percent = res_dict['end']['sum']['lost_percent']
+            result = {
+                'jitter': round(jitter_ms, 2),
+                'packets': packets,
+                'lost_packets': lost_packets,
+                'lost_percent': lost_percent,
+            }
+            return result
 
     def store_result(self, result):
         """
@@ -125,6 +144,25 @@ class Iperf(BaseCheck):
         copied = result.copy()
         iperf_result = copied.pop('iperf_result')
         metric.write(iperf_result, extra_values=copied)
+
+    def store_result_fail(self):
+        """
+        store fail result in the DB
+        """
+        self.store_result(
+            {
+                'iperf_result': 0,
+                'sent_bps': 0.0,
+                'received_bps': 0.0,
+                'sent_bytes': 0.0,
+                'received_bytes': 0.0,
+                'retransmits': 0,
+                'jitter': 0.0,
+                'packets': 0,
+                'lost_packets': 0,
+                'lost_percent': 0,
+            }
+        )
 
     def _get_metric(self):
         """
@@ -139,7 +177,14 @@ class Iperf(BaseCheck):
         """
         Creates iperf related charts (Bandwith/Jitter)
         """
-        charts = ['bitrate', 'transfer', 'retransmits']
+        charts = [
+            'bitrate',
+            'transfer',
+            'retransmits',
+            'jitter',
+            'datagram',
+            'datagram_loss',
+        ]
         for chart in charts:
             chart = Chart(metric=metric, configuration=chart)
             chart.full_clean()

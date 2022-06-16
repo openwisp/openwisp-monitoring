@@ -553,12 +553,16 @@ DEFAULT_METRICS = {
             'sent_bytes',
             'received_bytes',
             'retransmits',
+            'jitter',
+            'packets',
+            'lost_packets',
+            'lost_percent',
         ],
         'charts': {
             'bitrate': {
                 'type': 'stackedbar',
                 'title': _('Bandwidth'),
-                'description': _('Iperf3 bitrate in TCP mode.'),
+                'description': _('Bitrate during Iperf3 test in TCP mode.'),
                 'summary_labels': [
                     _('Sent bitrate'),
                     _('Received bitrate'),
@@ -571,7 +575,7 @@ DEFAULT_METRICS = {
             'transfer': {
                 'type': 'stackedbar',
                 'title': _('Transfer'),
-                'description': _('Iperf3 transfer in TCP mode.'),
+                'description': _('Total transfer during Iperf3 test in TCP mode.'),
                 'summary_labels': [
                     _('Sent bytes'),
                     _('Received bytes'),
@@ -584,11 +588,53 @@ DEFAULT_METRICS = {
             'retransmits': {
                 'type': 'bar',
                 'title': _('Retransmits'),
-                'colors': (DEFAULT_COLORS[4]),
+                'colors': [DEFAULT_COLORS[-3]],
                 'description': _('No. of retransmits during Iperf3 test in TCP mode.'),
-                'unit': '',
                 'order': 300,
                 'query': chart_query['retransmits'],
+            },
+            'jitter': {
+                'type': 'scatter',
+                'title': _('Jitter'),
+                'description': _(
+                    'Jitter is a variance in latency measured using Iperf3 utility in UDP mode'
+                ),
+                'summary_labels': [
+                    _('Jitter'),
+                ],
+                'unit': _(' ms'),
+                'order': 310,
+                'query': chart_query['jitter'],
+                'colors': [DEFAULT_COLORS[4]],
+            },
+            'datagram': {
+                'type': 'stackedbar',
+                'title': _('Datagram'),
+                'description': _(
+                    'Lost/total datagram ratio during Iperf3 test in UDP mode'
+                ),
+                'summary_labels': [
+                    _('Lost datagram'),
+                    _('Total datagram'),
+                ],
+                'unit': _(''),
+                'order': 320,
+                'query': chart_query['datagram'],
+                'colors': [DEFAULT_COLORS[3], DEFAULT_COLORS[2]],
+            },
+            'datagram_loss': {
+                'type': 'scatter',
+                'title': _('Datagram Loss'),
+                'description': _(
+                    'Indicates datagram loss during Iperf3 test in UDP mode.'
+                ),
+                'summary_labels': [
+                    _('Datagram loss'),
+                ],
+                'unit': '%',
+                'order': 330,
+                'query': chart_query['datagram_loss'],
+                'colors': [DEFAULT_COLORS[8]],
             },
         },
     },
