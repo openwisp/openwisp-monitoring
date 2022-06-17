@@ -2,6 +2,7 @@ import json
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import MultipleObjectsReturned
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
@@ -1324,6 +1325,54 @@ class TestWifiClientSessionApi(
                 'Device organization must be in user managed organization',
                 str(response.content),
             )
+
+    def test_wifisesssion_list_create_administrator_non_superuser(self):
+        org = self._create_org(name='test org')
+        device = self._create_device(organization=org)
+        wifi_client = self._create_wifi_client(mac_address='22:33:44:55:66:99')
+        self._create_wifi_session(device=device, wifi_client=wifi_client)
+        self._create_wifi_session(device=device, wifi_client=wifi_client)
+        administrator = self._create_administrator(organizations=[org])
+        self.client.force_login(administrator)
+        url = reverse('monitoring:api_wifi_session_list')
+        wifi_session_post_data = {
+            'device': str(device.pk),
+            'wifi_client': str(wifi_client.pk),
+            'ssid': 'Free Public Wifi Created',
+            'interface_name': 'wlan0',
+        }
+        with self.assertRaises(MultipleObjectsReturned):
+            self.client.post(
+                url,
+                data=wifi_session_post_data,
+                content_type='application/json',
+            )
+
+    def test_wifisesssion_list_create_superuser(self):
+        org = self._create_org(name='test org')
+        device = self._create_device(organization=org)
+        wifi_client = self._create_wifi_client(mac_address='22:33:44:55:66:99')
+        self._create_wifi_session(device=device, wifi_client=wifi_client)
+        self._create_wifi_session(device=device, wifi_client=wifi_client)
+        user = self._create_admin(username='test-admin', email='test2@test2.com')
+        self._create_org_user(user=user, is_admin=True)
+        self.client.force_login(user)
+        url = reverse('monitoring:api_wifi_session_list')
+        wifi_session_post_data = {
+            'device': str(device.pk),
+            'wifi_client': str(wifi_client.pk),
+            'ssid': 'Free Public Wifi Created',
+            'interface_name': 'wlan0',
+        }
+        response = self.client.post(
+            url,
+            data=wifi_session_post_data,
+            content_type='application/json',
+        )
+        data = response.data
+        self.assertEqual(len(data), 4)
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(WifiSession.objects.count(), 3)
 
     def test_wificlient_unauthorized_api_access(self):
         wifi_client = self._create_wifi_client()
