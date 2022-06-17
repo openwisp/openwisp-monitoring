@@ -166,9 +166,9 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         metric_rows = []
         for metric in DeviceData(pk=obj.pk).metrics.filter(alertsettings__isnull=False):
             health = 'yes' if metric.is_healthy else 'no'
+            icon_url = static(f'admin/img/icon-{health}.svg')
             metric_rows.append(
-                f'<li><img src="/static/admin/img/icon-{health}.svg" '
-                f'alt="health"> {metric.name}</li>'
+                f'<li><img src="{icon_url}" ' f'alt="health"> {metric.name}</li>'
             )
         return format_html(
             mark_safe(f'<ul class="health_checks">{"".join(metric_rows)}</ul>')
