@@ -1533,3 +1533,187 @@ class TestWifiClientSessionApi(
         self.assertEqual(data['wps'], wifi_client_post_data['wps'])
         self.assertIn('created', data.keys())
         self.assertIn('modified', data.keys())
+
+    def test_wificlient_multitenancy(self):
+        org1 = self._create_org(name='org1')
+        org2 = self._create_org(name='org2')
+        org1_device_group = self._create_device_group(
+            name='Org1 Routers', organization=org1
+        )
+        org1_device = self._create_device(
+            name='org1-device', organization=org1, group=org1_device_group
+        )
+        org2_device_group = self._create_device_group(
+            name='Org2 Routers', organization=org2
+        )
+        org2_device = self._create_device(
+            name='org2-device', organization=org2, group=org2_device_group
+        )
+        superuser1 = self._create_admin(username='super1', email='super1@super1.com')
+        adminstrator2 = self._create_administrator(
+            username='adminstrator2', email='admin2@admin2.com'
+        )
+        operator2 = self._create_operator(
+            username='operator2', email='operator2@operator2.com'
+        )
+        user2 = self._create_operator(username='user2', email='user2@user2.com')
+        self._create_org_user(user=superuser1, organization=org1, is_admin=True)
+        self._create_org_user(user=operator2, organization=org2, is_admin=True)
+        self._create_org_user(user=adminstrator2, organization=org2, is_admin=True)
+        self._create_org_user(user=user2, organization=org2)
+        wifi_client_1 = self._create_wifi_client(
+            mac_address='11:33:44:55:66:77', vendor='Org 1 client'
+        )
+        self._create_wifi_session(wifi_client=wifi_client_1, device=org1_device)
+        wifi_client_2 = self._create_wifi_client(
+            mac_address='22:33:44:55:66:77', vendor='Org 2 client'
+        )
+        self._create_wifi_session(wifi_client=wifi_client_2, device=org2_device)
+        permission_error = 'User is not a manager of the organization to which the requested resource belongs.'  # noqa
+        action_error = 'You do not have permission to perform this action.'
+
+        with self.subTest('Test operator2 wificlient endpoint'):
+            self.client.force_login(operator2)
+
+            with self.subTest('Test operator2 can only access its org related clients'):
+                response = self.client.get(reverse(('monitoring:api_wifi_client_list')))
+                data = response.data
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(data['count'], 1)
+                self.assertEqual(data['results'][0]['mac_address'], wifi_client_2.pk)
+                self.assertIsNone(data['next'])
+                self.assertIsNone(data['previous'])
+
+            with self.subTest('Test operator2 cannot create clients'):
+                wifi_client_post_data = {
+                    'mac_address': '22:33:44:55:66:88',
+                    'vendor': 'Test vendor',
+                    'ht': True,
+                    'vht': True,
+                    'wmm': False,
+                    'wds': False,
+                    'wps': False,
+                }
+                response = self.client.post(
+                    reverse('monitoring:api_wifi_client_list'),
+                    data=json.dumps(wifi_client_post_data),
+                    content_type='application/json',
+                )
+                self.assertEqual(response.status_code, 403)
+                self.assertEqual(response.data['detail'], action_error)
+
+            with self.subTest('Test operator2 cannot delete clients'):
+                response = self.client.delete(
+                    reverse(
+                        'monitoring:api_wifi_client_detail',
+                        args=(wifi_client_2.mac_address,),
+                    )
+                )
+                self.assertEqual(response.status_code, 403)
+                self.assertEqual(response.data['detail'], action_error)
+
+            with self.subTest('Test operator2 cannot update clients'):
+                response = self.client.patch(
+                    reverse(
+                        'monitoring:api_wifi_client_detail',
+                        args=(wifi_client_2.mac_address,),
+                    ),
+                    data={
+                        'mac_address': '11:22:33:44:55:66',
+                        'vendor': 'Test vendor',
+                        'ht': False,
+                    },
+                    content_type='application/json',
+                )
+                self.assertEqual(response.status_code, 403)
+                self.assertEqual(response.data['detail'], action_error)
+
+        with self.subTest('Test superuser1 wificlient endpoint'):
+            self.client.force_login(superuser1)
+
+            with self.subTest('Test superuser1 can access all clients'):
+                response = self.client.get(reverse(('monitoring:api_wifi_client_list')))
+                data = response.data
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(data['count'], 2)
+                self.assertEqual(data['results'][0]['mac_address'], wifi_client_2.pk)
+                self.assertIsNone(data['next'])
+                self.assertIsNone(data['previous'])
+                self.assertEqual(data['results'][1]['mac_address'], wifi_client_1.pk)
+                self.assertIsNone(data['next'])
+                self.assertIsNone(data['previous'])
+
+        with self.subTest('Test adminstrator2 wificlient endpoint'):
+            self.client.force_login(adminstrator2)
+
+            with self.subTest(
+                'Test adminstrator2 can only access its org related clients'
+            ):
+                response = self.client.get(reverse(('monitoring:api_wifi_client_list')))
+                data = response.data
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(data['count'], 1)
+                self.assertEqual(data['results'][0]['mac_address'], wifi_client_2.pk)
+                self.assertIsNone(data['next'])
+                self.assertIsNone(data['previous'])
+
+            with self.subTest('Test adminstrator2 can create clients'):
+                wifi_client_post_data = {
+                    'mac_address': '22:33:44:55:66:88',
+                    'vendor': 'Test adminstrator2',
+                    'ht': True,
+                    'vht': True,
+                    'wmm': False,
+                    'wds': False,
+                    'wps': False,
+                }
+                response = self.client.post(
+                    reverse('monitoring:api_wifi_client_list'),
+                    data=json.dumps(wifi_client_post_data),
+                    content_type='application/json',
+                )
+                data = response.data
+                self.assertEqual(len(data), 9)
+                self.assertEqual(response.status_code, 201)
+                self.assertEqual(WifiClient.objects.count(), 3)
+                self.assertEqual(
+                    data['mac_address'], wifi_client_post_data['mac_address']
+                )
+                self.assertEqual(data['vendor'], wifi_client_post_data['vendor'])
+
+            with self.subTest('Test adminstrator2 can update clients'):
+                response = self.client.patch(
+                    reverse(
+                        'monitoring:api_wifi_client_detail',
+                        args=(wifi_client_2.mac_address,),
+                    ),
+                    data={
+                        'mac_address': '11:22:33:44:55:66',
+                        'vendor': 'Test adminstrator2',
+                        'ht': False,
+                    },
+                    content_type='application/json',
+                )
+                data = response.data
+                self.assertEqual(data['mac_address'], '11:22:33:44:55:66')
+                self.assertEqual(data['vendor'], 'Test adminstrator2')
+                self.assertEqual(data['ht'], False)
+
+            with self.subTest('Test adminstrator2 can delete clients'):
+                self.assertEqual(WifiClient.objects.count(), 4)
+                response = self.client.get(reverse(('monitoring:api_wifi_client_list')))
+                data = response.data
+                response = self.client.delete(
+                    reverse(
+                        'monitoring:api_wifi_client_detail',
+                        args=(wifi_client_2.mac_address,),
+                    )
+                )
+                self.assertEqual(response.status_code, 204)
+                self.assertEqual(WifiClient.objects.count(), 3)
+
+        with self.subTest('Test clients NOT accessible to non org managers'):
+            self.client.force_login(user2)
+            response = self.client.get(reverse(('monitoring:api_wifi_client_list')))
+            self.assertEqual(response.status_code, 403)
+            self.assertEqual(response.data['detail'], permission_error)
