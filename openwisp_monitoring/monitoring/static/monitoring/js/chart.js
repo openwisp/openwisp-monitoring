@@ -196,12 +196,12 @@
         if(data.trace_order !== undefined)  {
             var total_traffic_charts = charts[0].y;
             var sum = 0;
-            for(var i=0; i<total_traffic_charts.length; i++){
+            for(i=0; i<total_traffic_charts.length; i++){
                 sum += total_traffic_charts[i];
             }
             var average = sum / total_traffic_charts.length;
             if (average < 0.01){
-                for(var i=0; i<total_traffic_charts.length; i++){
+                for(i=0; i<total_traffic_charts.length; i++){
                     charts[0].y[i] *= 1000000;
                     charts[1].y[i] *= 1000000;
                     charts[2].y[i] *= 1000000;
@@ -209,7 +209,7 @@
                 unit = 'KB';
             }
             else if (average < 1){
-                for(var i=0; i<total_traffic_charts.length; i++){
+                for(i=0; i<total_traffic_charts.length; i++){
                     charts[0].y[i] *= 1000;
                     charts[1].y[i] *= 1000;
                     charts[2].y[i] *= 1000;
@@ -220,7 +220,7 @@
                 unit = 'GB';
             }
 
-            for(var i=0; i<total_traffic_charts.length; i++){
+            for(i=0; i<total_traffic_charts.length; i++){
                 charts[0].hovertemplate[i] = charts[0].y[i] + unit;
                 charts[1].hovertemplate[i] = charts[1].y[i] + unit;
                 charts[2].hovertemplate[i] = charts[2].y[i] + unit;
