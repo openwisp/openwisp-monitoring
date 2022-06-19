@@ -206,7 +206,9 @@ DEFAULT_METRICS = {
                     _('Total download traffic'),
                     _('Total upload traffic'),
                 ],
-                'unit': _(' GB'),
+                'conversion': {
+                    'filter': '{unit}',
+                },
                 'order': 240,
                 'query': chart_query['traffic'],
                 'colors': [
