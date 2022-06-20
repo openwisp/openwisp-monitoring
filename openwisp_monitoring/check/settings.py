@@ -20,7 +20,7 @@ IPERF_SERVERS = get_settings_value(
         # Running on my local
         # Some Public Iperf Servers : https://iperf.fr/iperf-servers.php#public-servers
         # 'be63c4e5-a68a-4650-bfe8-733837edb8be': ['iperf.biznetnetworks.com'],
-        'be63c4e5-a68a-4650-bfe8-733837edb8be': ['192.168.5.109'],
+        'a9734710-db30-46b0-a2fc-01f01046fe4f': ['speedtest.uztelecom.uz'],
         # '<org-pk>': ['<ORG_IPERF_SERVER>']
     },
 )

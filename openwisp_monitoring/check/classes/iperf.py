@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.core.exceptions import ObjectDoesNotExist
 from swapper import load_model
@@ -8,10 +9,11 @@ from openwisp_controller.connection.settings import UPDATE_STRATEGIES
 from .. import settings as app_settings
 from .base import BaseCheck
 
+logger = logging.getLogger(__name__)
+
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 Device = load_model('config', 'Device')
-DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 Credentials = load_model('connection', 'Credentials')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 DeviceConnection = load_model('connection', 'DeviceConnection')
@@ -24,47 +26,38 @@ class Iperf(BaseCheck):
             device_connection = self._check_device_connection(device)
             if device_connection:
                 device_connection.connect()
-                print(f'--- [{self.related_object}] is connected! ---')
                 servers = self._get_iperf_servers(device.organization.id)
                 command = f'iperf3 -c {servers[0]} -J'
                 res, exit_code = device_connection.connector_instance.exec_command(
                     command, raise_unexpected_exit=False
                 )
                 if store and exit_code != 0:
-                    print('---- Command Failed (TCP)----')
                     self.store_result_fail()
                     device_connection.disconnect()
                     return
                 else:
                     result_dict_tcp = self._get_iperf_result(res, mode='TCP')
-                    print('---- Command Output (TCP) ----')
-                    print(result_dict_tcp)
                     # UDP
                     command = f'iperf3 -c {servers[0]} -u -J'
                     res, exit_code = device_connection.connector_instance.exec_command(
                         command, raise_unexpected_exit=False
                     )
                     if store and exit_code != 0:
-                        print('---- Command Failed (UDP) ----')
                         self.store_result_fail()
                         device_connection.disconnect()
                         return
                     else:
                         result_dict_udp = self._get_iperf_result(res, mode='UDP')
-                        print('---- Command Output (UDP) ----')
-                        print(result_dict_udp)
                         if store:
                             self.store_result({**result_dict_tcp, **result_dict_udp})
                     device_connection.disconnect()
                     return {**result_dict_tcp, **result_dict_udp}
             else:
-                print(
-                    f'{self.related_object}: connection not properly set, Iperf skipped!'
-                )
+                logger.warning(f'{device}: connection not properly set, Iperf skipped!')
                 return
         # If device have not active connection warning logged (return)
         except ObjectDoesNotExist:
-            print(f'{self.related_object}: has no active connection, Iperf skipped!')
+            logger.warning(f'{device}: connection not properly set, Iperf skipped!')
             return
 
     def _check_device_connection(self, device):
@@ -73,12 +66,11 @@ class Iperf(BaseCheck):
         """
         openwrt_ssh = UPDATE_STRATEGIES[0][0]
         device_connection = DeviceConnection.objects.get(device_id=device.id)
-        device_monitoring = DeviceMonitoring.objects.get(device_id=device.id)
         if device_connection.update_strategy == openwrt_ssh:
             if (
                 device_connection.enabled
                 and device_connection.is_working
-                and device_monitoring.status in ['ok', 'problem']
+                and device.monitoring.status in ['ok', 'problem']
             ):
                 return device_connection
             else:
@@ -86,11 +78,11 @@ class Iperf(BaseCheck):
         else:
             return False
 
-    def _get_iperf_servers(self, organization):
+    def _get_iperf_servers(self, organization_id):
         """
         Get iperf test servers
         """
-        org_servers = app_settings.IPERF_SERVERS.get(str(organization))
+        org_servers = app_settings.IPERF_SERVERS.get(str(organization_id))
         return org_servers
 
     def _get_iperf_result(self, res, mode):
@@ -127,12 +119,12 @@ class Iperf(BaseCheck):
             jitter_ms = res_dict['end']['sum']['jitter_ms']
             packets = res_dict['end']['sum']['packets']
             lost_packets = res_dict['end']['sum']['lost_packets']
-            lost_percent = res_dict['end']['sum']['lost_percent']
+            lost_percent = float(res_dict['end']['sum']['lost_percent'])
             result = {
                 'jitter': round(jitter_ms, 2),
                 'packets': packets,
                 'lost_packets': lost_packets,
-                'lost_percent': lost_percent,
+                'lost_percent': round(lost_percent, 2),
             }
             return result
 
@@ -160,7 +152,7 @@ class Iperf(BaseCheck):
                 'jitter': 0.0,
                 'packets': 0,
                 'lost_packets': 0,
-                'lost_percent': 0,
+                'lost_percent': 0.0,
             }
         )
 

@@ -570,7 +570,7 @@ DEFAULT_METRICS = {
                 'unit': _(' Gbps'),
                 'order': 280,
                 'query': chart_query['bitrate'],
-                'colors': (DEFAULT_COLORS[5], DEFAULT_COLORS[9]),
+                'colors': [DEFAULT_COLORS[5], DEFAULT_COLORS[9]],
             },
             'transfer': {
                 'type': 'stackedbar',
@@ -583,7 +583,7 @@ DEFAULT_METRICS = {
                 'unit': _(' GB'),
                 'order': 290,
                 'query': chart_query['transfer'],
-                'colors': (DEFAULT_COLORS[2], DEFAULT_COLORS[4]),
+                'colors': [DEFAULT_COLORS[2], DEFAULT_COLORS[4]],
             },
             'retransmits': {
                 'type': 'bar',
