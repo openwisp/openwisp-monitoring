@@ -301,6 +301,11 @@
                 percircles.push(percircleOptions);
             }
             percircles = sortByTraceOrder(data.trace_order, percircles, '_key');
+            if(data.trace_order !== undefined) {
+                for(i=0; i<percircles.length; i++){
+                    percircles[i].text = percircles[i].text.replace(data.unit, 'GB');
+                }
+            }
             for (i=0; i<percircles.length; ++i) {
                 percircleContainer.append(
                     '<div class="small circle" title="' + percircles[i].htmlTitle + '"></div>'
