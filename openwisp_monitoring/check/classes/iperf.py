@@ -1,7 +1,6 @@
 import json
 import logging
 
-from django.core.exceptions import ObjectDoesNotExist
 from swapper import load_model
 
 from openwisp_controller.connection.settings import UPDATE_STRATEGIES
@@ -21,13 +20,26 @@ DeviceConnection = load_model('connection', 'DeviceConnection')
 
 class Iperf(BaseCheck):
     def check(self, store=True):
-        try:
-            device = self.related_object
-            device_connection = self._check_device_connection(device)
-            if device_connection:
-                device_connection.connect()
-                servers = self._get_iperf_servers(device.organization.id)
-                command = f'iperf3 -c {servers[0]} -J'
+        device = self.related_object
+        device_connection = self._get_device_connection(device)
+        if not device_connection:
+            logger.warning(f'{device}: connection not properly set, Iperf skipped!')
+            return
+        else:
+            device_connection.connect()
+            servers = self._get_iperf_servers(device.organization.id)
+            command = f'iperf3 -c {servers[0]} -J'
+            res, exit_code = device_connection.connector_instance.exec_command(
+                command, raise_unexpected_exit=False
+            )
+            if store and exit_code != 0:
+                self.store_result_fail()
+                device_connection.disconnect()
+                return
+            else:
+                result_dict_tcp = self._get_iperf_result(res, mode='TCP')
+                # UDP
+                command = f'iperf3 -c {servers[0]} -u -J'
                 res, exit_code = device_connection.connector_instance.exec_command(
                     command, raise_unexpected_exit=False
                 )
@@ -36,47 +48,24 @@ class Iperf(BaseCheck):
                     device_connection.disconnect()
                     return
                 else:
-                    result_dict_tcp = self._get_iperf_result(res, mode='TCP')
-                    # UDP
-                    command = f'iperf3 -c {servers[0]} -u -J'
-                    res, exit_code = device_connection.connector_instance.exec_command(
-                        command, raise_unexpected_exit=False
-                    )
-                    if store and exit_code != 0:
-                        self.store_result_fail()
-                        device_connection.disconnect()
-                        return
-                    else:
-                        result_dict_udp = self._get_iperf_result(res, mode='UDP')
-                        if store:
-                            self.store_result({**result_dict_tcp, **result_dict_udp})
-                    device_connection.disconnect()
-                    return {**result_dict_tcp, **result_dict_udp}
-            else:
-                logger.warning(f'{device}: connection not properly set, Iperf skipped!')
-                return
-        # If device have not active connection warning logged (return)
-        except ObjectDoesNotExist:
-            logger.warning(f'{device}: connection not properly set, Iperf skipped!')
-            return
+                    result_dict_udp = self._get_iperf_result(res, mode='UDP')
+                    if store:
+                        self.store_result({**result_dict_tcp, **result_dict_udp})
+                device_connection.disconnect()
+                return {**result_dict_tcp, **result_dict_udp}
 
-    def _check_device_connection(self, device):
+    def _get_device_connection(self, device):
         """
-        Check device has an active connection with right update_strategy(ssh)
+        Returns an active SSH DeviceConnection for a device.
         """
         openwrt_ssh = UPDATE_STRATEGIES[0][0]
-        device_connection = DeviceConnection.objects.get(device_id=device.id)
-        if device_connection.update_strategy == openwrt_ssh:
-            if (
-                device_connection.enabled
-                and device_connection.is_working
-                and device.monitoring.status in ['ok', 'problem']
-            ):
-                return device_connection
-            else:
-                return False
-        else:
-            return False
+        device_connection = DeviceConnection.objects.filter(
+            device_id=device.id,
+            update_strategy=openwrt_ssh,
+            enabled=True,
+            is_working=True,
+        ).first()
+        return device_connection
 
     def _get_iperf_servers(self, organization_id):
         """
