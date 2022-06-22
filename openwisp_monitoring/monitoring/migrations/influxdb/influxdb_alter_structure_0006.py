@@ -66,6 +66,13 @@ def retry_until_success(func, *args, **kwargs):
             InfluxDBServerError,
             timeseries_db.client_error,
         ) as error:
+            if 'points beyond retention policy dropped' in str(error):
+                # When writing data to the InfluxDB, if the measurement
+                # points are older than the retention policy the
+                # InfluxDB returns a HTTP 400 response. Retrying this
+                # operation will again result in HTTP 400, hence
+                # this error is assumed as success.
+                return True
             sleep_time *= 2
             time.sleep(sleep_time)
             logger.warning(
