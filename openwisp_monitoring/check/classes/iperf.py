@@ -25,10 +25,20 @@ class Iperf(BaseCheck):
         if not device_connection:
             logger.warning(f'{device}: connection not properly set, Iperf skipped!')
             return
+        device_connection.connect()
+        servers = self._get_iperf_servers(device.organization.id)
+        command = f'iperf3 -c {servers[0]} -J'
+        res, exit_code = device_connection.connector_instance.exec_command(
+            command, raise_unexpected_exit=False
+        )
+        if store and exit_code != 0:
+            self.store_result_fail()
+            device_connection.disconnect()
+            return
         else:
-            device_connection.connect()
-            servers = self._get_iperf_servers(device.organization.id)
-            command = f'iperf3 -c {servers[0]} -J'
+            result_dict_tcp = self._get_iperf_result(res, mode='TCP')
+            # UDP
+            command = f'iperf3 -c {servers[0]} -u -J'
             res, exit_code = device_connection.connector_instance.exec_command(
                 command, raise_unexpected_exit=False
             )
@@ -37,22 +47,11 @@ class Iperf(BaseCheck):
                 device_connection.disconnect()
                 return
             else:
-                result_dict_tcp = self._get_iperf_result(res, mode='TCP')
-                # UDP
-                command = f'iperf3 -c {servers[0]} -u -J'
-                res, exit_code = device_connection.connector_instance.exec_command(
-                    command, raise_unexpected_exit=False
-                )
-                if store and exit_code != 0:
-                    self.store_result_fail()
-                    device_connection.disconnect()
-                    return
-                else:
-                    result_dict_udp = self._get_iperf_result(res, mode='UDP')
-                    if store:
-                        self.store_result({**result_dict_tcp, **result_dict_udp})
-                device_connection.disconnect()
-                return {**result_dict_tcp, **result_dict_udp}
+                result_dict_udp = self._get_iperf_result(res, mode='UDP')
+                if store:
+                    self.store_result({**result_dict_tcp, **result_dict_udp})
+            device_connection.disconnect()
+            return {**result_dict_tcp, **result_dict_udp}
 
     def _get_device_connection(self, device):
         """
