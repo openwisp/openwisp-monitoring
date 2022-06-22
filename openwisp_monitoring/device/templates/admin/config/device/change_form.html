@@ -342,7 +342,7 @@
                   <div class="form-row">
                       <label>{% trans 'Spanning Tree Protocol' %}:</label>
                       <div class="readonly">
-                          <img src="{% get_static_prefix %}/admin/img/icon-{{ interface.stp|yesno:'yes,no,no' }}.svg">
+                          <img src="{% get_static_prefix %}admin/img/icon-{{ interface.stp|yesno:'yes,no,no' }}.svg">
                       </div>
                   </div>
                   {% endif %}
@@ -350,7 +350,7 @@
                   <div class="form-row">
                       <label>{% trans 'Up' %}:</label>
                       <div class="readonly">
-                          <img src="{% get_static_prefix %}/admin/img/icon-{{ interface.up|yesno:'yes,no,no' }}.svg">
+                          <img src="{% get_static_prefix %}admin/img/icon-{{ interface.up|yesno:'yes,no,no' }}.svg">
                       </div>
                   </div>
                   {% endif %}
@@ -358,7 +358,7 @@
                   <div class="form-row">
                       <label>{% trans 'Multicast' %}:</label>
                       <div class="readonly">
-                           <img src="{% get_static_prefix %}/admin/img/icon-{{ interface.multicast|yesno:'yes,no,no' }}.svg">
+                           <img src="{% get_static_prefix %}admin/img/icon-{{ interface.multicast|yesno:'yes,no,no' }}.svg">
                       </div>
                   </div>
                   {% endif %}
@@ -417,19 +417,19 @@
                           </td>
                           {% endif %}
                           <td class="ht">
-                              <img src="{% get_static_prefix %}/admin/img/icon-{{ client.ht|yesno:'yes,no,no' }}.svg">
+                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.ht|yesno:'yes,no,no' }}.svg">
                           </td>
                           <td class="vht">
-                              <img src="{% get_static_prefix %}/admin/img/icon-{{ client.vht|yesno:'yes,no,no' }}.svg">
+                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.vht|yesno:'yes,no,no' }}.svg">
                           </td>
                           <td class="wmm">
-                              <img src="{% get_static_prefix %}/admin/img/icon-{{ client.wmm|yesno:'yes,no,no' }}.svg">
+                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.wmm|yesno:'yes,no,no' }}.svg">
                           </td>
                           <td class="wds">
-                              <img src="{% get_static_prefix %}/admin/img/icon-{{ client.wds|yesno:'yes,no,no' }}.svg">
+                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.wds|yesno:'yes,no,no' }}.svg">
                           </td>
                           <td class="wps">
-                              <img src="{% get_static_prefix %}/admin/img/icon-{{ client.wps|yesno:'yes,no,no' }}.svg">
+                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.wps|yesno:'yes,no,no' }}.svg">
                           </td>
                       </tr>
                       {% endfor %}
