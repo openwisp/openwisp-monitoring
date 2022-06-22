@@ -206,7 +206,7 @@
                     charts[1].y[i] *= 1000000;
                     charts[2].y[i] *= 1000000;
                 }
-                unit = 'KB';
+                unit = ' KB';
             }
             else if (average < 1){
                 for(i=0; i<total_traffic_charts.length; i++){
@@ -214,10 +214,10 @@
                     charts[1].y[i] *= 1000;
                     charts[2].y[i] *= 1000;
                 }
-                unit = 'MB';
+                unit = ' MB';
             }
             else {
-                unit = 'GB';
+                unit = ' GB';
             }
 
             for(i=0; i<total_traffic_charts.length; i++){
@@ -303,7 +303,7 @@
             percircles = sortByTraceOrder(data.trace_order, percircles, '_key');
             if(data.trace_order !== undefined) {
                 for(i=0; i<percircles.length; i++){
-                    percircles[i].text = percircles[i].text.replace(data.unit, 'GB');
+                    percircles[i].text = percircles[i].text.replace(data.unit, ' GB');
                 }
             }
             for (i=0; i<percircles.length; ++i) {
