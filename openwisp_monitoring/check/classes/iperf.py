@@ -26,6 +26,12 @@ class Iperf(BaseCheck):
             logger.warning(f'{device}: connection not properly set, Iperf skipped!')
             return
         device_connection.connect()
+        # We need to check device_connection is_working just right after connect().
+        # because it may be possible that authentication (publickey) failed.
+        # or any other failure happened during connect().
+        if not device_connection.is_working:
+            logger.warning(f'{device}: SSH connection is not working, Iperf skipped!')
+            return
         servers = self._get_iperf_servers(device.organization.id)
         command = f'iperf3 -c {servers[0]} -J'
         res, exit_code = device_connection.connector_instance.exec_command(
