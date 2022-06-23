@@ -206,6 +206,7 @@
                     charts[1].y[i] *= 1000000;
                     charts[2].y[i] *= 1000000;
                 }
+                layout.yaxis.title = ' KB';
                 unit = ' KB';
             }
             else if (average < 1){
@@ -214,9 +215,11 @@
                     charts[1].y[i] *= 1000;
                     charts[2].y[i] *= 1000;
                 }
+                layout.yaxis.title = ' MB';
                 unit = ' MB';
             }
             else {
+                layout.yaxis.title = ' GB';
                 unit = ' GB';
             }
 
@@ -299,13 +302,24 @@
                     percircleOptions.progressBarColor = data.colors[data.trace_order.indexOf(key)];
                 }
                 percircles.push(percircleOptions);
+                if(data.trace_order !== undefined) {
+                    if(value < 0.01){
+                        value *= 1000000;
+                        data.unit = ' KB';
+                        percircles[i].text = value + data.unit;
+                    }
+                    else if(value < 1){
+                        value *= 1000;
+                        data.unit = ' MB';
+                        percircles[i].text = value + data.unit;
+                    }
+                    else{
+                        data.unit = ' GB';
+                        percircles[i].text = value + data.unit;
+                    }
             }
+        }
             percircles = sortByTraceOrder(data.trace_order, percircles, '_key');
-            if(data.trace_order !== undefined) {
-                for(i=0; i<percircles.length; i++){
-                    percircles[i].text = percircles[i].text.replace(data.unit, ' GB');
-                }
-            }
             for (i=0; i<percircles.length; ++i) {
                 percircleContainer.append(
                     '<div class="small circle" title="' + percircles[i].htmlTitle + '"></div>'
