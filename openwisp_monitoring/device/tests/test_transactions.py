@@ -62,8 +62,6 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
         dm = self._create_device_monitoring()
         dm.device.management_ip = None
         dm.device.save()
-        # Delete iperf check to prevent unnecessary response timeout
-        Check.objects.filter(check_type__endswith='Iperf').delete()
         trigger_device_checks.delay(dm.device.pk)
         self.assertTrue(Check.objects.exists())
         # we expect update_status() to be called once (by the check)
