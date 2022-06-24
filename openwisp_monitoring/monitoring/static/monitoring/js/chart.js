@@ -199,7 +199,13 @@
             for(i=0; i<total_traffic_charts.length; i++){
                 sum += total_traffic_charts[i];
             }
-            var average = sum / total_traffic_charts.length;
+            var count = 0;
+            for(i=0; i<total_traffic_charts.length; i++){
+                if(total_traffic_charts[i] !== 0){
+                    count++;
+                }
+            }
+            var average = sum / count;
             if (average < 0.01){
                 for(i=0; i<total_traffic_charts.length; i++){
                     charts[0].y[i] *= 1000000;
