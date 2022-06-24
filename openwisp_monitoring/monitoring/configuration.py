@@ -573,17 +573,24 @@ DEFAULT_METRICS = {
                 'colors': [DEFAULT_COLORS[5], DEFAULT_COLORS[9]],
             },
             'transfer': {
-                'type': 'stackedbar',
+                'type': 'stackedbar+lines',
                 'title': _('Transfer'),
-                'description': _('Total transfer during Iperf3 test in TCP mode.'),
+                'trace_type': {
+                    'received': 'stackedbar',
+                    'sent': 'stackedbar',
+                    'total': 'lines',
+                },
+                'trace_order': ['total', 'received', 'sent'],
+                'description': _('Transfer during Iperf3 test in TCP mode.'),
                 'summary_labels': [
-                    _('Sent bytes'),
+                    _('Total bytes'),
                     _('Received bytes'),
+                    _('Sent bytes'),
                 ],
                 'unit': _(' GB'),
                 'order': 290,
                 'query': chart_query['transfer'],
-                'colors': [DEFAULT_COLORS[2], DEFAULT_COLORS[4]],
+                'colors': [DEFAULT_COLORS[7], DEFAULT_COLORS[2], DEFAULT_COLORS[4]],
             },
             'retransmits': {
                 'type': 'bar',

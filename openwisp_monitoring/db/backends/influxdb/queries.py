@@ -110,8 +110,9 @@ chart_query = {
     },
     'transfer': {
         'influxdb': (
-            "SELECT MEAN(sent_bytes) AS sent, "
-            "MEAN(received_bytes) AS received FROM {key} WHERE "
+            "SELECT SUM(received_bytes) AS received, "
+            "SUM(sent_bytes) AS sent,"
+            "SUM(sent_bytes) + SUM(received_bytes) AS total FROM {key} WHERE "
             "time >= '{time}' AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )

@@ -23,14 +23,15 @@ class Iperf(BaseCheck):
         device = self.related_object
         device_connection = self._get_device_connection(device)
         if not device_connection:
-            logger.warning(f'{device}: connection not properly set, Iperf skipped!')
+            logger.warning(
+                f'DeviceConnection is not properly set for "{device}", iperf check skipped!'
+            )
             return
-        device_connection.connect()
-        # We need to check device_connection is_working just right after connect().
-        # because it may be possible that authentication (publickey) failed.
-        # or any other failure happened during connect().
-        if not device_connection.is_working:
-            logger.warning(f'{device}: SSH connection is not working, Iperf skipped!')
+        # The DeviceConnection could fail if the management tunnel is down.
+        if not device_connection.connect():
+            logger.warning(
+                f'Failed to get a working DeviceConnection for "{device}", iperf check skipped!'
+            )
             return
         servers = self._get_iperf_servers(device.organization.id)
         command = f'iperf3 -c {servers[0]} -J'
@@ -38,6 +39,9 @@ class Iperf(BaseCheck):
             command, raise_unexpected_exit=False
         )
         if store and exit_code != 0:
+            logger.warning(
+                f'Iperf check failed for "{device}", {json.loads(res)["error"]}'
+            )
             self.store_result_fail()
             device_connection.disconnect()
             return
@@ -49,6 +53,9 @@ class Iperf(BaseCheck):
                 command, raise_unexpected_exit=False
             )
             if store and exit_code != 0:
+                logger.warning(
+                    f'Iperf check failed for "{device}", {json.loads(res)["error"]}'
+                )
                 self.store_result_fail()
                 device_connection.disconnect()
                 return
