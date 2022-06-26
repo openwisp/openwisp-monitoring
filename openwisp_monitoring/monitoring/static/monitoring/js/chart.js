@@ -210,9 +210,9 @@
             if (average < 0.01){
                 for(i=0; i<total_traffic_charts.length; i++){
                     multiplier = 1000000;
-                    charts[0].y[i] = Math.round(charts[0].y[i] * multiplier, 2);
-                    charts[1].y[i] = Math.round(charts[1].y[i] * multiplier, 2);
-                    charts[2].y[i] = Math.round(charts[2].y[i] * multiplier, 2);
+                    charts[0].y[i] = Math.round((charts[0].y[i] * multiplier) * 100)/100;
+                    charts[1].y[i] = Math.round((charts[1].y[i] * multiplier) * 100)/100;
+                    charts[2].y[i] = Math.round((charts[2].y[i] * multiplier) * 100)/100;
                 }
                 layout.yaxis.title = ' KB';
                 unit = ' KB';
@@ -220,9 +220,9 @@
             else if (average < 1){
                 for(i=0; i<total_traffic_charts.length; i++){
                     multiplier = 1000;
-                    charts[0].y[i] = Math.round(charts[0].y[i] * multiplier, 2);
-                    charts[1].y[i] = Math.round(charts[1].y[i] * multiplier, 2);
-                    charts[2].y[i] = Math.round(charts[2].y[i] * multiplier, 2);
+                    charts[0].y[i] = Math.round((charts[0].y[i] * multiplier) * 100)/100;
+                    charts[1].y[i] = Math.round((charts[1].y[i] * multiplier) * 100)/100;
+                    charts[2].y[i] = Math.round((charts[2].y[i] * multiplier) * 100)/100;
                 }
                 layout.yaxis.title = ' MB';
                 unit = ' MB';
@@ -312,6 +312,10 @@
                 }
                 percircles.push(percircleOptions);
                 if(data.trace_order !== undefined) {
+                    if(value == 0){
+                        data.unit = ' B';
+                        percircles[i].text = value + data.unit;
+                    }
                     if(value < 0.01){
                         value *= 1000000;
                         data.unit = ' KB';
