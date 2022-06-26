@@ -206,20 +206,23 @@
                 }
             }
             var average = sum / count;
+            var multiplier;
             if (average < 0.01){
                 for(i=0; i<total_traffic_charts.length; i++){
-                    charts[0].y[i] *= 1000000;
-                    charts[1].y[i] *= 1000000;
-                    charts[2].y[i] *= 1000000;
+                    multiplier = 1000000;
+                    charts[0].y[i] = Math.round(charts[0].y[i] * multiplier, 2);
+                    charts[1].y[i] = Math.round(charts[1].y[i] * multiplier, 2);
+                    charts[2].y[i] = Math.round(charts[2].y[i] * multiplier, 2);
                 }
                 layout.yaxis.title = ' KB';
                 unit = ' KB';
             }
             else if (average < 1){
                 for(i=0; i<total_traffic_charts.length; i++){
-                    charts[0].y[i] *= 1000;
-                    charts[1].y[i] *= 1000;
-                    charts[2].y[i] *= 1000;
+                    multiplier = 1000;
+                    charts[0].y[i] = Math.round(charts[0].y[i] * multiplier, 2);
+                    charts[1].y[i] = Math.round(charts[1].y[i] * multiplier, 2);
+                    charts[2].y[i] = Math.round(charts[2].y[i] * multiplier, 2);
                 }
                 layout.yaxis.title = ' MB';
                 unit = ' MB';
