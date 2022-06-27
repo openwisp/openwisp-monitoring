@@ -34,38 +34,25 @@ class Iperf(BaseCheck):
             )
             return
         servers = self._get_iperf_servers(device.organization.id)
+
+        # TCP mode
         command = f'iperf3 -c {servers[0]} -J'
-        res, exit_code = device_connection.connector_instance.exec_command(
-            command, raise_unexpected_exit=False
-        )
-        if exit_code != 0:
-            logger.warning(
-                f'Iperf check failed for "{device}", {json.loads(res)["error"]}'
-            )
-            result_tcp = self._get_fail_result(mode='TCP')
-        else:
-            result_tcp = self._get_iperf_result(res, mode='TCP')
+        res, exit_code = self._exec_command(device_connection, command)
+        result_tcp = self._get_iperf_result(res, exit_code, device, mode='TCP')
+
+        # UDP mode
         command = f'iperf3 -c {servers[0]} -u -J'
-        res, exit_code = device_connection.connector_instance.exec_command(
-            command, raise_unexpected_exit=False
-        )
-        if store and exit_code != 0:
-            logger.warning(
-                f'Iperf check failed for "{device}", {json.loads(res)["error"]}'
-            )
-            result_udp = self._get_fail_result(mode='UDP')
-            iperf_result = result_tcp['iperf_result']
+        res, exit_code = self._exec_command(device_connection, command)
+        result_udp = self._get_iperf_result(res, exit_code, device, mode='UDP')
+
+        if store:
+            # Store iperf_result field 1 if any mode passes, store 0 when both fails
+            iperf_result = result_tcp['iperf_result'] | result_udp['iperf_result']
             self.store_result(
                 {**result_tcp, **result_udp, 'iperf_result': iperf_result}
             )
-            device_connection.disconnect()
-            return
-        else:
-            result_udp = self._get_iperf_result(res, mode='UDP')
-            if store:
-                self.store_result({**result_tcp, **result_udp})
         device_connection.disconnect()
-        return {**result_tcp, **result_udp}
+        return {**result_tcp, **result_udp, 'iperf_result': iperf_result}
 
     def _get_device_connection(self, device):
         """
@@ -87,46 +74,80 @@ class Iperf(BaseCheck):
         org_servers = app_settings.IPERF_SERVERS.get(str(organization_id))
         return org_servers
 
-    def _get_iperf_result(self, res, mode):
+    def _exec_command(self, dc, command):
+        """
+        Executes device command
+        """
+        return dc.connector_instance.exec_command(command, raise_unexpected_exit=False)
+
+    def _get_iperf_result(self, res, exit_code, device, mode):
         """
         Get iperf test result
         """
+
         res_dict = json.loads(res)
         if mode == 'TCP':
-            # Gbps = Gigabits per second
-            # GB = GigaBytes
-            sent_json = res_dict['end']['sum_sent']
-            recv_json = res_dict['end']['sum_received']
-            sent_bytes = sent_json['bytes']
-            sent_bytes_GB = sent_bytes / 1000000000
-            sent_bps = sent_json['bits_per_second']
-            sent_Gbps = sent_bps / 1000000000
-            received_bytes = recv_json['bytes']
-            received_bytes_GB = received_bytes / 1000000000
-            received_bps = recv_json['bits_per_second']
-            received_Gbps = received_bps / 1000000000
-            retransmits = sent_json['retransmits']
-            return {
-                'iperf_result': 1,
-                'sent_bps': round(sent_Gbps, 2),
-                'received_bps': round(received_Gbps, 2),
-                'sent_bytes': round(sent_bytes_GB, 2),
-                'received_bytes': round(received_bytes_GB, 2),
-                'retransmits': retransmits,
-            }
+            if exit_code != 0:
+                logger.warning(
+                    f'Iperf check failed for "{device}", {res_dict["error"]}'
+                )
+                return {
+                    'iperf_result': 0,
+                    'sent_bps': 0.0,
+                    'received_bps': 0.0,
+                    'sent_bytes': 0.0,
+                    'received_bytes': 0.0,
+                    'retransmits': 0,
+                }
+            else:
+                # Gbps = Gigabits per second
+                # GB = GigaBytes
+                # Todo : Remove below coversion once
+                # https://github.com/openwisp/openwisp-monitoring/pull/397 get merged
+                sent_json = res_dict['end']['sum_sent']
+                recv_json = res_dict['end']['sum_received']
+                sent_bytes = sent_json['bytes']
+                sent_bytes_GB = sent_bytes / 1000000000
+                sent_bps = sent_json['bits_per_second']
+                sent_Gbps = sent_bps / 1000000000
+                received_bytes = recv_json['bytes']
+                received_bytes_GB = received_bytes / 1000000000
+                received_bps = recv_json['bits_per_second']
+                received_Gbps = received_bps / 1000000000
+                retransmits = sent_json['retransmits']
+                return {
+                    'iperf_result': 1,
+                    'sent_bps': round(sent_Gbps, 2),
+                    'received_bps': round(received_Gbps, 2),
+                    'sent_bytes': round(sent_bytes_GB, 2),
+                    'received_bytes': round(received_bytes_GB, 2),
+                    'retransmits': retransmits,
+                }
 
         elif mode == 'UDP':
-            jitter_ms = res_dict['end']['sum']['jitter_ms']
-            packets = res_dict['end']['sum']['packets']
-            lost_packets = res_dict['end']['sum']['lost_packets']
-            lost_percent = float(res_dict['end']['sum']['lost_percent'])
-            return {
-                'iperf_result': 1,
-                'jitter': round(jitter_ms, 2),
-                'packets': packets,
-                'lost_packets': lost_packets,
-                'lost_percent': round(lost_percent, 2),
-            }
+            if exit_code != 0:
+                logger.warning(
+                    f'Iperf check failed for "{device}", {res_dict["error"]}'
+                )
+                return {
+                    'iperf_result': 0,
+                    'jitter': 0.0,
+                    'packets': 0,
+                    'lost_packets': 0,
+                    'lost_percent': 0.0,
+                }
+            else:
+                jitter_ms = res_dict['end']['sum']['jitter_ms']
+                packets = res_dict['end']['sum']['packets']
+                lost_packets = res_dict['end']['sum']['lost_packets']
+                lost_percent = float(res_dict['end']['sum']['lost_percent'])
+                return {
+                    'iperf_result': 1,
+                    'jitter': round(jitter_ms, 2),
+                    'packets': packets,
+                    'lost_packets': lost_packets,
+                    'lost_percent': round(lost_percent, 2),
+                }
 
     def store_result(self, result):
         """
@@ -136,28 +157,6 @@ class Iperf(BaseCheck):
         copied = result.copy()
         iperf_result = copied.pop('iperf_result')
         metric.write(iperf_result, extra_values=copied)
-
-    def _get_fail_result(self, mode):
-        """
-        Get fail test result in the DB
-        """
-        if mode == 'TCP':
-            return {
-                'iperf_result': 0,
-                'sent_bps': 0.0,
-                'received_bps': 0.0,
-                'sent_bytes': 0.0,
-                'received_bytes': 0.0,
-                'retransmits': 0,
-            }
-        elif mode == 'UDP':
-            return {
-                'iperf_result': 0,
-                'jitter': 0.0,
-                'packets': 0,
-                'lost_packets': 0,
-                'lost_percent': 0.0,
-            }
 
     def _get_metric(self):
         """
