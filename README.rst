@@ -918,6 +918,29 @@ configuration status of a device changes, this ensures the check reacts
 quickly to events happening in the network and informs the user promptly
 if there's anything that is not working as intended.
 
+Adaptive Filtering in Charts
+----------------------------
+
+This behavior helps us to show the data and unit of the chart in a more readable way, the units are shown in `B`, `KB`, `MB` and `GB` respectively, and datapoints have same unit to maintain consistency in the chart. The chart automatically sets it's unit according to a specific range of values of data. 
+For the quick glance the Y-Axis Legend has same unit as the datapoints which makes it easier to understand the unit of points in the chart. 
+The summarycircles have different units and are shown in `B`, `KB`, `MB` and `GB` to overview chart summary in a more readable way.
+
+For Example:
+~~~~~~~~~~~~
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/chartsize.png
+   :align: center
+
+configuration
+~~~~~~~~~~~~~
+.. code-block:: python
+    
+    'traffic': {
+                'unit': '{adaptive_bytes}',
+                },
+
+This is enabled for the traffic charts where the data is in `B`, `KB`, `MB` and `GB` respectively.
+
 Settings
 --------
 
