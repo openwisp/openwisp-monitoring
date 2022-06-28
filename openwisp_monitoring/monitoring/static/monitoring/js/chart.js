@@ -16,6 +16,72 @@
         }
         return newArr;
     }
+    function adaptiveFilterPoints(charts, layout, adaptive_bytes, data) {
+        var newArr = charts[0].y;
+        var sum = 0;
+        for(var i=0; i<newArr.length; i++) {
+            sum += newArr[i];
+        }
+        var count = 0;
+        for(i=0; i<newArr.length; i++) {
+            if(newArr[i] !== 0) {
+                count++;
+            }
+        }
+        var average = sum / count;
+        var multiplier;
+        if (average < 0.01) {
+            for(i=0; i<newArr.length; i++) {
+                multiplier = 1000000;
+                charts[0].y[i] = Math.round((charts[0].y[i] * multiplier) * 100) / 100;
+                charts[1].y[i] = Math.round((charts[1].y[i] * multiplier) * 100) / 100;
+                charts[2].y[i] = Math.round((charts[2].y[i] * multiplier) * 100) / 100;
+            }
+            layout.yaxis.title = ' KB';
+            adaptive_bytes = ' KB';
+        }
+        else if (average < 1) {
+            for(i=0; i<newArr.length; i++) {
+                multiplier = 1000;
+                charts[0].y[i] = Math.round((charts[0].y[i] * multiplier) * 100) / 100;
+                charts[1].y[i] = Math.round((charts[1].y[i] * multiplier) * 100) / 100;
+                charts[2].y[i] = Math.round((charts[2].y[i] * multiplier) * 100) / 100;
+            }
+            layout.yaxis.title = ' MB';
+            adaptive_bytes = ' MB';
+        }
+        else {
+            layout.yaxis.title = ' GB';
+            adaptive_bytes = ' GB';
+        }
+
+        for(i=0; i<newArr.length; i++) {
+            charts[0].hovertemplate[i] = charts[0].y[i] + adaptive_bytes;
+            charts[1].hovertemplate[i] = charts[1].y[i] + adaptive_bytes;
+            charts[2].hovertemplate[i] = charts[2].y[i] + adaptive_bytes;
+        }
+        data.unit = adaptive_bytes;
+    }
+    function adaptiveFilterSummary(i, percircles, value, data) {
+        if(value == 0) {
+            data.unit = ' B';
+            percircles[i].text = value + data.unit;
+        }
+        else if(value < 0.01) {
+            value *= 1000000;
+            data.unit = ' KB';
+            percircles[i].text = value + data.unit;
+        }
+        else if(value < 1) {
+            value *= 1000;
+            data.unit = ' MB';
+            percircles[i].text = value + data.unit;
+        }
+        else {
+            data.unit = ' GB';
+            percircles[i].text = value + data.unit;
+        }
+    }
     window.createChart = function (data, x, id, title, type, quickLink) {
         if (data === false) {
             alert(gettext('error while receiving data from server'));
@@ -193,51 +259,8 @@
             charts.push(options);
         }
         charts = sortByTraceOrder(data.trace_order, charts, '_key');
-        if(data.trace_order !== undefined)  {
-            var total_traffic_charts = charts[0].y;
-            var sum = 0;
-            for(i=0; i<total_traffic_charts.length; i++){
-                sum += total_traffic_charts[i];
-            }
-            var count = 0;
-            for(i=0; i<total_traffic_charts.length; i++){
-                if(total_traffic_charts[i] !== 0){
-                    count++;
-                }
-            }
-            var average = sum / count;
-            var multiplier;
-            if (average < 0.01){
-                for(i=0; i<total_traffic_charts.length; i++){
-                    multiplier = 1000000;
-                    charts[0].y[i] = Math.round((charts[0].y[i] * multiplier) * 100)/100;
-                    charts[1].y[i] = Math.round((charts[1].y[i] * multiplier) * 100)/100;
-                    charts[2].y[i] = Math.round((charts[2].y[i] * multiplier) * 100)/100;
-                }
-                layout.yaxis.title = ' KB';
-                unit = ' KB';
-            }
-            else if (average < 1){
-                for(i=0; i<total_traffic_charts.length; i++){
-                    multiplier = 1000;
-                    charts[0].y[i] = Math.round((charts[0].y[i] * multiplier) * 100)/100;
-                    charts[1].y[i] = Math.round((charts[1].y[i] * multiplier) * 100)/100;
-                    charts[2].y[i] = Math.round((charts[2].y[i] * multiplier) * 100)/100;
-                }
-                layout.yaxis.title = ' MB';
-                unit = ' MB';
-            }
-            else {
-                layout.yaxis.title = ' GB';
-                unit = ' GB';
-            }
-
-            for(i=0; i<total_traffic_charts.length; i++){
-                charts[0].hovertemplate[i] = charts[0].y[i] + unit;
-                charts[1].hovertemplate[i] = charts[1].y[i] + unit;
-                charts[2].hovertemplate[i] = charts[2].y[i] + unit;
-            }
-            data.unit = unit;
+        if(type === 'stackedbar+lines') {
+            adaptiveFilterPoints(charts, layout, unit, data);
         }
         if (fixedY) { layout.yaxis = {range: [0, fixedYMax]}; }
 
@@ -311,27 +334,10 @@
                     percircleOptions.progressBarColor = data.colors[data.trace_order.indexOf(key)];
                 }
                 percircles.push(percircleOptions);
-                if(data.trace_order !== undefined) {
-                    if(value == 0){
-                        data.unit = ' B';
-                        percircles[i].text = value + data.unit;
-                    }
-                    if(value < 0.01){
-                        value *= 1000000;
-                        data.unit = ' KB';
-                        percircles[i].text = value + data.unit;
-                    }
-                    else if(value < 1){
-                        value *= 1000;
-                        data.unit = ' MB';
-                        percircles[i].text = value + data.unit;
-                    }
-                    else{
-                        data.unit = ' GB';
-                        percircles[i].text = value + data.unit;
-                    }
+                if(type === 'stackedbar+lines') {
+                    adaptiveFilterSummary(i, percircles, value, data);
+                }
             }
-        }
             percircles = sortByTraceOrder(data.trace_order, percircles, '_key');
             for (i=0; i<percircles.length; ++i) {
                 percircleContainer.append(
