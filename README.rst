@@ -803,6 +803,51 @@ Mobile Access Technology in use
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/access-technology.png
   :align: center
 
+Iperf
+~~~~~
+
++--------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **measurement**:   | ``iperf``                                                                                                                                                         |
++--------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **types**:         | ``int`` (iperf_result, retransmits, packets, lost_packets), ``float`` (sent_bps, received_bps, sent_bytes, received_bytes, jitter, lost_percent)                  |
++--------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **fields**:        | ``iperf_result``, ``sent_bps``, ``received_bps``, ``sent_bytes``, ``received_bytes``, ``retransmits``, ``jitter``, ``packets``, ``lost_packets``, ``lost_percent``|
++--------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **configuration**: | ``iperf``                                                                                                                                                         |
++--------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **charts**:        | ``bandwidth``, ``transfer``, ``retransmits``, ``jitter``, ``datagram``, ``datagram_loss``                                                                         |
++--------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+**Bandwidth**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/bandwidth.png
+  :align: center
+
+**Transfer**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/transfer.png
+  :align: center
+
+**Retransmits**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/retransmits.png
+  :align: center
+
+**Jitter**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/jitter.png
+  :align: center
+
+**Datagram**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/datagram.png
+  :align: center
+
+**Datagram loss**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/datagram-loss.png
+  :align: center
+
 Dashboard Monitoring Charts
 ---------------------------
 
@@ -939,6 +984,66 @@ configuration status of a device changes, this ensures the check reacts
 quickly to events happening in the network and informs the user promptly
 if there's anything that is not working as intended.
 
+Iperf
+~~~~~
+
+This check provides network performance measurements such as maximum achievable bandwidth, jitter, datagram loss etc of the device using `iperf3 utility <https://iperf.fr/>`_. 
+
+It also supports tuning of various parameters related to timing, buffers and protocols (TCP, UDP with IPv4 and IPv6).
+
+This check is ``disabled`` by **default**, but you may choose to enable auto creation of this check by setting
+`OPENWISP_MONITORING_AUTO_IPERF <#OPENWISP_MONITORING_AUTO_IPERF>`_ to ``True``.
+
+Instructions to configure Iperf Check
+-------------------------------------
+
+1. Register your device to OpenWISP
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Register your device to OpenWISP and make sure `iperf3 openwrt package <https://openwrt.org/packages/pkgdata/iperf3>`_ is installed on the device if not run :
+
+.. code-block:: shell
+
+    opkg install iperf3
+
+1. Enable secure SSH access from OpenWISP to your devices
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+We have already well covered this in `How to configure push updates section of openwisp-controller <https://github.com/openwisp/openwisp-controller#how-to-configure-push-updates>`_.
+
+**Note:** Make sure device connection is enabled & working with right update strategy ie. ``OpenWISP SSH``.
+
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/enable-openwisp-ssh.png
+  :alt: Enable ssh access from openwisp to device
+  :align: center
+  
+3. Configure Iperf settings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Configure iperf servers in `openwisp settings <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_ , The host can be specified by hostname, IPv4 literal, or IPv6 literal.
+
+For eg.
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_IPERF_SERVERS = {
+    # Public iperf servers also available: https://iperf.fr/iperf-servers.php#public-servers
+    # '<org-pk>': ['<ORG_IPERF_SERVER>']
+    'a9734710-db30-46b0-a2fc-01f01046fe4f': ['speedtest.uztelecom.uz'],
+    'z9734710-db30-46b0-a2fc-01f01046fe4f': ['192.168.5.109'],
+    'c9734710-db30-46b0-a2fc-01f01046fe4f': ['2001:db8::1'],
+    }
+
+4. Run the check
+~~~~~~~~~~~~~~~~
+
+This should happen automatically if you have celery running in the background. For testing, you can
+run this check manually using the `run_checks <#run_checks>`_ command. After that, you should see the
+iperf network measurements charts.
+
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/iperf-charts.png
+  :alt: Iperf network measurement charts
+
 Settings
 --------
 
@@ -1032,6 +1137,18 @@ validating custom parameters of a ``Check`` object.
 
 This setting allows you to choose whether `config_applied <#configuration-applied>`_ checks should be
 created automatically for newly registered devices. It's enabled by default.
+
+``OPENWISP_MONITORING_AUTO_IPERF``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``bool``    |
++--------------+-------------+
+| **default**: | ``False``   |
++--------------+-------------+
+
+Whether `Iperf <#iperf-1>`_ checks are created automatically for devices. The devices need to have SSH access from OpenWISP & must installed
+`iperf3 openwrt package <https://openwrt.org/packages/pkgdata/iperf3>`_ on devices in order for this check to work.
 
 ``OPENWISP_MONITORING_AUTO_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

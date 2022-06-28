@@ -559,7 +559,7 @@ DEFAULT_METRICS = {
             'lost_percent',
         ],
         'charts': {
-            'bitrate': {
+            'bandwidth': {
                 'type': 'stackedbar',
                 'title': _('Bandwidth'),
                 'description': _('Bitrate during Iperf3 test in TCP mode.'),

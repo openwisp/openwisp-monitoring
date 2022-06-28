@@ -178,7 +178,7 @@ class Iperf(BaseCheck):
         Creates iperf related charts (Bandwith/Jitter)
         """
         charts = [
-            'bitrate',
+            'bandwidth',
             'transfer',
             'retransmits',
             'jitter',
