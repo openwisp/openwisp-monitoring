@@ -28,7 +28,7 @@ class Iperf(BaseCheck):
             )
             return
         # The DeviceConnection could fail if the management tunnel is down.
-        if not device_connection.connect():
+        if not self._connect(device_connection):
             logger.warning(
                 f'Failed to get a working DeviceConnection for "{device}", iperf check skipped!'
             )
@@ -79,6 +79,12 @@ class Iperf(BaseCheck):
         Executes device command
         """
         return dc.connector_instance.exec_command(command, raise_unexpected_exit=False)
+
+    def _connect(self, dc):
+        """
+        Connects device returns its working status
+        """
+        return dc.connect()
 
     def _get_iperf_result(self, res, exit_code, device, mode):
         """
