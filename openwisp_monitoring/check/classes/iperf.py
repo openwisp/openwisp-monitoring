@@ -99,10 +99,10 @@ class Iperf(BaseCheck):
                 )
                 return {
                     'iperf_result': 0,
-                    'sent_bps': 0.0,
-                    'received_bps': 0.0,
-                    'sent_bytes': 0.0,
-                    'received_bytes': 0.0,
+                    'sent_bps_tcp': 0.0,
+                    'received_bps_tcp': 0.0,
+                    'sent_bytes_tcp': 0.0,
+                    'received_bytes_tcp': 0.0,
                     'retransmits': 0,
                 }
             else:
@@ -123,10 +123,10 @@ class Iperf(BaseCheck):
                 retransmits = sent_json['retransmits']
                 return {
                     'iperf_result': 1,
-                    'sent_bps': round(sent_Gbps, 2),
-                    'received_bps': round(received_Gbps, 2),
-                    'sent_bytes': round(sent_bytes_GB, 2),
-                    'received_bytes': round(received_bytes_GB, 2),
+                    'sent_bps_tcp': round(sent_Gbps, 2),
+                    'received_bps_tcp': round(received_Gbps, 2),
+                    'sent_bytes_tcp': round(sent_bytes_GB, 2),
+                    'received_bytes_tcp': round(received_bytes_GB, 2),
                     'retransmits': retransmits,
                 }
 
@@ -137,20 +137,29 @@ class Iperf(BaseCheck):
                 )
                 return {
                     'iperf_result': 0,
+                    'sent_bps_udp': 0.0,
+                    'sent_bytes_udp': 0.0,
                     'jitter': 0.0,
-                    'packets': 0,
+                    'total_packets': 0,
                     'lost_packets': 0,
                     'lost_percent': 0.0,
                 }
             else:
+                sent_bytes = res_dict['end']['sum']['bytes']
+                sent_bytes_MB = sent_bytes / 1000000
+                sent_bps = res_dict['end']['sum']['bytes']
+                sent_Mbps = sent_bps / 1000000
                 jitter_ms = res_dict['end']['sum']['jitter_ms']
-                packets = res_dict['end']['sum']['packets']
+                jitter_ms = res_dict['end']['sum']['jitter_ms']
+                total_packets = res_dict['end']['sum']['packets']
                 lost_packets = res_dict['end']['sum']['lost_packets']
                 lost_percent = float(res_dict['end']['sum']['lost_percent'])
                 return {
                     'iperf_result': 1,
+                    'sent_bps_udp': round(sent_Mbps, 2),
+                    'sent_bytes_udp': round(sent_bytes_MB, 2),
                     'jitter': round(jitter_ms, 2),
-                    'packets': packets,
+                    'total_packets': total_packets,
                     'lost_packets': lost_packets,
                     'lost_percent': round(lost_percent, 2),
                 }
@@ -178,9 +187,11 @@ class Iperf(BaseCheck):
         Creates iperf related charts (Bandwith/Jitter)
         """
         charts = [
-            'bandwidth',
-            'transfer',
+            'bandwidth_tcp',
+            'transfer_tcp',
             'retransmits',
+            'bandwidth_udp',
+            'transfer_udp',
             'jitter',
             'datagram',
             'datagram_loss',

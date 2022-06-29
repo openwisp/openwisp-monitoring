@@ -100,19 +100,19 @@ chart_query = {
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
-    'bitrate': {
+    'bandwidth_tcp': {
         'influxdb': (
-            "SELECT MEAN(sent_bps) AS sent, "
-            "MEAN(received_bps) AS received FROM {key} WHERE "
+            "SELECT MEAN(sent_bps_tcp) AS sent, "
+            "MEAN(received_bps_tcp) AS received FROM {key} WHERE "
             "time >= '{time}' AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
-    'transfer': {
+    'transfer_tcp': {
         'influxdb': (
-            "SELECT SUM(received_bytes) AS received, "
-            "SUM(sent_bytes) AS sent,"
-            "SUM(sent_bytes) + SUM(received_bytes) AS total FROM {key} WHERE "
+            "SELECT SUM(received_bytes_tcp) AS received, "
+            "SUM(sent_bytes_tcp) AS sent,"
+            "SUM(sent_bytes_tcp) + SUM(received_bytes_tcp) AS total FROM {key} WHERE "
             "time >= '{time}' AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
@@ -122,6 +122,20 @@ chart_query = {
             "SELECT MEAN(retransmits) AS retransmits FROM {key} "
             "WHERE time >= '{time}' AND content_type = '{content_type}' "
             "AND object_id = '{object_id}' GROUP BY time(1d)"
+        )
+    },
+    'bandwidth_udp': {
+        'influxdb': (
+            "SELECT MEAN(sent_bps_udp) AS sent FROM {key} "
+            "WHERE time >= '{time}' AND content_type = '{content_type}' "
+            "AND object_id = '{object_id}' GROUP BY time(1d)"
+        )
+    },
+    'transfer_udp': {
+        'influxdb': (
+            "SELECT SUM(sent_bytes_udp) AS sent FROM {key} "
+            "WHERE time >= '{time}' AND content_type = '{content_type}' AND "
+            "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
     'jitter': {
@@ -134,7 +148,7 @@ chart_query = {
     'datagram': {
         'influxdb': (
             "SELECT MEAN(lost_packets) AS lost_datagram,"
-            "MEAN(packets) AS total_datagram FROM {key} WHERE "
+            "MEAN(total_packets) AS total_datagram FROM {key} WHERE "
             "time >= '{time}' AND content_type = '{content_type}' "
             "AND object_id = '{object_id}' GROUP BY time(1d)"
         )
