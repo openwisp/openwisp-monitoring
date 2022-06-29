@@ -18,7 +18,7 @@
     }
 
     function adaptiveFilterPoints(charts, layout, unit, data) {
-        var newArr = charts[0].y, sum = 0, count = 0, multiplier = 1;
+        var newArr = charts[0].y, sum = 0, count = 0, multiplier = 1, adaptValue;
 
         for(var i=0; i<newArr.length; i++) {
             sum += newArr[i];
@@ -30,12 +30,16 @@
         }
 
         var average = sum / count;
+        adaptValue = function(value, multiplier) {
+            return Math.round((value * multiplier) * 100) / 100;
+        };
+
         if (average < 0.01) {
             for(i=0; i<newArr.length; i++) {
                 multiplier = 1000000;
-                charts[0].y[i] = Math.round((charts[0].y[i] * multiplier) * 100) / 100;
-                charts[1].y[i] = Math.round((charts[1].y[i] * multiplier) * 100) / 100;
-                charts[2].y[i] = Math.round((charts[2].y[i] * multiplier) * 100) / 100;
+                charts[0].y[i] = adaptValue(charts[0].y[i], multiplier);
+                charts[1].y[i] = adaptValue(charts[1].y[i], multiplier);
+                charts[2].y[i] = adaptValue(charts[2].y[i], multiplier);
             }
             layout.yaxis.title = 'KB';
             unit = 'KB';
@@ -43,9 +47,9 @@
         else if (average < 1) {
             for(i=0; i<newArr.length; i++) {
                 multiplier = 1000;
-                charts[0].y[i] = Math.round((charts[0].y[i] * multiplier) * 100) / 100;
-                charts[1].y[i] = Math.round((charts[1].y[i] * multiplier) * 100) / 100;
-                charts[2].y[i] = Math.round((charts[2].y[i] * multiplier) * 100) / 100;
+                charts[0].y[i] = adaptValue(charts[0].y[i], multiplier);
+                charts[1].y[i] = adaptValue(charts[1].y[i], multiplier);
+                charts[2].y[i] = adaptValue(charts[2].y[i], multiplier);
             }
             layout.yaxis.title = 'MB';
             unit = 'MB';
