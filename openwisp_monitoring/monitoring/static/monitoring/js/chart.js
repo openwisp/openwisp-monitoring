@@ -16,20 +16,20 @@
         }
         return newArr;
     }
-    function adaptiveFilterPoints(charts, layout, adaptive_bytes, data) {
-        var newArr = charts[0].y;
-        var sum = 0;
+
+    function adaptiveFilterPoints(charts, layout, adaptiveBytes, data) {
+        var newArr = charts[0].y, sum = 0, count = 0, multiplier = 1;
+
         for(var i=0; i<newArr.length; i++) {
             sum += newArr[i];
         }
-        var count = 0;
         for(i=0; i<newArr.length; i++) {
             if(newArr[i] !== 0) {
                 count++;
             }
         }
+
         var average = sum / count;
-        var multiplier;
         if (average < 0.01) {
             for(i=0; i<newArr.length; i++) {
                 multiplier = 1000000;
@@ -38,7 +38,7 @@
                 charts[2].y[i] = Math.round((charts[2].y[i] * multiplier) * 100) / 100;
             }
             layout.yaxis.title = ' KB';
-            adaptive_bytes = ' KB';
+            adaptiveBytes = ' KB';
         }
         else if (average < 1) {
             for(i=0; i<newArr.length; i++) {
@@ -48,20 +48,22 @@
                 charts[2].y[i] = Math.round((charts[2].y[i] * multiplier) * 100) / 100;
             }
             layout.yaxis.title = ' MB';
-            adaptive_bytes = ' MB';
+            adaptiveBytes = ' MB';
         }
         else {
             layout.yaxis.title = ' GB';
-            adaptive_bytes = ' GB';
+            adaptiveBytes = ' GB';
         }
 
         for(i=0; i<newArr.length; i++) {
-            charts[0].hovertemplate[i] = charts[0].y[i] + adaptive_bytes;
-            charts[1].hovertemplate[i] = charts[1].y[i] + adaptive_bytes;
-            charts[2].hovertemplate[i] = charts[2].y[i] + adaptive_bytes;
+            charts[0].hovertemplate[i] = charts[0].y[i] + adaptiveBytes;
+            charts[1].hovertemplate[i] = charts[1].y[i] + adaptiveBytes;
+            charts[2].hovertemplate[i] = charts[2].y[i] + adaptiveBytes;
         }
-        data.unit = adaptive_bytes;
+
+        data.unit = adaptiveBytes;
     }
+
     function adaptiveFilterSummary(i, percircles, value, data) {
         if(value == 0) {
             data.unit = ' B';
@@ -82,6 +84,7 @@
             percircles[i].text = value + data.unit;
         }
     }
+
     window.createChart = function (data, x, id, title, type, quickLink) {
         if (data === false) {
             alert(gettext('error while receiving data from server'));
@@ -259,9 +262,12 @@
             charts.push(options);
         }
         charts = sortByTraceOrder(data.trace_order, charts, '_key');
-        if(type === 'stackedbar+lines') {
-            adaptiveFilterPoints(charts, layout, unit, data);
+
+        var adaptiveBytes = unit, adaptive_bytes = adaptiveBytes;
+        if(adaptive_bytes) {
+            adaptiveFilterPoints(charts, layout, adaptiveBytes, data);
         }
+
         if (fixedY) { layout.yaxis = {range: [0, fixedYMax]}; }
 
         Plotly.newPlot(plotlyContainer, charts, layout, {responsive: true});
@@ -334,7 +340,7 @@
                     percircleOptions.progressBarColor = data.colors[data.trace_order.indexOf(key)];
                 }
                 percircles.push(percircleOptions);
-                if(type === 'stackedbar+lines') {
+                if(adaptive_bytes) {
                     adaptiveFilterSummary(i, percircles, value, data);
                 }
             }
