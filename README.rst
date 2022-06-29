@@ -806,31 +806,41 @@ Mobile Access Technology in use
 Iperf
 ~~~~~
 
-+--------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| **measurement**:   | ``iperf``                                                                                                                                                         |
-+--------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| **types**:         | ``int`` (iperf_result, retransmits, packets, lost_packets), ``float`` (sent_bps, received_bps, sent_bytes, received_bytes, jitter, lost_percent)                  |
-+--------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| **fields**:        | ``iperf_result``, ``sent_bps``, ``received_bps``, ``sent_bytes``, ``received_bytes``, ``retransmits``, ``jitter``, ``packets``, ``lost_packets``, ``lost_percent``|
-+--------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| **configuration**: | ``iperf``                                                                                                                                                         |
-+--------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| **charts**:        | ``bandwidth``, ``transfer``, ``retransmits``, ``jitter``, ``datagram``, ``datagram_loss``                                                                         |
-+--------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
++--------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **measurement**:   | ``iperf``                                                                                                                                                                                                                      |
++--------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **types**:         | ``int`` (iperf_result, retransmits, total_packets, lost_packets), ``float`` (sent_bps_tcp, received_bps_tcp, sent_bytes_tcp, received_bytes_tcp, sent_bps_udp, sent_bytes_udp, jitter, lost_percent)                           |
++--------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **fields**:        | ``iperf_result``, ``sent_bps_tcp``, ``received_bps_tcp``, ``sent_bytes_tcp``, ``received_bytes_tcp``, ``retransmits``, ``sent_bps_udp``, ``sent_bytes_udp``, ``jitter``, ``total_packets``, ``lost_packets``, ``lost_percent`` |
++--------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **configuration**: | ``iperf``                                                                                                                                                                                                                      |
++--------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| **charts**:        | ``bandwidth_tcp``, ``transfer_tcp``, ``retransmits``, ``bandwidth_udp``, ``transfer_udp``, ``jitter``, ``datagram``, ``datagram_loss``                                                                                         |
++--------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
-**Bandwidth**:
+**Bandwidth (TCP)**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/bandwidth.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/bandwidth-tcp.png
   :align: center
 
-**Transfer**:
+**Transfer (TCP)**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/transfer.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/transfer-tcp.png
   :align: center
 
 **Retransmits**:
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/retransmits.png
+  :align: center
+
+**Bandwidth (UDP)**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/bandwidth-udp.png
+  :align: center
+
+**Transfer (UDP)**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/transfer-udp.png
   :align: center
 
 **Jitter**:
@@ -1006,7 +1016,7 @@ Register your device to OpenWISP and make sure `iperf3 openwrt package <https://
 
     opkg install iperf3
 
-1. Enable secure SSH access from OpenWISP to your devices
+2. Enable secure SSH access from OpenWISP to your devices
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We have already well covered this in `How to configure push updates section of openwisp-controller <https://github.com/openwisp/openwisp-controller#how-to-configure-push-updates>`_.
