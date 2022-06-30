@@ -24,13 +24,13 @@ class Iperf(BaseCheck):
         device_connection = self._get_device_connection(device)
         if not device_connection:
             logger.warning(
-                f'DeviceConnection is not properly set for "{device}", iperf check skipped!'
+                f'Failed to get a working DeviceConnection for "{device}", iperf check skipped!'
             )
             return
         # The DeviceConnection could fail if the management tunnel is down.
-        if not self._connect(device_connection):
+        if not device_connection.connect():
             logger.warning(
-                f'Failed to get a working DeviceConnection for "{device}", iperf check skipped!'
+                f'DeviceConnection for "{device}" is not working, iperf check skipped!'
             )
             return
         servers = self._get_iperf_servers(device.organization.id)
@@ -79,12 +79,6 @@ class Iperf(BaseCheck):
         Executes device command
         """
         return dc.connector_instance.exec_command(command, raise_unexpected_exit=False)
-
-    def _connect(self, dc):
-        """
-        Connects device returns its working status
-        """
-        return dc.connect()
 
     def _get_iperf_result(self, res, exit_code, device, mode):
         """
