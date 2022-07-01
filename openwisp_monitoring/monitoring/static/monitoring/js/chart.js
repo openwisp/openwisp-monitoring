@@ -20,66 +20,51 @@
     function adaptiveFilterPoints(charts) {
 
         var convertToAdaptiveBytes = function(charts, type, i, multiplier, unit) {
-            charts[type].y[i] = Math.round((charts[type].y[i] * multiplier)*100)/100;
+            charts[type].y[i] = Math.round((charts[type].y[i] * multiplier) * 100) / 100;
             charts[type].hovertemplate[i] = charts[type].y[i] + ' ' + unit;
         };
 
-        for(var i=0; i<charts[0].y.length; i++)
-        {
-            if(charts[0].y[i] == 0)
-            {
+        for (var i=0; i<charts[0].y.length; i++) {
+            if (charts[0].y[i] == 0) {
                 convertToAdaptiveBytes(charts, 0, i, 1, 'B');
             }
-            else if(charts[0].y[i] < 0.01)
-            {
+            else if (charts[0].y[i] < 0.001) {
                 convertToAdaptiveBytes(charts, 0, i, 1000000, 'KB');
             }
-            else if(charts[0].y[i] < 1)
-            {
+            else if (charts[0].y[i] < 1) {
                 convertToAdaptiveBytes(charts, 0, i, 1000, 'MB');
             }
-            else
-            {
+            else {
                 convertToAdaptiveBytes(charts, 0, i, 1, 'GB');
             }
         }
 
-        for(i=0; i<charts[1].y.length; i++)
-        {
-            if(charts[1].y[i] == 0)
-            {
+        for (i=0; i<charts[1].y.length; i++) {
+            if (charts[1].y[i] == 0) {
                 convertToAdaptiveBytes(charts, 1, i, 1, 'B');
             }
-            else if(charts[1].y[i] < 0.01)
-            {
+            else if (charts[1].y[i] < 0.001) {
                 convertToAdaptiveBytes(charts, 1, i, 1000000, 'KB');
             }
-            else if(charts[1].y[i] < 1)
-            {
+            else if (charts[1].y[i] < 1) {
                 convertToAdaptiveBytes(charts, 1, i, 1000, 'MB');
             }
-            else
-            {
+            else {
                 convertToAdaptiveBytes(charts, 1, i, 1, 'GB');
             }
         }
 
-        for(i=0; i<charts[2].y.length; i++)
-        {
-            if(charts[2].y[i] == 0)
-            {
+        for (i=0; i<charts[2].y.length; i++) {
+            if (charts[2].y[i] == 0) {
                 convertToAdaptiveBytes(charts, 2, i, 1, 'B');
             }
-            else if(charts[2].y[i] < 0.01)
-            {
+            else if (charts[2].y[i] < 0.001) {
                 convertToAdaptiveBytes(charts, 2, i, 1000000, 'KB');
             }
-            else if(charts[2].y[i] < 1)
-            {
+            else if (charts[2].y[i] < 1) {
                 convertToAdaptiveBytes(charts, 2, i, 1000, 'MB');
             }
-            else
-            {
+            else {
                 convertToAdaptiveBytes(charts, 2, i, 1, 'GB');
             }
         }
@@ -87,19 +72,19 @@
 
     function adaptiveFilterLayout(charts, layout) {
         var newArr = charts[0].y, sum = 0, count = 0;
-        for(var i=0; i<newArr.length; i++) {
+        for (var i=0; i<newArr.length; i++) {
             sum += newArr[i];
         }
-        for(i=0; i<newArr.length; i++) {
-            if(newArr[i] != 0) {
+        for (i=0; i<newArr.length; i++) {
+            if (newArr[i] != 0) {
                 count++;
             }
         }
         var average = sum / count;
-        if(average == 0) {
+        if (average == 0) {
             layout.yaxis.title = 'B';
         }
-        else if (average < 0.01) {
+        else if (average < 0.001) {
             layout.yaxis.title = 'KB';
         }
         else if (average < 1) {
@@ -111,16 +96,16 @@
     }
 
     function adaptiveFilterSummary(i, percircles, value, data) {
-        if(value == 0) {
+        if (value == 0) {
             data.unit = 'B';
             percircles[i].text = value + ' ' + data.unit;
         }
-        else if(value < 0.01) {
+        else if (value < 0.001) {
             value *= 1000000;
             data.unit = 'KB';
             percircles[i].text = value + ' ' + data.unit;
         }
-        else if(value < 1) {
+        else if (value < 1) {
             value *= 1000;
             data.unit = 'MB';
             percircles[i].text = value + ' ' + data.unit;
@@ -309,7 +294,7 @@
         }
         charts = sortByTraceOrder(data.trace_order, charts, '_key');
 
-        if(unit == 'adaptive_bytes') {
+        if (unit == 'adaptive_bytes') {
             adaptiveFilterLayout(charts, layout);
             adaptiveFilterPoints(charts);
         }
@@ -387,7 +372,7 @@
                 }
                 percircles.push(percircleOptions);
 
-                if(unit == 'adaptive_bytes') {
+                if (unit == 'adaptive_bytes') {
                     adaptiveFilterSummary(i, percircles, value, data);
                 }
             }
