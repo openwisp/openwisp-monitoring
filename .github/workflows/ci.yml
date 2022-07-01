@@ -6,10 +6,12 @@ on:
     branches:
       - master
       - dev
+      - "1.0"
   pull_request:
     branches:
       - master
       - dev
+      - "1.0"
 
 jobs:
   build:
