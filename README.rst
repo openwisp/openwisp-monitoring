@@ -925,9 +925,9 @@ Byte Adaptive Measuring in Charts
    :align: center
 
 This behavior helps us to show the data and unit of the chart in a more readable way,
-the units are shown in `B`, `KB`, `MB` and `GB` respectively, and datapoints have
+the units are shown in `B`, `KB`, `MB`, `GB` and `TB` respectively, and datapoints have
 same unit to maintain consistency in the chart, summarycircles have different units
-and are shown in `B`, `KB`, `MB` and `GB` to overview chart summary in a more 
+and are shown in `B`, `KB`, `MB`, `GB` and `TB` to overview chart summary in a more 
 readable way.
 
 The chart automatically sets it's unit according to a specific range of values of data,
@@ -1394,7 +1394,7 @@ MB (megabytes) instead of GB (Gigabytes) you can use:
             'unit': ' MB',
             'description': (
                 'Network traffic, download and upload, measured on '
-                'the interface "{metric.key}", measured in MB.'
+                'the interface "{metric.key}", measured in GB.'
             ),
             'query': {
                 'influxdb': (

@@ -243,7 +243,7 @@ DEFAULT_METRICS = {
                     _('Total download traffic'),
                     _('Total upload traffic'),
                 ],
-                'unit': _(' GB'),
+                'unit': 'adaptive_bytes',
                 'order': 240,
                 'query': chart_query['general_traffic'],
                 'query_default_param': {

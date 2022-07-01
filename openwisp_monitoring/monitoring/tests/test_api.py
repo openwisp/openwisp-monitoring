@@ -205,7 +205,7 @@ class TestDashboardTimeseriesView(
         def _test_chart_properties(chart):
             self.assertEqual(chart['title'], 'General Traffic')
             self.assertEqual(chart['type'], 'stackedbar+lines')
-            self.assertEqual(chart['unit'], ' GB')
+            self.assertEqual(chart['unit'], 'adaptive_bytes')
             self.assertEqual(
                 chart['summary_labels'],
                 ['Total traffic', 'Total download traffic', 'Total upload traffic'],
