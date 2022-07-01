@@ -806,17 +806,19 @@ Mobile Access Technology in use
 Iperf
 ~~~~~
 
-+--------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| **measurement**:   | ``iperf``                                                                                                                                                                                                                      |
-+--------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| **types**:         | ``int`` (iperf_result, retransmits, total_packets, lost_packets), ``float`` (sent_bps_tcp, received_bps_tcp, sent_bytes_tcp, received_bytes_tcp, sent_bps_udp, sent_bytes_udp, jitter, lost_percent)                           |
-+--------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| **fields**:        | ``iperf_result``, ``sent_bps_tcp``, ``received_bps_tcp``, ``sent_bytes_tcp``, ``received_bytes_tcp``, ``retransmits``, ``sent_bps_udp``, ``sent_bytes_udp``, ``jitter``, ``total_packets``, ``lost_packets``, ``lost_percent`` |
-+--------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| **configuration**: | ``iperf``                                                                                                                                                                                                                      |
-+--------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| **charts**:        | ``bandwidth_tcp``, ``transfer_tcp``, ``retransmits``, ``bandwidth_udp``, ``transfer_udp``, ``jitter``, ``datagram``, ``datagram_loss``                                                                                         |
-+--------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
++--------------------+----------------------------------------------------------------------------------------------------------------------------------------+
+| **measurement**:   | ``iperf``                                                                                                                              |
++--------------------+----------------------------------------------------------------------------------------------------------------------------------------+
+| **types**:         | ``int`` (iperf_result, retransmits, total_packets, lost_packets),                                                                      |
+|                    | ``float`` (sent_bps_tcp, received_bps_tcp, sent_bytes_tcp, received_bytes_tcp, sent_bps_udp, sent_bytes_udp, jitter, lost_percent)     |
++--------------------+----------------------------------------------------------------------------------------------------------------------------------------+
+| **fields**:        | ``iperf_result``, ``sent_bps_tcp``, ``received_bps_tcp``, ``sent_bytes_tcp``, ``received_bytes_tcp``, ``retransmits``,                 |
+| **fields**:        | ``sent_bps_udp``, ``sent_bytes_udp``, ``jitter``, ``total_packets``, ``lost_packets``, ``lost_percent``                                |
++--------------------+----------------------------------------------------------------------------------------------------------------------------------------+
+| **configuration**: | ``iperf``                                                                                                                              |
++--------------------+----------------------------------------------------------------------------------------------------------------------------------------+
+| **charts**:        | ``bandwidth_tcp``, ``transfer_tcp``, ``retransmits``, ``bandwidth_udp``, ``transfer_udp``, ``jitter``, ``datagram``, ``datagram_loss`` |
++--------------------+----------------------------------------------------------------------------------------------------------------------------------------+
 
 **Bandwidth (TCP)**:
 
@@ -1157,8 +1159,8 @@ created automatically for newly registered devices. It's enabled by default.
 | **default**: | ``False``   |
 +--------------+-------------+
 
-Whether `Iperf <#iperf-1>`_ checks are created automatically for devices. The devices need to have SSH access from OpenWISP & must installed
-`iperf3 openwrt package <https://openwrt.org/packages/pkgdata/iperf3>`_ on devices in order for this check to work.
+Whether `Iperf <#iperf-1>`_ checks are created automatically for devices. The devices must have ``SSH`` `access credential <https://github.com/openwisp/openwisp-controller#save-ssh-private-key-in-openwisp-access-credentials>`_  & 
+`iperf3 openwrt package <https://openwrt.org/packages/pkgdata/iperf3>`_ must be installed on the devices in order for this check to work.
 
 ``OPENWISP_MONITORING_AUTO_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
