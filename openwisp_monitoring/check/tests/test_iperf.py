@@ -73,43 +73,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 f'Failed to get a working DeviceConnection for "{device}", iperf check skipped!'
             )
 
-    @patch.object(
-        Iperf, '_exec_command', side_effect=[(RESULT_TCP, 0), (RESULT_UDP, 0)]
-    )
-    @patch.object(
-        Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com']
-    )
-    def test_iperf_check(self, mock_get_iperf_servers, mock_exec_command):
-
-        ckey = self._create_credentials_with_key(port=self.ssh_server.port)
-        dc = self._create_device_connection(credentials=ckey)
-        dc.connect()
-        device = dc.device
-        check = Check.objects.get(check_type=self._IPERF)
-        expected_exec_command_calls = [
-            call(dc, 'iperf3 -c iperf.openwisptestserver.com -J'),
-            call(dc, 'iperf3 -c iperf.openwisptestserver.com -u -J'),
-        ]
-        self.assertEqual(Chart.objects.count(), 2)
-        self.assertEqual(Metric.objects.count(), 2)
-        check.perform_check(store=False)
-        iperf_metric = Metric.objects.get(key='iperf').read()[0]
-        self.assertEqual(iperf_metric['iperf_result'], 1)
-        self.assertEqual(Chart.objects.count(), 10)
-        self.assertEqual(Metric.objects.count(), 3)
-        mock_get_iperf_servers.assert_called_once_with(device.organization.id)
-        self.assertEqual(mock_exec_command.call_count, 2)
-        mock_exec_command.assert_has_calls(expected_exec_command_calls)
-
-    @patch.object(Iperf, '_exec_command')
-    @patch.object(
-        Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com']
-    )
-    @patch.object(iperf_logger, 'warning')
-    def test_iperf_check_fail(
-        self, mock_warn, mock_get_iperf_servers, mock_exec_command
-    ):
-        mock_exec_command.side_effect = [(RESULT_FAIL, 1), (RESULT_FAIL, 1)]
+    def test_iperf_check(self):
         ckey = self._create_credentials_with_key(port=self.ssh_server.port)
         dc = self._create_device_connection(credentials=ckey)
         dc.connect()
@@ -127,15 +91,110 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 f'Iperf check failed for "{device}", error - unable to connect to server: Connection refused'
             ),
         ]
-        self.assertEqual(Chart.objects.count(), 0)
-        self.assertEqual(Metric.objects.count(), 0)
-        check.perform_check(store=False)
-        self.assertEqual(mock_warn.call_count, 2)
-        mock_warn.assert_has_calls(expected_mock_warns)
-        iperf_metric = Metric.objects.get(key='iperf').read()[0]
-        self.assertEqual(iperf_metric['iperf_result'], 0)
-        self.assertEqual(Chart.objects.count(), 8)
-        self.assertEqual(Metric.objects.count(), 1)
-        mock_get_iperf_servers.assert_called_once_with(device.organization.id)
-        self.assertEqual(mock_exec_command.call_count, 2)
-        mock_exec_command.assert_has_calls(expected_exec_command_calls)
+
+        with self.subTest('Test iperf check passes in both TCP & UDP'):
+            with patch.object(
+                Iperf, '_exec_command'
+            ) as mock_exec_command, patch.object(
+                Iperf,
+                '_get_iperf_servers',
+                return_value=['iperf.openwisptestserver.com'],
+            ) as mock_get_iperf_servers:
+                mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
+
+                self.assertEqual(Chart.objects.count(), 2)
+                self.assertEqual(Metric.objects.count(), 2)
+                result = check.perform_check(store=False)
+                for key in self._RESULT_KEYS:
+                    self.assertIn(key, result)
+                self.assertEqual(result['iperf_result'], 1)
+                self.assertEqual(result['sent_bps_tcp'], 44.04)
+                self.assertEqual(result['received_bytes_tcp'], 55.05)
+                self.assertEqual(result['jitter'], 0.01)
+                self.assertEqual(result['total_packets'], 40)
+                self.assertEqual(Chart.objects.count(), 10)
+                self.assertEqual(Metric.objects.count(), 3)
+                self.assertEqual(mock_exec_command.call_count, 2)
+                mock_exec_command.assert_has_calls(expected_exec_command_calls)
+                mock_get_iperf_servers.assert_called_once_with(device.organization.id)
+
+        with self.subTest('Test iperf check fails in both TCP & UDP'):
+            with patch.object(
+                Iperf, '_exec_command'
+            ) as mock_exec_command, patch.object(
+                Iperf,
+                '_get_iperf_servers',
+                return_value=['iperf.openwisptestserver.com'],
+            ) as mock_get_iperf_servers, patch.object(
+                iperf_logger, 'warning'
+            ) as mock_warn:
+                mock_exec_command.side_effect = [(RESULT_FAIL, 1), (RESULT_FAIL, 1)]
+
+                result = check.perform_check(store=False)
+                for key in self._RESULT_KEYS:
+                    self.assertIn(key, result)
+                self.assertEqual(result['iperf_result'], 0)
+                self.assertEqual(result['sent_bps_tcp'], 0.0)
+                self.assertEqual(result['received_bps_tcp'], 0.0)
+                self.assertEqual(result['jitter'], 0.0)
+                self.assertEqual(result['total_packets'], 0)
+                self.assertEqual(Chart.objects.count(), 10)
+                self.assertEqual(Metric.objects.count(), 3)
+                self.assertEqual(mock_exec_command.call_count, 2)
+                mock_warn.assert_has_calls(expected_mock_warns)
+                mock_exec_command.assert_has_calls(expected_exec_command_calls)
+                mock_get_iperf_servers.assert_called_once_with(device.organization.id)
+
+        with self.subTest('Test iperf check TCP pass UDP fail'):
+            with patch.object(
+                Iperf, '_exec_command'
+            ) as mock_exec_command, patch.object(
+                Iperf,
+                '_get_iperf_servers',
+                return_value=['iperf.openwisptestserver.com'],
+            ) as mock_get_iperf_servers, patch.object(
+                iperf_logger, 'warning'
+            ) as mock_warn:
+                mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_FAIL, 1)]
+
+                result = check.perform_check(store=False)
+                for key in self._RESULT_KEYS:
+                    self.assertIn(key, result)
+                self.assertEqual(result['iperf_result'], 1)
+                self.assertEqual(result['sent_bps_tcp'], 44.04)
+                self.assertEqual(result['sent_bytes_tcp'], 55.05)
+                self.assertEqual(result['jitter'], 0.0)
+                self.assertEqual(result['total_packets'], 0)
+                self.assertEqual(Chart.objects.count(), 10)
+                self.assertEqual(Metric.objects.count(), 3)
+                self.assertEqual(mock_exec_command.call_count, 2)
+                mock_warn.assert_has_calls(expected_mock_warns[1:])
+                mock_exec_command.assert_has_calls(expected_exec_command_calls)
+                mock_get_iperf_servers.assert_called_once_with(device.organization.id)
+
+        with self.subTest('Test iperf check TCP fail UDP pass'):
+            with patch.object(
+                Iperf, '_exec_command'
+            ) as mock_exec_command, patch.object(
+                Iperf,
+                '_get_iperf_servers',
+                return_value=['iperf.openwisptestserver.com'],
+            ) as mock_get_iperf_servers, patch.object(
+                iperf_logger, 'warning'
+            ) as mock_warn:
+                mock_exec_command.side_effect = [(RESULT_FAIL, 1), (RESULT_UDP, 0)]
+
+                result = check.perform_check(store=False)
+                for key in self._RESULT_KEYS:
+                    self.assertIn(key, result)
+                self.assertEqual(result['iperf_result'], 1)
+                self.assertEqual(result['sent_bps_tcp'], 0.0)
+                self.assertEqual(result['received_bps_tcp'], 0.0)
+                self.assertEqual(result['jitter'], 0.01)
+                self.assertEqual(result['total_packets'], 40)
+                self.assertEqual(Chart.objects.count(), 10)
+                self.assertEqual(Metric.objects.count(), 3)
+                self.assertEqual(mock_exec_command.call_count, 2)
+                mock_warn.assert_has_calls(expected_mock_warns[1:])
+                mock_exec_command.assert_has_calls(expected_exec_command_calls)
+                mock_get_iperf_servers.assert_called_once_with(device.organization.id)
