@@ -17,7 +17,7 @@
         return newArr;
     }
 
-    function adaptiveFilterPoints(charts) {
+    function adaptiveFilterPoints(charts, yrawVal) {
 
         var convertToAdaptiveBytes = function(charts, type, i, multiplier, unit) {
             charts[type].y[i] = Math.round((charts[type].y[i] * multiplier) * 100) / 100;
@@ -25,7 +25,10 @@
         };
 
         for (var i=0; i<charts[0].y.length; i++) {
-            if (charts[0].y[i] == 0) {
+            if (yrawVal[i] == null) {
+                charts[0].hovertemplate[i] = 'N/A' + '<extra></extra>';
+            }
+            else if (charts[0].y[i] == 0) {
                 convertToAdaptiveBytes(charts, 0, i, 1, 'B');
             }
             else if (charts[0].y[i] < 0.001) {
@@ -40,7 +43,10 @@
         }
 
         for (i=0; i<charts[1].y.length; i++) {
-            if (charts[1].y[i] == 0) {
+            if (yrawVal[i] == null) {
+                charts[1].hovertemplate[i] = 'N/A' + '<extra></extra>';
+            }
+            else if (charts[1].y[i] == 0) {
                 convertToAdaptiveBytes(charts, 1, i, 1, 'B');
             }
             else if (charts[1].y[i] < 0.001) {
@@ -55,7 +61,10 @@
         }
 
         for (i=0; i<charts[2].y.length; i++) {
-            if (charts[2].y[i] == 0) {
+            if (yrawVal[i] == null) {
+                charts[2].hovertemplate[i] = 'N/A' + '<extra></extra>';
+            }
+            else if (charts[2].y[i] == 0) {
                 convertToAdaptiveBytes(charts, 2, i, 1, 'B');
             }
             else if (charts[2].y[i] < 0.001) {
@@ -95,24 +104,23 @@
         }
     }
 
-    function adaptiveFilterSummary(i, percircles, value, data) {
+    function adaptiveFilterSummary(i, percircles, value) {
+
+        var convertToAdaptiveBytesSummary = function(i, percircles, multiplier, value, unit ) {
+            percircles[i].text = Math.round((value * multiplier) * 100) / 100 + ' ' + unit;
+        };
+
         if (value == 0) {
-            data.unit = 'B';
-            percircles[i].text = value + ' ' + data.unit;
+            convertToAdaptiveBytesSummary(i, percircles, 1, value, 'B');
         }
         else if (value < 0.001) {
-            value *= 1000000;
-            data.unit = 'KB';
-            percircles[i].text = value + ' ' + data.unit;
+            convertToAdaptiveBytesSummary(i, percircles, 1000000, value, 'KB');
         }
         else if (value < 1) {
-            value *= 1000;
-            data.unit = 'MB';
-            percircles[i].text = value + ' ' + data.unit;
+            convertToAdaptiveBytesSummary(i, percircles, 1000, value, 'MB');
         }
         else {
-            data.unit = 'GB';
-            percircles[i].text = value + ' ' + data.unit;
+            convertToAdaptiveBytesSummary(i, percircles, 1, value, 'GB');
         }
     }
 
@@ -295,8 +303,12 @@
         charts = sortByTraceOrder(data.trace_order, charts, '_key');
 
         if (unit == 'adaptive_bytes') {
+            var yrawVal;
+            for( i =0; i<charts.length; i++){
+                yrawVal = data.traces[i][1];
+            }
             adaptiveFilterLayout(charts, layout);
-            adaptiveFilterPoints(charts);
+            adaptiveFilterPoints(charts, yrawVal);
         }
 
         if (fixedY) { layout.yaxis = {range: [0, fixedYMax]}; }
@@ -373,7 +385,7 @@
                 percircles.push(percircleOptions);
 
                 if (unit == 'adaptive_bytes') {
-                    adaptiveFilterSummary(i, percircles, value, data);
+                    adaptiveFilterSummary(i, percircles, value);
                 }
             }
             percircles = sortByTraceOrder(data.trace_order, percircles, '_key');
