@@ -106,29 +106,6 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.create_test_data()
         self.assertEqual(Notification.objects.count(), 0)
 
-    def test_cpu_metric_threshold_crossed(self):
-        admin = self._create_admin()
-        org = self._create_org()
-        device = self._create_device(organization=org)
-        # creates metric and alert settings
-        data = self._data()
-        data['resources']['load'] = [0.99, 0.99, 0.99]
-        response = self._post_data(device.id, device.key, data)
-        self.assertEqual(response.status_code, 200)
-        # retrieve created metric
-        metric = Metric.objects.get(name='CPU usage')
-        # simplify test by setting tolerance to 0
-        metric.alertsettings.custom_tolerance = 0
-        metric.alertsettings.save()
-        # trigger alert
-        metric.write(99.0)
-        self.assertEqual(Notification.objects.count(), 1)
-        n = Notification.objects.first()
-        self.assertEqual(n.recipient, admin)
-        self.assertEqual(n.actor, metric)
-        self.assertEqual(n.action_object, metric.alertsettings)
-        self.assertEqual(n.level, 'warning')
-
     def test_general_check_threshold_crossed_for_long_time(self):
         """
         this is going to be the most realistic scenario:
@@ -437,6 +414,29 @@ class TestTransactionMonitoringNotifications(DeviceMonitoringTransactionTestcase
         self.assertEqual(notification.action_object, metric.alertsettings)
         self.assertEqual(notification.level, 'warning')
         self.assertEqual(notification.verb, 'is not reachable')
+
+    def test_cpu_metric_threshold_crossed(self):
+        admin = self._create_admin()
+        org = self._create_org()
+        device = self._create_device(organization=org)
+        # creates metric and alert settings
+        data = self._data()
+        data['resources']['load'] = [0.99, 0.99, 0.99]
+        response = self._post_data(device.id, device.key, data)
+        self.assertEqual(response.status_code, 200)
+        # retrieve created metric
+        metric = Metric.objects.get(name='CPU usage')
+        # simplify test by setting tolerance to 0
+        metric.alertsettings.custom_tolerance = 0
+        metric.alertsettings.save()
+        # trigger alert
+        metric.write(99.0)
+        self.assertEqual(Notification.objects.count(), 1)
+        n = Notification.objects.first()
+        self.assertEqual(n.recipient, admin)
+        self.assertEqual(n.actor, metric)
+        self.assertEqual(n.action_object, metric.alertsettings)
+        self.assertEqual(n.level, 'warning')
 
     def test_multiple_notifications(self):
         testorg = self._create_org()
