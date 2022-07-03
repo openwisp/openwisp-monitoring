@@ -1,9 +1,13 @@
 import json
 import logging
 
+from django.core.exceptions import ValidationError
+from jsonschema import draft7_format_checker, validate
+from jsonschema.exceptions import ValidationError as SchemaError
 from swapper import load_model
 
 from openwisp_controller.connection.settings import UPDATE_STRATEGIES
+from openwisp_utils.utils import deep_merge_dicts
 
 from .. import settings as app_settings
 from .base import BaseCheck
@@ -17,9 +21,57 @@ Credentials = load_model('connection', 'Credentials')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 DeviceConnection = load_model('connection', 'DeviceConnection')
 
+DEFAULT_IPERF_CHECK_CONFIG = {
+    'port': {
+        'type': 'integer',
+        'default': 5201,
+        # max, min port chosen from iperf3 docs
+        'minimum': 1,
+        'maximum': 65535,
+    },
+    'time': {
+        'type': 'integer',
+        # Sets the interval time in seconds
+        # between periodic bandwidth, jitter, and loss reports.
+        # If zero, no periodic reports are printed.
+        'default': 10,
+        'minimum': 1,
+        # arbitrary chosen to avoid slowing down the queue (30min)
+        'maximum': 1800,
+    },
+}
+
+
+def get_iperf_schema():
+    schema = {
+        '$schema': 'http://json-schema.org/draft-07/schema#',
+        'type': 'object',
+        'additionalProperties': False,
+    }
+    schema['properties'] = deep_merge_dicts(
+        DEFAULT_IPERF_CHECK_CONFIG, app_settings.IPERF_CHECK_CONFIG
+    )
+    return schema
+
 
 class Iperf(BaseCheck):
+
+    schema = get_iperf_schema()
+
+    def validate_params(self):
+        try:
+            validate(self.params, self.schema, format_checker=draft7_format_checker)
+        except SchemaError as e:
+            message = 'Invalid param'
+            path = '/'.join(e.path)
+            if path:
+                message = '{0} in "{1}"'.format(message, path)
+            message = '{0}: {1}'.format(message, e.message)
+            raise ValidationError({'params': message}) from e
+
     def check(self, store=True):
+        port = self._get_param('port')
+        time = self._get_param('time')
         device = self.related_object
         device_connection = self._get_device_connection(device)
         if not device_connection:
@@ -36,12 +88,12 @@ class Iperf(BaseCheck):
         servers = self._get_iperf_servers(device.organization.id)
 
         # TCP mode
-        command = f'iperf3 -c {servers[0]} -J'
+        command = f'iperf3 -c {servers[0]} -p {port} -t {time} -J'
         res, exit_code = self._exec_command(device_connection, command)
         result_tcp = self._get_iperf_result(res, exit_code, device, mode='TCP')
 
         # UDP mode
-        command = f'iperf3 -c {servers[0]} -u -J'
+        command = f'iperf3 -c {servers[0]} -p {port} -t {time} -u -J'
         res, exit_code = self._exec_command(device_connection, command)
         result_udp = self._get_iperf_result(res, exit_code, device, mode='UDP')
 
@@ -85,6 +137,12 @@ class Iperf(BaseCheck):
         Connects device returns its working status (easier to mock)
         """
         return dc.connect()
+
+    def _get_param(self, param):
+        """
+        Gets specified param or its default value according to the schema
+        """
+        return self.params.get(param, self.schema['properties'][param]['default'])
 
     def _get_iperf_result(self, res, exit_code, device, mode):
         """
@@ -146,7 +204,7 @@ class Iperf(BaseCheck):
             else:
                 sent_bytes = res_dict['end']['sum']['bytes']
                 sent_bytes_MB = sent_bytes / 1000000
-                sent_bps = res_dict['end']['sum']['bytes']
+                sent_bps = res_dict['end']['sum']['bits_per_second']
                 sent_Mbps = sent_bps / 1000000
                 jitter_ms = res_dict['end']['sum']['jitter_ms']
                 jitter_ms = res_dict['end']['sum']['jitter_ms']
