@@ -58,7 +58,7 @@
             else if (charts[1].y[i] < 1) {
                 convertToAdaptiveBytes(charts, 1, i, 1000, 'MB');
             }
-            else if(charts[1].y[i] < 1000) {
+            else if (charts[1].y[i] < 1000) {
                 convertToAdaptiveBytes(charts, 1, i, 1, 'GB');
             }
             else {
@@ -79,7 +79,7 @@
             else if (charts[2].y[i] < 1) {
                 convertToAdaptiveBytes(charts, 2, i, 1000, 'MB');
             }
-            else if(charts[2].y[i] < 1000) {
+            else if (charts[2].y[i] < 1000) {
                 convertToAdaptiveBytes(charts, 2, i, 1, 'GB');
             }
             else {
@@ -99,20 +99,20 @@
             }
         }
         var average = sum / count;
-        if (average == 0) {
-            layout.yaxis.title = 'B';
-        }
-        else if (average < 0.001) {
+        if (average < 0.001) {
             layout.yaxis.title = 'KB';
         }
         else if (average < 1) {
             layout.yaxis.title = 'MB';
         }
-        else if(average < 1000) {
+        else if (average < 1000) {
             layout.yaxis.title = 'GB';
         }
-        else {
+        else if (average > 1000) {
             layout.yaxis.title = 'TB';
+        }
+        else {
+            layout.yaxis.title = 'B';
         }
     }
 
@@ -130,7 +130,7 @@
         else if (value < 1) {
             convertToAdaptiveBytesSummary(i, percircles, 1000, value, 'MB');
         }
-        else if(value < 1000) {
+        else if (value < 1000) {
             convertToAdaptiveBytesSummary(i, percircles, 1, value, 'GB');
         }
         else {
