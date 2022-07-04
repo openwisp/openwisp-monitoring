@@ -4,6 +4,10 @@
     <span id="monitoring-timeseries-api-url" data-value="{{ api_url }}"></span>
     <span id="monitoring-timeseries-original-key" data-value="{{ original.key }}"></span>
     <span id="monitoring-timeseries-default-time" data-value="{{ default_time }}"></span>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
     <div id="ow-chart-time">
         <a class="time" data-time="1d">1 {% trans 'day' %}</a>
         <a class="time" data-time="3d">3 {% trans 'days' %}</a>
@@ -11,6 +15,9 @@
         <a class="time" data-time="30d">1 {% trans 'month' %}</a>
         <a class="time" data-time="365d">1 {% trans 'year' %}</a>
         <a class="export">{% trans 'export data' %}</a>
+        <a id="reportrange">
+            <span></span>
+        </a>
     </div>
     <div id="chart-loading-overlay"><div class="ow-loading-spinner"></div></div>
     <div id="ow-chart-contents"></div>
@@ -20,4 +27,30 @@
     {% if chart_quick_links %}
         {{ chart_quick_links|json_script:"monitoring-chart-quick-links" }}
     {% endif %}
+    <script type="text/javascript">
+        $(function() {
+
+            var start = moment().subtract(29, 'days');
+            var end = moment();
+
+            function cb(start, end) {
+                $('#reportrange span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
+            }
+
+            $('#reportrange').daterangepicker({
+                startDate: start,
+                endDate: end,
+                ranges: {
+                    'Today': [moment(), moment()],
+                    'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                    '3 days': [moment().subtract(2, 'days'), moment().subtract(1, 'days')],
+                    '1 week': [moment().subtract(6, 'days'), moment()],
+                    '1 month': [moment().subtract(29, 'days'), moment()],
+                    '1 year': [moment().subtract(365, 'days'), moment()],
+                }
+            }, cb);
+
+            cb(start, end);
+        });
+    </script>
 </div>
