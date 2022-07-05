@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.test import TransactionTestCase
 from swapper import load_model
 
+from openwisp_controller.connection.settings import UPDATE_STRATEGIES
 from openwisp_controller.connection.tests.utils import CreateConnectionsMixin, SshServer
 from openwisp_monitoring.check.classes.iperf import get_iperf_schema
 from openwisp_monitoring.check.classes.iperf import logger as iperf_logger
@@ -181,8 +182,26 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             mocked_connect.assert_called_once_with(dc)
             self.assertEqual(mocked_connect.call_count, 1)
 
+        with self.subTest('Test device connection is not enabled'):
+            dc.enabled = False
+            dc.save()
+            check.perform_check(store=False)
+            mock_warn.assert_called_with(
+                f'Failed to get a working DeviceConnection for "{self.device}", iperf check skipped!'
+            )
+
         with self.subTest('Test device connection not working'):
             dc.is_working = False
+            dc.save()
+            check.perform_check(store=False)
+            mock_warn.assert_called_with(
+                f'Failed to get a working DeviceConnection for "{self.device}", iperf check skipped!'
+            )
+
+        with self.subTest('Test device connection is not with right update strategy'):
+            dc.update_strategy = UPDATE_STRATEGIES[1][0]
+            dc.is_working = True
+            dc.enabled = True
             dc.save()
             check.perform_check(store=False)
             mock_warn.assert_called_with(
@@ -219,8 +238,8 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             {'time': 0},
             {'port': 'invalid port'},
             {'time': 'invalid time'},
-            {'port': 'invalid port'},
-            {'time': 'invalid time'},
+            {'port': '-12a'},
+            {'time': '3test22'},
             {'port': 0},
             {'port': 797979},
             {'time': 36000},

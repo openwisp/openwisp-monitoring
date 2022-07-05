@@ -1006,6 +1006,9 @@ It also supports tuning of various parameters related to timing, buffers and pro
 This check is ``disabled`` by **default**, but you may choose to enable auto creation of this check by setting
 `OPENWISP_MONITORING_AUTO_IPERF <#OPENWISP_MONITORING_AUTO_IPERF>`_ to ``True``.
 
+You can also change the default values used for iperf checks using
+`OPENWISP_MONITORING_IPERF_CHECK_CONFIG <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_ setting.
+
 Instructions to configure Iperf Check
 -------------------------------------
 
@@ -1161,6 +1164,47 @@ created automatically for newly registered devices. It's enabled by default.
 
 Whether `Iperf <#iperf-1>`_ checks are created automatically for devices. The devices must have ``SSH`` `access credential <https://github.com/openwisp/openwisp-controller#save-ssh-private-key-in-openwisp-access-credentials>`_  & 
 `iperf3 openwrt package <https://openwrt.org/packages/pkgdata/iperf3>`_ must be installed on the devices in order for this check to work.
+
+``OPENWISP_MONITORING_IPERF_CHECK_CONFIG``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``dict``    |
++--------------+-------------+
+| **default**: | ``{}``      |
++--------------+-------------+
+
+This setting allows to override the default iperf check configuration defined in
+``openwisp_monitoring.check.classes.iperf.DEFAULT_IPERF_CHECK_CONFIG``.
+
+For example, if you want to change only the **port number** of
+``iperf`` check you can use:
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
+        'port': {
+            'default': 6209,
+        },
+    }
+
+Similar to `OPENWISP_MONITORING_PING_CHECK_CONFIG <#OPENWISP_MONITORING_PING_CHECK_CONFIG>`_ , 
+If you want to overriding the default value for any parameter beyond the maximum or minimum value defined in
+``openwisp_monitoring.check.classes.iperf.DEFAULT_IPERF_CHECK_CONFIG``,
+you will also need to override the ``maximum`` or ``minimum`` fields as following:
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
+        'time': {
+            'default': 2000,
+            'minimum': 2100,
+            'maximum': 3600,
+        },
+    }
+
+**Note:** Above ``maximum`` and ``minimum`` values are only used for
+validating custom parameters of a ``Check`` object.
 
 ``OPENWISP_MONITORING_AUTO_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
