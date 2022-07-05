@@ -214,7 +214,8 @@ class TestDashboardTimeseriesView(
             self.assertEqual(chart['colorscale'], None)
             self.assertEqual(
                 chart['description'],
-                'Network traffic of the whole network (total, download, upload) measured in GB.',
+                'Network traffic of the whole network (total, download, upload), and automatically '
+                'adapt units for the traffic data.',
             )
 
         path = reverse('monitoring_general:api_dashboard_timeseries')
