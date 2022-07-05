@@ -3,7 +3,8 @@
 }
 #ow-chart-time{
   margin-top: 15px;
-  text-align: center
+  text-align: center;
+  padding: 1px;
 }
 #ow-chart-time a{
   display: inline-block;

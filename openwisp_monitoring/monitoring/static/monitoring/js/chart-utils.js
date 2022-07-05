@@ -6,7 +6,6 @@ django.jQuery(function ($) {
     var chartQuickLinks, chartContents = $('#ow-chart-contents'),
       fallback = $('#ow-chart-fallback'),
       defaultTimeRange = localStorage.getItem(timeRangeKey) || $('#monitoring-timeseries-default-time').data('value'),
-      timeButtons = $('#ow-chart-time a.time'),
       apiUrl = $('#monitoring-timeseries-api-url').data('value'),
       originalKey = $('#monitoring-timeseries-original-key').data('value'),
       baseUrl = `${apiUrl}?key=${originalKey}&time=`,
@@ -57,6 +56,20 @@ django.jQuery(function ($) {
           }
         });
       };
+      setTimeout(()=>{
+        var dateTimePicker = $('.ranges li');
+        dateTimePicker.click(function () {
+          var timeRange = $(this).attr('data-time');
+          loadCharts(timeRange, true);
+          localStorage.setItem(timeRangeKey, timeRange);
+          // refresh every 2.5 minutes
+          clearInterval(window.owChartRefresh);
+          window.owChartRefresh = setInterval(loadCharts,
+            1000 * 60 * 2.5,
+            timeRange,
+            false);
+        });
+      }, 1000);
     try {
       chartQuickLinks = JSON.parse($('#monitoring-chart-quick-links').html());
     } catch (error) {
@@ -72,19 +85,6 @@ django.jQuery(function ($) {
       baseUrl = baseUrl.replace('time=', 'timezone=' + timezone + '&time=');
       // ignore failures (older browsers do not support this)
     } catch (e) {}
-    timeButtons.click(function () {
-      var timeRange = $(this).attr('data-time');
-      loadCharts(timeRange, true);
-      localStorage.setItem(timeRangeKey, timeRange);
-      timeButtons.removeClass('active');
-      $(this).addClass('active');
-      // refresh every 2.5 minutes
-      clearInterval(window.owChartRefresh);
-      window.owChartRefresh = setInterval(loadCharts,
-        1000 * 60 * 2.5,
-        timeRange,
-        false);
-    });
     // bind export button
     $('#ow-chart-time a.export').click(function () {
       var time = localStorage.getItem(timeRangeKey);
