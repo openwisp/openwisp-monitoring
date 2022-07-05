@@ -17,73 +17,45 @@
         return newArr;
     }
 
-    function adaptiveFilterPoints(charts, yRawVal) {
-
-        var convertToAdaptiveBytes = function(charts, type, i, multiplier, unit) {
-            charts[type].y[i] = Math.round((charts[type].y[i] * multiplier) * 100) / 100;
-            charts[type].hovertemplate[i] = charts[type].y[i] + ' ' + unit;
+    function getAdaptiveScale(value, multiplier, unit) {
+        if (value == 0) {
+            multiplier = 1;
+            unit = 'B';
+        } else if (value < 0.001) {
+            multiplier = 1000000;
+            unit = 'KB';
+        } else if (value < 1) {
+            multiplier = 1000;
+            unit = 'MB';
+        } else if (value < 1000) {
+            multiplier = 1;
+            unit = 'GB';
+        } else if (value >=1000) {
+            multiplier = 0.001;
+            unit = 'TB';
+        }
+        return {
+            multiplier: multiplier,
+            unit: unit
         };
+    }
 
-        for (var i=0; i<charts[0].y.length; i++) {
-            if (yRawVal[i] == null) {
-                charts[0].hovertemplate[i] = 'N/A' + '<extra></extra>';
-            }
-            else if (charts[0].y[i] == 0) {
-                convertToAdaptiveBytes(charts, 0, i, 1, 'B');
-            }
-            else if (charts[0].y[i] < 0.001) {
-                convertToAdaptiveBytes(charts, 0, i, 1000000, 'KB');
-            }
-            else if (charts[0].y[i] < 1) {
-                convertToAdaptiveBytes(charts, 0, i, 1000, 'MB');
-            }
-            else if (charts[0].y[i] < 1000) {
-                convertToAdaptiveBytes(charts, 0, i, 1, 'GB');
-            }
-            else {
-                convertToAdaptiveBytes(charts, 0, i, 0.001, 'TB');
-            }
-        }
+    function getAdaptiveBytes(value, multiplier) {
+        return Math.round((value * multiplier) * 100) / 100;
+    }
 
-        for (i=0; i<charts[1].y.length; i++) {
-            if (yRawVal[i] == null) {
-                charts[1].hovertemplate[i] = 'N/A' + '<extra></extra>';
-            }
-            else if (charts[1].y[i] == 0) {
-                convertToAdaptiveBytes(charts, 1, i, 1, 'B');
-            }
-            else if (charts[1].y[i] < 0.001) {
-                convertToAdaptiveBytes(charts, 1, i, 1000000, 'KB');
-            }
-            else if (charts[1].y[i] < 1) {
-                convertToAdaptiveBytes(charts, 1, i, 1000, 'MB');
-            }
-            else if (charts[1].y[i] < 1000) {
-                convertToAdaptiveBytes(charts, 1, i, 1, 'GB');
-            }
-            else {
-                convertToAdaptiveBytes(charts, 1, i, 0.001, 'TB');
-            }
-        }
-
-        for (i=0; i<charts[2].y.length; i++) {
-            if (yRawVal[i] == null) {
-                charts[2].hovertemplate[i] = 'N/A' + '<extra></extra>';
-            }
-            else if (charts[2].y[i] == 0) {
-                convertToAdaptiveBytes(charts, 2, i, 1, 'B');
-            }
-            else if (charts[2].y[i] < 0.001) {
-                convertToAdaptiveBytes(charts, 2, i, 1000000, 'KB');
-            }
-            else if (charts[2].y[i] < 1) {
-                convertToAdaptiveBytes(charts, 2, i, 1000, 'MB');
-            }
-            else if (charts[2].y[i] < 1000) {
-                convertToAdaptiveBytes(charts, 2, i, 1, 'GB');
-            }
-            else {
-                convertToAdaptiveBytes(charts, 2, i, 0.001, 'TB');
+    function adaptiveFilterPoints(charts, yRawVal) {
+        for (var i=0; i<charts.length; i++) {
+            for (var j=0; j<charts[i].y.length; j++) {
+                if (yRawVal[j] == null) {
+                    charts[i].hovertemplate[j] = 'N/A' + '<extra></extra>';
+                    continue;
+                }
+                var scales = getAdaptiveScale(charts[i].y[j], 1, '');
+                var multiplier = scales.multiplier;
+                var unit = scales.unit;
+                charts[i].y[j] = getAdaptiveBytes(charts[i].y[j], multiplier);
+                charts[i].hovertemplate[j] = charts[i].y[j] + ' ' + unit;
             }
         }
     }
@@ -99,43 +71,17 @@
             }
         }
         var average = sum / count;
-        if (average < 0.001) {
-            layout.yaxis.title = 'KB';
-        }
-        else if (average < 1) {
-            layout.yaxis.title = 'MB';
-        }
-        else if (average < 1000) {
-            layout.yaxis.title = 'GB';
-        }
-        else if (average > 1000) {
-            layout.yaxis.title = 'TB';
-        }
-        else {
-            layout.yaxis.title = 'B';
-        }
+        var scales = getAdaptiveScale(average, 1, '');
+        var unit = scales.unit;
+        layout.yaxis.title = unit;
     }
 
     function adaptiveFilterSummary(i, percircles, value) {
-        var convertToAdaptiveBytesSummary = function(i, percircles, multiplier, value, unit ) {
-            percircles[i].text = Math.round((value * multiplier) * 100) / 100 + ' ' + unit;
-        };
-
-        if (value == 0) {
-            convertToAdaptiveBytesSummary(i, percircles, 1, value, 'B');
-        }
-        else if (value < 0.001) {
-            convertToAdaptiveBytesSummary(i, percircles, 1000000, value, 'KB');
-        }
-        else if (value < 1) {
-            convertToAdaptiveBytesSummary(i, percircles, 1000, value, 'MB');
-        }
-        else if (value < 1000) {
-            convertToAdaptiveBytesSummary(i, percircles, 1, value, 'GB');
-        }
-        else {
-            convertToAdaptiveBytesSummary(i, percircles, 0.001, value, 'TB');
-        }
+        var scales = getAdaptiveScale(value, 1, '');
+        var multiplier = scales.multiplier;
+        var unit = scales.unit;
+        value = getAdaptiveBytes(value, multiplier);
+        percircles[i].text = value + ' ' + unit;
     }
 
     window.createChart = function (data, x, id, title, type, quickLink) {
@@ -318,7 +264,7 @@
 
         if (unit == 'adaptive_bytes') {
             var yRawVal;
-            for( i =0; i<charts.length; i++){
+            for (i=0; i<charts.length; i++) {
                 yRawVal = data.traces[i][1];
             }
             adaptiveFilterLayout(charts, layout);

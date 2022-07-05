@@ -937,12 +937,13 @@ which makes it easier to understand the unit of points in the chart.
 configuration
 ~~~~~~~~~~~~~
 .. code-block:: python
-    
-    'traffic': {
-                    'unit': 'adaptive_bytes',
-                },
 
-This is enabled for the traffic charts where the data is in `B`, `KB`, `MB` and `GB` respectively.
+    'traffic': {
+        # other configurations for this chart
+        'unit': 'adaptive_bytes',
+    },
+
+The default traffic chart uses this feature to automatically adapt units for the traffic data.
 
 Settings
 --------
@@ -1384,17 +1385,19 @@ This setting allows to define additional charts or to override
 the default chart configuration defined in
 ``openwisp_monitoring.monitoring.configuration.DEFAULT_CHARTS``.
 
-For example, if you want to change the traffic chart to show
-MB (megabytes) instead of GB (Gigabytes) you can use:
+For example, the units in the traffic charts automatically 
+adapt according to the traffic data and is set to ``adaptive_bytes``
+by default.
 
 .. code-block:: python
 
     OPENWISP_MONITORING_CHARTS = {
         'traffic': {
-            'unit': ' MB',
+            'unit': 'adaptive_bytes',
             'description': (
                 'Network traffic, download and upload, measured on '
-                'the interface "{metric.key}", measured in GB.'
+                'the interface "{metric.key}", and automatically '
+                'adapt units for the traffic data.'
             ),
             'query': {
                 'influxdb': (

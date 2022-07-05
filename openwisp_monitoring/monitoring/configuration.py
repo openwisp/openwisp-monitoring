@@ -199,7 +199,8 @@ DEFAULT_METRICS = {
                 'label': _('Traffic'),
                 'description': _(
                     'Network traffic (total, download and upload) '
-                    'of the interface "{ifname}", measured in GB.'
+                    'of the interface "{ifname}", and automatically '
+                    'adapt units for the traffic data.'
                 ),
                 'summary_labels': [
                     _('Total traffic'),
@@ -236,7 +237,8 @@ DEFAULT_METRICS = {
                 'label': _('General Traffic'),
                 'description': _(
                     'Network traffic of the whole network'
-                    ' (total, download, upload) measured in GB.'
+                    ' (total, download, upload), and automatically '
+                    'adapt units for the traffic data.'
                 ),
                 'summary_labels': [
                     _('Total traffic'),
