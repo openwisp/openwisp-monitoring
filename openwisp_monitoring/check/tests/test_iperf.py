@@ -258,6 +258,28 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
     def test_iperf_check(self):
         check, _ = self._create_iperf_test_env()
+        error = "ash: iperf3: not found"
+
+        with self.subTest('Test iperf3 is not installed on the device'):
+            with patch.object(
+                Iperf, '_exec_command'
+            ) as mock_exec_command, patch.object(
+                Iperf,
+                '_get_iperf_servers',
+                return_value=['iperf.openwisptestserver.com'],
+            ) as mock_get_iperf_servers:
+                mock_exec_command.side_effect = [(error, 127)]
+                with patch.object(iperf_logger, 'warning') as mock_warn:
+                    check.perform_check(store=False)
+                    mock_warn.assert_called_with(
+                        f'Iperf3 is not installed on the "{self.device}", error - {error}'
+                    )
+                self.assertEqual(mock_warn.call_count, 1)
+                self.assertEqual(mock_exec_command.call_count, 1)
+                mock_get_iperf_servers.assert_called_once_with(
+                    self.device.organization.id
+                )
+
         with self.subTest('Test iperf check passes in both TCP & UDP'):
             with patch.object(
                 Iperf, '_exec_command'

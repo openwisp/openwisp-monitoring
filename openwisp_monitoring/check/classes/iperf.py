@@ -90,6 +90,14 @@ class Iperf(BaseCheck):
         # TCP mode
         command = f'iperf3 -c {servers[0]} -p {port} -t {time} -J'
         res, exit_code = self._exec_command(device_connection, command)
+
+        # Exit code 127 : command doesn't exist
+        if exit_code == 127:
+            logger.warning(
+                f'Iperf3 is not installed on the "{device}", error - {res.strip()}'
+            )
+            return
+
         result_tcp = self._get_iperf_result(res, exit_code, device, mode='TCP')
 
         # UDP mode
@@ -148,7 +156,13 @@ class Iperf(BaseCheck):
         """
         Get iperf test result
         """
-        res_dict = json.loads(res)
+
+        try:
+            res_dict = json.loads(res)
+        except json.decoder.JSONDecodeError:
+            # Errors other than iperf3 test errors
+            res_dict = {'error': f'error - {res.strip()}'}
+
         if mode == 'TCP':
             if exit_code != 0:
                 logger.warning(
