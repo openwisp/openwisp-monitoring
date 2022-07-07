@@ -44,7 +44,7 @@
         return Math.round((value * multiplier) * 100) / 100;
     }
 
-    function adaptiveFilterPoints(charts, yRawVal) {
+    function adaptiveFilterPoints(charts, yRawVal, layout) {
         for (var i=0; i<charts.length; i++) {
             for (var j=0; j<charts[i].y.length; j++) {
                 if (yRawVal[j] == null) {
@@ -54,14 +54,19 @@
                 var scales = getAdaptiveScale(charts[i].y[j], 1, '');
                 var multiplier = scales.multiplier;
                 var unit = scales.unit;
-                charts[i].y[j] = getAdaptiveBytes(charts[i].y[j], multiplier);
-                charts[i].hovertemplate[j] = charts[i].y[j] + ' ' + unit;
+                if (unit == layout.yaxis.title) {
+                    charts[i].y[j] = getAdaptiveBytes(charts[i].y[j], multiplier);
+                    charts[i].hovertemplate[j] = charts[i].y[j] + ' ' + unit;
+                }
+                else {
+                    charts[i].hovertemplate[j] = (charts[i].y[j] * multiplier) + ' ' + unit;
+                }
             }
         }
     }
 
     function adaptiveFilterLayout(charts, layout) {
-        var y = charts[0].y, sum = 0, count = 0;
+        var y = charts[0].y, sum = 0, count = 0, average, scales, unit;
         for (var i=0; i<y.length; i++) {
             sum += y[i];
         }
@@ -70,9 +75,9 @@
                 count++;
             }
         }
-        var average = sum / count;
-        var scales = getAdaptiveScale(average, 1, '');
-        var unit = scales.unit;
+        average = sum / count;
+        scales = getAdaptiveScale(average, 1, '');
+        unit = scales.unit;
         layout.yaxis.title = unit;
     }
 
@@ -268,7 +273,7 @@
                 yRawVal = data.traces[i][1];
             }
             adaptiveFilterLayout(charts, layout);
-            adaptiveFilterPoints(charts, yRawVal);
+            adaptiveFilterPoints(charts, yRawVal, layout);
         }
 
         if (fixedY) { layout.yaxis = {range: [0, fixedYMax]}; }
