@@ -809,11 +809,11 @@ Iperf
 +--------------------+----------------------------------------------------------------------------------------------------------------------------------------+
 | **measurement**:   | ``iperf``                                                                                                                              |
 +--------------------+----------------------------------------------------------------------------------------------------------------------------------------+
-| **types**:         | ``int`` (iperf_result, retransmits, total_packets, lost_packets),                                                                      |
-|                    | ``float`` (sent_bps_tcp, received_bps_tcp, sent_bytes_tcp, received_bytes_tcp, sent_bps_udp, sent_bytes_udp, jitter, lost_percent)     |
+| **types**:         | | ``int`` (iperf_result, retransmits, total_packets, lost_packets),                                                                    |
+|                    | | ``float`` (sent_bps_tcp, received_bps_tcp, sent_bytes_tcp, received_bytes_tcp, sent_bps_udp, sent_bytes_udp, jitter, lost_percent)   |
 +--------------------+----------------------------------------------------------------------------------------------------------------------------------------+
-| **fields**:        | ``iperf_result``, ``sent_bps_tcp``, ``received_bps_tcp``, ``sent_bytes_tcp``, ``received_bytes_tcp``, ``retransmits``,                 |
-| **fields**:        | ``sent_bps_udp``, ``sent_bytes_udp``, ``jitter``, ``total_packets``, ``lost_packets``, ``lost_percent``                                |
+| **fields**:        | | ``iperf_result``, ``sent_bps_tcp``, ``received_bps_tcp``, ``sent_bytes_tcp``, ``received_bytes_tcp``, ``retransmits``,               |
+|                    | | ``sent_bps_udp``, ``sent_bytes_udp``, ``jitter``, ``total_packets``, ``lost_packets``, ``lost_percent``                              |
 +--------------------+----------------------------------------------------------------------------------------------------------------------------------------+
 | **configuration**: | ``iperf``                                                                                                                              |
 +--------------------+----------------------------------------------------------------------------------------------------------------------------------------+
@@ -999,14 +999,15 @@ if there's anything that is not working as intended.
 Iperf
 ~~~~~
 
-This check provides network performance measurements such as maximum achievable bandwidth, jitter, datagram loss etc of the device using `iperf3 utility <https://iperf.fr/>`_. 
+This check provides network performance measurements such as maximum achievable bandwidth, 
+jitter, datagram loss etc of the device using `iperf3 utility <https://iperf.fr/>`_. 
 
-It also supports tuning of various parameters related to timing, buffers and protocols (TCP, UDP with IPv4 and IPv6).
-
-This check is ``disabled`` by **default**, but you may choose to enable auto creation of this check by setting
+This check is **disabled by default**. You can enable auto creation of this check by setting the
 `OPENWISP_MONITORING_AUTO_IPERF <#OPENWISP_MONITORING_AUTO_IPERF>`_ to ``True``.
 
-You can also change the default values used for iperf checks using
+It also supports tuning of various parameters.
+
+You can also change the parameters used for iperf checks (e.g. timing, port, buffer, etc) using the
 `OPENWISP_MONITORING_IPERF_CHECK_CONFIG <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_ setting.
 
 Instructions to configure Iperf Check
@@ -1024,9 +1025,10 @@ Register your device to OpenWISP and make sure `iperf3 openwrt package <https://
 2. Enable secure SSH access from OpenWISP to your devices
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-We have already well covered this in `How to configure push updates section of openwisp-controller <https://github.com/openwisp/openwisp-controller#how-to-configure-push-updates>`_.
+Follow the steps in `"How to configure push updates" section of the openwisp-controller documentation <https://github.com/openwisp/openwisp-controller#how-to-configure-push-updates>`_ 
+to allow SSH access to you device from OpenWISP.
 
-**Note:** Make sure device connection is enabled & working with right update strategy ie. ``OpenWISP SSH``.
+**Note:** Make sure device connection is enabled & working with right update strategy i.e. ``OpenWRT SSH``.
 
 .. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/enable-openwisp-ssh.png
   :alt: Enable ssh access from openwisp to device
@@ -1035,9 +1037,10 @@ We have already well covered this in `How to configure push updates section of o
 3. Configure Iperf settings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Configure iperf servers in `openwisp settings <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_ , The host can be specified by hostname, IPv4 literal, or IPv6 literal.
+Configure iperf servers in `openwisp settings <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_ , 
+The host can be specified by hostname, IPv4 literal, or IPv6 literal.
 
-For eg.
+For example.
 
 .. code-block:: python
 
@@ -1162,8 +1165,8 @@ created automatically for newly registered devices. It's enabled by default.
 | **default**: | ``False``   |
 +--------------+-------------+
 
-Whether `Iperf <#iperf-1>`_ checks are created automatically for devices. The devices must have ``SSH`` `access credential <https://github.com/openwisp/openwisp-controller#save-ssh-private-key-in-openwisp-access-credentials>`_  & 
-`iperf3 openwrt package <https://openwrt.org/packages/pkgdata/iperf3>`_ must be installed on the devices in order for this check to work.
+This setting allows you to choose whether `iperf <#iperf-1>`_ checks should be
+created automatically for newly registered devices. It's disabled by default.
 
 ``OPENWISP_MONITORING_IPERF_CHECK_CONFIG``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1188,7 +1191,6 @@ For example, if you want to change only the **port number** of
         },
     }
 
-Similar to `OPENWISP_MONITORING_PING_CHECK_CONFIG <#OPENWISP_MONITORING_PING_CHECK_CONFIG>`_ , 
 If you want to overriding the default value for any parameter beyond the maximum or minimum value defined in
 ``openwisp_monitoring.check.classes.iperf.DEFAULT_IPERF_CHECK_CONFIG``,
 you will also need to override the ``maximum`` or ``minimum`` fields as following:
