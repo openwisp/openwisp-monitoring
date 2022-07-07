@@ -44,40 +44,34 @@
         return Math.round((value * multiplier) * 100) / 100;
     }
 
-    function adaptiveFilterPoints(charts, yRawVal, layout) {
-        for (var i=0; i<charts.length; i++) {
-            for (var j=0; j<charts[i].y.length; j++) {
-                if (yRawVal[j] == null) {
-                    charts[i].hovertemplate[j] = 'N/A' + '<extra></extra>';
-                    continue;
-                }
-                var scales = getAdaptiveScale(charts[i].y[j], 1, '');
-                var multiplier = scales.multiplier;
-                var unit = scales.unit;
-                if (unit == layout.yaxis.title) {
-                    charts[i].y[j] = getAdaptiveBytes(charts[i].y[j], multiplier);
-                    charts[i].hovertemplate[j] = charts[i].y[j] + ' ' + unit;
-                }
-                else {
-                    charts[i].hovertemplate[j] = (charts[i].y[j] * multiplier) + ' ' + unit;
-                }
-            }
-        }
-    }
-
-    function adaptiveFilterLayout(charts, layout) {
-        var y = charts[0].y, sum = 0, count = 0, average, scales, unit;
+    function adaptiveFilterPoints(charts, layout, yRawVal) {
+        var y = charts[0].y, sum = 0, count = 0, shownVal, average;
         for (var i=0; i<y.length; i++) {
             sum += y[i];
         }
-        for (i=0; i<y.length; i++) {
+        for (var j=0; j<y.length; j++) {
             if (y[i] != 0) {
                 count++;
             }
         }
         average = sum / count;
-        scales = getAdaptiveScale(average, 1, '');
-        unit = scales.unit;
+        var scales = getAdaptiveScale(average, 1, '');
+        var multiplier = scales.multiplier;
+        var unit = scales.unit;
+        for (i=0; i<y.length; i++) {
+            for (j=0; j<charts.length; j++) {
+                if (yRawVal[i] == null) {
+                    charts[j].hovertemplate[i] = 'N/A' + '<extra></extra>';
+                    continue;
+                }
+                shownVal = charts[j].y[i];
+                charts[j].y[i] = getAdaptiveBytes(charts[j].y[i], multiplier);
+                var hoverScales = getAdaptiveScale(shownVal, 1, '');
+                var hoverMultiplier = hoverScales.multiplier;
+                var hoverUnit = hoverScales.unit;
+                charts[j].hovertemplate[i] = (shownVal * hoverMultiplier) + ' ' + hoverUnit;
+            }
+        }
         layout.yaxis.title = unit;
     }
 
@@ -272,8 +266,7 @@
             for (i=0; i<charts.length; i++) {
                 yRawVal = data.traces[i][1];
             }
-            adaptiveFilterLayout(charts, layout);
-            adaptiveFilterPoints(charts, yRawVal, layout);
+            adaptiveFilterPoints(charts, layout, yRawVal);
         }
 
         if (fixedY) { layout.yaxis = {range: [0, fixedYMax]}; }
