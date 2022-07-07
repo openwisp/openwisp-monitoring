@@ -24,14 +24,11 @@
     {% endif %}
     <script type="text/javascript">
         $(function() {
-
-            var start = moment().subtract(29, 'days');
+            var start = moment();
             var end = moment();
-
             function cb(start, end) {
                 $('#reportrange span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
                 $("[data-range-key='Today']").attr('data-time','1d');
-                $("[data-range-key='Yesterday']").attr('data-time','1d');
                 $("[data-range-key='3 days']").attr('data-time','3d');
                 $("[data-range-key='1 week']").attr('data-time','7d');
                 $("[data-range-key='1 month']").attr('data-time','30d');
@@ -42,10 +39,13 @@
             $('#reportrange').daterangepicker({
                 startDate: start,
                 endDate: end,
+                maxDate: moment(),
+                maxSpan: {
+                    "year": 1,
+                },
                 ranges: {
                     'Today': [moment(), moment()],
-                    'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
-                    '3 days': [moment().subtract(2, 'days'), moment().subtract(1, 'days')],
+                    '3 days': [moment().subtract(2, 'days'), moment()],
                     '1 week': [moment().subtract(6, 'days'), moment()],
                     '1 month': [moment().subtract(29, 'days'), moment()],
                     '1 year': [moment().subtract(365, 'days'), moment()],
