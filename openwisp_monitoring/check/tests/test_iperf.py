@@ -1,6 +1,5 @@
 from unittest.mock import call, patch
 
-from django.core import management
 from django.core.exceptions import ValidationError
 from django.test import TransactionTestCase
 from swapper import load_model
@@ -13,7 +12,6 @@ from openwisp_monitoring.check.classes.iperf import logger as iperf_logger
 from ...device.tests import TestDeviceMonitoringMixin
 from .. import settings
 from ..classes import Iperf
-from ..utils import run_iperf_checks_async
 from .iperf_test_result import RESULT_FAIL, RESULT_TCP, RESULT_UDP
 
 Chart = load_model('monitoring', 'Chart')
@@ -419,60 +417,6 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 self.assertEqual(Metric.objects.count(), 3)
                 self.assertEqual(mock_exec_command.call_count, 2)
                 mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS[1:])
-                mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
-                mock_get_iperf_servers.assert_called_once_with(
-                    self.device.organization.id
-                )
-
-    def test_iperf_check_utils(self):
-        check, _ = self._create_iperf_test_env()
-
-        with self.subTest('Test celery task run_iperf_checks'):
-            with patch.object(
-                Iperf, '_exec_command'
-            ) as mock_exec_command, patch.object(
-                Iperf,
-                '_get_iperf_servers',
-                return_value=['iperf.openwisptestserver.com'],
-            ) as mock_get_iperf_servers, patch.object(
-                iperf_logger, 'warning'
-            ) as mock_warn:
-                mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
-
-                run_iperf_checks_async()
-                iperf_metric = Metric.objects.get(key='iperf')
-                self.assertEqual(iperf_metric.content_object, self.device)
-                points = iperf_metric.read(limit=None, extra_fields=self._RESULT_KEYS)
-                for key in self._RESULT_KEYS:
-                    self.assertIn(key, points[0])
-                self.assertEqual(points[0]['iperf_result'], 1)
-                self.assertEqual(mock_warn.call_count, 0)
-                self.assertEqual(mock_exec_command.call_count, 2)
-                mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
-                mock_get_iperf_servers.assert_called_once_with(
-                    self.device.organization.id
-                )
-
-        with self.subTest('Test management command run_iperf_checks'):
-            with patch.object(
-                Iperf, '_exec_command'
-            ) as mock_exec_command, patch.object(
-                Iperf,
-                '_get_iperf_servers',
-                return_value=['iperf.openwisptestserver.com'],
-            ) as mock_get_iperf_servers, patch.object(
-                iperf_logger, 'warning'
-            ) as mock_warn:
-                mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
-
-                management.call_command('run_iperf_checks')
-                iperf_metric = Metric.objects.get(key='iperf')
-                self.assertEqual(iperf_metric.content_object, self.device)
-                points = iperf_metric.read(limit=None, extra_fields=self._RESULT_KEYS)
-                self.assertEqual(len(points[0]), 14)
-                self.assertEqual(points[0]['iperf_result'], 1)
-                self.assertEqual(mock_warn.call_count, 0)
-                self.assertEqual(mock_exec_command.call_count, 2)
                 mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
                 mock_get_iperf_servers.assert_called_once_with(
                     self.device.organization.id
