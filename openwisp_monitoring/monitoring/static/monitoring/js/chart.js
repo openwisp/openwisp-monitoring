@@ -69,7 +69,8 @@
                 var hoverScales = getAdaptiveScale(shownVal, 1, '');
                 var hoverMultiplier = hoverScales.multiplier;
                 var hoverUnit = hoverScales.unit;
-                charts[j].hovertemplate[i] = (shownVal * hoverMultiplier) + ' ' + hoverUnit;
+                shownVal = getAdaptiveBytes(shownVal, hoverMultiplier);
+                charts[j].hovertemplate[i] = shownVal + ' ' + hoverUnit;
             }
         }
         layout.yaxis.title = unit;
