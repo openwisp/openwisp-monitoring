@@ -185,7 +185,7 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'openwisp_monitoring.check.tasks.run_iperf_checks',
         # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
         # Every 5 mins from 00:00 AM to 6:00 AM (night)
-        'schedule': crontab(minute='*/1', hour='0-6'),
+        'schedule': crontab(minute='*/5', hour='0-6'),
         'args': None,
         'relative': True,
     },
