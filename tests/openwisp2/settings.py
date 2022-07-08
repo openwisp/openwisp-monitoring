@@ -2,6 +2,8 @@ import os
 import sys
 from datetime import timedelta
 
+from celery.schedules import crontab
+
 TESTING = 'test' in sys.argv
 SHELL = 'shell' in sys.argv or 'shell_plus' in sys.argv
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -168,13 +170,25 @@ else:
     CELERY_TASK_EAGER_PROPAGATES = True
     CELERY_BROKER_URL = 'memory://'
 
+# Celery TIME_ZONE should be equal to django TIME_ZONE
+# In order to schedule run_iperf_checks on the correct time intervals
+CELERY_TIMEZONE = TIME_ZONE
+
 CELERY_BEAT_SCHEDULE = {
     'run_checks': {
         'task': 'openwisp_monitoring.check.tasks.run_checks',
         'schedule': timedelta(minutes=5),
         'args': None,
         'relative': True,
-    }
+    },
+    'run_iperf_checks': {
+        'task': 'openwisp_monitoring.check.tasks.run_iperf_checks',
+        # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
+        # Every 5 mins from 00:00 AM to 6:00 AM (night)
+        'schedule': crontab(minute='*/1', hour='0-6'),
+        'args': None,
+        'relative': True,
+    },
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

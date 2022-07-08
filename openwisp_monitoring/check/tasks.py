@@ -23,9 +23,33 @@ def run_checks():
     This allows to enqueue all the checks that need to be performed
     and execute them in parallel with multiple workers if needed.
     """
+    # Exclude iperf check from run_checks
+    iperf_check_path = 'openwisp_monitoring.check.classes.Iperf'
     iterator = (
         get_check_model()
-        .objects.filter(is_active=True)
+        .objects.exclude(check_type=iperf_check_path)
+        .filter(is_active=True)
+        .only('id')
+        .values('id')
+        .iterator()
+    )
+    for check in iterator:
+        perform_check.delay(check['id'])
+
+
+@shared_task
+def run_iperf_checks():
+    """
+    Retrieves the id of all active iperf checks in chunks of 2000 items
+    and calls the ``perform_check`` task (defined below) for each of them.
+
+    This allows to enqueue all the checks that need to be performed
+    and execute them in parallel with multiple workers if needed.
+    """
+    iperf_check_path = 'openwisp_monitoring.check.classes.Iperf'
+    iterator = (
+        get_check_model()
+        .objects.filter(is_active=True, check_type=iperf_check_path)
         .only('id')
         .values('id')
         .iterator()
