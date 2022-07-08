@@ -373,23 +373,30 @@ Configure celery (you may use a different broker if you want):
 
     # here we show how to configure celery with redis but you can
     # use other brokers if you want, consult the celery docs
+    # Celery TIME_ZONE should be equal to django TIME_ZONE
+    # In order to schedule run_iperf_checks on the correct time intervals
     CELERY_TIMEZONE = TIME_ZONE
+    OPENWISP_MONITORING_CHECKS = [
+        'openwisp_monitoring.check.classes.Ping',
+        'openwisp_monitoring.check.classes.ConfigApplied',
+        'openwisp_monitoring.check.classes.Iperf',
+    ]
     CELERY_BROKER_URL = 'redis://localhost/1'
     CELERY_BEAT_SCHEDULE = {
         'run_checks': {
             'task': 'openwisp_monitoring.check.tasks.run_checks',
             'schedule': timedelta(minutes=5),
+            # Executes only ping and config check every 5 mins
+            'args': (OPENWISP_MONITORING_CHECKS[:2],),
+            'relative': True,
         },
         'run_iperf_checks': {
-        'task': 'openwisp_monitoring.check.tasks.run_iperf_checks',
-        # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
-        # Every 5 mins from 00:00 AM to 6:00 AM (night)
-        'schedule': crontab(minute='*/5', hour='0-6'),
-    },
-        # Delete old WifiSession
-        'delete_wifi_clients_and_sessions': {
-            'task': 'openwisp_monitoring.monitoring.tasks.delete_wifi_clients_and_sessions',
-            'schedule': timedelta(days=180),
+            'task': 'openwisp_monitoring.check.tasks.run_checks',
+            # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
+            # Executes only iperf check every 5 mins from 00:00 AM to 6:00 AM (night)
+            'schedule': crontab(minute='*/5', hour='0-6'),
+            'args': (OPENWISP_MONITORING_CHECKS[2:],),
+            'relative': True,
         },
     }
 
@@ -1051,6 +1058,9 @@ to allow SSH access to you device from OpenWISP.
 Configure iperf servers in `openwisp settings <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_ , 
 The host can be specified by hostname, IPv4 literal, or IPv6 literal.
 
+**Note:** By default iperf checks are run periodically between **00:00 AM to 6:00 AM** every night by *celery beat*. 
+You can learn more about this in `Setup <#setup-integrate-in-an-existing-django-project>`_.
+
 For example.
 
 .. code-block:: python
@@ -1067,7 +1077,7 @@ For example.
 ################
 
 This should happen automatically if you have celery running in the background. For testing, you can
-run this check manually using the `run_iperf_checks <#run_iperf_checks>`_ command. After that, you should see the
+run this check manually using the `run_checks <#run_checks>`_ command. After that, you should see the
 iperf network measurements charts.
 
 .. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/iperf-charts.png
@@ -1663,6 +1673,20 @@ domain, you can use this option to change the base of the url, this will
 enable you to point all the API urls to your openwisp-monitoring API server's
 domain, example: ``https://mymonitoring.myapp.com``.
 
+``OPENWISP_MONITORING_CHECKS``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+---------------------------------------------------------+
+| **type**:    | ``list``                                                |
++--------------+---------------------------------------------------------+
+| **default**: |``['openwisp_monitoring.check.classes.Ping',``           |
+|              |``'openwisp_monitoring.check.classes.ConfigApplied',``   | 
+|              |``'openwisp_monitoring.check.classes.Iperf'],``          |
++--------------+---------------------------------------------------------+
+
+This list will allows you to configure celery beat configuration for the checks.
+You can learn more about this in `Setup <#setup-integrate-in-an-existing-django-project>`_.
+
 Registering / Unregistering Metric Configuration
 ------------------------------------------------
 
@@ -2109,8 +2133,8 @@ Management commands
 ``run_checks``
 ~~~~~~~~~~~~~~
 
-This command will execute all the `available checks <#available-checks>`_  except `iperf checks <#iperf-1>`_  
-for all the devices. By default checks are run periodically by *celery beat*. You can learn more
+This command will execute all the `available checks <#available-checks>`_ for all the devices. 
+By default checks are run periodically by *celery beat*. You can learn more
 about this in `Setup <#setup-integrate-in-an-existing-django-project>`_.
 
 Example usage:
@@ -2119,20 +2143,6 @@ Example usage:
 
     cd tests/
     ./manage.py run_checks
-
-``run_iperf_checks``
-~~~~~~~~~~~~~~~~~~~~
-
-This command will execute all the `available iperf checks <#iperf-1>`_ for all the devices.
-By default iperf checks are run periodically between 00:00 AM to 6:00 AM every night by *celery beat*. 
-You can learn more about this in `Setup <#setup-integrate-in-an-existing-django-project>`_.
-
-Example usage:
-
-.. code-block:: shell
-
-    cd tests/
-    ./manage.py run_iperf_checks
 
 ``migrate_timeseries``
 ~~~~~~~~~~~~~~~~~~~~~~
