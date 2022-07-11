@@ -1,5 +1,6 @@
-import json
 import logging
+from json import loads
+from json.decoder import JSONDecodeError
 
 from django.core.exceptions import ValidationError
 from jsonschema import draft7_format_checker, validate
@@ -89,21 +90,21 @@ class Iperf(BaseCheck):
 
         # TCP mode
         command = f'iperf3 -c {servers[0]} -p {port} -t {time} -J'
-        res, exit_code = self._exec_command(device_connection, command)
+        result, exit_code = self._exec_command(device_connection, command)
 
         # Exit code 127 : command doesn't exist
         if exit_code == 127:
             logger.warning(
-                f'Iperf3 is not installed on the "{device}", error - {res.strip()}'
+                f'Iperf3 is not installed on the "{device}", error - {result.strip()}'
             )
             return
 
-        result_tcp = self._get_iperf_result(res, exit_code, device, mode='TCP')
+        result_tcp = self._get_iperf_result(result, exit_code, device, mode='TCP')
 
         # UDP mode
         command = f'iperf3 -c {servers[0]} -p {port} -t {time} -u -J'
-        res, exit_code = self._exec_command(device_connection, command)
-        result_udp = self._get_iperf_result(res, exit_code, device, mode='UDP')
+        result, exit_code = self._exec_command(device_connection, command)
+        result_udp = self._get_iperf_result(result, exit_code, device, mode='UDP')
 
         if store:
             # Store iperf_result field 1 if any mode passes, store 0 when both fails
@@ -152,87 +153,61 @@ class Iperf(BaseCheck):
         """
         return self.params.get(param, self.schema['properties'][param]['default'])
 
-    def _get_iperf_result(self, res, exit_code, device, mode):
+    def _get_iperf_result(self, result, exit_code, device, mode):
         """
-        Get iperf test result
+        Returns iperf test result
         """
 
         try:
-            res_dict = json.loads(res)
-        except json.decoder.JSONDecodeError:
+            result = loads(result)
+        except JSONDecodeError:
             # Errors other than iperf3 test errors
-            res_dict = {'error': f'error - {res.strip()}'}
+            result = {'error': f'error - {result.strip()}'}
 
         if mode == 'TCP':
             if exit_code != 0:
-                logger.warning(
-                    f'Iperf check failed for "{device}", {res_dict["error"]}'
-                )
+                logger.warning(f'Iperf check failed for "{device}", {result["error"]}')
                 return {
                     'iperf_result': 0,
                     'sent_bps_tcp': 0.0,
                     'received_bps_tcp': 0.0,
-                    'sent_bytes_tcp': 0.0,
-                    'received_bytes_tcp': 0.0,
+                    'sent_bytes_tcp': 0,
+                    'received_bytes_tcp': 0,
                     'retransmits': 0,
                 }
             else:
-                # Gbps = Gigabits per second
-                # GB = GigaBytes
-                # Todo : Remove below coversion once
-                # https://github.com/openwisp/openwisp-monitoring/pull/397 get merged
-                sent_json = res_dict['end']['sum_sent']
-                recv_json = res_dict['end']['sum_received']
-                sent_bytes = sent_json['bytes']
-                sent_bytes_GB = sent_bytes / 1000000000
-                sent_bps = sent_json['bits_per_second']
-                sent_Gbps = sent_bps / 1000000000
-                received_bytes = recv_json['bytes']
-                received_bytes_GB = received_bytes / 1000000000
-                received_bps = recv_json['bits_per_second']
-                received_Gbps = received_bps / 1000000000
-                retransmits = sent_json['retransmits']
+                sent = result['end']['sum_sent']
+                received = result['end']['sum_received']
                 return {
                     'iperf_result': 1,
-                    'sent_bps_tcp': round(sent_Gbps, 2),
-                    'received_bps_tcp': round(received_Gbps, 2),
-                    'sent_bytes_tcp': round(sent_bytes_GB, 2),
-                    'received_bytes_tcp': round(received_bytes_GB, 2),
-                    'retransmits': retransmits,
+                    'sent_bps_tcp': float(sent['bits_per_second']),
+                    'received_bps_tcp': float(received['bits_per_second']),
+                    'sent_bytes_tcp': sent['bytes'],
+                    'received_bytes_tcp': received['bytes'],
+                    'retransmits': sent['retransmits'],
                 }
 
         elif mode == 'UDP':
             if exit_code != 0:
-                logger.warning(
-                    f'Iperf check failed for "{device}", {res_dict["error"]}'
-                )
+                logger.warning(f'Iperf check failed for "{device}", {result["error"]}')
                 return {
                     'iperf_result': 0,
                     'sent_bps_udp': 0.0,
-                    'sent_bytes_udp': 0.0,
+                    'sent_bytes_udp': 0,
                     'jitter': 0.0,
                     'total_packets': 0,
                     'lost_packets': 0,
                     'lost_percent': 0.0,
                 }
             else:
-                sent_bytes = res_dict['end']['sum']['bytes']
-                sent_bytes_MB = sent_bytes / 1000000
-                sent_bps = res_dict['end']['sum']['bits_per_second']
-                sent_Mbps = sent_bps / 1000000
-                jitter_ms = res_dict['end']['sum']['jitter_ms']
-                jitter_ms = res_dict['end']['sum']['jitter_ms']
-                total_packets = res_dict['end']['sum']['packets']
-                lost_packets = res_dict['end']['sum']['lost_packets']
-                lost_percent = float(res_dict['end']['sum']['lost_percent'])
                 return {
                     'iperf_result': 1,
-                    'sent_bps_udp': round(sent_Mbps, 2),
-                    'sent_bytes_udp': round(sent_bytes_MB, 2),
-                    'jitter': round(jitter_ms, 2),
-                    'total_packets': total_packets,
-                    'lost_packets': lost_packets,
-                    'lost_percent': round(lost_percent, 2),
+                    'sent_bps_udp': float(result['end']['sum']['bits_per_second']),
+                    'sent_bytes_udp': result['end']['sum']['bytes'],
+                    'jitter': float(result['end']['sum']['jitter_ms']),
+                    'total_packets': result['end']['sum']['packets'],
+                    'lost_packets': result['end']['sum']['lost_packets'],
+                    'lost_percent': float(result['end']['sum']['lost_percent']),
                 }
 
     def store_result(self, result):

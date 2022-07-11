@@ -102,17 +102,17 @@ chart_query = {
     },
     'bandwidth_tcp': {
         'influxdb': (
-            "SELECT MEAN(sent_bps_tcp) AS sent, "
-            "MEAN(received_bps_tcp) AS received FROM {key} WHERE "
+            "SELECT MEAN(sent_bps_tcp) / 1000000000 AS sent, "
+            "MEAN(received_bps_tcp) / 1000000000 AS received FROM {key} WHERE "
             "time >= '{time}' AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
     'transfer_tcp': {
         'influxdb': (
-            "SELECT SUM(received_bytes_tcp) AS received, "
-            "SUM(sent_bytes_tcp) AS sent,"
-            "SUM(sent_bytes_tcp) + SUM(received_bytes_tcp) AS total FROM {key} WHERE "
+            "SELECT SUM(received_bytes_tcp) / 1000000000 AS received, "
+            "SUM(sent_bytes_tcp) / 1000000000 AS sent,"
+            "((SUM(sent_bytes_tcp) + SUM(received_bytes_tcp)) / 1000000000) AS total FROM {key} WHERE "
             "time >= '{time}' AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
@@ -126,14 +126,14 @@ chart_query = {
     },
     'bandwidth_udp': {
         'influxdb': (
-            "SELECT MEAN(sent_bps_udp) AS sent FROM {key} "
+            "SELECT MEAN(sent_bps_udp) / 1000000 AS sent FROM {key} "
             "WHERE time >= '{time}' AND content_type = '{content_type}' "
             "AND object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
     'transfer_udp': {
         'influxdb': (
-            "SELECT SUM(sent_bytes_udp) AS sent FROM {key} "
+            "SELECT SUM(sent_bytes_udp) / 1000000 AS sent FROM {key} "
             "WHERE time >= '{time}' AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )

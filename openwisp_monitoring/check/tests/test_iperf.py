@@ -1,3 +1,4 @@
+from json import loads
 from unittest.mock import call, patch
 
 from django.core.exceptions import ValidationError
@@ -82,14 +83,20 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
         # By default check params {}
         check, _ = self._create_iperf_test_env()
+        tcp_result = loads(RESULT_TCP)['end']
+        udp_result = loads(RESULT_UDP)['end']['sum']
         result = check.perform_check(store=False)
         for key in self._RESULT_KEYS:
             self.assertIn(key, result)
         self.assertEqual(result['iperf_result'], 1)
-        self.assertEqual(result['sent_bps_tcp'], 44.04)
-        self.assertEqual(result['received_bytes_tcp'], 55.05)
-        self.assertEqual(result['jitter'], 0.01)
-        self.assertEqual(result['total_packets'], 40)
+        self.assertEqual(
+            result['sent_bps_tcp'], tcp_result['sum_sent']['bits_per_second']
+        )
+        self.assertEqual(
+            result['received_bytes_tcp'], tcp_result['sum_received']['bytes']
+        )
+        self.assertEqual(result['jitter'], udp_result['jitter_ms'])
+        self.assertEqual(result['total_packets'], udp_result['packets'])
         self.assertEqual(mock_warn.call_count, 0)
         self.assertEqual(mock_exec_command.call_count, 2)
         mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
@@ -104,7 +111,8 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         self, mock_warn, mock_get_iperf_servers, mock_exec_command
     ):
         mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
-
+        tcp_result = loads(RESULT_TCP)['end']
+        udp_result = loads(RESULT_UDP)['end']['sum']
         check, dc = self._create_iperf_test_env()
         test_params = {'port': 6201, 'time': 20}
         check.params = test_params
@@ -123,10 +131,14 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         for key in self._RESULT_KEYS:
             self.assertIn(key, result)
         self.assertEqual(result['iperf_result'], 1)
-        self.assertEqual(result['sent_bps_tcp'], 44.04)
-        self.assertEqual(result['received_bytes_tcp'], 55.05)
-        self.assertEqual(result['jitter'], 0.01)
-        self.assertEqual(result['total_packets'], 40)
+        self.assertEqual(
+            result['sent_bps_tcp'], tcp_result['sum_sent']['bits_per_second']
+        )
+        self.assertEqual(
+            result['received_bytes_tcp'], tcp_result['sum_received']['bytes']
+        )
+        self.assertEqual(result['jitter'], udp_result['jitter_ms'])
+        self.assertEqual(result['total_packets'], udp_result['packets'])
         self.assertEqual(mock_warn.call_count, 0)
         self.assertEqual(mock_exec_command.call_count, 2)
         mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
@@ -136,7 +148,6 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
     @patch.object(
         Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com']
     )
-    @patch.object(iperf_logger, 'warning')
     @patch.object(
         settings,
         'IPERF_CHECK_CONFIG',
@@ -145,11 +156,10 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             'time': {'default': 120},
         },
     )
-    def test_iperf_check_config(
-        self, mock_warn, mock_get_iperf_servers, mock_exec_command, *args
-    ):
+    def test_iperf_check_config(self, mock_get_iperf_servers, mock_exec_command, *args):
         mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
-
+        tcp_result = loads(RESULT_TCP)['end']
+        udp_result = loads(RESULT_UDP)['end']['sum']
         check, dc = self._create_iperf_test_env()
         self._EXPECTED_COMMAND_CALLS = [
             call(dc, 'iperf3 -c iperf.openwisptestserver.com -p 9201 -t 120 -J'),
@@ -160,11 +170,14 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             for key in self._RESULT_KEYS:
                 self.assertIn(key, result)
             self.assertEqual(result['iperf_result'], 1)
-            self.assertEqual(result['sent_bps_tcp'], 44.04)
-            self.assertEqual(result['received_bytes_tcp'], 55.05)
-            self.assertEqual(result['jitter'], 0.01)
-            self.assertEqual(result['total_packets'], 40)
-            self.assertEqual(mock_warn.call_count, 0)
+            self.assertEqual(
+                result['sent_bps_tcp'], tcp_result['sum_sent']['bits_per_second']
+            )
+            self.assertEqual(
+                result['received_bytes_tcp'], tcp_result['sum_received']['bytes']
+            )
+            self.assertEqual(result['jitter'], udp_result['jitter_ms'])
+            self.assertEqual(result['total_packets'], udp_result['packets'])
             self.assertEqual(mock_exec_command.call_count, 2)
             mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
             mock_get_iperf_servers.assert_called_once_with(self.device.organization.id)
@@ -259,6 +272,8 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
     def test_iperf_check(self):
         check, _ = self._create_iperf_test_env()
         error = "ash: iperf3: not found"
+        tcp_result = loads(RESULT_TCP)['end']
+        udp_result = loads(RESULT_UDP)['end']['sum']
 
         with self.subTest('Test iperf3 is not installed on the device'):
             with patch.object(
@@ -296,17 +311,28 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 result = check.perform_check(store=False)
                 for key in self._RESULT_KEYS:
                     self.assertIn(key, result)
-
                 self.assertEqual(result['iperf_result'], 1)
-                self.assertEqual(result['sent_bps_tcp'], 44.04)
-                self.assertEqual(result['received_bytes_tcp'], 55.05)
-                self.assertEqual(result['retransmits'], 0)
-                self.assertEqual(result['sent_bps_udp'], 1.05)
-                self.assertEqual(result['sent_bytes_udp'], 1.31)
-                self.assertEqual(result['jitter'], 0.01)
-                self.assertEqual(result['total_packets'], 40)
-                self.assertEqual(result['lost_packets'], 0)
-                self.assertEqual(result['lost_percent'], 0.0)
+                self.assertEqual(
+                    result['sent_bps_tcp'], tcp_result['sum_sent']['bits_per_second']
+                )
+                self.assertEqual(
+                    result['received_bps_tcp'],
+                    tcp_result['sum_received']['bits_per_second'],
+                )
+                self.assertEqual(
+                    result['sent_bytes_tcp'], tcp_result['sum_sent']['bytes']
+                )
+                self.assertEqual(
+                    result['received_bytes_tcp'], tcp_result['sum_received']['bytes']
+                )
+                self.assertEqual(
+                    result['retransmits'], tcp_result['sum_sent']['retransmits']
+                )
+                self.assertEqual(result['sent_bps_udp'], udp_result['bits_per_second'])
+                self.assertEqual(result['sent_bytes_udp'], udp_result['bytes'])
+                self.assertEqual(result['jitter'], udp_result['jitter_ms'])
+                self.assertEqual(result['total_packets'], udp_result['packets'])
+                self.assertEqual(result['lost_percent'], udp_result['lost_percent'])
                 self.assertEqual(Chart.objects.count(), 10)
                 self.assertEqual(Check.objects.count(), 3)
 
@@ -353,8 +379,14 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 self.assertEqual(result['iperf_result'], 0)
                 self.assertEqual(result['sent_bps_tcp'], 0.0)
                 self.assertEqual(result['received_bps_tcp'], 0.0)
+                self.assertEqual(result['sent_bytes_tcp'], 0)
+                self.assertEqual(result['received_bytes_tcp'], 0)
+                self.assertEqual(result['retransmits'], 0)
+                self.assertEqual(result['sent_bps_udp'], 0.0)
+                self.assertEqual(result['sent_bytes_udp'], 0)
                 self.assertEqual(result['jitter'], 0.0)
                 self.assertEqual(result['total_packets'], 0)
+                self.assertEqual(result['lost_percent'], 0.0)
                 self.assertEqual(Chart.objects.count(), 10)
                 self.assertEqual(Metric.objects.count(), 3)
                 self.assertEqual(mock_exec_command.call_count, 2)
@@ -380,11 +412,27 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 for key in self._RESULT_KEYS:
                     self.assertIn(key, result)
                 self.assertEqual(result['iperf_result'], 1)
-                self.assertEqual(result['sent_bps_tcp'], 44.04)
-                self.assertEqual(result['sent_bytes_tcp'], 55.05)
+                self.assertEqual(
+                    result['sent_bps_tcp'], tcp_result['sum_sent']['bits_per_second']
+                )
+                self.assertEqual(
+                    result['received_bps_tcp'],
+                    tcp_result['sum_received']['bits_per_second'],
+                )
+                self.assertEqual(
+                    result['sent_bytes_tcp'], tcp_result['sum_sent']['bytes']
+                )
+                self.assertEqual(
+                    result['received_bytes_tcp'], tcp_result['sum_received']['bytes']
+                )
+                self.assertEqual(
+                    result['retransmits'], tcp_result['sum_sent']['retransmits']
+                )
+                self.assertEqual(result['sent_bps_udp'], 0.0)
+                self.assertEqual(result['sent_bytes_udp'], 0)
                 self.assertEqual(result['jitter'], 0.0)
                 self.assertEqual(result['total_packets'], 0)
-                self.assertEqual(Chart.objects.count(), 10)
+                self.assertEqual(result['lost_percent'], 0.0)
                 self.assertEqual(Metric.objects.count(), 3)
                 self.assertEqual(mock_exec_command.call_count, 2)
                 mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS[1:])
@@ -411,8 +459,14 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 self.assertEqual(result['iperf_result'], 1)
                 self.assertEqual(result['sent_bps_tcp'], 0.0)
                 self.assertEqual(result['received_bps_tcp'], 0.0)
-                self.assertEqual(result['jitter'], 0.01)
-                self.assertEqual(result['total_packets'], 40)
+                self.assertEqual(result['sent_bytes_tcp'], 0)
+                self.assertEqual(result['received_bytes_tcp'], 0)
+                self.assertEqual(result['retransmits'], 0)
+                self.assertEqual(result['sent_bps_udp'], udp_result['bits_per_second'])
+                self.assertEqual(result['sent_bytes_udp'], udp_result['bytes'])
+                self.assertEqual(result['jitter'], udp_result['jitter_ms'])
+                self.assertEqual(result['total_packets'], udp_result['packets'])
+                self.assertEqual(result['lost_percent'], udp_result['lost_percent'])
                 self.assertEqual(Chart.objects.count(), 10)
                 self.assertEqual(Metric.objects.count(), 3)
                 self.assertEqual(mock_exec_command.call_count, 2)
