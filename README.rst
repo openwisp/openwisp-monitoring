@@ -376,26 +376,13 @@ Configure celery (you may use a different broker if you want):
     # Celery TIME_ZONE should be equal to django TIME_ZONE
     # In order to schedule run_iperf_checks on the correct time intervals
     CELERY_TIMEZONE = TIME_ZONE
-    OPENWISP_MONITORING_CHECKS = [
-        'openwisp_monitoring.check.classes.Ping',
-        'openwisp_monitoring.check.classes.ConfigApplied',
-        'openwisp_monitoring.check.classes.Iperf',
-    ]
     CELERY_BROKER_URL = 'redis://localhost/1'
     CELERY_BEAT_SCHEDULE = {
+        # Celery beat configuration for auto checks ie ping & config applied
         'run_checks': {
             'task': 'openwisp_monitoring.check.tasks.run_checks',
             'schedule': timedelta(minutes=5),
-            # Executes only ping and config check every 5 mins
-            'args': (OPENWISP_MONITORING_CHECKS[:2],),
-            'relative': True,
-        },
-        'run_iperf_checks': {
-            'task': 'openwisp_monitoring.check.tasks.run_checks',
-            # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
-            # Executes only iperf check every 5 mins from 00:00 AM to 6:00 AM (night)
-            'schedule': crontab(minute='*/5', hour='0-6'),
-            'args': (OPENWISP_MONITORING_CHECKS[2:],),
+            'args': (None,),
             'relative': True,
         },
     }
@@ -1058,9 +1045,6 @@ to allow SSH access to you device from OpenWISP.
 Configure iperf servers in `openwisp settings <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_ , 
 The host can be specified by hostname, IPv4 literal, or IPv6 literal.
 
-**Note:** By default iperf checks are run periodically between **00:00 AM to 6:00 AM** every night by *celery beat*. 
-You can learn more about this in `Setup <#setup-integrate-in-an-existing-django-project>`_.
-
 For example.
 
 .. code-block:: python
@@ -1072,6 +1056,31 @@ For example.
     'z9734710-db30-46b0-a2fc-01f01046fe4f': ['192.168.5.109'],
     'c9734710-db30-46b0-a2fc-01f01046fe4f': ['2001:db8::1'],
     }
+
+Add celery beat configuration for iperf check in `openwisp settings <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_
+
+.. code-block:: python
+
+    CELERY_BEAT_SCHEDULE = {
+    # Celery beat configuration for auto checks ie ping & config applied
+     'run_checks': {
+         'task': 'openwisp_monitoring.check.tasks.run_checks',
+         'schedule': timedelta(minutes=5),
+         'args': (None,),
+         'relative': True,
+     },
+    # Celery beat configuration for iperf check
+    'run_iperf_checks': {
+         'task': 'openwisp_monitoring.check.tasks.run_checks',
+         # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
+         # Executes check every 5 mins from 00:00 AM to 6:00 AM (night)
+         'schedule': crontab(minute='*/5', hour='0-6'),
+         # Iperf check path
+         'args': (['openwisp_monitoring.check.classes.Iperf'],),
+         'relative': True,
+    },
+
+**Note:** We recommended to configure this check for night or during non peak traffic times to not interfere with standard traffic.
 
 4. Run the check
 ################
@@ -1672,20 +1681,6 @@ If you have a seperate server for API of openwisp-monitoring on a different
 domain, you can use this option to change the base of the url, this will
 enable you to point all the API urls to your openwisp-monitoring API server's
 domain, example: ``https://mymonitoring.myapp.com``.
-
-``OPENWISP_MONITORING_CHECKS``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-+--------------+---------------------------------------------------------+
-| **type**:    | ``list``                                                |
-+--------------+---------------------------------------------------------+
-| **default**: |``['openwisp_monitoring.check.classes.Ping',``           |
-|              |``'openwisp_monitoring.check.classes.ConfigApplied',``   | 
-|              |``'openwisp_monitoring.check.classes.Iperf'],``          |
-+--------------+---------------------------------------------------------+
-
-This list will allows you to configure celery beat configuration for the checks.
-You can learn more about this in `Setup <#setup-integrate-in-an-existing-django-project>`_.
 
 Registering / Unregistering Metric Configuration
 ------------------------------------------------

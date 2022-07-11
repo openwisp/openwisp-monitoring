@@ -4,11 +4,12 @@ import logging
 from celery import shared_task
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
 from swapper import load_model
 
+from .settings import CHECKS_LIST
+
 logger = logging.getLogger(__name__)
-checks = settings.OPENWISP_MONITORING_CHECKS
 
 
 def get_check_model():
@@ -16,7 +17,7 @@ def get_check_model():
 
 
 @shared_task
-def run_checks(checks=checks):
+def run_checks(checks=CHECKS_LIST):
     """
     Retrieves the id of all active checks in chunks of 2000 items
     and calls the ``perform_check`` task (defined below) for each of them.
@@ -24,6 +25,16 @@ def run_checks(checks=checks):
     This allows to enqueue all the checks that need to be performed
     and execute them in parallel with multiple workers if needed.
     """
+    if checks is None:
+        # Executes only auto checks ie. ping and config applied
+        checks = CHECKS_LIST[:2]
+
+    # Checks that are defined in celery beat configuration
+    if not isinstance(checks, list):
+        raise ImproperlyConfigured(f'Check path {checks} should be of type "list"')
+    if not all(check_path in CHECKS_LIST for check_path in checks):
+        raise ImproperlyConfigured(f'Check path {checks} should be in {CHECKS_LIST}')
+
     iterator = (
         get_check_model()
         .objects.filter(is_active=True, check_type__in=checks)

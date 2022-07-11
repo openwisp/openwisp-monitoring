@@ -173,18 +173,12 @@ else:
 # Celery TIME_ZONE should be equal to django TIME_ZONE
 # In order to schedule run_iperf_checks on the correct time intervals
 CELERY_TIMEZONE = TIME_ZONE
-OPENWISP_MONITORING_CHECKS = [
-    'openwisp_monitoring.check.classes.Ping',
-    'openwisp_monitoring.check.classes.ConfigApplied',
-    'openwisp_monitoring.check.classes.Iperf',
-]
 
 CELERY_BEAT_SCHEDULE = {
     'run_checks': {
         'task': 'openwisp_monitoring.check.tasks.run_checks',
         'schedule': timedelta(minutes=5),
-        # Executes only ping and config check every 5 mins
-        'args': (OPENWISP_MONITORING_CHECKS[:2],),
+        'args': (None,),
         'relative': True,
     },
     'run_iperf_checks': {
@@ -192,7 +186,8 @@ CELERY_BEAT_SCHEDULE = {
         # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
         # Executes only iperf check every 5 mins from 00:00 AM to 6:00 AM (night)
         'schedule': crontab(minute='*/5', hour='0-6'),
-        'args': (OPENWISP_MONITORING_CHECKS[2:],),
+        # Check path
+        'args': (['openwisp_monitoring.check.classes.Iperf'],),
         'relative': True,
     },
 }
