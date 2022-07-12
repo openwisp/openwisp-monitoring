@@ -178,7 +178,7 @@ CELERY_BEAT_SCHEDULE = {
     'run_checks': {
         'task': 'openwisp_monitoring.check.tasks.run_checks',
         'schedule': timedelta(minutes=5),
-        'args': (None,),
+        'args': None,
         'relative': True,
     },
     'run_iperf_checks': {

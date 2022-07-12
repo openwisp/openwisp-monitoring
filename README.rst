@@ -385,6 +385,11 @@ Configure celery (you may use a different broker if you want):
             'args': (None,),
             'relative': True,
         },
+        # Delete old WifiSession
+        'delete_wifi_clients_and_sessions': {
+            'task': 'openwisp_monitoring.monitoring.tasks.delete_wifi_clients_and_sessions',
+            'schedule': timedelta(days=180),
+        },
     }
 
     INSTALLED_APPS.append('djcelery_email')
@@ -1063,23 +1068,19 @@ Add celery beat configuration for iperf check in `openwisp settings <https://git
 .. code-block:: python
 
     CELERY_BEAT_SCHEDULE = {
-    # Celery beat configuration for auto checks ie ping & config applied
-     'run_checks': {
-         'task': 'openwisp_monitoring.check.tasks.run_checks',
-         'schedule': timedelta(minutes=5),
-         'args': (None,),
-         'relative': True,
-     },
-    # Celery beat configuration for iperf check
-    'run_iperf_checks': {
-         'task': 'openwisp_monitoring.check.tasks.run_checks',
-         # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
-         # Executes check every 5 mins from 00:00 AM to 6:00 AM (night)
-         'schedule': crontab(minute='*/5', hour='0-6'),
-         # Iperf check path
-         'args': (['openwisp_monitoring.check.classes.Iperf'],),
-         'relative': True,
-    },
+        # Other celery beat configurations
+
+        # Celery beat configuration for iperf check
+        'run_iperf_checks': {
+            'task': 'openwisp_monitoring.check.tasks.run_checks',
+            # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
+            # Executes check every 5 mins from 00:00 AM to 6:00 AM (night)
+            'schedule': crontab(minute='*/5', hour='0-6'),
+            # Iperf check path
+            'args': (['openwisp_monitoring.check.classes.Iperf'],),
+            'relative': True,
+        }
+    }
 
 **Note:** We recommended to configure this check for night or during non peak traffic times to not interfere with standard traffic.
 

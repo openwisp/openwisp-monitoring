@@ -17,7 +17,7 @@ def get_check_model():
 
 
 @shared_task
-def run_checks(checks=CHECKS_LIST):
+def run_checks(checks=None):
     """
     Retrieves the id of all active checks in chunks of 2000 items
     and calls the ``perform_check`` task (defined below) for each of them.
@@ -29,7 +29,6 @@ def run_checks(checks=CHECKS_LIST):
         # Executes only auto checks ie. ping and config applied
         checks = CHECKS_LIST[:2]
 
-    # Checks that are included celery beat configuration
     if not isinstance(checks, list):
         raise ImproperlyConfigured(f'Check path {checks} should be of type "list"')
     if not all(check_path in CHECKS_LIST for check_path in checks):

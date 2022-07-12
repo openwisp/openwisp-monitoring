@@ -22,6 +22,23 @@ Check = load_model('check', 'Check')
 
 
 class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTestCase):
+
+    _IPERF = settings.CHECK_CLASSES[2][0]
+    _RESULT_KEYS = [
+        'iperf_result',
+        'sent_bps_tcp',
+        'received_bps_tcp',
+        'sent_bytes_tcp',
+        'received_bytes_tcp',
+        'retransmits',
+        'sent_bps_udp',
+        'sent_bytes_udp',
+        'jitter',
+        'total_packets',
+        'lost_packets',
+        'lost_percent',
+    ]
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -54,22 +71,6 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         ]
         check = Check.objects.get(check_type=self._IPERF)
         return check, dc
-
-    _IPERF = settings.CHECK_CLASSES[2][0]
-    _RESULT_KEYS = [
-        'iperf_result',
-        'sent_bps_tcp',
-        'received_bps_tcp',
-        'sent_bytes_tcp',
-        'received_bytes_tcp',
-        'retransmits',
-        'sent_bps_udp',
-        'sent_bytes_udp',
-        'jitter',
-        'total_packets',
-        'lost_packets',
-        'lost_percent',
-    ]
 
     @patch.object(Iperf, '_exec_command')
     @patch.object(
