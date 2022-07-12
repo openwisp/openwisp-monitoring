@@ -29,7 +29,7 @@ def run_checks(checks=CHECKS_LIST):
         # Executes only auto checks ie. ping and config applied
         checks = CHECKS_LIST[:2]
 
-    # Checks that are defined in celery beat configuration
+    # Checks that are included celery beat configuration
     if not isinstance(checks, list):
         raise ImproperlyConfigured(f'Check path {checks} should be of type "list"')
     if not all(check_path in CHECKS_LIST for check_path in checks):

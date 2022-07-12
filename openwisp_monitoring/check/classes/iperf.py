@@ -34,7 +34,6 @@ DEFAULT_IPERF_CHECK_CONFIG = {
         'type': 'integer',
         # Sets the interval time in seconds
         # between periodic bandwidth, jitter, and loss reports.
-        # If zero, no periodic reports are printed.
         'default': 10,
         'minimum': 1,
         # arbitrary chosen to avoid slowing down the queue (30min)
