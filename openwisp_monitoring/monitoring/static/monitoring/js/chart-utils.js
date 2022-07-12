@@ -59,6 +59,9 @@ django.jQuery(function ($) {
       setTimeout(()=>{
         var dateTimePicker = $('.ranges li');
         dateTimePicker.click(function () {
+          if($(this).attr("data-range-key"=='Custom Range')) {
+            return;
+          }
           var timeRange = $(this).attr('data-time');
           loadCharts(timeRange, true);
           localStorage.setItem(timeRangeKey, timeRange);
@@ -68,6 +71,21 @@ django.jQuery(function ($) {
             1000 * 60 * 2.5,
             timeRange,
             false);
+        });
+        // Function for Custom Range
+        $('.drp-buttons .applyBtn').on('click', ()=> {
+          setTimeout(()=>{
+            var customPicker = $('[data-range-key="Custom Range"]');
+            var timeRange = customPicker.attr('data-time');
+            loadCharts(timeRange, true);
+            localStorage.setItem(timeRangeKey, timeRange);
+            // refresh every 2.5 minutes
+            clearInterval(window.owChartRefresh);
+            window.owChartRefresh = setInterval(loadCharts,
+              1000 * 60 * 2.5,
+              timeRange,
+              false);
+          }, 1000);
         });
       }, 1000);
     try {

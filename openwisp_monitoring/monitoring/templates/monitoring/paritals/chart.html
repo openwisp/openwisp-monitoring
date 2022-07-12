@@ -26,14 +26,43 @@
         $(function() {
             var start = moment();
             var end = moment();
-            function cb(start, end) {
+
+            function custom_range(start_custom, end_custom) {
+                var start = moment(start_custom);
+                var end = moment(end_custom);
+                var days = end.diff(start, 'days');
+                var days = check_days(start_custom, end_custom);
+                if (days == 1) {
+                    return '1d';
+                } else if (days > 1 && days < 7) {
+                    return '3d';
+                } else if (days > 3 && days < 28) {
+                    return '7d';
+                } else if (days > 28 && days < 365) {
+                    return '30d';
+                } else if (days == 365) {
+                    return '365d';
+                }else {
+                    return '1d';
+                }
+            }
+
+            async function cb(start, end) {
+                var custom='1d';
+                var start_custom;
+                var end_custom;
+                await $("#reportrange").on('apply.daterangepicker', function(ev, picker) {
+                    start_custom = picker.startDate.format('YYYY-MM-DD');
+                    end_custom = picker.endDate.format('YYYY-MM-DD');
+                    custom = custom_range(start_custom, end_custom);
+                });
                 $('#reportrange span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
-                $("[data-range-key='Today']").attr('data-time','1d');
-                $("[data-range-key='3 days']").attr('data-time','3d');
-                $("[data-range-key='1 week']").attr('data-time','7d');
-                $("[data-range-key='1 month']").attr('data-time','30d');
-                $("[data-range-key='1 year']").attr('data-time','365d');
-                $("[data-range-key='Custom Range']").attr('data-time','1d');
+                $("[data-range-key='Today']").attr('data-time', '1d');
+                $("[data-range-key='3 days']").attr('data-time', '3d');
+                $("[data-range-key='1 week']").attr('data-time', '7d');
+                $("[data-range-key='1 month']").attr('data-time', '30d');
+                $("[data-range-key='1 year']").attr('data-time', '365d');
+                $("[data-range-key='Custom Range']").attr('data-time', custom);
             }
 
             $('#reportrange').daterangepicker({
