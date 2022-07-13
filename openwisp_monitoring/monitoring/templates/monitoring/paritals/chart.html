@@ -31,7 +31,6 @@
                 var start = moment(start_custom);
                 var end = moment(end_custom);
                 var days = end.diff(start, 'days');
-                var days = check_days(start_custom, end_custom);
                 if (days == 1) {
                     return '1d';
                 } else if (days > 1 && days < 7) {

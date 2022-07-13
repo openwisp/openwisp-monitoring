@@ -59,7 +59,7 @@ django.jQuery(function ($) {
       setTimeout(()=>{
         var dateTimePicker = $('.ranges li');
         dateTimePicker.click(function () {
-          if($(this).attr("data-range-key"=='Custom Range')) {
+          if("Custom Range"==$(this).attr('data-range-key')) {
             return;
           }
           var timeRange = $(this).attr('data-time');
