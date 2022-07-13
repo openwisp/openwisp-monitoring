@@ -17,8 +17,6 @@ logger = logging.getLogger(__name__)
 
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
-Device = load_model('config', 'Device')
-Credentials = load_model('connection', 'Credentials')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 DeviceConnection = load_model('connection', 'DeviceConnection')
 
@@ -224,6 +222,7 @@ class Iperf(BaseCheck):
         """
         metric, created = self._get_or_create_metric()
         if created:
+            self._create_alert_settings(metric)
             self._create_charts(metric)
         return metric
 
@@ -247,4 +246,6 @@ class Iperf(BaseCheck):
             chart.save()
 
     def _create_alert_settings(self, metric):
-        pass
+        alert_settings = AlertSettings(metric=metric)
+        alert_settings.full_clean()
+        alert_settings.save()

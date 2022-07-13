@@ -668,6 +668,33 @@ DEFAULT_METRICS = {
                 'colors': [DEFAULT_COLORS[8]],
             },
         },
+        'alert_settings': {'operator': '<', 'threshold': 1, 'tolerance': 0},
+        'notification': {
+            'problem': {
+                'verbose_name': 'Iperf PROBLEM',
+                'verb': _('iperf test is experiencing some problem'),
+                'level': 'warning',
+                'email_subject': _(
+                    '[{site.name}] PROBLEM: {notification.target} {notification.verb}'
+                ),
+                'message': _(
+                    'The device [{notification.target}]({notification.target_link}) '
+                    '{notification.verb}.'
+                ),
+            },
+            'recovery': {
+                'verbose_name': 'Iperf RECOVERY',
+                'verb': _('iperf test now back to normal'),
+                'level': 'info',
+                'email_subject': _(
+                    '[{site.name}] RECOVERY: {notification.target} {notification.verb}'
+                ),
+                'message': _(
+                    'The device [{notification.target}]({notification.target_link}) '
+                    '{notification.verb}.'
+                ),
+            },
+        },
     },
 }
 
