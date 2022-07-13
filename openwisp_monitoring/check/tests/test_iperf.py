@@ -19,6 +19,7 @@ Chart = load_model('monitoring', 'Chart')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 Metric = load_model('monitoring', 'Metric')
 Check = load_model('check', 'Check')
+Notification = load_model('openwisp_notifications', 'Notification')
 
 
 class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTestCase):
@@ -476,3 +477,34 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 mock_get_iperf_servers.assert_called_once_with(
                     self.device.organization.id
                 )
+
+    @patch.object(Iperf, '_exec_command')
+    @patch.object(
+        Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com']
+    )
+    @patch.object(iperf_logger, 'warning')
+    def test_iperf_check_alert_notification(
+        self, mock_warn, mock_get_iperf_servers, mock_exec_command
+    ):
+        mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
+        check, _ = self._create_iperf_test_env()
+        device = self.device
+        self.assertEqual(Notification.objects.count(), 0)
+        self.assertEqual(AlertSettings.objects.count(), 0)
+        check.perform_check()
+        self.assertEqual(Notification.objects.count(), 0)
+        self.assertEqual(AlertSettings.objects.count(), 1)
+        self.assertEqual(device.monitoring.status, 'unknown')
+        iperf_metric = Metric.objects.get(key='iperf')
+        # write value less than threshold
+        iperf_metric.write(0)
+        device.monitoring.refresh_from_db()
+        self.assertEqual(device.monitoring.status, 'problem')
+        # No alert notification ('problem')
+        self.assertEqual(Notification.objects.count(), 0)
+        # write within threshold
+        iperf_metric.write(1)
+        device.monitoring.refresh_from_db()
+        self.assertEqual(device.monitoring.status, 'ok')
+        # No alert notification ('recovery')
+        self.assertEqual(Notification.objects.count(), 0)
