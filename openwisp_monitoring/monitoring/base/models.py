@@ -363,6 +363,10 @@ class AbstractMetric(TimeStampedEditableModel):
                 raise ValueError(
                     'write() missing positional argument: "extra_values" required for alert on related field'
                 )
+            if related_field not in extra_values.keys():
+                raise ValueError(
+                    f'"{key}" is not defined for alert_on_related_field in metric configuration'
+                )
             options['check_threshold_kwargs'].update(
                 {'value': extra_values[related_field]}
             )
