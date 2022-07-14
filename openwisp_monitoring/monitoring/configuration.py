@@ -560,6 +560,7 @@ DEFAULT_METRICS = {
             'lost_packets',
             'lost_percent',
         ],
+        'alert_on_related_field': 'jitter',
         'charts': {
             'bandwidth_tcp': {
                 'type': 'stackedbar',
@@ -668,11 +669,11 @@ DEFAULT_METRICS = {
                 'colors': [DEFAULT_COLORS[8]],
             },
         },
-        'alert_settings': {'operator': '<', 'threshold': 1, 'tolerance': 0},
+        'alert_settings': {'operator': '>', 'threshold': 5, 'tolerance': 0},
         'notification': {
             'problem': {
                 'verbose_name': 'Iperf PROBLEM',
-                'verb': _('iperf test is experiencing some problem'),
+                'verb': _('iperf test jitter is greater than normal value'),
                 'level': 'warning',
                 'email_subject': _(
                     '[{site.name}] PROBLEM: {notification.target} {notification.verb}'
@@ -684,7 +685,7 @@ DEFAULT_METRICS = {
             },
             'recovery': {
                 'verbose_name': 'Iperf RECOVERY',
-                'verb': _('iperf test now back to normal'),
+                'verb': _('iperf test jitter now back to normal'),
                 'level': 'info',
                 'email_subject': _(
                     '[{site.name}] RECOVERY: {notification.target} {notification.verb}'
