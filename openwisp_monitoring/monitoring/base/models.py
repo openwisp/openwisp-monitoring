@@ -356,15 +356,16 @@ class AbstractMetric(TimeStampedEditableModel):
             }
             options['metric_pk'] = self.pk
 
-        if extra_values and isinstance(extra_values, dict):
-            for key in extra_values.keys():
-                if not self.related_fields or key not in self.related_fields:
-                    raise ValueError(f'"{key}" not defined in metric configuration')
-            if 'alert_on_related_field' in self.config_dict:
-                related_field = self.config_dict['alert_on_related_field']
-                options['check_threshold_kwargs'].update(
-                    {'value': extra_values[related_field]}
+        # check if alert_on_related_field is present in metric configuration
+        if 'alert_on_related_field' in self.config_dict:
+            related_field = self.config_dict['alert_on_related_field']
+            if not extra_values:
+                raise ValueError(
+                    'write() missing positional argument: "extra_values" required for alert on related field'
                 )
+            options['check_threshold_kwargs'].update(
+                {'value': extra_values[related_field]}
+            )
         timeseries_write.delay(name=self.key, values=values, **options)
 
     def read(self, **kwargs):
@@ -758,6 +759,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
             return value_crossed
         # tolerance is set, we must go back in time
         # to ensure the threshold is trepassed for enough time
+        # check if alert_on_related_field is present in metric configuration
         if 'alert_on_related_field' in self.config_dict:
             alert_on_related_field = [self.metric.config_dict['alert_on_related_field']]
         else:
@@ -781,8 +783,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
                     continue
                 utc_time = utc.localize(datetime.utcfromtimestamp(point['time']))
                 # did this point cross the threshold? Append to result list
-                # alert_on_related_field
-
+                # check if alert_on_related_field is present in metric configuration
                 if 'alert_on_related_field' in self.config_dict:
                     results.append(
                         self._value_crossed(
