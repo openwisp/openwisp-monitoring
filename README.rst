@@ -310,6 +310,7 @@ Follow the setup instructions of `openwisp-controller
         'openwisp_notifications',
         # openwisp2 admin theme (must be loaded here)
         'openwisp_utils.admin_theme',
+        'admin_auto_filters',
         # admin
         'django.contrib.admin',
         'django.forms',

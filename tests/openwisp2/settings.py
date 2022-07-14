@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     # openwisp2 admin theme
     # (must be loaded here)
     'openwisp_utils.admin_theme',
+    'admin_auto_filters',
     'django.contrib.admin',
     'django.forms',
     # other dependencies
