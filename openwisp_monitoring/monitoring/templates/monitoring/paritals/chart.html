@@ -62,6 +62,18 @@
                 $("[data-range-key='1 month']").attr('data-time', '30d');
                 $("[data-range-key='1 year']").attr('data-time', '365d');
                 $("[data-range-key='Custom Range']").attr('data-time', custom);
+                var postUrl = $("#monitoring-timeseries-api-url").data('value');
+                $.ajax({
+                    url: postUrl,
+                    data: {
+                        start: start.format('YYYY-MM-DD'),
+                        end: end.format('YYYY-MM-DD'),
+                        format: 'json',
+                        headers: {'X-CSRFToken': '{{ csrf_token }}'},
+                        dataType: 'html',
+                        time: custom,
+                    }
+                });
             }
 
             $('#reportrange').daterangepicker({
