@@ -30,7 +30,7 @@
         } else if (value < 1000) {
             multiplier = 1;
             unit = 'GB';
-        } else if (value >=1000) {
+        } else if (value >= 1000) {
             multiplier = 0.001;
             unit = 'TB';
         }
@@ -46,20 +46,18 @@
 
     function adaptiveFilterPoints(charts, layout, yRawVal) {
         var y = charts[0].y, sum = 0, count = 0, shownVal, average;
-        for (var i=0; i<y.length; i++) {
+        for (var i=0; i < y.length; i++) {
             sum += y[i];
-        }
-        for (var j=0; j<y.length; j++) {
-            if (y[i] != 0) {
+            if (y[i]) {
                 count++;
             }
         }
         average = sum / count;
         var scales = getAdaptiveScale(average, 1, '');
-        var multiplier = scales.multiplier;
-        var unit = scales.unit;
-        for (i=0; i<y.length; i++) {
-            for (j=0; j<charts.length; j++) {
+        var multiplier = scales.multiplier,
+            unit = scales.unit;
+        for (i=0; i < y.length; i++) {
+            for (var j=0; j < charts.length; j++) {
                 if (yRawVal[i] == null) {
                     charts[j].hovertemplate[i] = 'N/A' + '<extra></extra>';
                     continue;
@@ -67,8 +65,8 @@
                 shownVal = charts[j].y[i];
                 charts[j].y[i] = getAdaptiveBytes(charts[j].y[i], multiplier);
                 var hoverScales = getAdaptiveScale(shownVal, 1, '');
-                var hoverMultiplier = hoverScales.multiplier;
-                var hoverUnit = hoverScales.unit;
+                var hoverMultiplier = hoverScales.multiplier,
+                    hoverUnit = hoverScales.unit;
                 shownVal = getAdaptiveBytes(shownVal, hoverMultiplier);
                 charts[j].hovertemplate[i] = shownVal + ' ' + hoverUnit;
             }
@@ -77,9 +75,9 @@
     }
 
     function adaptiveFilterSummary(i, percircles, value) {
-        var scales = getAdaptiveScale(value, 1, '');
-        var multiplier = scales.multiplier;
-        var unit = scales.unit;
+        var scales = getAdaptiveScale(value, 1, ''),
+            multiplier = scales.multiplier,
+            unit = scales.unit;
         value = getAdaptiveBytes(value, multiplier);
         percircles[i].text = value + ' ' + unit;
     }
@@ -264,7 +262,7 @@
 
         if (unit == 'adaptive_bytes') {
             var yRawVal;
-            for (i=0; i<charts.length; i++) {
+            for (i=0; i < charts.length; i++) {
                 yRawVal = data.traces[i][1];
             }
             adaptiveFilterPoints(charts, layout, yRawVal);

@@ -818,6 +818,26 @@ You can configure the interfaces included in the **General traffic chart** using
 the `"OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART"
 <#openwisp_monitoring_dashboard_traffic_chart>`_ setting.
 
+Adaptive byte charts
+--------------------
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/adaptive-chart.png
+   :align: center
+
+When configuring charts, it is possible to flag their unit
+as ``adaptive_bytes``, this allows to make the charts more readable because
+the units are shown in either `B`, `KB`, `MB`, `GB` and `TB` depending on
+the size of each point, the summary values and Y axis are also resized.
+
+Example taken from the default configuration of the traffic chart:
+
+.. code-block:: python
+
+    'traffic': {
+        # other configurations for this chart
+        'unit': 'adaptive_bytes',
+    },
+
 Monitoring WiFi Sessions
 ------------------------
 
@@ -917,33 +937,6 @@ This check runs periodically, but it is also triggered whenever the
 configuration status of a device changes, this ensures the check reacts
 quickly to events happening in the network and informs the user promptly
 if there's anything that is not working as intended.
-
-Byte Adaptive Measuring in Charts
----------------------------------
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/chartsize.png
-   :align: center
-
-This behavior helps us to show the data and unit of the chart in a more readable way,
-the units are shown in `B`, `KB`, `MB`, `GB` and `TB` respectively, and datapoints have
-same unit to maintain consistency in the chart, summarycircles have different units
-and are shown in `B`, `KB`, `MB`, `GB` and `TB` to overview chart summary in a more 
-readable way.
-
-The chart automatically sets it's unit according to a specific range of values of data,
-for the quick glance the Y-Axis Legend has same unit as the datapoints 
-which makes it easier to understand the unit of points in the chart.
-
-configuration
-~~~~~~~~~~~~~
-.. code-block:: python
-
-    'traffic': {
-        # other configurations for this chart
-        'unit': 'adaptive_bytes',
-    },
-
-The default traffic chart uses this feature to automatically adapt units for the traffic data.
 
 Settings
 --------
@@ -1385,7 +1378,7 @@ This setting allows to define additional charts or to override
 the default chart configuration defined in
 ``openwisp_monitoring.monitoring.configuration.DEFAULT_CHARTS``.
 
-For example, the units in the traffic charts automatically 
+For example, the units in the traffic charts automatically
 adapt according to the traffic data and is set to ``adaptive_bytes``
 by default.
 
