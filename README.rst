@@ -1027,7 +1027,8 @@ How to configure iperf check
 1. Register your device to OpenWISP
 ###################################
 
-Register your device to OpenWISP and make sure `iperf3 openwrt package <https://openwrt.org/packages/pkgdata/iperf3>`_ is installed on the device if not run :
+Register your device to OpenWISP and make sure `iperf3 openwrt package 
+<https://openwrt.org/packages/pkgdata/iperf3>`_ is installed on the device if not run :
 
 .. code-block:: shell
 
@@ -1036,8 +1037,8 @@ Register your device to OpenWISP and make sure `iperf3 openwrt package <https://
 2. Enable secure SSH access from OpenWISP to your devices
 #########################################################
 
-Follow the steps in `"How to configure push updates" section of the openwisp-controller documentation <https://github.com/openwisp/openwisp-controller#how-to-configure-push-updates>`_ 
-to allow SSH access to you device from OpenWISP.
+Follow the steps in `"How to configure push updates" section of the openwisp-controller documentation 
+<https://github.com/openwisp/openwisp-controller#how-to-configure-push-updates>`_ to allow SSH access to you device from OpenWISP.
 
 **Note:** Make sure device connection is enabled & working with right update strategy i.e. ``OpenWRT SSH``.
 
@@ -1063,7 +1064,8 @@ For example.
     'c9734710-db30-46b0-a2fc-01f01046fe4f': ['2001:db8::1'],
     }
 
-Add celery beat configuration for iperf check in `openwisp settings <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_
+Add celery beat configuration for iperf check in `openwisp settings 
+<https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_
 
 .. code-block:: python
 

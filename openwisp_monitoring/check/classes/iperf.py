@@ -121,7 +121,6 @@ class Iperf(BaseCheck):
             device_id=device.id,
             update_strategy=openwrt_ssh,
             enabled=True,
-            is_working=True,
         ).first()
         return device_connection
 

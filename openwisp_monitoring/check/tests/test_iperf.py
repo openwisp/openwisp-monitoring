@@ -205,14 +205,6 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 f'Failed to get a working DeviceConnection for "{self.device}", iperf check skipped!'
             )
 
-        with self.subTest('Test device connection not working'):
-            dc.is_working = False
-            dc.save()
-            check.perform_check(store=False)
-            mock_warn.assert_called_with(
-                f'Failed to get a working DeviceConnection for "{self.device}", iperf check skipped!'
-            )
-
         with self.subTest('Test device connection is not with right update strategy'):
             dc.update_strategy = UPDATE_STRATEGIES[1][0]
             dc.is_working = True
