@@ -37,6 +37,13 @@ DEFAULT_IPERF_CHECK_CONFIG = {
         # arbitrary chosen to avoid slowing down the queue (30min)
         'maximum': 1800,
     },
+    'username': {'type': 'string', 'default': '', 'minLength': 1, 'maxLength': 20},
+    'password': {'type': 'string', 'default': '', 'minLength': 1, 'maxLength': 20},
+    'rsa-public-key-path': {
+        'type': 'string',
+        'default': '',
+        'pattern': '^(.*/)([^/]*)$',
+    },
 }
 
 
@@ -45,6 +52,11 @@ def get_iperf_schema():
         '$schema': 'http://json-schema.org/draft-07/schema#',
         'type': 'object',
         'additionalProperties': False,
+        "dependencies": {
+            "username": ["password", "rsa-public-key-path"],
+            "password": ["username", "rsa-public-key-path"],
+            "rsa-public-key-path": ["username", "password"],
+        },
     }
     schema['properties'] = deep_merge_dicts(
         DEFAULT_IPERF_CHECK_CONFIG, app_settings.IPERF_CHECK_CONFIG
@@ -70,6 +82,7 @@ class Iperf(BaseCheck):
     def check(self, store=True):
         port = self._get_param('port')
         time = self._get_param('time')
+        username = self._get_param('username')
         device = self.related_object
         device_connection = self._get_device_connection(device)
         if not device_connection:
@@ -84,12 +97,20 @@ class Iperf(BaseCheck):
             )
             return
         servers = self._get_iperf_servers(device.organization.id)
+        command_tcp = f'iperf3 -c {servers[0]} -p {port} -t {time} -J'
+        command_udp = f'iperf3 -c {servers[0]} -p {port} -t {time} -u -J'
+
+        if username:
+            password = self._get_param('password')
+            rsa_public_key_path = self._get_param('rsa-public-key-path')
+            command_tcp = f'IPERF3_PASSWORD="{password}" iperf3 -c {servers[0]} -p {port} -t {time} \
+            --username "{username}" --rsa-public-key-path {rsa_public_key_path} -J'
+            command_udp = f'IPERF3_PASSWORD="{password}" iperf3 -c {servers[0]} -p {port} -t {time} \
+            --username "{username}" --rsa-public-key-path {rsa_public_key_path} -u -J'
 
         # TCP mode
-        command = f'iperf3 -c {servers[0]} -p {port} -t {time} -J'
-        result, exit_code = self._exec_command(device_connection, command)
-
-        # Exit code 127 : command doesn't exist
+        result, exit_code = self._exec_command(device_connection, command_tcp)
+        # # Exit code 127 : command doesn't exist
         if exit_code == 127:
             logger.warning(
                 f'Iperf3 is not installed on the "{device}", error - {result.strip()}'
@@ -97,10 +118,8 @@ class Iperf(BaseCheck):
             return
 
         result_tcp = self._get_iperf_result(result, exit_code, device, mode='TCP')
-
         # UDP mode
-        command = f'iperf3 -c {servers[0]} -p {port} -t {time} -u -J'
-        result, exit_code = self._exec_command(device_connection, command)
+        result, exit_code = self._exec_command(device_connection, command_udp)
         result_udp = self._get_iperf_result(result, exit_code, device, mode='UDP')
 
         if store:
