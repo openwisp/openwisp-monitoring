@@ -1,9 +1,12 @@
 import csv
+import datetime as dt
 import logging
 from collections import OrderedDict
 from io import StringIO
 
+import pytz
 from django.conf import settings
+from django.contrib import messages
 from django.http import HttpResponse
 from pytz import timezone as tz
 from pytz.exceptions import UnknownTimeZoneError
@@ -13,8 +16,10 @@ from swapper import load_model
 
 from .monitoring.exceptions import InvalidChartConfigException
 
-logger = logging.getLogger(__name__)
+utc = pytz.UTC
 
+logger = logging.getLogger(__name__)
+device = load_model('config', 'Device')
 Chart = load_model('monitoring', 'Chart')
 
 
@@ -32,7 +37,22 @@ class MonitoringApiViewMixin:
         """
         return {}
 
+    def get_date_range(self, request, *args, **kwargs):
+        start_date = request.GET.get('start')
+        start_date = dt.datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S.%f%z').replace(
+            tzinfo=utc
+        )
+        end_date = request.GET.get('end')
+        end_date = dt.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S.%f%z').replace(
+            tzinfo=utc
+        )
+        return start_date, end_date
+
     def get(self, request, *args, **kwargs):
+        start_date, end_date = self.get_date_range(request, *args, **kwargs)
+        if start_date is not None and end_date is not None:
+            if end_date < start_date:
+                messages.error(request, 'End date should be greater than start date')
         time = request.query_params.get('time', Chart.DEFAULT_TIME)
         if time not in Chart.GROUP_MAP.keys():
             raise ValidationError('Time range not supported')
