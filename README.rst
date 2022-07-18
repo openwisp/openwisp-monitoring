@@ -830,42 +830,42 @@ Iperf
 
 **Bandwidth (TCP)**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/bandwidth-tcp.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/bandwidth-tcp.png
   :align: center
 
 **Transfer (TCP)**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/transfer-tcp.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/transfer-tcp.png
   :align: center
 
 **Retransmits**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/retransmits.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/retransmits.png
   :align: center
 
 **Bandwidth (UDP)**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/bandwidth-udp.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/bandwidth-udp.png
   :align: center
 
 **Transfer (UDP)**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/transfer-udp.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/transfer-udp.png
   :align: center
 
 **Jitter**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/jitter.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/jitter.png
   :align: center
 
 **Datagram**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/datagram.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/datagram.png
   :align: center
 
 **Datagram loss**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/datagram-loss.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/datagram-loss.png
   :align: center
 
 Dashboard Monitoring Charts
@@ -1042,7 +1042,7 @@ Follow the steps in `"How to configure push updates" section of the openwisp-con
 
 **Note:** Make sure device connection is enabled & working with right update strategy i.e. ``OpenWRT SSH``.
 
-.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/enable-openwisp-ssh.png
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/enable-openwrt-ssh.png
   :alt: Enable ssh access from openwisp to device
   :align: center
   
@@ -1093,7 +1093,7 @@ This should happen automatically if you have celery running in the background. F
 run this check manually using the `run_checks <#run_checks>`_ command. After that, you should see the
 iperf network measurements charts.
 
-.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/iperf-charts.png
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/iperf-charts.png
   :alt: Iperf network measurement charts
 
 Settings
