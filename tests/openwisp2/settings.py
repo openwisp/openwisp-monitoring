@@ -177,8 +177,14 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULE = {
     'run_checks': {
         'task': 'openwisp_monitoring.check.tasks.run_checks',
+        # Executes only ping & config check every 5 min
         'schedule': timedelta(minutes=5),
-        'args': None,
+        'args': (
+            [  # Checks path
+                'openwisp_monitoring.check.classes.Ping',
+                'openwisp_monitoring.check.classes.ConfigApplied',
+            ],
+        ),
         'relative': True,
     },
     'run_iperf_checks': {
@@ -186,7 +192,6 @@ CELERY_BEAT_SCHEDULE = {
         # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
         # Executes only iperf check every 5 mins from 00:00 AM to 6:00 AM (night)
         'schedule': crontab(minute='*/5', hour='0-6'),
-        # Check path
         'args': (['openwisp_monitoring.check.classes.Iperf'],),
         'relative': True,
     },

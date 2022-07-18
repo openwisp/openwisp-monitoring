@@ -25,9 +25,9 @@ def run_checks(checks=None):
     This allows to enqueue all the checks that need to be performed
     and execute them in parallel with multiple workers if needed.
     """
+    # If checks is None, We should execute all the checks
     if checks is None:
-        # Executes only auto checks ie. ping and config applied
-        checks = CHECKS_LIST[:2]
+        checks = CHECKS_LIST
 
     if not isinstance(checks, list):
         raise ImproperlyConfigured(f'Check path {checks} should be of type "list"')
