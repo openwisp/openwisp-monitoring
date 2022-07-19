@@ -42,30 +42,6 @@ class MonitoringApiViewMixin:
         end_date = request.GET.get('end')
         return start_date, end_date
 
-    def get_group_map(self, time, request):
-        group_map = Chart.GROUP_MAP
-        daySpan = request.GET.get('dayspan')
-        if daySpan:
-            daySpan = int(daySpan)
-            if daySpan >= 0 and daySpan < 3:
-                time = '1d'
-                group_map[time] = '10m'
-            elif daySpan >= 3 and daySpan < 7:
-                value = str((daySpan / 3) * 20) + 'm'
-                time = '3d'
-                group_map[time] = value
-            elif daySpan >= 7 and daySpan < 28:
-                value = str((daySpan / 7) * 1) + 'd'
-                time = '7d'
-                group_map[time] = value
-            elif daySpan >= 28 and daySpan < 365:
-                value = str((daySpan / 28) * 24) + 'h'
-                time = '30d'
-                group_map[time] = value
-            elif daySpan == 365:
-                time = '365d'
-                group_map[time] = '24h'
-
     def get(self, request, *args, **kwargs):
         key = request.GET.get('key')
         device_created = device.objects.get(key=key).created

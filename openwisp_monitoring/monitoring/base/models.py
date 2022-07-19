@@ -521,6 +521,30 @@ class AbstractChart(TimeStampedEditableModel):
             time=self.DEFAULT_TIME,
         )
 
+    def get_group_map(self, time, daterange):
+        group_map = self.GROUP_MAP
+        if daterange:
+            daterange = int(daterange)
+            if daterange >= 0 and daterange < 3:
+                time = '1d'
+                group_map[time] = '10m'
+            elif daterange >= 3 and daterange < 7:
+                value = str((daterange / 3) * 20) + 'm'
+                time = '3d'
+                group_map[time] = value
+            elif daterange >= 7 and daterange < 28:
+                value = str((daterange / 7) * 1) + 'd'
+                time = '7d'
+                group_map[time] = value
+            elif daterange >= 28 and daterange < 365:
+                value = str((daterange / 28) * 24) + 'h'
+                time = '30d'
+                group_map[time] = value
+            elif daterange == 365:
+                time = '365d'
+                group_map[time] = '24h'
+        return group_map[time]
+
     def _get_query_params(self, time):
         m = self.metric
         params = dict(field_name=m.field_name, key=m.key, time=self._get_time(time))
