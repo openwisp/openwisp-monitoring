@@ -13,7 +13,7 @@ from openwisp_monitoring.check.classes.iperf import logger as iperf_logger
 from ...device.tests import TestDeviceMonitoringMixin
 from .. import settings
 from ..classes import Iperf
-from .iperf_test_result import RESULT_FAIL, RESULT_TCP, RESULT_UDP
+from .iperf_test_result import RESULT_AUTH_FAIL, RESULT_FAIL, RESULT_TCP, RESULT_UDP
 
 Chart = load_model('monitoring', 'Chart')
 AlertSettings = load_model('monitoring', 'AlertSettings')
@@ -73,6 +73,24 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         check = Check.objects.get(check_type=self._IPERF)
         return check, dc
 
+    def _set_auth_expected_calls(self, dc, config):
+        password = config['password']['default']
+        username = config['username']['default']
+        rsa_publickey_path = config['rsa-public-key-path']['default']
+
+        self._EXPECTED_COMMAND_CALLS = [
+            call(
+                dc,
+                f'IPERF3_PASSWORD="{password}" iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 \
+            --username "{username}" --rsa-public-key-path {rsa_publickey_path} -J',
+            ),
+            call(
+                dc,
+                f'IPERF3_PASSWORD="{password}" iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 \
+            --username "{username}" --rsa-public-key-path {rsa_publickey_path} -u -J',
+            ),
+        ]
+
     @patch.object(Iperf, '_exec_command')
     @patch.object(
         Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com']
@@ -116,17 +134,32 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         tcp_result = loads(RESULT_TCP)['end']
         udp_result = loads(RESULT_UDP)['end']['sum']
         check, dc = self._create_iperf_test_env()
-        test_params = {'port': 6201, 'time': 20}
+        server = 'iperf.openwisptestserver.com'
+        test_params = {
+            'port': 6201,
+            'time': 20,
+            'username': 'openwisp-test-user',
+            'password': 'openwisp_pass',
+            'rsa-public-key-path': './public.pem',
+        }
+        time = test_params['time']
+        port = test_params['port']
+        username = test_params['username']
+        password = test_params['password']
+        rsa_publickey_path = test_params['rsa-public-key-path']
         check.params = test_params
         check.save()
+
         self._EXPECTED_COMMAND_CALLS = [
             call(
                 dc,
-                f'iperf3 -c iperf.openwisptestserver.com -p {test_params["port"]} -t {test_params["time"]} -J',  # noqa
+                f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
+            --username "{username}" --rsa-public-key-path {rsa_publickey_path} -J',
             ),
             call(
                 dc,
-                f'iperf3 -c iperf.openwisptestserver.com -p {test_params["port"]} -t {test_params["time"]} -u -J',  # noqa
+                f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
+            --username "{username}" --rsa-public-key-path {rsa_publickey_path} -u -J',
             ),
         ]
         result = check.perform_check(store=False)
@@ -239,7 +272,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             self.fail('ValidationError not raised')
 
     def test_iperf_check_schema_violation(self):
-        check, _ = self._create_iperf_test_env()
+        device = self._create_device(organization=self._create_org())
         invalid_params = [
             {'port': -1232},
             {'time': 0},
@@ -252,10 +285,35 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             {'time': 36000},
             {'port': ''},
             {'time': ''},
+            {'username': 121},
+            {'password': -323},
+            {'rsa-public-key-path': 112},
+            {'username': ''},
+            {'password': 0},
+            {'rsa-public-key-path': '/only_path.pem'},
+            {
+                'username': 'openwisp-test-user',
+                'password': 'open-pass',
+                'rsa-public-key-path': '\dir\wrong_path.pem',
+            },
+            {
+                'username': 1123,
+                'password': 'rossi',
+                'rsa-public-key-path': 'root/public.pem',
+            },
+            {
+                'username': 'openwisp-test-user',
+                'password': -214,
+                'rsa-public-key-path': 'root/public.pem',
+            },
         ]
-        for invalid_params in invalid_params:
-            check.params = invalid_params
-            check.save()
+        for invalid_param in invalid_params:
+            check = Check(
+                name='Iperf check',
+                check_type=self._IPERF,
+                content_object=device,
+                params=invalid_param,
+            )
             try:
                 check.check_instance.validate()
             except ValidationError as e:
@@ -465,6 +523,146 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 self.assertEqual(Metric.objects.count(), 3)
                 self.assertEqual(mock_exec_command.call_count, 2)
                 mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS[1:])
+                mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
+                mock_get_iperf_servers.assert_called_once_with(
+                    self.device.organization.id
+                )
+
+    def test_iperf_check_auth_config(self):
+        iperf_config = {
+            'username': {'default': 'test'},
+            'password': {'default': 'testpass'},
+            'rsa-public-key-path': {'default': '/test.pem'},
+        }
+        iperf_conf_wrong_pass = {
+            'username': {'default': 'test'},
+            'password': {'default': 'wrongpass'},
+            'rsa-public-key-path': {'default': '/test.pem'},
+        }
+        iperf_conf_wrong_user = {
+            'username': {'default': 'wronguser'},
+            'password': {'default': 'testpass'},
+            'rsa-public-key-path': {'default': '/test.pem'},
+        }
+        check, dc = self._create_iperf_test_env()
+        auth_error = "test authorization failed"
+        tcp_result = loads(RESULT_TCP)['end']
+        udp_result = loads(RESULT_UDP)['end']['sum']
+
+        self._EXPECTED_WARN_CALLS = [
+            call(f'Iperf check failed for "{self.device}", error - {auth_error}'),
+            call(f'Iperf check failed for "{self.device}", error - {auth_error}'),
+        ]
+        with self.subTest('Test iperf check with right config'):
+            with patch.object(
+                Iperf, '_exec_command'
+            ) as mock_exec_command, patch.object(
+                Iperf,
+                '_get_iperf_servers',
+                return_value=['iperf.openwisptestserver.com'],
+            ) as mock_get_iperf_servers, patch.object(
+                settings, 'IPERF_CHECK_CONFIG', iperf_config
+            ), patch.object(
+                Iperf, 'schema', get_iperf_schema()
+            ):
+                self._set_auth_expected_calls(dc, iperf_config)
+                mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
+
+                result = check.perform_check(store=False)
+                for key in self._RESULT_KEYS:
+                    self.assertIn(key, result)
+                self.assertEqual(result['iperf_result'], 1)
+                self.assertEqual(
+                    result['sent_bps_tcp'], tcp_result['sum_sent']['bits_per_second']
+                )
+                self.assertEqual(
+                    result['received_bytes_tcp'], tcp_result['sum_received']['bytes']
+                )
+                self.assertEqual(result['jitter'], udp_result['jitter_ms'])
+                self.assertEqual(result['total_packets'], udp_result['packets'])
+                self.assertEqual(mock_exec_command.call_count, 2)
+                mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
+                mock_get_iperf_servers.assert_called_once_with(
+                    self.device.organization.id
+                )
+
+        with self.subTest('Test iperf check with wrong password'):
+            with patch.object(
+                Iperf, '_exec_command'
+            ) as mock_exec_command, patch.object(
+                Iperf,
+                '_get_iperf_servers',
+                return_value=['iperf.openwisptestserver.com'],
+            ) as mock_get_iperf_servers, patch.object(
+                iperf_logger, 'warning'
+            ) as mock_warn, patch.object(
+                settings, 'IPERF_CHECK_CONFIG', iperf_conf_wrong_pass
+            ), patch.object(
+                Iperf, 'schema', get_iperf_schema()
+            ):
+                self._set_auth_expected_calls(dc, iperf_conf_wrong_pass)
+                mock_exec_command.side_effect = [
+                    (RESULT_AUTH_FAIL, 1),
+                    (RESULT_AUTH_FAIL, 1),
+                ]
+
+                result = check.perform_check(store=False)
+                for key in self._RESULT_KEYS:
+                    self.assertIn(key, result)
+                self.assertEqual(result['iperf_result'], 0)
+                self.assertEqual(result['sent_bps_tcp'], 0.0)
+                self.assertEqual(result['received_bps_tcp'], 0.0)
+                self.assertEqual(result['sent_bytes_tcp'], 0)
+                self.assertEqual(result['received_bytes_tcp'], 0)
+                self.assertEqual(result['retransmits'], 0)
+                self.assertEqual(result['sent_bps_udp'], 0.0)
+                self.assertEqual(result['sent_bytes_udp'], 0)
+                self.assertEqual(result['jitter'], 0.0)
+                self.assertEqual(result['total_packets'], 0)
+                self.assertEqual(result['lost_percent'], 0.0)
+                self.assertEqual(mock_exec_command.call_count, 2)
+                mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS)
+                mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
+                mock_get_iperf_servers.assert_called_once_with(
+                    self.device.organization.id
+                )
+
+        with self.subTest('Test iperf check with wrong username'):
+            with patch.object(
+                Iperf, '_exec_command'
+            ) as mock_exec_command, patch.object(
+                Iperf,
+                '_get_iperf_servers',
+                return_value=['iperf.openwisptestserver.com'],
+            ) as mock_get_iperf_servers, patch.object(
+                iperf_logger, 'warning'
+            ) as mock_warn, patch.object(
+                settings, 'IPERF_CHECK_CONFIG', iperf_conf_wrong_user
+            ), patch.object(
+                Iperf, 'schema', get_iperf_schema()
+            ):
+                self._set_auth_expected_calls(dc, iperf_conf_wrong_user)
+                mock_exec_command.side_effect = [
+                    (RESULT_AUTH_FAIL, 1),
+                    (RESULT_AUTH_FAIL, 1),
+                ]
+
+                result = check.perform_check(store=False)
+                for key in self._RESULT_KEYS:
+                    self.assertIn(key, result)
+                self.assertEqual(result['iperf_result'], 0)
+                self.assertEqual(result['sent_bps_tcp'], 0.0)
+                self.assertEqual(result['received_bps_tcp'], 0.0)
+                self.assertEqual(result['sent_bytes_tcp'], 0)
+                self.assertEqual(result['received_bytes_tcp'], 0)
+                self.assertEqual(result['retransmits'], 0)
+                self.assertEqual(result['sent_bps_udp'], 0.0)
+                self.assertEqual(result['sent_bytes_udp'], 0)
+                self.assertEqual(result['jitter'], 0.0)
+                self.assertEqual(result['total_packets'], 0)
+                self.assertEqual(result['lost_percent'], 0.0)
+                self.assertEqual(mock_exec_command.call_count, 2)
+                mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS)
                 mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
                 mock_get_iperf_servers.assert_called_once_with(
                     self.device.organization.id

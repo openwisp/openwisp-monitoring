@@ -735,3 +735,25 @@ RESULT_FAIL = """
     "error": "error - unable to connect to server: Connection refused"
 }
 """
+RESULT_AUTH_FAIL = """
+{
+    "start": {
+        "connected": [],
+        "version": "iperf 3.7",
+        "system_info": "Linux vm-openwrt 4.14.171 #0 SMP Thu Feb 27 21:05:12 2020 x86_64",
+        "timestamp": {
+            "time": "Tue, 19 Jul 2022 12:23:38 UTC",
+            "timesecs": 1658233418
+        },
+        "connecting_to": {
+            "host": "192.168.5.109",
+            "port": 5201
+        },
+        "cookie": "llz5f6akwyonbtcj3fx4phvfaflohdlvxr4z",
+        "tcp_mss_default": 1460
+    },
+    "intervals": [],
+    "end": {},
+    "error": "error - test authorization failed"
+}
+"""
