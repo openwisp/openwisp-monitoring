@@ -235,7 +235,7 @@ DEFAULT_METRICS = {
                 'title': _('General Traffic'),
                 'label': _('General Traffic'),
                 'description': _(
-                    'Network traffic of the whole network ' '(total, download, upload).'
+                    'Network traffic of the whole network (total, download, upload).'
                 ),
                 'summary_labels': [
                     _('Total traffic'),
