@@ -205,7 +205,7 @@ class TestDashboardTimeseriesView(
         def _test_chart_properties(chart):
             self.assertEqual(chart['title'], 'General Traffic')
             self.assertEqual(chart['type'], 'stackedbar+lines')
-            self.assertEqual(chart['unit'], ' GB')
+            self.assertEqual(chart['unit'], 'adaptive_bytes')
             self.assertEqual(
                 chart['summary_labels'],
                 ['Total traffic', 'Total download traffic', 'Total upload traffic'],
@@ -214,7 +214,7 @@ class TestDashboardTimeseriesView(
             self.assertEqual(chart['colorscale'], None)
             self.assertEqual(
                 chart['description'],
-                'Network traffic of the whole network (total, download, upload) measured in GB.',
+                'Network traffic of the whole network (total, download, upload).',
             )
 
         path = reverse('monitoring_general:api_dashboard_timeseries')

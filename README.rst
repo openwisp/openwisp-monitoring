@@ -819,6 +819,26 @@ You can configure the interfaces included in the **General traffic chart** using
 the `"OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART"
 <#openwisp_monitoring_dashboard_traffic_chart>`_ setting.
 
+Adaptive byte charts
+--------------------
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/adaptive-chart.png
+   :align: center
+
+When configuring charts, it is possible to flag their unit
+as ``adaptive_bytes``, this allows to make the charts more readable because
+the units are shown in either `B`, `KB`, `MB`, `GB` and `TB` depending on
+the size of each point, the summary values and Y axis are also resized.
+
+Example taken from the default configuration of the traffic chart:
+
+.. code-block:: python
+
+    'traffic': {
+        # other configurations for this chart
+        'unit': 'adaptive_bytes',
+    },
+
 Monitoring WiFi Sessions
 ------------------------
 
@@ -1359,26 +1379,16 @@ This setting allows to define additional charts or to override
 the default chart configuration defined in
 ``openwisp_monitoring.monitoring.configuration.DEFAULT_CHARTS``.
 
-For example, if you want to change the traffic chart to show
-MB (megabytes) instead of GB (Gigabytes) you can use:
+In the following example, we modify the description of the traffic chart:
 
 .. code-block:: python
 
     OPENWISP_MONITORING_CHARTS = {
         'traffic': {
-            'unit': ' MB',
             'description': (
                 'Network traffic, download and upload, measured on '
-                'the interface "{metric.key}", measured in MB.'
+                'the interface "{metric.key}", custom message here.'
             ),
-            'query': {
-                'influxdb': (
-                    "SELECT SUM(tx_bytes) / 1000000 AS upload, "
-                    "SUM(rx_bytes) / 1000000 AS download FROM {key} "
-                    "WHERE time >= '{time}' AND content_type = '{content_type}' "
-                    "AND object_id = '{object_id}' GROUP BY time(1d)"
-                )
-            },
         }
     }
 
@@ -1413,7 +1423,7 @@ In case you just want to change the colors used in a chart here's how to do it:
 
     OPENWISP_MONITORING_CHARTS = {
         'traffic': {
-            'colors': ['#000000', '#cccccc']
+            'colors': ['#000000', '#cccccc', '#111111']
         }
     }
 

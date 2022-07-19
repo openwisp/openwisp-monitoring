@@ -199,14 +199,14 @@ DEFAULT_METRICS = {
                 'label': _('Traffic'),
                 'description': _(
                     'Network traffic (total, download and upload) '
-                    'of the interface "{ifname}", measured in GB.'
+                    'of the interface "{ifname}".'
                 ),
                 'summary_labels': [
                     _('Total traffic'),
                     _('Total download traffic'),
                     _('Total upload traffic'),
                 ],
-                'unit': _(' GB'),
+                'unit': 'adaptive_bytes',
                 'order': 240,
                 'query': chart_query['traffic'],
                 'colors': [
@@ -235,15 +235,14 @@ DEFAULT_METRICS = {
                 'title': _('General Traffic'),
                 'label': _('General Traffic'),
                 'description': _(
-                    'Network traffic of the whole network'
-                    ' (total, download, upload) measured in GB.'
+                    'Network traffic of the whole network (total, download, upload).'
                 ),
                 'summary_labels': [
                     _('Total traffic'),
                     _('Total download traffic'),
                     _('Total upload traffic'),
                 ],
-                'unit': _(' GB'),
+                'unit': 'adaptive_bytes',
                 'order': 240,
                 'query': chart_query['general_traffic'],
                 'query_default_param': {
