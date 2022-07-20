@@ -488,6 +488,29 @@ class AbstractChart(TimeStampedEditableModel):
             q += default_chart_query[1]
         return q
 
+    def get_group_map(self, time, daterange):
+        if daterange:
+            daterange = int(daterange)
+            if daterange >= 0 and daterange < 3:
+                time = '1d'
+                self.GROUP_MAP[time] = '10m'
+            elif daterange >= 3 and daterange < 7:
+                value = str((daterange / 3) * 20) + 'm'
+                time = '3d'
+                self.GROUP_MAP[time] = value
+            elif daterange >= 7 and daterange < 28:
+                value = str((daterange / 7) * 1) + 'd'
+                time = '7d'
+                self.GROUP_MAP[time] = value
+            elif daterange >= 28 and daterange < 365:
+                value = str((daterange / 28) * 24) + 'h'
+                time = '30d'
+                self.GROUP_MAP[time] = value
+            elif daterange == 365:
+                time = '365d'
+                self.GROUP_MAP[time] = '24h'
+        return self.GROUP_MAP
+
     def get_query(
         self,
         time=DEFAULT_TIME,
@@ -520,30 +543,6 @@ class AbstractChart(TimeStampedEditableModel):
             params=params,
             time=self.DEFAULT_TIME,
         )
-
-    def get_group_map(self, time, daterange):
-        group_map = self.GROUP_MAP
-        if daterange:
-            daterange = int(daterange)
-            if daterange >= 0 and daterange < 3:
-                time = '1d'
-                group_map[time] = '10m'
-            elif daterange >= 3 and daterange < 7:
-                value = str((daterange / 3) * 20) + 'm'
-                time = '3d'
-                group_map[time] = value
-            elif daterange >= 7 and daterange < 28:
-                value = str((daterange / 7) * 1) + 'd'
-                time = '7d'
-                group_map[time] = value
-            elif daterange >= 28 and daterange < 365:
-                value = str((daterange / 28) * 24) + 'h'
-                time = '30d'
-                group_map[time] = value
-            elif daterange == 365:
-                time = '365d'
-                group_map[time] = '24h'
-        return group_map[time]
 
     def _get_query_params(self, time):
         m = self.metric

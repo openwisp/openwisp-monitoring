@@ -3,6 +3,74 @@ const timeRangeKey = 'ow2-chart-time-range';
 
 django.jQuery(function ($) {
   $(document).ready(function () {
+      /* jshint -W117 */
+      var start = moment();
+      var end = moment();
+      function custom_range(start_custom, end_custom) {
+        start = moment(start_custom);
+        end = moment(end_custom);
+        var days = end.diff(start, 'days');
+        if (days == 1) {
+          return '1d';
+        } else if (days > 1 && days < 7) {
+          return '3d';
+        } else if (days > 3 && days < 28) {
+          return '7d';
+        } else if (days > 28 && days < 365) {
+          return '30d';
+        } else if (days == 365) {
+          return '365d';
+        } else {
+          return '1d';
+        }
+      }
+
+      function cb(start, end) {
+        var custom = '1d';
+        var start_custom;
+        var end_custom;
+        $("#reportrange").on('apply.daterangepicker', function (ev, picker) {
+          start_custom = picker.startDate.format('YYYY-MM-DD');
+          end_custom = picker.endDate.format('YYYY-MM-DD');
+          custom = custom_range(start_custom, end_custom);
+        });
+        $('#reportrange span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
+        $("[data-range-key='Today']").attr('data-time', '1d');
+        $("[data-range-key='3 days']").attr('data-time', '3d');
+        $("[data-range-key='1 week']").attr('data-time', '7d');
+        $("[data-range-key='1 month']").attr('data-time', '30d');
+        $("[data-range-key='1 year']").attr('data-time', '365d');
+        $("[data-range-key='Custom Range']").attr('data-time', custom);
+        $.ajax({
+          url: $("#monitoring-timeseries-api-url").data('value'),
+          data: {
+            start: start.format('YYYY-MM-DD HH:mm:ss.SSSSSSZZ'),
+            end: end.format('YYYY-MM-DD HH:mm:ss.SSSSSSZZ'),
+            format: 'json',
+            time: custom,
+            dateSpan: end.diff(start, 'days'),
+            key: $("#monitoring-timeseries-original-key").data('value'),
+          }
+        });
+      }
+
+      $('#reportrange').daterangepicker({
+        startDate: start,
+        endDate: end,
+        maxDate: moment(),
+        maxSpan: {
+          "year": 1,
+        },
+        ranges: {
+          'Today': [moment(), moment()],
+          '3 days': [moment().subtract(2, 'days'), moment()],
+          '1 week': [moment().subtract(6, 'days'), moment()],
+          '1 month': [moment().subtract(29, 'days'), moment()],
+          '1 year': [moment().subtract(365, 'days'), moment()],
+        }
+      }, cb);
+    cb(start, end);
+
     var chartQuickLinks, chartContents = $('#ow-chart-contents'),
       fallback = $('#ow-chart-fallback'),
       defaultTimeRange = localStorage.getItem(timeRangeKey) || $('#monitoring-timeseries-default-time').data('value'),
@@ -15,7 +83,7 @@ django.jQuery(function ($) {
         var url = baseUrl + time;
         $.ajax(url, {
           dataType: 'json',
-          beforeSend: function(){
+          beforeSend: function () {
             chartContents.hide();
             chartContents.empty();
             fallback.hide();
@@ -24,7 +92,7 @@ django.jQuery(function ($) {
             }
             localLoadingOverlay.show();
           },
-          success: function(data){
+          success: function (data) {
             localLoadingOverlay.hide();
             if (data.charts.length) {
               chartContents.show();
@@ -44,11 +112,11 @@ django.jQuery(function ($) {
               createChart(chart, data.x, htmlId, chart.title, chart.type, chartQuickLink);
             });
           },
-          error: function(){
+          error: function () {
             alert('Something went wrong while loading the charts');
           },
-          complete: function() {
-            localLoadingOverlay.fadeOut(200, function(){
+          complete: function () {
+            localLoadingOverlay.fadeOut(200, function () {
               if (showLoading) {
                 globalLoadingOverlay.fadeOut(200);
               }
@@ -56,44 +124,12 @@ django.jQuery(function ($) {
           }
         });
       };
-      setTimeout(()=>{
-        var dateTimePicker = $('.ranges li');
-        dateTimePicker.click(function () {
-          if("Custom Range"==$(this).attr('data-range-key')) {
-            return;
-          }
-          var timeRange = $(this).attr('data-time');
-          loadCharts(timeRange, true);
-          localStorage.setItem(timeRangeKey, timeRange);
-          // refresh every 2.5 minutes
-          clearInterval(window.owChartRefresh);
-          window.owChartRefresh = setInterval(loadCharts,
-            1000 * 60 * 2.5,
-            timeRange,
-            false);
-        });
-        // Function for Custom Range
-        $('.drp-buttons .applyBtn').on('click', ()=> {
-          setTimeout(()=>{
-            var customPicker = $('[data-range-key="Custom Range"]');
-            var timeRange = customPicker.attr('data-time');
-            loadCharts(timeRange, true);
-            localStorage.setItem(timeRangeKey, timeRange);
-            // refresh every 2.5 minutes
-            clearInterval(window.owChartRefresh);
-            window.owChartRefresh = setInterval(loadCharts,
-              1000 * 60 * 2.5,
-              timeRange,
-              false);
-          }, 1000);
-        });
-      }, 1000);
     try {
       chartQuickLinks = JSON.parse($('#monitoring-chart-quick-links').html());
     } catch (error) {
       chartQuickLinks = {};
     }
-    window.triggerChartLoading = function() {
+    window.triggerChartLoading = function () {
       var range = localStorage.getItem(timeRangeKey) || defaultTimeRange;
       $('#ow-chart-time a[data-time=' + range + ']').trigger('click');
     };
@@ -103,6 +139,33 @@ django.jQuery(function ($) {
       baseUrl = baseUrl.replace('time=', 'timezone=' + timezone + '&time=');
       // ignore failures (older browsers do not support this)
     } catch (e) {}
+    var dateTimePicker = $('.ranges li');
+      dateTimePicker.click(function () {
+        if ("Custom Range" == $(this).attr('data-range-key')) {
+          return;
+        }
+        var timeRange = $(this).attr('data-time');
+        loadCharts(timeRange, true);
+        localStorage.setItem(timeRangeKey, timeRange);
+        // refresh every 2.5 minutes
+        clearInterval(window.owChartRefresh);
+        window.owChartRefresh = setInterval(loadCharts,
+          1000 * 60 * 2.5,
+          timeRange,
+          false);
+      });
+      $('.drp-buttons .applyBtn').on('click', () => {
+          var customPicker = $('[data-range-key="Custom Range"]');
+          var timeRange = customPicker.attr('data-time');
+          loadCharts(timeRange, true);
+          localStorage.setItem(timeRangeKey, timeRange);
+          // refresh every 2.5 minutes
+          clearInterval(window.owChartRefresh);
+          window.owChartRefresh = setInterval(loadCharts,
+            1000 * 60 * 2.5,
+            timeRange,
+            false);
+      });
     // bind export button
     $('#ow-chart-time a.export').click(function () {
       var time = localStorage.getItem(timeRangeKey);

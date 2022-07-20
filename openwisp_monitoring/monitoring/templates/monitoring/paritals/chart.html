@@ -4,7 +4,6 @@
     <span id="monitoring-timeseries-api-url" data-value="{{ api_url }}"></span>
     <span id="monitoring-timeseries-original-key" data-value="{{ original.key }}"></span>
     <span id="monitoring-timeseries-default-time" data-value="{{ default_time }}"></span>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/latest/jquery.min.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
@@ -22,75 +21,4 @@
     {% if chart_quick_links %}
         {{ chart_quick_links|json_script:"monitoring-chart-quick-links" }}
     {% endif %}
-    <script type="text/javascript">
-        $(function() {
-            var start = moment();
-            var end = moment();
-
-            function custom_range(start_custom, end_custom) {
-                var start = moment(start_custom);
-                var end = moment(end_custom);
-                var days = end.diff(start, 'days');
-                if (days == 1) {
-                    return '1d';
-                } else if (days > 1 && days < 7) {
-                    return '3d';
-                } else if (days > 3 && days < 28) {
-                    return '7d';
-                } else if (days > 28 && days < 365) {
-                    return '30d';
-                } else if (days == 365) {
-                    return '365d';
-                }else {
-                    return '1d';
-                }
-            }
-
-            async function cb(start, end) {
-                var custom='1d';
-                var start_custom;
-                var end_custom;
-                await $("#reportrange").on('apply.daterangepicker', function(ev, picker) {
-                    start_custom = picker.startDate.format('YYYY-MM-DD');
-                    end_custom = picker.endDate.format('YYYY-MM-DD');
-                    custom = custom_range(start_custom, end_custom);
-                });
-                $('#reportrange span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
-                $("[data-range-key='Today']").attr('data-time', '1d');
-                $("[data-range-key='3 days']").attr('data-time', '3d');
-                $("[data-range-key='1 week']").attr('data-time', '7d');
-                $("[data-range-key='1 month']").attr('data-time', '30d');
-                $("[data-range-key='1 year']").attr('data-time', '365d');
-                $("[data-range-key='Custom Range']").attr('data-time', custom);
-                $.ajax({
-                    url: $("#monitoring-timeseries-api-url").data('value'),
-                    data: {
-                        start: start.format('YYYY-MM-DD HH:mm:ss.SSSSSSZZ'),
-                        end: end.format('YYYY-MM-DD HH:mm:ss.SSSSSSZZ'),
-                        format: 'json',
-                        time : custom,
-                        key: $("#monitoring-timeseries-original-key").data('value'),
-                    }
-                });
-            }
-
-            $('#reportrange').daterangepicker({
-                startDate: start,
-                endDate: end,
-                maxDate: moment(),
-                maxSpan: {
-                    "year": 1,
-                },
-                ranges: {
-                    'Today': [moment(), moment()],
-                    '3 days': [moment().subtract(2, 'days'), moment()],
-                    '1 week': [moment().subtract(6, 'days'), moment()],
-                    '1 month': [moment().subtract(29, 'days'), moment()],
-                    '1 year': [moment().subtract(365, 'days'), moment()],
-                }
-            }, cb);
-
-            cb(start, end);
-        });
-    </script>
 </div>
