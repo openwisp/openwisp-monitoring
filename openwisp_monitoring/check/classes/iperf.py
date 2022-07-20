@@ -39,10 +39,9 @@ DEFAULT_IPERF_CHECK_CONFIG = {
     },
     'username': {'type': 'string', 'default': '', 'minLength': 1, 'maxLength': 20},
     'password': {'type': 'string', 'default': '', 'minLength': 1, 'maxLength': 20},
-    'rsa-public-key-path': {
+    'rsa_public_key': {
         'type': 'string',
         'default': '',
-        'pattern': '^(.*/)([^/]*)$',
     },
 }
 
@@ -53,9 +52,9 @@ def get_iperf_schema():
         'type': 'object',
         'additionalProperties': False,
         "dependencies": {
-            "username": ["password", "rsa-public-key-path"],
-            "password": ["username", "rsa-public-key-path"],
-            "rsa-public-key-path": ["username", "password"],
+            "username": ["password", "rsa_public_key"],
+            "password": ["username", "rsa_public_key"],
+            "rsa_public_key": ["username", "password"],
         },
     }
     schema['properties'] = deep_merge_dicts(
@@ -100,17 +99,27 @@ class Iperf(BaseCheck):
         command_tcp = f'iperf3 -c {servers[0]} -p {port} -t {time} -J'
         command_udp = f'iperf3 -c {servers[0]} -p {port} -t {time} -u -J'
 
+        # All three parameters ie. username, password and rsa_public_key is required
+        # for authentication to work, checking only username here
         if username:
             password = self._get_param('password')
-            rsa_public_key_path = self._get_param('rsa-public-key-path')
-            command_tcp = f'IPERF3_PASSWORD="{password}" iperf3 -c {servers[0]} -p {port} -t {time} \
+            key = self._get_param('rsa_public_key')
+            rsa_public_key = self._get_compelete_rsa_key(key)
+            rsa_public_key_path = app_settings.IPERF_CHECK_RSA_KEY_PATH
+
+            command_tcp = f'echo "{rsa_public_key}" > {rsa_public_key_path} && \
+            IPERF3_PASSWORD="{password}" iperf3 -c {servers[0]} -p {port} -t {time} \
             --username "{username}" --rsa-public-key-path {rsa_public_key_path} -J'
+
             command_udp = f'IPERF3_PASSWORD="{password}" iperf3 -c {servers[0]} -p {port} -t {time} \
             --username "{username}" --rsa-public-key-path {rsa_public_key_path} -u -J'
+            # If IPERF_CHECK_DELETE_RSA_KEY, delete rsa_public_key from the device
+            if app_settings.IPERF_CHECK_RSA_KEY_DELETE:
+                command_udp = f'{command_udp} && rm {rsa_public_key_path}'
 
         # TCP mode
         result, exit_code = self._exec_command(device_connection, command_tcp)
-        # # Exit code 127 : command doesn't exist
+        # Exit code 127 : command doesn't exist
         if exit_code == 127:
             logger.warning(
                 f'Iperf3 is not installed on the "{device}", error - {result.strip()}'
@@ -130,6 +139,12 @@ class Iperf(BaseCheck):
             )
         device_connection.disconnect()
         return {**result_tcp, **result_udp, 'iperf_result': iperf_result}
+
+    def _get_compelete_rsa_key(self, key):
+        pem_prefix = '-----BEGIN PUBLIC KEY-----\n'
+        pem_suffix = '\n-----END PUBLIC KEY-----'
+        key = key.strip()
+        return f'{pem_prefix}{key}{pem_suffix}'
 
     def _get_device_connection(self, device):
         """

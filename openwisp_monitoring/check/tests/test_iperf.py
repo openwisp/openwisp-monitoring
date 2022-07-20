@@ -11,9 +11,15 @@ from openwisp_monitoring.check.classes.iperf import get_iperf_schema
 from openwisp_monitoring.check.classes.iperf import logger as iperf_logger
 
 from ...device.tests import TestDeviceMonitoringMixin
-from .. import settings
+from .. import settings as app_settings
 from ..classes import Iperf
-from .iperf_test_result import RESULT_AUTH_FAIL, RESULT_FAIL, RESULT_TCP, RESULT_UDP
+from .iperf_test_utils import (
+    RESULT_AUTH_FAIL,
+    RESULT_FAIL,
+    RESULT_TCP,
+    RESULT_UDP,
+    TEST_RSA_KEY,
+)
 
 Chart = load_model('monitoring', 'Chart')
 AlertSettings = load_model('monitoring', 'AlertSettings')
@@ -24,7 +30,7 @@ Notification = load_model('openwisp_notifications', 'Notification')
 
 class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTestCase):
 
-    _IPERF = settings.CHECK_CLASSES[2][0]
+    _IPERF = app_settings.CHECK_CLASSES[2][0]
     _RESULT_KEYS = [
         'iperf_result',
         'sent_bps_tcp',
@@ -76,20 +82,40 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
     def _set_auth_expected_calls(self, dc, config):
         password = config['password']['default']
         username = config['username']['default']
-        rsa_publickey_path = config['rsa-public-key-path']['default']
+        server = 'iperf.openwisptestserver.com'
+        test_prefix = '-----BEGIN PUBLIC KEY-----\n'
+        test_suffix = '\n-----END PUBLIC KEY-----'
+        key = config['rsa_public_key']['default']
+        rsa_key_path = app_settings.IPERF_CHECK_RSA_KEY_PATH
 
         self._EXPECTED_COMMAND_CALLS = [
             call(
                 dc,
-                f'IPERF3_PASSWORD="{password}" iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 \
-            --username "{username}" --rsa-public-key-path {rsa_publickey_path} -J',
+                f'echo "{test_prefix}{key}{test_suffix}" > {rsa_key_path} && \
+            IPERF3_PASSWORD="{password}" iperf3 -c {server} -p 5201 -t 10 \
+            --username "{username}" --rsa-public-key-path {rsa_key_path} -J',
             ),
             call(
                 dc,
-                f'IPERF3_PASSWORD="{password}" iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 \
-            --username "{username}" --rsa-public-key-path {rsa_publickey_path} -u -J',
+                f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p 5201 -t 10 \
+            --username "{username}" --rsa-public-key-path {rsa_key_path} -u -J && rm {rsa_key_path}',
             ),
         ]
+
+    def _assert_iperf_fail_result(self, result):
+        for key in self._RESULT_KEYS:
+            self.assertIn(key, result)
+        self.assertEqual(result['iperf_result'], 0)
+        self.assertEqual(result['sent_bps_tcp'], 0.0)
+        self.assertEqual(result['received_bps_tcp'], 0.0)
+        self.assertEqual(result['sent_bytes_tcp'], 0)
+        self.assertEqual(result['received_bytes_tcp'], 0)
+        self.assertEqual(result['retransmits'], 0)
+        self.assertEqual(result['sent_bps_udp'], 0.0)
+        self.assertEqual(result['sent_bytes_udp'], 0)
+        self.assertEqual(result['jitter'], 0.0)
+        self.assertEqual(result['total_packets'], 0)
+        self.assertEqual(result['lost_percent'], 0.0)
 
     @patch.object(Iperf, '_exec_command')
     @patch.object(
@@ -135,31 +161,34 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         udp_result = loads(RESULT_UDP)['end']['sum']
         check, dc = self._create_iperf_test_env()
         server = 'iperf.openwisptestserver.com'
+        test_prefix = '-----BEGIN PUBLIC KEY-----\n'
+        test_suffix = '\n-----END PUBLIC KEY-----'
+        rsa_key_path = app_settings.IPERF_CHECK_RSA_KEY_PATH
         test_params = {
             'port': 6201,
             'time': 20,
             'username': 'openwisp-test-user',
             'password': 'openwisp_pass',
-            'rsa-public-key-path': './public.pem',
+            'rsa_public_key': TEST_RSA_KEY,
         }
         time = test_params['time']
         port = test_params['port']
         username = test_params['username']
         password = test_params['password']
-        rsa_publickey_path = test_params['rsa-public-key-path']
+        key = test_params['rsa_public_key']
         check.params = test_params
         check.save()
-
         self._EXPECTED_COMMAND_CALLS = [
             call(
                 dc,
-                f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
-            --username "{username}" --rsa-public-key-path {rsa_publickey_path} -J',
+                f'echo "{test_prefix}{key}{test_suffix}" > {rsa_key_path} && \
+            IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
+            --username "{username}" --rsa-public-key-path {rsa_key_path} -J',
             ),
             call(
                 dc,
                 f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
-            --username "{username}" --rsa-public-key-path {rsa_publickey_path} -u -J',
+            --username "{username}" --rsa-public-key-path {rsa_key_path} -u -J && rm {rsa_key_path}',
             ),
         ]
         result = check.perform_check(store=False)
@@ -184,7 +213,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com']
     )
     @patch.object(
-        settings,
+        app_settings,
         'IPERF_CHECK_CONFIG',
         {
             'port': {'default': 9201},
@@ -321,228 +350,183 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             else:
                 self.fail('ValidationError not raised')
 
-    def test_iperf_check(self):
+    @patch.object(Iperf, '_exec_command')
+    @patch.object(
+        Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com']
+    )
+    @patch.object(iperf_logger, 'warning')
+    def test_iperf_check(self, mock_warn, mock_get_iperf_servers, mock_exec_command):
         check, _ = self._create_iperf_test_env()
         error = "ash: iperf3: not found"
         tcp_result = loads(RESULT_TCP)['end']
         udp_result = loads(RESULT_UDP)['end']['sum']
 
         with self.subTest('Test iperf3 is not installed on the device'):
-            with patch.object(
-                Iperf, '_exec_command'
-            ) as mock_exec_command, patch.object(
-                Iperf,
-                '_get_iperf_servers',
-                return_value=['iperf.openwisptestserver.com'],
-            ) as mock_get_iperf_servers:
-                mock_exec_command.side_effect = [(error, 127)]
-                with patch.object(iperf_logger, 'warning') as mock_warn:
-                    check.perform_check(store=False)
-                    mock_warn.assert_called_with(
-                        f'Iperf3 is not installed on the "{self.device}", error - {error}'
-                    )
-                self.assertEqual(mock_warn.call_count, 1)
-                self.assertEqual(mock_exec_command.call_count, 1)
-                mock_get_iperf_servers.assert_called_once_with(
-                    self.device.organization.id
-                )
+            mock_exec_command.side_effect = [(error, 127)]
+            check.perform_check(store=False)
+            mock_warn.assert_called_with(
+                f'Iperf3 is not installed on the "{self.device}", error - {error}'
+            )
+            self.assertEqual(mock_warn.call_count, 1)
+            self.assertEqual(mock_exec_command.call_count, 1)
+            mock_get_iperf_servers.assert_called_once_with(self.device.organization.id)
+            mock_exec_command.reset_mock()
+            mock_get_iperf_servers.reset_mock()
+            mock_warn.reset_mock()
 
         with self.subTest('Test iperf check passes in both TCP & UDP'):
-            with patch.object(
-                Iperf, '_exec_command'
-            ) as mock_exec_command, patch.object(
-                Iperf,
-                '_get_iperf_servers',
-                return_value=['iperf.openwisptestserver.com'],
-            ) as mock_get_iperf_servers, patch.object(
-                iperf_logger, 'warning'
-            ) as mock_warn:
-                mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
-                self.assertEqual(Chart.objects.count(), 2)
-                self.assertEqual(Metric.objects.count(), 2)
-                result = check.perform_check(store=False)
-                for key in self._RESULT_KEYS:
-                    self.assertIn(key, result)
-                self.assertEqual(result['iperf_result'], 1)
-                self.assertEqual(
-                    result['sent_bps_tcp'], tcp_result['sum_sent']['bits_per_second']
-                )
-                self.assertEqual(
-                    result['received_bps_tcp'],
-                    tcp_result['sum_received']['bits_per_second'],
-                )
-                self.assertEqual(
-                    result['sent_bytes_tcp'], tcp_result['sum_sent']['bytes']
-                )
-                self.assertEqual(
-                    result['received_bytes_tcp'], tcp_result['sum_received']['bytes']
-                )
-                self.assertEqual(
-                    result['retransmits'], tcp_result['sum_sent']['retransmits']
-                )
-                self.assertEqual(result['sent_bps_udp'], udp_result['bits_per_second'])
-                self.assertEqual(result['sent_bytes_udp'], udp_result['bytes'])
-                self.assertEqual(result['jitter'], udp_result['jitter_ms'])
-                self.assertEqual(result['total_packets'], udp_result['packets'])
-                self.assertEqual(result['lost_percent'], udp_result['lost_percent'])
-                self.assertEqual(Chart.objects.count(), 10)
-                self.assertEqual(Check.objects.count(), 3)
+            mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
+            self.assertEqual(Chart.objects.count(), 2)
+            self.assertEqual(Metric.objects.count(), 2)
+            result = check.perform_check(store=False)
+            for key in self._RESULT_KEYS:
+                self.assertIn(key, result)
+            self.assertEqual(result['iperf_result'], 1)
+            self.assertEqual(
+                result['sent_bps_tcp'], tcp_result['sum_sent']['bits_per_second']
+            )
+            self.assertEqual(
+                result['received_bps_tcp'],
+                tcp_result['sum_received']['bits_per_second'],
+            )
+            self.assertEqual(result['sent_bytes_tcp'], tcp_result['sum_sent']['bytes'])
+            self.assertEqual(
+                result['received_bytes_tcp'], tcp_result['sum_received']['bytes']
+            )
+            self.assertEqual(
+                result['retransmits'], tcp_result['sum_sent']['retransmits']
+            )
+            self.assertEqual(result['sent_bps_udp'], udp_result['bits_per_second'])
+            self.assertEqual(result['sent_bytes_udp'], udp_result['bytes'])
+            self.assertEqual(result['jitter'], udp_result['jitter_ms'])
+            self.assertEqual(result['total_packets'], udp_result['packets'])
+            self.assertEqual(result['lost_percent'], udp_result['lost_percent'])
+            self.assertEqual(Chart.objects.count(), 10)
+            self.assertEqual(Check.objects.count(), 3)
 
-                iperf_metric = Metric.objects.get(key='iperf')
-                self.assertEqual(Metric.objects.count(), 3)
-                self.assertEqual(iperf_metric.content_object, self.device)
-                points = iperf_metric.read(limit=None, extra_fields=list(result.keys()))
-                self.assertEqual(len(points), 1)
-                self.assertEqual(points[0]['iperf_result'], result['iperf_result'])
-                self.assertEqual(points[0]['sent_bps_tcp'], result['sent_bps_tcp'])
-                self.assertEqual(
-                    points[0]['received_bytes_tcp'], result['received_bytes_tcp']
-                )
-                self.assertEqual(points[0]['retransmits'], result['retransmits'])
-                self.assertEqual(points[0]['sent_bps_udp'], result['sent_bps_udp'])
-                self.assertEqual(points[0]['sent_bytes_udp'], result['sent_bytes_udp'])
-                self.assertEqual(points[0]['jitter'], result['jitter'])
-                self.assertEqual(points[0]['total_packets'], result['total_packets'])
-                self.assertEqual(points[0]['lost_packets'], result['lost_packets'])
-                self.assertEqual(points[0]['lost_percent'], result['lost_percent'])
+            iperf_metric = Metric.objects.get(key='iperf')
+            self.assertEqual(Metric.objects.count(), 3)
+            self.assertEqual(iperf_metric.content_object, self.device)
+            points = iperf_metric.read(limit=None, extra_fields=list(result.keys()))
+            self.assertEqual(len(points), 1)
+            self.assertEqual(points[0]['iperf_result'], result['iperf_result'])
+            self.assertEqual(points[0]['sent_bps_tcp'], result['sent_bps_tcp'])
+            self.assertEqual(
+                points[0]['received_bytes_tcp'], result['received_bytes_tcp']
+            )
+            self.assertEqual(points[0]['retransmits'], result['retransmits'])
+            self.assertEqual(points[0]['sent_bps_udp'], result['sent_bps_udp'])
+            self.assertEqual(points[0]['sent_bytes_udp'], result['sent_bytes_udp'])
+            self.assertEqual(points[0]['jitter'], result['jitter'])
+            self.assertEqual(points[0]['total_packets'], result['total_packets'])
+            self.assertEqual(points[0]['lost_packets'], result['lost_packets'])
+            self.assertEqual(points[0]['lost_percent'], result['lost_percent'])
 
-                self.assertEqual(mock_warn.call_count, 0)
-                self.assertEqual(mock_exec_command.call_count, 2)
-                mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
-                mock_get_iperf_servers.assert_called_once_with(
-                    self.device.organization.id
-                )
+            self.assertEqual(mock_warn.call_count, 0)
+            self.assertEqual(mock_exec_command.call_count, 2)
+            mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
+            mock_get_iperf_servers.assert_called_once_with(self.device.organization.id)
+            mock_exec_command.reset_mock()
+            mock_get_iperf_servers.reset_mock()
+            mock_warn.reset_mock()
 
         with self.subTest('Test iperf check fails in both TCP & UDP'):
-            with patch.object(
-                Iperf, '_exec_command'
-            ) as mock_exec_command, patch.object(
-                Iperf,
-                '_get_iperf_servers',
-                return_value=['iperf.openwisptestserver.com'],
-            ) as mock_get_iperf_servers, patch.object(
-                iperf_logger, 'warning'
-            ) as mock_warn:
-                mock_exec_command.side_effect = [(RESULT_FAIL, 1), (RESULT_FAIL, 1)]
+            mock_exec_command.side_effect = [(RESULT_FAIL, 1), (RESULT_FAIL, 1)]
 
-                result = check.perform_check(store=False)
-                for key in self._RESULT_KEYS:
-                    self.assertIn(key, result)
-                self.assertEqual(result['iperf_result'], 0)
-                self.assertEqual(result['sent_bps_tcp'], 0.0)
-                self.assertEqual(result['received_bps_tcp'], 0.0)
-                self.assertEqual(result['sent_bytes_tcp'], 0)
-                self.assertEqual(result['received_bytes_tcp'], 0)
-                self.assertEqual(result['retransmits'], 0)
-                self.assertEqual(result['sent_bps_udp'], 0.0)
-                self.assertEqual(result['sent_bytes_udp'], 0)
-                self.assertEqual(result['jitter'], 0.0)
-                self.assertEqual(result['total_packets'], 0)
-                self.assertEqual(result['lost_percent'], 0.0)
-                self.assertEqual(Chart.objects.count(), 10)
-                self.assertEqual(Metric.objects.count(), 3)
-                self.assertEqual(mock_exec_command.call_count, 2)
-                mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS)
-                mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
-                mock_get_iperf_servers.assert_called_once_with(
-                    self.device.organization.id
-                )
+            result = check.perform_check(store=False)
+            self._assert_iperf_fail_result(result)
+            self.assertEqual(Chart.objects.count(), 10)
+            self.assertEqual(Metric.objects.count(), 3)
+            self.assertEqual(mock_exec_command.call_count, 2)
+            mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS)
+            mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
+            mock_get_iperf_servers.assert_called_once_with(self.device.organization.id)
+            mock_exec_command.reset_mock()
+            mock_get_iperf_servers.reset_mock()
+            mock_warn.reset_mock()
 
         with self.subTest('Test iperf check TCP pass UDP fail'):
-            with patch.object(
-                Iperf, '_exec_command'
-            ) as mock_exec_command, patch.object(
-                Iperf,
-                '_get_iperf_servers',
-                return_value=['iperf.openwisptestserver.com'],
-            ) as mock_get_iperf_servers, patch.object(
-                iperf_logger, 'warning'
-            ) as mock_warn:
-                mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_FAIL, 1)]
+            mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_FAIL, 1)]
 
-                result = check.perform_check(store=False)
-                for key in self._RESULT_KEYS:
-                    self.assertIn(key, result)
-                self.assertEqual(result['iperf_result'], 1)
-                self.assertEqual(
-                    result['sent_bps_tcp'], tcp_result['sum_sent']['bits_per_second']
-                )
-                self.assertEqual(
-                    result['received_bps_tcp'],
-                    tcp_result['sum_received']['bits_per_second'],
-                )
-                self.assertEqual(
-                    result['sent_bytes_tcp'], tcp_result['sum_sent']['bytes']
-                )
-                self.assertEqual(
-                    result['received_bytes_tcp'], tcp_result['sum_received']['bytes']
-                )
-                self.assertEqual(
-                    result['retransmits'], tcp_result['sum_sent']['retransmits']
-                )
-                self.assertEqual(result['sent_bps_udp'], 0.0)
-                self.assertEqual(result['sent_bytes_udp'], 0)
-                self.assertEqual(result['jitter'], 0.0)
-                self.assertEqual(result['total_packets'], 0)
-                self.assertEqual(result['lost_percent'], 0.0)
-                self.assertEqual(Metric.objects.count(), 3)
-                self.assertEqual(mock_exec_command.call_count, 2)
-                mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS[1:])
-                mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
-                mock_get_iperf_servers.assert_called_once_with(
-                    self.device.organization.id
-                )
+            result = check.perform_check(store=False)
+            for key in self._RESULT_KEYS:
+                self.assertIn(key, result)
+            self.assertEqual(result['iperf_result'], 1)
+            self.assertEqual(
+                result['sent_bps_tcp'], tcp_result['sum_sent']['bits_per_second']
+            )
+            self.assertEqual(
+                result['received_bps_tcp'],
+                tcp_result['sum_received']['bits_per_second'],
+            )
+            self.assertEqual(result['sent_bytes_tcp'], tcp_result['sum_sent']['bytes'])
+            self.assertEqual(
+                result['received_bytes_tcp'], tcp_result['sum_received']['bytes']
+            )
+            self.assertEqual(
+                result['retransmits'], tcp_result['sum_sent']['retransmits']
+            )
+            self.assertEqual(result['sent_bps_udp'], 0.0)
+            self.assertEqual(result['sent_bytes_udp'], 0)
+            self.assertEqual(result['jitter'], 0.0)
+            self.assertEqual(result['total_packets'], 0)
+            self.assertEqual(result['lost_percent'], 0.0)
+            self.assertEqual(Chart.objects.count(), 10)
+            self.assertEqual(Metric.objects.count(), 3)
+            self.assertEqual(mock_exec_command.call_count, 2)
+            mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS[1:])
+            mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
+            mock_get_iperf_servers.assert_called_once_with(self.device.organization.id)
+            mock_exec_command.reset_mock()
+            mock_get_iperf_servers.reset_mock()
+            mock_warn.reset_mock()
 
         with self.subTest('Test iperf check TCP fail UDP pass'):
-            with patch.object(
-                Iperf, '_exec_command'
-            ) as mock_exec_command, patch.object(
-                Iperf,
-                '_get_iperf_servers',
-                return_value=['iperf.openwisptestserver.com'],
-            ) as mock_get_iperf_servers, patch.object(
-                iperf_logger, 'warning'
-            ) as mock_warn:
-                mock_exec_command.side_effect = [(RESULT_FAIL, 1), (RESULT_UDP, 0)]
+            mock_exec_command.side_effect = [(RESULT_FAIL, 1), (RESULT_UDP, 0)]
 
-                result = check.perform_check(store=False)
-                for key in self._RESULT_KEYS:
-                    self.assertIn(key, result)
-                self.assertEqual(result['iperf_result'], 1)
-                self.assertEqual(result['sent_bps_tcp'], 0.0)
-                self.assertEqual(result['received_bps_tcp'], 0.0)
-                self.assertEqual(result['sent_bytes_tcp'], 0)
-                self.assertEqual(result['received_bytes_tcp'], 0)
-                self.assertEqual(result['retransmits'], 0)
-                self.assertEqual(result['sent_bps_udp'], udp_result['bits_per_second'])
-                self.assertEqual(result['sent_bytes_udp'], udp_result['bytes'])
-                self.assertEqual(result['jitter'], udp_result['jitter_ms'])
-                self.assertEqual(result['total_packets'], udp_result['packets'])
-                self.assertEqual(result['lost_percent'], udp_result['lost_percent'])
-                self.assertEqual(Chart.objects.count(), 10)
-                self.assertEqual(Metric.objects.count(), 3)
-                self.assertEqual(mock_exec_command.call_count, 2)
-                mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS[1:])
-                mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
-                mock_get_iperf_servers.assert_called_once_with(
-                    self.device.organization.id
-                )
+            result = check.perform_check(store=False)
+            for key in self._RESULT_KEYS:
+                self.assertIn(key, result)
+            self.assertEqual(result['iperf_result'], 1)
+            self.assertEqual(result['sent_bps_tcp'], 0.0)
+            self.assertEqual(result['received_bps_tcp'], 0.0)
+            self.assertEqual(result['sent_bytes_tcp'], 0)
+            self.assertEqual(result['received_bytes_tcp'], 0)
+            self.assertEqual(result['retransmits'], 0)
+            self.assertEqual(result['sent_bps_udp'], udp_result['bits_per_second'])
+            self.assertEqual(result['sent_bytes_udp'], udp_result['bytes'])
+            self.assertEqual(result['jitter'], udp_result['jitter_ms'])
+            self.assertEqual(result['total_packets'], udp_result['packets'])
+            self.assertEqual(result['lost_percent'], udp_result['lost_percent'])
+            self.assertEqual(Chart.objects.count(), 10)
+            self.assertEqual(Metric.objects.count(), 3)
+            self.assertEqual(mock_exec_command.call_count, 2)
+            mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS[1:])
+            mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
+            mock_get_iperf_servers.assert_called_once_with(self.device.organization.id)
 
-    def test_iperf_check_auth_config(self):
+    @patch.object(Iperf, '_exec_command')
+    @patch.object(
+        Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com']
+    )
+    @patch.object(iperf_logger, 'warning')
+    def test_iperf_check_auth_config(
+        self, mock_warn, mock_get_iperf_servers, mock_exec_command
+    ):
         iperf_config = {
             'username': {'default': 'test'},
             'password': {'default': 'testpass'},
-            'rsa-public-key-path': {'default': '/test.pem'},
+            'rsa_public_key': {'default': TEST_RSA_KEY},
         }
         iperf_conf_wrong_pass = {
             'username': {'default': 'test'},
             'password': {'default': 'wrongpass'},
-            'rsa-public-key-path': {'default': '/test.pem'},
+            'rsa_public_key': {'default': TEST_RSA_KEY},
         }
         iperf_conf_wrong_user = {
             'username': {'default': 'wronguser'},
             'password': {'default': 'testpass'},
-            'rsa-public-key-path': {'default': '/test.pem'},
+            'rsa_public_key': {'default': TEST_RSA_KEY},
         }
         check, dc = self._create_iperf_test_env()
         auth_error = "test authorization failed"
@@ -555,16 +539,12 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         ]
         with self.subTest('Test iperf check with right config'):
             with patch.object(
-                Iperf, '_exec_command'
-            ) as mock_exec_command, patch.object(
-                Iperf,
-                '_get_iperf_servers',
-                return_value=['iperf.openwisptestserver.com'],
-            ) as mock_get_iperf_servers, patch.object(
-                settings, 'IPERF_CHECK_CONFIG', iperf_config
-            ), patch.object(
-                Iperf, 'schema', get_iperf_schema()
-            ):
+                app_settings,
+                'IPERF_CHECK_CONFIG',
+                iperf_config
+                # It is required to mock "Iperf.schema" here so that it
+                # uses the updated configuration from "IPERF_CHECK_CONFIG" setting.
+            ), patch.object(Iperf, 'schema', get_iperf_schema()):
                 self._set_auth_expected_calls(dc, iperf_config)
                 mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
 
@@ -585,21 +565,14 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 mock_get_iperf_servers.assert_called_once_with(
                     self.device.organization.id
                 )
+            mock_exec_command.reset_mock()
+            mock_get_iperf_servers.reset_mock()
+            mock_warn.reset_mock()
 
         with self.subTest('Test iperf check with wrong password'):
             with patch.object(
-                Iperf, '_exec_command'
-            ) as mock_exec_command, patch.object(
-                Iperf,
-                '_get_iperf_servers',
-                return_value=['iperf.openwisptestserver.com'],
-            ) as mock_get_iperf_servers, patch.object(
-                iperf_logger, 'warning'
-            ) as mock_warn, patch.object(
-                settings, 'IPERF_CHECK_CONFIG', iperf_conf_wrong_pass
-            ), patch.object(
-                Iperf, 'schema', get_iperf_schema()
-            ):
+                app_settings, 'IPERF_CHECK_CONFIG', iperf_conf_wrong_pass
+            ), patch.object(Iperf, 'schema', get_iperf_schema()):
                 self._set_auth_expected_calls(dc, iperf_conf_wrong_pass)
                 mock_exec_command.side_effect = [
                     (RESULT_AUTH_FAIL, 1),
@@ -607,40 +580,21 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 ]
 
                 result = check.perform_check(store=False)
-                for key in self._RESULT_KEYS:
-                    self.assertIn(key, result)
-                self.assertEqual(result['iperf_result'], 0)
-                self.assertEqual(result['sent_bps_tcp'], 0.0)
-                self.assertEqual(result['received_bps_tcp'], 0.0)
-                self.assertEqual(result['sent_bytes_tcp'], 0)
-                self.assertEqual(result['received_bytes_tcp'], 0)
-                self.assertEqual(result['retransmits'], 0)
-                self.assertEqual(result['sent_bps_udp'], 0.0)
-                self.assertEqual(result['sent_bytes_udp'], 0)
-                self.assertEqual(result['jitter'], 0.0)
-                self.assertEqual(result['total_packets'], 0)
-                self.assertEqual(result['lost_percent'], 0.0)
+                self._assert_iperf_fail_result(result)
                 self.assertEqual(mock_exec_command.call_count, 2)
                 mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS)
                 mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
                 mock_get_iperf_servers.assert_called_once_with(
                     self.device.organization.id
                 )
+            mock_exec_command.reset_mock()
+            mock_get_iperf_servers.reset_mock()
+            mock_warn.reset_mock()
 
         with self.subTest('Test iperf check with wrong username'):
             with patch.object(
-                Iperf, '_exec_command'
-            ) as mock_exec_command, patch.object(
-                Iperf,
-                '_get_iperf_servers',
-                return_value=['iperf.openwisptestserver.com'],
-            ) as mock_get_iperf_servers, patch.object(
-                iperf_logger, 'warning'
-            ) as mock_warn, patch.object(
-                settings, 'IPERF_CHECK_CONFIG', iperf_conf_wrong_user
-            ), patch.object(
-                Iperf, 'schema', get_iperf_schema()
-            ):
+                app_settings, 'IPERF_CHECK_CONFIG', iperf_conf_wrong_user
+            ), patch.object(Iperf, 'schema', get_iperf_schema()):
                 self._set_auth_expected_calls(dc, iperf_conf_wrong_user)
                 mock_exec_command.side_effect = [
                     (RESULT_AUTH_FAIL, 1),
@@ -648,19 +602,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 ]
 
                 result = check.perform_check(store=False)
-                for key in self._RESULT_KEYS:
-                    self.assertIn(key, result)
-                self.assertEqual(result['iperf_result'], 0)
-                self.assertEqual(result['sent_bps_tcp'], 0.0)
-                self.assertEqual(result['received_bps_tcp'], 0.0)
-                self.assertEqual(result['sent_bytes_tcp'], 0)
-                self.assertEqual(result['received_bytes_tcp'], 0)
-                self.assertEqual(result['retransmits'], 0)
-                self.assertEqual(result['sent_bps_udp'], 0.0)
-                self.assertEqual(result['sent_bytes_udp'], 0)
-                self.assertEqual(result['jitter'], 0.0)
-                self.assertEqual(result['total_packets'], 0)
-                self.assertEqual(result['lost_percent'], 0.0)
+                self._assert_iperf_fail_result(result)
                 self.assertEqual(mock_exec_command.call_count, 2)
                 mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS)
                 mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
