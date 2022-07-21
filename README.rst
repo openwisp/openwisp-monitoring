@@ -378,12 +378,17 @@ Configure celery (you may use a different broker if you want):
     CELERY_TIMEZONE = TIME_ZONE
     CELERY_BROKER_URL = 'redis://localhost/1'
     CELERY_BEAT_SCHEDULE = {
-        # Celery beat configuration for auto checks ie ping & config applied
-        'run_checks': {
-            'task': 'openwisp_monitoring.check.tasks.run_checks',
-            'schedule': timedelta(minutes=5),
-            'args': (None,),
-            'relative': True,
+       'run_checks': {
+        'task': 'openwisp_monitoring.check.tasks.run_checks',
+        # Executes only ping & config check every 5 min
+        'schedule': timedelta(minutes=5),
+        'args': (
+            [  # Checks path
+                'openwisp_monitoring.check.classes.Ping',
+                'openwisp_monitoring.check.classes.ConfigApplied',
+            ],
+        ),
+        'relative': True,
         },
         # Delete old WifiSession
         'delete_wifi_clients_and_sessions': {
@@ -1015,8 +1020,8 @@ This check is **disabled by default**. You can enable auto creation of this chec
 
 It also supports tuning of various parameters.
 
-You can also change the parameters used for iperf checks (e.g. timing, port, buffer, etc) using the
-`OPENWISP_MONITORING_IPERF_CHECK_CONFIG <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_ setting.
+You can also change the parameters used for iperf checks (e.g. timing, port, username, password, rsa_publc_key etc) 
+using the `OPENWISP_MONITORING_IPERF_CHECK_CONFIG <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_ setting.
 
 Usage Instructions
 ------------------
@@ -1095,6 +1100,102 @@ iperf network measurements charts.
 
 .. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/iperf-charts.png
   :alt: Iperf network measurement charts
+
+
+Configure Iperf check for authentication
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default iperf check runs without any kind of **authentication**, But we can configure it to use **RSA authentication** 
+between the **client** and the **server** to restrict the connections to the server & only allow legitimate clients.
+
+At Iperf server
+###############
+
+1. Generate RSA keypair
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: shell
+
+   openssl genrsa -des3 -out private.pem 2048
+   openssl rsa -in private.pem -outform PEM -pubout -out public.pem
+   openssl rsa -in private.pem -out private_not_protected.pem -outform PEM
+
+After running above mention commands, the public key will be contained in the 
+file ``public.pem`` which will be used in **rsa_public_key** parameter 
+in `OPENWISP_MONITORING_IPERF_CHECK_CONFIG <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_ 
+and the private key will be contained in the file ``private_not_protected.pem`` 
+which will be used with **--rsa-private-key-path** command option at iperf server.
+
+2. Create user credentials
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: shell
+
+   USER=iperfuser PASSWD=iperfpass
+   echo -n "{$USER}$PASSWD" | sha256sum | awk '{ print $1 }'
+   ----
+   ee17a7f98cc87a6424fb52682396b2b6c058e9ab70e946188faa0714905771d7 #This is the hash of "iperfuser"
+
+Add the above hash with username in ``credentials.csv``
+
+.. code-block:: shell
+
+   # file format: username,sha256
+   iperfuser,ee17a7f98cc87a6424fb52682396b2b6c058e9ab70e946188faa0714905771d7
+
+3. Now start the iperf server with auth options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: shell
+
+   iperf3 -s --rsa-private-key-path ./private_not_protected.pem --authorized-users-path ./credentials.csv
+
+At client (openwrt device)
+##########################
+
+1. Install iperf3-ssl
+^^^^^^^^^^^^^^^^^^^^^
+
+Install `iperf3-ssl openwrt package <https://openwrt.org/packages/pkgdata/iperf3-ssl>`_ instead of normal
+`iperf3 openwrt package <https://openwrt.org/packages/pkgdata/iperf3>`_ which comes without any authentication.
+
+You may also check your installed **iperf3 openwrt package** features:
+
+.. code-block:: shell
+
+   root@vm-openwrt:~ iperf3 -v
+   iperf 3.7 (cJSON 1.5.2)
+   Linux vm-openwrt 4.14.171 #0 SMP Thu Feb 27 21:05:12 2020 x86_64
+   Optional features available: CPU affinity setting, IPv6 flow label, TCP congestion algorithm setting, 
+   sendfile / zerocopy, socket pacing, authentication # contains 'authentication'
+
+2. Configure iperf check auth parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Now, add the following iperf authentication parameters 
+to `OPENWISP_MONITORING_IPERF_CHECK_CONFIG <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_ 
+in `openwisp settings <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
+    # All three parameters are required
+    'username': {'default': 'iperfuser'},
+    'password': {'default': 'iperfpass'},
+    # RSA public key without any headers
+    # ie. -----BEGIN PUBLIC KEY-----, -----BEGIN END KEY-----
+    'rsa_public_key': {
+        'default': """
+        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwuEm+iYrfSWJOupy6X3N 
+        dxZvUCxvmoL3uoGAs0O0Y32unUQrwcTIxudy38JSuCccD+k2Rf8S4WuZSiTxaoea 
+        6Du99YQGVZeY67uJ21SWFqWU+w6ONUj3TrNNWoICN7BXGLE2BbSBz9YaXefE3aqw 
+        GhEjQz364Itwm425vHn2MntSp0weWb4hUCjQUyyooRXPrFUGBOuY+VvAvMyAG4Uk 
+        msapnWnBSxXt7Tbb++A5XbOMdM2mwNYDEtkD5ksC/x3EVBrI9FvENsH9+u/8J9Mf 
+        2oPl4MnlCMY86MQypkeUn7eVWfDnseNky7TyC0/IgCXve/iaydCCFdkjyo1MTAA4 
+        BQIDAQAB
+        """
+    },
+   }
 
 Settings
 --------
@@ -1201,6 +1302,32 @@ created automatically for newly registered devices. It's enabled by default.
 
 This setting allows you to choose whether `iperf <#iperf-1>`_ checks should be
 created automatically for newly registered devices. It's disabled by default.
+
+``OPENWISP_MONITORING_IPERF_CHECK_RSA_KEY_PATH``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------------------------+
+| **type**:    | ``str``                       |
++--------------+-------------------------------+
+| **default**: | ``/tmp/iperf-rsa-public.pem`` |
++--------------+-------------------------------+
+
+This setting allows you to choose RSA public key path (relative to ``/root``)
+for `iperf check running with authentication <#configure-iperf-check-for-authentication>`_.
+
+``OPENWISP_MONITORING_IPERF_CHECK_DELETE_RSA_KEY``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------------------------+
+| **type**:    | ``bool``                      |
++--------------+-------------------------------+
+| **default**: | ``True``                      |
++--------------+-------------------------------+
+
+This setting allows you to set whether 
+`iperf check RSA public key <#configure-iperf-check-for-authentication>`_ will be deleted from 
+`OPENWISP_MONITORING_IPERF_CHECK_RSA_KEY_PATH <#OPENWISP_MONITORING_IPERF_CHECK_RSA_KEY_PATH>`_
+after successful completion of the check or not.
 
 ``OPENWISP_MONITORING_IPERF_CHECK_CONFIG``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

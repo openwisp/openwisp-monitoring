@@ -113,8 +113,8 @@ class Iperf(BaseCheck):
 
             command_udp = f'IPERF3_PASSWORD="{password}" iperf3 -c {servers[0]} -p {port} -t {time} \
             --username "{username}" --rsa-public-key-path {rsa_public_key_path} -u -J'
-            # If IPERF_CHECK_DELETE_RSA_KEY, delete rsa_public_key from the device
-            if app_settings.IPERF_CHECK_RSA_KEY_DELETE:
+            # If IPERF_CHECK_DELETE_RSA_KEY, remove rsa_public_key from the device
+            if app_settings.IPERF_CHECK_DELETE_RSA_KEY:
                 command_udp = f'{command_udp} && rm {rsa_public_key_path}'
 
         # TCP mode
