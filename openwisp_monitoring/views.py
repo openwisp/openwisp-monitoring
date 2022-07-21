@@ -42,9 +42,26 @@ class MonitoringApiViewMixin:
         end_date = request.GET.get('end')
         return start_date, end_date
 
+    def get_group_map(self, daterange):
+        value = '10m'
+        if daterange:
+            daterange = int(daterange)
+            if daterange >= 0 and daterange < 3:
+                value = '10m'
+            elif daterange >= 3 and daterange < 7:
+                value = str(round((daterange / 3) * 20)) + 'm'
+            elif daterange >= 7 and daterange < 28:
+                value = str(round((daterange / 7) * 1)) + 'h'
+            elif daterange >= 28 and daterange <= 365:
+                value = str(round((daterange / 28) * 24)) + 'h'
+
+        daterange = str(daterange) + 'd'
+        Chart.GROUP_MAP.update({daterange: value})
+
     def get(self, request, *args, **kwargs):
-        key = request.GET.get('key')
-        device_created = device.objects.get(key=key).created
+        daterange = request.GET.get('dateSpan')
+        if daterange:
+            self.get_group_map(daterange)
         start_date, end_date = self.get_date_range(request, *args, **kwargs)
         if start_date is not None and end_date is not None:
             start_date = dt.datetime.strptime(
@@ -55,10 +72,6 @@ class MonitoringApiViewMixin:
             )
             if end_date < start_date:
                 messages.error(request, 'End date should be greater than start date')
-            if device_created > start_date:
-                messages.error(
-                    request, 'Start date should be greater than device creation date'
-                )
         time = request.query_params.get('time', Chart.DEFAULT_TIME)
         if time not in Chart.GROUP_MAP.keys():
             raise ValidationError('Time range not supported')

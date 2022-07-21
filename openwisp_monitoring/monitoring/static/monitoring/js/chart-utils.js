@@ -4,36 +4,22 @@ const timeRangeKey = 'ow2-chart-time-range';
 django.jQuery(function ($) {
   $(document).ready(function () {
       /* jshint -W117 */
+      var custom = '1d';
       var start = moment();
       var end = moment();
       function custom_range(start_custom, end_custom) {
         start = moment(start_custom);
         end = moment(end_custom);
-        var days = end.diff(start, 'days');
-        if (days == 1) {
-          return '1d';
-        } else if (days > 1 && days < 7) {
-          return '3d';
-        } else if (days > 3 && days < 28) {
-          return '7d';
-        } else if (days > 28 && days < 365) {
-          return '30d';
-        } else if (days == 365) {
-          return '365d';
-        } else {
-          return '1d';
-        }
+        return end.diff(start, 'days') + 'd';
       }
-
       function cb(start, end) {
-        var custom = '1d';
         var start_custom;
         var end_custom;
-        $("#reportrange").on('apply.daterangepicker', function (ev, picker) {
-          start_custom = picker.startDate.format('YYYY-MM-DD');
-          end_custom = picker.endDate.format('YYYY-MM-DD');
-          custom = custom_range(start_custom, end_custom);
-        });
+          $("#reportrange").on('apply.daterangepicker', function (ev, picker) {
+            start_custom = picker.startDate.format('YYYY-MM-DD');
+            end_custom = picker.endDate.format('YYYY-MM-DD');
+            custom = custom_range(start_custom, end_custom);
+          });
         $('#reportrange span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
         $("[data-range-key='Today']").attr('data-time', '1d');
         $("[data-range-key='3 days']").attr('data-time', '3d');
@@ -63,9 +49,9 @@ django.jQuery(function ($) {
         },
         ranges: {
           'Today': [moment(), moment()],
-          '3 days': [moment().subtract(2, 'days'), moment()],
-          '1 week': [moment().subtract(6, 'days'), moment()],
-          '1 month': [moment().subtract(29, 'days'), moment()],
+          '3 days': [moment().subtract(3, 'days'), moment()],
+          '1 week': [moment().subtract(7, 'days'), moment()],
+          '1 month': [moment().subtract(30, 'days'), moment()],
           '1 year': [moment().subtract(365, 'days'), moment()],
         }
       }, cb);
@@ -141,12 +127,19 @@ django.jQuery(function ($) {
     } catch (e) {}
     var dateTimePicker = $('.ranges li');
       dateTimePicker.click(function () {
-        if ("Custom Range" == $(this).attr('data-range-key')) {
-          return;
-        }
         var timeRange = $(this).attr('data-time');
         loadCharts(timeRange, true);
         localStorage.setItem(timeRangeKey, timeRange);
+        if ("Custom Range" == $(this).attr('data-range-key')) {
+          var start_custom, end_custom, dateSpan;
+          $("#reportrange").on('apply.daterangepicker', function (ev, picker) {
+            start_custom = moment(picker.startDate.format('YYYY-MM-DD'));
+            end_custom = moment(picker.endDate.format('YYYY-MM-DD'));
+            dateSpan = end_custom.diff(start_custom, 'days') + 'd';
+            loadCharts(dateSpan, true);
+            localStorage.setItem(timeRangeKey, dateSpan);
+          });
+        }
         // refresh every 2.5 minutes
         clearInterval(window.owChartRefresh);
         window.owChartRefresh = setInterval(loadCharts,
