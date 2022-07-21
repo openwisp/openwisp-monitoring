@@ -52,8 +52,10 @@ class MonitoringApiViewMixin:
                 value = str(round((daterange / 3) * 20)) + 'm'
             elif daterange >= 7 and daterange < 28:
                 value = str(round((daterange / 7) * 1)) + 'h'
-            elif daterange >= 28 and daterange <= 365:
+            elif daterange >= 28 and daterange < 365:
                 value = str(round((daterange / 28) * 24)) + 'h'
+            elif daterange == 365:
+                value = '24h'
 
         daterange = str(daterange) + 'd'
         Chart.GROUP_MAP.update({daterange: value})
