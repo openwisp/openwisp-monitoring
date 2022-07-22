@@ -188,16 +188,6 @@
                 options.x = [''];
                 options.histfunc = 'sum';
             }
-            if (type.includes('bar')) {
-                options.type = 'bar';
-                if (type === 'bar+lines') {
-                    if (data.trace_type[key] === 'lines') {
-                        options.type = 'scatter';
-                        options.mode = 'lines+markers';
-                        options.line = {shape: 'hvh'};
-                    }
-                }
-            }
             if (type.includes('stackedbar')) {
                 layout.barmode = 'stack';
                 options.type = 'bar';

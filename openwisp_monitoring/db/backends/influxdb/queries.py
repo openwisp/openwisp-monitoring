@@ -105,7 +105,7 @@ chart_query = {
             "SELECT MEAN(received_bps_tcp) / 1000000000 AS received, "
             "MEAN(sent_bps_tcp) / 1000000000 AS sent FROM {key} WHERE "
             "time >= '{time}' AND content_type = '{content_type}' AND "
-            "object_id = '{object_id}' GROUP BY time(1d) fill(0)"
+            "object_id = '{object_id}' GROUP BY time(1d) fill(none)"
         )
     },
     'transfer_tcp': {
@@ -114,35 +114,35 @@ chart_query = {
             "SUM(sent_bytes_tcp) / 1000000000 AS sent,"
             "((SUM(sent_bytes_tcp) + SUM(received_bytes_tcp)) / 1000000000) AS total FROM {key} WHERE "
             "time >= '{time}' AND content_type = '{content_type}' AND "
-            "object_id = '{object_id}' GROUP BY time(1d) fill(0)"
+            "object_id = '{object_id}' GROUP BY time(1d) fill(none)"
         )
     },
     'retransmits': {
         'influxdb': (
             "SELECT MEAN(retransmits) AS retransmits FROM {key} "
             "WHERE time >= '{time}' AND content_type = '{content_type}' "
-            "AND object_id = '{object_id}' GROUP BY time(1d) fill(0)"
+            "AND object_id = '{object_id}' GROUP BY time(1d) fill(none)"
         )
     },
     'bandwidth_udp': {
         'influxdb': (
             "SELECT MEAN(sent_bps_udp) / 1000000 AS sent FROM {key} "
             "WHERE time >= '{time}' AND content_type = '{content_type}' "
-            "AND object_id = '{object_id}' GROUP BY time(1d) fill(0)"
+            "AND object_id = '{object_id}' GROUP BY time(1d) fill(none)"
         )
     },
     'transfer_udp': {
         'influxdb': (
             "SELECT SUM(sent_bytes_udp) / 1000000 AS sent FROM {key} "
             "WHERE time >= '{time}' AND content_type = '{content_type}' AND "
-            "object_id = '{object_id}' GROUP BY time(1d) fill(0)"
+            "object_id = '{object_id}' GROUP BY time(1d) fill(none)"
         )
     },
     'jitter': {
         'influxdb': (
             "SELECT MEAN(jitter) AS jitter FROM {key} "
             "WHERE time >= '{time}' AND content_type = '{content_type}' "
-            "AND object_id = '{object_id}' GROUP BY time(1d) fill(0)"
+            "AND object_id = '{object_id}' GROUP BY time(1d) fill(none)"
         )
     },
     'datagram': {
@@ -150,14 +150,14 @@ chart_query = {
             "SELECT MEAN(lost_packets) AS lost_datagram,"
             "MEAN(total_packets) AS total_datagram FROM {key} WHERE "
             "time >= '{time}' AND content_type = '{content_type}' "
-            "AND object_id = '{object_id}' GROUP BY time(1d) fill(0)"
+            "AND object_id = '{object_id}' GROUP BY time(1d) fill(none)"
         )
     },
     'datagram_loss': {
         'influxdb': (
             "SELECT MEAN(lost_percent) AS datagram_loss FROM {key} "
             "WHERE time >= '{time}' AND content_type = '{content_type}' "
-            "AND object_id = '{object_id}' GROUP BY time(1d) fill(0)"
+            "AND object_id = '{object_id}' GROUP BY time(1d) fill(none)"
         )
     },
 }

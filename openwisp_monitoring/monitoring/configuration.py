@@ -564,11 +564,7 @@ DEFAULT_METRICS = {
         'alert_on_related_field': 'jitter',
         'charts': {
             'bandwidth_tcp': {
-                'type': 'stackedbar+lines',
-                'trace_type': {
-                    'received': 'lines',
-                    'sent': 'lines',
-                },
+                'type': 'stackedbar',
                 'fill': 'none',
                 'title': _('Bandwidth (TCP)'),
                 'description': _('Bitrate during Iperf3 test in TCP mode.'),
@@ -599,10 +595,14 @@ DEFAULT_METRICS = {
                 'unit': _(' GB'),
                 'order': 290,
                 'query': chart_query['transfer_tcp'],
-                'colors': [DEFAULT_COLORS[7], DEFAULT_COLORS[2], DEFAULT_COLORS[4]],
+                'colors': [
+                    DEFAULT_COLORS[7],
+                    DEFAULT_COLORS[0],
+                    DEFAULT_COLORS[1],
+                ],
             },
             'retransmits': {
-                'type': 'bar+lines',
+                'type': 'scatter',
                 'trace_type': {
                     'retransmits': 'lines',
                 },
@@ -615,10 +615,7 @@ DEFAULT_METRICS = {
                 'colors': [DEFAULT_COLORS[-3]],
             },
             'bandwidth_udp': {
-                'type': 'bar+lines',
-                'trace_type': {
-                    'sent': 'lines',
-                },
+                'type': 'scatter',
                 'title': _('Bandwidth (UDP)'),
                 'description': _('Bitrate during Iperf3 test in UDP mode.'),
                 'summary_labels': [_('Sent bitrate')],
@@ -628,10 +625,7 @@ DEFAULT_METRICS = {
                 'colors': [DEFAULT_COLORS[0]],
             },
             'transfer_udp': {
-                'type': 'bar+lines',
-                'trace_type': {
-                    'sent': 'lines',
-                },
+                'type': 'scatter',
                 'title': _('Transfer (UDP)'),
                 'description': _('Transfer during Iperf3 test in UDP mode.'),
                 'summary_labels': [_('Sent bytes')],
@@ -641,10 +635,7 @@ DEFAULT_METRICS = {
                 'colors': [DEFAULT_COLORS[5]],
             },
             'jitter': {
-                'type': 'bar+lines',
-                'trace_type': {
-                    'jitter': 'lines',
-                },
+                'type': 'scatter',
                 'title': _('Jitter'),
                 'description': _(
                     'Jitter is a variance in latency measured using Iperf3 utility in UDP mode.'
@@ -658,12 +649,8 @@ DEFAULT_METRICS = {
                 'colors': [DEFAULT_COLORS[4]],
             },
             'datagram': {
-                'type': 'stackedbar+lines',
+                'type': 'scatter',
                 'fill': 'none',
-                'trace_type': {
-                    'total_datagram': 'lines',
-                    'lost_datagram': 'lines',
-                },
                 'title': _('Datagram'),
                 'description': _(
                     'Lost/Total datagram ratio measured by Iperf3 test in UDP mode.'
