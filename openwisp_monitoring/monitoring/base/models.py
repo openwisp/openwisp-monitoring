@@ -380,6 +380,7 @@ class AbstractChart(TimeStampedEditableModel):
     )
     GROUP_MAP = {'1d': '10m', '3d': '20m', '7d': '1h', '30d': '24h', '365d': '24h'}
     DEFAULT_TIME = '7d'
+    END_DATE = None
 
     class Meta:
         abstract = True
@@ -550,6 +551,10 @@ class AbstractChart(TimeStampedEditableModel):
                 # the current day in the time range
                 days -= 1
             time = str(now - timedelta(days=days))[0:19]
+            if cls.END_DATE:
+                print('thi is ss s', cls.END_DATE)
+                time = str(cls.END_DATE - timedelta(days=days))[0:19]
+            cls.END_DATE = None
         return time
 
     def read(

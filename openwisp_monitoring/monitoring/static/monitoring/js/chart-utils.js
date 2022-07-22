@@ -119,6 +119,7 @@ django.jQuery(function ($) {
       var range = localStorage.getItem(timeRangeKey) || defaultTimeRange;
       $('#ow-chart-time a[data-time=' + range + ']').trigger('click');
     };
+    loadCharts('1d', true);
     // try adding the browser timezone to the querystring
     try {
       var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
