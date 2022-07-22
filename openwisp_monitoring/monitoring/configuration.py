@@ -226,6 +226,7 @@ DEFAULT_METRICS = {
         'charts': {
             'general_traffic': {
                 'type': 'stackedbar+lines',
+                'fill': 'none',
                 'trace_type': {
                     'download': 'stackedbar',
                     'upload': 'stackedbar',
@@ -563,7 +564,12 @@ DEFAULT_METRICS = {
         'alert_on_related_field': 'jitter',
         'charts': {
             'bandwidth_tcp': {
-                'type': 'stackedbar',
+                'type': 'stackedbar+lines',
+                'trace_type': {
+                    'received': 'lines',
+                    'sent': 'lines',
+                },
+                'fill': 'none',
                 'title': _('Bandwidth (TCP)'),
                 'description': _('Bitrate during Iperf3 test in TCP mode.'),
                 'summary_labels': [
@@ -573,7 +579,7 @@ DEFAULT_METRICS = {
                 'unit': _(' Gbps'),
                 'order': 280,
                 'query': chart_query['bandwidth_tcp'],
-                'colors': [DEFAULT_COLORS[5], DEFAULT_COLORS[9]],
+                'colors': [DEFAULT_COLORS[5], DEFAULT_COLORS[0]],
             },
             'transfer_tcp': {
                 'type': 'stackedbar+lines',
@@ -596,7 +602,10 @@ DEFAULT_METRICS = {
                 'colors': [DEFAULT_COLORS[7], DEFAULT_COLORS[2], DEFAULT_COLORS[4]],
             },
             'retransmits': {
-                'type': 'bar',
+                'type': 'bar+lines',
+                'trace_type': {
+                    'retransmits': 'lines',
+                },
                 'title': _('Retransmits'),
                 'description': _('No. of retransmits during Iperf3 test in TCP mode.'),
                 'summary_labels': [_('Restransmits')],
@@ -606,27 +615,36 @@ DEFAULT_METRICS = {
                 'colors': [DEFAULT_COLORS[-3]],
             },
             'bandwidth_udp': {
-                'type': 'bar',
+                'type': 'bar+lines',
+                'trace_type': {
+                    'sent': 'lines',
+                },
                 'title': _('Bandwidth (UDP)'),
                 'description': _('Bitrate during Iperf3 test in UDP mode.'),
                 'summary_labels': [_('Sent bitrate')],
                 'unit': _(' Mbps'),
                 'order': 310,
                 'query': chart_query['bandwidth_udp'],
-                'colors': [DEFAULT_COLORS[5]],
+                'colors': [DEFAULT_COLORS[0]],
             },
             'transfer_udp': {
-                'type': 'bar',
+                'type': 'bar+lines',
+                'trace_type': {
+                    'sent': 'lines',
+                },
                 'title': _('Transfer (UDP)'),
                 'description': _('Transfer during Iperf3 test in UDP mode.'),
                 'summary_labels': [_('Sent bytes')],
                 'unit': _(' MB'),
                 'order': 320,
                 'query': chart_query['transfer_udp'],
-                'colors': [DEFAULT_COLORS[4]],
+                'colors': [DEFAULT_COLORS[5]],
             },
             'jitter': {
-                'type': 'scatter',
+                'type': 'bar+lines',
+                'trace_type': {
+                    'jitter': 'lines',
+                },
                 'title': _('Jitter'),
                 'description': _(
                     'Jitter is a variance in latency measured using Iperf3 utility in UDP mode.'
@@ -640,7 +658,12 @@ DEFAULT_METRICS = {
                 'colors': [DEFAULT_COLORS[4]],
             },
             'datagram': {
-                'type': 'stackedbar',
+                'type': 'stackedbar+lines',
+                'fill': 'none',
+                'trace_type': {
+                    'total_datagram': 'lines',
+                    'lost_datagram': 'lines',
+                },
                 'title': _('Datagram'),
                 'description': _(
                     'Lost/Total datagram ratio measured by Iperf3 test in UDP mode.'
@@ -666,7 +689,7 @@ DEFAULT_METRICS = {
                 'unit': '%',
                 'order': 350,
                 'query': chart_query['datagram_loss'],
-                'colors': [DEFAULT_COLORS[8]],
+                'colors': [DEFAULT_COLORS[3]],
             },
         },
         'alert_settings': {'operator': '>', 'threshold': 5, 'tolerance': 0},
