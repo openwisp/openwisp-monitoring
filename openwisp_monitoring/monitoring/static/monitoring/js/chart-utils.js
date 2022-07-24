@@ -4,40 +4,24 @@ const timeRangeKey = 'ow2-chart-time-range';
 django.jQuery(function ($) {
   $(document).ready(function () {
       /* jshint -W117 */
-      var custom = '1d';
-      var start = moment();
-      var end = moment();
-      function custom_range(start_custom, end_custom) {
-        start = moment(start_custom);
-        end = moment(end_custom);
-        return end.diff(start, 'days') + 'd';
-      }
+      var custom = '1d',
+      start = moment().subtract(1, 'days'),
+      end = moment(),
+      startDate, endDate;
       function cb(start, end) {
-        var start_custom;
-        var end_custom;
+        var startCustom, endCustom;
           $("#reportrange").on('apply.daterangepicker', function (ev, picker) {
-            start_custom = picker.startDate.format('YYYY-MM-DD');
-            end_custom = picker.endDate.format('YYYY-MM-DD');
-            custom = custom_range(start_custom, end_custom);
+            startCustom = moment(picker.startDate.format('YYYY-MM-DD'));
+            endCustom = moment(picker.endDate.format('YYYY-MM-DD'));
+            custom = endCustom.diff(startCustom, 'days') + 'd';
           });
         $('#reportrange span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
-        $("[data-range-key='Today']").attr('data-time', '1d');
+        $("[data-range-key='1 day']").attr('data-time', '1d');
         $("[data-range-key='3 days']").attr('data-time', '3d');
         $("[data-range-key='1 week']").attr('data-time', '7d');
         $("[data-range-key='1 month']").attr('data-time', '30d');
         $("[data-range-key='1 year']").attr('data-time', '365d');
         $("[data-range-key='Custom Range']").attr('data-time', custom);
-        $.ajax({
-          url: $("#monitoring-timeseries-api-url").data('value'),
-          data: {
-            start: start.format('YYYY-MM-DD HH:mm:ss.SSSSSSZZ'),
-            end: end.format('YYYY-MM-DD HH:mm:ss.SSSSSSZZ'),
-            format: 'json',
-            time: custom,
-            dateSpan: end.diff(start, 'days'),
-            key: $("#monitoring-timeseries-original-key").data('value'),
-          }
-        });
       }
 
       $('#reportrange').daterangepicker({
@@ -48,10 +32,10 @@ django.jQuery(function ($) {
           "year": 1,
         },
         ranges: {
-          'Today': [moment(), moment()],
-          '3 days': [moment().subtract(3, 'days'), moment()],
-          '1 week': [moment().subtract(7, 'days'), moment()],
-          '1 month': [moment().subtract(30, 'days'), moment()],
+          '1 day': [moment().subtract(1,'days'), moment()],
+          '3 days': [moment().subtract(2, 'days'), moment()],
+          '1 week': [moment().subtract(6, 'days'), moment()],
+          '1 month': [moment().subtract(28, 'days'), moment()],
           '1 year': [moment().subtract(365, 'days'), moment()],
         }
       }, cb);
@@ -66,7 +50,12 @@ django.jQuery(function ($) {
       globalLoadingOverlay = $('#loading-overlay'),
       localLoadingOverlay = $('#chart-loading-overlay'),
       loadCharts = function (time, showLoading) {
-        var url = baseUrl + time;
+        $("#reportrange").on('apply.daterangepicker', function (ev, picker) {
+          startDate = picker.startDate.format('YYYY-MM-DD');
+          endDate = picker.endDate.format('YYYY-MM-DD');
+        });
+        var daterange = `&start=${startDate}&end=${endDate}`;
+        var url = baseUrl + time + daterange;
         $.ajax(url, {
           dataType: 'json',
           beforeSend: function () {

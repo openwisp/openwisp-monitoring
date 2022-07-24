@@ -38,13 +38,14 @@ class MonitoringApiViewMixin:
         return {}
 
     def get_date_range(self, request, *args, **kwargs):
-        start_date = request.GET.get('start')
-        end_date = request.GET.get('end')
+        start_date = request.GET.get('startDate')
+        end_date = request.GET.get('endDate')
         return start_date, end_date
 
     def get_group_map(self, daterange):
         value = '10m'
         if daterange:
+            daterange = daterange.replace('d', '')
             daterange = int(daterange)
             if daterange >= 0 and daterange < 3:
                 value = '10m'
@@ -61,7 +62,7 @@ class MonitoringApiViewMixin:
         Chart.GROUP_MAP.update({daterange: value})
 
     def get(self, request, *args, **kwargs):
-        daterange = request.GET.get('dateSpan')
+        daterange = request.GET.get('time')
         if daterange:
             self.get_group_map(daterange)
         start_date, end_date = self.get_date_range(request, *args, **kwargs)

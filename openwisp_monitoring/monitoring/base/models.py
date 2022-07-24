@@ -552,7 +552,6 @@ class AbstractChart(TimeStampedEditableModel):
                 days -= 1
             time = str(now - timedelta(days=days))[0:19]
             if cls.END_DATE:
-                print('thi is ss s', cls.END_DATE)
                 time = str(cls.END_DATE - timedelta(days=days))[0:19]
             cls.END_DATE = None
         return time

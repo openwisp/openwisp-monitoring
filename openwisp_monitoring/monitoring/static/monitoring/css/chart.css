@@ -178,8 +178,11 @@
 .daterangepicker .drp-selected {
   color: #c5361f;
 }
+.daterangepicker .drp-calendar {
+  max-width: 370px !important;
+}
 @media (min-width: 564px) {
   .show-calendar {
-    width: 808px !important;
+    width: 909px !important;
   }
 }
