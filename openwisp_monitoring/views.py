@@ -40,7 +40,7 @@ class MonitoringApiViewMixin:
     def get_date_range(self, request, *args, **kwargs):
         start_date = request.GET.get('start')
         end_date = request.GET.get('end')
-        start_date =  start_date.replace('+', '').replace('.', '')
+        start_date = start_date.replace('+', '').replace('.', '')
         end_date = end_date.replace('+', '').replace('.', '')
         return start_date, end_date
 
