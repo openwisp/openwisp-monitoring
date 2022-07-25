@@ -1,4 +1,5 @@
 import logging
+from functools import reduce
 from json import loads
 from json.decoder import JSONDecodeError
 
@@ -8,7 +9,6 @@ from jsonschema.exceptions import ValidationError as SchemaError
 from swapper import load_model
 
 from openwisp_controller.connection.settings import UPDATE_STRATEGIES
-from openwisp_utils.utils import deep_merge_dicts
 
 from .. import settings as app_settings
 from .base import BaseCheck
@@ -21,27 +21,57 @@ AlertSettings = load_model('monitoring', 'AlertSettings')
 DeviceConnection = load_model('connection', 'DeviceConnection')
 
 DEFAULT_IPERF_CHECK_CONFIG = {
-    'port': {
-        'type': 'integer',
-        'default': 5201,
-        # max, min port chosen from iperf3 docs
-        'minimum': 1,
-        'maximum': 65535,
-    },
-    'time': {
-        'type': 'integer',
-        # Sets the interval time in seconds
-        # between periodic bandwidth, jitter, and loss reports.
-        'default': 10,
-        'minimum': 1,
-        # arbitrary chosen to avoid slowing down the queue (30min)
-        'maximum': 1800,
+    'host': {
+        'type': 'array',
+        'items': {
+            'type': 'string',
+        },
+        'default': [],
     },
     'username': {'type': 'string', 'default': '', 'minLength': 1, 'maxLength': 20},
     'password': {'type': 'string', 'default': '', 'minLength': 1, 'maxLength': 20},
     'rsa_public_key': {
         'type': 'string',
         'default': '',
+    },
+    'client_options': {
+        'type': 'object',
+        'properties': {
+            'port': {
+                'type': 'integer',
+                'default': 5201,
+                # max, min port chosen from iperf3 docs
+                'minimum': 1,
+                'maximum': 65535,
+            },
+            'time': {
+                'type': 'integer',
+                # Sets the interval time in seconds
+                # between periodic bandwidth, jitter, and loss reports.
+                'default': 10,
+                'minimum': 1,
+                # arbitrary chosen to avoid slowing down the queue (30min)
+                'maximum': 1800,
+            },
+            'udp': {
+                'type': 'object',
+                'properties': {
+                    'bitrate': {
+                        'type': 'string',
+                        'default': '10M',
+                    }
+                },
+            },
+            'tcp': {
+                'type': 'object',
+                'properties': {
+                    'bitrate': {
+                        'type': 'string',
+                        'default': '0',
+                    }
+                },
+            },
+        },
     },
 }
 
@@ -50,16 +80,15 @@ def get_iperf_schema():
     schema = {
         '$schema': 'http://json-schema.org/draft-07/schema#',
         'type': 'object',
-        'additionalProperties': False,
-        "dependencies": {
-            "username": ["password", "rsa_public_key"],
-            "password": ["username", "rsa_public_key"],
-            "rsa_public_key": ["username", "password"],
+        'additionalProperties': True,
+        'dependencies': {
+            'client_options': ['host'],
+            'username': ['password', 'rsa_public_key', 'host'],
+            'password': ['username', 'rsa_public_key', 'host'],
+            'rsa_public_key': ['username', 'password', 'host'],
         },
     }
-    schema['properties'] = deep_merge_dicts(
-        DEFAULT_IPERF_CHECK_CONFIG, app_settings.IPERF_CHECK_CONFIG
-    )
+    schema['properties'] = DEFAULT_IPERF_CHECK_CONFIG
     return schema
 
 
@@ -69,6 +98,11 @@ class Iperf(BaseCheck):
 
     def validate_params(self):
         try:
+            params = self.params
+            org_id = str(self.related_object.organization.id)
+            iperf_config = app_settings.IPERF_CHECK_CONFIG
+            if not params and iperf_config:
+                params = iperf_config[org_id]
             validate(self.params, self.schema, format_checker=draft7_format_checker)
         except SchemaError as e:
             message = 'Invalid param'
@@ -79,39 +113,42 @@ class Iperf(BaseCheck):
             raise ValidationError({'params': message}) from e
 
     def check(self, store=True):
-        port = self._get_param('port')
-        time = self._get_param('time')
-        username = self._get_param('username')
-        device = self.related_object
-        device_connection = self._get_device_connection(device)
+        port = self._get_param(
+            'client_options.port', 'client_options.properties.port.default'
+        )
+        time = self._get_param(
+            'client_options.time', 'client_options.properties.time.default'
+        )
+        username = self._get_param('username', 'username.default')
+        device_connection = self._get_device_connection()
         if not device_connection:
             logger.warning(
-                f'Failed to get a working DeviceConnection for "{device}", iperf check skipped!'
+                f'Failed to get a working DeviceConnection for "{self.related_object}", iperf check skipped!'
             )
             return
         # The DeviceConnection could fail if the management tunnel is down.
         if not self._connect(device_connection):
             logger.warning(
-                f'DeviceConnection for "{device}" is not working, iperf check skipped!'
+                f'DeviceConnection for "{self.related_object}" is not working, iperf check skipped!'
             )
             return
-        servers = self._get_iperf_servers(device.organization.id)
-        command_tcp = f'iperf3 -c {servers[0]} -p {port} -t {time} -J'
-        command_udp = f'iperf3 -c {servers[0]} -p {port} -t {time} -u -J'
+        server = self._get_iperf_servers()[0]
+        command_tcp = f'iperf3 -c {server} -p {port} -t {time} -J'
+        command_udp = f'iperf3 -c {server} -p {port} -t {time} -u -J'
 
         # All three parameters ie. username, password and rsa_public_key is required
         # for authentication to work, checking only username here
         if username:
-            password = self._get_param('password')
-            key = self._get_param('rsa_public_key')
+            password = self._get_param('password', 'password.default')
+            key = self._get_param('rsa_public_key', 'rsa_public_key.default')
             rsa_public_key = self._get_compelete_rsa_key(key)
             rsa_public_key_path = app_settings.IPERF_CHECK_RSA_KEY_PATH
 
             command_tcp = f'echo "{rsa_public_key}" > {rsa_public_key_path} && \
-            IPERF3_PASSWORD="{password}" iperf3 -c {servers[0]} -p {port} -t {time} \
+            IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
             --username "{username}" --rsa-public-key-path {rsa_public_key_path} -J'
 
-            command_udp = f'IPERF3_PASSWORD="{password}" iperf3 -c {servers[0]} -p {port} -t {time} \
+            command_udp = f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
             --username "{username}" --rsa-public-key-path {rsa_public_key_path} -u -J'
             # If IPERF_CHECK_DELETE_RSA_KEY, remove rsa_public_key from the device
             if app_settings.IPERF_CHECK_DELETE_RSA_KEY:
@@ -122,14 +159,14 @@ class Iperf(BaseCheck):
         # Exit code 127 : command doesn't exist
         if exit_code == 127:
             logger.warning(
-                f'Iperf3 is not installed on the "{device}", error - {result.strip()}'
+                f'Iperf3 is not installed on the "{self.related_object}", error - {result.strip()}'
             )
             return
 
-        result_tcp = self._get_iperf_result(result, exit_code, device, mode='TCP')
+        result_tcp = self._get_iperf_result(result, exit_code, mode='TCP')
         # UDP mode
         result, exit_code = self._exec_command(device_connection, command_udp)
-        result_udp = self._get_iperf_result(result, exit_code, device, mode='UDP')
+        result_udp = self._get_iperf_result(result, exit_code, mode='UDP')
 
         if store:
             # Store iperf_result field 1 if any mode passes, store 0 when both fails
@@ -146,23 +183,23 @@ class Iperf(BaseCheck):
         key = key.strip()
         return f'{pem_prefix}{key}{pem_suffix}'
 
-    def _get_device_connection(self, device):
+    def _get_device_connection(self):
         """
         Returns an active SSH DeviceConnection for a device.
         """
         openwrt_ssh = UPDATE_STRATEGIES[0][0]
         device_connection = DeviceConnection.objects.filter(
-            device_id=device.id,
+            device_id=self.related_object.id,
             update_strategy=openwrt_ssh,
             enabled=True,
         ).first()
         return device_connection
 
-    def _get_iperf_servers(self, organization_id):
+    def _get_iperf_servers(self):
         """
         Get iperf test servers
         """
-        org_servers = app_settings.IPERF_SERVERS.get(str(organization_id))
+        org_servers = self._get_param('host', 'host.default')
         return org_servers
 
     def _exec_command(self, dc, command):
@@ -177,13 +214,34 @@ class Iperf(BaseCheck):
         """
         return dc.connect()
 
-    def _get_param(self, param):
+    def _deep_get(self, dictionary, keys, default=None):
+        return reduce(
+            lambda d, key: d.get(key, default) if isinstance(d, dict) else default,
+            keys.split("."),
+            dictionary,
+        )
+
+    def _get_param(self, conf_key, default_conf_key):
         """
         Gets specified param or its default value according to the schema
         """
-        return self.params.get(param, self.schema['properties'][param]['default'])
+        org_id = str(self.related_object.organization.id)
+        iperf_config = app_settings.IPERF_CHECK_CONFIG
 
-    def _get_iperf_result(self, result, exit_code, device, mode):
+        if self.params:
+            check_params = self._deep_get(self.params, conf_key)
+            if check_params:
+                return check_params
+
+        if iperf_config:
+            iperf_config = iperf_config[org_id]
+            iperf_config_param = self._deep_get(iperf_config, conf_key)
+            if iperf_config_param:
+                return iperf_config_param
+
+        return self._deep_get(DEFAULT_IPERF_CHECK_CONFIG, default_conf_key)
+
+    def _get_iperf_result(self, result, exit_code, mode):
         """
         Returns iperf test result
         """
@@ -196,7 +254,9 @@ class Iperf(BaseCheck):
 
         if mode == 'TCP':
             if exit_code != 0:
-                logger.warning(f'Iperf check failed for "{device}", {result["error"]}')
+                logger.warning(
+                    f'Iperf check failed for "{self.related_object}", {result["error"]}'
+                )
                 return {
                     'iperf_result': 0,
                     'sent_bps_tcp': 0.0,
@@ -219,7 +279,9 @@ class Iperf(BaseCheck):
 
         elif mode == 'UDP':
             if exit_code != 0:
-                logger.warning(f'Iperf check failed for "{device}", {result["error"]}')
+                logger.warning(
+                    f'Iperf check failed for "{self.related_object}", {result["error"]}'
+                )
                 return {
                     'iperf_result': 0,
                     'sent_bps_udp': 0.0,
