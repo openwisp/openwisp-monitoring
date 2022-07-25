@@ -39,8 +39,9 @@ class MonitoringApiViewMixin:
     def get_date_range(self, request, *args, **kwargs):
         start_date = request.GET.get('start')
         end_date = request.GET.get('end')
-        start_date = start_date.replace('+', '').replace('.', '')
-        end_date = end_date.replace('+', '').replace('.', '')
+        if start_date and end_date:
+            start_date = start_date.replace('+', '').replace('.', '')
+            end_date = end_date.replace('+', '').replace('.', '')
         return start_date, end_date
 
     def get_group_map(self, daterange):
