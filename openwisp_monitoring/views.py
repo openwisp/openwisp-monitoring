@@ -38,8 +38,10 @@ class MonitoringApiViewMixin:
         return {}
 
     def get_date_range(self, request, *args, **kwargs):
-        start_date = request.GET.get('startDate')
-        end_date = request.GET.get('endDate')
+        start_date = request.GET.get('start')
+        end_date = request.GET.get('end')
+        start_date =  start_date.replace('+', '').replace('.', '')
+        end_date = end_date.replace('+', '').replace('.', '')
         return start_date, end_date
 
     def get_group_map(self, daterange):
@@ -67,17 +69,11 @@ class MonitoringApiViewMixin:
             self.get_group_map(daterange)
         start_date, end_date = self.get_date_range(request, *args, **kwargs)
         if start_date is not None and end_date is not None:
-            start = dt.datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S.%f%z').replace(
-                tzinfo=utc
-            )
-            end = dt.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S.%f%z').replace(
-                tzinfo=utc
-            )
-            if end < start:
+            if end_date < start_date:
                 messages.error(request, 'End date should be greater than start date')
 
         if end_date is not None:
-            Chart.END_DATE = end
+            Chart.END_DATE = end_date
         time = request.query_params.get('time', Chart.DEFAULT_TIME)
         if time not in Chart.GROUP_MAP.keys():
             raise ValidationError('Time range not supported')

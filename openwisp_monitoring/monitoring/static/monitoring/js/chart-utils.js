@@ -7,12 +7,13 @@ django.jQuery(function ($) {
       var custom = '1d',
       start = moment().subtract(1, 'days'),
       end = moment(),
-      startDate, endDate;
+      startDate = moment().subtract(1, 'days').format('YYYY-MM-DD HH:mm:ss'),
+      endDate = moment().format('YYYY-MM-DD HH:mm:ss');
       function cb(start, end) {
         var startCustom, endCustom;
           $("#reportrange").on('apply.daterangepicker', function (ev, picker) {
-            startCustom = moment(picker.startDate.format('YYYY-MM-DD'));
-            endCustom = moment(picker.endDate.format('YYYY-MM-DD'));
+            startCustom = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
+            endCustom = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
             custom = endCustom.diff(startCustom, 'days') + 'd';
           });
         $('#reportrange span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
@@ -51,8 +52,8 @@ django.jQuery(function ($) {
       localLoadingOverlay = $('#chart-loading-overlay'),
       loadCharts = function (time, showLoading) {
         $("#reportrange").on('apply.daterangepicker', function (ev, picker) {
-          startDate = picker.startDate.format('YYYY-MM-DD');
-          endDate = picker.endDate.format('YYYY-MM-DD');
+          startDate = picker.startDate.format('YYYY-MM-DD HH:mm:ss');
+          endDate = picker.endDate.format('YYYY-MM-DD HH:mm:ss');
         });
         var daterange = `&start=${startDate}&end=${endDate}`;
         var url = baseUrl + time + daterange;
@@ -123,8 +124,8 @@ django.jQuery(function ($) {
         if ("Custom Range" == $(this).attr('data-range-key')) {
           var start_custom, end_custom, dateSpan;
           $("#reportrange").on('apply.daterangepicker', function (ev, picker) {
-            start_custom = moment(picker.startDate.format('YYYY-MM-DD'));
-            end_custom = moment(picker.endDate.format('YYYY-MM-DD'));
+            start_custom = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
+            end_custom = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
             dateSpan = end_custom.diff(start_custom, 'days') + 'd';
             loadCharts(dateSpan, true);
             localStorage.setItem(timeRangeKey, dateSpan);
