@@ -3,7 +3,7 @@ from functools import reduce
 from json import loads
 from json.decoder import JSONDecodeError
 
-from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.exceptions import ValidationError
 from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
 from swapper import load_model
@@ -82,10 +82,9 @@ def get_iperf_schema():
         'type': 'object',
         'additionalProperties': True,
         'dependencies': {
-            'client_options': ['host'],
-            'username': ['password', 'rsa_public_key', 'host'],
-            'password': ['username', 'rsa_public_key', 'host'],
-            'rsa_public_key': ['username', 'password', 'host'],
+            'username': ['password', 'rsa_public_key'],
+            'password': ['username', 'rsa_public_key'],
+            'rsa_public_key': ['username', 'password'],
         },
     }
     schema['properties'] = DEFAULT_IPERF_CHECK_CONFIG
@@ -96,14 +95,11 @@ class Iperf(BaseCheck):
 
     schema = get_iperf_schema()
 
-    def validate_params(self):
+    def validate_params(self, params=None):
         try:
-            params = self.params
-            org_id = str(self.related_object.organization.id)
-            iperf_config = app_settings.IPERF_CHECK_CONFIG
-            if not params and iperf_config:
-                params = iperf_config[org_id]
-            validate(self.params, self.schema, format_checker=draft7_format_checker)
+            if not params:
+                params = self.params
+            validate(params, self.schema, format_checker=draft7_format_checker)
         except SchemaError as e:
             message = 'Invalid param'
             path = '/'.join(e.path)
@@ -113,6 +109,11 @@ class Iperf(BaseCheck):
             raise ValidationError({'params': message}) from e
 
     def check(self, store=True):
+        iperf_config = app_settings.IPERF_CHECK_CONFIG
+        if iperf_config:
+            org_id = str(self.related_object.organization.id)
+            self.validate_params(params=iperf_config[org_id])
+
         port = self._get_param(
             'client_options.port', 'client_options.properties.port.default'
         )
@@ -175,15 +176,14 @@ class Iperf(BaseCheck):
         # UDP mode
         result, exit_code = self._exec_command(device_connection, command_udp)
         result_udp = self._get_iperf_result(result, exit_code, mode='UDP')
-
-        if store:
+        result = {}
+        if store and result_tcp and result_udp:
             # Store iperf_result field 1 if any mode passes, store 0 when both fails
             iperf_result = result_tcp['iperf_result'] | result_udp['iperf_result']
-            self.store_result(
-                {**result_tcp, **result_udp, 'iperf_result': iperf_result}
-            )
+            result.update({**result_tcp, **result_udp, 'iperf_result': iperf_result})
+            self.store_result(result)
         device_connection.disconnect()
-        return {**result_tcp, **result_udp, 'iperf_result': iperf_result}
+        return result
 
     def _get_compelete_rsa_key(self, key):
         pem_prefix = '-----BEGIN PUBLIC KEY-----\n'
@@ -208,8 +208,6 @@ class Iperf(BaseCheck):
         Get iperf test servers
         """
         org_servers = self._get_param('host', 'host.default')
-        if not org_servers:
-            raise ImproperlyConfigured(f'Iperf check host cannot be {org_servers}')
         return org_servers
 
     def _exec_command(self, dc, command):
@@ -260,7 +258,10 @@ class Iperf(BaseCheck):
             result = loads(result)
         except JSONDecodeError:
             # Errors other than iperf3 test errors
-            result = {'error': f'error - {result.strip()}'}
+            logger.warning(
+                f'Iperf check failed for "{self.related_object}", error - {result.strip()}'
+            )
+            return
 
         if mode == 'TCP':
             if exit_code != 0:

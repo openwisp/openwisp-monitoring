@@ -15,6 +15,7 @@ from .. import settings as app_settings
 from ..classes import Iperf
 from .iperf_test_utils import (
     INVALID_PARAMS,
+    PARAM_ERROR,
     RESULT_AUTH_FAIL,
     RESULT_FAIL,
     RESULT_TCP,
@@ -358,6 +359,31 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             mock_exec_command.reset_mock()
             mock_get_iperf_servers.reset_mock()
             mock_warn.reset_mock()
+
+        with self.subTest('Test iperf3 errors not in json format'):
+            with patch.object(
+                app_settings,
+                'IPERF_CHECK_RSA_KEY_PATH',
+                '/invalid_path/iperf-rsa-public.pem',
+            ):
+                dir_error = "ash: can't create /invalid_path/iperf-rsa-public.pem: nonexistent directory"
+                mock_exec_command.side_effect = [(dir_error, 1), (PARAM_ERROR, 1)]
+                EXPECTED_WARN_CALLS = [
+                    call(
+                        f'Iperf check failed for "{self.device}", error - {dir_error}'
+                    ),
+                    call(
+                        f'Iperf check failed for "{self.device}", error - {PARAM_ERROR}'
+                    ),
+                ]
+                check.perform_check(store=False)
+                self.assertEqual(mock_warn.call_count, 2)
+                self.assertEqual(mock_exec_command.call_count, 2)
+                self.assertEqual(mock_get_iperf_servers.call_count, 1)
+                mock_warn.assert_has_calls(EXPECTED_WARN_CALLS)
+                mock_exec_command.reset_mock()
+                mock_get_iperf_servers.reset_mock()
+                mock_warn.reset_mock()
 
         with self.subTest('Test iperf check passes in both TCP & UDP'):
             mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
