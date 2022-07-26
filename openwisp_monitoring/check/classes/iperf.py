@@ -3,7 +3,7 @@ from functools import reduce
 from json import loads
 from json.decoder import JSONDecodeError
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
 from swapper import load_model
@@ -53,21 +53,21 @@ DEFAULT_IPERF_CHECK_CONFIG = {
                 # arbitrary chosen to avoid slowing down the queue (30min)
                 'maximum': 1800,
             },
-            'udp': {
-                'type': 'object',
-                'properties': {
-                    'bitrate': {
-                        'type': 'string',
-                        'default': '10M',
-                    }
-                },
-            },
             'tcp': {
                 'type': 'object',
                 'properties': {
                     'bitrate': {
                         'type': 'string',
                         'default': '0',
+                    }
+                },
+            },
+            'udp': {
+                'type': 'object',
+                'properties': {
+                    'bitrate': {
+                        'type': 'string',
+                        'default': '10M',
                     }
                 },
             },
@@ -119,6 +119,14 @@ class Iperf(BaseCheck):
         time = self._get_param(
             'client_options.time', 'client_options.properties.time.default'
         )
+        tcp_bitrate = self._get_param(
+            'client_options.tcp.bitrate',
+            'client_options.properties.tcp.properties.bitrate.default',
+        )
+        udp_bitrate = self._get_param(
+            'client_options.udp.bitrate',
+            'client_options.properties.udp.properties.bitrate.default',
+        )
         username = self._get_param('username', 'username.default')
         device_connection = self._get_device_connection()
         if not device_connection:
@@ -133,8 +141,8 @@ class Iperf(BaseCheck):
             )
             return
         server = self._get_iperf_servers()[0]
-        command_tcp = f'iperf3 -c {server} -p {port} -t {time} -J'
-        command_udp = f'iperf3 -c {server} -p {port} -t {time} -u -J'
+        command_tcp = f'iperf3 -c {server} -p {port} -t {time} -b {tcp_bitrate} -J'
+        command_udp = f'iperf3 -c {server} -p {port} -t {time} -b {udp_bitrate} -u -J'
 
         # All three parameters ie. username, password and rsa_public_key is required
         # for authentication to work, checking only username here
@@ -146,10 +154,10 @@ class Iperf(BaseCheck):
 
             command_tcp = f'echo "{rsa_public_key}" > {rsa_public_key_path} && \
             IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
-            --username "{username}" --rsa-public-key-path {rsa_public_key_path} -J'
+            --username "{username}" --rsa-public-key-path {rsa_public_key_path} -b {tcp_bitrate} -J'
 
             command_udp = f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
-            --username "{username}" --rsa-public-key-path {rsa_public_key_path} -u -J'
+            --username "{username}" --rsa-public-key-path {rsa_public_key_path} -b {udp_bitrate} -u -J'
             # If IPERF_CHECK_DELETE_RSA_KEY, remove rsa_public_key from the device
             if app_settings.IPERF_CHECK_DELETE_RSA_KEY:
                 command_udp = f'{command_udp} && rm {rsa_public_key_path}'
@@ -200,6 +208,8 @@ class Iperf(BaseCheck):
         Get iperf test servers
         """
         org_servers = self._get_param('host', 'host.default')
+        if not org_servers:
+            raise ImproperlyConfigured(f'Iperf check host cannot be {org_servers}')
         return org_servers
 
     def _exec_command(self, dc, command):

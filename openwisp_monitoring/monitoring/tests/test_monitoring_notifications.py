@@ -482,6 +482,38 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(n.action_object, m.alertsettings)
             self.assertEqual(n.level, 'info')
 
+    def test_general_check_threshold_with_alert_on_rf_crossed_deferred(self):
+        admin = self._create_admin()
+        m = self._create_general_metric(configuration='test_alert_on_rf')
+        self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=30, custom_tolerance=1
+        )
+        m.write(10, time=ten_minutes_ago, extra_values={'test_related_2': 35})
+        m.refresh_from_db()
+        self.assertEqual(m.is_healthy, False)
+        self.assertEqual(m.is_healthy_tolerant, False)
+        self.assertEqual(Notification.objects.count(), 1)
+        n = notification_queryset.first()
+        self.assertEqual(n.recipient, admin)
+        self.assertEqual(n.actor, m)
+        self.assertEqual(n.action_object, m.alertsettings)
+        self.assertEqual(n.level, 'warning')
+
+    def test_general_check_threshold_with_alert_on_rf_deferred_not_crossed(self):
+        self._create_admin()
+        m = self._create_general_metric(configuration='test_alert_on_rf')
+        self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=30, custom_tolerance=1
+        )
+        m.write(10, extra_values={'test_related_2': 32})
+        self.assertEqual(m.is_healthy, True)
+        self.assertEqual(m.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
+        m.write(20, extra_values={'test_related_2': 35})
+        self.assertEqual(m.is_healthy, True)
+        self.assertEqual(m.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
+
 
 class TestTransactionMonitoringNotifications(DeviceMonitoringTransactionTestcase):
     device_model = Device

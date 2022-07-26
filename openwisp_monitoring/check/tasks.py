@@ -30,9 +30,13 @@ def run_checks(checks=None):
         checks = CHECKS_LIST
 
     if not isinstance(checks, list):
-        raise ImproperlyConfigured(f'Check path {checks} should be of type "list"')
+        raise ImproperlyConfigured(
+            f'Check path {checks} should be of type "list"'
+        )  # pragma: no cover
     if not all(check_path in CHECKS_LIST for check_path in checks):
-        raise ImproperlyConfigured(f'Check path {checks} should be in {CHECKS_LIST}')
+        raise ImproperlyConfigured(
+            f'Check path {checks} should be in {CHECKS_LIST}'
+        )  # pragma: no cover
 
     iterator = (
         get_check_model()

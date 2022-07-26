@@ -126,14 +126,14 @@ chart_query = {
     },
     'bandwidth_udp': {
         'influxdb': (
-            "SELECT MEAN(sent_bps_udp) / 1000000 AS sent FROM {key} "
+            "SELECT MEAN(sent_bps_udp) / 1000000000 AS sent FROM {key} "
             "WHERE time >= '{time}' AND content_type = '{content_type}' "
             "AND object_id = '{object_id}' GROUP BY time(1d) fill(none)"
         )
     },
     'transfer_udp': {
         'influxdb': (
-            "SELECT SUM(sent_bytes_udp) / 1000000 AS sent FROM {key} "
+            "SELECT SUM(sent_bytes_udp) / 1000000000 AS sent FROM {key} "
             "WHERE time >= '{time}' AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d) fill(none)"
         )

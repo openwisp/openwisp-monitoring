@@ -765,3 +765,91 @@ GhEjQz364Itwm425vHn2MntSp0weWb4hUCjQUyyooRXPrFUGBOuY+VvAvMyAG4Uk
 msapnWnBSxXt7Tbb++A5XbOMdM2mwNYDEtkD5ksC/x3EVBrI9FvENsH9+u/8J9Mf 
 2oPl4MnlCMY86MQypkeUn7eVWfDnseNky7TyC0/IgCXve/iaydCCFdkjyo1MTAA4 
 BQIDAQAB"""
+
+INVALID_PARAMS = [
+    {'host': ''},
+    {'host': 12},
+    {'host': 'test.openwisp.io'},
+    {'username': 121},
+    {'password': -323},
+    {'rsa_public_key': 1334},
+    {'username': ''},
+    {'password': 0},
+    {'rsa_public_key': 0},
+    {
+        'username': 'openwisp-test-user',
+        'password': 'open-pass',
+        'rsa_public_key': -1,
+    },
+    {
+        'username': 1123,
+        'password': 'rossi',
+        'rsa_public_key': '',
+    },
+    {
+        'username': 'openwisp-test-user',
+        'password': -214,
+    },
+    {
+        'client_options': {
+            'port': 'testport',
+            'time': 120,
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': '50M'},
+        }
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 'testport',
+            'time': 120,
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': '50M'},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 70000,
+            'time': 120,
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': '50M'},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': -21,
+            'time': 120,
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': '50M'},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'time': 1200000,
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': '50M'},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'time': 20,
+            'tcp': {'bitrate': 10},
+            'udp': {'bitrate': '50M'},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'time': 120,
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': 50},
+        },
+    },
+]

@@ -14,6 +14,7 @@ from ...device.tests import TestDeviceMonitoringMixin
 from .. import settings as app_settings
 from ..classes import Iperf
 from .iperf_test_utils import (
+    INVALID_PARAMS,
     RESULT_AUTH_FAIL,
     RESULT_FAIL,
     RESULT_TCP,
@@ -65,8 +66,10 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         dc.connect()
         self.device = dc.device
         self._EXPECTED_COMMAND_CALLS = [
-            call(dc, 'iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 -J'),
-            call(dc, 'iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 -u -J'),
+            call(dc, 'iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 -b 0 -J'),
+            call(
+                dc, 'iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 -b 10M -u -J'
+            ),
         ]
         self._EXPECTED_WARN_CALLS = [
             call(
@@ -93,12 +96,12 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 dc,
                 f'echo "{test_prefix}{key}{test_suffix}" > {rsa_key_path} && \
             IPERF3_PASSWORD="{password}" iperf3 -c {server} -p 5201 -t 10 \
-            --username "{username}" --rsa-public-key-path {rsa_key_path} -J',
+            --username "{username}" --rsa-public-key-path {rsa_key_path} -b 0 -J',
             ),
             call(
                 dc,
                 f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p 5201 -t 10 \
-            --username "{username}" --rsa-public-key-path {rsa_key_path} -u -J && rm {rsa_key_path}',
+            --username "{username}" --rsa-public-key-path {rsa_key_path} -b 10M -u -J && rm {rsa_key_path}',
             ),
         ]
 
@@ -171,10 +174,14 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             'client_options': {
                 'port': 6201,
                 'time': 20,
+                'tcp': {'bitrate': '10M'},
+                'udp': {'bitrate': '30M'},
             },
         }
         time = test_params['client_options']['time']
         port = test_params['client_options']['port']
+        tcp_bitrate = test_params['client_options']['tcp']['bitrate']
+        udp_bitrate = test_params['client_options']['udp']['bitrate']
         username = test_params['username']
         password = test_params['password']
         key = test_params['rsa_public_key']
@@ -185,12 +192,12 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 dc,
                 f'echo "{test_prefix}{key}{test_suffix}" > {rsa_key_path} && \
             IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
-            --username "{username}" --rsa-public-key-path {rsa_key_path} -J',
+            --username "{username}" --rsa-public-key-path {rsa_key_path} -b {tcp_bitrate} -J',
             ),
             call(
                 dc,
                 f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
-            --username "{username}" --rsa-public-key-path {rsa_key_path} -u -J && rm {rsa_key_path}',
+            --username "{username}" --rsa-public-key-path {rsa_key_path} -b {udp_bitrate} -u -J && rm {rsa_key_path}',  # noqa
             ),
         ]
         result = check.perform_check(store=False)
@@ -223,8 +230,10 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         udp_result = loads(RESULT_UDP)['end']['sum']
         check, dc = self._create_iperf_test_env()
         self._EXPECTED_COMMAND_CALLS = [
-            call(dc, 'iperf3 -c iperf.openwisptestserver.com -p 9201 -t 120 -J'),
-            call(dc, 'iperf3 -c iperf.openwisptestserver.com -p 9201 -t 120 -u -J'),
+            call(dc, 'iperf3 -c iperf.openwisptestserver.com -p 9201 -t 120 -b 10M -J'),
+            call(
+                dc, 'iperf3 -c iperf.openwisptestserver.com -p 9201 -t 120 -b 50M -u -J'
+            ),
         ]
         org_id = str(self.device.organization.id)
         iperf_config = {
@@ -232,6 +241,8 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 'client_options': {
                     'port': 9201,
                     'time': 120,
+                    'tcp': {'bitrate': '10M'},
+                    'udp': {'bitrate': '50M'},
                 }
             }
         }
@@ -310,29 +321,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
     def test_iperf_check_schema_violation(self):
         device = self._create_device(organization=self._create_org())
-        invalid_params = [
-            {'username': 121},
-            {'password': -323},
-            {'rsa_public_key': 1334},
-            {'username': ''},
-            {'password': 0},
-            {'rsa_public_key': 0},
-            {
-                'username': 'openwisp-test-user',
-                'password': 'open-pass',
-                'rsa_public_key': -1,
-            },
-            {
-                'username': 1123,
-                'password': 'rossi',
-                'rsa_public_key': '',
-            },
-            {
-                'username': 'openwisp-test-user',
-                'password': -214,
-            },
-        ]
-        for invalid_param in invalid_params:
+        for invalid_param in INVALID_PARAMS:
             check = Check(
                 name='Iperf check',
                 check_type=self._IPERF,

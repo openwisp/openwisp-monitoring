@@ -764,7 +764,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         # tolerance is set, we must go back in time
         # to ensure the threshold is trepassed for enough time
         # check if alert_on_related_field is present in metric configuration
-        if 'alert_on_related_field' in self.config_dict:
+        if 'alert_on_related_field' in self.metric.config_dict:
             alert_on_related_field = [self.metric.config_dict['alert_on_related_field']]
         else:
             alert_on_related_field = []
@@ -775,7 +775,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
                 limit=None,
                 order='-time',
                 retention_policy=retention_policy,
-                extra_values=alert_on_related_field,
+                extra_fields=alert_on_related_field,
             )
             # store a list with the results
             results = [value_crossed]
@@ -788,7 +788,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
                 utc_time = utc.localize(datetime.utcfromtimestamp(point['time']))
                 # did this point cross the threshold? Append to result list
                 # check if alert_on_related_field is present in metric configuration
-                if 'alert_on_related_field' in self.config_dict:
+                if 'alert_on_related_field' in self.metric.config_dict:
                     results.append(
                         self._value_crossed(
                             point[self.metric.config_dict['alert_on_related_field']]
