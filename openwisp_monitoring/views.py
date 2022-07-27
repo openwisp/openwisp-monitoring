@@ -49,7 +49,7 @@ class MonitoringApiViewMixin:
         if daterange:
             daterange = daterange.replace('d', '')
             daterange = int(daterange)
-            if daterange >= 0 and daterange < 3:
+            if daterange > 0 and daterange < 3:
                 value = '10m'
             elif daterange >= 3 and daterange < 7:
                 value = str(round((daterange / 3) * 20)) + 'm'
@@ -61,6 +61,8 @@ class MonitoringApiViewMixin:
                 value = '24h'
 
         daterange = str(daterange) + 'd'
+        if len(Chart.GROUP_MAP.items()) > 5:
+            Chart.GROUP_MAP.popitem()
         Chart.GROUP_MAP.update({daterange: value})
 
     def get(self, request, *args, **kwargs):

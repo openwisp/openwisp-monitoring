@@ -5,9 +5,9 @@ django.jQuery(function ($) {
   $(document).ready(function () {
       /* jshint -W117 */
       var custom = '1d',
-      start = moment().subtract(1, 'days'),
+      start = moment(),
       end = moment(),
-      startDate = moment().subtract(1, 'days').format('YYYY-MM-DD HH:mm:ss'),
+      startDate = moment().format('YYYY-MM-DD HH:mm:ss'),
       endDate = moment().format('YYYY-MM-DD HH:mm:ss');
       function cb(start, end) {
         var startCustom, endCustom;
@@ -33,10 +33,10 @@ django.jQuery(function ($) {
           "year": 1,
         },
         ranges: {
-          '1 day': [moment().subtract(1,'days'), moment()],
-          '3 days': [moment().subtract(2, 'days'), moment()],
-          '1 week': [moment().subtract(6, 'days'), moment()],
-          '1 month': [moment().subtract(28, 'days'), moment()],
+          '1 day': [moment(), moment()],
+          '3 days': [moment().subtract(3, 'days'), moment()],
+          '1 week': [moment().subtract(7, 'days'), moment()],
+          '1 month': [moment().subtract(30, 'days'), moment()],
           '1 year': [moment().subtract(365, 'days'), moment()],
         }
       }, cb);
@@ -119,7 +119,10 @@ django.jQuery(function ($) {
     var dateTimePicker = $('.ranges li');
       dateTimePicker.click(function () {
         var timeRange = $(this).attr('data-time');
-        loadCharts(timeRange, true);
+        if ("Custom Range" !== $(this).attr('data-range-key')) {
+          localStorage.setItem(timeRangeKey, timeRange);
+          loadCharts(timeRange, true);
+        }
         localStorage.setItem(timeRangeKey, timeRange);
         if ("Custom Range" == $(this).attr('data-range-key')) {
           var start_custom, end_custom, dateSpan;
