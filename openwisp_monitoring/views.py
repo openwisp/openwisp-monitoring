@@ -93,6 +93,8 @@ class MonitoringApiViewMixin:
                     chart_dict['trace_type'] = chart.trace_type
                 if chart.trace_order:
                     chart_dict['trace_order'] = chart.trace_order
+                if chart.connect_points:
+                    chart_dict['connect_points'] = chart.connect_points
             except InvalidChartConfigException:
                 logger.exception(f'Skipped chart for metric {chart.metric}')
                 continue

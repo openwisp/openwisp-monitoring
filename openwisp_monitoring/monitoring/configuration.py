@@ -564,8 +564,9 @@ DEFAULT_METRICS = {
         'alert_on_related_field': 'jitter',
         'charts': {
             'bandwidth_tcp': {
-                'type': 'stackedbar',
+                'type': 'scatter',
                 'fill': 'none',
+                'connect_points': True,
                 'title': _('Bandwidth (TCP)'),
                 'description': _('Bitrate during Iperf3 test in TCP mode.'),
                 'summary_labels': [
@@ -579,6 +580,7 @@ DEFAULT_METRICS = {
             },
             'transfer_tcp': {
                 'type': 'stackedbar+lines',
+                'connect_points': True,
                 'title': _('Transfer (TCP)'),
                 'trace_type': {
                     'received': 'stackedbar',
@@ -603,9 +605,7 @@ DEFAULT_METRICS = {
             },
             'retransmits': {
                 'type': 'scatter',
-                'trace_type': {
-                    'retransmits': 'lines',
-                },
+                'connect_points': True,
                 'title': _('Retransmits'),
                 'description': _('No. of retransmits during Iperf3 test in TCP mode.'),
                 'summary_labels': [_('Restransmits')],
@@ -616,6 +616,7 @@ DEFAULT_METRICS = {
             },
             'bandwidth_udp': {
                 'type': 'scatter',
+                'connect_points': True,
                 'title': _('Bandwidth (UDP)'),
                 'description': _('Bitrate during Iperf3 test in UDP mode.'),
                 'summary_labels': [_('Sent bitrate')],
@@ -626,6 +627,7 @@ DEFAULT_METRICS = {
             },
             'transfer_udp': {
                 'type': 'scatter',
+                'connect_points': True,
                 'title': _('Transfer (UDP)'),
                 'description': _('Transfer during Iperf3 test in UDP mode.'),
                 'summary_labels': [_('Sent bytes')],
@@ -636,6 +638,7 @@ DEFAULT_METRICS = {
             },
             'jitter': {
                 'type': 'scatter',
+                'connect_points': True,
                 'title': _('Jitter'),
                 'description': _(
                     'Jitter is a variance in latency measured using Iperf3 utility in UDP mode.'
@@ -651,6 +654,7 @@ DEFAULT_METRICS = {
             'datagram': {
                 'type': 'scatter',
                 'fill': 'none',
+                'connect_points': True,
                 'title': _('Datagram'),
                 'description': _(
                     'Lost/Total datagram ratio measured by Iperf3 test in UDP mode.'
@@ -666,6 +670,7 @@ DEFAULT_METRICS = {
             },
             'datagram_loss': {
                 'type': 'scatter',
+                'connect_points': True,
                 'title': _('Datagram Loss'),
                 'description': _(
                     'Indicates datagram loss during Iperf3 test in UDP mode.'

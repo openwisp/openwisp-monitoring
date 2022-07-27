@@ -178,6 +178,7 @@
                     // We use the "_key" field to sort the charts
                     // according to the order defined in "data.trace_order"
                     _key: key,
+                    _connectPoints : data.connect_points || false,
                 },
                 yValuesRaw = data.traces[i][1];
             if (type !== 'histogram') {
@@ -216,6 +217,11 @@
                     layout.margin.b = 45;
                 }
             }
+
+            var xValuesRaw = options.x;
+            if(options._connectPoints) {
+                options.x = [];
+            }
             // adjust text to be displayed in Y values
             // differentiate between values with zero and no values at all (N/A)
             for (var c=0; c<yValuesRaw.length; c++) {
@@ -235,6 +241,10 @@
                 }
                 // prepare data shown in chart on hover
                 if (val === null) {
+                    // filter 'y' null points from options.y
+                    if(options._connectPoints) {
+                        continue;
+                    }
                     // set data to zero on gaps unless
                     // the horizontal zeroline is hidden
                     // otherwise fills get badly drawn
@@ -251,6 +261,10 @@
                     fixedYMax = val;
                 }
                 options.y.push(val);
+                // push only those 'x' points to options.x which has non null 'y' points
+                if(options._connectPoints){
+                    options.x.push(xValuesRaw[c]);
+                }
                 options.hovertemplate.push(hovertemplate);
             }
             if (data.trace_order){

@@ -452,6 +452,10 @@ class AbstractChart(TimeStampedEditableModel):
         return self.config_dict.get('trace_order', [])
 
     @property
+    def connect_points(self):
+        return self.config_dict.get('connect_points', False)
+
+    @property
     def description(self):
         return self.config_dict['description'].format(
             metric=self.metric, **self.metric.tags
@@ -636,6 +640,7 @@ class AbstractChart(TimeStampedEditableModel):
                     'unit': self.unit,
                     'trace_type': self.trace_type,
                     'trace_order': self.trace_order,
+                    'connect_points': self.connect_points,
                     'colors': self.colors,
                 }
             )
