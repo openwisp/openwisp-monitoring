@@ -50,13 +50,15 @@ django.jQuery(function ($) {
       baseUrl = `${apiUrl}?key=${originalKey}&time=`,
       globalLoadingOverlay = $('#loading-overlay'),
       localLoadingOverlay = $('#chart-loading-overlay'),
+      isCustom = false,
       loadCharts = function (time, showLoading) {
         $("#reportrange").on('apply.daterangepicker', function (ev, picker) {
           startDate = picker.startDate.format('YYYY-MM-DD HH:mm:ss');
           endDate = picker.endDate.format('YYYY-MM-DD HH:mm:ss');
         });
         var daterange = `&start=${startDate}&end=${endDate}`;
-        var url = baseUrl + time + daterange;
+        var custom =  `&custom=${isCustom}`;
+        var url = baseUrl + time + daterange + custom;
         $.ajax(url, {
           dataType: 'json',
           beforeSend: function () {
@@ -109,19 +111,20 @@ django.jQuery(function ($) {
       var range = localStorage.getItem(timeRangeKey) || defaultTimeRange;
       $('#ow-chart-time a[data-time=' + range + ']').trigger('click');
     };
-    loadCharts('1d', true);
     // try adding the browser timezone to the querystring
     try {
       var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       baseUrl = baseUrl.replace('time=', 'timezone=' + timezone + '&time=');
       // ignore failures (older browsers do not support this)
     } catch (e) {}
+    loadCharts('1d' , true);
     var dateTimePicker = $('.ranges li');
       dateTimePicker.click(function () {
         var timeRange = $(this).attr('data-time');
+        isCustom = false;
         if ("Custom Range" !== $(this).attr('data-range-key')) {
-          localStorage.setItem(timeRangeKey, timeRange);
           loadCharts(timeRange, true);
+          localStorage.setItem(timeRangeKey, timeRange);
         }
         localStorage.setItem(timeRangeKey, timeRange);
         if ("Custom Range" == $(this).attr('data-range-key')) {
@@ -130,6 +133,10 @@ django.jQuery(function ($) {
             start_custom = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
             end_custom = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
             dateSpan = end_custom.diff(start_custom, 'days') + 'd';
+            if(dateSpan == '0d'){
+              dateSpan = '1d';
+            }
+            isCustom = true;
             loadCharts(dateSpan, true);
             localStorage.setItem(timeRangeKey, dateSpan);
           });
@@ -140,18 +147,6 @@ django.jQuery(function ($) {
           1000 * 60 * 2.5,
           timeRange,
           false);
-      });
-      $('.drp-buttons .applyBtn').on('click', () => {
-          var customPicker = $('[data-range-key="Custom Range"]');
-          var timeRange = customPicker.attr('data-time');
-          loadCharts(timeRange, true);
-          localStorage.setItem(timeRangeKey, timeRange);
-          // refresh every 2.5 minutes
-          clearInterval(window.owChartRefresh);
-          window.owChartRefresh = setInterval(loadCharts,
-            1000 * 60 * 2.5,
-            timeRange,
-            false);
       });
     // bind export button
     $('#ow-chart-time a.export').click(function () {

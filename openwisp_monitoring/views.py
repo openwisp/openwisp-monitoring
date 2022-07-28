@@ -1,4 +1,5 @@
 import csv
+import datetime as dt
 import logging
 from collections import OrderedDict
 from io import StringIO
@@ -44,6 +45,10 @@ class MonitoringApiViewMixin:
             end_date = end_date.replace('+', '').replace('.', '')
         return start_date, end_date
 
+    def iscustom(self, request, *args, **kwargs):
+        custom = request.GET.get('custom')
+        return custom == 'true'
+
     def get_group_map(self, daterange):
         value = '10m'
         if daterange:
@@ -67,15 +72,19 @@ class MonitoringApiViewMixin:
 
     def get(self, request, *args, **kwargs):
         daterange = request.GET.get('time')
-        if daterange:
+        if daterange and self.iscustom(request):
             self.get_group_map(daterange)
-        start_date, end_date = self.get_date_range(request, *args, **kwargs)
-        if start_date is not None and end_date is not None:
-            if end_date < start_date:
-                messages.error(request, 'End date should be greater than start date')
-
-        if end_date is not None:
-            Chart.END_DATE = end_date
+            start_date, end_date = self.get_date_range(request, *args, **kwargs)
+            if start_date is not None and end_date is not None:
+                if end_date < start_date:
+                    messages.error(
+                        request, 'End date should be greater than start date'
+                    )
+            if end_date is not None:
+                end_date = dt.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S').replace(
+                    tzinfo=utc
+                )
+                Chart.END_DATE = end_date
         time = request.query_params.get('time', Chart.DEFAULT_TIME)
         if time not in Chart.GROUP_MAP.keys():
             raise ValidationError('Time range not supported')

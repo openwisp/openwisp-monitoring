@@ -164,7 +164,8 @@
   color: #e4715a;
 }
 .daterangepicker tr td.in-range {
-  background-color: #fce5e5;
+  background-color: #c5361f; 
+  color: white;
 }
 .daterangepicker .drp-buttons button.btn {
   margin: 0 2px;
