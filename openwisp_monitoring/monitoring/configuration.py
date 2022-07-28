@@ -564,19 +564,29 @@ DEFAULT_METRICS = {
         'alert_on_related_field': 'jitter',
         'charts': {
             'bandwidth_tcp': {
-                'type': 'scatter',
-                'fill': 'none',
+                'type': 'stackedbar+lines',
                 'connect_points': True,
                 'title': _('Bandwidth (TCP)'),
+                'trace_type': {
+                    'received': 'stackedbar',
+                    'sent': 'stackedbar',
+                    'total': 'lines',
+                },
+                'trace_order': ['total', 'received', 'sent'],
                 'description': _('Bitrate during Iperf3 test in TCP mode.'),
                 'summary_labels': [
+                    _('Total bitrate'),
                     _('Sent bitrate'),
                     _('Received bitrate'),
                 ],
                 'unit': _(' Gbps'),
                 'order': 280,
                 'query': chart_query['bandwidth_tcp'],
-                'colors': [DEFAULT_COLORS[5], DEFAULT_COLORS[0]],
+                'colors': [
+                    DEFAULT_COLORS[7],
+                    DEFAULT_COLORS[0],
+                    DEFAULT_COLORS[5],
+                ],
             },
             'transfer_tcp': {
                 'type': 'stackedbar+lines',
@@ -607,7 +617,7 @@ DEFAULT_METRICS = {
                 'type': 'scatter',
                 'connect_points': True,
                 'title': _('Retransmits'),
-                'description': _('No. of retransmits during Iperf3 test in TCP mode.'),
+                'description': _('Retransmits during Iperf3 test in TCP mode.'),
                 'summary_labels': [_('Restransmits')],
                 'unit': '',
                 'order': 300,
@@ -657,7 +667,7 @@ DEFAULT_METRICS = {
                 'connect_points': True,
                 'title': _('Datagram'),
                 'description': _(
-                    'Lost/Total datagram ratio measured by Iperf3 test in UDP mode.'
+                    '(Lost / Total) datagrams measured by Iperf3 test in UDP mode.'
                 ),
                 'summary_labels': [
                     _('Lost datagram'),
@@ -673,7 +683,7 @@ DEFAULT_METRICS = {
                 'connect_points': True,
                 'title': _('Datagram Loss'),
                 'description': _(
-                    'Indicates datagram loss during Iperf3 test in UDP mode.'
+                    'Indicates datagram loss % during Iperf3 test in UDP mode.'
                 ),
                 'summary_labels': [
                     _('Datagram loss'),

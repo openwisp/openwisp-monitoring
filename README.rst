@@ -373,22 +373,19 @@ Configure celery (you may use a different broker if you want):
 
     # here we show how to configure celery with redis but you can
     # use other brokers if you want, consult the celery docs
-    # Celery TIME_ZONE should be equal to django TIME_ZONE
-    # In order to schedule run_iperf_checks on the correct time intervals
-    CELERY_TIMEZONE = TIME_ZONE
     CELERY_BROKER_URL = 'redis://localhost/1'
     CELERY_BEAT_SCHEDULE = {
-       'run_checks': {
-        'task': 'openwisp_monitoring.check.tasks.run_checks',
-        # Executes only ping & config check every 5 min
-        'schedule': timedelta(minutes=5),
-        'args': (
-            [  # Checks path
-                'openwisp_monitoring.check.classes.Ping',
-                'openwisp_monitoring.check.classes.ConfigApplied',
-            ],
-        ),
-        'relative': True,
+        'run_checks': {
+            'task': 'openwisp_monitoring.check.tasks.run_checks',
+            # Executes only ping & config check every 5 min
+            'schedule': timedelta(minutes=5),
+            'args': (
+                [  # Checks path
+                    'openwisp_monitoring.check.classes.Ping',
+                    'openwisp_monitoring.check.classes.ConfigApplied',
+                ],
+            ),
+            'relative': True,
         },
         # Delete old WifiSession
         'delete_wifi_clients_and_sessions': {
@@ -873,6 +870,9 @@ Iperf
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/datagram-loss.png
   :align: center
 
+**Note:** Iperf charts uses ``connect_points=True`` in 
+`default chart configuration <#openwisp_monitoring_charts>`_ that joins it's individual chart data points.
+
 Dashboard Monitoring Charts
 ---------------------------
 
@@ -1061,19 +1061,28 @@ For example.
 
 .. code-block:: python
 
-    OPENWISP_MONITORING_IPERF_SERVERS = {
-    # Public iperf servers also available: https://iperf.fr/iperf-servers.php#public-servers
-    # '<org-pk>': ['<ORG_IPERF_SERVER>']
-    'a9734710-db30-46b0-a2fc-01f01046fe4f': ['speedtest.uztelecom.uz'],
-    'z9734710-db30-46b0-a2fc-01f01046fe4f': ['192.168.5.109'],
-    'c9734710-db30-46b0-a2fc-01f01046fe4f': ['2001:db8::1'],
-    }
+   OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
+       # Public iperf servers are also available
+       # https://iperf.fr/iperf-servers.php#public-servers
+       # org pk : {'host', 'client_options'}
+       'a9734710-db30-46b0-a2fc-01f01046fe4f': {
+           'host': ['iperf.openwisp.io', '2001:db8::1', '192.168.5.2'],
+           'client_options': {
+               'port': 5209,
+               'udp': {'bitrate': '20M'},
+               'tcp': {'bitrate': '0'},
+           },
+       }
+   }
 
 Add celery beat configuration for iperf check in `openwisp settings 
 <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_
 
 .. code-block:: python
 
+    # Celery TIME_ZONE should be equal to django TIME_ZONE
+    # In order to schedule run_iperf_checks on the correct time intervals
+    CELERY_TIMEZONE = TIME_ZONE
     CELERY_BEAT_SCHEDULE = {
         # Other celery beat configurations
 
@@ -1102,11 +1111,13 @@ iperf network measurements charts.
   :alt: Iperf network measurement charts
 
 
-Configure Iperf check for authentication
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Iperf authentication
+~~~~~~~~~~~~~~~~~~~~
 
-By default iperf check runs without any kind of **authentication**, But we can configure it to use **RSA authentication** 
-between the **client** and the **server** to restrict the connections to the server & only allow legitimate clients.
+By default iperf check runs without any kind of **authentication**, 
+in this section we will explain how to configure **RSA authentication** 
+between the **client** and the **server** to restrict connections 
+to authenticated clients.
 
 At Iperf server
 ###############
@@ -1117,13 +1128,13 @@ At Iperf server
 .. code-block:: shell
 
    openssl genrsa -des3 -out private.pem 2048
-   openssl rsa -in private.pem -outform PEM -pubout -out public.pem
-   openssl rsa -in private.pem -out private_not_protected.pem -outform PEM
+   openssl rsa -in private.pem -outform PEM -pubout -out public_key.pem
+   openssl rsa -in private.pem -out private_key.pem -outform PEM
 
-After running above mention commands, the public key will be contained in the 
-file ``public.pem`` which will be used in **rsa_public_key** parameter 
+After running the commands mentioned above, the public key will be stored in 
+``public_key.pem`` which will be used in **rsa_public_key** parameter 
 in `OPENWISP_MONITORING_IPERF_CHECK_CONFIG <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_ 
-and the private key will be contained in the file ``private_not_protected.pem`` 
+and the private key will be contained in the file ``private_key.pem`` 
 which will be used with **--rsa-private-key-path** command option at iperf server.
 
 2. Create user credentials
@@ -1148,7 +1159,7 @@ Add the above hash with username in ``credentials.csv``
 
 .. code-block:: shell
 
-   iperf3 -s --rsa-private-key-path ./private_not_protected.pem --authorized-users-path ./credentials.csv
+   iperf3 -s --rsa-private-key-path ./private_key.pem --authorized-users-path ./credentials.csv
 
 At client (openwrt device)
 ##########################
@@ -1178,23 +1189,32 @@ in `openwisp settings <https://github.com/openwisp/openwisp-monitoring/blob/mast
 
 .. code-block:: python
 
-    OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
-    # All three parameters are required
-    'username': {'default': 'iperfuser'},
-    'password': {'default': 'iperfpass'},
-    # RSA public key without any headers
-    # ie. -----BEGIN PUBLIC KEY-----, -----BEGIN END KEY-----
-    'rsa_public_key': {
-        'default': """
-        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwuEm+iYrfSWJOupy6X3N 
-        dxZvUCxvmoL3uoGAs0O0Y32unUQrwcTIxudy38JSuCccD+k2Rf8S4WuZSiTxaoea 
-        6Du99YQGVZeY67uJ21SWFqWU+w6ONUj3TrNNWoICN7BXGLE2BbSBz9YaXefE3aqw 
-        GhEjQz364Itwm425vHn2MntSp0weWb4hUCjQUyyooRXPrFUGBOuY+VvAvMyAG4Uk 
-        msapnWnBSxXt7Tbb++A5XbOMdM2mwNYDEtkD5ksC/x3EVBrI9FvENsH9+u/8J9Mf 
-        2oPl4MnlCMY86MQypkeUn7eVWfDnseNky7TyC0/IgCXve/iaydCCFdkjyo1MTAA4 
-        BQIDAQAB
-        """
-    },
+   OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
+       'a9734710-db30-46b0-a2fc-01f01046fe4f': {
+           'host': ['iperf1.openwisp.io', 'iperf2.openwisp.io', '192.168.5.2'],
+           # All three parameters (username, password, rsa_publc_key)
+           # are required for iperf authentication
+           'username': 'iperfuser',
+           'password': 'iperfpass',
+           # Add RSA public key without any headers
+           # ie. -----BEGIN PUBLIC KEY-----, -----BEGIN END KEY-----
+           'rsa_public_key': (
+               """
+               MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwuEm+iYrfSWJOupy6X3N
+               dxZvUCxvmoL3uoGAs0O0Y32unUQrwcTIxudy38JSuCccD+k2Rf8S4WuZSiTxaoea
+               6Du99YQGVZeY67uJ21SWFqWU+w6ONUj3TrNNWoICN7BXGLE2BbSBz9YaXefE3aqw
+               GhEjQz364Itwm425vHn2MntSp0weWb4hUCjQUyyooRXPrFUGBOuY+VvAvMyAG4Uk
+               msapnWnBSxXt7Tbb++A5XbOMdM2mwNYDEtkD5ksC/x3EVBrI9FvENsH9+u/8J9Mf
+               2oPl4MnlCMY86MQypkeUn7eVWfDnseNky7TyC0/IgCXve/iaydCCFdkjyo1MTAA4
+               BQIDAQAB
+               """
+           ),
+           'client_options': {
+               'port': 5209,
+               'udp': {'bitrate': '20M'},
+               'tcp': {'bitrate': '0'},
+           },
+       }
    }
 
 Settings
@@ -1346,28 +1366,14 @@ For example, if you want to change only the **port number** of
 
 .. code-block:: python
 
-    OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
-        'port': {
-            'default': 6209,
-        },
-    }
-
-If you want to overriding the default value for any parameter beyond the maximum or minimum value defined in
-``openwisp_monitoring.check.classes.iperf.DEFAULT_IPERF_CHECK_CONFIG``,
-you will also need to override the ``maximum`` or ``minimum`` fields as following:
-
-.. code-block:: python
-
-    OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
-        'time': {
-            'default': 2000,
-            'minimum': 2100,
-            'maximum': 3600,
-        },
-    }
-
-**Note:** Above ``maximum`` and ``minimum`` values are only used for
-validating custom parameters of a ``Check`` object.
+   OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
+       'a9734710-db30-46b0-a2fc-01f01046fe4f': {
+           'host': ['iperf.openwisp.io'],
+           'client_options': {
+               'port': 6201,
+           },
+       }
+   }
 
 ``OPENWISP_MONITORING_AUTO_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1953,7 +1959,8 @@ You can always override them and define your own custom values via the *admin*.
 You can also use ``alert_on_related_field`` key in metric configuration
 which allows ``AlertSettings`` to use ``related_field`` as value to check ``threshold`` instead
 of default ``field_name`` key. A real world example of this can be seen in 
-`Iperf metric configuration <https://github.com/openwisp/openwisp-monitoring/blob/issue-385/iperf-check/openwisp_monitoring/monitoring/configuration.py#L546-L700>`_,
+`Iperf metric configuration 
+<https://github.com/openwisp/openwisp-monitoring/blob/issue-385/iperf-check/openwisp_monitoring/monitoring/configuration.py#L546-L700>`_,
 Where we used ``jitter`` (related_field) for alerts.
 
 **Note**: It will raise ``ImproperlyConfigured`` exception if a metric configuration

@@ -103,7 +103,8 @@ chart_query = {
     'bandwidth_tcp': {
         'influxdb': (
             "SELECT MEAN(received_bps_tcp) / 1000000000 AS received, "
-            "MEAN(sent_bps_tcp) / 1000000000 AS sent FROM {key} WHERE "
+            "MEAN(sent_bps_tcp) / 1000000000 AS sent,"
+            "((MEAN(sent_bps_tcp) + MEAN(received_bps_tcp)) / 1000000000) AS total FROM {key} WHERE "
             "time >= '{time}' AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )

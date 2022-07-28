@@ -28,6 +28,7 @@ DEFAULT_IPERF_CHECK_CONFIG = {
         },
         'default': [],
     },
+    # username, password max_length chosen from iperf3 docs to avoid iperf param errors
     'username': {'type': 'string', 'default': '', 'minLength': 1, 'maxLength': 20},
     'password': {'type': 'string', 'default': '', 'minLength': 1, 'maxLength': 20},
     'rsa_public_key': {
@@ -186,6 +187,9 @@ class Iperf(BaseCheck):
         return result
 
     def _get_compelete_rsa_key(self, key):
+        """
+        Returns RSA key with proper format
+        """
         pem_prefix = '-----BEGIN PUBLIC KEY-----\n'
         pem_suffix = '\n-----END PUBLIC KEY-----'
         key = key.strip()
@@ -193,7 +197,7 @@ class Iperf(BaseCheck):
 
     def _get_device_connection(self):
         """
-        Returns an active SSH DeviceConnection for a device.
+        Returns an active SSH DeviceConnection for a device
         """
         openwrt_ssh = UPDATE_STRATEGIES[0][0]
         device_connection = DeviceConnection.objects.filter(
@@ -212,7 +216,7 @@ class Iperf(BaseCheck):
 
     def _exec_command(self, dc, command):
         """
-        Executes device command
+        Executes device command (easier to mock)
         """
         return dc.connector_instance.exec_command(command, raise_unexpected_exit=False)
 
@@ -231,7 +235,7 @@ class Iperf(BaseCheck):
 
     def _get_param(self, conf_key, default_conf_key):
         """
-        Gets specified param or its default value according to the schema
+        Returns specified param or its default value according to the schema
         """
         org_id = str(self.related_object.organization.id)
         iperf_config = app_settings.IPERF_CHECK_CONFIG
@@ -315,7 +319,7 @@ class Iperf(BaseCheck):
 
     def store_result(self, result):
         """
-        store result in the DB
+        Store result in the DB
         """
         metric = self._get_metric()
         copied = result.copy()
@@ -334,7 +338,7 @@ class Iperf(BaseCheck):
 
     def _create_charts(self, metric):
         """
-        Creates iperf related charts (Bandwith/Jitter)
+        Creates iperf related charts
         """
         charts = [
             'bandwidth_tcp',
@@ -352,6 +356,9 @@ class Iperf(BaseCheck):
             chart.save()
 
     def _create_alert_settings(self, metric):
+        """
+        Creates iperf alertsettings
+        """
         alert_settings = AlertSettings(metric=metric)
         alert_settings.full_clean()
         alert_settings.save()
