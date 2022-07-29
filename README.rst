@@ -889,15 +889,15 @@ You can configure the interfaces included in the **General traffic chart** using
 the `"OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART"
 <#openwisp_monitoring_dashboard_traffic_chart>`_ setting.
 
-Adaptive byte charts
+Adaptive size charts
 --------------------
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/adaptive-chart.png
    :align: center
 
 When configuring charts, it is possible to flag their unit
-as ``adaptive_bytes``, this allows to make the charts more readable because
-the units are shown in either `B`, `KB`, `MB`, `GB` and `TB` depending on
+as ``adaptive_prefix``, this allows to make the charts more readable because
+the units are shown in either `K`, `M`, `G` and `T` depending on
 the size of each point, the summary values and Y axis are also resized.
 
 Example taken from the default configuration of the traffic chart:
@@ -906,7 +906,17 @@ Example taken from the default configuration of the traffic chart:
 
     'traffic': {
         # other configurations for this chart
-        'unit': 'adaptive_bytes',
+
+        # traffic measured in 'B' (bytes)
+        # unit B, KB, MB, GB, TB
+        'unit': 'adaptive_prefix+B',
+    },
+
+    'bandwidth_tcp': {
+        # adaptive unit for bandwidth related charts
+        # bandwidth measured in 'bps'(bits/sec)
+        # unit bps, Kbps, Mbps, Gbps, Tbps
+        'unit': 'adaptive_prefix+bps',
     },
 
 Monitoring WiFi Sessions

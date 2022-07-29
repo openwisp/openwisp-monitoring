@@ -206,7 +206,7 @@ DEFAULT_METRICS = {
                     _('Total download traffic'),
                     _('Total upload traffic'),
                 ],
-                'unit': 'adaptive_bytes',
+                'unit': 'adaptive_prefix+B',
                 'order': 240,
                 'query': chart_query['traffic'],
                 'colors': [
@@ -243,7 +243,7 @@ DEFAULT_METRICS = {
                     _('Total download traffic'),
                     _('Total upload traffic'),
                 ],
-                'unit': 'adaptive_bytes',
+                'unit': 'adaptive_prefix+B',
                 'order': 240,
                 'query': chart_query['general_traffic'],
                 'query_default_param': {
@@ -579,7 +579,7 @@ DEFAULT_METRICS = {
                     _('Sent bitrate'),
                     _('Received bitrate'),
                 ],
-                'unit': _(' Gbps'),
+                'unit': 'adaptive_prefix+bps',
                 'order': 280,
                 'query': chart_query['bandwidth_tcp'],
                 'colors': [
@@ -604,7 +604,7 @@ DEFAULT_METRICS = {
                     _('Received bytes'),
                     _('Sent bytes'),
                 ],
-                'unit': _(' GB'),
+                'unit': 'adaptive_prefix+B',
                 'order': 290,
                 'query': chart_query['transfer_tcp'],
                 'colors': [
@@ -630,7 +630,7 @@ DEFAULT_METRICS = {
                 'title': _('Bandwidth (UDP)'),
                 'description': _('Bitrate during Iperf3 test in UDP mode.'),
                 'summary_labels': [_('Sent bitrate')],
-                'unit': _(' Gbps'),
+                'unit': 'adaptive_prefix+bps',
                 'order': 310,
                 'query': chart_query['bandwidth_udp'],
                 'colors': [DEFAULT_COLORS[0]],
@@ -641,7 +641,7 @@ DEFAULT_METRICS = {
                 'title': _('Transfer (UDP)'),
                 'description': _('Transfer during Iperf3 test in UDP mode.'),
                 'summary_labels': [_('Sent bytes')],
-                'unit': _(' GB'),
+                'unit': 'adaptive_prefix+B',
                 'order': 320,
                 'query': chart_query['transfer_udp'],
                 'colors': [DEFAULT_COLORS[5]],

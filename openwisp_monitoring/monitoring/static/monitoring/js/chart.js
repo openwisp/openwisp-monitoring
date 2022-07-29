@@ -20,19 +20,19 @@
     function getAdaptiveScale(value, multiplier, unit) {
         if (value == 0) {
             multiplier = 1;
-            unit = 'B';
+            unit = unit;
         } else if (value < 0.001) {
             multiplier = 1000000;
-            unit = 'KB';
+            unit = 'K' + unit;
         } else if (value < 1) {
             multiplier = 1000;
-            unit = 'MB';
+            unit = 'M' + unit;
         } else if (value < 1000) {
             multiplier = 1;
-            unit = 'GB';
+            unit = 'G' + unit;
         } else if (value >= 1000) {
             multiplier = 0.001;
-            unit = 'TB';
+            unit = 'T' + unit;
         }
         return {
             multiplier: multiplier,
@@ -44,7 +44,7 @@
         return Math.round((value * multiplier) * 100) / 100;
     }
 
-    function adaptiveFilterPoints(charts, layout, yRawVal) {
+    function adaptiveFilterPoints(charts, layout, yRawVal, chartUnit = '') {
         var y = charts[0].y, sum = 0, count = 0, shownVal, average;
         for (var i=0; i < y.length; i++) {
             sum += y[i];
@@ -53,7 +53,7 @@
             }
         }
         average = sum / count;
-        var scales = getAdaptiveScale(average, 1, '');
+        var scales = getAdaptiveScale(average, 1, chartUnit);
         var multiplier = scales.multiplier,
             unit = scales.unit;
         for (i=0; i < y.length; i++) {
@@ -64,7 +64,7 @@
                 }
                 shownVal = charts[j].y[i];
                 charts[j].y[i] = getAdaptiveBytes(charts[j].y[i], multiplier);
-                var hoverScales = getAdaptiveScale(shownVal, 1, '');
+                var hoverScales = getAdaptiveScale(shownVal, 1, chartUnit);
                 var hoverMultiplier = hoverScales.multiplier,
                     hoverUnit = hoverScales.unit;
                 shownVal = getAdaptiveBytes(shownVal, hoverMultiplier);
@@ -74,8 +74,8 @@
         layout.yaxis.title = unit;
     }
 
-    function adaptiveFilterSummary(i, percircles, value) {
-        var scales = getAdaptiveScale(value, 1, ''),
+    function adaptiveFilterSummary(i, percircles, value, chartUnit = '') {
+        var scales = getAdaptiveScale(value, 1, chartUnit),
             multiplier = scales.multiplier,
             unit = scales.unit;
         value = getAdaptiveBytes(value, multiplier);
@@ -138,7 +138,7 @@
         if (type === 'histogram') {
             layout.hovermode = 'closest';
         }
-        var map, mapped, label, fixedValue, key;
+        var map, mapped, label, fixedValue, key, chartUnit, yValues;
         // given a value, returns its color and description
         // according to the color map configuration of this chart
         function findInColorMap(value) {
@@ -271,15 +271,22 @@
                 options.marker = {color: data.colors[data.trace_order.indexOf(key)]};
             }
             charts.push(options);
+            yValues = options.y;
         }
         charts = sortByTraceOrder(data.trace_order, charts, '_key');
 
-        if (unit == 'adaptive_bytes') {
+        if (unit.includes('adaptive_prefix')) {
             var yRawVal;
             for (i=0; i < charts.length; i++) {
                 yRawVal = data.traces[i][1];
             }
-            adaptiveFilterPoints(charts, layout, yRawVal);
+            if(data.connect_points){
+                yRawVal = yValues;
+            }
+            if(unit.includes('+')){
+                chartUnit = unit.split('+')[1];
+            }
+            adaptiveFilterPoints(charts, layout, yRawVal, chartUnit);
         }
 
         if (fixedY) { layout.yaxis = {range: [0, fixedYMax]}; }
@@ -355,8 +362,11 @@
                 }
                 percircles.push(percircleOptions);
 
-                if (unit == 'adaptive_bytes') {
-                    adaptiveFilterSummary(i, percircles, value);
+                if (unit.includes('adaptive_prefix')) {
+                    if(unit.includes('+')){
+                        chartUnit = unit.split('+')[1];
+                    }
+                    adaptiveFilterSummary(i, percircles, value, chartUnit);
                 }
             }
             percircles = sortByTraceOrder(data.trace_order, percircles, '_key');
