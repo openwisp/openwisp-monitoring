@@ -136,9 +136,15 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
             )
             + MetricAdmin.Media.js
             + ('monitoring/js/chart-utils.js',)
+            + ('monitoring/js/daterangepicker.min.js',)
+            + ('monitoring/js/moment.min.js',)
         )
         css = {
-            'all': ('monitoring/css/percircle.min.css',) + MetricAdmin.Media.css['all']
+            'all': (
+                'monitoring/css/percircle.min.css',
+                'monitoring/css/daterangepicker.css',
+            )
+            + MetricAdmin.Media.css['all']
         }
 
     def get_extra_context(self, pk=None):

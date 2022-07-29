@@ -71,6 +71,7 @@ django.jQuery(function ($) {
             localLoadingOverlay.show();
           },
           success: function (data) {
+            isCustom = false;
             localLoadingOverlay.hide();
             if (data.charts.length) {
               chartContents.show();
