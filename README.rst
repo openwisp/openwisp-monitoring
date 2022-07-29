@@ -334,7 +334,6 @@ Follow the setup instructions of `openwisp-controller
 .. code-block:: python
 
     from django.conf import settings
-    from celery.schedules import crontab
     from django.conf.urls import include, url
     from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
@@ -1053,7 +1052,7 @@ Register your device to OpenWISP and make sure `iperf3 openwrt package
 #########################################################
 
 Follow the steps in `"How to configure push updates" section of the openwisp-controller documentation 
-<https://github.com/openwisp/openwisp-controller#how-to-configure-push-updates>`_ to allow SSH access to you device from OpenWISP.
+<https://openwisp.io/docs/user/configure-push-updates.html>`_ to allow SSH access to you device from OpenWISP.
 
 **Note:** Make sure device connection is enabled & working with right update strategy i.e. ``OpenWRT SSH``.
 
@@ -1089,6 +1088,8 @@ Add celery beat configuration for iperf check in `openwisp settings
 <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_
 
 .. code-block:: python
+
+    from celery.schedules import crontab
 
     # Celery TIME_ZONE should be equal to django TIME_ZONE
     # In order to schedule run_iperf_checks on the correct time intervals

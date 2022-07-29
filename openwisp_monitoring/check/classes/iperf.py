@@ -227,6 +227,10 @@ class Iperf(BaseCheck):
         return dc.connect()
 
     def _deep_get(self, dictionary, keys, default=None):
+        """
+        Returns dict value using dot_key string ie.key1.key2_nested.key3_nested
+        if found otherwise returns default
+        """
         return reduce(
             lambda d, key: d.get(key, default) if isinstance(d, dict) else default,
             keys.split("."),
@@ -257,7 +261,6 @@ class Iperf(BaseCheck):
         """
         Returns iperf test result
         """
-
         try:
             result = loads(result)
         except JSONDecodeError:

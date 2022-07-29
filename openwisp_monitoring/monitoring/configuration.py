@@ -576,8 +576,8 @@ DEFAULT_METRICS = {
                 'description': _('Bitrate during Iperf3 test in TCP mode.'),
                 'summary_labels': [
                     _('Total bitrate'),
-                    _('Sent bitrate'),
                     _('Received bitrate'),
+                    _('Sent bitrate'),
                 ],
                 'unit': 'adaptive_prefix+bps',
                 'order': 280,
