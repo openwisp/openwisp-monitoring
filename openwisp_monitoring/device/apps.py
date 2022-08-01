@@ -274,6 +274,7 @@ class DeviceMonitoringConfig(AppConfig):
                     'monitoring/css/dashboard-chart.css',
                 ),
                 'js': (
+                    'monitoring/js/jquery.init.js',
                     'monitoring/js/moment.min.js',
                     'monitoring/js/daterangepicker.min.js',
                     'monitoring/js/percircle.min.js',

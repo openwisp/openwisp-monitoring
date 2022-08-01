@@ -3,7 +3,6 @@ const timeRangeKey = 'ow2-chart-time-range';
 
 django.jQuery(function ($) {
   $(document).ready(function () {
-      /* jshint -W117 */
       var custom = '1d',
       start = moment(),
       end = moment(),
