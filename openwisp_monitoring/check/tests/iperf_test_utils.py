@@ -928,4 +928,58 @@ INVALID_PARAMS = [
             'udp': {'bitrate': 50},
         },
     },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'bytes': 20,
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': 50},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'bytes': '',
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': 50},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'bytes': -1,
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': 50},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'connect_timeout': -1,
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': 50},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'connect_timeout': '11000',
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': 50},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'connect_timeout': 2000000,
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': 50},
+        },
+    },
 ]
