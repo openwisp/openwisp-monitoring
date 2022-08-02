@@ -977,9 +977,36 @@ INVALID_PARAMS = [
         'host': ['test.openwisp.io'],
         'client_options': {
             'port': 5201,
-            'connect_timeout': 2000000,
+            'blockcount': -13,
             'tcp': {'bitrate': '10M'},
             'udp': {'bitrate': 50},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'blockcount': '',
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': 50},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'tcp': {'bitrate': '10M', 'length': 112},
+            'udp': {'bitrate': 50},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'connect_timeout': 2000000,
+            'blockcount': '100K',
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': 50, 'length': 9595},
         },
     },
 ]

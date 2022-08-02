@@ -70,12 +70,12 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             call(
                 dc,
                 'iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 \
-        --connect-timeout 1 -b 0 -J',
+        --connect-timeout 1 -b 0 -l 128K -J',
             ),
             call(
                 dc,
                 'iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 \
-        --connect-timeout 1 -b 30M -u -J',
+        --connect-timeout 1 -b 30M -l  -u -J',
             ),
         ]
         self._EXPECTED_WARN_CALLS = [
@@ -104,13 +104,13 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 f'echo "{test_prefix}{key}{test_suffix}" > {rsa_key_path} && \
             IPERF3_PASSWORD="{password}" iperf3 -c {server} -p 5201 -t 10 \
             --username "{username}" --rsa-public-key-path {rsa_key_path} \
-            --connect-timeout 1 -b 0 -J',
+            --connect-timeout 1 -b 0 -l 128K -J',
             ),
             call(
                 dc,
                 f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p 5201 -t 10 \
             --username "{username}" --rsa-public-key-path {rsa_key_path} \
-            --connect-timeout 1 -b 30M -u -J && rm {rsa_key_path}',
+            --connect-timeout 1 -b 30M -l  -u -J && rm {rsa_key_path}',
             ),
         ]
 
@@ -184,14 +184,16 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 'port': 6201,
                 'time': 20,
                 'connect_timeout': 1000,
-                'tcp': {'bitrate': '10M'},
-                'udp': {'bitrate': '30M'},
+                'tcp': {'bitrate': '10M', 'length': '128K'},
+                'udp': {'bitrate': '50M', 'length': '400K'},
             },
         }
         time = test_params['client_options']['time']
         port = test_params['client_options']['port']
         tcp_bitrate = test_params['client_options']['tcp']['bitrate']
+        tcp_len = test_params['client_options']['tcp']['length']
         udp_bitrate = test_params['client_options']['udp']['bitrate']
+        udp_len = test_params['client_options']['udp']['length']
         username = test_params['username']
         password = test_params['password']
         key = test_params['rsa_public_key']
@@ -204,13 +206,13 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 f'echo "{test_prefix}{key}{test_suffix}" > {rsa_key_path} && \
             IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
             --username "{username}" --rsa-public-key-path {rsa_key_path} \
-            --connect-timeout 1000 -b {tcp_bitrate} -J',
+            --connect-timeout 1000 -b {tcp_bitrate} -l {tcp_len} -J',
             ),
             call(
                 dc,
                 f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
             --username "{username}" --rsa-public-key-path {rsa_key_path} \
-            --connect-timeout 1000 -b {udp_bitrate} -u -J && rm {rsa_key_path}',
+            --connect-timeout 1000 -b {udp_bitrate} -l {udp_len} -u -J && rm {rsa_key_path}',
             ),
         ]
         result = check.perform_check(store=False)
@@ -245,13 +247,13 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         self._EXPECTED_COMMAND_CALLS = [
             call(
                 dc,
-                'iperf3 -c iperf.openwisptestserver.com -p 9201 -n 20M \
-        --connect-timeout 2000 -b 10M -J',
+                'iperf3 -c iperf.openwisptestserver.com -p 9201 -k 1M \
+        --connect-timeout 2000 -b 10M -l 512K -J',
             ),
             call(
                 dc,
-                'iperf3 -c iperf.openwisptestserver.com -p 9201 -n 20M \
-        --connect-timeout 2000 -b 50M -u -J',
+                'iperf3 -c iperf.openwisptestserver.com -p 9201 -k 1M \
+        --connect-timeout 2000 -b 50M -l 256K -u -J',
             ),
         ]
         org_id = str(self.device.organization.id)
@@ -262,8 +264,9 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                     'time': 120,
                     'connect_timeout': 2000,
                     'bytes': '20M',
-                    'tcp': {'bitrate': '10M'},
-                    'udp': {'bitrate': '50M'},
+                    'blockcount': '1M',
+                    'tcp': {'bitrate': '10M', 'length': '512K'},
+                    'udp': {'bitrate': '50M', 'length': '256K'},
                 }
             }
         }

@@ -61,6 +61,13 @@ DEFAULT_IPERF_CHECK_CONFIG = {
                 # the test end condition instead of bytes
                 'default': '',
             },
+            'blockcount': {
+                'type': 'string',
+                # number of blocks (packets) to transmit (instead of 'time' or 'bytes')
+                # default to '' since we're using time for
+                # the test end condition instead of blockcount
+                'default': '',
+            },
             'connect_timeout': {
                 'type': 'integer',
                 # set  timeout  for establishing the initial
@@ -79,7 +86,13 @@ DEFAULT_IPERF_CHECK_CONFIG = {
                         'type': 'string',
                         # set target bitrate to n bits/sec
                         'default': '0',
-                    }
+                    },
+                    'length': {
+                        'type': 'string',
+                        # length of buffer to read or write
+                        # for TCP tests, the default value is 128KB
+                        'default': '128K',
+                    },
                 },
             },
             'udp': {
@@ -90,7 +103,14 @@ DEFAULT_IPERF_CHECK_CONFIG = {
                         # set target bitrate to n bits/sec
                         # 10 Mbps
                         'default': '30M',
-                    }
+                    },
+                    'length': {
+                        'type': 'string',
+                        # iperf3 tries to dynamically determine a
+                        # reasonable sending size based on the path MTU
+                        # if that cannot be determined it uses 1460 bytes
+                        'default': '',
+                    },
                 },
             },
         },
@@ -145,6 +165,9 @@ class Iperf(BaseCheck):
         bytes = self._get_param(
             'client_options.bytes', 'client_options.properties.bytes.default'
         )
+        blockcount = self._get_param(
+            'client_options.blockcount', 'client_options.properties.blockcount.default'
+        )
         ct = self._get_param(
             'client_options.connect_timeout',
             'client_options.properties.connect_timeout.default',
@@ -153,9 +176,17 @@ class Iperf(BaseCheck):
             'client_options.tcp.bitrate',
             'client_options.properties.tcp.properties.bitrate.default',
         )
+        tcp_length = self._get_param(
+            'client_options.tcp.length',
+            'client_options.properties.tcp.properties.length.default',
+        )
         udp_bitrate = self._get_param(
             'client_options.udp.bitrate',
             'client_options.properties.udp.properties.bitrate.default',
+        )
+        udp_length = self._get_param(
+            'client_options.udp.length',
+            'client_options.properties.udp.properties.length.default',
         )
         # by default we use 'time' param
         # for the iperf test end condition
@@ -164,6 +195,10 @@ class Iperf(BaseCheck):
         # use it instead of 'time'
         if bytes:
             test_end_condition = f'-n {bytes}'
+        # if 'blockcount' present in config
+        # use it instead of 'time' or 'bytes'
+        if blockcount:
+            test_end_condition = f'-k {blockcount}'
         username = self._get_param('username', 'username.default')
         device_connection = self._get_device_connection()
         if not device_connection:
@@ -179,9 +214,9 @@ class Iperf(BaseCheck):
             return
         server = self._get_iperf_servers()[0]
         command_tcp = f'iperf3 -c {server} -p {port} {test_end_condition} \
-        --connect-timeout {ct} -b {tcp_bitrate} -J'
+        --connect-timeout {ct} -b {tcp_bitrate} -l {tcp_length} -J'
         command_udp = f'iperf3 -c {server} -p {port} {test_end_condition} \
-        --connect-timeout {ct} -b {udp_bitrate} -u -J'
+        --connect-timeout {ct} -b {udp_bitrate} -l {udp_length} -u -J'
 
         # All three parameters ie. username, password and rsa_public_key is required
         # for authentication to work, checking only username here
@@ -194,11 +229,11 @@ class Iperf(BaseCheck):
             command_tcp = f'echo "{rsa_public_key}" > {rsa_public_key_path} && \
             IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} {test_end_condition} \
             --username "{username}" --rsa-public-key-path {rsa_public_key_path} \
-            --connect-timeout {ct} -b {tcp_bitrate} -J'
+            --connect-timeout {ct} -b {tcp_bitrate} -l {tcp_length} -J'
 
             command_udp = f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} {test_end_condition} \
             --username "{username}" --rsa-public-key-path {rsa_public_key_path} \
-            --connect-timeout {ct} -b {udp_bitrate} -u -J'
+            --connect-timeout {ct} -b {udp_bitrate} -l {udp_length} -u -J'
 
             # If IPERF_CHECK_DELETE_RSA_KEY, remove rsa_public_key from the device
             if app_settings.IPERF_CHECK_DELETE_RSA_KEY:
