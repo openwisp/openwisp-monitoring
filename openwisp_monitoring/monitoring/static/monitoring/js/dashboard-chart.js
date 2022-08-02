@@ -4,4 +4,3 @@ django.jQuery(function ($) {
         triggerChartLoading();
     });
 }(django.jQuery));
-

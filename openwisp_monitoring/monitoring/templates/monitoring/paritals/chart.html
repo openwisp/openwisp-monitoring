@@ -1,6 +1,9 @@
 {% load i18n %}
 
 <div id="ow-chart-inner-container">
+<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
     <span id="monitoring-timeseries-api-url" data-value="{{ api_url }}"></span>
     <span id="monitoring-timeseries-original-key" data-value="{{ original.key }}"></span>
     <span id="monitoring-timeseries-default-time" data-value="{{ default_time }}"></span>

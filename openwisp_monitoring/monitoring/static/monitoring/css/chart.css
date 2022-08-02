@@ -154,18 +154,9 @@
   background-color: #fce5e5;
   color: #df5d43;
 }
-.daterangepicker tr td.active, .daterangepicker tr td.active:hover {
-  background-color: #c5361f;
-  border-color: transparent;
-  color: #fff;
-}
 .daterangepicker .ranges ul li:hover {
   background-color: #fce5e5;
   color: #e4715a;
-}
-.daterangepicker tr td.in-range {
-  background-color: #c5361f; 
-  color: white;
 }
 .daterangepicker .drp-buttons button.btn {
   margin: 0 2px;
@@ -177,7 +168,7 @@
   cursor: pointer;
 }
 .daterangepicker .drp-selected {
-  color: #c5361f;
+  color: #df5d43;
 }
 .daterangepicker .drp-calendar {
   max-width: 370px !important;
@@ -186,4 +177,12 @@
   .show-calendar {
     width: 909px !important;
   }
+}
+.daterangepicker tr td.active, .daterangepicker tr td.active:hover {
+  background-color: #df5d43 !important;
+  color: #fff !important;
+}
+.daterangepicker td.in-range {
+  background-color: #df5d43 !important;
+  color: #fff !important;
 }
