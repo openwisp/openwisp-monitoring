@@ -1009,4 +1009,70 @@ INVALID_PARAMS = [
             'udp': {'bitrate': 50, 'length': 9595},
         },
     },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'parallel': '12',
+            'connect_timeout': 2000000,
+            'blockcount': '100K',
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': 50, 'length': 9595},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'parallel': 0,
+            'connect_timeout': 2000000,
+            'blockcount': '100K',
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': 50, 'length': 9595},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'parallel': 250,
+            'connect_timeout': 2000000,
+            'blockcount': '100K',
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': 50, 'length': 9595},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'bidirectional': 'true',
+            'connect_timeout': 2000000,
+            'blockcount': '100K',
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': 50, 'length': 9595},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'reverse': 'false',
+            'connect_timeout': 2000000,
+            'blockcount': '100K',
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': 50, 'length': 9595},
+        },
+    },
+    {
+        'host': ['test.openwisp.io'],
+        'client_options': {
+            'port': 5201,
+            'window': 0,
+            'connect_timeout': 2000000,
+            'blockcount': '100K',
+            'tcp': {'bitrate': '10M'},
+            'udp': {'bitrate': 50, 'length': 9595},
+        },
+    },
 ]

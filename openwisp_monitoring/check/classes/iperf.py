@@ -46,34 +46,64 @@ DEFAULT_IPERF_CHECK_CONFIG = {
                 'maximum': 65535,
             },
             'time': {
-                'type': 'integer',
-                # Sets the interval time in seconds
+                # sets the interval time in seconds
                 # between periodic bandwidth, jitter, and loss reports
+                'type': 'integer',
                 'default': 10,
                 'minimum': 1,
                 # arbitrary chosen to avoid slowing down the queue (30min)
                 'maximum': 1800,
             },
             'bytes': {
-                'type': 'string',
                 # number of bytes to transmit (instead of 'time')
+                'type': 'string',
                 # default to '' since we're using time for
                 # the test end condition instead of bytes
                 'default': '',
             },
             'blockcount': {
+                # number of blocks (packets) to transmit
+                # instead of 'time' or 'bytes'
                 'type': 'string',
-                # number of blocks (packets) to transmit (instead of 'time' or 'bytes')
                 # default to '' since we're using time for
                 # the test end condition instead of blockcount
                 'default': '',
             },
-            'connect_timeout': {
+            'window': {
+                # window size / socket buffer size
+                # this gets sent to the server and used on that side too
+                'type': 'string',
+                'default': '0',
+            },
+            'parallel': {
+                # number of parallel client streams to run
+                # note that iperf3 is single threaded
+                # so if you are CPU bound this will not yield higher throughput
                 'type': 'integer',
+                'default': 1,
+                # max, min parallel streams chosen from iperf3 docs
+                'minimum': 1,
+                'maximum': 128,
+            },
+            'reverse': {
+                # reverse the direction of a test
+                # the server sends data to the client
+                'type': 'boolean',
+                'default': False,
+            },
+            'bidirectional': {
+                # test in both directions (normal and reverse)
+                # with both the client and server sending
+                # and receiving data simultaneously
+                'type': 'boolean',
+                'default': False,
+            },
+            'connect_timeout': {
                 # set  timeout  for establishing the initial
                 # control connection to the server, in milliseconds (ms)
                 # providing a shorter value (ex. 1 ms) may
                 # speed up detection of a down iperf3 server
+                'type': 'integer',
                 'default': 1,
                 'minimum': 1,
                 # arbitrary chosen to avoid slowing down the queue (1000 sec)
@@ -83,13 +113,13 @@ DEFAULT_IPERF_CHECK_CONFIG = {
                 'type': 'object',
                 'properties': {
                     'bitrate': {
-                        'type': 'string',
                         # set target bitrate to n bits/sec
+                        'type': 'string',
                         'default': '0',
                     },
                     'length': {
-                        'type': 'string',
                         # length of buffer to read or write
+                        'type': 'string',
                         # for TCP tests, the default value is 128KB
                         'default': '128K',
                     },
@@ -101,15 +131,15 @@ DEFAULT_IPERF_CHECK_CONFIG = {
                     'bitrate': {
                         'type': 'string',
                         # set target bitrate to n bits/sec
-                        # 10 Mbps
+                        # 30 Mbps
                         'default': '30M',
                     },
                     'length': {
-                        'type': 'string',
                         # iperf3 tries to dynamically determine a
                         # reasonable sending size based on the path MTU
                         # if that cannot be determined it uses 1460 bytes
-                        'default': '',
+                        'type': 'string',
+                        'default': '0',
                     },
                 },
             },
@@ -156,6 +186,7 @@ class Iperf(BaseCheck):
             org_id = str(self.related_object.organization.id)
             self.validate_params(params=iperf_config[org_id])
 
+        username = self._get_param('username', 'username.default')
         port = self._get_param(
             'client_options.port', 'client_options.properties.port.default'
         )
@@ -167,6 +198,19 @@ class Iperf(BaseCheck):
         )
         blockcount = self._get_param(
             'client_options.blockcount', 'client_options.properties.blockcount.default'
+        )
+        window = self._get_param(
+            'client_options.window', 'client_options.properties.window.default'
+        )
+        parallel = self._get_param(
+            'client_options.parallel', 'client_options.properties.parallel.default'
+        )
+        reverse = self._get_param(
+            'client_options.reverse', 'client_options.properties.reverse.default'
+        )
+        bidirectional = self._get_param(
+            'client_options.bidirectional',
+            'client_options.properties.bidirectional.default',
         )
         ct = self._get_param(
             'client_options.connect_timeout',
@@ -188,6 +232,7 @@ class Iperf(BaseCheck):
             'client_options.udp.length',
             'client_options.properties.udp.properties.length.default',
         )
+
         # by default we use 'time' param
         # for the iperf test end condition
         test_end_condition = f'-t {time}'
@@ -199,7 +244,13 @@ class Iperf(BaseCheck):
         # use it instead of 'time' or 'bytes'
         if blockcount:
             test_end_condition = f'-k {blockcount}'
-        username = self._get_param('username', 'username.default')
+        # only one reverse condition can be use
+        # reverse or bidirectional not both
+        rev_or_bidir = ''
+        if reverse:
+            rev_or_bidir = '--reverse'
+        if bidirectional:
+            rev_or_bidir = '--bidir'
         device_connection = self._get_device_connection()
         if not device_connection:
             logger.warning(
@@ -213,10 +264,14 @@ class Iperf(BaseCheck):
             )
             return
         server = self._get_iperf_servers()[0]
-        command_tcp = f'iperf3 -c {server} -p {port} {test_end_condition} \
-        --connect-timeout {ct} -b {tcp_bitrate} -l {tcp_length} -J'
-        command_udp = f'iperf3 -c {server} -p {port} {test_end_condition} \
-        --connect-timeout {ct} -b {udp_bitrate} -l {udp_length} -u -J'
+        command_tcp = (
+            f'iperf3 -c {server} -p {port} {test_end_condition} --connect-timeout {ct} '
+            f'-b {tcp_bitrate} -l {tcp_length} -w {window} -P {parallel} {rev_or_bidir} -J'
+        )
+        command_udp = (
+            f'iperf3 -c {server} -p {port} {test_end_condition} --connect-timeout {ct} '
+            f'-b {udp_bitrate} -l {udp_length} -w {window} -P {parallel} {rev_or_bidir} -u -J'
+        )
 
         # All three parameters ie. username, password and rsa_public_key is required
         # for authentication to work, checking only username here
@@ -226,14 +281,18 @@ class Iperf(BaseCheck):
             rsa_public_key = self._get_compelete_rsa_key(key)
             rsa_public_key_path = '/tmp/iperf-public-key.pem'
 
-            command_tcp = f'echo "{rsa_public_key}" > {rsa_public_key_path} && \
-            IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} {test_end_condition} \
-            --username "{username}" --rsa-public-key-path {rsa_public_key_path} \
-            --connect-timeout {ct} -b {tcp_bitrate} -l {tcp_length} -J'
+            command_tcp = (
+                f'echo "{rsa_public_key}" > {rsa_public_key_path} && '
+                f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} {test_end_condition} '
+                f'--username "{username}" --rsa-public-key-path {rsa_public_key_path} --connect-timeout {ct} '
+                f'-b {tcp_bitrate} -l {tcp_length} -w {window} -P {parallel} {rev_or_bidir} -J'
+            )
 
-            command_udp = f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} {test_end_condition} \
-            --username "{username}" --rsa-public-key-path {rsa_public_key_path} \
-            --connect-timeout {ct} -b {udp_bitrate} -l {udp_length} -u -J'
+            command_udp = (
+                f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} {test_end_condition} '
+                f'--username "{username}" --rsa-public-key-path {rsa_public_key_path} --connect-timeout {ct} '
+                f'-b {udp_bitrate} -l {udp_length} -w {window} -P {parallel} {rev_or_bidir} -u -J'
+            )
 
             # If IPERF_CHECK_DELETE_RSA_KEY, remove rsa_public_key from the device
             if app_settings.IPERF_CHECK_DELETE_RSA_KEY:
@@ -303,7 +362,8 @@ class Iperf(BaseCheck):
 
     def _deep_get(self, dictionary, keys, default=None):
         """
-        Returns dict value using dot_key string ie.key1.key2_nested.key3_nested
+        Returns dict key value using dict &
+        it's dot_key string ie. key1.key2_nested.key3_nested
         if found otherwise returns default
         """
         return reduce(
