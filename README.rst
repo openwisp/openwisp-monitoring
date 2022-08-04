@@ -1212,6 +1212,8 @@ in `openwisp settings <https://github.com/openwisp/openwisp-monitoring/blob/mast
                BQIDAQAB
                """
            ),
+           # relative to /root directory
+           'rsa_public_key_path' : '/tmp/iperf-public-key.pem',
            'client_options': {
                'port': 5209,
                'udp': {'bitrate': '20M'},
@@ -1326,32 +1328,6 @@ created automatically for newly registered devices. It's enabled by default.
 This setting allows you to choose whether `iperf <#iperf-1>`_ checks should be
 created automatically for newly registered devices. It's disabled by default.
 
-``OPENWISP_MONITORING_IPERF_CHECK_RSA_KEY_PATH``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-+--------------+-------------------------------+
-| **type**:    | ``str``                       |
-+--------------+-------------------------------+
-| **default**: | ``/tmp/iperf-rsa-public.pem`` |
-+--------------+-------------------------------+
-
-This setting allows you to choose RSA public key path (relative to ``/root``)
-for `iperf check running with authentication <#configure-iperf-check-for-authentication>`_.
-
-``OPENWISP_MONITORING_IPERF_CHECK_DELETE_RSA_KEY``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-+--------------+-------------------------------+
-| **type**:    | ``bool``                      |
-+--------------+-------------------------------+
-| **default**: | ``True``                      |
-+--------------+-------------------------------+
-
-This setting allows you to set whether 
-`iperf check RSA public key <#configure-iperf-check-for-authentication>`_ will be deleted from 
-`OPENWISP_MONITORING_IPERF_CHECK_RSA_KEY_PATH <#OPENWISP_MONITORING_IPERF_CHECK_RSA_KEY_PATH>`_
-after successful completion of the check or not.
-
 ``OPENWISP_MONITORING_IPERF_CHECK_CONFIG``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1377,6 +1353,20 @@ For example, if you want to change only the **port number** of
            },
        }
    }
+
+``OPENWISP_MONITORING_IPERF_CHECK_DELETE_RSA_KEY``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------------------------+
+| **type**:    | ``bool``                      |
++--------------+-------------------------------+
+| **default**: | ``True``                      |
++--------------+-------------------------------+
+
+This setting allows you to set whether 
+`iperf check RSA public key <#configure-iperf-check-for-authentication>`_ will be deleted from the path 
+defined in `OPENWISP_MONITORING_IPERF_CHECK_CONFIG <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_
+after successful completion of the check or not.
 
 ``OPENWISP_MONITORING_AUTO_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
