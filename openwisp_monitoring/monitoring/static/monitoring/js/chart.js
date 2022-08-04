@@ -199,7 +199,7 @@
                         options.line = {shape: 'hvh'};
                         options.fill = data.fill;
                     }
-                    if (options._connectPoints){
+                    if (options._connectPoints) {
                         options.mode = 'lines';
                     }
                 }
@@ -222,7 +222,7 @@
             }
 
             var xValuesRaw = options.x;
-            if(options._connectPoints) {
+            if (options._connectPoints) {
                 options.x = [];
             }
             // adjust text to be displayed in Y values
@@ -245,7 +245,7 @@
                 // prepare data shown in chart on hover
                 if (val === null) {
                     // filter 'y' null points from options.y
-                    if(options._connectPoints) {
+                    if (options._connectPoints) {
                         continue;
                     }
                     // set data to zero on gaps unless
@@ -265,7 +265,7 @@
                 }
                 options.y.push(val);
                 // push only those 'x' points to options.x which has non null 'y' points
-                if(options._connectPoints){
+                if (options._connectPoints) {
                     options.x.push(xValuesRaw[c]);
                 }
                 options.hovertemplate.push(hovertemplate);
@@ -283,10 +283,10 @@
             for (i=0; i < charts.length; i++) {
                 yRawVal = data.traces[i][1];
             }
-            if(data.connect_points){
+            if (data.connect_points) {
                 yRawVal = yValues;
             }
-            if(unit.includes('+')){
+            if (unit.includes('+')) {
                 chartUnit = unit.split('+')[1];
             }
             adaptiveFilterPoints(charts, layout, yRawVal, chartUnit);
@@ -366,7 +366,7 @@
                 percircles.push(percircleOptions);
 
                 if (unit.includes('adaptive_prefix')) {
-                    if(unit.includes('+')){
+                    if (unit.includes('+')) {
                         chartUnit = unit.split('+')[1];
                     }
                     adaptiveFilterSummary(i, percircles, value, chartUnit);
