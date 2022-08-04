@@ -561,7 +561,6 @@ DEFAULT_METRICS = {
             'lost_packets',
             'lost_percent',
         ],
-        'alert_on_related_field': 'jitter',
         'charts': {
             'bandwidth': {
                 'type': 'scatter',
@@ -658,33 +657,6 @@ DEFAULT_METRICS = {
                 'colors': [DEFAULT_COLORS[3]],
             },
         },
-        'alert_settings': {'operator': '>', 'threshold': 5, 'tolerance': 0},
-        'notification': {
-            'problem': {
-                'verbose_name': 'Iperf PROBLEM',
-                'verb': _('iperf test jitter is greater than normal value'),
-                'level': 'warning',
-                'email_subject': _(
-                    '[{site.name}] PROBLEM: {notification.target} {notification.verb}'
-                ),
-                'message': _(
-                    'The device [{notification.target}]({notification.target_link}) '
-                    '{notification.verb}.'
-                ),
-            },
-            'recovery': {
-                'verbose_name': 'Iperf RECOVERY',
-                'verb': _('iperf test jitter now back to normal'),
-                'level': 'info',
-                'email_subject': _(
-                    '[{site.name}] RECOVERY: {notification.target} {notification.verb}'
-                ),
-                'message': _(
-                    'The device [{notification.target}]({notification.target_link}) '
-                    '{notification.verb}.'
-                ),
-            },
-        },
     },
 }
 
@@ -698,10 +670,6 @@ def _validate_metric_configuration(metric_config):
     assert 'name' in metric_config
     assert 'key' in metric_config
     assert 'field_name' in metric_config
-    if 'alert_on_related_field' in metric_config:
-        assert (
-            metric_config['alert_on_related_field'] in metric_config['related_fields']
-        )
 
 
 def _validate_chart_configuration(chart_config):
