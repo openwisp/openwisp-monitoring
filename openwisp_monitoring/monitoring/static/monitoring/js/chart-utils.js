@@ -70,7 +70,6 @@ django.jQuery(function ($) {
             localLoadingOverlay.show();
           },
           success: function (data) {
-            isCustom = false;
             localLoadingOverlay.hide();
             if (data.charts.length) {
               chartContents.show();
@@ -130,7 +129,7 @@ django.jQuery(function ($) {
         if ("Custom Range" == $(this).attr('data-range-key')) {
           var start_custom, end_custom, dateSpan;
           $("#reportrange").on('apply.daterangepicker', function (ev, picker) {
-            start_custom = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
+            start_custom = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss')).subtract(1, 'days');
             end_custom = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
             dateSpan = end_custom.diff(start_custom, 'days') + 'd';
             if(dateSpan == '0d'){
