@@ -68,7 +68,7 @@ DEFAULT_IPERF_CHECK_CONFIG = {
                 'properties': {
                     'bitrate': {
                         'type': 'string',
-                        'default': '10M',
+                        'default': '30M',
                     }
                 },
             },
@@ -344,11 +344,9 @@ class Iperf(BaseCheck):
         Creates iperf related charts
         """
         charts = [
-            'bandwidth_tcp',
-            'transfer_tcp',
+            'bandwidth',
+            'transfer',
             'retransmits',
-            'bandwidth_udp',
-            'transfer_udp',
             'jitter',
             'datagram',
             'datagram_loss',

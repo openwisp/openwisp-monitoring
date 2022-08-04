@@ -69,7 +69,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         self._EXPECTED_COMMAND_CALLS = [
             call(dc, 'iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 -b 0 -J'),
             call(
-                dc, 'iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 -b 10M -u -J'
+                dc, 'iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 -b 30M -u -J'
             ),
         ]
         self._EXPECTED_WARN_CALLS = [
@@ -102,7 +102,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             call(
                 dc,
                 f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p 5201 -t 10 \
-            --username "{username}" --rsa-public-key-path {rsa_key_path} -b 10M -u -J && rm {rsa_key_path}',
+            --username "{username}" --rsa-public-key-path {rsa_key_path} -b 30M -u -J && rm {rsa_key_path}',
             ),
         ]
 
@@ -412,7 +412,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             self.assertEqual(result['jitter'], udp_result['jitter_ms'])
             self.assertEqual(result['total_packets'], udp_result['packets'])
             self.assertEqual(result['lost_percent'], udp_result['lost_percent'])
-            self.assertEqual(Chart.objects.count(), 10)
+            self.assertEqual(Chart.objects.count(), 8)
             self.assertEqual(Check.objects.count(), 3)
 
             iperf_metric = Metric.objects.get(key='iperf')
@@ -446,7 +446,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
             result = check.perform_check(store=False)
             self._assert_iperf_fail_result(result)
-            self.assertEqual(Chart.objects.count(), 10)
+            self.assertEqual(Chart.objects.count(), 8)
             self.assertEqual(Metric.objects.count(), 3)
             self.assertEqual(mock_exec_command.call_count, 2)
             self.assertEqual(mock_get_iperf_servers.call_count, 1)
@@ -482,7 +482,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             self.assertEqual(result['jitter'], 0.0)
             self.assertEqual(result['total_packets'], 0)
             self.assertEqual(result['lost_percent'], 0.0)
-            self.assertEqual(Chart.objects.count(), 10)
+            self.assertEqual(Chart.objects.count(), 8)
             self.assertEqual(Metric.objects.count(), 3)
             self.assertEqual(mock_exec_command.call_count, 2)
             self.assertEqual(mock_get_iperf_servers.call_count, 1)
@@ -509,7 +509,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             self.assertEqual(result['jitter'], udp_result['jitter_ms'])
             self.assertEqual(result['total_packets'], udp_result['packets'])
             self.assertEqual(result['lost_percent'], udp_result['lost_percent'])
-            self.assertEqual(Chart.objects.count(), 10)
+            self.assertEqual(Chart.objects.count(), 8)
             self.assertEqual(Metric.objects.count(), 3)
             self.assertEqual(mock_exec_command.call_count, 2)
             self.assertEqual(mock_get_iperf_servers.call_count, 1)

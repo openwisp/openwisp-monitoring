@@ -825,33 +825,22 @@ Iperf
 +--------------------+---------------------------------------------------------------------------------------------------------------------------+
 | **configuration**: | ``iperf``                                                                                                                 |
 +--------------------+---------------------------------------------------------------------------------------------------------------------------+
-| **charts**:        | | ``bandwidth_tcp``, ``transfer_tcp``, ``retransmits``, ``bandwidth_udp``                                                 |
-|                    | | ``transfer_udp``, ``jitter``, ``datagram``, ``datagram_loss``                                                           |
+| **charts**:        | ``bandwidth``, ``transfer``, ``retransmits``, ``jitter``, ``datagram``, ``datagram_loss``                                 |
 +--------------------+---------------------------------------------------------------------------------------------------------------------------+
 
-**Bandwidth (TCP)**:
+**Bandwidth**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/bandwidth-tcp.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/bandwidth.png
   :align: center
 
-**Transfer (TCP)**:
+**Transferred Data**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/transfer-tcp.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/transferred-data.png
   :align: center
 
 **Retransmits**:
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/retransmits.png
-  :align: center
-
-**Bandwidth (UDP)**:
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/bandwidth-udp.png
-  :align: center
-
-**Transfer (UDP)**:
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/transfer-udp.png
   :align: center
 
 **Jitter**:
@@ -911,7 +900,7 @@ Example taken from the default configuration of the traffic chart:
         'unit': 'adaptive_prefix+B',
     },
 
-    'bandwidth_tcp': {
+    'bandwidth': {
         # adaptive unit for bandwidth related charts
         # bandwidth measured in 'bps'(bits/sec)
         # unit bps, Kbps, Mbps, Gbps, Tbps
@@ -1029,8 +1018,9 @@ This check is **disabled by default**. You can enable auto creation of this chec
 
 It also supports tuning of various parameters.
 
-You can also change the parameters used for iperf checks (e.g. timing, port, username, password, rsa_publc_key etc) 
-using the `OPENWISP_MONITORING_IPERF_CHECK_CONFIG <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_ setting.
+You can also change the parameters used for iperf checks (e.g. timing, port, username, 
+password, rsa_publc_key etc) using the `OPENWISP_MONITORING_IPERF_CHECK_CONFIG 
+<#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_ setting.
 
 Usage Instructions
 ------------------
@@ -1063,7 +1053,8 @@ Follow the steps in `"How to configure push updates" section of the openwisp-con
 3. Configure Iperf settings
 ###########################
 
-Configure iperf servers in `openwisp settings <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_ , 
+Configure iperf servers in `openwisp settings 
+<https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_ , 
 The host can be specified by hostname, IPv4 literal, or IPv6 literal.
 
 For example.
@@ -1109,7 +1100,8 @@ Add celery beat configuration for iperf check in `openwisp settings
         }
     }
 
-**Note:** We recommended to configure this check for night or during non peak traffic times to not interfere with standard traffic.
+**Note:** We recommended to configure this check for night or 
+during non peak traffic times to not interfere with standard traffic.
 
 4. Run the check
 ################
@@ -1971,7 +1963,7 @@ You can also use ``alert_on_related_field`` key in metric configuration
 which allows ``AlertSettings`` to use ``related_field`` as value to check ``threshold`` instead
 of default ``field_name`` key. A real world example of this can be seen in 
 `Iperf metric configuration 
-<https://github.com/openwisp/openwisp-monitoring/blob/issue-385/iperf-check/openwisp_monitoring/monitoring/configuration.py#L546-L700>`_,
+<https://github.com/openwisp/openwisp-monitoring/blob/master/openwisp_monitoring/monitoring/configuration.py#L546-L700>`_,
 Where we used ``jitter`` (related_field) for alerts.
 
 **Note**: It will raise ``ImproperlyConfigured`` exception if a metric configuration
@@ -2283,7 +2275,7 @@ Management commands
 ``run_checks``
 ~~~~~~~~~~~~~~
 
-This command will execute all the `available checks <#available-checks>`_ for all the devices. 
+This command will execute all the `available checks <#available-checks>`_ for all the devices.
 By default checks are run periodically by *celery beat*. You can learn more
 about this in `Setup <#setup-integrate-in-an-existing-django-project>`_.
 
