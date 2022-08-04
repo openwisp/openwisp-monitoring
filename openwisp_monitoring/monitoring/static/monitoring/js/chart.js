@@ -199,6 +199,9 @@
                         options.line = {shape: 'hvh'};
                         options.fill = data.fill;
                     }
+                    if (options._connectPoints){
+                        options.mode = 'lines';
+                    }
                 }
             }
             if (data.colorscale) {
