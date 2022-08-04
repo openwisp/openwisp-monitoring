@@ -6,6 +6,17 @@ Version 1.1.0 [unreleased]
 
 WIP
 
+Version 1.0.2 [2022-08-04]
+--------------------------
+
+Bugfixes
+~~~~~~~~
+
+- Fixed migrations which create checks for existing devices;
+  this problem was happening to OpenWISP instances which were
+  deployed without OpenWISP Monitoring and then enabled
+  the monitoring features
+
 Version 1.0.1 [2022-07-01]
 --------------------------
 
