@@ -178,11 +178,14 @@
     width: 909px !important;
   }
 }
-.daterangepicker tr td.active, .daterangepicker tr td.active:hover {
-  background-color: #df5d43 !important;
-  color: #fff !important;
-}
+.daterangepicker td.active, .daterangepicker td.active:hover {
+  background-color: #df5d43;
+  border-color: transparent;
+  color: #fff;
+} 
 .daterangepicker td.in-range {
-  background-color: #df5d43 !important;
-  color: #fff !important;
+  background-color: #df5d43;
+  border-color: transparent;
+  color: white;
+  border-radius: 0;
 }

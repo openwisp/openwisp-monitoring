@@ -81,10 +81,12 @@ class MonitoringApiViewMixin:
                         request, 'End date should be greater than start date'
                     )
             if end_date is not None:
-                end_date = dt.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S').replace(
-                    tzinfo=utc
-                )
-                Chart.END_DATE = end_date
+                timezone = request.query_params.get('timezone', settings.TIME_ZONE)
+                local = tz(timezone)
+                end_date = dt.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
+                local_dt = local.localize(end_date)
+                utc_dt = local_dt.astimezone(pytz.utc)
+                Chart.END_DATE = utc_dt
         time = request.query_params.get('time', Chart.DEFAULT_TIME)
         if time not in Chart.GROUP_MAP.keys():
             raise ValidationError('Time range not supported')

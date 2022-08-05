@@ -129,10 +129,10 @@ django.jQuery(function ($) {
         if ("Custom Range" == $(this).attr('data-range-key')) {
           var start_custom, end_custom, dateSpan;
           $("#reportrange").on('apply.daterangepicker', function (ev, picker) {
-            start_custom = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss')).subtract(1, 'days');
+            start_custom = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
             end_custom = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
             dateSpan = end_custom.diff(start_custom, 'days') + 'd';
-            if(dateSpan == '0d'){
+            if (dateSpan == '0d') {
               dateSpan = '1d';
             }
             isCustom = true;
