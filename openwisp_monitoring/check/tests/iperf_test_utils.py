@@ -832,11 +832,7 @@ Client specific:
 
 iperf3 homepage at: https://software.es.net/iperf/
 Report bugs to:     https://github.com/esnet/iperf
-iperf3: parameter error - you must specify username (max 20 chars), password (max 20 chars) and a path to a valid public rsa client to be used
-
-Keyword arguments:
-argument -- description
-Return: return_description"""
+iperf3: parameter error - you must specify username (max 20 chars), password (max 20 chars) and a path to a valid public rsa client to be used"""
 
 TEST_RSA_KEY = """MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwuEm+iYrfSWJOupy6X3N 
 dxZvUCxvmoL3uoGAs0O0Y32unUQrwcTIxudy38JSuCccD+k2Rf8S4WuZSiTxaoea 

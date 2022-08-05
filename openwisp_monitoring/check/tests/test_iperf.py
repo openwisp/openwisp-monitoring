@@ -90,7 +90,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         test_prefix = '-----BEGIN PUBLIC KEY-----\n'
         test_suffix = '\n-----END PUBLIC KEY-----'
         key = config[org_id]['rsa_public_key']
-        rsa_key_path = config[org_id]['rsa_public_key_path']
+        rsa_key_path = '/tmp/iperf-public-key.pem'
 
         self._EXPECTED_COMMAND_CALLS = [
             call(
@@ -172,7 +172,6 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             'username': 'openwisp-test-user',
             'password': 'openwisp_pass',
             'rsa_public_key': TEST_RSA_KEY,
-            'rsa_public_key_path': rsa_key_path,
             'client_options': {
                 'port': 6201,
                 'time': 20,
@@ -187,6 +186,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         username = test_params['username']
         password = test_params['password']
         key = test_params['rsa_public_key']
+        rsa_key_path = '/tmp/iperf-public-key.pem'
         check.params = test_params
         check.save()
         self._EXPECTED_COMMAND_CALLS = [
@@ -367,16 +367,14 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 org_id: {
                     'username': 'test',
                     'password': 'testpass',
-                    'rsa_public_key': TEST_RSA_KEY,
-                    'rsa_public_key_path': '/invalid_path/iperf-rsa-public.pem',
+                    'rsa_public_key': 'INVALID_RSA_KEY',
                 }
             }
             with patch.object(app_settings, 'IPERF_CHECK_CONFIG', iperf_config):
-                dir_error = "ash: can't create /invalid_path/iperf-rsa-public.pem: nonexistent directory"
-                mock_exec_command.side_effect = [(dir_error, 1), (PARAM_ERROR, 1)]
+                mock_exec_command.side_effect = [(PARAM_ERROR, 1), (PARAM_ERROR, 1)]
                 EXPECTED_WARN_CALLS = [
                     call(
-                        f'Iperf check failed for "{self.device}", error - {dir_error}'
+                        f'Iperf check failed for "{self.device}", error - {PARAM_ERROR}'
                     ),
                     call(
                         f'Iperf check failed for "{self.device}", error - {PARAM_ERROR}'
@@ -538,7 +536,6 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 'username': 'test',
                 'password': 'testpass',
                 'rsa_public_key': TEST_RSA_KEY,
-                'rsa_public_key_path': '/tmp/test-rsa.pem',
             }
         }
         iperf_conf_wrong_pass = {
@@ -546,7 +543,6 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 'username': 'test',
                 'password': 'wrongpass',
                 'rsa_public_key': TEST_RSA_KEY,
-                'rsa_public_key_path': '/tmp/test-rsa.pem',
             }
         }
         iperf_conf_wrong_user = {
@@ -554,7 +550,6 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 'username': 'wronguser',
                 'password': 'testpass',
                 'rsa_public_key': TEST_RSA_KEY,
-                'rsa_public_key_path': '/tmp/test-rsa.pem',
             }
         }
         auth_error = "test authorization failed"

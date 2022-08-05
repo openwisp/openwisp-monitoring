@@ -1212,8 +1212,6 @@ in `openwisp settings <https://github.com/openwisp/openwisp-monitoring/blob/mast
                BQIDAQAB
                """
            ),
-           # relative to /root directory
-           'rsa_public_key_path' : '/tmp/iperf-public-key.pem',
            'client_options': {
                'port': 5209,
                'udp': {'bitrate': '20M'},
@@ -1364,9 +1362,8 @@ For example, if you want to change only the **port number** of
 +--------------+-------------------------------+
 
 This setting allows you to set whether 
-`iperf check RSA public key <#configure-iperf-check-for-authentication>`_ will be deleted from the path 
-defined in `OPENWISP_MONITORING_IPERF_CHECK_CONFIG <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_
-after successful completion of the check or not.
+`iperf check RSA public key <#configure-iperf-check-for-authentication>`_ 
+will be deleted after successful completion of the check or not.
 
 ``OPENWISP_MONITORING_AUTO_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -35,10 +35,6 @@ DEFAULT_IPERF_CHECK_CONFIG = {
         'type': 'string',
         'default': '',
     },
-    'rsa_public_key_path': {
-        'type': 'string',
-        'default': '/tmp/iperf-rsa-public.pem',
-    },
     'client_options': {
         'type': 'object',
         'properties': {
@@ -156,9 +152,7 @@ class Iperf(BaseCheck):
             password = self._get_param('password', 'password.default')
             key = self._get_param('rsa_public_key', 'rsa_public_key.default')
             rsa_public_key = self._get_compelete_rsa_key(key)
-            rsa_public_key_path = self._get_param(
-                'rsa_public_key_path', 'rsa_public_key_path.default'
-            )
+            rsa_public_key_path = '/tmp/iperf-public-key.pem'
 
             command_tcp = f'echo "{rsa_public_key}" > {rsa_public_key_path} && \
             IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
