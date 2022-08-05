@@ -116,7 +116,6 @@ django.jQuery(function ($) {
       baseUrl = baseUrl.replace('time=', 'timezone=' + timezone + '&time=');
       // ignore failures (older browsers do not support this)
     } catch (e) {}
-    loadCharts('1d' , true);
     var dateTimePicker = $('.ranges li');
       dateTimePicker.click(function () {
         var timeRange = $(this).attr('data-time');
