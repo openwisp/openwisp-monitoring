@@ -11,8 +11,16 @@ from influxdb.exceptions import InfluxDBClientError, InfluxDBServerError
 from pytz import timezone as tz
 from swapper import load_model
 
-from openwisp_monitoring.device.settings import SHORT_RETENTION_POLICY
-from openwisp_monitoring.device.utils import SHORT_RP, manage_short_retention_policy
+from openwisp_monitoring.device.settings import (
+    DEFAULT_RETENTION_POLICY,
+    SHORT_RETENTION_POLICY,
+)
+from openwisp_monitoring.device.utils import (
+    DEFAULT_RP,
+    SHORT_RP,
+    manage_default_retention_policy,
+    manage_short_retention_policy,
+)
 from openwisp_monitoring.monitoring.tests import TestMonitoringMixin
 from openwisp_monitoring.settings import MONITORING_TIMESERIES_RETRY_OPTIONS
 from openwisp_utils.tests import capture_stderr
@@ -183,12 +191,15 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
 
     def test_retention_policy(self):
         manage_short_retention_policy()
+        manage_default_retention_policy()
         rp = timeseries_db.get_list_retention_policies()
         self.assertEqual(len(rp), 2)
+        self.assertEqual(rp[0]['name'], DEFAULT_RP)
+        self.assertEqual(rp[0]['default'], True)
+        self.assertEqual(rp[0]['duration'], DEFAULT_RETENTION_POLICY)
         self.assertEqual(rp[1]['name'], SHORT_RP)
         self.assertEqual(rp[1]['default'], False)
-        duration = SHORT_RETENTION_POLICY
-        self.assertEqual(rp[1]['duration'], duration)
+        self.assertEqual(rp[1]['duration'], SHORT_RETENTION_POLICY)
 
     def test_query_set(self):
         c = self._create_chart(configuration='histogram')
