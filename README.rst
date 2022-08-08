@@ -87,7 +87,9 @@ Available Features
   `RAM usage <#memory-usage>`_, `CPU load <#cpu-load>`_, `flash/disk usage <#disk-usage>`_,
   mobile signal (LTE/UMTS/GSM `signal strength <#mobile-signal-strength>`_,
   `signal quality <#mobile-signal-quality>`_,
-  `access technology in use <#mobile-access-technology-in-use>`_)
+  `access technology in use <#mobile-access-technology-in-use>`_), `bandwidth <#iperf>`_,
+  `transferred data <#iperf>`_, `restransmits <#iperf>`_, `jitter <#iperf>`_,
+  `datagram <#iperf>`_, `datagram loss <#iperf>`_
 * Maintains a record of `WiFi sessions <#monitoring-wifi-sessions>`_ with clients'
   MAC address and vendor, session start and stop time and connected device
   along with other information
@@ -105,6 +107,8 @@ Available Features
 * Extensible metrics and charts: it's possible to define new metrics and new charts
 * API to retrieve the chart metrics and status information of each device
   based on `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_
+* `Iperf check <#iperf-1>`_ that provides network performance measurements such as maximum
+  achievable bandwidth, jitter, datagram loss etc of the openwrt device using `iperf3 utility <https://iperf.fr/>`_
 
 ------------
 
@@ -857,6 +861,9 @@ Iperf
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/datagram-loss.png
   :align: center
+
+For more info on how to configure and use Iperf, please refer to
+`iperf check usage instructions <#iperf-check-usage-instructions>`_.
 
 **Note:** Iperf charts uses ``connect_points=True`` in
 `default chart configuration <#openwisp_monitoring_charts>`_ that joins it's individual chart data points.
