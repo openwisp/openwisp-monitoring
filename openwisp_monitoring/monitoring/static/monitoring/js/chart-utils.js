@@ -1,5 +1,7 @@
 'use strict';
 const timeRangeKey = 'ow2-chart-time-range';
+const startCustomDate = 'ow2-chart-start-time';
+const endCustomDate = 'ow2-chart-end-time';
 
 django.jQuery(function ($) {
   $(document).ready(function () {
@@ -14,6 +16,8 @@ django.jQuery(function ($) {
             startCustom = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
             endCustom = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
             custom = endCustom.diff(startCustom, 'days') + 'd';
+            localStorage.setItem(startCustomDate, startCustom.format('MMMM D, YYYY'));
+            localStorage.setItem(endCustomDate, endCustom.format('MMMM D, YYYY'));
           });
         $('#reportrange span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
         $("[data-range-key='1 day']").attr('data-time', '1d');
@@ -108,6 +112,7 @@ django.jQuery(function ($) {
     }
     window.triggerChartLoading = function () {
       var range = localStorage.getItem(timeRangeKey) || defaultTimeRange;
+      $('#reportrange span').html(localStorage.getItem(startCustomDate) + ' - ' + localStorage.getItem(endCustomDate));
       $('.daterangepicker .ranges ul li[data-time=' + range + ']').trigger('click');
     };
     // try adding the browser timezone to the querystring
