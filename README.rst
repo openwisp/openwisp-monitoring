@@ -951,7 +951,7 @@ Settings
 | **default**: | ``26280h0m0s`` (3 years) |
 +--------------+--------------------------+
 
-The default retention policy that applies to all the data.
+The default retention policy that applies to the timeseries data.
 
 ``OPENWISP_MONITORING_SHORT_RETENTION_POLICY``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
