@@ -6,7 +6,6 @@ from io import StringIO
 
 import pytz
 from django.conf import settings
-from django.contrib import messages
 from django.http import HttpResponse
 from pytz import timezone as tz
 from pytz.exceptions import UnknownTimeZoneError
@@ -37,14 +36,6 @@ class MonitoringApiViewMixin:
         """
         return {}
 
-    def get_date_range(self, request, *args, **kwargs):
-        start_date = request.GET.get('start')
-        end_date = request.GET.get('end')
-        if start_date and end_date:
-            start_date = start_date.replace('+', '').replace('.', '')
-            end_date = end_date.replace('+', '').replace('.', '')
-        return start_date, end_date
-
     def iscustom(self, request, *args, **kwargs):
         custom = request.GET.get('custom')
         return custom == 'true'
@@ -64,7 +55,6 @@ class MonitoringApiViewMixin:
                 value = str(round((daterange / 28) * 24)) + 'h'
             elif daterange == 365:
                 value = '24h'
-
         daterange = str(daterange) + 'd'
         if len(Chart.GROUP_MAP.items()) > 5:
             Chart.GROUP_MAP.popitem()
@@ -74,19 +64,13 @@ class MonitoringApiViewMixin:
         daterange = request.GET.get('time')
         if daterange and self.iscustom(request):
             self.get_group_map(daterange)
-            start_date, end_date = self.get_date_range(request, *args, **kwargs)
-            if start_date is not None and end_date is not None:
-                if end_date < start_date:
-                    messages.error(
-                        request, 'End date should be greater than start date'
-                    )
+            end_date = request.GET.get('end')
             if end_date is not None:
                 timezone = request.query_params.get('timezone', settings.TIME_ZONE)
                 local = tz(timezone)
-                end_date = dt.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
-                local_dt = local.localize(end_date)
-                utc_dt = local_dt.astimezone(pytz.utc)
-                Chart.END_DATE = utc_dt
+                Chart.END_DATE = local.localize(
+                    dt.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
+                ).astimezone(pytz.utc)
         time = request.query_params.get('time', Chart.DEFAULT_TIME)
         if time not in Chart.GROUP_MAP.keys():
             raise ValidationError('Time range not supported')

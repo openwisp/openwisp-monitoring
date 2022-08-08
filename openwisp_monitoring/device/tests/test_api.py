@@ -304,6 +304,81 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(r.status_code, 200)
         self.assertIsInstance(r.data['charts'], list)
 
+    def test_get_device_metrics_custom(self):
+        dd = self.create_test_data()
+        d = self.device_model.objects.get(pk=dd.pk)
+        expected_group_map = {
+            '1d': '10m',
+            '3d': '20m',
+            '7d': '1h',
+            '30d': '24h',
+            '365d': '24h',
+        }
+
+        expected_group_map.update({'2d': '10m'})
+        date_span = '2d'
+        api = (
+            '&time='
+            + date_span
+            + '&start=2022-08-08%2000:00:00&end=2022-08-09%2023:59:59&custom=true'
+        )
+        r = self.client.get(f'{self._url(d.pk, d.key)}{api}')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(Chart.GROUP_MAP, expected_group_map)
+
+        Chart.GROUP_MAP.popitem()
+        expected_group_map.popitem()
+
+        expected_group_map.update({'3d': '20m'})
+        date_span = '3d'
+        api = (
+            '&time='
+            + date_span
+            + '&start=2022-08-08%2000:00:00&end=2022-08-10%2023:59:59&custom=true'
+        )
+        r = self.client.get(f'{self._url(d.pk, d.key)}{api}')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(Chart.GROUP_MAP, expected_group_map)
+
+        expected_group_map.update({'21d': '3h'})
+        date_span = '21d'
+        api = (
+            '&time='
+            + date_span
+            + '&start=2022-07-01%2000:00:00&end=2022-07-22%2023:59:59&custom=true'
+        )
+        r = self.client.get(f'{self._url(d.pk, d.key)}{api}')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(Chart.GROUP_MAP, expected_group_map)
+
+        Chart.GROUP_MAP.popitem()
+        expected_group_map.popitem()
+
+        expected_group_map.update({'28d': '24h'})
+        date_span = '28d'
+        api = (
+            '&time='
+            + date_span
+            + '&start=2022-07-01%2000:00:00&end=2022-07-29%2023:59:59&custom=true'
+        )
+        r = self.client.get(f'{self._url(d.pk, d.key)}{api}')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(Chart.GROUP_MAP, expected_group_map)
+
+        Chart.GROUP_MAP.popitem()
+        expected_group_map.popitem()
+
+        expected_group_map.update({'365d': '24h'})
+        date_span = '365d'
+        api = (
+            '&time='
+            + date_span
+            + '&start=2021-08-08%2000:00:00&end=2022-08-09%2023:59:59&custom=true'
+        )
+        r = self.client.get(f'{self._url(d.pk, d.key)}{api}')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(Chart.GROUP_MAP, expected_group_map)
+
     def test_get_device_metrics_404(self):
         r = self.client.get(self._url('WRONG', 'MADEUP'))
         self.assertEqual(r.status_code, 404)
