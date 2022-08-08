@@ -858,7 +858,7 @@ Iperf
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/datagram-loss.png
   :align: center
 
-**Note:** Iperf charts uses ``connect_points=True`` in 
+**Note:** Iperf charts uses ``connect_points=True`` in
 `default chart configuration <#openwisp_monitoring_charts>`_ that joins it's individual chart data points.
 
 Dashboard Monitoring Charts
@@ -1010,54 +1010,58 @@ if there's anything that is not working as intended.
 Iperf
 ~~~~~
 
-This check provides network performance measurements such as maximum achievable bandwidth, 
-jitter, datagram loss etc of the device using `iperf3 utility <https://iperf.fr/>`_. 
+This check provides network performance measurements such as maximum achievable bandwidth,
+jitter, datagram loss etc of the device using `iperf3 utility <https://iperf.fr/>`_.
 
 This check is **disabled by default**. You can enable auto creation of this check by setting the
 `OPENWISP_MONITORING_AUTO_IPERF <#OPENWISP_MONITORING_AUTO_IPERF>`_ to ``True``.
 
 It also supports tuning of various parameters.
 
-You can also change the parameters used for iperf checks (e.g. timing, port, username, 
-password, rsa_publc_key etc) using the `OPENWISP_MONITORING_IPERF_CHECK_CONFIG 
+You can also change the parameters used for iperf checks (e.g. timing, port, username,
+password, rsa_publc_key etc) using the `OPENWISP_MONITORING_IPERF_CHECK_CONFIG
 <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_ setting.
 
-Usage Instructions
-------------------
+Iperf Check Usage Instructions
+------------------------------
 
-How to configure iperf check
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1. Make sure iperf is installed on the device
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-1. Register your device to OpenWISP
-###################################
-
-Register your device to OpenWISP and make sure `iperf3 openwrt package 
-<https://openwrt.org/packages/pkgdata/iperf3>`_ is installed on the device if not run :
+Register your device to OpenWISP and make sure the `iperf3 openwrt package
+<https://openwrt.org/packages/pkgdata/iperf3>`_ is installed on the device,
+eg:
 
 .. code-block:: shell
 
-    opkg install iperf3
+    opkg install iperf3  # if using without authentication
+    opkg install iperf3-ssl  # if using with authentication (read below for more info)
 
-2. Enable secure SSH access from OpenWISP to your devices
-#########################################################
+2. Ensure SSH access from OpenWISP is enabled on your devices
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Follow the steps in `"How to configure push updates" section of the openwisp-controller documentation 
-<https://openwisp.io/docs/user/configure-push-updates.html>`_ to allow SSH access to you device from OpenWISP.
+Follow the steps in `"How to configure push updates" section of the
+OpenWISP documentation
+<https://openwisp.io/docs/user/configure-push-updates.html>`_
+to allow SSH access to you device from OpenWISP.
 
-**Note:** Make sure device connection is enabled & working with right update strategy i.e. ``OpenWRT SSH``.
+**Note:** Make sure device connection is enabled
+& working with right update strategy i.e. ``OpenWRT SSH``.
 
 .. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/enable-openwrt-ssh.png
   :alt: Enable ssh access from openwisp to device
   :align: center
-  
-3. Configure Iperf settings
-###########################
 
-Configure iperf servers in `openwisp settings 
-<https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_ , 
+3. Set up and configure Iperf server settings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+After having deployed your Iperf servers, you need to
+configure the iperf settings on the django side of OpenWISP,
+see the `test project settings for reference
+<https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_.
+
 The host can be specified by hostname, IPv4 literal, or IPv6 literal.
-
-For example.
+Example:
 
 .. code-block:: python
 
@@ -1075,8 +1079,7 @@ For example.
        }
    }
 
-Add celery beat configuration for iperf check in `openwisp settings 
-<https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_
+The celery-beat configuration for the iperf check needs to be added too:
 
 .. code-block:: python
 
@@ -1087,7 +1090,6 @@ Add celery beat configuration for iperf check in `openwisp settings
     CELERY_TIMEZONE = TIME_ZONE
     CELERY_BEAT_SCHEDULE = {
         # Other celery beat configurations
-
         # Celery beat configuration for iperf check
         'run_iperf_checks': {
             'task': 'openwisp_monitoring.check.tasks.run_checks',
@@ -1100,30 +1102,34 @@ Add celery beat configuration for iperf check in `openwisp settings
         }
     }
 
-**Note:** We recommended to configure this check for night or 
-during non peak traffic times to not interfere with standard traffic.
+Once the changes are saved, you will need to restart all the processes.
+
+**Note:** We recommended to configure this check to run in non peak
+traffic times to not interfere with standard traffic.
 
 4. Run the check
-################
+~~~~~~~~~~~~~~~~
 
-This should happen automatically if you have celery running in the background. For testing, you can
-run this check manually using the `run_checks <#run_checks>`_ command. After that, you should see the
-iperf network measurements charts.
+This should happen automatically if you have celery-beat correctly
+configured and running in the background.
+For testing purposes, you can run this check manually using the
+`run_checks <#run_checks>`_ command.
+
+After that, you should see the iperf network measurements charts.
 
 .. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/iperf-charts.png
   :alt: Iperf network measurement charts
 
-
 Iperf authentication
 ~~~~~~~~~~~~~~~~~~~~
 
-By default iperf check runs without any kind of **authentication**, 
-in this section we will explain how to configure **RSA authentication** 
-between the **client** and the **server** to restrict connections 
+By default iperf check runs without any kind of **authentication**,
+in this section we will explain how to configure **RSA authentication**
+between the **client** and the **server** to restrict connections
 to authenticated clients.
 
-At Iperf server
-###############
+Server side
+###########
 
 1. Generate RSA keypair
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -1134,11 +1140,13 @@ At Iperf server
    openssl rsa -in private.pem -outform PEM -pubout -out public_key.pem
    openssl rsa -in private.pem -out private_key.pem -outform PEM
 
-After running the commands mentioned above, the public key will be stored in 
-``public_key.pem`` which will be used in **rsa_public_key** parameter 
-in `OPENWISP_MONITORING_IPERF_CHECK_CONFIG <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_ 
-and the private key will be contained in the file ``private_key.pem`` 
-which will be used with **--rsa-private-key-path** command option at iperf server.
+After running the commands mentioned above, the public key will be stored in
+``public_key.pem`` which will be used in **rsa_public_key** parameter
+in `OPENWISP_MONITORING_IPERF_CHECK_CONFIG
+<#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_
+and the private key will be contained in the file ``private_key.pem``
+which will be used with **--rsa-private-key-path** command option when
+starting the iperf server.
 
 2. Create user credentials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1164,14 +1172,17 @@ Add the above hash with username in ``credentials.csv``
 
    iperf3 -s --rsa-private-key-path ./private_key.pem --authorized-users-path ./credentials.csv
 
-At client (openwrt device)
-##########################
+Client side (OpenWrt device)
+############################
 
 1. Install iperf3-ssl
 ^^^^^^^^^^^^^^^^^^^^^
 
-Install `iperf3-ssl openwrt package <https://openwrt.org/packages/pkgdata/iperf3-ssl>`_ instead of normal
-`iperf3 openwrt package <https://openwrt.org/packages/pkgdata/iperf3>`_ which comes without any authentication.
+Install the `iperf3-ssl openwrt package
+<https://openwrt.org/packages/pkgdata/iperf3-ssl>`_
+instead of the normal
+`iperf3 openwrt package <https://openwrt.org/packages/pkgdata/iperf3>`_
+because the latter comes without support for authentication.
 
 You may also check your installed **iperf3 openwrt package** features:
 
@@ -1180,15 +1191,16 @@ You may also check your installed **iperf3 openwrt package** features:
    root@vm-openwrt:~ iperf3 -v
    iperf 3.7 (cJSON 1.5.2)
    Linux vm-openwrt 4.14.171 #0 SMP Thu Feb 27 21:05:12 2020 x86_64
-   Optional features available: CPU affinity setting, IPv6 flow label, TCP congestion algorithm setting, 
+   Optional features available: CPU affinity setting, IPv6 flow label, TCP congestion algorithm setting,
    sendfile / zerocopy, socket pacing, authentication # contains 'authentication'
 
 2. Configure iperf check auth parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Now, add the following iperf authentication parameters 
-to `OPENWISP_MONITORING_IPERF_CHECK_CONFIG <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_ 
-in `openwisp settings <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_
+Now, add the following iperf authentication parameters
+to `OPENWISP_MONITORING_IPERF_CHECK_CONFIG
+<#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_
+in the settings:
 
 .. code-block:: python
 
@@ -1361,8 +1373,8 @@ For example, if you want to change only the **port number** of
 | **default**: | ``True``                      |
 +--------------+-------------------------------+
 
-This setting allows you to set whether 
-`iperf check RSA public key <#configure-iperf-check-for-authentication>`_ 
+This setting allows you to set whether
+`iperf check RSA public key <#configure-iperf-check-for-authentication>`_
 will be deleted after successful completion of the check or not.
 
 ``OPENWISP_MONITORING_AUTO_CHARTS``
