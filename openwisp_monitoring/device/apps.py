@@ -24,7 +24,11 @@ from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from ..utils import transaction_on_commit
 from . import settings as app_settings
 from .signals import device_metrics_received, health_status_changed
-from .utils import get_device_cache_key, manage_short_retention_policy
+from .utils import (
+    get_device_cache_key,
+    manage_default_retention_policy,
+    manage_short_retention_policy,
+)
 
 
 class DeviceMonitoringConfig(AppConfig):
@@ -33,6 +37,7 @@ class DeviceMonitoringConfig(AppConfig):
     verbose_name = _('Device Monitoring')
 
     def ready(self):
+        manage_default_retention_policy()
         manage_short_retention_policy()
         self.connect_is_working_changed()
         self.connect_device_signals()

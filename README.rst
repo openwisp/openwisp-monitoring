@@ -942,6 +942,17 @@ if there's anything that is not working as intended.
 Settings
 --------
 
+``OPENWISP_MONITORING_DEFAULT_RETENTION_POLICY``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+--------------------------+
+| **type**:    | ``str``                  |
++--------------+--------------------------+
+| **default**: | ``26280h0m0s`` (3 years) |
++--------------+--------------------------+
+
+The default retention policy that applies to the timeseries data.
+
 ``OPENWISP_MONITORING_SHORT_RETENTION_POLICY``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
