@@ -402,6 +402,118 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(d.monitoring.status, 'problem')
         self.assertEqual(Notification.objects.count(), 0)
 
+    def test_alert_on_related_field(self):
+        admin = self._create_admin()
+        m = self._create_general_metric(configuration='test_alert_on_rf')
+        self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=30, custom_tolerance=0
+        )
+
+        with self.subTest('Test notification for metric without related field'):
+            with self.assertRaises(ValueError) as err:
+                m.write(1)
+            self.assertEqual(
+                str(err.exception),
+                'write() missing positional argument: "extra_values" required for alert on related field',
+            )
+            m.refresh_from_db()
+            self.assertEqual(m.is_healthy, True)
+            self.assertEqual(m.is_healthy_tolerant, True)
+            self.assertEqual(Notification.objects.count(), 0)
+
+        with self.subTest('Test notification for metric on different related field'):
+            with self.assertRaises(ValueError) as err:
+                m.write(10, extra_values={'test_related_3': 40})
+            self.assertEqual(
+                str(err.exception),
+                '"test_related_3" is not defined for alert_on_related_field in metric configuration',
+            )
+            m.refresh_from_db()
+            self.assertEqual(m.is_healthy, True)
+            self.assertEqual(m.is_healthy_tolerant, True)
+            self.assertEqual(Notification.objects.count(), 0)
+
+        with self.subTest('Test notification for metric with multiple related fields'):
+            m.write(10, extra_values={'test_related_2': 40, 'test_related_3': 20})
+            m.refresh_from_db()
+            self.assertEqual(m.is_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
+            self.assertEqual(Notification.objects.count(), 1)
+            n = notification_queryset.first()
+            self.assertEqual(n.recipient, admin)
+            self.assertEqual(n.actor, m)
+            self.assertEqual(n.action_object, m.alertsettings)
+            self.assertEqual(n.level, 'warning')
+
+        with self.subTest(
+            'Test notification for metric exceeding related field alert settings'
+        ):
+            m.write(10, extra_values={'test_related_2': 40})
+            m.refresh_from_db()
+            self.assertEqual(m.is_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
+            self.assertEqual(Notification.objects.count(), 1)
+            n = notification_queryset.first()
+            self.assertEqual(n.recipient, admin)
+            self.assertEqual(n.actor, m)
+            self.assertEqual(n.action_object, m.alertsettings)
+            self.assertEqual(n.level, 'warning')
+
+        with self.subTest(
+            'Test no double alarm for metric exceeding related field alert settings'
+        ):
+            m.write(20, extra_values={'test_related_2': 35})
+            m.refresh_from_db()
+            self.assertEqual(m.is_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
+            self.assertEqual(Notification.objects.count(), 1)
+
+        with self.subTest(
+            'Test notification for metric falling behind related field alert settings'
+        ):
+            m.write(30, extra_values={'test_related_2': 25})
+            m.refresh_from_db()
+            self.assertEqual(m.is_healthy, True)
+            self.assertEqual(m.is_healthy_tolerant, True)
+            self.assertEqual(Notification.objects.count(), 2)
+            n = notification_queryset.last()
+            self.assertEqual(n.recipient, admin)
+            self.assertEqual(n.actor, m)
+            self.assertEqual(n.action_object, m.alertsettings)
+            self.assertEqual(n.level, 'info')
+
+    def test_general_check_threshold_with_alert_on_rf_crossed_deferred(self):
+        admin = self._create_admin()
+        m = self._create_general_metric(configuration='test_alert_on_rf')
+        self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=30, custom_tolerance=1
+        )
+        m.write(10, time=ten_minutes_ago, extra_values={'test_related_2': 35})
+        m.refresh_from_db()
+        self.assertEqual(m.is_healthy, False)
+        self.assertEqual(m.is_healthy_tolerant, False)
+        self.assertEqual(Notification.objects.count(), 1)
+        n = notification_queryset.first()
+        self.assertEqual(n.recipient, admin)
+        self.assertEqual(n.actor, m)
+        self.assertEqual(n.action_object, m.alertsettings)
+        self.assertEqual(n.level, 'warning')
+
+    def test_general_check_threshold_with_alert_on_rf_deferred_not_crossed(self):
+        self._create_admin()
+        m = self._create_general_metric(configuration='test_alert_on_rf')
+        self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=30, custom_tolerance=1
+        )
+        m.write(10, extra_values={'test_related_2': 32})
+        self.assertEqual(m.is_healthy, True)
+        self.assertEqual(m.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
+        m.write(20, extra_values={'test_related_2': 35})
+        self.assertEqual(m.is_healthy, True)
+        self.assertEqual(m.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
+
 
 class TestTransactionMonitoringNotifications(DeviceMonitoringTransactionTestcase):
     device_model = Device
