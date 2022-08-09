@@ -87,7 +87,9 @@ Available Features
   `RAM usage <#memory-usage>`_, `CPU load <#cpu-load>`_, `flash/disk usage <#disk-usage>`_,
   mobile signal (LTE/UMTS/GSM `signal strength <#mobile-signal-strength>`_,
   `signal quality <#mobile-signal-quality>`_,
-  `access technology in use <#mobile-access-technology-in-use>`_)
+  `access technology in use <#mobile-access-technology-in-use>`_), `bandwidth <#iperf>`_,
+  `transferred data <#iperf>`_, `restransmits <#iperf>`_, `jitter <#iperf>`_,
+  `datagram <#iperf>`_, `datagram loss <#iperf>`_
 * Maintains a record of `WiFi sessions <#monitoring-wifi-sessions>`_ with clients'
   MAC address and vendor, session start and stop time and connected device
   along with other information
@@ -105,6 +107,8 @@ Available Features
 * Extensible metrics and charts: it's possible to define new metrics and new charts
 * API to retrieve the chart metrics and status information of each device
   based on `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_
+* `Iperf check <#iperf-1>`_ that provides network performance measurements such as maximum
+  achievable bandwidth, jitter, datagram loss etc of the openwrt device using `iperf3 utility <https://iperf.fr/>`_
 
 ------------
 
@@ -376,7 +380,15 @@ Configure celery (you may use a different broker if you want):
     CELERY_BEAT_SCHEDULE = {
         'run_checks': {
             'task': 'openwisp_monitoring.check.tasks.run_checks',
+            # Executes only ping & config check every 5 min
             'schedule': timedelta(minutes=5),
+            'args': (
+                [  # Checks path
+                    'openwisp_monitoring.check.classes.Ping',
+                    'openwisp_monitoring.check.classes.ConfigApplied',
+                ],
+            ),
+            'relative': True,
         },
         # Delete old WifiSession
         'delete_wifi_clients_and_sessions': {
@@ -803,6 +815,59 @@ Mobile Access Technology in use
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/access-technology.png
   :align: center
 
+Iperf
+~~~~~
+
++--------------------+---------------------------------------------------------------------------------------------------------------------------+
+| **measurement**:   | ``iperf``                                                                                                                 |
++--------------------+---------------------------------------------------------------------------------------------------------------------------+
+| **types**:         | | ``int`` (iperf_result, sent_bytes_tcp, received_bytes_tcp, retransmits, sent_bytes_udp, total_packets, lost_packets),   |
+|                    | | ``float`` (sent_bps_tcp, received_bps_tcp, sent_bps_udp, jitter, lost_percent)                                          |
++--------------------+---------------------------------------------------------------------------------------------------------------------------+
+| **fields**:        | | ``iperf_result``, ``sent_bps_tcp``, ``received_bps_tcp``, ``sent_bytes_tcp``, ``received_bytes_tcp``, ``retransmits``,  |
+|                    | | ``sent_bps_udp``, ``sent_bytes_udp``, ``jitter``, ``total_packets``, ``lost_packets``, ``lost_percent``                 |
++--------------------+---------------------------------------------------------------------------------------------------------------------------+
+| **configuration**: | ``iperf``                                                                                                                 |
++--------------------+---------------------------------------------------------------------------------------------------------------------------+
+| **charts**:        | ``bandwidth``, ``transfer``, ``retransmits``, ``jitter``, ``datagram``, ``datagram_loss``                                 |
++--------------------+---------------------------------------------------------------------------------------------------------------------------+
+
+**Bandwidth**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/bandwidth.png
+  :align: center
+
+**Transferred Data**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/transferred-data.png
+  :align: center
+
+**Retransmits**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/retransmits.png
+  :align: center
+
+**Jitter**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/jitter.png
+  :align: center
+
+**Datagram**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/datagram.png
+  :align: center
+
+**Datagram loss**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/datagram-loss.png
+  :align: center
+
+For more info on how to configure and use Iperf, please refer to
+`iperf check usage instructions <#iperf-check-usage-instructions>`_.
+
+**Note:** Iperf charts uses ``connect_points=True`` in
+`default chart configuration <#openwisp_monitoring_charts>`_ that joins it's individual chart data points.
+
 Dashboard Monitoring Charts
 ---------------------------
 
@@ -819,15 +884,15 @@ You can configure the interfaces included in the **General traffic chart** using
 the `"OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART"
 <#openwisp_monitoring_dashboard_traffic_chart>`_ setting.
 
-Adaptive byte charts
+Adaptive size charts
 --------------------
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/adaptive-chart.png
    :align: center
 
 When configuring charts, it is possible to flag their unit
-as ``adaptive_bytes``, this allows to make the charts more readable because
-the units are shown in either `B`, `KB`, `MB`, `GB` and `TB` depending on
+as ``adaptive_prefix``, this allows to make the charts more readable because
+the units are shown in either `K`, `M`, `G` and `T` depending on
 the size of each point, the summary values and Y axis are also resized.
 
 Example taken from the default configuration of the traffic chart:
@@ -836,7 +901,17 @@ Example taken from the default configuration of the traffic chart:
 
     'traffic': {
         # other configurations for this chart
-        'unit': 'adaptive_bytes',
+
+        # traffic measured in 'B' (bytes)
+        # unit B, KB, MB, GB, TB
+        'unit': 'adaptive_prefix+B',
+    },
+
+    'bandwidth': {
+        # adaptive unit for bandwidth related charts
+        # bandwidth measured in 'bps'(bits/sec)
+        # unit bps, Kbps, Mbps, Gbps, Tbps
+        'unit': 'adaptive_prefix+bps',
     },
 
 Monitoring WiFi Sessions
@@ -939,6 +1014,231 @@ configuration status of a device changes, this ensures the check reacts
 quickly to events happening in the network and informs the user promptly
 if there's anything that is not working as intended.
 
+Iperf
+~~~~~
+
+This check provides network performance measurements such as maximum achievable bandwidth,
+jitter, datagram loss etc of the device using `iperf3 utility <https://iperf.fr/>`_.
+
+This check is **disabled by default**. You can enable auto creation of this check by setting the
+`OPENWISP_MONITORING_AUTO_IPERF <#OPENWISP_MONITORING_AUTO_IPERF>`_ to ``True``.
+
+It also supports tuning of various parameters.
+
+You can also change the parameters used for iperf checks (e.g. timing, port, username,
+password, rsa_publc_key etc) using the `OPENWISP_MONITORING_IPERF_CHECK_CONFIG
+<#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_ setting.
+
+Iperf Check Usage Instructions
+------------------------------
+
+1. Make sure iperf is installed on the device
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Register your device to OpenWISP and make sure the `iperf3 openwrt package
+<https://openwrt.org/packages/pkgdata/iperf3>`_ is installed on the device,
+eg:
+
+.. code-block:: shell
+
+    opkg install iperf3  # if using without authentication
+    opkg install iperf3-ssl  # if using with authentication (read below for more info)
+
+2. Ensure SSH access from OpenWISP is enabled on your devices
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Follow the steps in `"How to configure push updates" section of the
+OpenWISP documentation
+<https://openwisp.io/docs/user/configure-push-updates.html>`_
+to allow SSH access to you device from OpenWISP.
+
+**Note:** Make sure device connection is enabled
+& working with right update strategy i.e. ``OpenWRT SSH``.
+
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/enable-openwrt-ssh.png
+  :alt: Enable ssh access from openwisp to device
+  :align: center
+
+3. Set up and configure Iperf server settings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+After having deployed your Iperf servers, you need to
+configure the iperf settings on the django side of OpenWISP,
+see the `test project settings for reference
+<https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_.
+
+The host can be specified by hostname, IPv4 literal, or IPv6 literal.
+Example:
+
+.. code-block:: python
+
+   OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
+       # Public iperf servers are also available
+       # https://iperf.fr/iperf-servers.php#public-servers
+       # org pk : {'host', 'client_options'}
+       'a9734710-db30-46b0-a2fc-01f01046fe4f': {
+           'host': ['iperf.openwisp.io', '2001:db8::1', '192.168.5.2'],
+           'client_options': {
+               'port': 5209,
+               'udp': {'bitrate': '20M'},
+               'tcp': {'bitrate': '0'},
+           },
+       }
+   }
+
+The celery-beat configuration for the iperf check needs to be added too:
+
+.. code-block:: python
+
+    from celery.schedules import crontab
+
+    # Celery TIME_ZONE should be equal to django TIME_ZONE
+    # In order to schedule run_iperf_checks on the correct time intervals
+    CELERY_TIMEZONE = TIME_ZONE
+    CELERY_BEAT_SCHEDULE = {
+        # Other celery beat configurations
+        # Celery beat configuration for iperf check
+        'run_iperf_checks': {
+            'task': 'openwisp_monitoring.check.tasks.run_checks',
+            # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
+            # Executes check every 5 mins from 00:00 AM to 6:00 AM (night)
+            'schedule': crontab(minute='*/5', hour='0-6'),
+            # Iperf check path
+            'args': (['openwisp_monitoring.check.classes.Iperf'],),
+            'relative': True,
+        }
+    }
+
+Once the changes are saved, you will need to restart all the processes.
+
+**Note:** We recommended to configure this check to run in non peak
+traffic times to not interfere with standard traffic.
+
+4. Run the check
+~~~~~~~~~~~~~~~~
+
+This should happen automatically if you have celery-beat correctly
+configured and running in the background.
+For testing purposes, you can run this check manually using the
+`run_checks <#run_checks>`_ command.
+
+After that, you should see the iperf network measurements charts.
+
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/iperf-charts.png
+  :alt: Iperf network measurement charts
+
+Iperf authentication
+~~~~~~~~~~~~~~~~~~~~
+
+By default iperf check runs without any kind of **authentication**,
+in this section we will explain how to configure **RSA authentication**
+between the **client** and the **server** to restrict connections
+to authenticated clients.
+
+Server side
+###########
+
+1. Generate RSA keypair
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: shell
+
+   openssl genrsa -des3 -out private.pem 2048
+   openssl rsa -in private.pem -outform PEM -pubout -out public_key.pem
+   openssl rsa -in private.pem -out private_key.pem -outform PEM
+
+After running the commands mentioned above, the public key will be stored in
+``public_key.pem`` which will be used in **rsa_public_key** parameter
+in `OPENWISP_MONITORING_IPERF_CHECK_CONFIG
+<#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_
+and the private key will be contained in the file ``private_key.pem``
+which will be used with **--rsa-private-key-path** command option when
+starting the iperf server.
+
+2. Create user credentials
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: shell
+
+   USER=iperfuser PASSWD=iperfpass
+   echo -n "{$USER}$PASSWD" | sha256sum | awk '{ print $1 }'
+   ----
+   ee17a7f98cc87a6424fb52682396b2b6c058e9ab70e946188faa0714905771d7 #This is the hash of "iperfuser"
+
+Add the above hash with username in ``credentials.csv``
+
+.. code-block:: shell
+
+   # file format: username,sha256
+   iperfuser,ee17a7f98cc87a6424fb52682396b2b6c058e9ab70e946188faa0714905771d7
+
+3. Now start the iperf server with auth options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: shell
+
+   iperf3 -s --rsa-private-key-path ./private_key.pem --authorized-users-path ./credentials.csv
+
+Client side (OpenWrt device)
+############################
+
+1. Install iperf3-ssl
+^^^^^^^^^^^^^^^^^^^^^
+
+Install the `iperf3-ssl openwrt package
+<https://openwrt.org/packages/pkgdata/iperf3-ssl>`_
+instead of the normal
+`iperf3 openwrt package <https://openwrt.org/packages/pkgdata/iperf3>`_
+because the latter comes without support for authentication.
+
+You may also check your installed **iperf3 openwrt package** features:
+
+.. code-block:: shell
+
+   root@vm-openwrt:~ iperf3 -v
+   iperf 3.7 (cJSON 1.5.2)
+   Linux vm-openwrt 4.14.171 #0 SMP Thu Feb 27 21:05:12 2020 x86_64
+   Optional features available: CPU affinity setting, IPv6 flow label, TCP congestion algorithm setting,
+   sendfile / zerocopy, socket pacing, authentication # contains 'authentication'
+
+2. Configure iperf check auth parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Now, add the following iperf authentication parameters
+to `OPENWISP_MONITORING_IPERF_CHECK_CONFIG
+<#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_
+in the settings:
+
+.. code-block:: python
+
+   OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
+       'a9734710-db30-46b0-a2fc-01f01046fe4f': {
+           'host': ['iperf1.openwisp.io', 'iperf2.openwisp.io', '192.168.5.2'],
+           # All three parameters (username, password, rsa_publc_key)
+           # are required for iperf authentication
+           'username': 'iperfuser',
+           'password': 'iperfpass',
+           # Add RSA public key without any headers
+           # ie. -----BEGIN PUBLIC KEY-----, -----BEGIN END KEY-----
+           'rsa_public_key': (
+               """
+               MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwuEm+iYrfSWJOupy6X3N
+               dxZvUCxvmoL3uoGAs0O0Y32unUQrwcTIxudy38JSuCccD+k2Rf8S4WuZSiTxaoea
+               6Du99YQGVZeY67uJ21SWFqWU+w6ONUj3TrNNWoICN7BXGLE2BbSBz9YaXefE3aqw
+               GhEjQz364Itwm425vHn2MntSp0weWb4hUCjQUyyooRXPrFUGBOuY+VvAvMyAG4Uk
+               msapnWnBSxXt7Tbb++A5XbOMdM2mwNYDEtkD5ksC/x3EVBrI9FvENsH9+u/8J9Mf
+               2oPl4MnlCMY86MQypkeUn7eVWfDnseNky7TyC0/IgCXve/iaydCCFdkjyo1MTAA4
+               BQIDAQAB
+               """
+           ),
+           'client_options': {
+               'port': 5209,
+               'udp': {'bitrate': '20M'},
+               'tcp': {'bitrate': '0'},
+           },
+       }
+   }
+
 Settings
 --------
 
@@ -1032,6 +1332,57 @@ validating custom parameters of a ``Check`` object.
 
 This setting allows you to choose whether `config_applied <#configuration-applied>`_ checks should be
 created automatically for newly registered devices. It's enabled by default.
+
+``OPENWISP_MONITORING_AUTO_IPERF``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``bool``    |
++--------------+-------------+
+| **default**: | ``False``   |
++--------------+-------------+
+
+This setting allows you to choose whether `iperf <#iperf-1>`_ checks should be
+created automatically for newly registered devices. It's disabled by default.
+
+``OPENWISP_MONITORING_IPERF_CHECK_CONFIG``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``dict``    |
++--------------+-------------+
+| **default**: | ``{}``      |
++--------------+-------------+
+
+This setting allows to override the default iperf check configuration defined in
+``openwisp_monitoring.check.classes.iperf.DEFAULT_IPERF_CHECK_CONFIG``.
+
+For example, if you want to change only the **port number** of
+``iperf`` check you can use:
+
+.. code-block:: python
+
+   OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
+       'a9734710-db30-46b0-a2fc-01f01046fe4f': {
+           'host': ['iperf.openwisp.io'],
+           'client_options': {
+               'port': 6201,
+           },
+       }
+   }
+
+``OPENWISP_MONITORING_IPERF_CHECK_DELETE_RSA_KEY``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------------------------+
+| **type**:    | ``bool``                      |
++--------------+-------------------------------+
+| **default**: | ``True``                      |
++--------------+-------------------------------+
+
+This setting allows you to set whether
+`iperf check RSA public key <#configure-iperf-check-for-authentication>`_
+will be deleted after successful completion of the check or not.
 
 ``OPENWISP_MONITORING_AUTO_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
