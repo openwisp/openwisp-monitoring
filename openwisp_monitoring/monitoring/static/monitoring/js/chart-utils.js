@@ -125,21 +125,21 @@ django.jQuery(function ($) {
       dateTimePicker.click(function () {
         var timeRange = $(this).attr('data-time');
         isCustom = false;
-        if ("Custom Range" !== $(this).attr('data-range-key')) {
+        if ($(this).attr('data-range-key') !== "Custom Range") {
           loadCharts(timeRange, true);
           localStorage.setItem(timeRangeKey, timeRange);
         }
         localStorage.setItem(timeRangeKey, timeRange);
-        if ("Custom Range" == $(this).attr('data-range-key')) {
-          var start_custom, end_custom, dateSpan;
+        if($(this).attr('data-range-key') == "Custom Range") {
+          var startCustom, endCustom, dateSpan;
+          isCustom = true;
           $("#reportrange").on('apply.daterangepicker', function (ev, picker) {
-            start_custom = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
-            end_custom = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
-            dateSpan = end_custom.diff(start_custom, 'days') + 'd';
+            startCustom = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
+            endCustom = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
+            dateSpan = endCustom.diff(startCustom, 'days') + 'd';
             if (dateSpan == '0d') {
               dateSpan = '1d';
             }
-            isCustom = true;
             loadCharts(dateSpan, true);
             localStorage.setItem(timeRangeKey, dateSpan);
           });
@@ -154,7 +154,12 @@ django.jQuery(function ($) {
     // bind export button
     $('#ow-chart-time a.export').click(function () {
       var time = localStorage.getItem(timeRangeKey);
-      location.href = baseUrl + time + '&csv=1';
+      var startDate = localStorage.getItem(startCustomDate);
+      var endDate = localStorage.getItem(endCustomDate);
+      startDate = moment(startDate).format('YYYY-MM-DD HH:mm:ss');
+      endDate = moment(endDate).format('YYYY-MM-DD HH:mm:ss');
+      var daterange = `&start=${startDate}&end=${endDate}`;
+      location.href = baseUrl + time + daterange + '&csv=1';
     });
   });
 }(django.jQuery));

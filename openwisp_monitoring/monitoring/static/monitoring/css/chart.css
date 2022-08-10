@@ -189,3 +189,11 @@
   color: white;
   border-radius: 0;
 }
+.daterangepicker td.off, .daterangepicker td.off.in-range, .daterangepicker td.off.start-date, .daterangepicker td.off.end-date :hover{
+  background-color: #fff !important;
+  color: #999 !important;
+}
+.daterangepicker td.in-range:hover {
+  background-color: #df5d43;
+  color: white;
+}
