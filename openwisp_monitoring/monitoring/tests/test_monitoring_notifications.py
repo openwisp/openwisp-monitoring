@@ -414,7 +414,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
                 m.write(1)
             self.assertEqual(
                 str(err.exception),
-                'write() missing positional argument: "extra_values" required for alert on related field',
+                'write() missing keyword argument: "extra_values" required for alert on related field',
             )
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, True)

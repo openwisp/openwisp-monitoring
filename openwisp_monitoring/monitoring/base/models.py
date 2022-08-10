@@ -363,20 +363,20 @@ class AbstractMetric(TimeStampedEditableModel):
             }
             options['metric_pk'] = self.pk
 
-        # check if alert_on_related_field is present in metric configuration
-        if 'alert_on_related_field' in self.config_dict:
-            related_field = self.config_dict['alert_on_related_field']
-            if not extra_values:
-                raise ValueError(
-                    'write() missing positional argument: "extra_values" required for alert on related field'
+            # check if alert_on_related_field is present in metric configuration
+            if 'alert_on_related_field' in self.config_dict:
+                related_field = self.config_dict['alert_on_related_field']
+                if not extra_values:
+                    raise ValueError(
+                        'write() missing keyword argument: "extra_values" required for alert on related field'
+                    )
+                if related_field not in extra_values.keys():
+                    raise ValueError(
+                        f'"{key}" is not defined for alert_on_related_field in metric configuration'
+                    )
+                options['check_threshold_kwargs'].update(
+                    {'value': extra_values[related_field]}
                 )
-            if related_field not in extra_values.keys():
-                raise ValueError(
-                    f'"{key}" is not defined for alert_on_related_field in metric configuration'
-                )
-            options['check_threshold_kwargs'].update(
-                {'value': extra_values[related_field]}
-            )
         timeseries_write.delay(name=self.key, values=values, **options)
 
     def read(self, **kwargs):

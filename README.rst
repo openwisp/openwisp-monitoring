@@ -1981,7 +1981,7 @@ which allows ``AlertSettings`` to use ``related_field`` as value to check ``thre
 of default ``field_name`` key. A real world example of this can be seen in
 `Iperf metric configuration
 <https://github.com/openwisp/openwisp-monitoring/blob/master/openwisp_monitoring/monitoring/configuration.py#L546-L700>`_,
-Where we used ``jitter`` (related_field) for alerts.
+where we used ``jitter`` (related_field) for alerts.
 
 **Note**: It will raise ``ImproperlyConfigured`` exception if a metric configuration
 is already registered with same name (not to be confused with verbose_name).
