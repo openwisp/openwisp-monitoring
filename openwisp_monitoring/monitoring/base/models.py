@@ -116,6 +116,10 @@ class AbstractMetric(TimeStampedEditableModel):
         return super().full_clean(*args, **kwargs)
 
     @classmethod
+    def post_delete_receiver(cls, instance, *args, **kwargs):
+        timeseries_db.delete_metric_data(key=instance.key, tags=instance.tags)
+
+    @classmethod
     def _get_or_create(cls, **kwargs):
         """
         like ``get_or_create`` method of django model managers

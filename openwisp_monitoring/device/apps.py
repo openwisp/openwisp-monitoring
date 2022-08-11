@@ -51,6 +51,7 @@ class DeviceMonitoringConfig(AppConfig):
 
     def connect_device_signals(self):
         Device = load_model('config', 'Device')
+        Metric = load_model('monitoring', 'Metric')
 
         post_save.connect(
             self.device_post_save_receiver,
@@ -62,6 +63,11 @@ class DeviceMonitoringConfig(AppConfig):
             self.device_post_delete_receiver,
             sender=Device,
             dispatch_uid='device_post_delete_receiver',
+        )
+        post_delete.connect(
+            Metric.post_delete_receiver,
+            sender=Metric,
+            dispatch_uid='metric_post_delete_receiver',
         )
 
     @classmethod
