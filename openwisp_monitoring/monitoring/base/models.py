@@ -586,7 +586,14 @@ class AbstractChart(TimeStampedEditableModel):
                 if key == 'time':
                     continue
                 traces.setdefault(key, [])
-                if decimal_places and isinstance(value, (int, float)):
+                if (
+                    # The adaptive feature does unit conversion and approximation
+                    # in the frontend, hence rounding off is skipped here.
+                    # TODO: Update this code to check for 'adaptive_prefix'
+                    not self.config_dict.get('unit', '').startswith('adaptive')
+                    and decimal_places
+                    and isinstance(value, (int, float))
+                ):
                     value = self._round(value, decimal_places)
                 traces[key].append(value)
             time = datetime.fromtimestamp(point['time'], tz=tz(timezone)).strftime(

@@ -313,3 +313,20 @@ class TestCharts(TestMonitoringMixin, TestCase):
             self.assertDictEqual(
                 DEFAULT_DASHBOARD_TRAFFIC_CHART, {'__all__': ['wan', 'eth1', 'eth0_2']}
             )
+
+    def test_adaptive_chart_approximation(self):
+        org = self._get_org()
+        metric = self._create_object_metric(
+            name='traffic',
+            configuration='general_traffic',
+            field_name='rx_bytes',
+            main_tags={'ifname': 'eth0'},
+            extra_tags={'organization_id': str(org.id)},
+        )
+
+        chart = self._create_chart(
+            metric=metric, configuration='traffic', test_data=False
+        )
+        metric.write(2365411)
+        traces = chart.read()['traces']
+        self.assertEqual(traces[0][1][-1], 0.002365411)
