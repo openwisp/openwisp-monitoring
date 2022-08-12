@@ -693,6 +693,12 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         abstract = True
         verbose_name = _('Alert settings')
         verbose_name_plural = verbose_name
+        permissions = (
+            ('add_alertsettings_inline', 'Can add Alert settings inline'),
+            ('change_alertsettings_inline', 'Can change Alert settings inline'),
+            ('delete_alertsettings_inline', 'Can delete Alert settings inline'),
+            ('view_alertsettings_inline', 'Can view Alert settings inline'),
+        )
 
     def full_clean(self, *args, **kwargs):
         if self.custom_threshold == self.config_dict['threshold']:

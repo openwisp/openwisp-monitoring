@@ -334,7 +334,10 @@ class Iperf(BaseCheck):
         Gets or creates metric
         """
         metric, created = self._get_or_create_metric()
-        if created:
+        # It may be possible if user creates 'check' from
+        # the 'device' tab therefore it is necessary
+        # to check for metric charts here
+        if metric and not Chart.objects.filter(metric=metric):
             self._create_charts(metric)
         return metric
 
