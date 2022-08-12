@@ -3,20 +3,22 @@ const timeRangeKey = 'ow2-chart-time-range';
 const startCustomDate = 'ow2-chart-start-time';
 const endCustomDate = 'ow2-chart-end-time';
 const isCustomKey = 'ow2-chart-is-custom';
+const startDateKey = 'ow2-chart-start';
+const endDateKey = 'ow2-chart-end';
 
 django.jQuery(function ($) {
   $(document).ready(function () {
       var custom = '1d',
       start = moment(),
-      end = moment(),
-      startDate = moment().format('YYYY-MM-DD HH:mm:ss'),
-      endDate = moment().format('YYYY-MM-DD HH:mm:ss');
+      end = moment();
       function cb(start, end) {
         var startCustom, endCustom;
           $("#reportrange").on('apply.daterangepicker', function (ev, picker) {
             startCustom = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
             endCustom = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
             custom = endCustom.diff(startCustom, 'days') + 'd';
+            localStorage.setItem(startDateKey, picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
+            localStorage.setItem(endDateKey, picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
             localStorage.setItem(startCustomDate, startCustom.format('MMMM D, YYYY'));
             localStorage.setItem(endCustomDate, endCustom.format('MMMM D, YYYY'));
           });
@@ -54,11 +56,8 @@ django.jQuery(function ($) {
       baseUrl = `${apiUrl}?key=${originalKey}&time=`,
       globalLoadingOverlay = $('#loading-overlay'),
       localLoadingOverlay = $('#chart-loading-overlay'),
-      loadCharts = function (time, showLoading, isCustom) {
-        $("#reportrange").on('apply.daterangepicker', function (ev, picker) {
-          startDate = picker.startDate.format('YYYY-MM-DD HH:mm:ss');
-          endDate = picker.endDate.format('YYYY-MM-DD HH:mm:ss');
-        });
+      isCustom = false,
+      loadCharts = function (time, showLoading, isCustom, startDate, endDate) {
         var daterange = `&start=${startDate}&end=${endDate}`;
         var custom =  `&custom=${isCustom}`;
         var url = baseUrl + time + daterange + custom;
@@ -115,7 +114,7 @@ django.jQuery(function ($) {
       var range = localStorage.getItem(timeRangeKey) || defaultTimeRange;
       $('#reportrange span').html(localStorage.getItem(startCustomDate) + ' - ' + localStorage.getItem(endCustomDate));
       if (val === 'true') {
-        loadCharts(range, true, true);
+        loadCharts(range, true, true, localStorage.getItem(startDateKey), localStorage.getItem(endDateKey));
       }
       else {
         $('.daterangepicker .ranges ul li[data-time=' + range + ']').trigger('click');
@@ -130,9 +129,10 @@ django.jQuery(function ($) {
     var dateTimePicker = $('.ranges li');
       dateTimePicker.click(function () {
         var timeRange = $(this).attr('data-time');
-        localStorage.setItem(isCustomKey, 'false');
+        isCustom = false;
+        localStorage.setItem(isCustomKey, isCustom);
         if ($(this).attr('data-range-key') !== "Custom Range") {
-          loadCharts(timeRange, true, false);
+          loadCharts(timeRange, true, false, localStorage.getItem(startDateKey), localStorage.getItem(endDateKey));
           localStorage.setItem(timeRangeKey, timeRange);
 
         // refresh every 2.5 minutes
@@ -140,12 +140,16 @@ django.jQuery(function ($) {
         window.owChartRefresh = setInterval(loadCharts,
           1000 * 60 * 2.5,
           timeRange,
-          false);
+          false,
+          false,
+          localStorage.getItem(startDateKey),
+          localStorage.getItem(endDateKey));
         }
         localStorage.setItem(timeRangeKey, timeRange);
         if($(this).attr('data-range-key') == "Custom Range") {
           var startCustom, endCustom, dateSpan;
-          localStorage.setItem(isCustomKey, 'true');
+          isCustom = true;
+          localStorage.setItem(isCustomKey, isCustom);
           $("#reportrange").on('apply.daterangepicker', function (ev, picker) {
             startCustom = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
             endCustom = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
@@ -153,7 +157,9 @@ django.jQuery(function ($) {
             if (dateSpan == '0d') {
               dateSpan = '1d';
             }
-            loadCharts(dateSpan, true, true);
+            loadCharts(dateSpan, true, true, picker.startDate.format('YYYY-MM-DD HH:mm:ss'), picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
+            localStorage.setItem(startDateKey, picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
+            localStorage.setItem(endDateKey, picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
             localStorage.setItem(startCustomDate, startCustom.format('YYYY-MM-DD'));
             localStorage.setItem(endCustomDate, endCustom.format('YYYY-MM-DD'));
             localStorage.setItem(timeRangeKey, dateSpan);
@@ -163,17 +169,18 @@ django.jQuery(function ($) {
         window.owChartRefresh = setInterval(loadCharts,
           1000 * 60 * 2.5,
           dateSpan,
-          false);
+          false,
+          true,
+          localStorage.getItem(startDateKey),
+          localStorage.getItem(endDateKey));
           });
         }
       });
     // bind export button
     $('#ow-chart-time a.export').click(function () {
       var time = localStorage.getItem(timeRangeKey);
-      var startDate = localStorage.getItem(startCustomDate);
-      var endDate = localStorage.getItem(endCustomDate);
-      startDate = moment(startDate).format('YYYY-MM-DD HH:mm:ss');
-      endDate = moment(endDate).format('YYYY-MM-DD HH:mm:ss');
+      var startDate = localStorage.getItem(startDateKey);
+      var endDate = localStorage.getItem(endDateKey);
       var daterange = `&start=${startDate}&end=${endDate}`;
       location.href = baseUrl + time + daterange + '&csv=1';
     });
