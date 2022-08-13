@@ -1976,12 +1976,12 @@ The ``AlertSettings`` of ``ping`` metric will by default use ``threshold`` and `
 defined in the ``alert_settings`` key.
 You can always override them and define your own custom values via the *admin*.
 
-You can also use ``alert_on_related_field`` key in metric configuration
-which allows ``AlertSettings`` to use ``related_field`` as value to check ``threshold`` instead
-of default ``field_name`` key. A real world example of this can be seen in
+You can also use the ``alert_on_related_field`` key in metric configuration
+which allows ``AlertSettings`` to use the value specified in ``related_field``to check the ``threshold``, instead
+of the default ``field_name`` key. A real world example of this can be seen in the
 `Iperf metric configuration
 <https://github.com/openwisp/openwisp-monitoring/blob/master/openwisp_monitoring/monitoring/configuration.py#L546-L700>`_,
-where we used ``jitter`` (related_field) for alerts.
+where we used ``jitter`` (``related_field``) for alerts.
 
 **Note**: It will raise ``ImproperlyConfigured`` exception if a metric configuration
 is already registered with same name (not to be confused with verbose_name).
