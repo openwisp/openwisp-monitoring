@@ -59,6 +59,7 @@ django.jQuery(function ($) {
       isCustom = false,
       loadCharts = function (time, showLoading, isCustom, startDate, endDate) {
         var daterange = `&start=${startDate}&end=${endDate}`;
+        isCustom = localStorage.getItem(isCustomKey) || isCustom;
         var custom =  `&custom=${isCustom}`;
         var url = baseUrl + time + daterange + custom;
         $.ajax(url, {
@@ -112,9 +113,11 @@ django.jQuery(function ($) {
     window.triggerChartLoading = function () {
       var val = localStorage.getItem(isCustomKey);
       var range = localStorage.getItem(timeRangeKey) || defaultTimeRange;
-      $('#reportrange span').html(localStorage.getItem(startCustomDate) + ' - ' + localStorage.getItem(endCustomDate));
+      var start = localStorage.getItem(startCustomDate) || moment().format('MMMM D, YYYY');
+      var end = localStorage.getItem(endCustomDate) || moment().format('MMMM D, YYYY');
+      $('#reportrange span').html(start + ' - ' + end);
       if (val === 'true') {
-        loadCharts(range, true, true, localStorage.getItem(startDateKey), localStorage.getItem(endDateKey));
+        loadCharts(range, true, localStorage.getItem(isCustomKey), localStorage.getItem(startDateKey), localStorage.getItem(endDateKey));
       }
       else {
         $('.daterangepicker .ranges ul li[data-time=' + range + ']').trigger('click');
@@ -132,7 +135,7 @@ django.jQuery(function ($) {
         isCustom = false;
         localStorage.setItem(isCustomKey, isCustom);
         if ($(this).attr('data-range-key') !== "Custom Range") {
-          loadCharts(timeRange, true, false, localStorage.getItem(startDateKey), localStorage.getItem(endDateKey));
+          loadCharts(timeRange, true, false, localStorage.getItem(startDateKey) || moment().format('MMMM D, YYYY'), localStorage.getItem(endDateKey) || moment().format('MMMM D, YYYY'));
           localStorage.setItem(timeRangeKey, timeRange);
 
         // refresh every 2.5 minutes
