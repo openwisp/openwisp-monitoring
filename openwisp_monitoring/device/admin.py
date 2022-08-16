@@ -1,4 +1,5 @@
 import uuid
+from os import environ
 from urllib.parse import urljoin
 
 from django.contrib import admin
@@ -63,30 +64,36 @@ class CheckInline(GenericStackedInline):
     fields = ['check_type', 'is_active']
     readonly_fields = ['check_type']
 
+    @property
+    def check_app(self):
+        if 'SAMPLE_APP' in environ:
+            return 'sample_check'
+        return 'check'
+
     def _set_check_inline(self):
         self.fields = []
         self.readonly_fields = ['created', 'modified']
 
     def has_add_permission(self, request, obj=None):
-        if request.user.has_perm('check.add_check_inline'):
+        if request.user.has_perm(f'{self.check_app}.add_check_inline'):
             self._set_check_inline()
             return True
         return False
 
     def has_view_permission(self, request, obj=None):
-        if request.user.has_perm('check.view_check_inline'):
+        if request.user.has_perm(f'{self.check_app}.view_check_inline'):
             self._set_check_inline()
             return True
         return super(GenericStackedInline, self).has_view_permission(request, obj)
 
     def has_change_permission(self, request, obj=None):
-        if request.user.has_perm('check.change_check_inline'):
+        if request.user.has_perm(f'{self.check_app}.change_check_inline'):
             self._set_check_inline()
             return True
         return False
 
     def has_delete_permission(self, request, obj=None):
-        if request.user.has_perm('check.delete_check_inline'):
+        if request.user.has_perm(f'{self.check_app}.delete_check_inline'):
             self._set_check_inline()
             return True
         return False
@@ -111,26 +118,32 @@ class AlertSettingsInline(NestedStackedInline):
     exclude = ['created', 'modified']
     form = AlertSettingsForm
 
+    @property
+    def monitoring_app(self):
+        if 'SAMPLE_APP' in environ:
+            return 'sample_monitoring'
+        return 'monitoring'
+
     def get_queryset(self, request):
         return super().get_queryset(request).order_by('created')
 
     def has_add_permission(self, request, obj=None):
-        if request.user.has_perm('monitoring.add_alertsettings_inline'):
+        if request.user.has_perm(f'{self.monitoring_app}.add_alertsettings_inline'):
             return True
         return False
 
     def has_view_permission(self, request, obj=None):
-        if request.user.has_perm('monitoring.view_alertsettings_inline'):
+        if request.user.has_perm(f'{self.monitoring_app}.view_alertsettings_inline'):
             return True
         return super(NestedStackedInline, self).has_view_permission(request, obj)
 
     def has_change_permission(self, request, obj=None):
-        if request.user.has_perm('monitoring.change_alertsettings_inline'):
+        if request.user.has_perm(f'{self.monitoring_app}.change_alertsettings_inline'):
             return True
         return super(NestedStackedInline, self).has_view_permission(request, obj)
 
     def has_delete_permission(self, request, obj=None):
-        if request.user.has_perm('monitoring.delete_alertsettings_inline'):
+        if request.user.has_perm(f'{self.monitoring_app}.delete_alertsettings_inline'):
             return True
         return False
 
@@ -145,30 +158,36 @@ class MetricInline(NestedGenericStackedInline):
     verbose_name = _('Alert Settings')
     verbose_name_plural = verbose_name
 
+    @property
+    def monitoring_app(self):
+        if 'SAMPLE_APP' in environ:
+            return 'sample_monitoring'
+        return 'monitoring'
+
     def _set_alertsettings_inline(self):
         self.fields = ['name', 'is_healthy', 'field_name', 'configuration']
         self.readonly_fields = ['is_healthy']
 
     def has_add_permission(self, request, obj=None):
-        if request.user.has_perm('monitoring.add_alertsettings_inline'):
+        if request.user.has_perm(f'{self.monitoring_app}.add_alertsettings_inline'):
             self._set_alertsettings_inline()
             return True
         return False
 
     def has_view_permission(self, request, obj=None):
-        if request.user.has_perm('monitoring.view_alertsettings_inline'):
+        if request.user.has_perm(f'{self.monitoring_app}.view_alertsettings_inline'):
             self._set_alertsettings_inline()
             return True
         return super(NestedGenericStackedInline, self).has_view_permission(request, obj)
 
     def has_change_permission(self, request, obj=None):
-        if request.user.has_perm('monitoring.change_alertsettings_inline'):
+        if request.user.has_perm(f'{self.monitoring_app}.change_alertsettings_inline'):
             self._set_alertsettings_inline()
             return True
         return super(NestedGenericStackedInline, self).has_view_permission(request, obj)
 
     def has_delete_permission(self, request, obj=None):
-        if request.user.has_perm('monitoring.delete_alertsettings_inline'):
+        if request.user.has_perm(f'{self.monitoring_app}.delete_alertsettings_inline'):
             self._set_alertsettings_inline()
             return True
         return False
