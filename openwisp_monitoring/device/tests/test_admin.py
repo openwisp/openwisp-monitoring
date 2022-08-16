@@ -1,6 +1,7 @@
 from copy import deepcopy
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.forms import generic_inlineformset_factory
 from django.test import TestCase
 from django.urls import reverse
@@ -344,6 +345,85 @@ class TestAdmin(
             response = self.client.get(path)
             self.assertNotContains(response, '<h2>WiFi Sessions</h2>')
             self.assertNotContains(response, 'monitoring-wifisession-changelist-url')
+
+    def test_check_alertsetting_inline(self):
+        test_user = self._create_user(
+            username='test', email='test@inline.com', is_staff=True
+        )
+        self._create_org_user(is_admin=True, user=test_user)
+        test_user_permissions = test_user.user_permissions.all().values_list(
+            'codename', flat=True
+        )
+        self.assertEqual(test_user_permissions.count(), 0)
+        device_permissions = Permission.objects.filter(codename__endswith='device')
+        # Permissions required accessing device page
+        test_user.user_permissions.add(*device_permissions),
+        test_user_permissions = test_user.user_permissions.all().values_list(
+            'codename', flat=True
+        )
+        self.assertEqual(test_user_permissions.count(), 4)
+        device = self._create_device()
+        Check.objects.create(
+            name='Ping check',
+            check_type=CHECK_CLASSES[0][0],
+            content_object=device,
+            params={},
+        )
+        self.client.force_login(test_user)
+        url = reverse('admin:config_device_change', args=[device.pk])
+        response = self.client.get(url)
+        self.assertNotContains(response, '<h2>Checks</h2>', html=True)
+        self.assertNotContains(response, '<h2>Alert Settings</h2>', html=True)
+        check_alert_inline_permissions = Permission.objects.filter(
+            codename__endswith='inline'
+        )
+        # Add check & alert inline permissions
+        test_user.user_permissions.add(*check_alert_inline_permissions)
+        test_user_permissions = test_user.user_permissions.all().values_list(
+            'codename', flat=True
+        )
+        self.assertEqual(test_user_permissions.count(), 12)
+        metric = self._create_general_metric(
+            content_object=device, configuration='ping'
+        )
+        self._create_alert_settings(metric=metric)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<h2>Checks</h2>', html=True)
+        self.assertContains(response, 'check-content_type-object_id-0-name')
+        self.assertContains(response, 'check-content_type-object_id-0-is_active')
+        self.assertContains(response, 'check-content_type-object_id-0-description')
+        self.assertContains(response, 'check-content_type-object_id-0-check_type')
+        self.assertContains(response, 'check-content_type-object_id-0-params')
+        self.assertContains(response, 'check-content_type-object_id-0-DELETE')
+        self.assertContains(response, 'class="form-row field-created"')
+        self.assertContains(response, 'class="form-row field-modified"')
+        self.assertContains(response, '<h2>Alert Settings</h2>', html=True)
+        self.assertContains(
+            response, '<option value="&lt;" selected>less than</option>'
+        )
+        self.assertContains(response, 'metric-content_type-object_id-0-name')
+        self.assertContains(
+            response, '<img src="/static/admin/img/icon-yes.svg" alt="True">', html=True
+        )
+        self.assertContains(response, 'metric-content_type-object_id-0-field_name')
+        self.assertContains(response, 'metric-content_type-object_id-0-configuration')
+        self.assertContains(
+            response,
+            'metric-content_type-object_id-0-alertsettings-0-is_active',
+        )
+        self.assertContains(
+            response,
+            'metric-content_type-object_id-0-alertsettings-0-custom_threshold" value="1"',
+        )
+        self.assertContains(
+            response,
+            'metric-content_type-object_id-0-alertsettings-0-custom_tolerance" value="0"',
+        )
+        self.assertContains(
+            response,
+            'metric-content_type-object_id-0-alertsettings-0-DELETE',
+        )
 
 
 class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
