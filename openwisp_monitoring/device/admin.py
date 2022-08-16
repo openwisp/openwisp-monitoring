@@ -140,7 +140,7 @@ class AlertSettingsInline(NestedStackedInline):
     def has_change_permission(self, request, obj=None):
         if request.user.has_perm(f'{self.monitoring_app}.change_alertsettings_inline'):
             return True
-        return super(NestedStackedInline, self).has_view_permission(request, obj)
+        return super(NestedStackedInline, self).has_change_permission(request, obj)
 
     def has_delete_permission(self, request, obj=None):
         if request.user.has_perm(f'{self.monitoring_app}.delete_alertsettings_inline'):
@@ -184,7 +184,9 @@ class MetricInline(NestedGenericStackedInline):
         if request.user.has_perm(f'{self.monitoring_app}.change_alertsettings_inline'):
             self._set_alertsettings_inline()
             return True
-        return super(NestedGenericStackedInline, self).has_view_permission(request, obj)
+        return super(NestedGenericStackedInline, self).has_change_permission(
+            request, obj
+        )
 
     def has_delete_permission(self, request, obj=None):
         if request.user.has_perm(f'{self.monitoring_app}.delete_alertsettings_inline'):
