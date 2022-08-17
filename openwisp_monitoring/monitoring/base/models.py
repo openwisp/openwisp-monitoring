@@ -205,6 +205,14 @@ class AbstractMetric(TimeStampedEditableModel):
         except AttributeError:
             return None
 
+    @property
+    def alert_field(self):
+        return self.config_dict.get('alert_field', self.field_name)
+
+    @property
+    def alert_on_related_field(self):
+        return self.alert_field != self.field_name
+
     def _get_time(self, time):
         """
         If time is a string, convert it to a datetime
@@ -363,19 +371,19 @@ class AbstractMetric(TimeStampedEditableModel):
             }
             options['metric_pk'] = self.pk
 
-            # check if alert_on_related_field is present in metric configuration
-            if 'alert_on_related_field' in self.config_dict:
-                related_field = self.config_dict['alert_on_related_field']
+            # if alert_on_related_field then check threshold
+            # on the related_field instead of field_name
+            if self.alert_on_related_field:
                 if not extra_values:
                     raise ValueError(
                         'write() missing keyword argument: "extra_values" required for alert on related field'
                     )
-                if related_field not in extra_values.keys():
+                if self.alert_field not in extra_values.keys():
                     raise ValueError(
-                        f'"{key}" is not defined for alert_on_related_field in metric configuration'
+                        f'"{key}" is not defined for alert_field in metric configuration'
                     )
                 options['check_threshold_kwargs'].update(
-                    {'value': extra_values[related_field]}
+                    {'value': extra_values[self.alert_field]}
                 )
         timeseries_write.delay(name=self.key, values=values, **options)
 
@@ -786,11 +794,11 @@ class AbstractAlertSettings(TimeStampedEditableModel):
             return value_crossed
         # tolerance is set, we must go back in time
         # to ensure the threshold is trepassed for enough time
-        # check if alert_on_related_field is present in metric configuration
-        if 'alert_on_related_field' in self.metric.config_dict:
-            alert_on_related_field = [self.metric.config_dict['alert_on_related_field']]
-        else:
-            alert_on_related_field = []
+        # if alert field is supplied, retrieve such field when reading
+        # so that we can let the system calculate the threshold on it
+        extra_fields = []
+        if self.metric.alert_on_related_field:
+            extra_fields = [self.metric.alert_field]
         if time is None:
             # retrieves latest measurements, ordered by most recent first
             points = self.metric.read(
@@ -798,7 +806,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
                 limit=None,
                 order='-time',
                 retention_policy=retention_policy,
-                extra_fields=alert_on_related_field,
+                extra_fields=extra_fields,
             )
             # store a list with the results
             results = [value_crossed]
@@ -810,15 +818,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
                     continue
                 utc_time = utc.localize(datetime.utcfromtimestamp(point['time']))
                 # did this point cross the threshold? Append to result list
-                # check if alert_on_related_field is present in metric configuration
-                if 'alert_on_related_field' in self.metric.config_dict:
-                    results.append(
-                        self._value_crossed(
-                            point[self.metric.config_dict['alert_on_related_field']]
-                        )
-                    )
-                else:
-                    results.append(self._value_crossed(point[self.metric.field_name]))
+                results.append(self._value_crossed(point[self.metric.alert_field]))
                 # tolerance is trepassed
                 if self._time_crossed(utc_time):
                     # if the latest results are consistent, the metric being

@@ -402,9 +402,9 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(d.monitoring.status, 'problem')
         self.assertEqual(Notification.objects.count(), 0)
 
-    def test_alert_on_related_field(self):
+    def test_alert_field(self):
         admin = self._create_admin()
-        m = self._create_general_metric(configuration='test_alert_on_rf')
+        m = self._create_general_metric(configuration='test_alert_field')
         self._create_alert_settings(
             metric=m, custom_operator='>', custom_threshold=30, custom_tolerance=0
         )
@@ -426,7 +426,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
                 m.write(10, extra_values={'test_related_3': 40})
             self.assertEqual(
                 str(err.exception),
-                '"test_related_3" is not defined for alert_on_related_field in metric configuration',
+                '"test_related_3" is not defined for alert_field in metric configuration',
             )
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, True)
@@ -482,9 +482,9 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(n.action_object, m.alertsettings)
             self.assertEqual(n.level, 'info')
 
-    def test_general_check_threshold_with_alert_on_rf_crossed_deferred(self):
+    def test_general_check_threshold_with_alert_field_crossed_deferred(self):
         admin = self._create_admin()
-        m = self._create_general_metric(configuration='test_alert_on_rf')
+        m = self._create_general_metric(configuration='test_alert_field')
         self._create_alert_settings(
             metric=m, custom_operator='>', custom_threshold=30, custom_tolerance=1
         )
@@ -499,9 +499,9 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(n.action_object, m.alertsettings)
         self.assertEqual(n.level, 'warning')
 
-    def test_general_check_threshold_with_alert_on_rf_deferred_not_crossed(self):
+    def test_general_check_threshold_with_alert_field_deferred_not_crossed(self):
         self._create_admin()
-        m = self._create_general_metric(configuration='test_alert_on_rf')
+        m = self._create_general_metric(configuration='test_alert_field')
         self._create_alert_settings(
             metric=m, custom_operator='>', custom_threshold=30, custom_tolerance=1
         )

@@ -51,14 +51,14 @@ metrics = {
         'label': 'Test Metric',
         'notification': test_notification,
     },
-    'test_alert_on_rf': {
+    'test_alert_field': {
         'name': 'test_alert_related',
         'key': '{key}',
         'field_name': '{field_name}',
         'label': 'Test alert related',
         'notification': test_notification,
         'related_fields': ['test_related_1', 'test_related_2', 'test_related_3'],
-        'alert_on_related_field': 'test_related_2',
+        'alert_field': 'test_related_2',
     },
     'top_fields_mean': {
         'name': 'top_fields_mean_test',
