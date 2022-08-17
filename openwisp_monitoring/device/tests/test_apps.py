@@ -26,14 +26,14 @@ class TestApps(TestCase):
                 'monitoring/css/device-map.css',
                 'leaflet/leaflet.css',
                 'monitoring/css/leaflet.fullscreen.css',
+                'monitoring/css/netjsongraph.css',
             ),
         )
         self.assertEqual(
             template_config[0].get('js'),
             (
-                'monitoring/js/device-map.js',
-                'leaflet/leaflet.js',
-                'leaflet/leaflet.extras.js',
+                'monitoring/js/lib/netjsongraph.min.js',
                 'monitoring/js/lib/leaflet.fullscreen.min.js',
+                'monitoring/js/device-map.js',
             ),
         )

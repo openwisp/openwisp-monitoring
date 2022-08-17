@@ -1,0 +1,98 @@
+.njg-relativePosition {
+  position: relative;
+  left: 0;
+  right: 0;
+}
+.njg-container {
+  background: #fbfbfb;
+  border-radius: 2px;
+  border: 1px solid #ccc;
+  color: #6d6357;
+  line-height: 20px;
+  max-width: 400px;
+  min-width: 200px;
+  padding: 10px 15px;
+}
+#graphChartContainer {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+}
+.leaflet-control-zoom {
+  top: 5px;
+}
+.leaflet-control-zoom-in {
+  border-top-left-radius: 5px !important;
+  border-top-right-radius: 5px !important;
+}
+.leaflet-control-zoom-out {
+  border-bottom-left-radius: 5px !important;
+  border-bottom-right-radius: 5px !important;
+}
+.leaflet-control-fullscreen {
+  top: 5px;
+}
+.leaflet-control-fullscreen-button {
+  border-radius: 5px !important;
+}
+.leaflet-control-layers-toggle {
+  height: 35px !important;
+  width: 35px !important;
+  background-size: 20px 20px !important;
+}
+.marker-cluster div {
+  color: #fff;
+  background-color: rgba(53, 60, 68, 0.8) !important;
+}
+.ok div {
+  background-color: rgba(38, 113, 38, 0.8) !important;
+}
+.problem div {
+  background-color: rgba(255, 180, 66, 0.8) !important;
+}
+.critical div {
+  background-color: rgba(167, 45, 29, 0.8) !important;
+}
+.unknown div {
+  background-color: rgba(53, 60, 68, 0.8) !important;
+}
+.njg-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: absolute;
+  right: 10px;
+  top: 20px;
+  z-index: 999;
+  background-color: inherit;
+}
+.njg-sideBar {
+  display: none;
+}
+.njg-tooltip {
+  background: #fff !important;
+  border: none !important;
+}
+.njg-tooltip-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 1px 0;
+  flex-wrap: wrap;
+}
+.njg-tooltip-key {
+  display: inline-flex;
+  flex-basis: 40%;
+  flex-wrap: wrap;
+  text-transform: capitalize;
+  font-weight: 600;
+  color: #000;
+}
+.njg-tooltip-value {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  flex-basis: 60%;
+  color: #000;
+}
