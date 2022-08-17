@@ -230,12 +230,12 @@ class DeviceMonitoringConfig(AppConfig):
                         'monitoring/css/device-map.css',
                         'leaflet/leaflet.css',
                         'monitoring/css/leaflet.fullscreen.css',
+                        'monitoring/css/netjsongraph.css',
                     ),
                     'js': (
+                        'monitoring/js/lib/netjsongraph.min.js',
+                        'monitoring/js/lib/leaflet.fullscreen.min.js',
                         'monitoring/js/device-map.js',
-                        'leaflet/leaflet.js',
-                        'leaflet/leaflet.extras.js',
-                        'monitoring/js/leaflet.fullscreen.min.js',
                     ),
                 },
                 extra_config={
