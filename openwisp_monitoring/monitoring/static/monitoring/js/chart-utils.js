@@ -87,10 +87,24 @@ django.jQuery(function ($) {
               if (!chartDiv.length) {
                 chartContents.append(
                   '<div id="' + htmlId + '" class="ow-chart">' +
-                  '<div class="js-plotly-plot"></div></div>'
+                  '<div id="zoom-chart" class="js-plotly-plot"></div></div>'
                 );
               }
               createChart(chart, data.x, htmlId, chart.title, chart.type, chartQuickLink);
+              var zoomChart = document.getElementById('zoom-chart');
+              zoomChart.on('plotly_relayout',
+                function (eventdata) {
+                      var startCustom = moment(eventdata['xaxis.range[0]']);
+                      var endCustom = moment(eventdata['xaxis.range[1]']);
+                      var dateSpan = endCustom.diff(startCustom, 'days') + 'd';
+                      if(dateSpan == '0d')
+                      {
+                        dateSpan = '1d';
+                      }
+                      localStorage.setItem(isCustomKey, true);
+                      loadCharts(dateSpan, true,  localStorage.getItem(isCustomKey) , startCustom.format('YYYY-MM-DD HH:mm:ss'), endCustom.format('YYYY-MM-DD HH:mm:ss'));
+                }
+              );
             });
           },
           error: function () {
