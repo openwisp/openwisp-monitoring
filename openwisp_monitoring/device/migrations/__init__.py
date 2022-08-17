@@ -1,9 +1,5 @@
 from collections import OrderedDict
 
-from django.contrib.auth.models import Permission
-
-from openwisp_controller.migrations import create_default_permissions, get_swapped_model
-
 # Use a pre-defined UUID so the template can be upgraded via migration scripts if needed
 TEMPLATE_MONITORING_UUID = '00000000-defa-defa-defa-000000000000'
 TEMPLATE_OPENWISP_MONITORING_01 = OrderedDict(
@@ -90,36 +86,3 @@ TEMPLATE_POST_RELOAD_HOOK_02 = OrderedDict(
         "contents": "#!/bin/sh\ntouch /etc/crontabs/root\n/etc/init.d/cron start\n/usr/sbin/legacy-update-openwisp-packages\n/usr/sbin/legacy-openwisp-monitoring\n",  # noqa
     }
 )
-
-
-def assign_permissions_to_groups(apps, schema_editor):
-    create_default_permissions(apps, schema_editor)
-    operators_read_only_admins_manage = [
-        'devicedata',
-        'devicemonitoring',
-        'wificlient',
-        'wifisession',
-    ]
-    manage_operations = ['add', 'change', 'delete']
-    Group = get_swapped_model(apps, 'openwisp_users', 'Group')
-
-    try:
-        admin = Group.objects.get(name='Administrator')
-        operator = Group.objects.get(name='Operator')
-    # consider failures custom cases
-    # that do not have to be dealt with
-    except Group.DoesNotExist:
-        return
-
-    for model_name in operators_read_only_admins_manage:
-        try:
-            permission = Permission.objects.get(codename='view_{}'.format(model_name))
-            operator.permissions.add(permission.pk)
-        except Permission.DoesNotExist:
-            pass
-        for operation in manage_operations:
-            admin.permissions.add(
-                Permission.objects.get(
-                    codename='{}_{}'.format(operation, model_name)
-                ).pk
-            )

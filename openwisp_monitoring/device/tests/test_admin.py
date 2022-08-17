@@ -127,7 +127,6 @@ class TestAdmin(
         self.assertContains(r, '<h2>Configuration</h2>')
         self.assertContains(r, '<h2>Map</h2>')
         self.assertContains(r, '<h2>Credentials</h2>')
-        self.assertContains(r, '<h2>Checks</h2>')
 
     def test_remove_invalid_interface(self):
         d = self._create_device(organization=self._create_org())
