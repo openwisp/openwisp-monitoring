@@ -39,7 +39,7 @@ django.jQuery(function ($) {
           "year": 1,
         },
         ranges: {
-          '1 day': [moment(), moment()],
+          '1 day': [moment().subtract(1,'days'), moment()],
           '3 days': [moment().subtract(3, 'days'), moment()],
           '1 week': [moment().subtract(7, 'days'), moment()],
           '1 month': [moment().subtract(30, 'days'), moment()],
@@ -157,9 +157,6 @@ django.jQuery(function ($) {
             startCustom = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
             endCustom = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
             dateSpan = endCustom.diff(startCustom, 'days') + 'd';
-            if (dateSpan == '0d') {
-              dateSpan = '1d';
-            }
             loadCharts(dateSpan, true, true, picker.startDate.format('YYYY-MM-DD HH:mm:ss'), picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
             localStorage.setItem(startDateKey, picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
             localStorage.setItem(endDateKey, picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
