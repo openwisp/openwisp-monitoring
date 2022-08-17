@@ -33,7 +33,7 @@ from ..configuration import (
 )
 from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
 from ..signals import pre_metric_write, threshold_crossed
-from ..tasks import delete_device_tsdb_data, timeseries_write
+from ..tasks import delete_timeseries, timeseries_write
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ class AbstractMetric(TimeStampedEditableModel):
 
     @classmethod
     def post_delete_receiver(cls, instance, *args, **kwargs):
-        delete_device_tsdb_data.delay(instance.key, instance.tags)
+        delete_timeseries.delay(instance.key, instance.tags)
 
     @classmethod
     def _get_or_create(cls, **kwargs):

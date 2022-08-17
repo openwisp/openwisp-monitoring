@@ -37,7 +37,7 @@ def timeseries_write(
 
 
 @shared_task
-def delete_device_tsdb_data(key, tags):
+def delete_timeseries(key, tags):
     timeseries_db.delete_series(key=key, tags=tags)
 
 

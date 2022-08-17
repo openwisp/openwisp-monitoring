@@ -349,3 +349,16 @@ class TestModels(TestMonitoringMixin, TestCase):
         m = self._create_general_metric(name='load')
         now = timezone.now()
         self.assertEqual(m._get_time(now.isoformat()), now)
+
+    def test_deleting_metric_deletes_timeseries(self):
+        metric1 = self._create_general_metric(name='load')
+        metric2 = self._create_general_metric(name='traffic')
+        metric1.write(99)
+        metric2.write(5000)
+        self.assertNotEqual(metric1.read(), [])
+        self.assertNotEqual(metric2.read(), [])
+        metric1.delete()
+        self.assertEqual(metric1.read(), [])
+        # Only the timeseries data related to the deleted metric
+        # should be deleted
+        self.assertNotEqual(metric2.read(), [])
