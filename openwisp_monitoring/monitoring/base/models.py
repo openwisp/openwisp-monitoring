@@ -1,3 +1,4 @@
+import decimal
 import json
 import logging
 from collections import OrderedDict
@@ -37,6 +38,7 @@ from ..tasks import timeseries_write
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+adaptive_chart_decimal_context = decimal.Context(prec=4, rounding=decimal.ROUND_DOWN)
 
 
 class AbstractMetric(TimeStampedEditableModel):
@@ -586,15 +588,15 @@ class AbstractChart(TimeStampedEditableModel):
                 if key == 'time':
                     continue
                 traces.setdefault(key, [])
-                if (
-                    # The adaptive feature does unit conversion and approximation
-                    # in the frontend, hence rounding off is skipped here.
-                    # TODO: Update this code to check for 'adaptive_prefix'
-                    not self.config_dict.get('unit', '').startswith('adaptive')
-                    and decimal_places
-                    and isinstance(value, (int, float))
-                ):
-                    value = self._round(value, decimal_places)
+                if decimal_places and isinstance(value, (int, float)):
+                    value = self._round(
+                        value,
+                        decimal_places,
+                        # TODO: Update this code to check for 'adaptive_prefix'
+                        adaptive=self.config_dict.get('unit', '').startswith(
+                            'adaptive'
+                        ),
+                    )
                 traces[key].append(value)
             time = datetime.fromtimestamp(point['time'], tz=tz(timezone)).strftime(
                 '%Y-%m-%d %H:%M'
@@ -636,10 +638,12 @@ class AbstractChart(TimeStampedEditableModel):
             logger.warning(f'Got KeyError in Chart.json method: {e}')
 
     @staticmethod
-    def _round(value, decimal_places):
+    def _round(value, decimal_places, adaptive=False):
         """
         rounds value if it makes sense
         """
+        if adaptive:
+            return decimal.Decimal(value, context=adaptive_chart_decimal_context)
         control = 1.0 / 10**decimal_places
         if value < control:
             decimal_places += 2
