@@ -190,27 +190,11 @@ class Iperf(BaseCheck):
         port = self._get_param(
             'client_options.port', 'client_options.properties.port.default'
         )
-        time = self._get_param(
-            'client_options.time', 'client_options.properties.time.default'
-        )
-        bytes = self._get_param(
-            'client_options.bytes', 'client_options.properties.bytes.default'
-        )
-        blockcount = self._get_param(
-            'client_options.blockcount', 'client_options.properties.blockcount.default'
-        )
         window = self._get_param(
             'client_options.window', 'client_options.properties.window.default'
         )
         parallel = self._get_param(
             'client_options.parallel', 'client_options.properties.parallel.default'
-        )
-        reverse = self._get_param(
-            'client_options.reverse', 'client_options.properties.reverse.default'
-        )
-        bidirectional = self._get_param(
-            'client_options.bidirectional',
-            'client_options.properties.bidirectional.default',
         )
         ct = self._get_param(
             'client_options.connect_timeout',
@@ -233,24 +217,7 @@ class Iperf(BaseCheck):
             'client_options.properties.udp.properties.length.default',
         )
 
-        # by default we use 'time' param
-        # for the iperf test end condition
-        test_end_condition = f'-t {time}'
-        # if 'bytes' present in config
-        # use it instead of 'time'
-        if bytes:
-            test_end_condition = f'-n {bytes}'
-        # if 'blockcount' present in config
-        # use it instead of 'time' or 'bytes'
-        if blockcount:
-            test_end_condition = f'-k {blockcount}'
-        # only one reverse condition can be use
-        # reverse or bidirectional not both
-        rev_or_bidir = ''
-        if reverse:
-            rev_or_bidir = '--reverse'
-        if bidirectional:
-            rev_or_bidir = '--bidir'
+        rev_or_bidir, test_end_condition = self._get_iperf_test_conditions()
         device_connection = self._get_device_connection()
         if not device_connection:
             logger.warning(
@@ -319,6 +286,46 @@ class Iperf(BaseCheck):
             self.store_result(result)
         device_connection.disconnect()
         return result
+
+    def _get_iperf_test_conditions(self):
+        """
+        Returns iperf check test conditions (rev_or_bidir, end_condition)
+        """
+        time = self._get_param(
+            'client_options.time', 'client_options.properties.time.default'
+        )
+        bytes = self._get_param(
+            'client_options.bytes', 'client_options.properties.bytes.default'
+        )
+        blockcount = self._get_param(
+            'client_options.blockcount', 'client_options.properties.blockcount.default'
+        )
+        reverse = self._get_param(
+            'client_options.reverse', 'client_options.properties.reverse.default'
+        )
+        bidirectional = self._get_param(
+            'client_options.bidirectional',
+            'client_options.properties.bidirectional.default',
+        )
+        # by default we use 'time' param
+        # for the iperf test end condition
+        test_end_condition = f'-t {time}'
+        # if 'bytes' present in config
+        # use it instead of 'time'
+        if bytes:
+            test_end_condition = f'-n {bytes}'
+        # if 'blockcount' present in config
+        # use it instead of 'time' or 'bytes'
+        if blockcount:
+            test_end_condition = f'-k {blockcount}'
+        # only one reverse condition can be use
+        # reverse or bidirectional not both
+        rev_or_bidir = ''
+        if reverse:
+            rev_or_bidir = '--reverse'
+        if bidirectional:
+            rev_or_bidir = '--bidir'
+        return rev_or_bidir, test_end_condition
 
     def _get_compelete_rsa_key(self, key):
         """
