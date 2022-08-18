@@ -524,7 +524,9 @@ class AbstractChart(TimeStampedEditableModel):
 
     def _get_query_params(self, time):
         m = self.metric
-        params = dict(field_name=m.field_name, key=m.key, time=self._get_time(time))
+        params = dict(
+            field_name=m.field_name, key=m.key, time=self._get_time(time), timespan=time
+        )
         if m.object_id:
             params.update(
                 {
@@ -544,23 +546,25 @@ class AbstractChart(TimeStampedEditableModel):
         if time in cls.GROUP_MAP.keys():
             days = int(time.strip('d'))
             now = timezone.now()
-            if days > 3:
-                now = date(now.year, now.month, now.day)
-            if days == 7:
-                # subtract one day because we want to include
-                # the current day in the time range
-                days -= 1
-            time = str(now - timedelta(days=days))[0:19]
             if cls.END_DATE:
+                end_date = cls.END_DATE
                 if days > 3:
-                    cls.END_DATE = date(
+                    end_date = date(
                         cls.END_DATE.year, cls.END_DATE.month, cls.END_DATE.day
                     )
                 if days == 7:
                     days -= 1
-                time = str(cls.END_DATE - timedelta(days=days))[0:19]
-            cls.END_DATE = None
-        return time
+                time = str(end_date - timedelta(days=days))[0:19]
+                return time
+            else:
+                if days > 3:
+                    now = date(now.year, now.month, now.day)
+                if days == 7:
+                    # subtract one day because we want to include
+                    # the current day in the time range
+                    days -= 1
+                time = str(now - timedelta(days=days))[0:19]
+                return time
 
     def read(
         self,
