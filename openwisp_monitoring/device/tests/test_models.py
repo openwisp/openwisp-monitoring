@@ -649,6 +649,29 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'critical')
 
+    def test_deleting_device_deletes_tsdb(self):
+        dm1, ping1, _, _ = self._create_env()
+        device2 = self._create_device(
+            name='default.test.device2',
+            mac_address='22:33:44:55:66:77',
+            organization=dm1.device.organization,
+        )
+        dm2 = device2.monitoring
+        dm2.status = 'ok'
+        dm2.save()
+        ping2 = self._create_object_metric(
+            name='ping', key='ping', field_name='reachable', content_object=device2
+        )
+        ping1.write(0)
+        ping2.write(0)
+        self.assertNotEqual(ping1.read(), [])
+        self.assertNotEqual(ping2.read(), [])
+        dm1.device.delete()
+        # Only the metric related to the deleted device
+        # is deleted
+        self.assertEqual(ping1.read(), [])
+        self.assertNotEqual(ping2.read(), [])
+
 
 class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
     wifi_client_model = WifiClient

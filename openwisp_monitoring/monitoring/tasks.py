@@ -37,6 +37,11 @@ def timeseries_write(
 
 
 @shared_task
+def delete_timeseries(key, tags):
+    timeseries_db.delete_series(key=key, tags=tags)
+
+
+@shared_task
 def migrate_timeseries_database():
     """
     Perform migrations on timeseries database
