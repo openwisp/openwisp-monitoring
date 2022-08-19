@@ -1980,78 +1980,68 @@ You can also use the ``alert_field`` key in metric configuration
 which allows ``AlertSettings`` to check the ``threshold`` on
 ``alert_field`` instead of the default ``field_name`` key.
 
-In the following example, we added ``alert_field`` to the metric configuration
-for the iperf metric in order to check the threshold on **iperf bandwidth**.
+**Note**: It will raise ``ImproperlyConfigured`` exception if a metric configuration
+is already registered with same name (not to be confused with verbose_name).
+
+If you don't need to register a new metric but need to change a specific key of an
+existing metric configuration, you can use `OPENWISP_MONITORING_METRICS <#openwisp_monitoring_metrics>`_.
+
+The following example shows how to use the
+`setting <https://github.com/openwisp/openwisp-monitoring#openwisp_monitoring_metrics>`_
+to reconfigure the system for `iperf check <#iperf-1>`_ to send an alert if
+the measured **TCP bandwidth** has been less than **10 Mbit/s** for more than **2 days**.
+
+1. Iperf check doesn't have any ``AlertSettings`` by default,
+but we can easily create one through the OpenWISP admin interface.
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_setttings.png
+  :align: center
+
+2. Now, add the following configuration to send an alert for **TCP bandwidth**.
 
 .. code-block:: python
 
-    DEFAULT_METRICS = {
-        'iperf': {
-            'label': _('Iperf'),
-            'name': 'Iperf',
-            'key': 'iperf',
-            'field_name': 'iperf_result',
-            'related_fields': [
-                'sent_bps_tcp',
-                'received_bps_tcp',
-                'sent_bytes_tcp',
-                'received_bytes_tcp',
-                'retransmits',
-                'sent_bytes_udp',
-                'sent_bps_udp',
-                'jitter',
-                'total_packets',
-                'lost_packets',
-                'lost_percent',
-            ],
-            # Check alert threshold on iperf bandwidth (TCP)
-            'alert_field': 'sent_bps_tcp',
-            # Alert is sent immediately (tolerance 0) when bandwidth less than 10 Mbps
-            'alert_settings': {'operator': '<', 'threshold': 10000000, 'tolerance': 0},
-            'notification': {
-                'problem': {
-                    'verbose_name': 'Iperf PROBLEM',
-                    'verb': _('Iperf bandwidth is less than normal value'),
-                    'level': 'warning',
-                    'email_subject': _(
-                        '[{site.name}] PROBLEM: {notification.target} {notification.verb}'
-                    ),
-                    'message': _(
-                        'The device [{notification.target}]({notification.target_link}) '
-                        '{notification.verb}.'
-                    ),
-                },
-                'recovery': {
-                    'verbose_name': 'Iperf RECOVERY',
-                    'verb': _('Iperf bandwidth now back to normal'),
-                    'level': 'info',
-                    'email_subject': _(
-                        '[{site.name}] RECOVERY: {notification.target} {notification.verb}'
-                    ),
-                    'message': _(
-                        'The device [{notification.target}]({notification.target_link}) '
-                        '{notification.verb}.'
-                    ),
-                },
-            },
-            # iperf charts configuration here
-        },
-    }
+   # Main project settings.py
+   from django.utils.translation import gettext_lazy as _
+
+   OPENWISP_MONITORING_METRICS = {
+       'iperf': {
+           # Check alert threshold on iperf bandwidth (TCP)
+           'alert_field': 'sent_bps_tcp',
+           'notification': {
+               'problem': {
+                   'verbose_name': 'Iperf PROBLEM',
+                   'verb': _('Iperf bandwidth is less than normal value'),
+                   'level': 'warning',
+                   'email_subject': _(
+                       '[{site.name}] PROBLEM: {notification.target} {notification.verb}'
+                   ),
+                   'message': _(
+                       'The device [{notification.target}]({notification.target_link}) '
+                       '{notification.verb}.'
+                   ),
+               },
+               'recovery': {
+                   'verbose_name': 'Iperf RECOVERY',
+                   'verb': _('Iperf bandwidth now back to normal'),
+                   'level': 'info',
+                   'email_subject': _(
+                       '[{site.name}] RECOVERY: {notification.target} {notification.verb}'
+                   ),
+                   'message': _(
+                       'The device [{notification.target}]({notification.target_link}) '
+                       '{notification.verb}.'
+                   ),
+               },
+           },
+       },
+   }
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_warn.png
   :align: center
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_info.png
   :align: center
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_setttings.png
-  :align: center
-
-**Note**: It will raise ``ImproperlyConfigured`` exception if a metric configuration
-is already registered with same name (not to be confused with verbose_name).
-
-If you don't need to register a new metric but need to change a specific key of an
-existing metric configuration, you can use `OPENWISP_MONITORING_METRICS <#openwisp_monitoring_metrics>`_.
 
 ``unregister_metric``
 ~~~~~~~~~~~~~~~~~~~~~
