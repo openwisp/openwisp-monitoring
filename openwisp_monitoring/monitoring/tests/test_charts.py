@@ -202,6 +202,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
             content_type=m.content_type_key,
             object_id=m.object_id,
             time=str(time),
+            timespan='7d',
         )
         expected = "{0} tz('{1}')".format(expected, settings.TIME_ZONE)
         self.assertEqual(c.get_query(), expected)
@@ -230,7 +231,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         data = c.read(time='30d')
         self.assertEqual(data['traces'][0][0], 'wifi_clients')
         # last 10 days
-        self.assertEqual(data['traces'][0][1][-10:], [0, 2, 2, 2, 2, 2, 2, 2, 2, 4])
+        self.assertEqual(data['traces'][0][1][-10:], [0, 0, 2, 2, 2, 2, 2, 2, 2, 2])
 
     def test_get_time(self):
         c = Chart()

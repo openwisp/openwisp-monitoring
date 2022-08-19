@@ -469,7 +469,7 @@ class TestDashboardTimeseriesView(
             last_line = _test_csv_response(response)
             self.assertEqual(
                 last_line,
-                [last_line[0], '3', '3.0', '', ''],
+                [last_line[0], '0', '', '', ''],
             )
 
         self.client.force_login(org2_administrator)

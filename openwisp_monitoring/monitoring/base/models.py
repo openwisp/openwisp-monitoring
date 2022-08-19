@@ -564,7 +564,7 @@ class AbstractChart(TimeStampedEditableModel):
                     # the current day in the time range
                     days -= 1
                 time = str(now - timedelta(days=days))[0:19]
-                return time
+        return time
 
     def read(
         self,

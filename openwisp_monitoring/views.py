@@ -36,10 +36,6 @@ class MonitoringApiViewMixin:
         """
         return {}
 
-    def iscustom(self, request, *args, **kwargs):
-        custom = request.GET.get('custom')
-        return custom == 'true'
-
     def get_group_map(self, daterange):
         value = '10m'
         if daterange:
@@ -62,7 +58,7 @@ class MonitoringApiViewMixin:
 
     def get(self, request, *args, **kwargs):
         daterange = request.GET.get('time')
-        if daterange and self.iscustom(request):
+        if daterange:
             self.get_group_map(daterange)
             end_date = request.GET.get('end')
             if end_date is not None:
