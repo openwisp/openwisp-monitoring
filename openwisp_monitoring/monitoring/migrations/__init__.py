@@ -9,8 +9,6 @@ def assign_permissions_to_groups(apps, schema_editor):
     operators_read_only_admins_manage = [
         'check',
         'alertsettings',
-        'devicedata',
-        'devicemonitoring',
         'wificlient',
         'wifisession',
     ]
@@ -28,22 +26,15 @@ def assign_permissions_to_groups(apps, schema_editor):
     for model_name in operators_read_only_admins_manage:
         try:
             permission = Permission.objects.get(codename='view_{}'.format(model_name))
-            if model_name in ['check', 'alertsettings']:
-                permission = Permission.objects.get(
-                    codename='view_{}_inline'.format(model_name)
-                )
             operator.permissions.add(permission.pk)
         except Permission.DoesNotExist:
             pass
         for operation in manage_operations:
-            permission = Permission.objects.get(
-                codename='{}_{}'.format(operation, model_name)
+            admin.permissions.add(
+                Permission.objects.get(
+                    codename='{}_{}'.format(operation, model_name)
+                ).pk
             )
-            if model_name in ['check', 'alertsettings']:
-                permission = Permission.objects.get(
-                    codename='{}_{}_inline'.format(operation, model_name)
-                )
-            admin.permissions.add(permission.pk)
 
 
 def create_general_metrics(apps, schema_editor):

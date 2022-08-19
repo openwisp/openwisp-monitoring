@@ -2,13 +2,13 @@
 
 from django.db import migrations
 
-from . import assign_permissions_to_groups
+from openwisp_monitoring.device.migrations import assign_permissions_to_groups
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('monitoring', '0009_alter_alertsettings_options'),
+        ('sample_device_monitoring', '0001_initial'),
     ]
 
     operations = [

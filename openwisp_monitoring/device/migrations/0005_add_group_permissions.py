@@ -2,13 +2,13 @@
 
 from django.db import migrations
 
-from openwisp_monitoring.monitoring.migrations import assign_permissions_to_groups
+from . import assign_permissions_to_groups
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('sample_monitoring', '0002_create_general_metric'),
+        ('device_monitoring', '0004_wificlient_wifisession'),
     ]
 
     operations = [
