@@ -106,7 +106,7 @@ class AlertSettingsForm(ModelForm):
 
 class AlertSettingsInline(NestedStackedInline):
     model = AlertSettings
-    extra = 0
+    extra = 1
     max_num = 0
     exclude = ['created', 'modified']
     form = AlertSettingsForm
@@ -190,9 +190,6 @@ class MetricInline(NestedGenericStackedInline):
             self._set_alertsettings_inline()
             return True
         return False
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).filter(alertsettings__isnull=False)
 
 
 class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
