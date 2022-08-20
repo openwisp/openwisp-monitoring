@@ -43,7 +43,7 @@ def assign_inline_permissions_to_groups(apps, schema_editor):
         'check',
         'alertsettings',
     ]
-    manage_operations = ['add', 'change', 'delete']
+    manage_operations = ['add', 'view', 'change', 'delete']
     Group = get_swapped_model(apps, 'openwisp_users', 'Group')
 
     try:
