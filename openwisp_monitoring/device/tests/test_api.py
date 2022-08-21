@@ -197,11 +197,11 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         c = m.chart_set.first()
         data = c.read()
         # expected download wlan0
-        self.assertEqual(data['traces'][0][1][-1], 1.2)
+        self.assertEqual(data['traces'][0][1][-4], 1.2)
         # expected total wlan0
-        self.assertEqual(data['traces'][1][1][-1], 1.8)
+        self.assertEqual(data['traces'][1][1][-4], 1.8)
         # expected upload wlan0
-        self.assertEqual(data['traces'][2][1][-1], 0.6)
+        self.assertEqual(data['traces'][2][1][-4], 0.6)
         # wlan1 traffic
         m = self.metric_queryset.get(name='wlan1 traffic', object_id=dd.pk)
         points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
@@ -215,11 +215,11 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         c = m.chart_set.first()
         data = c.read()
         # expected download wlan1
-        self.assertEqual(data['traces'][0][1][-1], 3.0)
+        self.assertEqual(data['traces'][0][1][-4], 3.0)
         # expected total wlan1
-        self.assertEqual(data['traces'][1][1][-1], 4.5)
+        self.assertEqual(data['traces'][1][1][-4], 4.5)
         # expected upload wlan1
-        self.assertEqual(data['traces'][2][1][-1], 1.5)
+        self.assertEqual(data['traces'][2][1][-4], 1.5)
 
     def test_200_no_date_supplied(self):
         o = self._create_org()
@@ -424,7 +424,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 'disk_usage - Disk Usage',
             ],
         )
-        last_line_before_histogram = rows[-5].strip().split(',')
+        last_line_before_histogram = rows[-7].strip().split(',')
         self.assertEqual(
             last_line_before_histogram,
             [
