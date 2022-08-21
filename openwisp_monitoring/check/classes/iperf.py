@@ -99,7 +99,7 @@ DEFAULT_IPERF_CHECK_CONFIG = {
                 'default': False,
             },
             'connect_timeout': {
-                # set  timeout  for establishing the initial
+                # set timeout for establishing the initial
                 # control connection to the server, in milliseconds (ms)
                 # providing a shorter value (ex. 1 ms) may
                 # speed up detection of a down iperf3 server
@@ -185,7 +185,47 @@ class Iperf(BaseCheck):
         if iperf_config:
             org_id = str(self.related_object.organization.id)
             self.validate_params(params=iperf_config[org_id])
+        device_connection = self._get_device_connection()
+        if not device_connection:
+            logger.warning(
+                f'Failed to get a working DeviceConnection for "{self.related_object}", iperf check skipped!'
+            )
+            return
+        # The DeviceConnection could fail if the management tunnel is down.
+        if not self._connect(device_connection):
+            logger.warning(
+                f'DeviceConnection for "{self.related_object}" is not working, iperf check skipped!'
+            )
+            return
+        server = self._get_iperf_servers()[0]
+        command_tcp, command_udp = self._get_check_commands(server)
 
+        # TCP mode
+        result, exit_code = self._exec_command(device_connection, command_tcp)
+        # Exit code 127 : command doesn't exist
+        if exit_code == 127:
+            logger.warning(
+                f'Iperf3 is not installed on the "{self.related_object}", error - {result.strip()}'
+            )
+            return
+
+        result_tcp = self._get_iperf_result(result, exit_code, mode='TCP')
+        # UDP mode
+        result, exit_code = self._exec_command(device_connection, command_udp)
+        result_udp = self._get_iperf_result(result, exit_code, mode='UDP')
+        result = {}
+        if store and result_tcp and result_udp:
+            # Store iperf_result field 1 if any mode passes, store 0 when both fails
+            iperf_result = result_tcp['iperf_result'] | result_udp['iperf_result']
+            result.update({**result_tcp, **result_udp, 'iperf_result': iperf_result})
+            self.store_result(result)
+        device_connection.disconnect()
+        return result
+
+    def _get_check_commands(self, server):
+        """
+        Returns tcp & udp commands for iperf check
+        """
         username = self._get_param('username', 'username.default')
         port = self._get_param(
             'client_options.port', 'client_options.properties.port.default'
@@ -218,19 +258,6 @@ class Iperf(BaseCheck):
         )
 
         rev_or_bidir, test_end_condition = self._get_iperf_test_conditions()
-        device_connection = self._get_device_connection()
-        if not device_connection:
-            logger.warning(
-                f'Failed to get a working DeviceConnection for "{self.related_object}", iperf check skipped!'
-            )
-            return
-        # The DeviceConnection could fail if the management tunnel is down.
-        if not self._connect(device_connection):
-            logger.warning(
-                f'DeviceConnection for "{self.related_object}" is not working, iperf check skipped!'
-            )
-            return
-        server = self._get_iperf_servers()[0]
         command_tcp = (
             f'iperf3 -c {server} -p {port} {test_end_condition} --connect-timeout {ct} '
             f'-b {tcp_bitrate} -l {tcp_length} -w {window} -P {parallel} {rev_or_bidir} -J'
@@ -264,28 +291,7 @@ class Iperf(BaseCheck):
             # If IPERF_CHECK_DELETE_RSA_KEY, remove rsa_public_key from the device
             if app_settings.IPERF_CHECK_DELETE_RSA_KEY:
                 command_udp = f'{command_udp} && rm {rsa_public_key_path}'
-
-        # TCP mode
-        result, exit_code = self._exec_command(device_connection, command_tcp)
-        # Exit code 127 : command doesn't exist
-        if exit_code == 127:
-            logger.warning(
-                f'Iperf3 is not installed on the "{self.related_object}", error - {result.strip()}'
-            )
-            return
-
-        result_tcp = self._get_iperf_result(result, exit_code, mode='TCP')
-        # UDP mode
-        result, exit_code = self._exec_command(device_connection, command_udp)
-        result_udp = self._get_iperf_result(result, exit_code, mode='UDP')
-        result = {}
-        if store and result_tcp and result_udp:
-            # Store iperf_result field 1 if any mode passes, store 0 when both fails
-            iperf_result = result_tcp['iperf_result'] | result_udp['iperf_result']
-            result.update({**result_tcp, **result_udp, 'iperf_result': iperf_result})
-            self.store_result(result)
-        device_connection.disconnect()
-        return result
+        return command_tcp, command_udp
 
     def _get_iperf_test_conditions(self):
         """
