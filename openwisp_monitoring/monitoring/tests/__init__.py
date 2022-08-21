@@ -78,7 +78,7 @@ charts = {
         'query': {
             'influxdb': (
                 "SELECT {fields|SUM|/ 1} FROM {key} "
-                "WHERE time >= '{time}' AND time < '{time}' + {timespan} AND content_type = "
+                "WHERE time >= '{time}' AND time <= '{time}' + {timespan} AND content_type = "
                 "'{content_type}' AND object_id = '{object_id}'"
             )
         },
@@ -107,7 +107,7 @@ charts = {
         'order': 999,
         'query': {
             'influxdb': (
-                "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND time < '{time}' + {timespan} "
+                "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND time <= '{time}' + {timespan} "
                 "AND content_type = '{content_type}' AND object_id = '{object_id}'"
             )
         },
@@ -134,7 +134,7 @@ charts = {
         'query': {
             'influxdb': (
                 "SELECT MEAN({field_name}) AS {field_name} FROM {key}"
-                " WHERE time >= '{time}' AND time < '{time}' + {timespan}"
+                " WHERE time >= '{time}' AND time <= '{time}' + {timespan}"
                 " AND content_type = '{content_type}' AND object_id = '{object_id}'"
             )
         },
@@ -148,7 +148,7 @@ charts = {
         'query': {
             'influxdb': (
                 "SELECT SUM({field_name}) AS {field_name} FROM {key}"
-                " WHERE time >= '{time}' AND time < '{time}' + {timespan}"
+                " WHERE time >= '{time}' AND time <= '{time}' + {timespan}"
                 " AND content_type = '{content_type}' AND object_id = '{object_id}'"
             )
         },
@@ -162,7 +162,7 @@ charts = {
         'query': {
             'influxdb': (
                 "SELECT {fields|MEAN} FROM {key} "
-                "WHERE time >= '{time}' AND time < '{time}' + {timespan} AND content_type = "
+                "WHERE time >= '{time}' AND time <= '{time}' + {timespan} AND content_type = "
                 "'{content_type}' AND object_id = '{object_id}'"
             )
         },

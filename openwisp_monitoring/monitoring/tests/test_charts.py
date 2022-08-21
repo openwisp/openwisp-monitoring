@@ -231,7 +231,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         data = c.read(time='30d')
         self.assertEqual(data['traces'][0][0], 'wifi_clients')
         # last 10 days
-        self.assertEqual(data['traces'][0][1][-10:], [0, 0, 2, 2, 2, 2, 2, 2, 2, 2])
+        self.assertEqual(data['traces'][0][1][-10:], [0, 2, 2, 2, 2, 2, 2, 2, 2, 0])
 
     def test_get_time(self):
         c = Chart()

@@ -71,7 +71,7 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
     def test_default_query(self):
         c = self._create_chart(test_data=False)
         q = (
-            "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND time < '{time}' + {timespan}"
+            "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND time <= '{time}' + {timespan}"
             " AND content_type = '{content_type}' AND object_id = '{object_id}'"
         )
         self.assertEqual(c.query, q)
@@ -194,7 +194,7 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         c = self._create_chart(configuration='histogram')
         expected = (
             "SELECT {fields|SUM|/ 1} FROM {key} "
-            "WHERE time >= '{time}' AND time < '{time}' + {timespan} AND content_type = "
+            "WHERE time >= '{time}' AND time <= '{time}' + {timespan} AND content_type = "
             "'{content_type}' AND object_id = '{object_id}'"
         )
         self.assertEqual(c.query, expected)

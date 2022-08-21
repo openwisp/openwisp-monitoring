@@ -381,6 +381,7 @@ class AbstractChart(TimeStampedEditableModel):
     GROUP_MAP = {'1d': '10m', '3d': '20m', '7d': '1h', '30d': '24h', '365d': '24h'}
     DEFAULT_TIME = '7d'
     END_DATE = None
+    TIME_ZONE_VALUE = ''
 
     class Meta:
         abstract = True
@@ -544,17 +545,24 @@ class AbstractChart(TimeStampedEditableModel):
         if not isinstance(time, str):
             return str(time)
         if time in cls.GROUP_MAP.keys():
-            days = int(time.strip('d'))
             now = timezone.now()
-            if cls.END_DATE:
-                end_date = cls.END_DATE
+            days = int(time.strip('d'))
+            if cls.TIME_ZONE_VALUE:
+                now = timezone.now().astimezone(cls.TIME_ZONE_VALUE)
+            if cls.END_DATE and cls.TIME_ZONE_VALUE:
+                if (days == 1 or days == 3) and cls.END_DATE.date() == now.date():
+                    cls.END_DATE = now
+                if (
+                    days == 7 or days == 30 or days == 365
+                ) and cls.END_DATE == now.date():
+                    cls.END_DATE = now
                 if days > 3:
-                    end_date = date(
+                    cls.END_DATE = date(
                         cls.END_DATE.year, cls.END_DATE.month, cls.END_DATE.day
                     )
                 if days == 7:
                     days -= 1
-                time = str(end_date - timedelta(days=days))[0:19]
+                time = str(cls.END_DATE - timedelta(days=days))[0:19]
                 return time
             else:
                 if days > 3:

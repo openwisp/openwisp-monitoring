@@ -39,7 +39,12 @@ class MonitoringApiViewMixin:
     def get_group_map(self, daterange):
         value = '10m'
         if daterange:
-            daterange = daterange.replace('d', '')
+            daterange = (
+                daterange.replace('d', '')
+                .replace('w', '')
+                .replace('m', '')
+                .replace('y', '')
+            )
             daterange = int(daterange)
             if daterange > 0 and daterange < 3:
                 value = '10m'
@@ -64,6 +69,10 @@ class MonitoringApiViewMixin:
             if end_date is not None:
                 timezone = request.query_params.get('timezone', settings.TIME_ZONE)
                 local = tz(timezone)
+                end_date_timezone = dt.datetime.strptime(
+                    end_date, '%Y-%m-%d %H:%M:%S'
+                ).astimezone(local)
+                Chart.TIME_ZONE_VALUE = end_date_timezone.tzinfo
                 Chart.END_DATE = local.localize(
                     dt.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
                 ).astimezone(pytz.utc)
