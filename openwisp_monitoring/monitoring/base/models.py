@@ -561,7 +561,7 @@ class AbstractChart(TimeStampedEditableModel):
                         cls.END_DATE.year, cls.END_DATE.month, cls.END_DATE.day
                     )
                 if days == 7:
-                    cls.END_DATE = now.date()
+                    cls.END_DATE = now
                 time = str(cls.END_DATE - timedelta(days=days))[0:19]
                 return time
             else:

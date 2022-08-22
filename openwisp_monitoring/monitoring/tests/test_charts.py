@@ -195,7 +195,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         m = c.metric
         now_ = now()
         today = date(now_.year, now_.month, now_.day)
-        time = today - timedelta(days=6)
+        time = today - timedelta(days=7)
         expected = c.query.format(
             field_name=m.field_name,
             key=m.key,
