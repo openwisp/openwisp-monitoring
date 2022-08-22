@@ -550,18 +550,18 @@ class AbstractChart(TimeStampedEditableModel):
             if cls.TIME_ZONE_VALUE:
                 now = timezone.now().astimezone(cls.TIME_ZONE_VALUE)
             if cls.END_DATE and cls.TIME_ZONE_VALUE:
-                if (days == 1 or days == 3) and cls.END_DATE.date() == now.date():
-                    cls.END_DATE = now
                 if (
-                    days == 7 or days == 30 or days == 365
-                ) and cls.END_DATE == now.date():
+                    days == 1 or days == 3 or days == 6 or days == 30 or days == 365
+                ) and date(
+                    cls.END_DATE.year, cls.END_DATE.month, cls.END_DATE.day
+                ) == now.date():
                     cls.END_DATE = now
                 if days > 3:
                     cls.END_DATE = date(
                         cls.END_DATE.year, cls.END_DATE.month, cls.END_DATE.day
                     )
                 if days == 7:
-                    days -= 1
+                    cls.END_DATE = now.date()
                 time = str(cls.END_DATE - timedelta(days=days))[0:19]
                 return time
             else:
