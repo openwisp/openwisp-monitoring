@@ -1023,6 +1023,16 @@ jitter, datagram loss etc of the device using `iperf3 utility <https://iperf.fr/
 This check is **disabled by default**. You can enable auto creation of this check by setting the
 `OPENWISP_MONITORING_AUTO_IPERF <#OPENWISP_MONITORING_AUTO_IPERF>`_ to ``True``.
 
+You can also create the iperf check from the **device page** as shown below:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-check.png
+  :align: center
+
+**Note:** To access the above page, the user must have ``check inline permissions``.
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/inline-permissions.png
+  :align: center
+
 It also supports tuning of various parameters.
 
 You can also change the parameters used for iperf checks (e.g. timing, port, username,

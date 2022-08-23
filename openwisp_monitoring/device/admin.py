@@ -56,7 +56,31 @@ class CheckInlineFormSet(BaseGenericInlineFormSet):
         super().full_clean()
 
 
-class CheckInline(GenericStackedInline):
+class InlinePermissionMixin:
+    def has_add_permission(self, request, obj=None):
+        # User will be able to add objects from inline even
+        # if it only has permission to add a model object
+        return super().has_add_permission(request, obj) or request.user.has_perm(
+            f'{self.model._meta.app_label}.add_{self.inline_permission_suffix}'
+        )
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request, obj) or request.user.has_perm(
+            f'{self.model._meta.app_label}.change_{self.inline_permission_suffix}'
+        )
+
+    def has_view_permission(self, request, obj=None):
+        return super().has_view_permission(request, obj) or request.user.has_perm(
+            f'{self.model._meta.app_label}.view_{self.inline_permission_suffix}'
+        )
+
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj) or request.user.has_perm(
+            f'{self.model._meta.app_label}.delete_{self.inline_permission_suffix}'
+        )
+
+
+class CheckInline(InlinePermissionMixin, GenericStackedInline):
     model = Check
     extra = 0
     formset = CheckInlineFormSet
@@ -67,6 +91,7 @@ class CheckInline(GenericStackedInline):
         'check_type',
         'params',
     ]
+    inline_permission_suffix = 'check_inline'
 
     def get_fields(self, request, obj=None):
         if not self.has_change_permission(request, obj) or not self.has_view_permission(
@@ -82,28 +107,6 @@ class CheckInline(GenericStackedInline):
             return ['check_type']
         return super().get_readonly_fields(request, obj)
 
-    def has_add_permission(self, request, obj=None):
-        # User will be able to add check from inline even
-        # if it only has permission to add a check object
-        return super().has_add_permission(request, obj) or request.user.has_perm(
-            f'{self.model._meta.app_label}.add_check_inline'
-        )
-
-    def has_change_permission(self, request, obj=None):
-        return super().has_change_permission(request, obj) or request.user.has_perm(
-            f'{self.model._meta.app_label}.change_check_inline'
-        )
-
-    def has_view_permission(self, request, obj=None):
-        return super().has_view_permission(request, obj) or request.user.has_perm(
-            f'{self.model._meta.app_label}.view_check_inline'
-        )
-
-    def has_delete_permission(self, request, obj=None):
-        return super().has_delete_permission(request, obj) or request.user.has_perm(
-            f'{self.model._meta.app_label}.delete_check_inline'
-        )
-
 
 class AlertSettingsForm(ModelForm):
     def __init__(self, *args, **kwargs):
@@ -117,38 +120,26 @@ class AlertSettingsForm(ModelForm):
         super().__init__(*args, **kwargs)
 
 
-class AlertSettingsInline(NestedStackedInline):
+class AlertSettingsInline(InlinePermissionMixin, NestedStackedInline):
     model = AlertSettings
     extra = 0
     max_num = 0
     exclude = ['created', 'modified']
     form = AlertSettingsForm
+    inline_permission_suffix = 'alertsettings_inline'
+
+    def get_extra(self, request, obj=None, **kwargs):
+        # Get full alertsettings form
+        # when user has add permission
+        if self.has_add_permission(request, obj):
+            return 1
+        return super().get_extra(request, obj, **kwargs)
 
     def get_queryset(self, request):
         return super().get_queryset(request).order_by('created')
 
-    def has_add_permission(self, request, obj=None):
-        return super().has_add_permission(request, obj) or request.user.has_perm(
-            f'{self.model._meta.app_label}.add_alertsettings_inline'
-        )
 
-    def has_view_permission(self, request, obj=None):
-        return super().has_view_permission(request, obj) or request.user.has_perm(
-            f'{self.model._meta.app_label}.view_alertsettings_inline'
-        )
-
-    def has_change_permission(self, request, obj=None):
-        return super().has_change_permission(request, obj) or request.user.has_perm(
-            f'{self.model._meta.app_label}.change_alertsettings_inline'
-        )
-
-    def has_delete_permission(self, request, obj=None):
-        return super().has_delete_permission(request, obj) or request.user.has_perm(
-            f'{self.model._meta.app_label}.delete_alertsettings_inline'
-        )
-
-
-class MetricInline(NestedGenericStackedInline):
+class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
     model = Metric
     extra = 0
     inlines = [AlertSettingsInline]
@@ -157,6 +148,7 @@ class MetricInline(NestedGenericStackedInline):
     # Explicitly changed name from Metrics to Alert Settings
     verbose_name = _('Alert Settings')
     verbose_name_plural = verbose_name
+    inline_permission_suffix = 'alertsettings_inline'
 
     def get_fields(self, request, obj=None):
         if not self.has_change_permission(request, obj) or not self.has_view_permission(
@@ -164,28 +156,6 @@ class MetricInline(NestedGenericStackedInline):
         ):
             return ['name', 'is_healthy']
         return super().get_fields(request, obj)
-
-    def has_add_permission(self, request, obj=None):
-        # User will be able to add alertsettings from inline
-        # even if it only has permission to add a alertsettings object
-        return super().has_add_permission(request, obj) or request.user.has_perm(
-            f'{self.model._meta.app_label}.add_alertsettings_inline'
-        )
-
-    def has_view_permission(self, request, obj=None):
-        return super().has_view_permission(request, obj) or request.user.has_perm(
-            f'{self.model._meta.app_label}.view_alertsettings_inline'
-        )
-
-    def has_change_permission(self, request, obj=None):
-        return super().has_change_permission(request, obj) or request.user.has_perm(
-            f'{self.model._meta.app_label}.change_alertsettings_inline'
-        )
-
-    def has_delete_permission(self, request, obj=None):
-        return super().has_delete_permission(request, obj) or request.user.has_perm(
-            f'{self.model._meta.app_label}.delete_alertsettings_inline'
-        )
 
 
 class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
