@@ -643,7 +643,9 @@ class AbstractChart(TimeStampedEditableModel):
         rounds value if it makes sense
         """
         if adaptive:
-            return decimal.Decimal(value, context=adaptive_chart_decimal_context)
+            return float(
+                decimal.Decimal(str(value), context=adaptive_chart_decimal_context)
+            )
         control = 1.0 / 10**decimal_places
         if value < control:
             decimal_places += 2
