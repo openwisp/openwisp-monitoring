@@ -1028,7 +1028,8 @@ You can also create the iperf check from the **device page** as shown below:
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-check.png
   :align: center
 
-**Note:** To access the above page, the user must have ``check inline permissions``.
+**Note:** To access the above page, the user must have some special permissions,
+which are included by default in the groups "Administrator" and "Operator" and are shown in the screenshot below.
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/inline-permissions.png
   :align: center
