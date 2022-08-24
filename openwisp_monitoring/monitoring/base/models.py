@@ -38,7 +38,7 @@ from ..tasks import timeseries_write
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
-adaptive_chart_decimal_context = decimal.Context(prec=4, rounding=decimal.ROUND_DOWN)
+adaptive_chart_decimal_context = decimal.Context(prec=3, rounding=decimal.ROUND_DOWN)
 
 
 class AbstractMetric(TimeStampedEditableModel):
