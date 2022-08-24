@@ -329,4 +329,4 @@ class TestCharts(TestMonitoringMixin, TestCase):
         )
         metric.write(2365411)
         traces = chart.read()['traces']
-        self.assertEqual(traces[0][1][-1], 0.002365411)
+        self.assertEqual(traces[0][1][-1], 0.002)
