@@ -1,4 +1,3 @@
-import decimal
 import json
 import logging
 from collections import OrderedDict
@@ -38,7 +37,6 @@ from ..tasks import timeseries_write
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
-adaptive_chart_decimal_context = decimal.Context(prec=3, rounding=decimal.ROUND_DOWN)
 
 
 class AbstractMetric(TimeStampedEditableModel):
@@ -643,9 +641,7 @@ class AbstractChart(TimeStampedEditableModel):
         rounds value if it makes sense
         """
         if adaptive:
-            return float(
-                decimal.Decimal(str(value), context=adaptive_chart_decimal_context)
-            )
+            return float('%.3f' % value)
         control = 1.0 / 10**decimal_places
         if value < control:
             decimal_places += 2
