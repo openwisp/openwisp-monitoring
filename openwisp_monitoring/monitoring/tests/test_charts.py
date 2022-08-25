@@ -202,7 +202,6 @@ class TestCharts(TestMonitoringMixin, TestCase):
             content_type=m.content_type_key,
             object_id=m.object_id,
             time=str(time),
-            timespan='7d',
         )
         expected = "{0} tz('{1}')".format(expected, settings.TIME_ZONE)
         self.assertEqual(c.get_query(), expected)

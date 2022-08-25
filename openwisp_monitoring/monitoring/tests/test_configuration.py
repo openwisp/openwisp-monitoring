@@ -61,7 +61,7 @@ class TestConfiguration(TestMonitoringMixin, TestCase):
                     'query': {
                         'influxdb': (
                             "SELECT {fields|SUM|/ 1} FROM {key} "
-                            "WHERE time >= '{time}' AND time <= '{time}' + {timespan} AND content_type = "
+                            "WHERE time >= '{time}' AND time <= '{end_date}' AND content_type = "
                             "'{content_type}' AND object_id = '{object_id}'"
                         )
                     },
