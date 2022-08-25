@@ -189,6 +189,7 @@ DEFAULT_METRICS = {
         'charts': {
             'traffic': {
                 'type': 'stackedbar+lines',
+                'calculate_total': True,
                 'trace_type': {
                     'download': 'stackedbar',
                     'upload': 'stackedbar',

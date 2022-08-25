@@ -437,6 +437,10 @@ class AbstractChart(TimeStampedEditableModel):
         return self.config_dict.get('trace_order', [])
 
     @property
+    def calculate_total(self):
+        return self.config_dict.get('calculate_total', False)
+
+    @property
     def description(self):
         return self.config_dict['description'].format(
             metric=self.metric, **self.metric.tags
@@ -587,14 +591,7 @@ class AbstractChart(TimeStampedEditableModel):
                     continue
                 traces.setdefault(key, [])
                 if decimal_places and isinstance(value, (int, float)):
-                    value = self._round(
-                        value,
-                        decimal_places,
-                        # TODO: Update this code to check for 'adaptive_prefix'
-                        adaptive=self.config_dict.get('unit', '').startswith(
-                            'adaptive'
-                        ),
-                    )
+                    value = self._round(value, decimal_places)
                 traces[key].append(value)
             time = datetime.fromtimestamp(point['time'], tz=tz(timezone)).strftime(
                 '%Y-%m-%d %H:%M'
@@ -628,6 +625,7 @@ class AbstractChart(TimeStampedEditableModel):
                     'unit': self.unit,
                     'trace_type': self.trace_type,
                     'trace_order': self.trace_order,
+                    'calculate_total': self.calculate_total,
                     'colors': self.colors,
                 }
             )
@@ -636,12 +634,10 @@ class AbstractChart(TimeStampedEditableModel):
             logger.warning(f'Got KeyError in Chart.json method: {e}')
 
     @staticmethod
-    def _round(value, decimal_places, adaptive=False):
+    def _round(value, decimal_places):
         """
         rounds value if it makes sense
         """
-        if adaptive:
-            return float('%.3f' % value)
         control = 1.0 / 10**decimal_places
         if value < control:
             decimal_places += 2
