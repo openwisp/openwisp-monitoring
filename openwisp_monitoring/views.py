@@ -47,12 +47,16 @@ class MonitoringApiViewMixin:
             )
             daterange = int(daterange)
             if daterange > 0 and daterange < 3:
+                # group_map for 1d is 10m, daterange between 0 to 3 days would be
                 value = '10m'
             elif daterange >= 3 and daterange < 7:
+                # group_map for 3d is 20m, daterange between 3 to 7 days would be
                 value = str(round((daterange / 3) * 20)) + 'm'
             elif daterange >= 7 and daterange < 28:
+                # group_map for 7d is 1h, daterange between 7 to 28 days would be
                 value = str(round((daterange / 7) * 1)) + 'h'
             elif daterange >= 28 and daterange < 365:
+                # group_map for 30d is 24h, daterange between 28 to 365 days would be
                 value = str(round((daterange / 28) * 24)) + 'h'
             elif daterange == 365:
                 value = '24h'
