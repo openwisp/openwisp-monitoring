@@ -139,23 +139,45 @@ class AlertSettingsInline(InlinePermissionMixin, NestedStackedInline):
         return super().get_queryset(request).order_by('created')
 
 
+class MetricForm(ModelForm):
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        # The name of the metric will be
+        # the same as the configuration chosen by the user.
+        instance.name = instance.get_configuration_display()
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
+
+
 class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
     model = Metric
     extra = 0
     inlines = [AlertSettingsInline]
-    fields = ['name', 'is_healthy', 'field_name', 'configuration']
+    fields = ['is_healthy', 'configuration']
     readonly_fields = ['is_healthy']
     # Explicitly changed name from Metrics to Alert Settings
     verbose_name = _('Alert Settings')
     verbose_name_plural = verbose_name
+    form = MetricForm
     inline_permission_suffix = 'alertsettings_inline'
 
     def get_fields(self, request, obj=None):
         if not self.has_change_permission(request, obj) or not self.has_view_permission(
             request, obj
         ):
-            return ['name', 'is_healthy']
+            return ['is_healthy']
         return super().get_fields(request, obj)
+
+    def get_queryset(self, request):
+        if not self.has_change_permission(request) or not self.has_view_permission(
+            request
+        ):
+            # When a user has view access, we only show
+            # 'Metrics' that have 'AlertSettings' objects
+            return super().get_queryset(request).filter(alertsettings__isnull=False)
+        return super().get_queryset(request)
 
 
 class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):

@@ -375,13 +375,11 @@ class TestAdmin(
 
         def _assert_alertsettings_inline_in_response(response):
             self.assertContains(response, '<h2>Alert Settings</h2>', html=True)
-            self.assertContains(response, 'metric-content_type-object_id-0-name')
             self.assertContains(
                 response,
                 '<img src="/static/admin/img/icon-yes.svg" alt="True">',
                 html=True,
             )
-            self.assertContains(response, 'metric-content_type-object_id-0-field_name')
             self.assertContains(
                 response, 'metric-content_type-object_id-0-configuration'
             )
@@ -518,7 +516,6 @@ class TestAdmin(
                 self.assertContains(response, 'form-row field-check_type')
                 self.assertContains(response, 'form-row field-is_active')
                 self.assertContains(response, '<h2>Alert Settings</h2>', html=True)
-                self.assertContains(response, 'form-row field-name')
                 self.assertContains(
                     response, 'form-row field-is_healthy djn-form-row-last'
                 )
