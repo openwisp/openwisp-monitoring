@@ -6,6 +6,7 @@ from json.decoder import JSONDecodeError
 from django.core.exceptions import ValidationError
 from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
+from redis import StrictRedis
 from swapper import load_model
 
 from openwisp_controller.connection.settings import UPDATE_STRATEGIES
@@ -14,6 +15,7 @@ from .. import settings as app_settings
 from .base import BaseCheck
 
 logger = logging.getLogger(__name__)
+redis_client = StrictRedis('localhost', 6379, charset="utf-8", decode_responses=True)
 
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
@@ -142,7 +144,10 @@ class Iperf(BaseCheck):
                 f'DeviceConnection for "{self.related_object}" is not working, iperf check skipped!'
             )
             return
-        server = self._get_iperf_servers()[0]
+
+        server, lock_acquired = self._get_iperf_servers()
+        server_lock_id = f'ow_monitoring_iperf_check_{server}'
+        print(f'Server : {server}, Device : {self.related_object}')
         command_tcp = f'iperf3 -c {server} -p {port} -t {time} -b {tcp_bitrate} -J'
         command_udp = f'iperf3 -c {server} -p {port} -t {time} -b {udp_bitrate} -u -J'
 
@@ -184,6 +189,9 @@ class Iperf(BaseCheck):
             result.update({**result_tcp, **result_udp, 'iperf_result': iperf_result})
             self.store_result(result)
         device_connection.disconnect()
+        # Release iperf server lock
+        if lock_acquired:
+            redis_client.delete(server_lock_id)
         return result
 
     def _get_compelete_rsa_key(self, key):
@@ -211,8 +219,16 @@ class Iperf(BaseCheck):
         """
         Get iperf test servers
         """
-        org_servers = self._get_param('host', 'host.default')
-        return org_servers
+        servers = self._get_param('host', 'host.default')
+        # Iterate over available servers to get free ones and
+        # lock them till completion of the iperf check, release them afterwards
+        for server in servers:
+            server_lock_id = f'ow_monitoring_iperf_check_{server}'
+            lock_acquired = redis_client.set(
+                server_lock_id, 'server_locked', ex=2 * 25, nx=True
+            )
+            if lock_acquired:
+                return server, lock_acquired
 
     def _exec_command(self, dc, command):
         """

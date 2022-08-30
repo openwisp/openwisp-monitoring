@@ -9,7 +9,7 @@ from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
 from redis import StrictRedis
 from swapper import load_model
 
-from .settings import CHECKS_LIST
+from .settings import CHECKS_LIST, IPERF_CHECK_CONFIG
 
 logger = logging.getLogger(__name__)
 # We need to be careful while utilising this time variable.
@@ -21,6 +21,76 @@ redis_client = StrictRedis('localhost', 6379, charset="utf-8", decode_responses=
 
 def get_check_model():
     return load_model('check', 'Check')
+
+
+def _run_iperf_check_on_multiple_servers(uuid, check):
+    """
+    This will ensure that we only run iperf checks on those servers
+    which are currently available for that organisation at that time,
+    e.g. if orgA has ['iperf_server_1', 'iperf_server_2'], then one check
+    will be run on each of them at the same time. If we receive the same
+    task to run_iperf_check, then it should be pushed back to the queue
+    and will be executed only after the completion of the current running tasks
+    """
+    org_id = str(check.content_object.organization.id)
+    iperf_config = IPERF_CHECK_CONFIG.get(org_id)
+    iperf_servers = iperf_config.get('host')
+    # To do: change the cache key id to be
+    # device organisation specific, ie.check_id_org_id.
+    check_lock_id = 'ow_monitoring_iperf_check_lock'
+    available_iperf_servers_id = 'ow_monitoring_available_iperf_servers'
+    if not iperf_config:
+        logger.warning(
+            (
+                f'Iperf check config for organization {check.content_object.organization}'
+                'is not defined in settings, iperf check skipped!'
+            )
+        )
+        return
+    if not iperf_servers:
+        logger.warning(
+            f'The organization iperf servers cannot be {iperf_servers}, iperf check skipped!'
+        )
+        return
+    redis_client.set(
+        available_iperf_servers_id, len(iperf_servers), ex=CACHE_LOCK_EXPIRE, nx=True
+    )
+    available_iperf_servers = int(redis_client.get(available_iperf_servers_id))
+    # Timeout with a small diff, so we'll leave the lock delete
+    # to the cache if it's close to being auto-removed/expired
+    timeout_at = monotonic() + CACHE_LOCK_EXPIRE - 2.5
+    # Try to acquire a lock, or put task back on queue
+    lock_acquired = redis_client.set(
+        check_lock_id, 'locked', ex=CACHE_LOCK_EXPIRE, nx=True
+    )
+    if not lock_acquired and not available_iperf_servers:
+        logger.warning(
+            f'The Iperf server is already occupied by a device, so putting {check} back in queue'
+        )
+        # We need to be careful while utilising this time variable
+        # It should be greater or equal to 2*(TCP+UDP) test time
+        perform_check.apply_async(args=[uuid], countdown=2 * 25)
+        return
+    try:
+        # Execute iperf check & decrement current available_iperf_servers
+        available_iperf_servers = int(redis_client.get(available_iperf_servers_id))
+        redis_client.set(
+            available_iperf_servers_id,
+            available_iperf_servers - 1,
+            ex=CACHE_LOCK_EXPIRE,
+        )
+        result = check.perform_check()
+    finally:
+        # Release the lock & increment current available_iperf_servers
+        if monotonic() < timeout_at:
+            redis_client.delete(check_lock_id)
+            available_iperf_servers = int(redis_client.get(available_iperf_servers_id))
+            redis_client.set(
+                available_iperf_servers_id,
+                available_iperf_servers + 1,
+                ex=CACHE_LOCK_EXPIRE,
+            )
+    return result
 
 
 @shared_task
@@ -67,31 +137,11 @@ def perform_check(uuid):
     except ObjectDoesNotExist:
         logger.warning(f'The check with uuid {uuid} has been deleted')
         return
-    if check.check_type not in ['openwisp_monitoring.check.classes.Iperf']:
-        result = check.perform_check()
+    if check.check_type in ['openwisp_monitoring.check.classes.Iperf']:
+        result = _run_iperf_check_on_multiple_servers(uuid, check)
     else:
-        check_lock_id = 'ow_monitoring_iperf_check_lock'
-        # Timeout with a small diff, so we'll leave the lock delete
-        # to the cache if it's close to being auto-removed/expired
-        timeout_at = monotonic() + CACHE_LOCK_EXPIRE - 1.5
-
-        # Try to acquire a lock, or put task back on queue
-        lock_acquired = redis_client.set(check_lock_id, 'locked', nx=True)
-        if not lock_acquired:
-            logger.warning(
-                f'The Iperf server is already occupied by a device, so putting {check} back in queue'
-            )
-            # We need to be careful while utilising this time variable
-            # just greater than the TCP + UDP test time
-            perform_check.apply_async(args=[uuid], countdown=25)
-            return
-        try:
-            result = check.perform_check()
-        finally:
-            # Release the lock
-            if monotonic() < timeout_at:
-                redis_client.delete(check_lock_id)
-    if settings.DEBUG:  # pragma: nocover
+        result = check.perform_check()
+    if settings.DEBUG and result:  # pragma: nocover
         print(json.dumps(result, indent=4, sort_keys=True))
 
 
