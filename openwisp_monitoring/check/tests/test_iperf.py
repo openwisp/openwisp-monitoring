@@ -123,7 +123,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
     @patch.object(Iperf, '_exec_command')
     @patch.object(
-        Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com']
+        Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com', True]
     )
     @patch.object(iperf_logger, 'warning')
     def test_iperf_check_no_params(
@@ -154,7 +154,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
     @patch.object(Iperf, '_exec_command')
     @patch.object(
-        Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com']
+        Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com', True]
     )
     @patch.object(iperf_logger, 'warning')
     def test_iperf_check_params(
@@ -221,7 +221,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
     @patch.object(Iperf, '_exec_command')
     @patch.object(
-        Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com']
+        Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com', True]
     )
     @patch.object(iperf_logger, 'warning')
     def test_iperf_check_config(
@@ -339,7 +339,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
     @patch.object(Iperf, '_exec_command')
     @patch.object(
-        Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com']
+        Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com', True]
     )
     @patch.object(iperf_logger, 'warning')
     def test_iperf_check(self, mock_warn, mock_get_iperf_servers, mock_exec_command):
@@ -522,7 +522,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
     @patch.object(Iperf, '_exec_command')
     @patch.object(
-        Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com']
+        Iperf, '_get_iperf_servers', return_value=['iperf.openwisptestserver.com', True]
     )
     @patch.object(iperf_logger, 'warning')
     def test_iperf_check_auth_config(

@@ -147,7 +147,6 @@ class Iperf(BaseCheck):
 
         server, lock_acquired = self._get_iperf_servers()
         server_lock_id = f'ow_monitoring_iperf_check_{server}'
-        print(f'Server : {server}, Device : {self.related_object}')
         command_tcp = f'iperf3 -c {server} -p {port} -t {time} -b {tcp_bitrate} -J'
         command_udp = f'iperf3 -c {server} -p {port} -t {time} -b {udp_bitrate} -u -J'
 
@@ -225,7 +224,7 @@ class Iperf(BaseCheck):
         for server in servers:
             server_lock_id = f'ow_monitoring_iperf_check_{server}'
             lock_acquired = redis_client.set(
-                server_lock_id, 'server_locked', ex=2 * 25, nx=True
+                server_lock_id, 'server_locked', ex=25, nx=True
             )
             if lock_acquired:
                 return server, lock_acquired
