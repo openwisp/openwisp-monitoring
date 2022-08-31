@@ -198,10 +198,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         data = c.read()
         # expected download wlan0
         self.assertEqual(data['traces'][0][1][-1], 1.2)
-        # expected total wlan0
-        self.assertEqual(data['traces'][1][1][-1], 1.8)
         # expected upload wlan0
-        self.assertEqual(data['traces'][2][1][-1], 0.6)
+        self.assertEqual(data['traces'][1][1][-1], 0.6)
         # wlan1 traffic
         m = self.metric_queryset.get(name='wlan1 traffic', object_id=dd.pk)
         points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
@@ -216,10 +214,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         data = c.read()
         # expected download wlan1
         self.assertEqual(data['traces'][0][1][-1], 3.0)
-        # expected total wlan1
-        self.assertEqual(data['traces'][1][1][-1], 4.5)
         # expected upload wlan1
-        self.assertEqual(data['traces'][2][1][-1], 1.5)
+        self.assertEqual(data['traces'][1][1][-1], 1.5)
 
     def test_200_no_date_supplied(self):
         o = self._create_org()
@@ -339,10 +335,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 'wifi_clients - WiFi clients: wlan0',
                 'wifi_clients - WiFi clients: wlan1',
                 'download - Traffic: wlan0',
-                'total - Traffic: wlan0',
                 'upload - Traffic: wlan0',
                 'download - Traffic: wlan1',
-                'total - Traffic: wlan1',
                 'upload - Traffic: wlan1',
                 'memory_usage - Memory Usage',
                 'CPU_load - CPU Load',
@@ -357,10 +351,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 '1',
                 '2',
                 '0.4',
-                '0.5',
                 '0.1',
                 '2.0',
-                '3.0',
                 '1.0',
                 '9.73',
                 '0.0',

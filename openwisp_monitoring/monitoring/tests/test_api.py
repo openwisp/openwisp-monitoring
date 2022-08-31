@@ -440,7 +440,6 @@ class TestDashboardTimeseriesView(
                     'time',
                     'wifi_clients - General WiFi Clients',
                     'download - General Traffic',
-                    'total - General Traffic',
                     'upload - General Traffic',
                 ],
             )
@@ -469,7 +468,7 @@ class TestDashboardTimeseriesView(
             last_line = _test_csv_response(response)
             self.assertEqual(
                 last_line,
-                [last_line[0], '3', '3.0', '', ''],
+                [last_line[0], '3', '3.0', ''],
             )
 
         self.client.force_login(org2_administrator)
@@ -478,7 +477,7 @@ class TestDashboardTimeseriesView(
             last_line = _test_csv_response(response)
             self.assertEqual(
                 last_line,
-                [last_line[0], '2', '2.0', '', ''],
+                [last_line[0], '2', '2.0', ''],
             )
 
         self.client.force_login(operator)

@@ -155,6 +155,18 @@
             }
             return {color: color, desc: desc};
         }
+        if (data.calculate_total === true) {
+            var total = data.traces[0][1].slice();
+            for (i = 1; i < data.traces.length; ++i) {
+                for (var j = 0; j < data.traces[i][1].length; ++j) {
+                    total[j] += data.traces[i][1][j];
+                }
+            }
+            data.traces.push(["total", total]);
+            data.summary.total = Object.values(data.summary).reduce(function (a, b) {
+                return a + b;
+            }, 0);
+        }
         // loop over traces to put them on the chart
         for (var i=0; i<data.traces.length; i++) {
             key = data.traces[i][0];
