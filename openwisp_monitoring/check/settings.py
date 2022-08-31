@@ -14,5 +14,8 @@ MANAGEMENT_IP_ONLY = get_settings_value('MANAGEMENT_IP_ONLY', True)
 PING_CHECK_CONFIG = get_settings_value('PING_CHECK_CONFIG', {})
 AUTO_IPERF = get_settings_value('AUTO_IPERF', False)
 IPERF_CHECK_CONFIG = get_settings_value('IPERF_CHECK_CONFIG', {})
+IPERF_CHECK_LOCK_EXPIRE = get_settings_value(
+    'IPERF_CHECK_LOCK_EXPIRE', 5 * 60
+)  # 5 mins (arbitrarily selected)
 IPERF_CHECK_DELETE_RSA_KEY = get_settings_value('IPERF_CHECK_DELETE_RSA_KEY', True)
 CHECKS_LIST = get_settings_value('CHECK_LIST', list(dict(CHECK_CLASSES).keys()))

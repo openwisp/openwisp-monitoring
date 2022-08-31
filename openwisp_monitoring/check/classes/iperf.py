@@ -145,8 +145,7 @@ class Iperf(BaseCheck):
             )
             return
 
-        server, lock_acquired = self._get_iperf_servers()
-        server_lock_id = f'ow_monitoring_iperf_check_{server}'
+        server = self._get_iperf_servers()
         command_tcp = f'iperf3 -c {server} -p {port} -t {time} -b {tcp_bitrate} -J'
         command_udp = f'iperf3 -c {server} -p {port} -t {time} -b {udp_bitrate} -u -J'
 
@@ -188,9 +187,6 @@ class Iperf(BaseCheck):
             result.update({**result_tcp, **result_udp, 'iperf_result': iperf_result})
             self.store_result(result)
         device_connection.disconnect()
-        # Release iperf server lock
-        if lock_acquired:
-            redis_client.delete(server_lock_id)
         return result
 
     def _get_compelete_rsa_key(self, key):
@@ -218,16 +214,16 @@ class Iperf(BaseCheck):
         """
         Get iperf test servers
         """
-        servers = self._get_param('host', 'host.default')
-        # Iterate over available servers to get free ones and
-        # lock them till completion of the iperf check, release them afterwards
-        for server in servers:
-            server_lock_id = f'ow_monitoring_iperf_check_{server}'
-            lock_acquired = redis_client.set(
-                server_lock_id, 'server_locked', ex=25, nx=True
-            )
-            if lock_acquired:
-                return server, lock_acquired
+        org = self.related_object.organization
+        device = str(self.related_object)
+        available_iperf_servers = self._get_param('host', 'host.default')
+        # Iterate over available servers
+        for server in available_iperf_servers:
+            server_lock_id = f'ow_monitoring_{org}_iperf_check_{server}'
+            assigned_device = redis_client.get(server_lock_id)
+            if device == assigned_device:
+                break
+        return server
 
     def _exec_command(self, dc, command):
         """
