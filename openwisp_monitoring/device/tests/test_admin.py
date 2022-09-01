@@ -272,7 +272,7 @@ class TestAdmin(
             f'{ct}-TOTAL_FORMS': '1',
             f'{ct}-INITIAL_FORMS': '0',
             f'{ct}-MAX_NUM_FORMS': '0',
-            f'{ct}-0-name': 'Ping Check',
+            f'{ct}-0-name': 'Ping',
             f'{ct}-0-check_type': CHECK_CLASSES[0][0],
             f'{ct}-0-params': '{}',
             f'{ct}-0-is_active': True,
@@ -286,10 +286,10 @@ class TestAdmin(
         self.assertEqual(formset.non_form_errors(), [])
         form = formset.forms[0]
         form.cleaned_data = data
-        form.save(commit=True)
+        formset.save_new(form, commit=True)
         self.assertEqual(Check.objects.count(), 1)
         c = Check.objects.first()
-        self.assertEqual(c.name, 'Ping Check')
+        self.assertEqual(c.name, 'Ping')
         self.assertEqual(c.content_object, d)
 
     def test_health_checks_list(self):
@@ -366,11 +366,8 @@ class TestAdmin(
 
         def _assert_check_inline_in_response(response):
             self.assertContains(response, '<h2>Checks</h2>', html=True)
-            self.assertContains(response, 'check-content_type-object_id-0-name')
             self.assertContains(response, 'check-content_type-object_id-0-is_active')
-            self.assertContains(response, 'check-content_type-object_id-0-description')
             self.assertContains(response, 'check-content_type-object_id-0-check_type')
-            self.assertContains(response, 'check-content_type-object_id-0-params')
             self.assertContains(response, 'check-content_type-object_id-0-DELETE')
 
         def _assert_alertsettings_inline_in_response(response):

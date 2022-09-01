@@ -2,17 +2,18 @@
 
 from django.db import migrations
 
-from . import assign_inline_permissions_to_groups
+from . import assign_check_inline_permissions_to_groups
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('monitoring', '0009_alter_alertsettings_options'),
+        ('check', '0008_alter_check_options'),
     ]
 
     operations = [
         migrations.RunPython(
-            assign_inline_permissions_to_groups, reverse_code=migrations.RunPython.noop
+            assign_check_inline_permissions_to_groups,
+            reverse_code=migrations.RunPython.noop,
         ),
     ]

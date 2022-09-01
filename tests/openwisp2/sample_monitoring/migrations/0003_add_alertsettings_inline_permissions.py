@@ -3,7 +3,7 @@
 from django.db import migrations
 
 from openwisp_monitoring.monitoring.migrations import (
-    assign_inline_permissions_to_groups,
+    assign_alertsettings_inline_permissions_to_groups,
 )
 
 
@@ -15,6 +15,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(
-            assign_inline_permissions_to_groups, reverse_code=migrations.RunPython.noop
+            assign_alertsettings_inline_permissions_to_groups,
+            reverse_code=migrations.RunPython.noop,
         ),
     ]

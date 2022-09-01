@@ -37,10 +37,9 @@ def assign_permissions_to_groups(apps, schema_editor):
             )
 
 
-def assign_inline_permissions_to_groups(apps, schema_editor):
+def assign_alertsettings_inline_permissions_to_groups(apps, schema_editor):
     create_default_permissions(apps, schema_editor)
     operators_read_only_admins_manage = [
-        'check',
         'alertsettings',
     ]
     manage_operations = ['add', 'view', 'change', 'delete']

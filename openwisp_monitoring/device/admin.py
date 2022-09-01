@@ -5,7 +5,7 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline
 from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q
+from django.db.models import F, Q
 from django.forms import ModelForm
 from django.templatetags.static import static
 from django.urls import resolve, reverse
@@ -48,12 +48,21 @@ class CheckInlineFormSet(BaseGenericInlineFormSet):
             obj = form.instance
             if not obj.content_type or not obj.object_id:
                 setattr(
-                    form.instance,
+                    obj,
                     self.ct_field.get_attname(),
                     ContentType.objects.get_for_model(self.instance).pk,
                 )
-                setattr(form.instance, self.ct_fk_field.get_attname(), self.instance.pk)
+                setattr(obj, self.ct_fk_field.get_attname(), self.instance.pk)
         super().full_clean()
+
+    def save_new(self, form, commit=True):
+        instance = super().save_new(form, commit=False)
+        # The name of the check will be the same
+        # as the 'check_type' chosen by the user
+        instance.name = instance.get_check_type_display()
+        if commit:
+            instance.save()
+        return instance
 
 
 class InlinePermissionMixin:
@@ -85,11 +94,8 @@ class CheckInline(InlinePermissionMixin, GenericStackedInline):
     extra = 0
     formset = CheckInlineFormSet
     fields = [
-        'name',
         'is_active',
-        'description',
         'check_type',
-        'params',
     ]
     inline_permission_suffix = 'check_inline'
 
@@ -122,18 +128,11 @@ class AlertSettingsForm(ModelForm):
 
 class AlertSettingsInline(InlinePermissionMixin, NestedStackedInline):
     model = AlertSettings
-    extra = 0
-    max_num = 0
+    extra = 1
+    max_num = 1
     exclude = ['created', 'modified']
     form = AlertSettingsForm
     inline_permission_suffix = 'alertsettings_inline'
-
-    def get_extra(self, request, obj=None, **kwargs):
-        # Get full alertsettings form
-        # when user has add permission
-        if self.has_add_permission(request, obj):
-            return 1
-        return super().get_extra(request, obj, **kwargs)
 
     def get_queryset(self, request):
         return super().get_queryset(request).order_by('created')
@@ -142,8 +141,8 @@ class AlertSettingsInline(InlinePermissionMixin, NestedStackedInline):
 class MetricForm(ModelForm):
     def save(self, commit=True):
         instance = super().save(commit=False)
-        # The name of the metric will be
-        # the same as the configuration chosen by the user.
+        # The name of the metric will be the same
+        # as the configuration chosen by the user
         instance.name = instance.get_configuration_display()
         if commit:
             instance.save()
@@ -162,6 +161,9 @@ class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
     verbose_name_plural = verbose_name
     form = MetricForm
     inline_permission_suffix = 'alertsettings_inline'
+    # Ordering queryset to show metrics
+    # that have the alert settings first
+    ordering = [F('alertsettings').desc(nulls_last=True)]
 
     def get_fields(self, request, obj=None):
         if not self.has_change_permission(request, obj) or not self.has_view_permission(
