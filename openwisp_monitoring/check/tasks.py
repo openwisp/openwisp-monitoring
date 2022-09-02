@@ -4,15 +4,13 @@ import logging
 from celery import shared_task
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
-from redis import StrictRedis
 from swapper import load_model
 
 from .settings import CHECKS_LIST, IPERF_CHECK_CONFIG, IPERF_CHECK_LOCK_EXPIRE
 
 logger = logging.getLogger(__name__)
-# Todo: Update redis host
-redis_client = StrictRedis('localhost', 6379, charset="utf-8", decode_responses=True)
 
 
 def get_check_model():
@@ -53,13 +51,13 @@ def _run_iperf_check_on_multiple_servers(uuid, check):  # pragma: no cover
 
     # Try to acquire a lock, or put task back on queue
     for server in available_iperf_servers:
-        server_lock_id = f'ow_monitoring_{org}_iperf_check_{server}'
+        server_lock_key = f'ow_monitoring_{org}_iperf_check_{server}'
         # Set available_iperf_server to the org device
         # this cache key value will be used within iperf_check
-        lock_acquired = redis_client.set(
-            server_lock_id,
+        lock_acquired = cache.set(
+            server_lock_key,
             str(check.content_object),
-            ex=IPERF_CHECK_LOCK_EXPIRE,
+            timeout=IPERF_CHECK_LOCK_EXPIRE,
             nx=True,
         )
         if lock_acquired:
@@ -67,7 +65,10 @@ def _run_iperf_check_on_multiple_servers(uuid, check):  # pragma: no cover
 
     if not lock_acquired:
         logger.warning(
-            f'The Iperf server is already occupied by a device, so putting {check} back in queue'
+            (
+                f'At the moment, all available iperf servers of organization "{org}" '
+                f'are busy running checks, putting "{check}" back in the queue..'
+            )
         )
         # Return the iperf_check task to the queue,
         # it comes back every 2*iperf_check_time (TCP+UDP)
@@ -77,8 +78,8 @@ def _run_iperf_check_on_multiple_servers(uuid, check):  # pragma: no cover
         # Execute iperf check
         result = check.perform_check()
     finally:
-        # Release the lock after completion of the check.
-        redis_client.delete(server_lock_id)
+        # Release the lock after completion of the check
+        cache.delete(server_lock_key)
     return result
 
 

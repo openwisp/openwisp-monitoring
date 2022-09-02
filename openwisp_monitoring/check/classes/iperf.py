@@ -3,10 +3,10 @@ from functools import reduce
 from json import loads
 from json.decoder import JSONDecodeError
 
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
-from redis import StrictRedis
 from swapper import load_model
 
 from openwisp_controller.connection.settings import UPDATE_STRATEGIES
@@ -15,7 +15,6 @@ from .. import settings as app_settings
 from .base import BaseCheck
 
 logger = logging.getLogger(__name__)
-redis_client = StrictRedis('localhost', 6379, charset="utf-8", decode_responses=True)
 
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
@@ -145,7 +144,9 @@ class Iperf(BaseCheck):
             )
             return
 
-        server = self._get_iperf_servers()
+        iperf_check_lock_key = self._get_iperf_server_key()
+        server = cache.get(iperf_check_lock_key)
+        logger.info(f'Iperf server : {server}, Device : {self.related_object}')
         command_tcp = f'iperf3 -c {server} -p {port} -t {time} -b {tcp_bitrate} -J'
         command_udp = f'iperf3 -c {server} -p {port} -t {time} -b {udp_bitrate} -u -J'
 
@@ -161,11 +162,12 @@ class Iperf(BaseCheck):
             IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
             --username "{username}" --rsa-public-key-path {rsa_public_key_path} -b {tcp_bitrate} -J'
 
-            command_udp = f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
+            command_udp = f'echo "{rsa_public_key}" > {rsa_public_key_path} && \
+            IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
             --username "{username}" --rsa-public-key-path {rsa_public_key_path} -b {udp_bitrate} -u -J'
             # If IPERF_CHECK_DELETE_RSA_KEY, remove rsa_public_key from the device
             if app_settings.IPERF_CHECK_DELETE_RSA_KEY:
-                command_udp = f'{command_udp} && rm {rsa_public_key_path}'
+                command_udp = f'{command_udp} && rm -f {rsa_public_key_path}'
 
         # TCP mode
         result, exit_code = self._exec_command(device_connection, command_tcp)
@@ -187,6 +189,7 @@ class Iperf(BaseCheck):
             result.update({**result_tcp, **result_udp, 'iperf_result': iperf_result})
             self.store_result(result)
         device_connection.disconnect()
+        cache.delete(iperf_check_lock_key)
         return result
 
     def _get_compelete_rsa_key(self, key):
@@ -210,20 +213,26 @@ class Iperf(BaseCheck):
         ).first()
         return device_connection
 
-    def _get_iperf_servers(self):
+    def _get_iperf_server_key(self):
         """
-        Get iperf test servers
+        Get available iperf server cache key
         """
-        org = self.related_object.organization
         device = str(self.related_object)
+        org = self.related_object.organization
+        timeout = app_settings.IPERF_CHECK_LOCK_EXPIRE
         available_iperf_servers = self._get_param('host', 'host.default')
         # Iterate over available servers
         for server in available_iperf_servers:
-            server_lock_id = f'ow_monitoring_{org}_iperf_check_{server}'
-            assigned_device = redis_client.get(server_lock_id)
+            server_lock_key = f'ow_monitoring_{org}_iperf_check_{server}'
+            iperf_check_lock_key = f'ow_monitoring_{org}_iperf_check_{device}_{server}'
+            assigned_device = cache.get(server_lock_key)
             if device == assigned_device:
-                break
-        return server
+                lock_acquired = cache.set(
+                    iperf_check_lock_key, server, timeout=timeout, nx=True
+                )
+                if lock_acquired:
+                    break
+        return iperf_check_lock_key
 
     def _exec_command(self, dc, command):
         """
