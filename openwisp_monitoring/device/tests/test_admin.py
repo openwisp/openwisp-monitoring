@@ -272,7 +272,7 @@ class TestAdmin(
             f'{ct}-TOTAL_FORMS': '1',
             f'{ct}-INITIAL_FORMS': '0',
             f'{ct}-MAX_NUM_FORMS': '0',
-            f'{ct}-0-name': 'Ping',
+            f'{ct}-0-name': 'Ping Check',
             f'{ct}-0-check_type': CHECK_CLASSES[0][0],
             f'{ct}-0-params': '{}',
             f'{ct}-0-is_active': True,
@@ -286,10 +286,10 @@ class TestAdmin(
         self.assertEqual(formset.non_form_errors(), [])
         form = formset.forms[0]
         form.cleaned_data = data
-        formset.save_new(form, commit=True)
+        form.save(commit=True)
         self.assertEqual(Check.objects.count(), 1)
         c = Check.objects.first()
-        self.assertEqual(c.name, 'Ping')
+        self.assertEqual(c.name, 'Ping Check')
         self.assertEqual(c.content_object, d)
 
     def test_health_checks_list(self):
@@ -351,15 +351,14 @@ class TestAdmin(
         )
         self._create_org_user(is_admin=True, user=test_user)
         device = self._create_device()
-        Check.objects.create(
-            name='Ping check',
-            check_type=CHECK_CLASSES[0][0],
-            content_object=device,
-            params={},
+        ping_check = Check(
+            check_type=CHECK_CLASSES[0][0], content_object=device, params={}
         )
+        ping_check.full_clean()
+        ping_check.save()
         url = reverse('admin:config_device_change', args=[device.pk])
         metric = self._create_general_metric(
-            content_object=device, configuration='ping'
+            name='', content_object=device, configuration='ping'
         )
         self._create_alert_settings(metric=metric)
         self.client.force_login(test_user)

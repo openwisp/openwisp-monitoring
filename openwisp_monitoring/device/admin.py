@@ -55,15 +55,6 @@ class CheckInlineFormSet(BaseGenericInlineFormSet):
                 setattr(obj, self.ct_fk_field.get_attname(), self.instance.pk)
         super().full_clean()
 
-    def save_new(self, form, commit=True):
-        instance = super().save_new(form, commit=False)
-        # The name of the check will be the same
-        # as the 'check_type' chosen by the user
-        instance.name = instance.get_check_type_display()
-        if commit:
-            instance.save()
-        return instance
-
 
 class InlinePermissionMixin:
     def has_add_permission(self, request, obj=None):
@@ -138,18 +129,6 @@ class AlertSettingsInline(InlinePermissionMixin, NestedStackedInline):
         return super().get_queryset(request).order_by('created')
 
 
-class MetricForm(ModelForm):
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        # The name of the metric will be the same
-        # as the configuration chosen by the user
-        instance.name = instance.get_configuration_display()
-        if commit:
-            instance.save()
-            self.save_m2m()
-        return instance
-
-
 class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
     model = Metric
     extra = 0
@@ -159,7 +138,6 @@ class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
     # Explicitly changed name from Metrics to Alert Settings
     verbose_name = _('Alert Settings')
     verbose_name_plural = verbose_name
-    form = MetricForm
     inline_permission_suffix = 'alertsettings_inline'
     # Ordering queryset to show metrics
     # that have the alert settings first

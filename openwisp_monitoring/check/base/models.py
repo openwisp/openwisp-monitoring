@@ -71,6 +71,14 @@ class AbstractCheck(TimeStampedEditableModel):
     def clean(self):
         self.check_instance.validate()
 
+    def full_clean(self, *args, **kwargs):
+        # The name of the check will be the same as the
+        # 'check_type' chosen by the user when the
+        # name field is empty (useful for CheckInline)
+        if not self.name:
+            self.name = self.get_check_type_display()
+        return super().full_clean(*args, **kwargs)
+
     @cached_property
     def check_class(self):
         """

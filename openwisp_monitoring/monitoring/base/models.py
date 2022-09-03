@@ -109,8 +109,11 @@ class AbstractMetric(TimeStampedEditableModel):
             self.key = self.codename
 
     def full_clean(self, *args, **kwargs):
+        # The name of the metric will be the same as the
+        # configuration chosen by the user only when the
+        # name field is empty (useful for AlertSettingsInline)
         if not self.name:
-            self.name = self.config_dict['name']
+            self.name = self.get_configuration_display()
         # clean up key before field validation
         self.key = self._makekey(self.key)
         return super().full_clean(*args, **kwargs)
