@@ -138,7 +138,7 @@ class Iperf(BaseCheck):
             )
             return
         # The DeviceConnection could fail if the management tunnel is down.
-        if not self._connect(device_connection):
+        if not device_connection.connect():
             logger.warning(
                 f'DeviceConnection for "{self.related_object}" is not working, iperf check skipped!'
             )
@@ -170,7 +170,9 @@ class Iperf(BaseCheck):
                 command_udp = f'{command_udp} && rm -f {rsa_public_key_path}'
 
         # TCP mode
-        result, exit_code = self._exec_command(device_connection, command_tcp)
+        result, exit_code = device_connection.connector_instance.exec_command(
+            command_tcp, raise_unexpected_exit=False
+        )
         # Exit code 127 : command doesn't exist
         if exit_code == 127:
             logger.warning(
@@ -180,7 +182,9 @@ class Iperf(BaseCheck):
 
         result_tcp = self._get_iperf_result(result, exit_code, mode='TCP')
         # UDP mode
-        result, exit_code = self._exec_command(device_connection, command_udp)
+        result, exit_code = device_connection.connector_instance.exec_command(
+            command_udp, raise_unexpected_exit=False
+        )
         result_udp = self._get_iperf_result(result, exit_code, mode='UDP')
         result = {}
         if store and result_tcp and result_udp:
@@ -233,18 +237,6 @@ class Iperf(BaseCheck):
                 if lock_acquired:
                     break
         return iperf_check_lock_key
-
-    def _exec_command(self, dc, command):
-        """
-        Executes device command (easier to mock)
-        """
-        return dc.connector_instance.exec_command(command, raise_unexpected_exit=False)
-
-    def _connect(self, dc):
-        """
-        Connects device returns its working status (easier to mock)
-        """
-        return dc.connect()
 
     def _deep_get(self, dictionary, keys, default=None):
         """
