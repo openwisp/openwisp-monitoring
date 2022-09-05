@@ -3,7 +3,6 @@ from functools import reduce
 from json import loads
 from json.decoder import JSONDecodeError
 
-from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
@@ -110,10 +109,11 @@ class Iperf(BaseCheck):
             message = '{0}: {1}'.format(message, e.message)
             raise ValidationError({'params': message}) from e
 
-    def check(self, store=True):
+    def check(self, store=True, **kwargs):
         iperf_config = app_settings.IPERF_CHECK_CONFIG
+        org = self.related_object.organization
+        org_id = str(org.id)
         if iperf_config:
-            org_id = str(self.related_object.organization.id)
             self.validate_params(params=iperf_config[org_id])
 
         port = self._get_param(
@@ -144,9 +144,8 @@ class Iperf(BaseCheck):
             )
             return
 
-        iperf_check_lock_key = self._get_iperf_server_key()
-        server = cache.get(iperf_check_lock_key)
-        logger.info(f'Iperf server : {server}, Device : {self.related_object}')
+        server = kwargs.get('iperf_server')
+        logger.info(f'«« Iperf server : {server}, Device : {self.related_object} »»')
         command_tcp = f'iperf3 -c {server} -p {port} -t {time} -b {tcp_bitrate} -J'
         command_udp = f'iperf3 -c {server} -p {port} -t {time} -b {udp_bitrate} -u -J'
 
@@ -193,7 +192,6 @@ class Iperf(BaseCheck):
             result.update({**result_tcp, **result_udp, 'iperf_result': iperf_result})
             self.store_result(result)
         device_connection.disconnect()
-        cache.delete(iperf_check_lock_key)
         return result
 
     def _get_compelete_rsa_key(self, key):
@@ -216,27 +214,6 @@ class Iperf(BaseCheck):
             enabled=True,
         ).first()
         return device_connection
-
-    def _get_iperf_server_key(self):
-        """
-        Get available iperf server cache key
-        """
-        device = str(self.related_object)
-        org = self.related_object.organization
-        timeout = app_settings.IPERF_CHECK_LOCK_EXPIRE
-        available_iperf_servers = self._get_param('host', 'host.default')
-        # Iterate over available servers
-        for server in available_iperf_servers:
-            server_lock_key = f'ow_monitoring_{org}_iperf_check_{server}'
-            iperf_check_lock_key = f'ow_monitoring_{org}_iperf_check_{device}_{server}'
-            assigned_device = cache.get(server_lock_key)
-            if device == assigned_device:
-                lock_acquired = cache.set(
-                    iperf_check_lock_key, server, timeout=timeout, nx=True
-                )
-                if lock_acquired:
-                    break
-        return iperf_check_lock_key
 
     def _deep_get(self, dictionary, keys, default=None):
         """

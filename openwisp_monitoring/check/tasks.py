@@ -28,27 +28,22 @@ def _run_iperf_check_on_multiple_servers(uuid, check):  # pragma: no cover
     """
     lock_acquired = False
     org = check.content_object.organization
-    if not IPERF_CHECK_CONFIG:
-        logger.warning(
-            f'Iperf check configuration for organization "{org}" is missing, {check} skipped!'
-        )
-        return
-
-    iperf_config = IPERF_CHECK_CONFIG.get(str(org.id))
-    iperf_servers = iperf_config.get('host')
-
-    if not iperf_servers:
-        logger.warning(
-            f'The organization "{org}" iperf servers cannot be "{iperf_servers}", {check} skipped!'
-        )
-        return
-
     iperf_check = check.check_instance
+    # if iperf config is present and validate it's params
+    if IPERF_CHECK_CONFIG:
+        iperf_check.validate_params(params=IPERF_CHECK_CONFIG[str(org.id)])
     available_iperf_servers = iperf_check._get_param('host', 'host.default')
     iperf_check_time = iperf_check._get_param(
         'client_options.time', 'client_options.properties.time.default'
     )
-
+    if not available_iperf_servers:
+        logger.warning(
+            (
+                f'Iperf servers for organization "{org}"'
+                f'is not configured properly, iperf check skipped!'
+            )
+        )
+        return
     # Try to acquire a lock, or put task back on queue
     for server in available_iperf_servers:
         server_lock_key = f'ow_monitoring_{org}_iperf_check_{server}'
@@ -75,8 +70,8 @@ def _run_iperf_check_on_multiple_servers(uuid, check):  # pragma: no cover
         perform_check.apply_async(args=[uuid], countdown=2 * iperf_check_time)
         return
     try:
-        # Execute iperf check
-        result = check.perform_check()
+        # Execute the iperf check with current available server
+        result = check.perform_check(iperf_server=server)
     finally:
         # Release the lock after completion of the check
         cache.delete(server_lock_key)
