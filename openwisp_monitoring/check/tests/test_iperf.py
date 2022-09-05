@@ -1,6 +1,8 @@
 from json import loads
 from unittest.mock import call, patch
 
+from django.core import management
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.test import TransactionTestCase
 from swapper import load_model
@@ -11,6 +13,7 @@ from openwisp_controller.connection.settings import UPDATE_STRATEGIES
 from openwisp_controller.connection.tests.utils import CreateConnectionsMixin, SshServer
 from openwisp_monitoring.check.classes.iperf import get_iperf_schema
 from openwisp_monitoring.check.classes.iperf import logger as iperf_logger
+from openwisp_monitoring.check.tasks import logger as task_logger
 
 from ...device.tests import TestDeviceMonitoringMixin
 from .. import settings as app_settings
@@ -49,6 +52,10 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         'lost_percent',
     ]
     _IPERF_TEST_SERVER = 'iperf.openwisptestserver.com'
+    _IPERF_TEST_MULTIPLE_SERVERS = [
+        'iperf.openwisptestserver1.com',
+        'iperf.openwisptestserver2.com',
+    ]
 
     @classmethod
     def setUpClass(cls):
@@ -598,3 +605,109 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 self.assertEqual(mock_exec_command.call_count, 2)
                 mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS)
                 mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
+
+    @patch.object(Ssh, 'exec_command')
+    @patch.object(iperf_logger, 'warning')
+    @patch.object(cache, 'set')
+    @patch.object(task_logger, 'warning')
+    def test_iperf_check_task_with_multiple_server_config(self, *args):
+        check, _ = self._create_iperf_test_env()
+        org = self.device.organization
+        mock_warn = args[2]
+        mock_set = args[1]
+        mock_task_logger = args[0]
+        mock_exec_command = args[3]
+        iperf_multiple_server_config = {
+            str(org.id): {'host': self._IPERF_TEST_MULTIPLE_SERVERS}
+        }
+        self._EXPECTED_COMMAND_CALLS_SERVER_1 = [
+            call(
+                f'iperf3 -c {self._IPERF_TEST_MULTIPLE_SERVERS[0]} -p 5201 -t 10 -b 0 -J',
+                raise_unexpected_exit=False,
+            ),
+            call(
+                f'iperf3 -c {self._IPERF_TEST_MULTIPLE_SERVERS[0]} -p 5201 -t 10 -b 30M -u -J',
+                raise_unexpected_exit=False,
+            ),
+        ]
+        self._EXPECTED_COMMAND_CALLS_SERVER_2 = [
+            call(
+                f'iperf3 -c {self._IPERF_TEST_MULTIPLE_SERVERS[1]} -p 5201 -t 10 -b 0 -J',
+                raise_unexpected_exit=False,
+            ),
+            call(
+                f'iperf3 -c {self._IPERF_TEST_MULTIPLE_SERVERS[1]} -p 5201 -t 10 -b 30M -u -J',
+                raise_unexpected_exit=False,
+            ),
+        ]
+
+        with self.subTest('Test iperf check without config'):
+            management.call_command('run_checks')
+            mock_task_logger.assert_called_with(
+                (
+                    f'Iperf servers for organization "{org}"'
+                    f'is not configured properly, iperf check skipped!'
+                )
+            )
+            mock_task_logger.reset_mock()
+
+        with patch.object(
+            app_settings, 'IPERF_CHECK_CONFIG', iperf_multiple_server_config
+        ):
+            with self.subTest('Test iperf check when all iperf servers are available'):
+                mock_set.return_value = True
+                mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
+                management.call_command('run_checks')
+                self.assertEqual(mock_warn.call_count, 0)
+                self.assertEqual(mock_task_logger.call_count, 0)
+                self.assertEqual(mock_set.call_count, 1)
+                self.assertEqual(mock_exec_command.call_count, 2)
+                mock_exec_command.assert_has_calls(
+                    self._EXPECTED_COMMAND_CALLS_SERVER_1
+                )
+                mock_set.reset_mock()
+                mock_warn.reset_mock()
+                mock_task_logger.reset_mock()
+                mock_exec_command.reset_mock()
+
+            with self.subTest(
+                'Test iperf check when single iperf server are available'
+            ):
+                mock_set.side_effect = [False, True]
+                mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
+                management.call_command('run_checks')
+                self.assertEqual(mock_warn.call_count, 0)
+                self.assertEqual(mock_task_logger.call_count, 0)
+                self.assertEqual(mock_set.call_count, 2)
+                self.assertEqual(mock_exec_command.call_count, 2)
+                mock_exec_command.assert_has_calls(
+                    self._EXPECTED_COMMAND_CALLS_SERVER_2
+                )
+                mock_set.reset_mock()
+                mock_warn.reset_mock()
+                mock_task_logger.reset_mock()
+                mock_exec_command.reset_mock()
+
+            with self.subTest(
+                'Test iperf check when all iperf servers are occupied initially'
+            ):
+                # If all available iperf servers are occupied initially,
+                # then push the task back in the queue and acquire the iperf
+                # server only after completion of previous running checks
+                mock_set.side_effect = [False, False, True]
+                mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
+                management.call_command('run_checks')
+                mock_task_logger.assert_called_with(
+                    (
+                        f'At the moment, all available iperf servers of organization "{org}" '
+                        f'are busy running checks, putting "{check}" back in the queue..'
+                    )
+                )
+
+                self.assertEqual(mock_warn.call_count, 0)
+                self.assertEqual(mock_task_logger.call_count, 1)
+                self.assertEqual(mock_set.call_count, 3)
+                self.assertEqual(mock_exec_command.call_count, 2)
+                mock_exec_command.assert_has_calls(
+                    self._EXPECTED_COMMAND_CALLS_SERVER_1
+                )

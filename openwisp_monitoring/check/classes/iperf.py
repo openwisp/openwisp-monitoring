@@ -110,12 +110,6 @@ class Iperf(BaseCheck):
             raise ValidationError({'params': message}) from e
 
     def check(self, store=True, **kwargs):
-        iperf_config = app_settings.IPERF_CHECK_CONFIG
-        org = self.related_object.organization
-        org_id = str(org.id)
-        if iperf_config:
-            self.validate_params(params=iperf_config[org_id])
-
         port = self._get_param(
             'client_options.port', 'client_options.properties.port.default'
         )

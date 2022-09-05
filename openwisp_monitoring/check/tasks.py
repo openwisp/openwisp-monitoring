@@ -17,7 +17,7 @@ def get_check_model():
     return load_model('check', 'Check')
 
 
-def _run_iperf_check_on_multiple_servers(uuid, check):  # pragma: no cover
+def _run_iperf_check_on_multiple_servers(uuid, check):
     """
     This will ensure that we only run iperf checks on those servers
     which are currently available for that organisation at that time,
@@ -30,7 +30,7 @@ def _run_iperf_check_on_multiple_servers(uuid, check):  # pragma: no cover
     org = check.content_object.organization
     iperf_check = check.check_instance
     # if iperf config is present and validate it's params
-    if IPERF_CHECK_CONFIG:
+    if IPERF_CHECK_CONFIG:  # pragma: nocover
         iperf_check.validate_params(params=IPERF_CHECK_CONFIG[str(org.id)])
     available_iperf_servers = iperf_check._get_param('host', 'host.default')
     iperf_check_time = iperf_check._get_param(
@@ -48,7 +48,6 @@ def _run_iperf_check_on_multiple_servers(uuid, check):  # pragma: no cover
     for server in available_iperf_servers:
         server_lock_key = f'ow_monitoring_{org}_iperf_check_{server}'
         # Set available_iperf_server to the org device
-        # this cache key value will be used within iperf_check
         lock_acquired = cache.set(
             server_lock_key,
             str(check.content_object),
@@ -122,9 +121,7 @@ def perform_check(uuid):
     except ObjectDoesNotExist:
         logger.warning(f'The check with uuid {uuid} has been deleted')
         return
-    if check.check_type in [
-        'openwisp_monitoring.check.classes.Iperf'
-    ]:  # pragma: no cover
+    if check.check_type in ['openwisp_monitoring.check.classes.Iperf']:
         result = _run_iperf_check_on_multiple_servers(uuid, check)
     else:
         result = check.perform_check()
