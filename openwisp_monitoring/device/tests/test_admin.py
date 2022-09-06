@@ -363,6 +363,18 @@ class TestAdmin(
         self._create_alert_settings(metric=metric)
         self.client.force_login(test_user)
 
+        def _add_device_permissions(user):
+            test_user.user_permissions.clear()
+            self.assertEqual(user.user_permissions.count(), 0)
+            device_permissions = Permission.objects.filter(codename__endswith='device')
+            # Permissions required to access device page
+            test_user.user_permissions.add(*device_permissions),
+            self.assertEqual(user.user_permissions.count(), 4)
+
+        def _add_user_permissions(user, permission_query, expected_perm_count):
+            user.user_permissions.add(*Permission.objects.filter(**permission_query))
+            self.assertEqual(user.user_permissions.count(), expected_perm_count)
+
         def _assert_check_inline_in_response(response):
             self.assertContains(response, '<h2>Checks</h2>', html=True)
             self.assertContains(response, 'check-content_type-object_id-0-is_active')
@@ -399,140 +411,74 @@ class TestAdmin(
                 'metric-content_type-object_id-0-alertsettings-0-DELETE',
             )
 
-        with self.subTest('Test check & alert settings with model permissions'):
-            test_user_permissions = test_user.user_permissions.all().values_list(
-                'codename', flat=True
-            )
-            self.assertEqual(test_user_permissions.count(), 0)
-            device_permissions = Permission.objects.filter(codename__endswith='device')
-            # Permissions required to access device page
-            test_user.user_permissions.add(*device_permissions),
-            test_user_permissions = test_user.user_permissions.all().values_list(
-                'codename', flat=True
-            )
-            self.assertEqual(test_user_permissions.count(), 4)
+        with self.subTest(
+            'Test when a user does not have permission to access models or inline'
+        ):
+            _add_device_permissions(test_user)
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200)
             self.assertNotContains(response, '<h2>Checks</h2>', html=True)
             self.assertNotContains(response, '<h2>Alert Settings</h2>', html=True)
-            check_model_permissions = Permission.objects.filter(
-                codename__endswith='check'
+
+        with self.subTest('Test check & alert settings with model permissions'):
+            _add_device_permissions(test_user)
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            _add_user_permissions(test_user, {'codename__endswith': 'check'}, 8)
+            _add_user_permissions(test_user, {'codename__endswith': 'metric'}, 12)
+            _add_user_permissions(
+                test_user, {'codename__endswith': 'alertsettings'}, 16
             )
-            metric_model_permissions = Permission.objects.filter(
-                codename__endswith='metric'
-            )
-            alertsettings_model_permissions = Permission.objects.filter(
-                codename__endswith='alertsettings'
-            )
-            # Add check, metric & alert model permissions
-            test_user.user_permissions.add(
-                *check_model_permissions,
-                *metric_model_permissions,
-                *alertsettings_model_permissions,
-            )
-            test_user_permissions = test_user.user_permissions.all().values_list(
-                'codename', flat=True
-            )
-            self.assertEqual(test_user_permissions.count(), 16)
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200)
             _assert_check_inline_in_response(response)
             _assert_alertsettings_inline_in_response(response)
 
-        with self.subTest('Test check & alert settings with inline permissions'):
-            with self.subTest('Test all inline permissions'):
-                test_user.user_permissions.clear()
-                test_user_permissions = test_user.user_permissions.all().values_list(
-                    'codename', flat=True
-                )
-                self.assertEqual(test_user_permissions.count(), 0)
-                device_permissions = Permission.objects.filter(
-                    codename__endswith='device'
-                )
-                # Permissions required to access device page
-                test_user.user_permissions.add(*device_permissions),
-                test_user_permissions = test_user.user_permissions.all().values_list(
-                    'codename', flat=True
-                )
-                self.assertEqual(test_user_permissions.count(), 4)
-                response = self.client.get(url)
-                self.assertEqual(response.status_code, 200)
-                self.assertNotContains(response, '<h2>Checks</h2>', html=True)
-                self.assertNotContains(response, '<h2>Alert Settings</h2>', html=True)
-                check_alert_inline_permissions = Permission.objects.filter(
-                    codename__endswith='inline'
-                )
-                # Add check & alert inline permissions
-                test_user.user_permissions.add(*check_alert_inline_permissions)
-                test_user_permissions = test_user.user_permissions.all().values_list(
-                    'codename', flat=True
-                )
-                self.assertEqual(test_user_permissions.count(), 12)
-                response = self.client.get(url)
-                self.assertEqual(response.status_code, 200)
-                _assert_check_inline_in_response(response)
-                _assert_alertsettings_inline_in_response(response)
+        with self.subTest('Test all inline permissions'):
+            _add_device_permissions(test_user)
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            _add_user_permissions(test_user, {'codename__endswith': 'inline'}, 12)
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            _assert_check_inline_in_response(response)
+            _assert_alertsettings_inline_in_response(response)
 
-            with self.subTest('Test view inline permissions'):
-                test_user.user_permissions.clear()
-                test_user_permissions = test_user.user_permissions.all().values_list(
-                    'codename', flat=True
-                )
-                self.assertEqual(test_user_permissions.count(), 0)
-                device_permissions = Permission.objects.filter(
-                    codename__endswith='device'
-                )
-                # Permissions required to access device page
-                test_user.user_permissions.add(*device_permissions),
-                test_user_permissions = test_user.user_permissions.all().values_list(
-                    'codename', flat=True
-                )
-                self.assertEqual(test_user_permissions.count(), 4)
-                response = self.client.get(url)
-                self.assertEqual(response.status_code, 200)
-                self.assertNotContains(response, '<h2>Checks</h2>', html=True)
-                self.assertNotContains(response, '<h2>Alert Settings</h2>', html=True)
-                check_view_inline_permission = Permission.objects.get(
-                    codename='view_check_inline'
-                )
-                alert_view_inline_permission = Permission.objects.get(
-                    codename='view_alertsettings_inline'
-                )
-                # Add check & alert view inline permission
-                test_user.user_permissions.add(
-                    check_view_inline_permission, alert_view_inline_permission
-                )
-                test_user_permissions = test_user.user_permissions.all().values_list(
-                    'codename', flat=True
-                )
-                self.assertEqual(test_user_permissions.count(), 6)
-                response = self.client.get(url)
-                self.assertEqual(response.status_code, 200)
-                self.assertContains(response, '<h2>Checks</h2>', html=True)
-                self.assertContains(response, 'form-row field-check_type')
-                self.assertContains(response, 'form-row field-is_active')
-                self.assertContains(response, '<h2>Alert Settings</h2>', html=True)
-                self.assertContains(
-                    response, 'form-row field-is_healthy djn-form-row-last'
-                )
-                self.assertContains(
-                    response,
-                    '<img src="/static/admin/img/icon-yes.svg" alt="True">',
-                    html=True,
-                )
-                self.assertContains(
-                    response,
-                    'form-row field-is_active',
-                )
-                self.assertContains(response, 'form-row field-custom_operator')
-                self.assertContains(
-                    response,
-                    'form-row field-custom_threshold',
-                )
-                self.assertContains(
-                    response,
-                    'form-row field-custom_tolerance',
-                )
+        with self.subTest('Test view inline permissions'):
+            _add_device_permissions(test_user)
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            _add_user_permissions(
+                test_user, {'codename__endswith': 'view_check_inline'}, 5
+            )
+            _add_user_permissions(
+                test_user, {'codename__endswith': 'view_alertsettings_inline'}, 6
+            )
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, '<h2>Checks</h2>', html=True)
+            self.assertContains(response, 'form-row field-check_type')
+            self.assertContains(response, 'form-row field-is_active')
+            self.assertContains(response, '<h2>Alert Settings</h2>', html=True)
+            self.assertContains(response, 'form-row field-is_healthy djn-form-row-last')
+            self.assertContains(
+                response,
+                '<img src="/static/admin/img/icon-yes.svg" alt="True">',
+                html=True,
+            )
+            self.assertContains(
+                response,
+                'form-row field-is_active',
+            )
+            self.assertContains(response, 'form-row field-custom_operator')
+            self.assertContains(
+                response,
+                'form-row field-custom_threshold',
+            )
+            self.assertContains(
+                response,
+                'form-row field-custom_tolerance',
+            )
 
 
 class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
