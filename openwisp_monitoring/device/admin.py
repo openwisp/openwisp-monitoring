@@ -116,6 +116,27 @@ class AlertSettingsForm(ModelForm):
             }
         super().__init__(*args, **kwargs)
 
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        # If all the fields are empty,
+        # then just delete the object
+        # to prevent the default value
+        # from being used as a fallback
+        if all(
+            fields is None
+            for fields in [
+                instance.custom_operator,
+                instance.custom_threshold,
+                instance.custom_tolerance,
+            ]
+        ):
+            instance.delete()
+            return instance
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
+
 
 class AlertSettingsInline(InlinePermissionMixin, NestedStackedInline):
     model = AlertSettings

@@ -744,15 +744,6 @@ class AbstractAlertSettings(TimeStampedEditableModel):
             ('view_alertsettings_inline', 'Can view Alert settings inline'),
         )
 
-    def full_clean(self, *args, **kwargs):
-        if self.custom_threshold == self.config_dict['threshold']:
-            self.custom_threshold = None
-        if self.custom_tolerance == self.config_dict['tolerance']:
-            self.custom_tolerance = None
-        if self.custom_operator == self.config_dict['operator']:
-            self.custom_operator = None
-        return super().full_clean(*args, **kwargs)
-
     @property
     def config_dict(self):
         return self.metric.config_dict.get(

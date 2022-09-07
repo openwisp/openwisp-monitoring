@@ -287,15 +287,15 @@ class TestModels(TestMonitoringMixin, TestCase):
             alert_s.custom_threshold = alert_s.threshold
             alert_s.custom_tolerance = alert_s.tolerance
             alert_s.full_clean()
-            self.assertIsNone(alert_s.custom_operator)
-            self.assertIsNone(alert_s.custom_threshold)
-            self.assertIsNone(alert_s.custom_tolerance)
+            self.assertEqual(alert_s.custom_operator, '<')
+            self.assertEqual(alert_s.custom_threshold, 1)
+            self.assertEqual(alert_s.custom_tolerance, 0)
         with self.subTest('Store default and custom values'):
             alert_s.custom_operator = alert_s.operator
             alert_s.custom_threshold = 0.5
             alert_s.custom_tolerance = 2
             alert_s.full_clean()
-            self.assertIsNone(alert_s.custom_operator)
+            self.assertEqual(alert_s.custom_operator, '<')
             self.assertEqual(alert_s.custom_threshold, 0.5)
             self.assertEqual(alert_s.custom_tolerance, 2)
 
