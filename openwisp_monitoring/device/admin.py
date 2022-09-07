@@ -5,7 +5,7 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline
 from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q
+from django.db.models import F, Q
 from django.forms import ModelForm
 from django.templatetags.static import static
 from django.urls import resolve, reverse
@@ -48,26 +48,61 @@ class CheckInlineFormSet(BaseGenericInlineFormSet):
             obj = form.instance
             if not obj.content_type or not obj.object_id:
                 setattr(
-                    form.instance,
+                    obj,
                     self.ct_field.get_attname(),
                     ContentType.objects.get_for_model(self.instance).pk,
                 )
-                setattr(form.instance, self.ct_fk_field.get_attname(), self.instance.pk)
+                setattr(obj, self.ct_fk_field.get_attname(), self.instance.pk)
         super().full_clean()
 
 
-class CheckInline(GenericStackedInline):
+class InlinePermissionMixin:
+    def has_add_permission(self, request, obj=None):
+        # User will be able to add objects from inline even
+        # if it only has permission to add a model object
+        return super().has_add_permission(request, obj) or request.user.has_perm(
+            f'{self.model._meta.app_label}.add_{self.inline_permission_suffix}'
+        )
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request, obj) or request.user.has_perm(
+            f'{self.model._meta.app_label}.change_{self.inline_permission_suffix}'
+        )
+
+    def has_view_permission(self, request, obj=None):
+        return super().has_view_permission(request, obj) or request.user.has_perm(
+            f'{self.model._meta.app_label}.view_{self.inline_permission_suffix}'
+        )
+
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj) or request.user.has_perm(
+            f'{self.model._meta.app_label}.delete_{self.inline_permission_suffix}'
+        )
+
+
+class CheckInline(InlinePermissionMixin, GenericStackedInline):
     model = Check
     extra = 0
     formset = CheckInlineFormSet
-    fields = ['check_type', 'is_active']
-    readonly_fields = ['check_type']
+    fields = [
+        'is_active',
+        'check_type',
+    ]
+    inline_permission_suffix = 'check_inline'
 
-    def has_add_permission(self, request, obj=None):
-        return False
+    def get_fields(self, request, obj=None):
+        if not self.has_change_permission(request, obj) or not self.has_view_permission(
+            request, obj
+        ):
+            return ['check_type', 'is_active']
+        return super().get_fields(request, obj)
 
-    def has_delete_permission(self, request, obj=None):
-        return False
+    def get_readonly_fields(self, request, obj=None):
+        if not self.has_change_permission(request, obj) or not self.has_view_permission(
+            request, obj
+        ):
+            return ['check_type']
+        return super().get_readonly_fields(request, obj)
 
 
 class AlertSettingsForm(ModelForm):
@@ -82,41 +117,47 @@ class AlertSettingsForm(ModelForm):
         super().__init__(*args, **kwargs)
 
 
-class AlertSettingsInline(NestedStackedInline):
+class AlertSettingsInline(InlinePermissionMixin, NestedStackedInline):
     model = AlertSettings
-    extra = 0
-    max_num = 0
+    extra = 1
+    max_num = 1
     exclude = ['created', 'modified']
     form = AlertSettingsForm
+    inline_permission_suffix = 'alertsettings_inline'
 
     def get_queryset(self, request):
         return super().get_queryset(request).order_by('created')
 
-    def has_add_permission(self, request, obj=None):
-        return False
 
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-
-class MetricInline(NestedGenericStackedInline):
+class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
     model = Metric
     extra = 0
     inlines = [AlertSettingsInline]
-    readonly_fields = ['name', 'is_healthy']
-    fields = ['name', 'is_healthy']
+    fields = ['is_healthy', 'configuration']
+    readonly_fields = ['is_healthy']
     # Explicitly changed name from Metrics to Alert Settings
     verbose_name = _('Alert Settings')
     verbose_name_plural = verbose_name
+    inline_permission_suffix = 'alertsettings_inline'
+    # Ordering queryset to show metrics
+    # that have the alert settings first
+    ordering = [F('alertsettings').desc(nulls_last=True)]
 
-    def has_add_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
+    def get_fields(self, request, obj=None):
+        if not self.has_change_permission(request, obj) or not self.has_view_permission(
+            request, obj
+        ):
+            return ['is_healthy']
+        return super().get_fields(request, obj)
 
     def get_queryset(self, request):
-        return super().get_queryset(request).filter(alertsettings__isnull=False)
+        if not self.has_change_permission(request) or not self.has_view_permission(
+            request
+        ):
+            # When a user has view access, we only show
+            # 'Metrics' that have 'AlertSettings' objects
+            return super().get_queryset(request).filter(alertsettings__isnull=False)
+        return super().get_queryset(request)
 
 
 class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
@@ -220,6 +261,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
             if not hasattr(inline, 'sortable_options'):
                 inline.sortable_options = {'disabled': True}
         if not obj or obj._state.adding:
+            inlines.remove(CheckInline)
             inlines.remove(MetricInline)
         return inlines
 
