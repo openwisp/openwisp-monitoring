@@ -1023,16 +1023,8 @@ jitter, datagram loss etc of the device using `iperf3 utility <https://iperf.fr/
 This check is **disabled by default**. You can enable auto creation of this check by setting the
 `OPENWISP_MONITORING_AUTO_IPERF <#OPENWISP_MONITORING_AUTO_IPERF>`_ to ``True``.
 
-You can also create the iperf check from the **device page** as shown below:
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-check.png
-  :align: center
-
-**Note:** To access the above page, the user must have some special permissions,
-which are included by default in the groups "Administrator" and "Operator" and are shown in the screenshot below.
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/inline-permissions.png
-  :align: center
+You can also `add the iperf check and it's alert settings
+<#add-checks-and-alert-settings-from-the-device-page>`_ directly from the device page.
 
 It also supports tuning of various parameters.
 
@@ -1249,6 +1241,79 @@ in the settings:
            },
        }
    }
+
+
+Add Checks and Alert settings from the device page
+--------------------------------------------------
+
+We can add checks and alert settings directly from the **device page**.
+
+To add a check, you just need to select an available `check type` as shown below:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-check.gif
+  :align: center
+
+
+The following example shows how to use the
+`setting <https://github.com/openwisp/openwisp-monitoring#openwisp_monitoring_metrics>`_
+to reconfigure the system for `iperf check <#iperf-1>`_ to send an alert if
+the measured **TCP bandwidth** has been less than **10 Mbit/s** for more than **2 days**.
+
+1. By default, `Iperf checks <#iperf-1>`_ do not have any alert settings defined,
+but it is easy to create one through the device page as shown below:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-alertsettings.gif
+  :align: center
+
+2. Now, add the following notification configuration to send an alert for **TCP bandwidth**.
+
+.. code-block:: python
+
+   # Main project settings.py
+   from django.utils.translation import gettext_lazy as _
+
+   OPENWISP_MONITORING_METRICS = {
+       'iperf': {
+           'notification': {
+               'problem': {
+                   'verbose_name': 'Iperf PROBLEM',
+                   'verb': _('Iperf bandwidth is less than normal value'),
+                   'level': 'warning',
+                   'email_subject': _(
+                       '[{site.name}] PROBLEM: {notification.target} {notification.verb}'
+                   ),
+                   'message': _(
+                       'The device [{notification.target}]({notification.target_link}) '
+                       '{notification.verb}.'
+                   ),
+               },
+               'recovery': {
+                   'verbose_name': 'Iperf RECOVERY',
+                   'verb': _('Iperf bandwidth now back to normal'),
+                   'level': 'info',
+                   'email_subject': _(
+                       '[{site.name}] RECOVERY: {notification.target} {notification.verb}'
+                   ),
+                   'message': _(
+                       'The device [{notification.target}]({notification.target_link}) '
+                       '{notification.verb}.'
+                   ),
+               },
+           },
+       },
+   }
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_warn.png
+  :align: center
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_info.png
+  :align: center
+
+**Note:** To access the above pages, the user must have some special permissions,
+which are included by default in the groups "Administrator" and "Operator" and are shown in the screenshot below.
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/inline-permissions.png
+  :align: center
 
 Settings
 --------
@@ -1985,63 +2050,6 @@ is already registered with same name (not to be confused with verbose_name).
 
 If you don't need to register a new metric but need to change a specific key of an
 existing metric configuration, you can use `OPENWISP_MONITORING_METRICS <#openwisp_monitoring_metrics>`_.
-
-The following example shows how to use the
-`setting <https://github.com/openwisp/openwisp-monitoring#openwisp_monitoring_metrics>`_
-to reconfigure the system for `iperf check <#iperf-1>`_ to send an alert if
-the measured **TCP bandwidth** has been less than **10 Mbit/s** for more than **2 days**.
-
-1. Iperf check doesn't have any ``AlertSettings`` by default,
-but we can easily create one through the OpenWISP admin interface.
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_setttings.png
-  :align: center
-
-2. Now, add the following configuration to send an alert for **TCP bandwidth**.
-
-.. code-block:: python
-
-   # Main project settings.py
-   from django.utils.translation import gettext_lazy as _
-
-   OPENWISP_MONITORING_METRICS = {
-       'iperf': {
-           # Check alert threshold on iperf bandwidth (TCP)
-           'alert_field': 'sent_bps_tcp',
-           'notification': {
-               'problem': {
-                   'verbose_name': 'Iperf PROBLEM',
-                   'verb': _('Iperf bandwidth is less than normal value'),
-                   'level': 'warning',
-                   'email_subject': _(
-                       '[{site.name}] PROBLEM: {notification.target} {notification.verb}'
-                   ),
-                   'message': _(
-                       'The device [{notification.target}]({notification.target_link}) '
-                       '{notification.verb}.'
-                   ),
-               },
-               'recovery': {
-                   'verbose_name': 'Iperf RECOVERY',
-                   'verb': _('Iperf bandwidth now back to normal'),
-                   'level': 'info',
-                   'email_subject': _(
-                       '[{site.name}] RECOVERY: {notification.target} {notification.verb}'
-                   ),
-                   'message': _(
-                       'The device [{notification.target}]({notification.target_link}) '
-                       '{notification.verb}.'
-                   ),
-               },
-           },
-       },
-   }
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_warn.png
-  :align: center
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_info.png
-  :align: center
 
 ``unregister_metric``
 ~~~~~~~~~~~~~~~~~~~~~

@@ -54,7 +54,7 @@ metrics = {
     'test_alert_field': {
         'name': 'test_alert_related',
         'key': '{key}',
-        'field_name': '{field_name}',
+        'field_name': 'test_alert_field',
         'label': 'Test alert related',
         'notification': test_notification,
         'related_fields': ['test_related_1', 'test_related_2', 'test_related_3'],

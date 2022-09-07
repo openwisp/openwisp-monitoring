@@ -44,7 +44,12 @@ class AbstractMetric(TimeStampedEditableModel):
     key = models.SlugField(
         max_length=64, blank=True, help_text=_('leave blank to determine automatically')
     )
-    field_name = models.CharField(max_length=16, default='value')
+    field_name = models.CharField(
+        max_length=16,
+        default='value',
+        blank=True,
+        help_text=_('leave blank to determine automatically'),
+    )
     configuration = models.CharField(
         max_length=16, null=True, choices=METRIC_CONFIGURATION_CHOICES
     )
@@ -96,17 +101,26 @@ class AbstractMetric(TimeStampedEditableModel):
         return super().__setattr__(attrname, value)
 
     def clean(self):
-        if (
-            self.field_name == 'value'
-            and self.config_dict['field_name'] != '{field_name}'
-        ):
-            self.field_name = self.config_dict['field_name']
         if self.key:
             return
         elif self.config_dict['key'] != '{key}':
             self.key = self.config_dict['key']
         else:
             self.key = self.codename
+
+    def validate_alert_fields(self):
+        # When field_name is not provided while creating a metric
+        # then use config_dict['field_name] as metric field_name
+        if self.config_dict['field_name'] != '{field_name}':
+            if self.field_name in ['', 'value']:
+                self.field_name = self.config_dict['field_name']
+                return
+            # field_name must be one of the metric fields
+            alert_fields = [self.config_dict['field_name']] + self.related_fields
+            if self.field_name not in alert_fields:
+                raise ValidationError(
+                    f'"{self.field_name}" must be one of the following metric fields ie. {alert_fields}'
+                )
 
     def full_clean(self, *args, **kwargs):
         # The name of the metric will be the same as the
@@ -116,6 +130,8 @@ class AbstractMetric(TimeStampedEditableModel):
             self.name = self.get_configuration_display()
         # clean up key before field validation
         self.key = self._makekey(self.key)
+        # validate metric field_name for alerts
+        self.validate_alert_fields()
         return super().full_clean(*args, **kwargs)
 
     @classmethod

@@ -362,3 +362,14 @@ class TestModels(TestMonitoringMixin, TestCase):
         # Only the timeseries data related to the deleted metric
         # should be deleted
         self.assertNotEqual(metric2.read(), [])
+
+    def test_metric_invalid_field_name(self):
+        metric = self._create_general_metric(configuration='test_alert_field')
+        metric.field_name = 'invalid_field'
+        with self.assertRaises(ValidationError) as err:
+            metric.full_clean()
+            metric.save()
+        self.assertIn(
+            f'"{metric.field_name}" must be one of the following metric fields',
+            str(err.exception),
+        )
