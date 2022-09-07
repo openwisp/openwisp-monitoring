@@ -109,8 +109,11 @@ class AbstractMetric(TimeStampedEditableModel):
             self.key = self.codename
 
     def full_clean(self, *args, **kwargs):
+        # The name of the metric will be the same as the
+        # configuration chosen by the user only when the
+        # name field is empty (useful for AlertSettingsInline)
         if not self.name:
-            self.name = self.config_dict['name']
+            self.name = self.get_configuration_display()
         # clean up key before field validation
         self.key = self._makekey(self.key)
         return super().full_clean(*args, **kwargs)
@@ -693,6 +696,12 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         abstract = True
         verbose_name = _('Alert settings')
         verbose_name_plural = verbose_name
+        permissions = (
+            ('add_alertsettings_inline', 'Can add Alert settings inline'),
+            ('change_alertsettings_inline', 'Can change Alert settings inline'),
+            ('delete_alertsettings_inline', 'Can delete Alert settings inline'),
+            ('view_alertsettings_inline', 'Can view Alert settings inline'),
+        )
 
     def full_clean(self, *args, **kwargs):
         if self.custom_threshold == self.config_dict['threshold']:

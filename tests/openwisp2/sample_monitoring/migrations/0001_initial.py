@@ -254,6 +254,12 @@ class Migration(migrations.Migration):
                 'verbose_name': 'Alert settings',
                 'verbose_name_plural': 'Alert settings',
                 'abstract': False,
+                'permissions': (
+                    ('add_alertsettings_inline', 'Can add Alert settings inline'),
+                    ('change_alertsettings_inline', 'Can change Alert settings inline'),
+                    ('delete_alertsettings_inline', 'Can delete Alert settings inline'),
+                    ('view_alertsettings_inline', 'Can view Alert settings inline'),
+                ),
             },
         ),
     ]

@@ -54,6 +54,13 @@ class AbstractCheck(TimeStampedEditableModel):
         abstract = True
         unique_together = ('name', 'object_id', 'content_type')
 
+        permissions = (
+            ('add_check_inline', 'Can add check inline'),
+            ('change_check_inline', 'Can change check inline'),
+            ('delete_check_inline', 'Can delete check inline'),
+            ('view_check_inline', 'Can view check inline'),
+        )
+
     def __str__(self):
         if not self.object_id or not self.content_type:
             return self.name
@@ -63,6 +70,14 @@ class AbstractCheck(TimeStampedEditableModel):
 
     def clean(self):
         self.check_instance.validate()
+
+    def full_clean(self, *args, **kwargs):
+        # The name of the check will be the same as the
+        # 'check_type' chosen by the user when the
+        # name field is empty (useful for CheckInline)
+        if not self.name:
+            self.name = self.get_check_type_display()
+        return super().full_clean(*args, **kwargs)
 
     @cached_property
     def check_class(self):
