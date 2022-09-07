@@ -97,6 +97,12 @@ class Migration(migrations.Migration):
             options={
                 'abstract': False,
                 'unique_together': {('name', 'object_id', 'content_type')},
+                'permissions': (
+                    ('add_check_inline', 'Can add check inline'),
+                    ('change_check_inline', 'Can change check inline'),
+                    ('delete_check_inline', 'Can delete check inline'),
+                    ('view_check_inline', 'Can view check inline'),
+                ),
             },
         )
     ]
