@@ -433,18 +433,6 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 0)
 
-        with self.subTest('Test notification for metric with multiple related fields'):
-            m.write(10, extra_values={'test_related_2': 40, 'test_related_3': 20})
-            m.refresh_from_db()
-            self.assertEqual(m.is_healthy, False)
-            self.assertEqual(m.is_healthy_tolerant, False)
-            self.assertEqual(Notification.objects.count(), 1)
-            n = notification_queryset.first()
-            self.assertEqual(n.recipient, admin)
-            self.assertEqual(n.actor, m)
-            self.assertEqual(n.action_object, m.alertsettings)
-            self.assertEqual(n.level, 'warning')
-
         with self.subTest(
             'Test notification for metric exceeding related field alert settings'
         ):
@@ -458,6 +446,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(n.actor, m)
             self.assertEqual(n.action_object, m.alertsettings)
             self.assertEqual(n.level, 'warning')
+            Notification.objects.all().delete()
 
         with self.subTest(
             'Test no double alarm for metric exceeding related field alert settings'
@@ -466,7 +455,8 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, False)
             self.assertEqual(m.is_healthy_tolerant, False)
-            self.assertEqual(Notification.objects.count(), 1)
+            self.assertEqual(Notification.objects.count(), 0)
+            Notification.objects.all().delete()
 
         with self.subTest(
             'Test notification for metric falling behind related field alert settings'
@@ -475,7 +465,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, True)
             self.assertEqual(m.is_healthy_tolerant, True)
-            self.assertEqual(Notification.objects.count(), 2)
+            self.assertEqual(Notification.objects.count(), 1)
             n = notification_queryset.last()
             self.assertEqual(n.recipient, admin)
             self.assertEqual(n.actor, m)

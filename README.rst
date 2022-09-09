@@ -1023,7 +1023,7 @@ jitter, datagram loss etc of the device using `iperf3 utility <https://iperf.fr/
 This check is **disabled by default**. You can enable auto creation of this check by setting the
 `OPENWISP_MONITORING_AUTO_IPERF <#OPENWISP_MONITORING_AUTO_IPERF>`_ to ``True``.
 
-You can also `add the iperf check and it's alert settings
+You can also `add the iperf check
 <#add-checks-and-alert-settings-from-the-device-page>`_ directly from the device page.
 
 It also supports tuning of various parameters.
@@ -1031,6 +1031,10 @@ It also supports tuning of various parameters.
 You can also change the parameters used for iperf checks (e.g. timing, port, username,
 password, rsa_publc_key etc) using the `OPENWISP_MONITORING_IPERF_CHECK_CONFIG
 <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_ setting.
+
+**Note:** When setting `OPENWISP_MONITORING_AUTO_IPERF <#OPENWISP_MONITORING_AUTO_IPERF>`_  to ``True``,
+you may need to update the `metric configuration <#add-checks-and-alert-settings-from-the-device-page>`_
+to enable alerts for the iperf check.
 
 Iperf Check Usage Instructions
 ------------------------------
@@ -1242,20 +1246,18 @@ in the settings:
        }
    }
 
-
 Add Checks and Alert settings from the device page
 --------------------------------------------------
 
 We can add checks and alert settings directly from the **device page**.
 
-To add a check, you just need to select an available `check type` as shown below:
+To add a check, you just need to select an available **check type** as shown below:
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-check.gif
   :align: center
 
-
 The following example shows how to use the
-`setting <https://github.com/openwisp/openwisp-monitoring#openwisp_monitoring_metrics>`_
+`OPENWISP_MONITORING_METRICS setting <#openwisp_monitoring_metrics>`_
 to reconfigure the system for `iperf check <#iperf-1>`_ to send an alert if
 the measured **TCP bandwidth** has been less than **10 Mbit/s** for more than **2 days**.
 
@@ -1309,8 +1311,8 @@ but it is easy to create one through the device page as shown below:
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_info.png
   :align: center
 
-**Note:** To access the above pages, the user must have some special permissions,
-which are included by default in the groups "Administrator" and "Operator" and are shown in the screenshot below.
+**Note:** To access the above pages, the user must have permissions for ``Check`` and ``AlertSetting`` inlines,
+These permissions are included by default in the "Administrator" and "Operator" groups and are shown in the screenshot below.
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/inline-permissions.png
   :align: center
