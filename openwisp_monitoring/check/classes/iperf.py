@@ -3,6 +3,7 @@ from functools import reduce
 from json import loads
 from json.decoder import JSONDecodeError
 
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
@@ -109,12 +110,60 @@ class Iperf(BaseCheck):
             message = '{0}: {1}'.format(message, e.message)
             raise ValidationError({'params': message}) from e
 
-    def check(self, store=True, **kwargs):
-        port = self._get_param(
-            'client_options.port', 'client_options.properties.port.default'
-        )
+    def _validate_iperf_config(self, org):
+        # if iperf config is present and validate it's params
+        if app_settings.IPERF_CHECK_CONFIG:
+            self.validate_params(params=app_settings.IPERF_CHECK_CONFIG[str(org.id)])
+
+    def check(self, store=True):
+        lock_acquired = False
+        org = self.related_object.organization
+        self._validate_iperf_config(org)
+        available_iperf_servers = self._get_param('host', 'host.default')
+        if not available_iperf_servers:
+            logger.warning(
+                (
+                    f'Iperf servers for organization "{org}" '
+                    f'is not configured properly, iperf check skipped!'
+                )
+            )
+            return
         time = self._get_param(
             'client_options.time', 'client_options.properties.time.default'
+        )
+        # Try to acquire a lock, or put task back on queue
+        for server in available_iperf_servers:
+            server_lock_key = f'ow_monitoring_{org}_iperf_check_{server}'
+            # Set available_iperf_server to the org device
+            lock_acquired = cache.add(
+                server_lock_key,
+                str(self.related_object),
+                timeout=app_settings.IPERF_CHECK_LOCK_EXPIRE,
+            )
+            if lock_acquired:
+                break
+        else:
+            logger.warning(
+                (
+                    f'At the moment, all available iperf servers of organization "{org}" '
+                    f'are busy running checks, putting "{self.check_instance}" back in the queue..'
+                )
+            )
+            # Return the iperf_check task to the queue,
+            # it will executed after 2 * iperf_check_time (TCP+UDP)
+            self.check_instance.perform_check_delayed(duration=2 * time)
+            return
+        try:
+            # Execute the iperf check with current available server
+            result = self._run_iperf_check(store, server, time)
+        finally:
+            # Release the lock after completion of the check
+            cache.delete(server_lock_key)
+            return result
+
+    def _run_iperf_check(self, store, server, time):
+        port = self._get_param(
+            'client_options.port', 'client_options.properties.port.default'
         )
         tcp_bitrate = self._get_param(
             'client_options.tcp.bitrate',
@@ -138,7 +187,6 @@ class Iperf(BaseCheck):
             )
             return
 
-        server = kwargs.get('iperf_server')
         logger.info(f'«« Iperf server : {server}, Device : {self.related_object} »»')
         command_tcp = f'iperf3 -c {server} -p {port} -t {time} -b {tcp_bitrate} -J'
         command_udp = f'iperf3 -c {server} -p {port} -t {time} -b {udp_bitrate} -u -J'

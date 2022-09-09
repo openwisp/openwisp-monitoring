@@ -13,7 +13,6 @@ from openwisp_controller.connection.settings import UPDATE_STRATEGIES
 from openwisp_controller.connection.tests.utils import CreateConnectionsMixin, SshServer
 from openwisp_monitoring.check.classes.iperf import get_iperf_schema
 from openwisp_monitoring.check.classes.iperf import logger as iperf_logger
-from openwisp_monitoring.check.tasks import logger as task_logger
 
 from ...device.tests import TestDeviceMonitoringMixin
 from .. import settings as app_settings
@@ -51,7 +50,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         'lost_packets',
         'lost_percent',
     ]
-    _IPERF_TEST_SERVER = 'iperf.openwisptestserver.com'
+    _IPERF_TEST_SERVER = ['iperf.openwisptestserver.com']
     _IPERF_TEST_MULTIPLE_SERVERS = [
         'iperf.openwisptestserver1.com',
         'iperf.openwisptestserver2.com',
@@ -69,15 +68,17 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
     def tearDownClass(cls):
         super().tearDownClass()
         cls.mock_ssh_server.__exit__()
+        app_settings.IPERF_CHECK_CONFIG = {}
 
-    def _perform_iperf_check(self, check):
-        return check.perform_check(store=False, iperf_server=self._IPERF_TEST_SERVER)
-
-    def _create_iperf_test_env(self):
+    def setUp(self):
         ckey = self._create_credentials_with_key(port=self.ssh_server.port)
-        dc = self._create_device_connection(credentials=ckey)
-        dc.connect()
-        self.device = dc.device
+        self.dc = self._create_device_connection(credentials=ckey)
+        self.device = self.dc.device
+        self.org_id = str(self.device.organization.id)
+        self.dc.connect()
+        app_settings.IPERF_CHECK_CONFIG = {
+            self.org_id: {'host': self._IPERF_TEST_SERVER}
+        }
         self._EXPECTED_COMMAND_CALLS = [
             call(
                 'iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 -b 0 -J',
@@ -96,16 +97,18 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 f'Iperf check failed for "{self.device}", error - unable to connect to server: Connection refused'  # noqa
             ),
         ]
-        check = Check.objects.get(check_type=self._IPERF)
-        return check, dc
 
-    def _set_auth_expected_calls(self, dc, org_id, config):
-        password = config[org_id]['password']
-        username = config[org_id]['username']
+    def _perform_iperf_check(self):
+        check = Check.objects.get(check_type=self._IPERF)
+        return check.perform_check(store=False)
+
+    def _set_auth_expected_calls(self, config):
+        password = config[self.org_id]['password']
+        username = config[self.org_id]['username']
         server = 'iperf.openwisptestserver.com'
         test_prefix = '-----BEGIN PUBLIC KEY-----\n'
         test_suffix = '\n-----END PUBLIC KEY-----'
-        key = config[org_id]['rsa_public_key']
+        key = config[self.org_id]['rsa_public_key']
         rsa_key_path = '/tmp/iperf-public-key.pem'
 
         self._EXPECTED_COMMAND_CALLS = [
@@ -143,10 +146,9 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
     def test_iperf_check_no_params(self, mock_warn, mock_exec_command):
         mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
         # By default check params {}
-        check, _ = self._create_iperf_test_env()
         tcp_result = loads(RESULT_TCP)['end']
         udp_result = loads(RESULT_UDP)['end']['sum']
-        result = self._perform_iperf_check(check)
+        result = self._perform_iperf_check()
         for key in self._RESULT_KEYS:
             self.assertIn(key, result)
         self.assertEqual(result['iperf_result'], 1)
@@ -166,10 +168,10 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
     @patch.object(iperf_logger, 'warning')
     def test_iperf_check_params(self, mock_warn, mock_exec_command):
         mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
+        check = Check.objects.get(check_type=self._IPERF)
         tcp_result = loads(RESULT_TCP)['end']
         udp_result = loads(RESULT_UDP)['end']['sum']
-        check, dc = self._create_iperf_test_env()
-        server = self._IPERF_TEST_SERVER
+        server = self._IPERF_TEST_SERVER[0]
         test_prefix = '-----BEGIN PUBLIC KEY-----\n'
         test_suffix = '\n-----END PUBLIC KEY-----'
         rsa_key_path = '/tmp/test-rsa.pem'
@@ -208,7 +210,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 raise_unexpected_exit=False,
             ),
         ]
-        result = self._perform_iperf_check(check)
+        result = self._perform_iperf_check()
         for key in self._RESULT_KEYS:
             self.assertIn(key, result)
         self.assertEqual(result['iperf_result'], 1)
@@ -230,7 +232,6 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
         tcp_result = loads(RESULT_TCP)['end']
         udp_result = loads(RESULT_UDP)['end']['sum']
-        check, dc = self._create_iperf_test_env()
         self._EXPECTED_COMMAND_CALLS = [
             call(
                 'iperf3 -c iperf.openwisptestserver.com -p 9201 -t 120 -b 10M -J',
@@ -241,9 +242,9 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 raise_unexpected_exit=False,
             ),
         ]
-        org_id = str(self.device.organization.id)
         iperf_config = {
-            org_id: {
+            self.org_id: {
+                'host': ['iperf.openwisptestserver.com'],
                 'client_options': {
                     'port': 9201,
                     'time': 120,
@@ -254,7 +255,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         }
         with patch.object(app_settings, 'IPERF_CHECK_CONFIG', iperf_config):
             with patch.object(Iperf, 'schema', get_iperf_schema()):
-                result = self._perform_iperf_check(check)
+                result = self._perform_iperf_check()
                 for key in self._RESULT_KEYS:
                     self.assertIn(key, result)
                 self.assertEqual(result['iperf_result'], 1)
@@ -272,12 +273,12 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
     @patch.object(iperf_logger, 'warning')
     def test_iperf_device_connection(self, mock_warn):
-        check, dc = self._create_iperf_test_env()
+        dc = self.dc
         with self.subTest('Test active device connection when management tunnel down'):
             with patch.object(
                 device_connection, 'connect', return_value=False
             ) as mocked_connect:
-                check.perform_check(store=False)
+                self._perform_iperf_check()
                 mock_warn.assert_called_with(
                     f'DeviceConnection for "{self.device}" is not working, iperf check skipped!'
                 )
@@ -286,7 +287,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         with self.subTest('Test device connection is not enabled'):
             dc.enabled = False
             dc.save()
-            check.perform_check(store=False)
+            self._perform_iperf_check()
             mock_warn.assert_called_with(
                 f'Failed to get a working DeviceConnection for "{self.device}", iperf check skipped!'
             )
@@ -296,7 +297,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             dc.is_working = True
             dc.enabled = True
             dc.save()
-            check.perform_check(store=False)
+            self._perform_iperf_check()
             mock_warn.assert_called_with(
                 f'Failed to get a working DeviceConnection for "{self.device}", iperf check skipped!'
             )
@@ -325,12 +326,11 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             self.fail('ValidationError not raised')
 
     def test_iperf_check_schema_violation(self):
-        device = self._create_device(organization=self._create_org())
         for invalid_param in INVALID_PARAMS:
             check = Check(
                 name='Iperf check',
                 check_type=self._IPERF,
-                content_object=device,
+                content_object=self.device,
                 params=invalid_param,
             )
             try:
@@ -343,13 +343,11 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
     @patch.object(Ssh, 'exec_command')
     @patch.object(iperf_logger, 'warning')
     def test_iperf_check(self, mock_warn, mock_exec_command):
-        check, _ = self._create_iperf_test_env()
         error = "ash: iperf3: not found"
-        org_id = str(self.device.organization.id)
         tcp_result = loads(RESULT_TCP)['end']
         udp_result = loads(RESULT_UDP)['end']['sum']
         iperf_json_error_config = {
-            org_id: {
+            self.org_id: {
                 'host': ['iperf.openwisptestserver.com'],
                 'username': 'test',
                 'password': 'testpass',
@@ -367,7 +365,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                         f'Iperf check failed for "{self.device}", error - {PARAM_ERROR}'
                     ),
                 ]
-                self._perform_iperf_check(check)
+                self._perform_iperf_check()
                 self.assertEqual(mock_warn.call_count, 2)
                 self.assertEqual(mock_exec_command.call_count, 2)
                 mock_warn.assert_has_calls(EXPECTED_WARN_CALLS)
@@ -376,7 +374,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
         with self.subTest('Test iperf3 is not installed on the device'):
             mock_exec_command.side_effect = [(error, 127)]
-            self._perform_iperf_check(check)
+            self._perform_iperf_check()
             mock_warn.assert_called_with(
                 f'Iperf3 is not installed on the "{self.device}", error - {error}'
             )
@@ -389,7 +387,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
             self.assertEqual(Chart.objects.count(), 2)
             self.assertEqual(Metric.objects.count(), 2)
-            result = self._perform_iperf_check(check)
+            result = self._perform_iperf_check()
             for key in self._RESULT_KEYS:
                 self.assertIn(key, result)
             self.assertEqual(result['iperf_result'], 1)
@@ -439,7 +437,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
         with self.subTest('Test iperf check fails in both TCP & UDP'):
             mock_exec_command.side_effect = [(RESULT_FAIL, 1), (RESULT_FAIL, 1)]
-            result = self._perform_iperf_check(check)
+            result = self._perform_iperf_check()
             self._assert_iperf_fail_result(result)
             self.assertEqual(Chart.objects.count(), 8)
             self.assertEqual(Metric.objects.count(), 3)
@@ -452,7 +450,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
         with self.subTest('Test iperf check TCP pass UDP fail'):
             mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_FAIL, 1)]
-            result = self._perform_iperf_check(check)
+            result = self._perform_iperf_check()
             for key in self._RESULT_KEYS:
                 self.assertIn(key, result)
             self.assertEqual(result['iperf_result'], 1)
@@ -486,7 +484,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
         with self.subTest('Test iperf check TCP fail UDP pass'):
             mock_exec_command.side_effect = [(RESULT_FAIL, 1), (RESULT_UDP, 0)]
-            result = self._perform_iperf_check(check)
+            result = self._perform_iperf_check()
             for key in self._RESULT_KEYS:
                 self.assertIn(key, result)
             self.assertEqual(result['iperf_result'], 1)
@@ -510,25 +508,25 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
     @patch.object(Ssh, 'exec_command')
     @patch.object(iperf_logger, 'warning')
     def test_iperf_check_auth_config(self, mock_warn, mock_exec_command):
-
-        check, dc = self._create_iperf_test_env()
-        org_id = str(self.device.organization.id)
         iperf_config = {
-            org_id: {
+            self.org_id: {
+                'host': self._IPERF_TEST_SERVER,
                 'username': 'test',
                 'password': 'testpass',
                 'rsa_public_key': TEST_RSA_KEY,
             }
         }
         iperf_conf_wrong_pass = {
-            org_id: {
+            self.org_id: {
+                'host': self._IPERF_TEST_SERVER,
                 'username': 'test',
                 'password': 'wrongpass',
                 'rsa_public_key': TEST_RSA_KEY,
             }
         }
         iperf_conf_wrong_user = {
-            org_id: {
+            self.org_id: {
+                'host': self._IPERF_TEST_SERVER,
                 'username': 'wronguser',
                 'password': 'testpass',
                 'rsa_public_key': TEST_RSA_KEY,
@@ -550,9 +548,9 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 # It is required to mock "Iperf.schema" here so that it
                 # uses the updated configuration from "IPERF_CHECK_CONFIG" setting.
             ), patch.object(Iperf, 'schema', get_iperf_schema()):
-                self._set_auth_expected_calls(dc, org_id, iperf_config)
+                self._set_auth_expected_calls(iperf_config)
                 mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
-                result = self._perform_iperf_check(check)
+                result = self._perform_iperf_check()
                 for key in self._RESULT_KEYS:
                     self.assertIn(key, result)
                 self.assertEqual(result['iperf_result'], 1)
@@ -574,13 +572,13 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             with patch.object(
                 app_settings, 'IPERF_CHECK_CONFIG', iperf_conf_wrong_pass
             ), patch.object(Iperf, 'schema', get_iperf_schema()):
-                self._set_auth_expected_calls(dc, org_id, iperf_conf_wrong_pass)
+                self._set_auth_expected_calls(iperf_conf_wrong_pass)
                 mock_exec_command.side_effect = [
                     (RESULT_AUTH_FAIL, 1),
                     (RESULT_AUTH_FAIL, 1),
                 ]
 
-                result = self._perform_iperf_check(check)
+                result = self._perform_iperf_check()
                 self._assert_iperf_fail_result(result)
                 self.assertEqual(mock_warn.call_count, 2)
                 self.assertEqual(mock_exec_command.call_count, 2)
@@ -593,13 +591,13 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             with patch.object(
                 app_settings, 'IPERF_CHECK_CONFIG', iperf_conf_wrong_user
             ), patch.object(Iperf, 'schema', get_iperf_schema()):
-                self._set_auth_expected_calls(dc, org_id, iperf_conf_wrong_user)
+                self._set_auth_expected_calls(iperf_conf_wrong_user)
                 mock_exec_command.side_effect = [
                     (RESULT_AUTH_FAIL, 1),
                     (RESULT_AUTH_FAIL, 1),
                 ]
 
-                result = self._perform_iperf_check(check)
+                result = self._perform_iperf_check()
                 self._assert_iperf_fail_result(result)
                 self.assertEqual(mock_warn.call_count, 2)
                 self.assertEqual(mock_exec_command.call_count, 2)
@@ -608,18 +606,16 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
     @patch.object(Ssh, 'exec_command')
     @patch.object(iperf_logger, 'warning')
-    @patch.object(cache, 'set')
-    @patch.object(task_logger, 'warning')
+    @patch.object(cache, 'add')
     def test_iperf_check_task_with_multiple_server_config(self, *args):
-        check, _ = self._create_iperf_test_env()
+        mock_add = args[0]
+        mock_warn = args[1]
+        mock_exec_command = args[2]
         org = self.device.organization
-        mock_warn = args[2]
-        mock_set = args[1]
-        mock_task_logger = args[0]
-        mock_exec_command = args[3]
         iperf_multiple_server_config = {
-            str(org.id): {'host': self._IPERF_TEST_MULTIPLE_SERVERS}
+            self.org_id: {'host': self._IPERF_TEST_MULTIPLE_SERVERS}
         }
+        check = Check.objects.get(check_type=self._IPERF)
         self._EXPECTED_COMMAND_CALLS_SERVER_1 = [
             call(
                 f'iperf3 -c {self._IPERF_TEST_MULTIPLE_SERVERS[0]} -p 5201 -t 10 -b 0 -J',
@@ -641,52 +637,50 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             ),
         ]
 
-        with self.subTest('Test iperf check without config'):
-            management.call_command('run_checks')
-            mock_task_logger.assert_called_with(
-                (
-                    f'Iperf servers for organization "{org}"'
-                    f'is not configured properly, iperf check skipped!'
+        with patch.object(app_settings, 'IPERF_CHECK_CONFIG', {}):
+            with self.subTest('Test iperf check without config'):
+                management.call_command('run_checks')
+                mock_warn.assert_called_with(
+                    (
+                        f'Iperf servers for organization "{org}" '
+                        f'is not configured properly, iperf check skipped!'
+                    )
                 )
-            )
-            mock_task_logger.reset_mock()
+                self.assertEqual(mock_warn.call_count, 1)
+            mock_warn.reset_mock()
 
         with patch.object(
             app_settings, 'IPERF_CHECK_CONFIG', iperf_multiple_server_config
         ):
             with self.subTest('Test iperf check when all iperf servers are available'):
-                mock_set.return_value = True
+                mock_add.return_value = True
                 mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
                 management.call_command('run_checks')
                 self.assertEqual(mock_warn.call_count, 0)
-                self.assertEqual(mock_task_logger.call_count, 0)
-                self.assertEqual(mock_set.call_count, 1)
+                self.assertEqual(mock_add.call_count, 1)
                 self.assertEqual(mock_exec_command.call_count, 2)
                 mock_exec_command.assert_has_calls(
                     self._EXPECTED_COMMAND_CALLS_SERVER_1
                 )
-                mock_set.reset_mock()
-                mock_warn.reset_mock()
-                mock_task_logger.reset_mock()
-                mock_exec_command.reset_mock()
+            mock_add.reset_mock()
+            mock_warn.reset_mock()
+            mock_exec_command.reset_mock()
 
             with self.subTest(
                 'Test iperf check when single iperf server are available'
             ):
-                mock_set.side_effect = [False, True]
+                mock_add.side_effect = [False, True]
                 mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
                 management.call_command('run_checks')
                 self.assertEqual(mock_warn.call_count, 0)
-                self.assertEqual(mock_task_logger.call_count, 0)
-                self.assertEqual(mock_set.call_count, 2)
+                self.assertEqual(mock_add.call_count, 2)
                 self.assertEqual(mock_exec_command.call_count, 2)
                 mock_exec_command.assert_has_calls(
                     self._EXPECTED_COMMAND_CALLS_SERVER_2
                 )
-                mock_set.reset_mock()
-                mock_warn.reset_mock()
-                mock_task_logger.reset_mock()
-                mock_exec_command.reset_mock()
+            mock_add.reset_mock()
+            mock_warn.reset_mock()
+            mock_exec_command.reset_mock()
 
             with self.subTest(
                 'Test iperf check when all iperf servers are occupied initially'
@@ -694,19 +688,18 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 # If all available iperf servers are occupied initially,
                 # then push the task back in the queue and acquire the iperf
                 # server only after completion of previous running checks
-                mock_set.side_effect = [False, False, True]
+                mock_add.side_effect = [False, False, True]
                 mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
                 management.call_command('run_checks')
-                mock_task_logger.assert_called_with(
+                mock_warn.assert_called_with(
                     (
                         f'At the moment, all available iperf servers of organization "{org}" '
                         f'are busy running checks, putting "{check}" back in the queue..'
                     )
                 )
 
-                self.assertEqual(mock_warn.call_count, 0)
-                self.assertEqual(mock_task_logger.call_count, 1)
-                self.assertEqual(mock_set.call_count, 3)
+                self.assertEqual(mock_warn.call_count, 1)
+                self.assertEqual(mock_add.call_count, 3)
                 self.assertEqual(mock_exec_command.call_count, 2)
                 mock_exec_command.assert_has_calls(
                     self._EXPECTED_COMMAND_CALLS_SERVER_1
