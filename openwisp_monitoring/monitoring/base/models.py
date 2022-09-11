@@ -227,7 +227,7 @@ class AbstractMetric(TimeStampedEditableModel):
 
     @property
     def alert_on_related_field(self):
-        return self.alert_field != self.field_name
+        return self.alert_field in self.related_fields
 
     def _get_time(self, time):
         """

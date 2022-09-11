@@ -404,12 +404,16 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
 
     def test_alert_field(self):
         admin = self._create_admin()
-        m = self._create_general_metric(configuration='test_alert_field')
-        self._create_alert_settings(
-            metric=m, custom_operator='>', custom_threshold=30, custom_tolerance=0
-        )
+
+        def _create_alert_field_test_env():
+            m = self._create_general_metric(configuration='test_alert_field')
+            self._create_alert_settings(
+                metric=m, custom_operator='>', custom_threshold=30, custom_tolerance=0
+            )
+            return m
 
         with self.subTest('Test notification for metric without related field'):
+            m = _create_alert_field_test_env()
             with self.assertRaises(ValueError) as err:
                 m.write(1)
             self.assertEqual(
@@ -422,6 +426,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(Notification.objects.count(), 0)
 
         with self.subTest('Test notification for metric on different related field'):
+            m = _create_alert_field_test_env()
             with self.assertRaises(ValueError) as err:
                 m.write(10, extra_values={'test_related_3': 40})
             self.assertEqual(
@@ -433,9 +438,24 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 0)
 
+        with self.subTest('Test notification for metric with multiple related fields'):
+            m = _create_alert_field_test_env()
+            m.write(10, extra_values={'test_related_2': 40, 'test_related_3': 20})
+            m.refresh_from_db()
+            self.assertEqual(m.is_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
+            self.assertEqual(Notification.objects.count(), 1)
+            n = notification_queryset.first()
+            self.assertEqual(n.recipient, admin)
+            self.assertEqual(n.actor, m)
+            self.assertEqual(n.action_object, m.alertsettings)
+            self.assertEqual(n.level, 'warning')
+            n.delete()
+
         with self.subTest(
             'Test notification for metric exceeding related field alert settings'
         ):
+            m = _create_alert_field_test_env()
             m.write(10, extra_values={'test_related_2': 40})
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, False)
@@ -446,31 +466,35 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(n.actor, m)
             self.assertEqual(n.action_object, m.alertsettings)
             self.assertEqual(n.level, 'warning')
-            Notification.objects.all().delete()
+            n.delete()
 
         with self.subTest(
             'Test no double alarm for metric exceeding related field alert settings'
         ):
+            m = _create_alert_field_test_env()
             m.write(20, extra_values={'test_related_2': 35})
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, False)
             self.assertEqual(m.is_healthy_tolerant, False)
+            self.assertEqual(Notification.objects.count(), 1)
+            n = notification_queryset.first()
+            n.delete()
+            # check for double alarm
+            m.write(20, extra_values={'test_related_2': 40})
+            m.refresh_from_db()
+            self.assertEqual(m.is_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 0)
-            Notification.objects.all().delete()
 
         with self.subTest(
             'Test notification for metric falling behind related field alert settings'
         ):
+            m = _create_alert_field_test_env()
             m.write(30, extra_values={'test_related_2': 25})
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, True)
             self.assertEqual(m.is_healthy_tolerant, True)
-            self.assertEqual(Notification.objects.count(), 1)
-            n = notification_queryset.last()
-            self.assertEqual(n.recipient, admin)
-            self.assertEqual(n.actor, m)
-            self.assertEqual(n.action_object, m.alertsettings)
-            self.assertEqual(n.level, 'info')
+            self.assertEqual(Notification.objects.count(), 0)
 
     def test_general_check_threshold_with_alert_field_crossed_deferred(self):
         admin = self._create_admin()
