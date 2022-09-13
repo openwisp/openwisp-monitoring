@@ -906,6 +906,42 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(charts[0]['summary']['signal_power'], None)
         self.assertEqual(charts[0]['summary']['signal_strength'], -70.0)
 
+    def test_mobile_signal_missing(self):
+        org = self._create_org()
+        device = self._create_device(organization=org)
+        data = {
+            'type': 'DeviceMonitoring',
+            'interfaces': [
+                {
+                    'name': 'mobile0',
+                    'mac': '00:00:00:00:00:00',
+                    'mtu': 1900,
+                    'multicast': True,
+                    'txqueuelen': 1000,
+                    'type': 'modem-manager',
+                    'up': True,
+                    'mobile': {
+                        'connection_status': 'connected',
+                        'imei': '865847055230161',
+                        'manufacturer': 'QUALCOMM INCORPORATED',
+                        'model': 'QUECTEL Mobile Broadband Module',
+                        'operator_code': '22250',
+                        'operator_name': 'Iliad',
+                        'power_status': 'on',
+                        'signal': {},
+                    },
+                }
+            ],
+        }
+        self._post_data(device.id, device.key, data)
+        response = self.client.get(self._url(device.pk.hex, device.key))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['charts'], [])
+        dd = DeviceData(name=device.name, pk=device.pk)
+        self.assertEqual(
+            dd.data['interfaces'][0]['mobile'], data['interfaces'][0]['mobile']
+        )
+
     def test_pre_metric_write_signal(self):
         d = self._create_device(organization=self._create_org())
         data = {'type': 'DeviceMonitoring', 'resources': {'cpus': 1, 'load': [0, 0, 0]}}
