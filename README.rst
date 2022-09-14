@@ -1104,8 +1104,8 @@ Example:
    }
 
 **Note:** If an organisation has more than one iperf server configured, then it enables
-the iperf checks to run on different devices at the same time. If the current available server
-is busy running a check, then it will keep other checks back in queue until the previous check finishes.
+the iperf checks to run concurrently on different devices. If all of the available servers
+are busy, then it will add the check back in the queue.
 
 The celery-beat configuration for the iperf check needs to be added too:
 
