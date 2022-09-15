@@ -223,6 +223,8 @@ class AbstractMetric(TimeStampedEditableModel):
 
     @property
     def alert_field(self):
+        if self.field_name != self.config_dict['field_name']:
+            return self.field_name
         return self.config_dict.get('alert_field', self.field_name)
 
     @property
