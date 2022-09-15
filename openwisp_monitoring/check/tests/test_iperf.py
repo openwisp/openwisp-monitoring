@@ -369,8 +369,8 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 self.assertEqual(mock_warn.call_count, 2)
                 self.assertEqual(mock_exec_command.call_count, 2)
                 mock_warn.assert_has_calls(EXPECTED_WARN_CALLS)
-                mock_warn.reset_mock()
-                mock_exec_command.reset_mock()
+            mock_warn.reset_mock()
+            mock_exec_command.reset_mock()
 
         with self.subTest('Test iperf3 is not installed on the device'):
             mock_exec_command.side_effect = [(error, 127)]
@@ -380,8 +380,8 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             )
             self.assertEqual(mock_warn.call_count, 1)
             self.assertEqual(mock_exec_command.call_count, 1)
-            mock_warn.reset_mock()
-            mock_exec_command.reset_mock()
+        mock_warn.reset_mock()
+        mock_exec_command.reset_mock()
 
         with self.subTest('Test iperf check passes in both TCP & UDP'):
             mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
@@ -432,8 +432,8 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             self.assertEqual(mock_warn.call_count, 0)
             self.assertEqual(mock_exec_command.call_count, 2)
             mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
-            mock_warn.reset_mock()
-            mock_exec_command.reset_mock()
+        mock_warn.reset_mock()
+        mock_exec_command.reset_mock()
 
         with self.subTest('Test iperf check fails in both TCP & UDP'):
             mock_exec_command.side_effect = [(RESULT_FAIL, 1), (RESULT_FAIL, 1)]
@@ -445,8 +445,8 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             self.assertEqual(mock_exec_command.call_count, 2)
             mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS)
             mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
-            mock_warn.reset_mock()
-            mock_exec_command.reset_mock()
+        mock_warn.reset_mock()
+        mock_exec_command.reset_mock()
 
         with self.subTest('Test iperf check TCP pass UDP fail'):
             mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_FAIL, 1)]
@@ -479,8 +479,8 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             self.assertEqual(mock_exec_command.call_count, 2)
             mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS[1:])
             mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
-            mock_warn.reset_mock()
-            mock_exec_command.reset_mock()
+        mock_warn.reset_mock()
+        mock_exec_command.reset_mock()
 
         with self.subTest('Test iperf check TCP fail UDP pass'):
             mock_exec_command.side_effect = [(RESULT_FAIL, 1), (RESULT_UDP, 0)]
@@ -565,8 +565,8 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 self.assertEqual(mock_warn.call_count, 0)
                 self.assertEqual(mock_exec_command.call_count, 2)
                 mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
-                mock_warn.reset_mock()
-                mock_exec_command.reset_mock()
+            mock_warn.reset_mock()
+            mock_exec_command.reset_mock()
 
         with self.subTest('Test iperf check with wrong password'):
             with patch.object(
@@ -584,8 +584,8 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 self.assertEqual(mock_exec_command.call_count, 2)
                 mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS)
                 mock_exec_command.assert_has_calls(self._EXPECTED_COMMAND_CALLS)
-                mock_warn.reset_mock()
-                mock_exec_command.reset_mock()
+            mock_warn.reset_mock()
+            mock_exec_command.reset_mock()
 
         with self.subTest('Test iperf check with wrong username'):
             with patch.object(
