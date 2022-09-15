@@ -1793,46 +1793,70 @@ Retrieve general monitoring charts
     GET /api/v1/monitoring/dashboard/
 
 This API endpoint is used to show dashboard monitoring charts. It supports
-multi-tenancy and allows filtering monitoring data with ``organization_slug``,
+multi-tenancy and allows filtering monitoring data by ``organization_slug``,
 ``location_id`` and ``floorplan_id`` e.g.:
 
 .. code-block:: text
 
     GET /api/v1/monitoring/dashboard/?organization_slug=<org1-slug>,<org2-slug>&location_id=<location1-id>,<location2-id>&floorplan_id=<floorplan1-id>,<floorplan2-id>
 
+Another parameter that can be used is ``time``, which allows to specify the
+time frame, the allowed values are:
+
+- ``1d``: returns data of the last day
+- ``3d``: returns data of the last 3 days
+- ``7d``: returns data of the last 7 days
+- ``30d``: returns data of the last 30 days
+- ``365d``: returns data of the last 365 days
+
 Retrieve device charts and device status data
 #############################################
 
 .. code-block:: text
 
-    GET /api/v1/monitoring/device/{pk}/?key={key}&status=true
+    GET /api/v1/monitoring/device/{pk}/?key={key}&status=true&time={timeframe}
 
-The format used for Device Status is inspired by `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_.
+The format used for Device Status is inspired by
+`NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_.
 
-**Note**: If the request is made without ``?status=true`` then only device charts
-data would be returned.
+**Notes**:
+
+- If the request is made without ``?status=true`` then only device charts data would be returned.
+- When retrieving data, the ``time`` parameter allows to specify the time frame, the allowed values are:
+
+  - ``1d``: returns data of the last day
+  - ``3d``: returns data of the last 3 days
+  - ``7d``: returns data of the last 7 days
+  - ``30d``: returns data of the last 30 days
+  - ``365d``: returns data of the last 365 days
 
 Collect device metrics and status
 #################################
 
 .. code-block:: text
 
-    POST /api/v1/monitoring/device/{pk}/?key={key}&time={time}
+    POST /api/v1/monitoring/device/{pk}/?key={key}&time={datetime}
 
 If data is latest then an additional parameter current can also be passed. For e.g.:
 
 .. code-block:: text
 
-    POST /api/v1/monitoring/device/{pk}/?key={key}&time={time}&current=true
+    POST /api/v1/monitoring/device/{pk}/?key={key}&time={datetime}&current=true
 
-The format used for Device Status is inspired by `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_.
+The format used for Device Status is inspired by
+`NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_.
 
-**Note**: Device data will be saved with in timeseries database with the specified ``time``,
-this should be in the format ``%d-%m-%Y_%H:%M:%S.%f``, otherwise 400 Bad Response will be returned.
+**Note**: the device data will be saved in the timeseries database using
+the date time specified ``time``, this should be in the format
+``%d-%m-%Y_%H:%M:%S.%f``, otherwise 400 Bad Response will be returned.
 
-If the request is made without passing the ``time`` argument, the server local time will be used.
+If the request is made without passing the ``time`` argument,
+the server local time will be used.
 
-The ``time`` parameter was added to support `resilient collection and sending of data by the OpenWISP Monitoring Agent <https://github.com/openwisp/openwrt-openwisp-monitoring#collecting-vs-sending>`_.
+The ``time`` parameter was added to support `resilient collection
+and sending of data by the OpenWISP Monitoring Agent
+<https://github.com/openwisp/openwrt-openwisp-monitoring#collecting-vs-sending>`_,
+this feature allows sending data collected while the device is offline.
 
 Signals
 -------
