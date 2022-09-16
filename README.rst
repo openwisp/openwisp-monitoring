@@ -1253,7 +1253,7 @@ We can add checks and define alert settings directly from the **device page**.
 
 To add a check, you just need to select an available **check type** as shown below:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-check.gif
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-check.png
   :align: center
 
 The following example shows how to use the
@@ -1264,7 +1264,7 @@ the measured **TCP bandwidth** has been less than **10 Mbit/s** for more than **
 1. By default `Iperf checks <#iperf-1>`_ do not have any alert settings defined,
 but it is easy to create one through the device page as shown below:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-alertsettings.gif
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-alertsettings.png
   :align: center
 
 2. Now, add the following notification configuration to send an alert for **TCP bandwidth**:
