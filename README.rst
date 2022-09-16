@@ -1246,10 +1246,10 @@ in the settings:
        }
    }
 
-Add Checks and Alert settings from the device page
---------------------------------------------------
+Adding Checks and Alert settings from the device page
+-----------------------------------------------------
 
-We can add checks and alert settings directly from the **device page**.
+We can add checks and define alert settings directly from the **device page**.
 
 To add a check, you just need to select an available **check type** as shown below:
 
@@ -1261,13 +1261,13 @@ The following example shows how to use the
 to reconfigure the system for `iperf check <#iperf-1>`_ to send an alert if
 the measured **TCP bandwidth** has been less than **10 Mbit/s** for more than **2 days**.
 
-1. By default, `Iperf checks <#iperf-1>`_ do not have any alert settings defined,
+1. By default `Iperf checks <#iperf-1>`_ do not have any alert settings defined,
 but it is easy to create one through the device page as shown below:
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-alertsettings.gif
   :align: center
 
-2. Now, add the following notification configuration to send an alert for **TCP bandwidth**.
+2. Now, add the following notification configuration to send an alert for **TCP bandwidth**:
 
 .. code-block:: python
 
@@ -1311,8 +1311,8 @@ but it is easy to create one through the device page as shown below:
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_info.png
   :align: center
 
-**Note:** To access the above pages, the user must have permissions for ``Check`` and ``AlertSetting`` inlines,
-These permissions are included by default in the "Administrator" and "Operator" groups and are shown in the screenshot below.
+**Note:** To access the features described above, the user must have permissions for ``Check`` and ``AlertSetting`` inlines,
+these permissions are included by default in the "Administrator" and "Operator" groups and are shown in the screenshot below.
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/inline-permissions.png
   :align: center
