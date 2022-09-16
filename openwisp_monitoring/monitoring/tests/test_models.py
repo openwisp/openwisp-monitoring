@@ -373,3 +373,17 @@ class TestModels(TestMonitoringMixin, TestCase):
             f'"{metric.field_name}" must be one of the following metric fields',
             str(err.exception),
         )
+
+    def test_alert_field_property(self):
+        m = self._create_general_metric(configuration='test_alert_field')
+        # When metric field_name == config['field_name']
+        self.assertEqual(m.field_name, 'test_alert_field')
+        # Get the alert_field from the config
+        self.assertEqual(m.alert_field, 'test_related_2')
+        m.field_name = 'test_related_3'
+        m.full_clean()
+        m.save()
+        # When metric field_name != config['field_name']
+        self.assertEqual(m.field_name, 'test_related_3')
+        # alert_field same as field_name
+        self.assertEqual(m.alert_field, 'test_related_3')
