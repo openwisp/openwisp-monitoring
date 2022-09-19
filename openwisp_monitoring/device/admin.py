@@ -123,7 +123,7 @@ class AlertSettingsForm(ModelForm):
         # to prevent the default value
         # from being used as a fallback
         if all(
-            fields is None
+            not fields
             for fields in [
                 instance.custom_operator,
                 instance.custom_threshold,
@@ -132,10 +132,7 @@ class AlertSettingsForm(ModelForm):
         ):
             instance.delete()
             return instance
-        if commit:
-            instance.save()
-            self.save_m2m()
-        return instance
+        return super().save(commit)
 
 
 class AlertSettingsInline(InlinePermissionMixin, NestedStackedInline):
