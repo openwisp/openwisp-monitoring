@@ -528,3 +528,17 @@ class TestWifiSessionAdmin(
         response = self.client.post(path, {'post': 'yes'}, follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Device.objects.count(), 0)
+
+    def test_dashboard_wifi_session_chart(self):
+        org1 = self._create_org(name='org1', slug='org1')
+        org1_device = self._create_device(organization=org1)
+        self._create_wifi_session(device=org1_device)
+        org2 = self._create_org(name='org2', slug='org2')
+        administrator = self._create_administrator([org2])
+        self.client.force_login(administrator)
+        response = self.client.get(reverse('admin:index'))
+        self.assertEqual(response.status_code, 200)
+        self.assertDictEqual(
+            response.context['dashboard_charts'][13]['query_params'],
+            {'labels': [], 'values': []},
+        )
