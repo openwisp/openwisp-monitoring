@@ -116,22 +116,26 @@ class AlertSettingsForm(ModelForm):
             }
         super().__init__(*args, **kwargs)
 
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        # If all the fields are empty,
-        # then just delete the object
-        # to prevent the default value
-        # from being used as a fallback
+    def _post_clean(self):
+        self.instance._delete_instance = False
         if all(
-            not fields
-            for fields in [
-                instance.custom_operator,
-                instance.custom_threshold,
-                instance.custom_tolerance,
+            self.cleaned_data[field] is None
+            for field in [
+                'custom_operator',
+                'custom_threshold',
+                'custom_tolerance',
             ]
         ):
-            instance.delete()
-            return instance
+            # "_delete_instance" flag signifies that
+            # the fields have been set to None by the
+            # user. Hence, the object should be deleted.
+            self.instance._delete_instance = True
+        super()._post_clean()
+
+    def save(self, commit=True):
+        if self.instance._delete_instance:
+            self.instance.delete()
+            return self.instance
         return super().save(commit)
 
 
