@@ -563,7 +563,7 @@ class TestAdmin(
             self._device_params.update(test_inline_params)
             response = self.client.post(url, self._device_params)
             _assert_alertsettings_inline(response, '<', 9, 1800)
-            _reset_alertsettings_inline()
+        _reset_alertsettings_inline()
 
         with self.subTest(
             'Test alert settings inline when partial fields are provided'
@@ -588,7 +588,7 @@ class TestAdmin(
             response = self.client.post(url, self._device_params)
             # 'operator' are set to their default values
             _assert_alertsettings_inline(response, '<', 18, 99)
-            _reset_alertsettings_inline()
+        _reset_alertsettings_inline()
 
         with self.subTest('Test alert settings inline when all fields are absent'):
             test_inline_params_present = {
