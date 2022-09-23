@@ -1,7 +1,6 @@
 from json import loads
 from unittest.mock import call, patch
 
-from django.core import management
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.test import TransactionTestCase
@@ -639,7 +638,23 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
         with patch.object(app_settings, 'IPERF_CHECK_CONFIG', {}):
             with self.subTest('Test iperf check without config'):
-                management.call_command('run_checks')
+                self._perform_iperf_check()
+                mock_warn.assert_called_with(
+                    (
+                        f'Iperf servers for organization "{org}" '
+                        f'is not configured properly, iperf check skipped!'
+                    )
+                )
+                self.assertEqual(mock_warn.call_count, 1)
+            mock_warn.reset_mock()
+
+        with patch.object(
+            app_settings,
+            'IPERF_CHECK_CONFIG',
+            {'invalid_org_uuid': {'host': self._IPERF_TEST_SERVER, 'time': 10}},
+        ):
+            with self.subTest('Test iperf check with invalid config'):
+                self._perform_iperf_check()
                 mock_warn.assert_called_with(
                     (
                         f'Iperf servers for organization "{org}" '
@@ -655,7 +670,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             with self.subTest('Test iperf check when all iperf servers are available'):
                 mock_add.return_value = True
                 mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
-                management.call_command('run_checks')
+                self._perform_iperf_check()
                 self.assertEqual(mock_warn.call_count, 0)
                 self.assertEqual(mock_add.call_count, 1)
                 self.assertEqual(mock_exec_command.call_count, 2)
@@ -671,7 +686,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             ):
                 mock_add.side_effect = [False, True]
                 mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
-                management.call_command('run_checks')
+                self._perform_iperf_check()
                 self.assertEqual(mock_warn.call_count, 0)
                 self.assertEqual(mock_add.call_count, 2)
                 self.assertEqual(mock_exec_command.call_count, 2)
@@ -690,7 +705,7 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 # server only after completion of previous running checks
                 mock_add.side_effect = [False, False, True]
                 mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
-                management.call_command('run_checks')
+                self._perform_iperf_check()
                 mock_warn.assert_called_with(
                     (
                         f'At the moment, all available iperf servers of organization "{org}" '

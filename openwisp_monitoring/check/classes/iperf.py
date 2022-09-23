@@ -113,7 +113,9 @@ class Iperf(BaseCheck):
     def _validate_iperf_config(self, org):
         # if iperf config is present and validate it's params
         if app_settings.IPERF_CHECK_CONFIG:
-            self.validate_params(params=app_settings.IPERF_CHECK_CONFIG[str(org.id)])
+            self.validate_params(
+                params=app_settings.IPERF_CHECK_CONFIG.get(str(org.id))
+            )
 
     def check(self, store=True):
         lock_acquired = False
@@ -281,7 +283,7 @@ class Iperf(BaseCheck):
                 return check_params
 
         if iperf_config:
-            iperf_config = iperf_config[org_id]
+            iperf_config = iperf_config.get(org_id)
             iperf_config_param = self._deep_get(iperf_config, conf_key)
             if iperf_config_param:
                 return iperf_config_param
