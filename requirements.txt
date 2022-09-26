@@ -1,4 +1,4 @@
-openwisp-controller @ https://github.com/openwisp/openwisp-controller/tarball/master
+openwisp-controller @ https://github.com/openwisp/openwisp-controller/tarball/61ab5c0e96e6ed0a5d789538a92d13f310250b41
 influxdb~=5.3.1
 django-cache-memoize~=0.1.0
 django-nested-admin~=3.4.0
