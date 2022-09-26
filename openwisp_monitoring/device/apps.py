@@ -324,6 +324,7 @@ class DeviceMonitoringConfig(AppConfig):
                         'aggregate': {
                             'active__sum': Sum('active'),
                         },
+                        'organization_field': 'device__organization_id',
                     },
                     'filters': {
                         'key': 'stop_time__isnull',
