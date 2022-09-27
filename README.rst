@@ -29,9 +29,14 @@ openwisp-monitoring
    :target: https://pypi.org/project/black/
    :alt: code style: black
 
+.. image:: https://kandi.openweaver.com/badges/xray.svg
+   :target: https://kandi.openweaver.com/python/openwisp/openwisp-monitoring
+   :alt: kandi X-Ray
+
 .. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/monitoring-demo.gif
    :target: https://github.com/openwisp/openwisp-monitoring/tree/docs/docs/monitoring-demo.gif
    :alt: Feature Highlights
+
 
 ------------
 
