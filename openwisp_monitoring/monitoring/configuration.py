@@ -672,6 +672,10 @@ def _validate_metric_configuration(metric_config):
     assert 'name' in metric_config
     assert 'key' in metric_config
     assert 'field_name' in metric_config
+    if 'alert_field' in metric_config:
+        # ensure only valid alert_field is present
+        alert_fields = [metric_config['field_name']] + metric_config['related_fields']
+        assert metric_config['alert_field'] in alert_fields
 
 
 def _validate_chart_configuration(chart_config):

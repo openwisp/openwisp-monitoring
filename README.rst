@@ -1023,22 +1023,18 @@ jitter, datagram loss etc of the device using `iperf3 utility <https://iperf.fr/
 This check is **disabled by default**. You can enable auto creation of this check by setting the
 `OPENWISP_MONITORING_AUTO_IPERF <#OPENWISP_MONITORING_AUTO_IPERF>`_ to ``True``.
 
-You can also create the iperf check from the **device page** as shown below:
+You can also `add the iperf check
+<#add-checks-and-alert-settings-from-the-device-page>`_ directly from the device page.
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-check.png
-  :align: center
-
-**Note:** To access the above page, the user must have some special permissions,
-which are included by default in the groups "Administrator" and "Operator" and are shown in the screenshot below.
-
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/inline-permissions.png
-  :align: center
-
-It also supports tuning of `various parameters <#iperf-check-parameters>`_.
+It also supports tuning of various parameters.
 
 You can also change the parameters used for iperf checks (e.g. timing, port, username,
 password, rsa_publc_key etc) using the `OPENWISP_MONITORING_IPERF_CHECK_CONFIG
 <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_ setting.
+
+**Note:** When setting `OPENWISP_MONITORING_AUTO_IPERF <#OPENWISP_MONITORING_AUTO_IPERF>`_  to ``True``,
+you may need to update the `metric configuration <#add-checks-and-alert-settings-from-the-device-page>`_
+to enable alerts for the iperf check.
 
 Iperf Check Usage Instructions
 ------------------------------
@@ -1307,6 +1303,77 @@ in the settings:
            },
        }
    }
+
+Adding Checks and Alert settings from the device page
+-----------------------------------------------------
+
+We can add checks and define alert settings directly from the **device page**.
+
+To add a check, you just need to select an available **check type** as shown below:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-check.png
+  :align: center
+
+The following example shows how to use the
+`OPENWISP_MONITORING_METRICS setting <#openwisp_monitoring_metrics>`_
+to reconfigure the system for `iperf check <#iperf-1>`_ to send an alert if
+the measured **TCP bandwidth** has been less than **10 Mbit/s** for more than **2 days**.
+
+1. By default `Iperf checks <#iperf-1>`_ do not have any alert settings defined,
+but it is easy to create one through the device page as shown below:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-alertsettings.png
+  :align: center
+
+2. Now, add the following notification configuration to send an alert for **TCP bandwidth**:
+
+.. code-block:: python
+
+   # Main project settings.py
+   from django.utils.translation import gettext_lazy as _
+
+   OPENWISP_MONITORING_METRICS = {
+       'iperf': {
+           'notification': {
+               'problem': {
+                   'verbose_name': 'Iperf PROBLEM',
+                   'verb': _('Iperf bandwidth is less than normal value'),
+                   'level': 'warning',
+                   'email_subject': _(
+                       '[{site.name}] PROBLEM: {notification.target} {notification.verb}'
+                   ),
+                   'message': _(
+                       'The device [{notification.target}]({notification.target_link}) '
+                       '{notification.verb}.'
+                   ),
+               },
+               'recovery': {
+                   'verbose_name': 'Iperf RECOVERY',
+                   'verb': _('Iperf bandwidth now back to normal'),
+                   'level': 'info',
+                   'email_subject': _(
+                       '[{site.name}] RECOVERY: {notification.target} {notification.verb}'
+                   ),
+                   'message': _(
+                       'The device [{notification.target}]({notification.target_link}) '
+                       '{notification.verb}.'
+                   ),
+               },
+           },
+       },
+   }
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_warn.png
+  :align: center
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_info.png
+  :align: center
+
+**Note:** To access the features described above, the user must have permissions for ``Check`` and ``AlertSetting`` inlines,
+these permissions are included by default in the "Administrator" and "Operator" groups and are shown in the screenshot below.
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/inline-permissions.png
+  :align: center
 
 Settings
 --------
@@ -2033,6 +2100,10 @@ two notification types (named ``ping_recovery``, ``ping_problem``) as defined in
 The ``AlertSettings`` of ``ping`` metric will by default use ``threshold`` and ``tolerance``
 defined in the ``alert_settings`` key.
 You can always override them and define your own custom values via the *admin*.
+
+You can also use the ``alert_field`` key in metric configuration
+which allows ``AlertSettings`` to check the ``threshold`` on
+``alert_field`` instead of the default ``field_name`` key.
 
 **Note**: It will raise ``ImproperlyConfigured`` exception if a metric configuration
 is already registered with same name (not to be confused with verbose_name).
