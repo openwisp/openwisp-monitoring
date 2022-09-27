@@ -421,6 +421,7 @@ class TestAdmin(
                 '<img src="/static/admin/img/icon-yes.svg" alt="True">',
                 html=True,
             )
+            self.assertContains(response, 'metric-content_type-object_id-0-field_name')
             self.assertContains(
                 response, 'metric-content_type-object_id-0-configuration'
             )
@@ -438,10 +439,6 @@ class TestAdmin(
             self.assertContains(
                 response,
                 'metric-content_type-object_id-0-alertsettings-0-custom_tolerance" value="0"',
-            )
-            self.assertContains(
-                response,
-                'metric-content_type-object_id-0-alertsettings-0-DELETE',
             )
 
         with self.subTest(

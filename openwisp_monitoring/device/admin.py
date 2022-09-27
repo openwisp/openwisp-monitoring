@@ -181,6 +181,16 @@ class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
             return super().get_queryset(request).filter(alertsettings__isnull=False)
         return super().get_queryset(request)
 
+    def has_add_permission(self, request, obj=None):
+        # We need to restrict the users from adding the 'metrics' since
+        # they're created by the system automatically with default 'alertsettings'
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # We need to restrict the users from deleting the 'metrics' since
+        # they're created by the system automatically with default 'alertsettings'
+        return False
+
 
 class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
     change_form_template = 'admin/config/device/change_form.html'
