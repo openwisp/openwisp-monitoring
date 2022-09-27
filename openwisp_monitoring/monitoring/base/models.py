@@ -44,7 +44,12 @@ class AbstractMetric(TimeStampedEditableModel):
     key = models.SlugField(
         max_length=64, blank=True, help_text=_('leave blank to determine automatically')
     )
-    field_name = models.CharField(max_length=16, default='value')
+    field_name = models.CharField(
+        max_length=16,
+        default='value',
+        blank=True,
+        help_text=_('leave blank to determine automatically'),
+    )
     configuration = models.CharField(
         max_length=16, null=True, choices=METRIC_CONFIGURATION_CHOICES
     )
@@ -96,17 +101,26 @@ class AbstractMetric(TimeStampedEditableModel):
         return super().__setattr__(attrname, value)
 
     def clean(self):
-        if (
-            self.field_name == 'value'
-            and self.config_dict['field_name'] != '{field_name}'
-        ):
-            self.field_name = self.config_dict['field_name']
         if self.key:
             return
         elif self.config_dict['key'] != '{key}':
             self.key = self.config_dict['key']
         else:
             self.key = self.codename
+
+    def validate_alert_fields(self):
+        # When field_name is not provided while creating a metric
+        # then use config_dict['field_name] as metric field_name
+        if self.config_dict['field_name'] != '{field_name}':
+            if self.field_name in ['', 'value']:
+                self.field_name = self.config_dict['field_name']
+                return
+            # field_name must be one of the metric fields
+            alert_fields = [self.config_dict['field_name']] + self.related_fields
+            if self.field_name not in alert_fields:
+                raise ValidationError(
+                    f'"{self.field_name}" must be one of the following metric fields ie. {alert_fields}'
+                )
 
     def full_clean(self, *args, **kwargs):
         # The name of the metric will be the same as the
@@ -116,6 +130,8 @@ class AbstractMetric(TimeStampedEditableModel):
             self.name = self.get_configuration_display()
         # clean up key before field validation
         self.key = self._makekey(self.key)
+        # validate metric field_name for alerts
+        self.validate_alert_fields()
         return super().full_clean(*args, **kwargs)
 
     @classmethod
@@ -204,6 +220,16 @@ class AbstractMetric(TimeStampedEditableModel):
             return '.'.join(self.content_type.natural_key())
         except AttributeError:
             return None
+
+    @property
+    def alert_field(self):
+        if self.field_name != self.config_dict['field_name']:
+            return self.field_name
+        return self.config_dict.get('alert_field', self.field_name)
+
+    @property
+    def alert_on_related_field(self):
+        return self.alert_field in self.related_fields
 
     def _get_time(self, time):
         """
@@ -362,6 +388,21 @@ class AbstractMetric(TimeStampedEditableModel):
                 'send_alert': send_alert,
             }
             options['metric_pk'] = self.pk
+
+            # if alert_on_related_field then check threshold
+            # on the related_field instead of field_name
+            if self.alert_on_related_field:
+                if not extra_values:
+                    raise ValueError(
+                        'write() missing keyword argument: "extra_values" required for alert on related field'
+                    )
+                if self.alert_field not in extra_values.keys():
+                    raise ValueError(
+                        f'"{key}" is not defined for alert_field in metric configuration'
+                    )
+                options['check_threshold_kwargs'].update(
+                    {'value': extra_values[self.alert_field]}
+                )
         timeseries_write.delay(name=self.key, values=values, **options)
 
     def read(self, **kwargs):
@@ -771,6 +812,11 @@ class AbstractAlertSettings(TimeStampedEditableModel):
             return value_crossed
         # tolerance is set, we must go back in time
         # to ensure the threshold is trepassed for enough time
+        # if alert field is supplied, retrieve such field when reading
+        # so that we can let the system calculate the threshold on it
+        extra_fields = []
+        if self.metric.alert_on_related_field:
+            extra_fields = [self.metric.alert_field]
         if time is None:
             # retrieves latest measurements, ordered by most recent first
             points = self.metric.read(
@@ -778,6 +824,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
                 limit=None,
                 order='-time',
                 retention_policy=retention_policy,
+                extra_fields=extra_fields,
             )
             # store a list with the results
             results = [value_crossed]
@@ -789,7 +836,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
                     continue
                 utc_time = utc.localize(datetime.utcfromtimestamp(point['time']))
                 # did this point cross the threshold? Append to result list
-                results.append(self._value_crossed(point[self.metric.field_name]))
+                results.append(self._value_crossed(point[self.metric.alert_field]))
                 # tolerance is trepassed
                 if self._time_crossed(utc_time):
                     # if the latest results are consistent, the metric being
