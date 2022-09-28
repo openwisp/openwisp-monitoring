@@ -335,8 +335,17 @@ class Iperf(BaseCheck):
         """
         metric, created = self._get_or_create_metric()
         if created:
+            self._create_alert_settings(metric)
             self._create_charts(metric)
         return metric
+
+    def _create_alert_settings(self, metric):
+        """
+        Creates default iperf alert settings with is_active=False
+        """
+        alert_settings = AlertSettings(metric=metric, is_active=False)
+        alert_settings.full_clean()
+        alert_settings.save()
 
     def _create_charts(self, metric):
         """

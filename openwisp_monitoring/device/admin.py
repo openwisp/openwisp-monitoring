@@ -5,7 +5,7 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline
 from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import F, Q
+from django.db.models import Q
 from django.forms import ModelForm
 from django.templatetags.static import static
 from django.urls import resolve, reverse
@@ -161,9 +161,8 @@ class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
     verbose_name = _('Alert Settings')
     verbose_name_plural = verbose_name
     inline_permission_suffix = 'alertsettings_inline'
-    # Ordering queryset to show metrics
-    # that have the alert settings first
-    ordering = [F('alertsettings').desc(nulls_last=True)]
+    # Ordering queryset by metric name
+    ordering = ('name',)
 
     def get_fields(self, request, obj=None):
         if not self.has_change_permission(request, obj) or not self.has_view_permission(
@@ -173,13 +172,8 @@ class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
         return super().get_fields(request, obj)
 
     def get_queryset(self, request):
-        if not self.has_change_permission(request) or not self.has_view_permission(
-            request
-        ):
-            # When a user has view access, we only show
-            # 'Metrics' that have 'AlertSettings' objects
-            return super().get_queryset(request).filter(alertsettings__isnull=False)
-        return super().get_queryset(request)
+        # Only show 'Metrics' that have 'AlertSettings' objects
+        return super().get_queryset(request).filter(alertsettings__isnull=False)
 
     def has_add_permission(self, request, obj=None):
         # We need to restrict the users from adding the 'metrics' since
