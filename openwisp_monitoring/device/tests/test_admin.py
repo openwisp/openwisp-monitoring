@@ -422,6 +422,7 @@ class TestAdmin(
                 html=True,
             )
             self.assertContains(response, 'metric-content_type-object_id-0-field_name')
+            self.assertContains(response, '<h2>Advanced options</h2>', html=True)
             self.assertContains(
                 response, 'metric-content_type-object_id-0-configuration'
             )

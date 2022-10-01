@@ -155,7 +155,14 @@ class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
     model = Metric
     extra = 0
     inlines = [AlertSettingsInline]
-    fields = ['is_healthy', 'field_name', 'configuration']
+    fieldsets = [
+        (None, {'fields': ('is_healthy', 'configuration')}),
+        (
+            _('Advanced options'),
+            {'classes': ('collapse',), 'fields': ('field_name',)},
+        ),
+    ]
+
     readonly_fields = ['is_healthy']
     # Explicitly changed name from Metrics to Alert Settings
     verbose_name = _('Alert Settings')
@@ -164,12 +171,14 @@ class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
     # Ordering queryset by metric name
     ordering = ('name',)
 
-    def get_fields(self, request, obj=None):
+    def get_fieldsets(self, request, obj=None):
         if not self.has_change_permission(request, obj) or not self.has_view_permission(
             request, obj
         ):
-            return ['is_healthy']
-        return super().get_fields(request, obj)
+            return [
+                (None, {'fields': ('is_healthy',)}),
+            ]
+        return super().get_fieldsets(request, obj)
 
     def get_queryset(self, request):
         # Only show 'Metrics' that have 'AlertSettings' objects
