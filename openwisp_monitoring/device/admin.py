@@ -156,14 +156,14 @@ class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
     extra = 0
     inlines = [AlertSettingsInline]
     fieldsets = [
-        (None, {'fields': ('is_healthy', 'configuration')}),
+        (None, {'fields': ('name', 'is_healthy')}),
         (
             _('Advanced options'),
             {'classes': ('collapse',), 'fields': ('field_name',)},
         ),
     ]
 
-    readonly_fields = ['is_healthy']
+    readonly_fields = ['name', 'is_healthy']
     # Explicitly changed name from Metrics to Alert Settings
     verbose_name = _('Alert Settings')
     verbose_name_plural = verbose_name
