@@ -3,20 +3,21 @@
 }
 #ow-chart-time{
   margin-top: 15px;
-  text-align: center
+  text-align: center;
+  padding: 1px;
 }
 #ow-chart-time a{
   display: inline-block;
   margin: 0 2px;
   color: #fff;
-  background-color: #666;
+  background-color: #333 !important;
   padding: 5px 15px;
   text-decoration: none !important;
   border-radius: 3px;
   cursor: pointer;
 }
 #ow-chart-time a:hover{
-  background-color: #000
+  background-color: #777 !important;
 }
 #ow-chart-time a.active{
   background: transparent;
@@ -25,10 +26,15 @@
   border: 1px solid #666;
 }
 #ow-chart-time a.export{
-  background: rgba(0,0,0,0.32);
+  float: right;
+  background: #333;
+}
+#ow-chart-time a#daterangepicker-widget{
+  float: left;
+  margin-right: 100px;
 }
 #ow-chart-time a.export:hover{
-  background: rgba(0,0,0,0.45);
+  background: #777;
 }
 #ow-chart-fallback{
   display: none;

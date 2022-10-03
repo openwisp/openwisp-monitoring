@@ -13,7 +13,8 @@
         "JSONEditor": true,
         "ReconnectingWebSocket": true,
         "createChart": true,
-        "triggerChartLoading": true
+        "triggerChartLoading": true,
+        "moment": true
     },
     "browser": true
 }

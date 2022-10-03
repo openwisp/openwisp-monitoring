@@ -273,11 +273,14 @@ class DeviceMonitoringConfig(AppConfig):
             config={
                 'template': 'monitoring/paritals/chart.html',
                 'css': (
+                    'monitoring/css/daterangepicker.css',
                     'monitoring/css/percircle.min.css',
                     'monitoring/css/chart.css',
                     'monitoring/css/dashboard-chart.css',
                 ),
                 'js': (
+                    'monitoring/js/moment.min.js',
+                    'monitoring/js/daterangepicker.min.js',
                     'monitoring/js/percircle.min.js',
                     'monitoring/js/chart.js',
                     'monitoring/js/chart-utils.js',
