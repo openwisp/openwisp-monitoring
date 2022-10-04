@@ -605,11 +605,13 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
     @patch.object(Ssh, 'exec_command')
     @patch.object(iperf_logger, 'warning')
+    @patch.object(iperf_logger, 'info')
     @patch.object(cache, 'add')
     def test_iperf_check_task_with_multiple_server_config(self, *args):
         mock_add = args[0]
-        mock_warn = args[1]
-        mock_exec_command = args[2]
+        mock_info = args[1]
+        mock_warn = args[2]
+        mock_exec_command = args[3]
         org = self.device.organization
         iperf_multiple_server_config = {
             self.org_id: {'host': self._IPERF_TEST_MULTIPLE_SERVERS}
@@ -706,14 +708,13 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 mock_add.side_effect = [False, False, True]
                 mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
                 self._perform_iperf_check()
-                mock_warn.assert_called_with(
+                mock_info.has_called_with(
                     (
                         f'At the moment, all available iperf servers of organization "{org}" '
                         f'are busy running checks, putting "{check}" back in the queue..'
                     )
                 )
-
-                self.assertEqual(mock_warn.call_count, 1)
+                self.assertEqual(mock_info.call_count, 4)
                 self.assertEqual(mock_add.call_count, 3)
                 self.assertEqual(mock_exec_command.call_count, 2)
                 mock_exec_command.assert_has_calls(

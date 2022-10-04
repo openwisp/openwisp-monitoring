@@ -1103,7 +1103,7 @@ Example:
        },
    }
 
-**Note:** If an organisation has more than one iperf server configured, then it enables
+**Note:** If an organization has more than one iperf server configured, then it enables
 the iperf checks to run concurrently on different devices. If all of the available servers
 are busy, then it will add the check back in the queue.
 

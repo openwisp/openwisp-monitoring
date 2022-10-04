@@ -145,7 +145,7 @@ class Iperf(BaseCheck):
             if lock_acquired:
                 break
         else:
-            logger.warning(
+            logger.info(
                 (
                     f'At the moment, all available iperf servers of organization "{org}" '
                     f'are busy running checks, putting "{self.check_instance}" back in the queue..'
