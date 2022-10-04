@@ -1080,14 +1080,14 @@ Example:
 .. code-block:: python
 
    OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
-       # Public iperf servers are also available
-       # https://iperf.fr/iperf-servers.php#public-servers
-       # org pk : {'host', 'client_options'}
+       # 'org_pk' : {'host' : [], 'client_options' : {}}
        'a9734710-db30-46b0-a2fc-01f01046fe4f': {
+           # Some public iperf servers
+           # https://iperf.fr/iperf-servers.php#public-servers
            'host': ['iperf.openwisp.io', '2001:db8::1', '192.168.5.2'],
            'client_options': {
                'port': 5209,
-               'udp': {'bitrate': '20M'},
+               'udp': {'bitrate': '30M'},
                'tcp': {'bitrate': '0'},
            },
        }
@@ -1188,6 +1188,9 @@ Currently, iperf check supports the following parameters:
 |                       | |                     | +----------------+----------+---------------------+ | |
 |                       | +---------------------+-----------------------------------------------------+ |
 +-----------------------+-------------------------------------------------------------------------------+
+
+To learn how to use these parameters, please see the
+`iperf check configuration example <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_.
 
 Visit the `official documentation <https://www.mankier.com/1/iperf3>`_
 to learn more about the iperf3 parameters.
@@ -1493,16 +1496,37 @@ created automatically for newly registered devices. It's disabled by default.
 This setting allows to override the default iperf check configuration defined in
 ``openwisp_monitoring.check.classes.iperf.DEFAULT_IPERF_CHECK_CONFIG``.
 
-For example, if you want to change only the **port number** of
-``iperf`` check you can use:
+For example, you can change the values of `supported iperf check parameters <#iperf-check-parameters>`_.
 
 .. code-block:: python
 
    OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
+       # 'org_pk' : {'host' : [], 'client_options' : {}}
        'a9734710-db30-46b0-a2fc-01f01046fe4f': {
-           'host': ['iperf.openwisp.io'],
+           # Some public iperf servers
+           # https://iperf.fr/iperf-servers.php#public-servers
+           'host': ['iperf.openwisp.io', '2001:db8::1', '192.168.5.2'],
            'client_options': {
-               'port': 6201,
+               'port': 6209,
+               # Number of parallel client streams to run
+               # note that iperf3 is single threaded
+               # so if you are CPU bound this will not
+               # yield higher throughput
+               'parallel': 5,
+               # Set the connect_timeout (in milliseconds) for establishing
+               # the initial control connection to the server, the lower the value
+               # the faster the down iperf server will be detected
+               'connect_timeout': 1,
+               # Window size / socket buffer size
+               'window': '300K',
+               # Only one reverse condition can be chosen,
+               # reverse or bidirectional
+               'reverse': True,
+               # Only one test end condition can be chosen,
+               # time, bytes or blockcount
+               'blockcount': '1K',
+               'udp': {'bitrate': '50M', 'length': '1460K'},
+               'tcp': {'bitrate': '20M', 'length': '256K'},
            },
        }
    }
