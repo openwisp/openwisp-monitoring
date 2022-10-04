@@ -156,7 +156,15 @@ class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
     extra = 0
     inlines = [AlertSettingsInline]
     fieldsets = [
-        (None, {'fields': ('name', 'is_healthy')}),
+        (
+            None,
+            {
+                'fields': (
+                    'name',
+                    'is_healthy',
+                )
+            },
+        ),
         (
             _('Advanced options'),
             {'classes': ('collapse',), 'fields': ('field_name',)},

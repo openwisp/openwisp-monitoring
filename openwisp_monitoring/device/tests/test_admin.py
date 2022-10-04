@@ -66,6 +66,7 @@ class TestAdmin(
         'deviceconnection_set-INITIAL_FORMS': '0',
         'deviceconnection_set-MIN_NUM_FORMS': '0',
         'deviceconnection_set-MAX_NUM_FORMS': '1000',
+        # command
         'command_set-TOTAL_FORMS': '0',
         'command_set-INITIAL_FORMS': '0',
         'command_set-MIN_NUM_FORMS': '0',
@@ -488,7 +489,6 @@ class TestAdmin(
             self.assertContains(response, 'form-row field-check_type')
             self.assertContains(response, 'form-row field-is_active')
             self.assertContains(response, '<h2>Alert Settings</h2>', html=True)
-            self.assertContains(response, 'form-row field-name')
             self.assertContains(response, 'form-row field-is_healthy djn-form-row-last')
             self.assertContains(
                 response,
@@ -511,7 +511,11 @@ class TestAdmin(
 
     def test_alert_settings_inline_post(self):
         device = self._create_device()
+        metric = self._create_general_metric(
+            name='', content_object=device, configuration='iperf'
+        )
         url = reverse('admin:config_device_change', args=[device.pk])
+        alertsettings = self._create_alert_settings(metric=metric)
         test_inline_params = {
             'name': device.name,
             'organization': str(device.organization.id),
@@ -519,11 +523,11 @@ class TestAdmin(
             'key': device.key,
             # metric & alertsettings
             f'{metric_model_name}-content_type-object_id-TOTAL_FORMS': '1',
-            f'{metric_model_name}-content_type-object_id-INITIAL_FORMS': '0',
+            f'{metric_model_name}-content_type-object_id-INITIAL_FORMS': '1',
             f'{metric_model_name}-content_type-object_id-MIN_NUM_FORMS': '0',
             f'{metric_model_name}-content_type-object_id-MAX_NUM_FORMS': '1000',
-            f'{metric_model_name}-content_type-object_id-0-configuration': 'iperf',
-            f'{metric_model_name}-content_type-object_id-0-id': '',
+            f'{metric_model_name}-content_type-object_id-0-field_name': 'iperf_result',
+            f'{metric_model_name}-content_type-object_id-0-id': str(metric.id),
             f'{metric_model_name}-content_type-object_id-0-alertsettings-TOTAL_FORMS': '1',
             f'{metric_model_name}-content_type-object_id-0-alertsettings-INITIAL_FORMS': '0',
             f'{metric_model_name}-content_type-object_id-0-alertsettings-MIN_NUM_FORMS': '0',
@@ -535,16 +539,17 @@ class TestAdmin(
             f'{metric_model_name}-content_type-object_id-0-alertsettings-0-id': '',
             f'{metric_model_name}-content_type-object_id-0-alertsettings-0-metric': '',
         }
-        # Only general metrics (clients & traffic) are present
-        self.assertEqual(Metric.objects.count(), 2)
-        self.assertEqual(AlertSettings.objects.count(), 0)
+        # General metrics (clients & traffic) & Iperf are present
+        self.assertEqual(Metric.objects.count(), 3)
+        self.assertEqual(AlertSettings.objects.count(), 1)
 
         def _reset_alertsettings_inline():
-            Metric.objects.all().delete()
             AlertSettings.objects.all().delete()
 
-        # Delete AlertSettingsInline objects before any subTests
+        # Delete AlertSettings objects before any subTests
         _reset_alertsettings_inline()
+        # Delete all Metrics other than 'iperf' before any subTests
+        Metric.objects.exclude(configuration='iperf').delete()
 
         def _assert_alertsettings_inline(response, operator, threshold, tolerance):
             self.assertEqual(response.status_code, 302)
@@ -602,6 +607,7 @@ class TestAdmin(
             test_inline_params_absent = {
                 f'{metric_model_name}-content_type-object_id-INITIAL_FORMS': '1',
                 f'{metric_model_name}-content_type-object_id-0-id': str(metric.id),
+                f'{metric_model_name}-content_type-object_id-0-field_name': 'iperf_result',
                 f'{metric_model_name}-content_type-object_id-0-alertsettings-INITIAL_FORMS': '1',
                 f'{metric_model_name}-content_type-object_id-0-alertsettings-0-id': str(
                     alertsettings.id
