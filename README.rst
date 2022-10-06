@@ -1261,8 +1261,8 @@ The following example shows how to use the
 to reconfigure the system for `iperf check <#iperf-1>`_ to send an alert if
 the measured **TCP bandwidth** has been less than **10 Mbit/s** for more than **2 days**.
 
-1. By default `Iperf checks <#iperf-1>`_ do not have any alert settings defined,
-but it is easy to create one through the device page as shown below:
+1. By default, `Iperf checks <#iperf-1>`_ come with default alert settings,
+but it is easy to customize alert settings through the device page as shown below:
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-alertsettings.png
   :align: center

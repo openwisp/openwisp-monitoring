@@ -5,7 +5,7 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline
 from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import F, Q
+from django.db.models import Q
 from django.forms import ModelForm
 from django.templatetags.static import static
 from django.urls import resolve, reverse
@@ -116,6 +116,28 @@ class AlertSettingsForm(ModelForm):
             }
         super().__init__(*args, **kwargs)
 
+    def _post_clean(self):
+        self.instance._delete_instance = False
+        if all(
+            self.cleaned_data[field] is None
+            for field in [
+                'custom_operator',
+                'custom_threshold',
+                'custom_tolerance',
+            ]
+        ):
+            # "_delete_instance" flag signifies that
+            # the fields have been set to None by the
+            # user. Hence, the object should be deleted.
+            self.instance._delete_instance = True
+        super()._post_clean()
+
+    def save(self, commit=True):
+        if self.instance._delete_instance:
+            self.instance.delete()
+            return self.instance
+        return super().save(commit)
+
 
 class AlertSettingsInline(InlinePermissionMixin, NestedStackedInline):
     model = AlertSettings
@@ -133,31 +155,52 @@ class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
     model = Metric
     extra = 0
     inlines = [AlertSettingsInline]
-    fields = ['is_healthy', 'field_name', 'configuration']
-    readonly_fields = ['is_healthy']
+    fieldsets = [
+        (
+            None,
+            {
+                'fields': (
+                    'name',
+                    'is_healthy',
+                )
+            },
+        ),
+        (
+            _('Advanced options'),
+            {'classes': ('collapse',), 'fields': ('field_name',)},
+        ),
+    ]
+
+    readonly_fields = ['name', 'is_healthy']
     # Explicitly changed name from Metrics to Alert Settings
     verbose_name = _('Alert Settings')
     verbose_name_plural = verbose_name
     inline_permission_suffix = 'alertsettings_inline'
-    # Ordering queryset to show metrics
-    # that have the alert settings first
-    ordering = [F('alertsettings').desc(nulls_last=True)]
+    # Ordering queryset by metric name
+    ordering = ('name',)
 
-    def get_fields(self, request, obj=None):
+    def get_fieldsets(self, request, obj=None):
         if not self.has_change_permission(request, obj) or not self.has_view_permission(
             request, obj
         ):
-            return ['is_healthy']
-        return super().get_fields(request, obj)
+            return [
+                (None, {'fields': ('is_healthy',)}),
+            ]
+        return super().get_fieldsets(request, obj)
 
     def get_queryset(self, request):
-        if not self.has_change_permission(request) or not self.has_view_permission(
-            request
-        ):
-            # When a user has view access, we only show
-            # 'Metrics' that have 'AlertSettings' objects
-            return super().get_queryset(request).filter(alertsettings__isnull=False)
-        return super().get_queryset(request)
+        # Only show 'Metrics' that have 'AlertSettings' objects
+        return super().get_queryset(request).filter(alertsettings__isnull=False)
+
+    def has_add_permission(self, request, obj=None):
+        # We need to restrict the users from adding the 'metrics' since
+        # they're created by the system automatically with default 'alertsettings'
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # We need to restrict the users from deleting the 'metrics' since
+        # they're created by the system automatically with default 'alertsettings'
+        return False
 
 
 class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
