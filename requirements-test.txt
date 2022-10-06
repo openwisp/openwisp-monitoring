@@ -1,4 +1,4 @@
-openwisp-utils[qa] @ https://github.com/openwisp/openwisp-utils/tarball/5a8f1dea187586d85c77b46e6e3fd725f557e3c6
+openwisp-utils[qa] @ https://github.com/openwisp/openwisp-utils/tarball/master
 redis~=3.5.3
 django-redis~=4.12.1
 mock-ssh-server~=0.9.0
