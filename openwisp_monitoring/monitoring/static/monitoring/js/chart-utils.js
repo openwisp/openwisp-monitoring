@@ -1,4 +1,5 @@
 'use strict';
+const isCustomDateRange = 'ow2-chart-custom-daterange'; // true/false
 const timeRangeKey = 'ow2-chart-time-range'; // 30d
 const startDayKey = 'ow2-chart-start-day'; // September 3, 2022
 const endDayKey = 'ow2-chart-end-day'; // October 3, 2022
@@ -7,46 +8,33 @@ const endDateTimeKey = 'ow2-chart-end-datetime'; // 2022-09-03 00:00:00
 
 django.jQuery(function ($) {
   $(document).ready(function () {
+    var pickerStart, pickerEnd, pickerDays, pickerChosenLabel, start = moment(), end = moment();
+      function initDateRangePickerWidget(start, end) {
+        $('#daterangepicker-widget span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
+        $("[data-range-key='1 day']").attr('data-time', '1d');
+        $("[data-range-key='3 days']").attr('data-time', '3d');
+        $("[data-range-key='1 week']").attr('data-time', '7d');
+        $("[data-range-key='1 month']").attr('data-time', '30d');
+        $("[data-range-key='1 year']").attr('data-time', '365d');
+        $("[data-range-key='Custom Range']").attr('data-time', 'Custom Range');
+      }
 
-    var customTimeRange, start = moment(), end = moment();
-
-        function cb(start, end) {
-          var startCustom, endCustom;
-          $("#daterangepicker-widget").on('apply.daterangepicker', function (ev, picker) {
-            startCustom = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
-            endCustom = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
-            customTimeRange = endCustom.diff(startCustom, 'days') + 'd';
-            localStorage.setItem(startDateTimeKey, picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
-            localStorage.setItem(endDateTimeKey, picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
-            localStorage.setItem(startDayKey, startCustom.format('MMMM D, YYYY'));
-            localStorage.setItem(endDayKey, endCustom.format('MMMM D, YYYY'));
-            localStorage.setItem(timeRangeKey, customTimeRange);
-          });
-          $('#daterangepicker-widget span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
-          $("[data-range-key='1 day']").attr('data-time', '1d');
-          $("[data-range-key='3 days']").attr('data-time', '3d');
-          $("[data-range-key='1 week']").attr('data-time', '7d');
-          $("[data-range-key='1 month']").attr('data-time', '30d');
-          $("[data-range-key='1 year']").attr('data-time', '365d');
-          $("[data-range-key='Custom Range']").attr('data-time', customTimeRange);
+      $('#daterangepicker-widget').daterangepicker({
+        startDate: start,
+        endDate: end,
+        maxDate: moment(),
+        maxSpan: {
+          "year": 1,
+        },
+        ranges: {
+          '1 day': [moment().subtract(1, 'days'), moment()],
+          '3 days': [moment().subtract(3, 'days'), moment()],
+          '1 week': [moment().subtract(7, 'days'), moment()],
+          '1 month': [moment().subtract(30, 'days'), moment()],
+          '1 year': [moment().subtract(365, 'days'), moment()],
         }
-
-        $('#daterangepicker-widget').daterangepicker({
-          startDate: start,
-          endDate: end,
-          maxDate: moment(),
-          maxSpan: {
-            "year": 1,
-          },
-          ranges: {
-            '1 day': [moment().subtract(1, 'days'), moment()],
-            '3 days': [moment().subtract(3, 'days'), moment()],
-            '1 week': [moment().subtract(7, 'days'), moment()],
-            '1 month': [moment().subtract(30, 'days'), moment()],
-            '1 year': [moment().subtract(365, 'days'), moment()],
-          }
-        }, cb);
-        cb(start, end);
+      }, initDateRangePickerWidget);
+      initDateRangePickerWidget(start, end);
 
     var chartQuickLinks, chartContents = $('#ow-chart-contents'),
       fallback = $('#ow-chart-fallback'),
@@ -123,20 +111,46 @@ django.jQuery(function ($) {
       baseUrl = baseUrl.replace('time=', 'timezone=' + timezone + '&time=');
       // ignore failures (older browsers do not support this)
     } catch (e) {}
-    var dateTimePicker = $('.ranges li');
-    dateTimePicker.click(function () {
-      var timeRange = $(this).attr('data-time');
-      // loadCharts for default time ranges ie. day, week, month etc
-      if ($(this).attr('data-range-key') !== "Custom Range") {
-        loadCharts(timeRange, true);
-        localStorage.setItem(timeRangeKey, timeRange);
-        // refresh every 2.5 minutes
-        clearInterval(window.owChartRefresh);
-        window.owChartRefresh = setInterval(loadCharts,
-          1000 * 60 * 2.5,
-          timeRange,
-          false
-        );}
+
+    // daterangepicker widget logic here
+    $("#daterangepicker-widget").on('apply.daterangepicker', function (ev, picker) {
+    pickerChosenLabel = picker.chosenLabel;
+    pickerStart = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
+    pickerEnd = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
+    pickerDays = pickerEnd.diff(pickerStart, 'days') + 'd';
+
+    // set date values required for daterangepicker labels
+    localStorage.setItem(startDateTimeKey, picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
+    localStorage.setItem(endDateTimeKey, picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
+    localStorage.setItem(startDayKey, pickerStart.format('MMMM D, YYYY'));
+    localStorage.setItem(endDayKey, pickerEnd.format('MMMM D, YYYY'));
+
+    // daterangepicker with custom time ranges
+    if (pickerChosenLabel === "Custom Range") {
+      loadCharts(pickerDays, true);
+      localStorage.setItem(isCustomDateRange, true);
+      localStorage.setItem(timeRangeKey, pickerDays);
+      // refresh every 2.5 minutes
+      clearInterval(window.owChartRefresh);
+      window.owChartRefresh = setInterval(loadCharts,
+        1000 * 60 * 2.5,
+        pickerDays,
+        false
+      );}
+
+    // daterangepicker with default time ranges
+    else {
+      loadCharts(pickerDays, true);
+      localStorage.setItem(isCustomDateRange, false);
+      localStorage.setItem(timeRangeKey, pickerDays);
+      // refresh every 2.5 minutes
+      clearInterval(window.owChartRefresh);
+      window.owChartRefresh = setInterval(loadCharts,
+        1000 * 60 * 2.5,
+        pickerDays,
+        false
+      );}
+
     });
     // bind export button
     $('#ow-chart-time a.export').click(function () {
