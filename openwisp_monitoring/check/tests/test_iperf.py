@@ -80,20 +80,32 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         }
         self._EXPECTED_COMMAND_CALLS = [
             call(
-                'iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 -b 0 -J',
+                (
+                    'iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 --connect-timeout 1 '
+                    '-b 0 -l 128K -w 0 -P 1  -J'
+                ),
                 raise_unexpected_exit=False,
             ),
             call(
-                'iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 -b 30M -u -J',
+                (
+                    'iperf3 -c iperf.openwisptestserver.com -p 5201 -t 10 --connect-timeout 1 '
+                    '-b 30M -l 0 -w 0 -P 1  -u -J'
+                ),
                 raise_unexpected_exit=False,
             ),
         ]
         self._EXPECTED_WARN_CALLS = [
             call(
-                f'Iperf check failed for "{self.device}", error - unable to connect to server: Connection refused'  # noqa
+                (
+                    f'Iperf check failed for "{self.device}", '
+                    'error - unable to connect to server: Connection refused'
+                )
             ),
             call(
-                f'Iperf check failed for "{self.device}", error - unable to connect to server: Connection refused'  # noqa
+                (
+                    f'Iperf check failed for "{self.device}", '
+                    'error - unable to connect to server: Connection refused'
+                )
             ),
         ]
 
@@ -112,15 +124,21 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
 
         self._EXPECTED_COMMAND_CALLS = [
             call(
-                f'echo "{test_prefix}{key}{test_suffix}" > {rsa_key_path} && \
-            IPERF3_PASSWORD="{password}" iperf3 -c {server} -p 5201 -t 10 \
-            --username "{username}" --rsa-public-key-path {rsa_key_path} -b 0 -J',
+                (
+                    f'echo "{test_prefix}{key}{test_suffix}" > {rsa_key_path} && '
+                    f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p 5201 -t 10 '
+                    f'--username "{username}" --rsa-public-key-path {rsa_key_path} --connect-timeout 1 '
+                    f'-b 0 -l 128K -w 0 -P 1  -J'
+                ),
                 raise_unexpected_exit=False,
             ),
             call(
-                f'echo "{test_prefix}{key}{test_suffix}" > {rsa_key_path} && \
-            IPERF3_PASSWORD="{password}" iperf3 -c {server} -p 5201 -t 10 \
-            --username "{username}" --rsa-public-key-path {rsa_key_path} -b 30M -u -J && rm -f {rsa_key_path}',  # noqa
+                (
+                    f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p 5201 -t 10 '
+                    f'--username "{username}" --rsa-public-key-path {rsa_key_path} --connect-timeout 1 '
+                    f'-b 30M -l 0 -w 0 -P 1  -u -J '
+                    f'&& rm -f {rsa_key_path}'
+                ),
                 raise_unexpected_exit=False,
             ),
         ]
@@ -181,14 +199,22 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             'client_options': {
                 'port': 6201,
                 'time': 20,
-                'tcp': {'bitrate': '10M'},
-                'udp': {'bitrate': '30M'},
+                'window': '300K',
+                'parallel': 5,
+                'reverse': True,
+                'connect_timeout': 1000,
+                'tcp': {'bitrate': '10M', 'length': '128K'},
+                'udp': {'bitrate': '50M', 'length': '400K'},
             },
         }
         time = test_params['client_options']['time']
         port = test_params['client_options']['port']
+        window = test_params['client_options']['window']
+        parallel = test_params['client_options']['parallel']
         tcp_bitrate = test_params['client_options']['tcp']['bitrate']
+        tcp_len = test_params['client_options']['tcp']['length']
         udp_bitrate = test_params['client_options']['udp']['bitrate']
+        udp_len = test_params['client_options']['udp']['length']
         username = test_params['username']
         password = test_params['password']
         key = test_params['rsa_public_key']
@@ -197,15 +223,21 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         check.save()
         self._EXPECTED_COMMAND_CALLS = [
             call(
-                f'echo "{test_prefix}{key}{test_suffix}" > {rsa_key_path} && \
-            IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
-            --username "{username}" --rsa-public-key-path {rsa_key_path} -b {tcp_bitrate} -J',
+                (
+                    f'echo "{test_prefix}{key}{test_suffix}" > {rsa_key_path} && '
+                    f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} '
+                    f'--username "{username}" --rsa-public-key-path {rsa_key_path} --connect-timeout 1000 '
+                    f'-b {tcp_bitrate} -l {tcp_len} -w {window} -P {parallel} --reverse -J'
+                ),
                 raise_unexpected_exit=False,
             ),
             call(
-                f'echo "{test_prefix}{key}{test_suffix}" > {rsa_key_path} && \
-            IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} \
-            --username "{username}" --rsa-public-key-path {rsa_key_path} -b {udp_bitrate} -u -J && rm -f {rsa_key_path}',  # noqa
+                (
+                    f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p {port} -t {time} '
+                    f'--username "{username}" --rsa-public-key-path {rsa_key_path} --connect-timeout 1000 '
+                    f'-b {udp_bitrate} -l {udp_len} -w {window} -P {parallel} --reverse -u -J '
+                    f'&& rm -f {rsa_key_path}'
+                ),
                 raise_unexpected_exit=False,
             ),
         ]
@@ -233,11 +265,17 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
         udp_result = loads(RESULT_UDP)['end']['sum']
         self._EXPECTED_COMMAND_CALLS = [
             call(
-                'iperf3 -c iperf.openwisptestserver.com -p 9201 -t 120 -b 10M -J',
+                (
+                    'iperf3 -c iperf.openwisptestserver.com -p 9201 -k 1M --connect-timeout 2000 '
+                    '-b 10M -l 512K -w 0 -P 1 --bidir -J'
+                ),
                 raise_unexpected_exit=False,
             ),
             call(
-                'iperf3 -c iperf.openwisptestserver.com -p 9201 -t 120 -b 50M -u -J',
+                (
+                    'iperf3 -c iperf.openwisptestserver.com -p 9201 -k 1M --connect-timeout 2000 '
+                    '-b 50M -l 256K -w 0 -P 1 --bidir -u -J'
+                ),
                 raise_unexpected_exit=False,
             ),
         ]
@@ -247,8 +285,12 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
                 'client_options': {
                     'port': 9201,
                     'time': 120,
-                    'tcp': {'bitrate': '10M'},
-                    'udp': {'bitrate': '50M'},
+                    'connect_timeout': 2000,
+                    'bytes': '20M',
+                    'blockcount': '1M',
+                    'bidirectional': True,
+                    'tcp': {'bitrate': '10M', 'length': '512K'},
+                    'udp': {'bitrate': '50M', 'length': '256K'},
                 },
             }
         }
@@ -617,23 +659,36 @@ class TestIperf(CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTe
             self.org_id: {'host': self._IPERF_TEST_MULTIPLE_SERVERS}
         }
         check = Check.objects.get(check_type=self._IPERF)
+
         self._EXPECTED_COMMAND_CALLS_SERVER_1 = [
             call(
-                f'iperf3 -c {self._IPERF_TEST_MULTIPLE_SERVERS[0]} -p 5201 -t 10 -b 0 -J',
+                (
+                    f'iperf3 -c {self._IPERF_TEST_MULTIPLE_SERVERS[0]} -p 5201 -t 10 --connect-timeout 1 '
+                    '-b 0 -l 128K -w 0 -P 1  -J'
+                ),
                 raise_unexpected_exit=False,
             ),
             call(
-                f'iperf3 -c {self._IPERF_TEST_MULTIPLE_SERVERS[0]} -p 5201 -t 10 -b 30M -u -J',
+                (
+                    f'iperf3 -c {self._IPERF_TEST_MULTIPLE_SERVERS[0]} -p 5201 -t 10 --connect-timeout 1 '
+                    '-b 30M -l 0 -w 0 -P 1  -u -J'
+                ),
                 raise_unexpected_exit=False,
             ),
         ]
         self._EXPECTED_COMMAND_CALLS_SERVER_2 = [
             call(
-                f'iperf3 -c {self._IPERF_TEST_MULTIPLE_SERVERS[1]} -p 5201 -t 10 -b 0 -J',
+                (
+                    f'iperf3 -c {self._IPERF_TEST_MULTIPLE_SERVERS[1]} -p 5201 -t 10 --connect-timeout 1 '
+                    '-b 0 -l 128K -w 0 -P 1  -J'
+                ),
                 raise_unexpected_exit=False,
             ),
             call(
-                f'iperf3 -c {self._IPERF_TEST_MULTIPLE_SERVERS[1]} -p 5201 -t 10 -b 30M -u -J',
+                (
+                    f'iperf3 -c {self._IPERF_TEST_MULTIPLE_SERVERS[1]} -p 5201 -t 10 --connect-timeout 1 '
+                    '-b 30M -l 0 -w 0 -P 1  -u -J'
+                ),
                 raise_unexpected_exit=False,
             ),
         ]
