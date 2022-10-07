@@ -1046,7 +1046,7 @@ INVALID_PARAMS = [
         'host': ['test.openwisp.io'],
         'client_options': {
             'port': 5201,
-            'bidirectional': 'true',
+            'bidirectional': True,
             'connect_timeout': 2000000,
             'blockcount': '100K',
             'tcp': {'bitrate': '10M'},
@@ -1057,7 +1057,7 @@ INVALID_PARAMS = [
         'host': ['test.openwisp.io'],
         'client_options': {
             'port': 5201,
-            'reverse': 'false',
+            'reverse': False,
             'connect_timeout': 2000000,
             'blockcount': '100K',
             'tcp': {'bitrate': '10M'},

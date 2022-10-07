@@ -1090,8 +1090,22 @@ Example:
                'udp': {'bitrate': '30M'},
                'tcp': {'bitrate': '0'},
            },
-       }
+       },
+       # another org
+       'b9734710-db30-46b0-a2fc-01f01046fe4f': {
+           # available iperf servers
+           'host': ['iperf.openwisp2.io', '192.168.5.3'],
+           'client_options': {
+               'port': 5207,
+               'udp': {'bitrate': '50M'},
+               'tcp': {'bitrate': '20M'},
+           },
+       },
    }
+
+**Note:** If an organization has more than one iperf server configured, then it enables
+the iperf checks to run concurrently on different devices. If all of the available servers
+are busy, then it will add the check back in the queue.
 
 The celery-beat configuration for the iperf check needs to be added too:
 
@@ -1543,6 +1557,19 @@ For example, you can change the values of `supported iperf check parameters <#ip
 This setting allows you to set whether
 `iperf check RSA public key <#configure-iperf-check-for-authentication>`_
 will be deleted after successful completion of the check or not.
+
+``OPENWISP_MONITORING_IPERF_CHECK_LOCK_EXPIRE``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------------------------+
+| **type**:    | ``int``                       |
++--------------+-------------------------------+
+| **default**: | ``600``                       |
++--------------+-------------------------------+
+
+This setting allows you to set a cache lock expiration time for the iperf check when
+running on multiple servers. Make sure it is always greater than the total iperf check
+time, i.e. greater than the TCP + UDP test time. By default, it is set to **600 seconds (10 mins)**.
 
 ``OPENWISP_MONITORING_AUTO_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

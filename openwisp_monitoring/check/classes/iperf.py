@@ -3,6 +3,7 @@ from functools import reduce
 from json import loads
 from json.decoder import JSONDecodeError
 
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
@@ -180,11 +181,60 @@ class Iperf(BaseCheck):
             message = '{0}: {1}'.format(message, e.message)
             raise ValidationError({'params': message}) from e
 
+    def _validate_iperf_config(self, org):
+        # if iperf config is present and validate it's params
+        if app_settings.IPERF_CHECK_CONFIG:
+            self.validate_params(
+                params=app_settings.IPERF_CHECK_CONFIG.get(str(org.id))
+            )
+
     def check(self, store=True):
-        iperf_config = app_settings.IPERF_CHECK_CONFIG
-        if iperf_config:
-            org_id = str(self.related_object.organization.id)
-            self.validate_params(params=iperf_config[org_id])
+        lock_acquired = False
+        org = self.related_object.organization
+        self._validate_iperf_config(org)
+        available_iperf_servers = self._get_param('host', 'host.default')
+        if not available_iperf_servers:
+            logger.warning(
+                (
+                    f'Iperf servers for organization "{org}" '
+                    f'is not configured properly, iperf check skipped!'
+                )
+            )
+            return
+        time = self._get_param(
+            'client_options.time', 'client_options.properties.time.default'
+        )
+        # Try to acquire a lock, or put task back on queue
+        for server in available_iperf_servers:
+            server_lock_key = f'ow_monitoring_{org}_iperf_check_{server}'
+            # Set available_iperf_server to the org device
+            lock_acquired = cache.add(
+                server_lock_key,
+                str(self.related_object),
+                timeout=app_settings.IPERF_CHECK_LOCK_EXPIRE,
+            )
+            if lock_acquired:
+                break
+        else:
+            logger.info(
+                (
+                    f'At the moment, all available iperf servers of organization "{org}" '
+                    f'are busy running checks, putting "{self.check_instance}" back in the queue..'
+                )
+            )
+            # Return the iperf_check task to the queue,
+            # it will executed after 2 * iperf_check_time (TCP+UDP)
+            self.check_instance.perform_check_delayed(duration=2 * time)
+            return
+        try:
+            # Execute the iperf check with current available server
+            result = self._run_iperf_check(store, server, time)
+        finally:
+            # Release the lock after completion of the check
+            cache.delete(server_lock_key)
+            return result
+
+    def _run_iperf_check(self, store, server, time):
         device_connection = self._get_device_connection()
         if not device_connection:
             logger.warning(
@@ -192,16 +242,17 @@ class Iperf(BaseCheck):
             )
             return
         # The DeviceConnection could fail if the management tunnel is down.
-        if not self._connect(device_connection):
+        if not device_connection.connect():
             logger.warning(
                 f'DeviceConnection for "{self.related_object}" is not working, iperf check skipped!'
             )
             return
-        server = self._get_iperf_servers()[0]
         command_tcp, command_udp = self._get_check_commands(server)
 
         # TCP mode
-        result, exit_code = self._exec_command(device_connection, command_tcp)
+        result, exit_code = device_connection.connector_instance.exec_command(
+            command_tcp, raise_unexpected_exit=False
+        )
         # Exit code 127 : command doesn't exist
         if exit_code == 127:
             logger.warning(
@@ -211,7 +262,9 @@ class Iperf(BaseCheck):
 
         result_tcp = self._get_iperf_result(result, exit_code, mode='TCP')
         # UDP mode
-        result, exit_code = self._exec_command(device_connection, command_udp)
+        result, exit_code = device_connection.connector_instance.exec_command(
+            command_udp, raise_unexpected_exit=False
+        )
         result_udp = self._get_iperf_result(result, exit_code, mode='UDP')
         result = {}
         if store and result_tcp and result_udp:
@@ -258,6 +311,7 @@ class Iperf(BaseCheck):
         )
 
         rev_or_bidir, test_end_condition = self._get_iperf_test_conditions()
+        logger.info(f'«« Iperf server : {server}, Device : {self.related_object} »»')
         command_tcp = (
             f'iperf3 -c {server} -p {port} {test_end_condition} --connect-timeout {ct} '
             f'-b {tcp_bitrate} -l {tcp_length} -w {window} -P {parallel} {rev_or_bidir} -J'
@@ -290,7 +344,7 @@ class Iperf(BaseCheck):
 
             # If IPERF_CHECK_DELETE_RSA_KEY, remove rsa_public_key from the device
             if app_settings.IPERF_CHECK_DELETE_RSA_KEY:
-                command_udp = f'{command_udp} && rm {rsa_public_key_path}'
+                command_udp = f'{command_udp} && rm -f {rsa_public_key_path}'
         return command_tcp, command_udp
 
     def _get_iperf_test_conditions(self):
@@ -354,25 +408,6 @@ class Iperf(BaseCheck):
         ).first()
         return device_connection
 
-    def _get_iperf_servers(self):
-        """
-        Get iperf test servers
-        """
-        org_servers = self._get_param('host', 'host.default')
-        return org_servers
-
-    def _exec_command(self, dc, command):
-        """
-        Executes device command (easier to mock)
-        """
-        return dc.connector_instance.exec_command(command, raise_unexpected_exit=False)
-
-    def _connect(self, dc):
-        """
-        Connects device returns its working status (easier to mock)
-        """
-        return dc.connect()
-
     def _deep_get(self, dictionary, keys, default=None):
         """
         Returns dict key value using dict &
@@ -398,7 +433,7 @@ class Iperf(BaseCheck):
                 return check_params
 
         if iperf_config:
-            iperf_config = iperf_config[org_id]
+            iperf_config = iperf_config.get(org_id)
             iperf_config_param = self._deep_get(iperf_config, conf_key)
             if iperf_config_param:
                 return iperf_config_param

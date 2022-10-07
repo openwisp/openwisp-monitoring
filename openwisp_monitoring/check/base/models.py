@@ -100,6 +100,11 @@ class AbstractCheck(TimeStampedEditableModel):
         """
         return self.check_instance.check(store=True)
 
+    def perform_check_delayed(self, duration=0):
+        from ..tasks import perform_check
+
+        perform_check.apply_async(args=[self.id], countdown=duration)
+
 
 def auto_ping_receiver(sender, instance, created, **kwargs):
     """
