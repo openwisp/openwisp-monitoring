@@ -36,6 +36,21 @@ django.jQuery(function ($) {
       }, initDateRangePickerWidget);
       initDateRangePickerWidget(start, end);
 
+    function getCustomDateUrl (time, startDate, endDate) {
+          var customUrl, days = parseInt(time.split('d')[0]);
+          // When days less than or equals to 3 days then pass dates in format (2022-09-03 00:00:00)
+          if (days <= 3) {
+            customUrl = `${baseUrl}${time}&start=${startDate}&end=${endDate}`;
+          }
+           // When days are greater 3 days then pass dates in format (2022-09-03)
+          else {
+            var start = startDate.split(' ')[0];
+            var end = endDate.split(' ')[0];
+            customUrl = `${baseUrl}${time}&start=${start}&end=${end}`;
+          }
+          return customUrl;
+    }
+
     var chartQuickLinks, chartContents = $('#ow-chart-contents'),
       fallback = $('#ow-chart-fallback'),
       defaultTimeRange = localStorage.getItem(timeRangeKey) || $('#monitoring-timeseries-default-time').data('value'),
@@ -47,6 +62,12 @@ django.jQuery(function ($) {
 
       loadCharts = function (time, showLoading) {
         var url = baseUrl + time;
+        // pass pickerEndDate and pickerStartDate to url
+        if (localStorage.getItem(isCustomDateRange) === 'true') {
+          var startDate = localStorage.getItem(startDateTimeKey);
+          var endDate = localStorage.getItem(endDateTimeKey);
+          url = getCustomDateUrl(time, startDate, endDate);
+        }
         $.ajax(url, {
           dataType: 'json',
           beforeSend: function () {
@@ -101,9 +122,22 @@ django.jQuery(function ($) {
       var range = localStorage.getItem(timeRangeKey) || defaultTimeRange;
       var startLabel = localStorage.getItem(startDayKey) || moment().format('MMMM D, YYYY');
       var endLabel = localStorage.getItem(endDayKey) || moment().format('MMMM D, YYYY');
+
       // Add label to daterangepicker widget
       $('#daterangepicker-widget span').html(startLabel + ' - ' + endLabel);
-      $('.daterangepicker .ranges ul li[data-time=' + range + ']').trigger('click');
+      if (localStorage.getItem(isCustomDateRange) === 'true') {
+        // Set last selected custom date after page reload
+        var startDate = moment(startLabel, 'MMMM D, YYYY');
+        var endDate = moment(endLabel, 'MMMM D, YYYY');
+        $('#daterangepicker-widget').data('daterangepicker').setStartDate(moment(startDate).format('MM/DD/YYYY'));
+        $('#daterangepicker-widget').data('daterangepicker').setEndDate(moment(endDate).format('MM/DD/YYYY'));
+        // Then loads charts with custom ranges selected
+        loadCharts(localStorage.getItem(timeRangeKey), true);
+      }
+      else {
+        // Set last selected default dates after page reload
+        $('.daterangepicker .ranges ul li[data-time=' + range + ']').trigger('click');
+      }
     };
     // try adding the browser timezone to the querystring
     try {
@@ -127,9 +161,9 @@ django.jQuery(function ($) {
 
     // daterangepicker with custom time ranges
     if (pickerChosenLabel === "Custom Range") {
-      loadCharts(pickerDays, true);
       localStorage.setItem(isCustomDateRange, true);
       localStorage.setItem(timeRangeKey, pickerDays);
+      loadCharts(pickerDays, true);
       // refresh every 2.5 minutes
       clearInterval(window.owChartRefresh);
       window.owChartRefresh = setInterval(loadCharts,
@@ -140,9 +174,9 @@ django.jQuery(function ($) {
 
     // daterangepicker with default time ranges
     else {
-      loadCharts(pickerDays, true);
       localStorage.setItem(isCustomDateRange, false);
       localStorage.setItem(timeRangeKey, pickerDays);
+      loadCharts(pickerDays, true);
       // refresh every 2.5 minutes
       clearInterval(window.owChartRefresh);
       window.owChartRefresh = setInterval(loadCharts,
@@ -156,6 +190,12 @@ django.jQuery(function ($) {
     $('#ow-chart-time a.export').click(function () {
       var time = localStorage.getItem(timeRangeKey);
       location.href = baseUrl + time + '&csv=1';
-    });
+      // If custom pass pickerEndDate and pickerStartDate to csv url
+      if (localStorage.getItem(isCustomDateRange) === 'true') {
+      var startDate = localStorage.getItem(startDateTimeKey);
+      var endDate = localStorage.getItem(endDateTimeKey);
+      location.href = getCustomDateUrl(time, startDate, endDate) + '&csv=1';
+    }
+});
   });
 }(django.jQuery));

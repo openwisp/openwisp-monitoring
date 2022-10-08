@@ -34,6 +34,13 @@ class MonitoringApiViewMixin:
 
     def get(self, request, *args, **kwargs):
         time = request.query_params.get('time', Chart.DEFAULT_TIME)
+        start_date = request.query_params.get('start', None)
+        end_date = request.query_params.get('end', None)
+        if start_date and end_date:
+            if len(Chart.GROUP_MAP.items()) > 5:
+                Chart.GROUP_MAP.popitem()
+            # TODO : Add dynamic GROUP MAP
+            Chart.GROUP_MAP.update({time: '2h'})
         if time not in Chart.GROUP_MAP.keys():
             raise ValidationError('Time range not supported')
         # try to read timezone
@@ -44,7 +51,7 @@ class MonitoringApiViewMixin:
             raise ValidationError('Unkown Time Zone')
         charts = self._get_charts(request, *args, **kwargs)
         # prepare response data
-        data = self._get_charts_data(charts, time, timezone)
+        data = self._get_charts_data(charts, time, timezone, start_date, end_date)
         # csv export has a different response
         if request.query_params.get('csv'):
             response = HttpResponse(self._get_csv(data), content_type='text/csv')
@@ -59,7 +66,7 @@ class MonitoringApiViewMixin:
         """
         return None
 
-    def _get_charts_data(self, charts, time, timezone):
+    def _get_charts_data(self, charts, time, timezone, start_date, end_date):
         chart_map = {}
         x_axys = True
         data = OrderedDict({'charts': []})
@@ -70,6 +77,8 @@ class MonitoringApiViewMixin:
                     time=time,
                     x_axys=x_axys,
                     timezone=timezone,
+                    start_date=start_date,
+                    end_date=end_date,
                     additional_query_kwargs=self._get_chart_additional_query_kwargs(
                         chart
                     ),

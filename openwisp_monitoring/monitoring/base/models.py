@@ -551,23 +551,24 @@ class AbstractChart(TimeStampedEditableModel):
         fields=None,
         query=None,
         timezone=settings.TIME_ZONE,
+        start_date=None,
         additional_params=None,
     ):
         query = query or self.query
         additional_params = additional_params or {}
-        params = self._get_query_params(time)
+        params = self._get_query_params(time, start_date)
         params.update(additional_params)
         return timeseries_db.get_query(
             self.type, params, time, self.GROUP_MAP, summary, fields, query, timezone
         )
 
-    def get_top_fields(self, number):
+    def get_top_fields(self, number, start_date=None):
         """
         Returns list of top ``number`` of fields (highest sum) of a
         measurement in the specified time range (descending order).
         """
         q = self._default_query.replace('{field_name}', '{fields}')
-        params = self._get_query_params(self.DEFAULT_TIME)
+        params = self._get_query_params(self.DEFAULT_TIME, start_date)
         return timeseries_db._get_top_fields(
             query=q,
             chart_type=self.type,
@@ -577,9 +578,11 @@ class AbstractChart(TimeStampedEditableModel):
             time=self.DEFAULT_TIME,
         )
 
-    def _get_query_params(self, time):
+    def _get_query_params(self, time, start_date=None):
         m = self.metric
-        params = dict(field_name=m.field_name, key=m.key, time=self._get_time(time))
+        params = dict(
+            field_name=m.field_name, key=m.key, time=self._get_time(time, start_date)
+        )
         if m.object_id:
             params.update(
                 {
@@ -593,7 +596,9 @@ class AbstractChart(TimeStampedEditableModel):
         return params
 
     @classmethod
-    def _get_time(cls, time):
+    def _get_time(cls, time, start_date=None):
+        if start_date:
+            return start_date
         if not isinstance(time, str):
             return str(time)
         if time in cls.GROUP_MAP.keys():
@@ -608,12 +613,23 @@ class AbstractChart(TimeStampedEditableModel):
             time = str(now - timedelta(days=days))[0:19]
         return time
 
+    @classmethod
+    def get_custom_date_query(self, data_query, summary_query, end_date):
+        where = data_query.index('WHERE') + 6
+        dq = data_query[:where] + f"time <= '{end_date}' AND " + data_query[where:]
+        sq = (
+            summary_query[:where] + f"time <= '{end_date}' AND " + summary_query[where:]
+        )
+        return dq, sq
+
     def read(
         self,
         decimal_places=2,
         time=DEFAULT_TIME,
         x_axys=True,
         timezone=settings.TIME_ZONE,
+        start_date=None,
+        end_date=None,
         additional_query_kwargs=None,
     ):
         additional_query_kwargs = additional_query_kwargs or {}
@@ -621,7 +637,7 @@ class AbstractChart(TimeStampedEditableModel):
         if x_axys:
             x = []
         try:
-            query_kwargs = dict(time=time, timezone=timezone)
+            query_kwargs = dict(time=time, timezone=timezone, start_date=start_date)
             query_kwargs.update(additional_query_kwargs)
             if self.top_fields:
                 fields = self.get_top_fields(self.top_fields)
@@ -632,6 +648,10 @@ class AbstractChart(TimeStampedEditableModel):
             else:
                 data_query = self.get_query(**query_kwargs)
                 summary_query = self.get_query(summary=True, **query_kwargs)
+            if end_date and start_date:
+                data_query, summary_query = self.get_custom_date_query(
+                    data_query, summary_query, end_date
+                )
             points = timeseries_db.get_list_query(data_query)
             summary = timeseries_db.get_list_query(summary_query)
         except timeseries_db.client_error as e:
