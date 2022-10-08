@@ -32,15 +32,37 @@ class MonitoringApiViewMixin:
         """
         return {}
 
+    def _add_custom_date_group_map(self, time):
+        """
+        Adds custom date range time
+        grouping to chart.GROUP_MAP
+        """
+        # If custom date time grouping already exists
+        # with default time group then pop that time
+        if len(Chart.GROUP_MAP.items()) > 5:
+            Chart.GROUP_MAP.popitem()
+        days = int(time.split('d')[0])
+        # custom grouping between 1 to 2 days
+        if days > 0 and days < 3:
+            group = '10m'
+        # custom grouping between 3 to 6 days
+        elif days >= 3 and days < 7:
+            group = str(round((days // 3) * 20)) + 'm'
+        # custom grouping between 8 to 27 days
+        elif days > 7 and days < 28:
+            group = str(round(days // 7)) + 'h'
+        # custom grouping between 28 to 364 days
+        elif days >= 28 and days < 365:
+            group = str(round(days // 28)) + 'd'
+        Chart.GROUP_MAP.update({time: group})
+
     def get(self, request, *args, **kwargs):
         time = request.query_params.get('time', Chart.DEFAULT_TIME)
         start_date = request.query_params.get('start', None)
         end_date = request.query_params.get('end', None)
+        # if custom dates are provided, then update chart.GROUP_MAP
         if start_date and end_date:
-            if len(Chart.GROUP_MAP.items()) > 5:
-                Chart.GROUP_MAP.popitem()
-            # TODO : Add dynamic GROUP MAP
-            Chart.GROUP_MAP.update({time: '2h'})
+            self._add_custom_date_group_map(time)
         if time not in Chart.GROUP_MAP.keys():
             raise ValidationError('Time range not supported')
         # try to read timezone

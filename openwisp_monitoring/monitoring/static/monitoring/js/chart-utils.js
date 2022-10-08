@@ -36,21 +36,6 @@ django.jQuery(function ($) {
       }, initDateRangePickerWidget);
       initDateRangePickerWidget(start, end);
 
-    function getCustomDateUrl (time, startDate, endDate) {
-          var customUrl, days = parseInt(time.split('d')[0]);
-          // When days less than or equals to 3 days then pass dates in format (2022-09-03 00:00:00)
-          if (days <= 3) {
-            customUrl = `${baseUrl}${time}&start=${startDate}&end=${endDate}`;
-          }
-           // When days are greater 3 days then pass dates in format (2022-09-03)
-          else {
-            var start = startDate.split(' ')[0];
-            var end = endDate.split(' ')[0];
-            customUrl = `${baseUrl}${time}&start=${start}&end=${end}`;
-          }
-          return customUrl;
-    }
-
     var chartQuickLinks, chartContents = $('#ow-chart-contents'),
       fallback = $('#ow-chart-fallback'),
       defaultTimeRange = localStorage.getItem(timeRangeKey) || $('#monitoring-timeseries-default-time').data('value'),
@@ -66,7 +51,7 @@ django.jQuery(function ($) {
         if (localStorage.getItem(isCustomDateRange) === 'true') {
           var startDate = localStorage.getItem(startDateTimeKey);
           var endDate = localStorage.getItem(endDateTimeKey);
-          url = getCustomDateUrl(time, startDate, endDate);
+          url = `${baseUrl}${time}&start=${startDate}&end=${endDate}`;
         }
         $.ajax(url, {
           dataType: 'json',
@@ -194,7 +179,7 @@ django.jQuery(function ($) {
       if (localStorage.getItem(isCustomDateRange) === 'true') {
       var startDate = localStorage.getItem(startDateTimeKey);
       var endDate = localStorage.getItem(endDateTimeKey);
-      location.href = getCustomDateUrl(time, startDate, endDate) + '&csv=1';
+      location.href = `${baseUrl}${time}&start=${startDate}&end=${endDate}&csv=1`;
     }
 });
   });
