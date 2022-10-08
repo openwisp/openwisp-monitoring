@@ -87,9 +87,9 @@ Available Features
   `RAM usage <#memory-usage>`_, `CPU load <#cpu-load>`_, `flash/disk usage <#disk-usage>`_,
   mobile signal (LTE/UMTS/GSM `signal strength <#mobile-signal-strength>`_,
   `signal quality <#mobile-signal-quality>`_,
-  `access technology in use <#mobile-access-technology-in-use>`_), `bandwidth <#iperf>`_,
-  `transferred data <#iperf>`_, `restransmits <#iperf>`_, `jitter <#iperf>`_,
-  `datagram <#iperf>`_, `datagram loss <#iperf>`_
+  `access technology in use <#mobile-access-technology-in-use>`_), `bandwidth <#iperf3>`_,
+  `transferred data <#iperf3>`_, `restransmits <#iperf3>`_, `jitter <#iperf3>`_,
+  `datagram <#iperf3>`_, `datagram loss <#iperf3>`_
 * Maintains a record of `WiFi sessions <#monitoring-wifi-sessions>`_ with clients'
   MAC address and vendor, session start and stop time and connected device
   along with other information
@@ -107,7 +107,7 @@ Available Features
 * Extensible metrics and charts: it's possible to define new metrics and new charts
 * API to retrieve the chart metrics and status information of each device
   based on `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_
-* `Iperf check <#iperf-1>`_ that provides network performance measurements such as maximum
+* `Iperf3 check <#iperf3-1>`_ that provides network performance measurements such as maximum
   achievable bandwidth, jitter, datagram loss etc of the openwrt device using `iperf3 utility <https://iperf.fr/>`_
 
 ------------
@@ -815,19 +815,19 @@ Mobile Access Technology in use
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/access-technology.png
   :align: center
 
-Iperf
-~~~~~
+Iperf3
+~~~~~~
 
 +--------------------+---------------------------------------------------------------------------------------------------------------------------+
-| **measurement**:   | ``iperf``                                                                                                                 |
+| **measurement**:   | ``iperf3``                                                                                                                |
 +--------------------+---------------------------------------------------------------------------------------------------------------------------+
-| **types**:         | | ``int`` (iperf_result, sent_bytes_tcp, received_bytes_tcp, retransmits, sent_bytes_udp, total_packets, lost_packets),   |
+| **types**:         | | ``int`` (iperf3_result, sent_bytes_tcp, received_bytes_tcp, retransmits, sent_bytes_udp, total_packets, lost_packets),  |
 |                    | | ``float`` (sent_bps_tcp, received_bps_tcp, sent_bps_udp, jitter, lost_percent)                                          |
 +--------------------+---------------------------------------------------------------------------------------------------------------------------+
-| **fields**:        | | ``iperf_result``, ``sent_bps_tcp``, ``received_bps_tcp``, ``sent_bytes_tcp``, ``received_bytes_tcp``, ``retransmits``,  |
+| **fields**:        | | ``iperf3_result``, ``sent_bps_tcp``, ``received_bps_tcp``, ``sent_bytes_tcp``, ``received_bytes_tcp``, ``retransmits``, |
 |                    | | ``sent_bps_udp``, ``sent_bytes_udp``, ``jitter``, ``total_packets``, ``lost_packets``, ``lost_percent``                 |
 +--------------------+---------------------------------------------------------------------------------------------------------------------------+
-| **configuration**: | ``iperf``                                                                                                                 |
+| **configuration**: | ``iperf3``                                                                                                                |
 +--------------------+---------------------------------------------------------------------------------------------------------------------------+
 | **charts**:        | ``bandwidth``, ``transfer``, ``retransmits``, ``jitter``, ``datagram``, ``datagram_loss``                                 |
 +--------------------+---------------------------------------------------------------------------------------------------------------------------+
@@ -862,10 +862,10 @@ Iperf
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/datagram-loss.png
   :align: center
 
-For more info on how to configure and use Iperf, please refer to
-`iperf check usage instructions <#iperf-check-usage-instructions>`_.
+For more info on how to configure and use Iperf3, please refer to
+`iperf3 check usage instructions <#iperf3-check-usage-instructions>`_.
 
-**Note:** Iperf charts uses ``connect_points=True`` in
+**Note:** Iperf3 charts uses ``connect_points=True`` in
 `default chart configuration <#openwisp_monitoring_charts>`_ that joins it's individual chart data points.
 
 Dashboard Monitoring Charts
@@ -1014,33 +1014,33 @@ configuration status of a device changes, this ensures the check reacts
 quickly to events happening in the network and informs the user promptly
 if there's anything that is not working as intended.
 
-Iperf
-~~~~~
+Iperf3
+~~~~~~
 
 This check provides network performance measurements such as maximum achievable bandwidth,
 jitter, datagram loss etc of the device using `iperf3 utility <https://iperf.fr/>`_.
 
 This check is **disabled by default**. You can enable auto creation of this check by setting the
-`OPENWISP_MONITORING_AUTO_IPERF <#OPENWISP_MONITORING_AUTO_IPERF>`_ to ``True``.
+`OPENWISP_MONITORING_AUTO_IPERF3 <#OPENWISP_MONITORING_AUTO_IPERF3>`_ to ``True``.
 
-You can also `add the iperf check
+You can also `add the iperf3 check
 <#add-checks-and-alert-settings-from-the-device-page>`_ directly from the device page.
 
 It also supports tuning of various parameters.
 
-You can also change the parameters used for iperf checks (e.g. timing, port, username,
-password, rsa_publc_key etc) using the `OPENWISP_MONITORING_IPERF_CHECK_CONFIG
-<#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_ setting.
+You can also change the parameters used for iperf3 checks (e.g. timing, port, username,
+password, rsa_publc_key etc) using the `OPENWISP_MONITORING_IPERF3_CHECK_CONFIG
+<#OPENWISP_MONITORING_IPERF3_CHECK_CONFIG>`_ setting.
 
-**Note:** When setting `OPENWISP_MONITORING_AUTO_IPERF <#OPENWISP_MONITORING_AUTO_IPERF>`_  to ``True``,
+**Note:** When setting `OPENWISP_MONITORING_AUTO_IPERF3 <#OPENWISP_MONITORING_AUTO_IPERF3>`_  to ``True``,
 you may need to update the `metric configuration <#add-checks-and-alert-settings-from-the-device-page>`_
-to enable alerts for the iperf check.
+to enable alerts for the iperf3 check.
 
-Iperf Check Usage Instructions
-------------------------------
+Iperf3 Check Usage Instructions
+-------------------------------
 
-1. Make sure iperf is installed on the device
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+4. Make sure iperf3 is installed on the device
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Register your device to OpenWISP and make sure the `iperf3 openwrt package
 <https://openwrt.org/packages/pkgdata/iperf3>`_ is installed on the device,
@@ -1066,11 +1066,11 @@ to allow SSH access to you device from OpenWISP.
   :alt: Enable ssh access from openwisp to device
   :align: center
 
-3. Set up and configure Iperf server settings
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3. Set up and configure Iperf3 server settings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-After having deployed your Iperf servers, you need to
-configure the iperf settings on the django side of OpenWISP,
+After having deployed your Iperf3 servers, you need to
+configure the iperf3 settings on the django side of OpenWISP,
 see the `test project settings for reference
 <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_.
 
@@ -1079,12 +1079,12 @@ Example:
 
 .. code-block:: python
 
-   OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
+   OPENWISP_MONITORING_IPERF3_CHECK_CONFIG = {
        # 'org_pk' : {'host' : [], 'client_options' : {}}
        'a9734710-db30-46b0-a2fc-01f01046fe4f': {
-           # Some public iperf servers
+           # Some public iperf3 servers
            # https://iperf.fr/iperf-servers.php#public-servers
-           'host': ['iperf.openwisp.io', '2001:db8::1', '192.168.5.2'],
+           'host': ['iperf3.openwisp.io', '2001:db8::1', '192.168.5.2'],
            'client_options': {
                'port': 5209,
                'udp': {'bitrate': '30M'},
@@ -1093,8 +1093,8 @@ Example:
        },
        # another org
        'b9734710-db30-46b0-a2fc-01f01046fe4f': {
-           # available iperf servers
-           'host': ['iperf.openwisp2.io', '192.168.5.3'],
+           # available iperf3 servers
+           'host': ['iperf3.openwisp2.io', '192.168.5.3'],
            'client_options': {
                'port': 5207,
                'udp': {'bitrate': '50M'},
@@ -1103,29 +1103,29 @@ Example:
        },
    }
 
-**Note:** If an organization has more than one iperf server configured, then it enables
-the iperf checks to run concurrently on different devices. If all of the available servers
+**Note:** If an organization has more than one iperf3 server configured, then it enables
+the iperf3 checks to run concurrently on different devices. If all of the available servers
 are busy, then it will add the check back in the queue.
 
-The celery-beat configuration for the iperf check needs to be added too:
+The celery-beat configuration for the iperf3 check needs to be added too:
 
 .. code-block:: python
 
     from celery.schedules import crontab
 
     # Celery TIME_ZONE should be equal to django TIME_ZONE
-    # In order to schedule run_iperf_checks on the correct time intervals
+    # In order to schedule run_iperf3_checks on the correct time intervals
     CELERY_TIMEZONE = TIME_ZONE
     CELERY_BEAT_SCHEDULE = {
         # Other celery beat configurations
-        # Celery beat configuration for iperf check
-        'run_iperf_checks': {
+        # Celery beat configuration for iperf3 check
+        'run_iperf3_checks': {
             'task': 'openwisp_monitoring.check.tasks.run_checks',
             # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
             # Executes check every 5 mins from 00:00 AM to 6:00 AM (night)
             'schedule': crontab(minute='*/5', hour='0-6'),
-            # Iperf check path
-            'args': (['openwisp_monitoring.check.classes.Iperf'],),
+            # Iperf3 check path
+            'args': (['openwisp_monitoring.check.classes.Iperf3'],),
             'relative': True,
         }
     }
@@ -1143,15 +1143,15 @@ configured and running in the background.
 For testing purposes, you can run this check manually using the
 `run_checks <#run_checks>`_ command.
 
-After that, you should see the iperf network measurements charts.
+After that, you should see the iperf3 network measurements charts.
 
-.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/iperf-charts.png
-  :alt: Iperf network measurement charts
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/iperf3-charts.png
+  :alt: Iperf3 network measurement charts
 
-Iperf check parameters
-~~~~~~~~~~~~~~~~~~~~~~
+Iperf3 check parameters
+~~~~~~~~~~~~~~~~~~~~~~~
 
-Currently, iperf check supports the following parameters:
+Currently, iperf3 check supports the following parameters:
 
 +-----------------------+----------+--------------------------------------------------------------------+
 | **Parameter**         | **Type** | **Default Value**                                                  |
@@ -1204,15 +1204,15 @@ Currently, iperf check supports the following parameters:
 +-----------------------+-------------------------------------------------------------------------------+
 
 To learn how to use these parameters, please see the
-`iperf check configuration example <#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_.
+`iperf3 check configuration example <#OPENWISP_MONITORING_IPERF3_CHECK_CONFIG>`_.
 
 Visit the `official documentation <https://www.mankier.com/1/iperf3>`_
 to learn more about the iperf3 parameters.
 
-Iperf authentication
-~~~~~~~~~~~~~~~~~~~~
+Iperf3 authentication
+~~~~~~~~~~~~~~~~~~~~~
 
-By default iperf check runs without any kind of **authentication**,
+By default iperf3 check runs without any kind of **authentication**,
 in this section we will explain how to configure **RSA authentication**
 between the **client** and the **server** to restrict connections
 to authenticated clients.
@@ -1231,11 +1231,11 @@ Server side
 
 After running the commands mentioned above, the public key will be stored in
 ``public_key.pem`` which will be used in **rsa_public_key** parameter
-in `OPENWISP_MONITORING_IPERF_CHECK_CONFIG
-<#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_
+in `OPENWISP_MONITORING_IPERF3_CHECK_CONFIG
+<#OPENWISP_MONITORING_IPERF3_CHECK_CONFIG>`_
 and the private key will be contained in the file ``private_key.pem``
 which will be used with **--rsa-private-key-path** command option when
-starting the iperf server.
+starting the iperf3 server.
 
 2. Create user credentials
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1254,8 +1254,8 @@ Add the above hash with username in ``credentials.csv``
    # file format: username,sha256
    iperfuser,ee17a7f98cc87a6424fb52682396b2b6c058e9ab70e946188faa0714905771d7
 
-3. Now start the iperf server with auth options
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+3. Now start the iperf3 server with auth options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: shell
 
@@ -1283,17 +1283,17 @@ You may also check your installed **iperf3 openwrt package** features:
    Optional features available: CPU affinity setting, IPv6 flow label, TCP congestion algorithm setting,
    sendfile / zerocopy, socket pacing, authentication # contains 'authentication'
 
-2. Configure iperf check auth parameters
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2. Configure iperf3 check auth parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Now, add the following iperf authentication parameters
-to `OPENWISP_MONITORING_IPERF_CHECK_CONFIG
-<#OPENWISP_MONITORING_IPERF_CHECK_CONFIG>`_
+Now, add the following iperf3 authentication parameters
+to `OPENWISP_MONITORING_IPERF3_CHECK_CONFIG
+<#OPENWISP_MONITORING_IPERF3_CHECK_CONFIG>`_
 in the settings:
 
 .. code-block:: python
 
-   OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
+   OPENWISP_MONITORING_IPERF3_CHECK_CONFIG = {
        'a9734710-db30-46b0-a2fc-01f01046fe4f': {
            'host': ['iperf1.openwisp.io', 'iperf2.openwisp.io', '192.168.5.2'],
            # All three parameters (username, password, rsa_publc_key)
@@ -1333,10 +1333,10 @@ To add a check, you just need to select an available **check type** as shown bel
 
 The following example shows how to use the
 `OPENWISP_MONITORING_METRICS setting <#openwisp_monitoring_metrics>`_
-to reconfigure the system for `iperf check <#iperf-1>`_ to send an alert if
+to reconfigure the system for `iperf3 check <#iperf3-1>`_ to send an alert if
 the measured **TCP bandwidth** has been less than **10 Mbit/s** for more than **2 days**.
 
-1. By default, `Iperf checks <#iperf-1>`_ come with default alert settings,
+1. By default, `Iperf3 checks <#iperf3-1>`_ come with default alert settings,
 but it is easy to customize alert settings through the device page as shown below:
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-alertsettings.png
@@ -1350,11 +1350,11 @@ but it is easy to customize alert settings through the device page as shown belo
    from django.utils.translation import gettext_lazy as _
 
    OPENWISP_MONITORING_METRICS = {
-       'iperf': {
+       'iperf3': {
            'notification': {
                'problem': {
-                   'verbose_name': 'Iperf PROBLEM',
-                   'verb': _('Iperf bandwidth is less than normal value'),
+                   'verbose_name': 'Iperf3 PROBLEM',
+                   'verb': _('Iperf3 bandwidth is less than normal value'),
                    'level': 'warning',
                    'email_subject': _(
                        '[{site.name}] PROBLEM: {notification.target} {notification.verb}'
@@ -1365,8 +1365,8 @@ but it is easy to customize alert settings through the device page as shown belo
                    ),
                },
                'recovery': {
-                   'verbose_name': 'Iperf RECOVERY',
-                   'verb': _('Iperf bandwidth now back to normal'),
+                   'verbose_name': 'Iperf3 RECOVERY',
+                   'verb': _('Iperf3 bandwidth now back to normal'),
                    'level': 'info',
                    'email_subject': _(
                        '[{site.name}] RECOVERY: {notification.target} {notification.verb}'
@@ -1486,8 +1486,8 @@ validating custom parameters of a ``Check`` object.
 This setting allows you to choose whether `config_applied <#configuration-applied>`_ checks should be
 created automatically for newly registered devices. It's enabled by default.
 
-``OPENWISP_MONITORING_AUTO_IPERF``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``OPENWISP_MONITORING_AUTO_IPERF3``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +--------------+-------------+
 | **type**:    | ``bool``    |
@@ -1495,11 +1495,11 @@ created automatically for newly registered devices. It's enabled by default.
 | **default**: | ``False``   |
 +--------------+-------------+
 
-This setting allows you to choose whether `iperf <#iperf-1>`_ checks should be
+This setting allows you to choose whether `iperf3 <#iperf3-1>`_ checks should be
 created automatically for newly registered devices. It's disabled by default.
 
-``OPENWISP_MONITORING_IPERF_CHECK_CONFIG``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``OPENWISP_MONITORING_IPERF3_CHECK_CONFIG``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +--------------+-------------+
 | **type**:    | ``dict``    |
@@ -1507,19 +1507,19 @@ created automatically for newly registered devices. It's disabled by default.
 | **default**: | ``{}``      |
 +--------------+-------------+
 
-This setting allows to override the default iperf check configuration defined in
-``openwisp_monitoring.check.classes.iperf.DEFAULT_IPERF_CHECK_CONFIG``.
+This setting allows to override the default iperf3 check configuration defined in
+``openwisp_monitoring.check.classes.iperf3.DEFAULT_IPERF3_CHECK_CONFIG``.
 
-For example, you can change the values of `supported iperf check parameters <#iperf-check-parameters>`_.
+For example, you can change the values of `supported iperf3 check parameters <#iperf3-check-parameters>`_.
 
 .. code-block:: python
 
-   OPENWISP_MONITORING_IPERF_CHECK_CONFIG = {
+   OPENWISP_MONITORING_IPERF3_CHECK_CONFIG = {
        # 'org_pk' : {'host' : [], 'client_options' : {}}
        'a9734710-db30-46b0-a2fc-01f01046fe4f': {
-           # Some public iperf servers
+           # Some public iperf3 servers
            # https://iperf.fr/iperf-servers.php#public-servers
-           'host': ['iperf.openwisp.io', '2001:db8::1', '192.168.5.2'],
+           'host': ['iperf3.openwisp.io', '2001:db8::1', '192.168.5.2'],
            'client_options': {
                'port': 6209,
                # Number of parallel client streams to run
@@ -1529,7 +1529,7 @@ For example, you can change the values of `supported iperf check parameters <#ip
                'parallel': 5,
                # Set the connect_timeout (in milliseconds) for establishing
                # the initial control connection to the server, the lower the value
-               # the faster the down iperf server will be detected
+               # the faster the down iperf3 server will be detected
                'connect_timeout': 1,
                # Window size / socket buffer size
                'window': '300K',
@@ -1545,8 +1545,8 @@ For example, you can change the values of `supported iperf check parameters <#ip
        }
    }
 
-``OPENWISP_MONITORING_IPERF_CHECK_DELETE_RSA_KEY``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``OPENWISP_MONITORING_IPERF3_CHECK_DELETE_RSA_KEY``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +--------------+-------------------------------+
 | **type**:    | ``bool``                      |
@@ -1555,11 +1555,11 @@ For example, you can change the values of `supported iperf check parameters <#ip
 +--------------+-------------------------------+
 
 This setting allows you to set whether
-`iperf check RSA public key <#configure-iperf-check-for-authentication>`_
+`iperf3 check RSA public key <#configure-iperf3-check-for-authentication>`_
 will be deleted after successful completion of the check or not.
 
-``OPENWISP_MONITORING_IPERF_CHECK_LOCK_EXPIRE``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``OPENWISP_MONITORING_IPERF3_CHECK_LOCK_EXPIRE``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +--------------+-------------------------------+
 | **type**:    | ``int``                       |
@@ -1567,8 +1567,8 @@ will be deleted after successful completion of the check or not.
 | **default**: | ``600``                       |
 +--------------+-------------------------------+
 
-This setting allows you to set a cache lock expiration time for the iperf check when
-running on multiple servers. Make sure it is always greater than the total iperf check
+This setting allows you to set a cache lock expiration time for the iperf3 check when
+running on multiple servers. Make sure it is always greater than the total iperf3 check
 time, i.e. greater than the TCP + UDP test time. By default, it is set to **600 seconds (10 mins)**.
 
 ``OPENWISP_MONITORING_AUTO_CHARTS``

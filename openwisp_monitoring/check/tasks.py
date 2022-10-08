@@ -118,16 +118,16 @@ def auto_create_config_check(
 
 
 @shared_task
-def auto_create_iperf_check(
+def auto_create_iperf3_check(
     model, app_label, object_id, check_model=None, content_type_model=None
 ):
     """
-    Called by openwisp_monitoring.check.models.auto_iperf_check_receiver
+    Called by openwisp_monitoring.check.models.auto_iperf3_check_receiver
     """
     Check = check_model or get_check_model()
-    iperf_check_path = 'openwisp_monitoring.check.classes.Iperf'
+    iperf3_check_path = 'openwisp_monitoring.check.classes.Iperf3'
     has_check = Check.objects.filter(
-        object_id=object_id, content_type__model='device', check_type=iperf_check_path
+        object_id=object_id, content_type__model='device', check_type=iperf3_check_path
     ).exists()
     # create new check only if necessary
     if has_check:
@@ -135,8 +135,8 @@ def auto_create_iperf_check(
     content_type_model = content_type_model or ContentType
     ct = content_type_model.objects.get(app_label=app_label, model=model)
     check = Check(
-        name='Iperf',
-        check_type=iperf_check_path,
+        name='Iperf3',
+        check_type=iperf3_check_path,
         content_type=ct,
         object_id=object_id,
     )

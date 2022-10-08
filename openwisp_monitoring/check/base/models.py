@@ -11,7 +11,7 @@ from jsonfield import JSONField
 from openwisp_monitoring.check import settings as app_settings
 from openwisp_monitoring.check.tasks import (
     auto_create_config_check,
-    auto_create_iperf_check,
+    auto_create_iperf3_check,
     auto_create_ping,
 )
 from openwisp_utils.base import TimeStampedEditableModel
@@ -142,9 +142,9 @@ def auto_config_check_receiver(sender, instance, created, **kwargs):
     )
 
 
-def auto_iperf_check_receiver(sender, instance, created, **kwargs):
+def auto_iperf3_check_receiver(sender, instance, created, **kwargs):
     """
-    Implements OPENWISP_MONITORING_AUTO_IPERF
+    Implements OPENWISP_MONITORING_AUTO_IPERF3
     The creation step is executed in the background
     """
     # we need to skip this otherwise this task will be executed
@@ -152,7 +152,7 @@ def auto_iperf_check_receiver(sender, instance, created, **kwargs):
     if not created:
         return
     transaction_on_commit(
-        lambda: auto_create_iperf_check.delay(
+        lambda: auto_create_iperf3_check.delay(
             model=sender.__name__.lower(),
             app_label=sender._meta.app_label,
             object_id=str(instance.pk),

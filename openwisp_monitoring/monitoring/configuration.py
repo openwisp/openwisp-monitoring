@@ -545,11 +545,11 @@ DEFAULT_METRICS = {
             }
         },
     },
-    'iperf': {
-        'label': _('Iperf'),
-        'name': 'Iperf',
-        'key': 'iperf',
-        'field_name': 'iperf_result',
+    'iperf3': {
+        'label': _('Iperf3'),
+        'name': 'Iperf3',
+        'key': 'iperf3',
+        'field_name': 'iperf3_result',
         'related_fields': [
             'sent_bps_tcp',
             'received_bps_tcp',

@@ -21,7 +21,7 @@ Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 DeviceConnection = load_model('connection', 'DeviceConnection')
 
-DEFAULT_IPERF_CHECK_CONFIG = {
+DEFAULT_IPERF3_CHECK_CONFIG = {
     'host': {
         'type': 'array',
         'items': {
@@ -29,7 +29,7 @@ DEFAULT_IPERF_CHECK_CONFIG = {
         },
         'default': [],
     },
-    # username, password max_length chosen from iperf3 docs to avoid iperf param errors
+    # username, password max_length chosen from iperf3 docs to avoid iperf3 param errors
     'username': {'type': 'string', 'default': '', 'minLength': 1, 'maxLength': 20},
     'password': {'type': 'string', 'default': '', 'minLength': 1, 'maxLength': 20},
     'rsa_public_key': {
@@ -149,7 +149,7 @@ DEFAULT_IPERF_CHECK_CONFIG = {
 }
 
 
-def get_iperf_schema():
+def get_iperf3_schema():
     schema = {
         '$schema': 'http://json-schema.org/draft-07/schema#',
         'type': 'object',
@@ -160,13 +160,13 @@ def get_iperf_schema():
             'rsa_public_key': ['username', 'password'],
         },
     }
-    schema['properties'] = DEFAULT_IPERF_CHECK_CONFIG
+    schema['properties'] = DEFAULT_IPERF3_CHECK_CONFIG
     return schema
 
 
-class Iperf(BaseCheck):
+class Iperf3(BaseCheck):
 
-    schema = get_iperf_schema()
+    schema = get_iperf3_schema()
 
     def validate_params(self, params=None):
         try:
@@ -181,23 +181,23 @@ class Iperf(BaseCheck):
             message = '{0}: {1}'.format(message, e.message)
             raise ValidationError({'params': message}) from e
 
-    def _validate_iperf_config(self, org):
-        # if iperf config is present and validate it's params
-        if app_settings.IPERF_CHECK_CONFIG:
+    def _validate_iperf3_config(self, org):
+        # if iperf3 config is present and validate it's params
+        if app_settings.IPERF3_CHECK_CONFIG:
             self.validate_params(
-                params=app_settings.IPERF_CHECK_CONFIG.get(str(org.id))
+                params=app_settings.IPERF3_CHECK_CONFIG.get(str(org.id))
             )
 
     def check(self, store=True):
         lock_acquired = False
         org = self.related_object.organization
-        self._validate_iperf_config(org)
-        available_iperf_servers = self._get_param('host', 'host.default')
-        if not available_iperf_servers:
+        self._validate_iperf3_config(org)
+        available_iperf3_servers = self._get_param('host', 'host.default')
+        if not available_iperf3_servers:
             logger.warning(
                 (
-                    f'Iperf servers for organization "{org}" '
-                    f'is not configured properly, iperf check skipped!'
+                    f'Iperf3 servers for organization "{org}" '
+                    f'is not configured properly, iperf3 check skipped!'
                 )
             )
             return
@@ -205,46 +205,46 @@ class Iperf(BaseCheck):
             'client_options.time', 'client_options.properties.time.default'
         )
         # Try to acquire a lock, or put task back on queue
-        for server in available_iperf_servers:
-            server_lock_key = f'ow_monitoring_{org}_iperf_check_{server}'
-            # Set available_iperf_server to the org device
+        for server in available_iperf3_servers:
+            server_lock_key = f'ow_monitoring_{org}_iperf3_check_{server}'
+            # Set available_iperf3_server to the org device
             lock_acquired = cache.add(
                 server_lock_key,
                 str(self.related_object),
-                timeout=app_settings.IPERF_CHECK_LOCK_EXPIRE,
+                timeout=app_settings.IPERF3_CHECK_LOCK_EXPIRE,
             )
             if lock_acquired:
                 break
         else:
             logger.info(
                 (
-                    f'At the moment, all available iperf servers of organization "{org}" '
+                    f'At the moment, all available iperf3 servers of organization "{org}" '
                     f'are busy running checks, putting "{self.check_instance}" back in the queue..'
                 )
             )
-            # Return the iperf_check task to the queue,
-            # it will executed after 2 * iperf_check_time (TCP+UDP)
+            # Return the iperf3_check task to the queue,
+            # it will executed after 2 * iperf3_check_time (TCP+UDP)
             self.check_instance.perform_check_delayed(duration=2 * time)
             return
         try:
-            # Execute the iperf check with current available server
-            result = self._run_iperf_check(store, server, time)
+            # Execute the iperf3 check with current available server
+            result = self._run_iperf3_check(store, server, time)
         finally:
             # Release the lock after completion of the check
             cache.delete(server_lock_key)
             return result
 
-    def _run_iperf_check(self, store, server, time):
+    def _run_iperf3_check(self, store, server, time):
         device_connection = self._get_device_connection()
         if not device_connection:
             logger.warning(
-                f'Failed to get a working DeviceConnection for "{self.related_object}", iperf check skipped!'
+                f'Failed to get a working DeviceConnection for "{self.related_object}", iperf3 check skipped!'
             )
             return
         # The DeviceConnection could fail if the management tunnel is down.
         if not device_connection.connect():
             logger.warning(
-                f'DeviceConnection for "{self.related_object}" is not working, iperf check skipped!'
+                f'DeviceConnection for "{self.related_object}" is not working, iperf3 check skipped!'
             )
             return
         command_tcp, command_udp = self._get_check_commands(server)
@@ -260,24 +260,24 @@ class Iperf(BaseCheck):
             )
             return
 
-        result_tcp = self._get_iperf_result(result, exit_code, mode='TCP')
+        result_tcp = self._get_iperf3_result(result, exit_code, mode='TCP')
         # UDP mode
         result, exit_code = device_connection.connector_instance.exec_command(
             command_udp, raise_unexpected_exit=False
         )
-        result_udp = self._get_iperf_result(result, exit_code, mode='UDP')
+        result_udp = self._get_iperf3_result(result, exit_code, mode='UDP')
         result = {}
         if store and result_tcp and result_udp:
-            # Store iperf_result field 1 if any mode passes, store 0 when both fails
-            iperf_result = result_tcp['iperf_result'] | result_udp['iperf_result']
-            result.update({**result_tcp, **result_udp, 'iperf_result': iperf_result})
+            # Store iperf3_result field 1 if any mode passes, store 0 when both fails
+            iperf3_result = result_tcp['iperf3_result'] | result_udp['iperf3_result']
+            result.update({**result_tcp, **result_udp, 'iperf3_result': iperf3_result})
             self.store_result(result)
         device_connection.disconnect()
         return result
 
     def _get_check_commands(self, server):
         """
-        Returns tcp & udp commands for iperf check
+        Returns tcp & udp commands for iperf3 check
         """
         username = self._get_param('username', 'username.default')
         port = self._get_param(
@@ -310,8 +310,8 @@ class Iperf(BaseCheck):
             'client_options.properties.udp.properties.length.default',
         )
 
-        rev_or_bidir, test_end_condition = self._get_iperf_test_conditions()
-        logger.info(f'«« Iperf server : {server}, Device : {self.related_object} »»')
+        rev_or_bidir, test_end_condition = self._get_iperf3_test_conditions()
+        logger.info(f'«« Iperf3 server : {server}, Device : {self.related_object} »»')
         command_tcp = (
             f'iperf3 -c {server} -p {port} {test_end_condition} --connect-timeout {ct} '
             f'-b {tcp_bitrate} -l {tcp_length} -w {window} -P {parallel} {rev_or_bidir} -J'
@@ -327,7 +327,7 @@ class Iperf(BaseCheck):
             password = self._get_param('password', 'password.default')
             key = self._get_param('rsa_public_key', 'rsa_public_key.default')
             rsa_public_key = self._get_compelete_rsa_key(key)
-            rsa_public_key_path = '/tmp/iperf-public-key.pem'
+            rsa_public_key_path = '/tmp/iperf3-public-key.pem'
 
             command_tcp = (
                 f'echo "{rsa_public_key}" > {rsa_public_key_path} && '
@@ -342,14 +342,14 @@ class Iperf(BaseCheck):
                 f'-b {udp_bitrate} -l {udp_length} -w {window} -P {parallel} {rev_or_bidir} -u -J'
             )
 
-            # If IPERF_CHECK_DELETE_RSA_KEY, remove rsa_public_key from the device
-            if app_settings.IPERF_CHECK_DELETE_RSA_KEY:
+            # If IPERF3_CHECK_DELETE_RSA_KEY, remove rsa_public_key from the device
+            if app_settings.IPERF3_CHECK_DELETE_RSA_KEY:
                 command_udp = f'{command_udp} && rm -f {rsa_public_key_path}'
         return command_tcp, command_udp
 
-    def _get_iperf_test_conditions(self):
+    def _get_iperf3_test_conditions(self):
         """
-        Returns iperf check test conditions (rev_or_bidir, end_condition)
+        Returns iperf3 check test conditions (rev_or_bidir, end_condition)
         """
         time = self._get_param(
             'client_options.time', 'client_options.properties.time.default'
@@ -368,7 +368,7 @@ class Iperf(BaseCheck):
             'client_options.properties.bidirectional.default',
         )
         # by default we use 'time' param
-        # for the iperf test end condition
+        # for the iperf3 test end condition
         test_end_condition = f'-t {time}'
         # if 'bytes' present in config
         # use it instead of 'time'
@@ -425,41 +425,41 @@ class Iperf(BaseCheck):
         Returns specified param or its default value according to the schema
         """
         org_id = str(self.related_object.organization.id)
-        iperf_config = app_settings.IPERF_CHECK_CONFIG
+        iperf3_config = app_settings.IPERF3_CHECK_CONFIG
 
         if self.params:
             check_params = self._deep_get(self.params, conf_key)
             if check_params:
                 return check_params
 
-        if iperf_config:
-            iperf_config = iperf_config.get(org_id)
-            iperf_config_param = self._deep_get(iperf_config, conf_key)
-            if iperf_config_param:
-                return iperf_config_param
+        if iperf3_config:
+            iperf3_config = iperf3_config.get(org_id)
+            iperf3_config_param = self._deep_get(iperf3_config, conf_key)
+            if iperf3_config_param:
+                return iperf3_config_param
 
-        return self._deep_get(DEFAULT_IPERF_CHECK_CONFIG, default_conf_key)
+        return self._deep_get(DEFAULT_IPERF3_CHECK_CONFIG, default_conf_key)
 
-    def _get_iperf_result(self, result, exit_code, mode):
+    def _get_iperf3_result(self, result, exit_code, mode):
         """
-        Returns iperf test result
+        Returns iperf3 test result
         """
         try:
             result = loads(result)
         except JSONDecodeError:
             # Errors other than iperf3 test errors
             logger.warning(
-                f'Iperf check failed for "{self.related_object}", error - {result.strip()}'
+                f'Iperf3 check failed for "{self.related_object}", error - {result.strip()}'
             )
             return
 
         if mode == 'TCP':
             if exit_code != 0:
                 logger.warning(
-                    f'Iperf check failed for "{self.related_object}", {result["error"]}'
+                    f'Iperf3 check failed for "{self.related_object}", {result["error"]}'
                 )
                 return {
-                    'iperf_result': 0,
+                    'iperf3_result': 0,
                     'sent_bps_tcp': 0.0,
                     'received_bps_tcp': 0.0,
                     'sent_bytes_tcp': 0,
@@ -470,7 +470,7 @@ class Iperf(BaseCheck):
                 sent = result['end']['sum_sent']
                 received = result['end']['sum_received']
                 return {
-                    'iperf_result': 1,
+                    'iperf3_result': 1,
                     'sent_bps_tcp': float(sent['bits_per_second']),
                     'received_bps_tcp': float(received['bits_per_second']),
                     'sent_bytes_tcp': sent['bytes'],
@@ -481,10 +481,10 @@ class Iperf(BaseCheck):
         elif mode == 'UDP':
             if exit_code != 0:
                 logger.warning(
-                    f'Iperf check failed for "{self.related_object}", {result["error"]}'
+                    f'Iperf3 check failed for "{self.related_object}", {result["error"]}'
                 )
                 return {
-                    'iperf_result': 0,
+                    'iperf3_result': 0,
                     'sent_bps_udp': 0.0,
                     'sent_bytes_udp': 0,
                     'jitter': 0.0,
@@ -494,7 +494,7 @@ class Iperf(BaseCheck):
                 }
             else:
                 return {
-                    'iperf_result': 1,
+                    'iperf3_result': 1,
                     'sent_bps_udp': float(result['end']['sum']['bits_per_second']),
                     'sent_bytes_udp': result['end']['sum']['bytes'],
                     'jitter': float(result['end']['sum']['jitter_ms']),
@@ -509,8 +509,8 @@ class Iperf(BaseCheck):
         """
         metric = self._get_metric()
         copied = result.copy()
-        iperf_result = copied.pop('iperf_result')
-        metric.write(iperf_result, extra_values=copied)
+        iperf3_result = copied.pop('iperf3_result')
+        metric.write(iperf3_result, extra_values=copied)
 
     def _get_metric(self):
         """
@@ -524,7 +524,7 @@ class Iperf(BaseCheck):
 
     def _create_alert_settings(self, metric):
         """
-        Creates default iperf alert settings with is_active=False
+        Creates default iperf3 alert settings with is_active=False
         """
         alert_settings = AlertSettings(metric=metric, is_active=False)
         alert_settings.full_clean()
@@ -532,7 +532,7 @@ class Iperf(BaseCheck):
 
     def _create_charts(self, metric):
         """
-        Creates iperf related charts
+        Creates iperf3 related charts
         """
         charts = [
             'bandwidth',

@@ -171,7 +171,7 @@ else:
     CELERY_BROKER_URL = 'memory://'
 
 # Celery TIME_ZONE should be equal to django TIME_ZONE
-# In order to schedule run_iperf_checks on the correct time intervals
+# In order to schedule run_iperf3_checks on the correct time intervals
 CELERY_TIMEZONE = TIME_ZONE
 
 CELERY_BEAT_SCHEDULE = {
@@ -187,12 +187,12 @@ CELERY_BEAT_SCHEDULE = {
         ),
         'relative': True,
     },
-    'run_iperf_checks': {
+    'run_iperf3_checks': {
         'task': 'openwisp_monitoring.check.tasks.run_checks',
         # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
-        # Executes only iperf check every 5 mins from 00:00 AM to 6:00 AM (night)
+        # Executes only iperf3 check every 5 mins from 00:00 AM to 6:00 AM (night)
         'schedule': crontab(minute='*/5', hour='0-6'),
-        'args': (['openwisp_monitoring.check.classes.Iperf'],),
+        'args': (['openwisp_monitoring.check.classes.Iperf3'],),
         'relative': True,
     },
 }
@@ -216,8 +216,8 @@ if TESTING:
     OPENWISP_MONITORING_MAC_VENDOR_DETECTION = False
     OPENWISP_MONITORING_API_URLCONF = 'openwisp_monitoring.urls'
     OPENWISP_MONITORING_API_BASEURL = 'http://testserver'
-    # for testing AUTO_IPERF
-    OPENWISP_MONITORING_AUTO_IPERF = True
+    # for testing AUTO_IPERF3
+    OPENWISP_MONITORING_AUTO_IPERF3 = True
 
 # Temporarily added to identify slow tests
 TEST_RUNNER = 'openwisp_utils.tests.TimeLoggingTestRunner'
