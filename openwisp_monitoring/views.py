@@ -45,15 +45,15 @@ class MonitoringApiViewMixin:
         # custom grouping between 1 to 2 days
         if days > 0 and days < 3:
             group = '10m'
-        # custom grouping between 3 to 6 days
+        # custom grouping between 3 to 6 days (base 5)
         elif days >= 3 and days < 7:
-            group = str(round((days // 3) * 20)) + 'm'
+            group = str(5 * round(((days / 3) * 20) / 5)) + 'm'
         # custom grouping between 8 to 27 days
         elif days > 7 and days < 28:
-            group = str(round(days // 7)) + 'h'
+            group = str(round(days / 7)) + 'h'
         # custom grouping between 28 to 364 days
         elif days >= 28 and days < 365:
-            group = str(round(days // 28)) + 'd'
+            group = str(round(days / 28)) + 'd'
         Chart.GROUP_MAP.update({time: group})
 
     def get(self, request, *args, **kwargs):
