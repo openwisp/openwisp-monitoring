@@ -35,6 +35,8 @@ openwisp-monitoring
 
 ------------
 
+**Need a quick overview?** `Try the OpenWISP Demo <https://openwisp.org/demo.html>`_.
+
 OpenWISP Monitoring is a network monitoring system written in Python and Django,
 designed to be **extensible**, **programmable**, **scalable** and easy to use by end users:
 once the system is configured, monitoring checks, alerts and metric collection
