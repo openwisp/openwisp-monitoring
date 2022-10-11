@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -991,6 +992,91 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             current=False,
         )
         self.assertEqual(signal_calls[0][1], expected_arguments)
+
+    def test_device_custom_date_metrics(self):
+        dd = self.create_test_data()
+        chart_group = Chart.GROUP_MAP.items()
+        d = self.device_model.objects.get(pk=dd.pk)
+
+        def _assert_chart_group(url, status_code, expected):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, status_code)
+            self.assertIn(expected, chart_group)
+
+        with self.subTest('Test custom grouping between 1 to 2 days'):
+            custom_date_query = (
+                '&time=2d&start=2022-10-02%2000:00:00&end=2022-10-04%2023:59:59'
+            )
+            url = f'{self._url(d.pk, d.key)}{custom_date_query}'
+            _assert_chart_group(url, 200, ('2d', '10m'))
+
+        with self.subTest('Test custom grouping between 3 to 6 days'):
+            custom_date_query = (
+                '&time=4d&start=2022-10-02%2000:00:00&end=2022-10-06%2023:59:59'
+            )
+            url = f'{self._url(d.pk, d.key)}{custom_date_query}'
+            _assert_chart_group(url, 200, ('4d', '25m'))
+
+        with self.subTest('Test custom grouping between 8 to 27 days'):
+            custom_date_query = (
+                '&time=12d&start=2022-09-29%2000:00:00&end=2022-10-11%2015:50:56'
+            )
+            url = f'{self._url(d.pk, d.key)}{custom_date_query}'
+            _assert_chart_group(url, 200, ('12d', '2h'))
+
+        with self.subTest('Test custom grouping between 28 to 364 days'):
+            custom_date_query = (
+                '&time=99d&start=2022-07-04%2000:00:00&end=2022-10-11%2015:50:56'
+            )
+            url = f'{self._url(d.pk, d.key)}{custom_date_query}'
+            _assert_chart_group(url, 200, ('99d', '4d'))
+
+        with self.subTest('Test custom grouping between 28 to 364 days'):
+            custom_date_query = (
+                '&time=99d&start=2011-07-04%2000:00:00&end=2011-10-11%2015:50:56'
+            )
+            url = f'{self._url(d.pk, d.key)}{custom_date_query}'
+            _assert_chart_group(url, 200, ('99d', '4d'))
+
+        with self.subTest('Test invalid custom dates'):
+            invalid_custom_dates = (
+                '&time=99d&start=2022-07-04&end=2022-10-11',
+                '&time=15d&start=September&end=October',
+                '&time=23d&start=2022-07-04&end=10-11-2022%2015:50:56',
+                '&time=33d&start=09-08-2022%2000:00:00&end=10-11-2022%2016:39:29',
+            )
+            for invalid_date in invalid_custom_dates:
+                url = f'{self._url(d.pk, d.key)}{invalid_date}'
+                r = self.client.get(url)
+                self.assertEqual(r.status_code, 400)
+                self.assertIn(
+                    'Incorrect custom date format, should be YYYY-MM-DD H:M:S', r.data
+                )
+
+        with self.subTest('Test device metrics csv export with custom dates'):
+            now = datetime.now()
+            end_date = now.strftime("%Y-%m-%d")
+            start_date = (now - timedelta(days=2)).strftime("%Y-%m-%d")
+            self._create_multiple_measurements(create=False, count=2)
+            m = self._create_object_metric(
+                content_object=d, name='applications', configuration='get_top_fields'
+            )
+            self._create_chart(metric=m, configuration='histogram')
+            m.write(None, extra_values={'http2': 90, 'ssh': 100, 'udp': 80, 'spdy': 70})
+            custom_date_query = (
+                f'&time=2d&start={start_date}%2000:00:00&end={end_date}%2023:59:59'
+            )
+            url = f'{self._url(d.pk, d.key)}{custom_date_query}&csv=1'
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(
+                response.get('Content-Disposition'), 'attachment; filename=data.csv'
+            )
+            self.assertEqual(response.get('Content-Type'), 'text/csv')
+            rows = response.content.decode('utf8').strip().split('\n')
+            self.assertEqual(rows[-3].strip(), 'Histogram')
+            self.assertEqual(rows[-2].strip().split(','), ['ssh', '100.0'])
+            self.assertEqual(rows[-1].strip().split(','), ['http2', '90.0'])
 
 
 class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):

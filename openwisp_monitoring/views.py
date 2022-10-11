@@ -1,6 +1,7 @@
 import csv
 import logging
 from collections import OrderedDict
+from datetime import datetime
 from io import StringIO
 
 from django.conf import settings
@@ -41,6 +42,7 @@ class MonitoringApiViewMixin:
         # with default time group then pop that time
         if len(Chart.GROUP_MAP.items()) > 5:
             Chart.GROUP_MAP.popitem()
+        group = '10m'
         days = int(time.split('d')[0])
         # custom grouping between 1 to 2 days
         if days > 0 and days < 3:
@@ -56,12 +58,23 @@ class MonitoringApiViewMixin:
             group = str(round(days / 28)) + 'd'
         Chart.GROUP_MAP.update({time: group})
 
+    def _validate_custom_date(self, start, end):
+        try:
+            datetime.strptime(start, '%Y-%m-%d %H:%M:%S')
+            datetime.strptime(end, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            raise ValidationError(
+                'Incorrect custom date format, should be YYYY-MM-DD H:M:S'
+            )
+
     def get(self, request, *args, **kwargs):
         time = request.query_params.get('time', Chart.DEFAULT_TIME)
         start_date = request.query_params.get('start', None)
         end_date = request.query_params.get('end', None)
-        # if custom dates are provided, then update chart.GROUP_MAP
+        # if custom dates are provided
+        # then validate it & update chart.GROUP_MAP
         if start_date and end_date:
+            self._validate_custom_date(start_date, end_date)
             self._add_custom_date_group_map(time)
         if time not in Chart.GROUP_MAP.keys():
             raise ValidationError('Time range not supported')

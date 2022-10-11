@@ -225,6 +225,10 @@ class DatabaseClient(object):
             lookup.append(f"{field} = '{item}'")
         return 'AND ({lookup})'.format(lookup=' OR '.join(lookup))
 
+    def _get_custom_date_query(self, query, end_date):
+        where = query.index('WHERE') + 6
+        return f"{query[:where]} time <= '{end_date}' AND {query[where:]}"
+
     def get_query(
         self,
         chart_type,
@@ -240,8 +244,12 @@ class DatabaseClient(object):
         params = self._clean_params(params)
         query = query.format(**params)
         query = self._group_by(query, time, chart_type, group_map, strip=summary)
+        end_date = params.get('end_date')
+        start_date = params.get('start_date')
         if summary:
             query = f'{query} LIMIT 1'
+        if start_date and end_date:
+            query = self._get_custom_date_query(query, end_date)
         return f"{query} tz('{timezone}')"
 
     _group_by_regex = re.compile(r'GROUP BY time\(\w+\)', flags=re.IGNORECASE)
