@@ -13,6 +13,11 @@ const tiles = leafletConfig.TILES.map((tile) => {
         return html;
     };
 
+    let tileLayer = tile[1];
+    if (tileLayer.includes('https:')) {
+        tileLayer = tileLayer.split('https:')[1];
+    }
+
     let options = {};
     if (typeof tile[2] === 'object') {
         options = tile[2];
@@ -23,7 +28,7 @@ const tiles = leafletConfig.TILES.map((tile) => {
 
     return {
         label: tile[0],
-        urlTemplate: `https:${tile[1]}`,
+        urlTemplate: `https:${tileLayer}`,
         options,
     };
 });
