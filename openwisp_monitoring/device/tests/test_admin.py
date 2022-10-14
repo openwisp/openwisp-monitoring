@@ -645,7 +645,7 @@ class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
             'monitoring/js/device-map.js',
             'leaflet/leaflet.js',
             'leaflet/leaflet.extras.js',
-            'monitoring/js/leaflet.fullscreen.min.js',
+            'monitoring/js/lib/leaflet.fullscreen.min.js',
         ]
         for static_file in static_files:
             self.assertContains(response, static_file)

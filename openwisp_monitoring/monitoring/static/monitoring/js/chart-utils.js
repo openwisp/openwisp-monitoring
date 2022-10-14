@@ -11,11 +11,11 @@ django.jQuery(function ($) {
     var pickerStart, pickerEnd, pickerDays, pickerChosenLabel, start = moment(), end = moment();
       function initDateRangePickerWidget(start, end) {
         $('#daterangepicker-widget span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
-        $("[data-range-key='1 day']").attr('data-time', '1d');
-        $("[data-range-key='3 days']").attr('data-time', '3d');
-        $("[data-range-key='1 week']").attr('data-time', '7d');
-        $("[data-range-key='1 month']").attr('data-time', '30d');
-        $("[data-range-key='1 year']").attr('data-time', '365d');
+        $("[data-range-key='Last 1 Day']").attr('data-time', '1d');
+        $("[data-range-key='Last 3 Days']").attr('data-time', '3d');
+        $("[data-range-key='Last Week']").attr('data-time', '7d');
+        $("[data-range-key='Last Month']").attr('data-time', '30d');
+        $("[data-range-key='Last Year']").attr('data-time', '365d');
         $("[data-range-key='Custom Range']").attr('data-time', 'Custom Range');
       }
 
@@ -27,11 +27,11 @@ django.jQuery(function ($) {
           "year": 1,
         },
         ranges: {
-          '1 day': [moment().subtract(1, 'days'), moment()],
-          '3 days': [moment().subtract(3, 'days'), moment()],
-          '1 week': [moment().subtract(7, 'days'), moment()],
-          '1 month': [moment().subtract(30, 'days'), moment()],
-          '1 year': [moment().subtract(365, 'days'), moment()],
+          'Last 1 Day': [moment().subtract(1, 'days'), moment()],
+          'Last 3 Days': [moment().subtract(3, 'days'), moment()],
+          'Last Week': [moment().subtract(7, 'days'), moment()],
+          'Last Month': [moment().subtract(30, 'days'), moment()],
+          'Last Year': [moment().subtract(365, 'days'), moment()],
         }
       }, initDateRangePickerWidget);
       initDateRangePickerWidget(start, end);
@@ -133,43 +133,42 @@ django.jQuery(function ($) {
 
     // daterangepicker widget logic here
     $("#daterangepicker-widget").on('apply.daterangepicker', function (ev, picker) {
-    pickerChosenLabel = picker.chosenLabel;
-    pickerStart = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
-    pickerEnd = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
-    pickerDays = pickerEnd.diff(pickerStart, 'days') + 'd';
+      pickerChosenLabel = picker.chosenLabel;
+      pickerStart = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
+      pickerEnd = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
+      pickerDays = pickerEnd.diff(pickerStart, 'days') + 'd';
 
-    // set date values required for daterangepicker labels
-    localStorage.setItem(startDateTimeKey, picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
-    localStorage.setItem(endDateTimeKey, picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
-    localStorage.setItem(startDayKey, pickerStart.format('MMMM D, YYYY'));
-    localStorage.setItem(endDayKey, pickerEnd.format('MMMM D, YYYY'));
+      // set date values required for daterangepicker labels
+      localStorage.setItem(startDateTimeKey, picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
+      localStorage.setItem(endDateTimeKey, picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
+      localStorage.setItem(startDayKey, pickerStart.format('MMMM D, YYYY'));
+      localStorage.setItem(endDayKey, pickerEnd.format('MMMM D, YYYY'));
 
-    // daterangepicker with custom time ranges
-    if (pickerChosenLabel === "Custom Range") {
-      localStorage.setItem(isCustomDateRange, true);
-      localStorage.setItem(timeRangeKey, pickerDays);
-      loadCharts(pickerDays, true);
-      // refresh every 2.5 minutes
-      clearInterval(window.owChartRefresh);
-      window.owChartRefresh = setInterval(loadCharts,
-        1000 * 60 * 2.5,
-        pickerDays,
-        false
-      );}
+      // daterangepicker with custom time ranges
+      if (pickerChosenLabel === "Custom Range") {
+        localStorage.setItem(isCustomDateRange, true);
+        localStorage.setItem(timeRangeKey, pickerDays);
+        loadCharts(pickerDays, true);
+        // refresh every 2.5 minutes
+        clearInterval(window.owChartRefresh);
+        window.owChartRefresh = setInterval(loadCharts,
+          1000 * 60 * 2.5,
+          pickerDays,
+          false
+        );}
 
-    // daterangepicker with default time ranges
-    else {
-      localStorage.setItem(isCustomDateRange, false);
-      localStorage.setItem(timeRangeKey, pickerDays);
-      loadCharts(pickerDays, true);
-      // refresh every 2.5 minutes
-      clearInterval(window.owChartRefresh);
-      window.owChartRefresh = setInterval(loadCharts,
-        1000 * 60 * 2.5,
-        pickerDays,
-        false
-      );}
-
+      // daterangepicker with default time ranges
+      else {
+        localStorage.setItem(isCustomDateRange, false);
+        localStorage.setItem(timeRangeKey, pickerDays);
+        loadCharts(pickerDays, true);
+        // refresh every 2.5 minutes
+        clearInterval(window.owChartRefresh);
+        window.owChartRefresh = setInterval(loadCharts,
+          1000 * 60 * 2.5,
+          pickerDays,
+          false
+        );}
     });
     // bind export button
     $('#ow-chart-time a.export').click(function () {
@@ -180,7 +179,7 @@ django.jQuery(function ($) {
       var startDate = localStorage.getItem(startDateTimeKey);
       var endDate = localStorage.getItem(endDateTimeKey);
       location.href = `${baseUrl}${time}&start=${startDate}&end=${endDate}&csv=1`;
-    }
-});
+      }
+    });
   });
 }(django.jQuery));
