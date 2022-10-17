@@ -4,4 +4,4 @@ django-cache-memoize~=0.1.0
 django-nested-admin~=3.4.0
 netaddr~=0.8
 python-dateutil>=2.7,<3.0
-openwisp-utils[rest] @ https://github.com/openwisp/openwisp-utils/tarball/5a8f1dea187586d85c77b46e6e3fd725f557e3c6
+openwisp-utils[rest] @ https://github.com/openwisp/openwisp-utils/tarball/master
