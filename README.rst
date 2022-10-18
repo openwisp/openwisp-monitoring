@@ -1297,7 +1297,7 @@ in the settings:
        'a9734710-db30-46b0-a2fc-01f01046fe4f': {
            'host': ['iperf1.openwisp.io', 'iperf2.openwisp.io', '192.168.5.2'],
            # All three parameters (username, password, rsa_publc_key)
-           # are required for iperf authentication
+           # are required for iperf3 authentication
            'username': 'iperfuser',
            'password': 'iperfpass',
            # Add RSA public key without any headers

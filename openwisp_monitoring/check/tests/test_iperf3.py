@@ -345,7 +345,7 @@ class TestIperf3(
                 f'Failed to get a working DeviceConnection for "{self.device}", iperf3 check skipped!'
             )
 
-    def test_iperf_check_content_object_none(self):
+    def test_iperf3_check_content_object_none(self):
         check = Check(name='Iperf3 check', check_type=self._IPERF3, params={})
         try:
             check.check_instance.validate()
