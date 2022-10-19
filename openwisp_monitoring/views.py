@@ -68,19 +68,13 @@ class MonitoringApiViewMixin:
                 'Incorrect custom date format, should be YYYY-MM-DD H:M:S'
             )
         if start > end:
-            raise ValidationError(
-                f'start_date: {start} cannot be greater than end_date: {end}'
-            )
+            raise ValidationError('start_date cannot be greater than end_date')
         now_tz = datetime.now(tz=timezone(tmz)).strftime('%Y-%m-%d %H:%M:%S')
         now = datetime.strptime(now_tz, '%Y-%m-%d %H:%M:%S')
         if start > now:
-            raise ValidationError(
-                f"start_date: {start} cannot be greater than today's date: {now}"
-            )
+            raise ValidationError("start_date cannot be greater than today's date")
         if end > now:
-            raise ValidationError(
-                f"end_date: {end} cannot be greater than today's date: {now}"
-            )
+            raise ValidationError("end_date cannot be greater than today's date")
 
     def get(self, request, *args, **kwargs):
         time = request.query_params.get('time', Chart.DEFAULT_TIME)

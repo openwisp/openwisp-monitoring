@@ -998,7 +998,6 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         dd = self.create_test_data()
         chart_group = Chart.GROUP_MAP.items()
         d = self.device_model.objects.get(pk=dd.pk)
-        now_format = now.strftime('%Y-%m-%d %H:%M:%S')
 
         def _assert_chart_group(url, status_code, expected):
             response = self.client.get(url)
@@ -1064,7 +1063,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             r = self.client.get(url)
             self.assertEqual(r.status_code, 400)
             self.assertIn(
-                'start_date: 2022-09-23 00:00:00 cannot be greater than end_date: 2022-09-13 23:59:59',
+                'start_date cannot be greater than end_date',
                 r.data,
             )
         with self.subTest(
@@ -1077,7 +1076,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             r = self.client.get(url)
             self.assertEqual(r.status_code, 400)
             self.assertIn(
-                f"start_date: {start_greater} 00:00:00 cannot be greater than today's date: {now_format}",
+                "start_date cannot be greater than today's date",
                 r.data,
             )
         with self.subTest(
@@ -1092,7 +1091,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             r = self.client.get(url)
             self.assertEqual(r.status_code, 400)
             self.assertIn(
-                f"end_date: {end_greater} 23:59:59 cannot be greater than today's date: {now_format}",
+                "end_date cannot be greater than today's date",
                 r.data,
             )
 
