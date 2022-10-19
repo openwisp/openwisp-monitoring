@@ -994,9 +994,11 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(signal_calls[0][1], expected_arguments)
 
     def test_device_custom_date_metrics(self):
+        now = datetime.now()
         dd = self.create_test_data()
         chart_group = Chart.GROUP_MAP.items()
         d = self.device_model.objects.get(pk=dd.pk)
+        now_format = now.strftime('%Y-%m-%d %H:%M:%S')
 
         def _assert_chart_group(url, status_code, expected):
             response = self.client.get(url)
@@ -1052,11 +1054,51 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 self.assertIn(
                     'Incorrect custom date format, should be YYYY-MM-DD H:M:S', r.data
                 )
+        with self.subTest(
+            'Test device metrics when start date is greater than end date'
+        ):
+            start_greater_than_end = (
+                '&time=10d&start=2022-09-23%2000:00:00&end=2022-09-13%2023:59:59'
+            )
+            url = f'{self._url(d.pk, d.key)}{start_greater_than_end}'
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 400)
+            self.assertIn(
+                'start_date: 2022-09-23 00:00:00 cannot be greater than end_date: 2022-09-13 23:59:59',
+                r.data,
+            )
+        with self.subTest(
+            'Test device metrics when start date is greater than today date'
+        ):
+            start_greater = (now + timedelta(days=5)).strftime('%Y-%m-%d')
+            end_greater = (now + timedelta(days=9)).strftime('%Y-%m-%d')
+            start_greater_than_now = f'&time=4d&start={start_greater}%2000:00:00&end={end_greater}%2023:59:59'
+            url = f'{self._url(d.pk, d.key)}{start_greater_than_now}'
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 400)
+            self.assertIn(
+                f"start_date: {start_greater} 00:00:00 cannot be greater than today's date: {now_format}",
+                r.data,
+            )
+        with self.subTest(
+            'Test device metrics when end date is greater than today date'
+        ):
+            start_lesser = (now - timedelta(days=2)).strftime('%Y-%m-%d')
+            end_greater = (now + timedelta(days=5)).strftime('%Y-%m-%d')
+            end_greater_than_now = (
+                f'&time=7d&start={start_lesser}%2000:00:00&end={end_greater}%2023:59:59'
+            )
+            url = f'{self._url(d.pk, d.key)}{end_greater_than_now}'
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 400)
+            self.assertIn(
+                f"end_date: {end_greater} 23:59:59 cannot be greater than today's date: {now_format}",
+                r.data,
+            )
 
         with self.subTest('Test device metrics csv export with custom dates'):
-            now = datetime.now()
-            end_date = now.strftime("%Y-%m-%d")
-            start_date = (now - timedelta(days=2)).strftime("%Y-%m-%d")
+            end_date = now.strftime('%Y-%m-%d')
+            start_date = (now - timedelta(days=2)).strftime('%Y-%m-%d')
             self._create_multiple_measurements(create=False, count=2)
             m = self._create_object_metric(
                 content_object=d, name='applications', configuration='get_top_fields'
@@ -1064,7 +1106,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             self._create_chart(metric=m, configuration='histogram')
             m.write(None, extra_values={'http2': 90, 'ssh': 100, 'udp': 80, 'spdy': 70})
             custom_date_query = (
-                f'&time=2d&start={start_date}%2000:00:00&end={end_date}%2023:59:59'
+                f'&time=2d&start={start_date}%2000:00:00&end={end_date}%2000:00:00'
             )
             url = f'{self._url(d.pk, d.key)}{custom_date_query}&csv=1'
             response = self.client.get(url)
