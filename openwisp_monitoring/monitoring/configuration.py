@@ -207,7 +207,7 @@ DEFAULT_METRICS = {
                     _('Total download traffic'),
                     _('Total upload traffic'),
                 ],
-                'unit': 'adaptive_bytes',
+                'unit': 'adaptive_prefix+B',
                 'order': 240,
                 'query': chart_query['traffic'],
                 'colors': [
@@ -228,6 +228,7 @@ DEFAULT_METRICS = {
             'general_traffic': {
                 'type': 'stackedbar+lines',
                 'calculate_total': True,
+                'fill': 'none',
                 'trace_type': {
                     'download': 'stackedbar',
                     'upload': 'stackedbar',
@@ -244,7 +245,7 @@ DEFAULT_METRICS = {
                     _('Total download traffic'),
                     _('Total upload traffic'),
                 ],
-                'unit': 'adaptive_bytes',
+                'unit': 'adaptive_prefix+B',
                 'order': 240,
                 'query': chart_query['general_traffic'],
                 'query_default_param': {
@@ -544,6 +545,121 @@ DEFAULT_METRICS = {
             }
         },
     },
+    'iperf3': {
+        'label': _('Iperf3'),
+        'name': 'Iperf3',
+        'key': 'iperf3',
+        'field_name': 'iperf3_result',
+        'related_fields': [
+            'sent_bps_tcp',
+            'received_bps_tcp',
+            'sent_bytes_tcp',
+            'received_bytes_tcp',
+            'retransmits',
+            'sent_bytes_udp',
+            'sent_bps_udp',
+            'jitter',
+            'total_packets',
+            'lost_packets',
+            'lost_percent',
+        ],
+        'charts': {
+            'bandwidth': {
+                'type': 'scatter',
+                'connect_points': True,
+                'title': _('Bandwidth'),
+                'fill': 'none',
+                'description': _('Bitrate during Iperf3 test.'),
+                'summary_labels': [
+                    _('TCP bitrate'),
+                    _('UDP bitrate'),
+                ],
+                'unit': 'adaptive_prefix+bps',
+                'order': 280,
+                'query': chart_query['bandwidth'],
+                'colors': [
+                    DEFAULT_COLORS[0],
+                    DEFAULT_COLORS[3],
+                ],
+            },
+            'transfer': {
+                'type': 'scatter',
+                'connect_points': True,
+                'fill': 'none',
+                'title': _('Transferred Data'),
+                'description': _('Transferred Data during Iperf3 test.'),
+                'summary_labels': [
+                    _('TCP transferred data'),
+                    _('UDP transferred data'),
+                ],
+                'unit': 'adaptive_prefix+B',
+                'order': 290,
+                'query': chart_query['transfer'],
+                'colors': [
+                    DEFAULT_COLORS[0],
+                    DEFAULT_COLORS[3],
+                ],
+            },
+            'retransmits': {
+                'type': 'scatter',
+                'connect_points': True,
+                'title': _('Retransmits'),
+                'description': _('Retransmits during Iperf3 test in TCP mode.'),
+                'summary_labels': [_('Restransmits')],
+                'unit': '',
+                'order': 300,
+                'query': chart_query['retransmits'],
+                'colors': [DEFAULT_COLORS[-3]],
+            },
+            'jitter': {
+                'type': 'scatter',
+                'connect_points': True,
+                'title': _('Jitter'),
+                'description': _(
+                    'Jitter is a variance in latency measured using Iperf3 utility in UDP mode.'
+                ),
+                'summary_labels': [
+                    _('Jitter'),
+                ],
+                'unit': _(' ms'),
+                'order': 330,
+                'query': chart_query['jitter'],
+                'colors': [DEFAULT_COLORS[4]],
+            },
+            'datagram': {
+                'type': 'scatter',
+                'fill': 'none',
+                'connect_points': True,
+                'title': _('Datagram'),
+                'description': _(
+                    '(Lost / Total) datagrams measured by Iperf3 test in UDP mode.'
+                ),
+                'summary_labels': [
+                    _('Lost datagram'),
+                    _('Total datagram'),
+                ],
+                'unit': '',
+                'order': 340,
+                'query': chart_query['datagram'],
+                'colors': [DEFAULT_COLORS[3], DEFAULT_COLORS[2]],
+            },
+            'datagram_loss': {
+                'type': 'scatter',
+                'connect_points': True,
+                'title': _('Datagram Loss'),
+                'description': _(
+                    'Indicates datagram loss % during Iperf3 test in UDP mode.'
+                ),
+                'summary_labels': [
+                    _('Datagram loss'),
+                ],
+                'unit': '%',
+                'order': 350,
+                'query': chart_query['datagram_loss'],
+                'colors': [DEFAULT_COLORS[3]],
+            },
+        },
+    },
 }
 
 DEFAULT_CHARTS = {}
@@ -556,6 +672,10 @@ def _validate_metric_configuration(metric_config):
     assert 'name' in metric_config
     assert 'key' in metric_config
     assert 'field_name' in metric_config
+    if 'alert_field' in metric_config:
+        # ensure only valid alert_field is present
+        alert_fields = [metric_config['field_name']] + metric_config['related_fields']
+        assert metric_config['alert_field'] in alert_fields
 
 
 def _validate_chart_configuration(chart_config):

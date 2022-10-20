@@ -102,7 +102,7 @@ class TestDeviceConnectionInlineAdmin(
         ).values_list('id', flat=True)
         self.assertEqual(len(device_alert_setting_ids), 2)
         self.assertEqual(len(device_metric_ids), 2)
-        self.assertEqual(len(device_checks), 2)
+        self.assertEqual(len(device_checks), 3)
         self.assertEqual(len(device_chart_ids), 3)
 
         self.login()

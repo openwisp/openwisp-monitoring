@@ -2,6 +2,8 @@ import os
 import sys
 from datetime import timedelta
 
+from celery.schedules import crontab
+
 TESTING = 'test' in sys.argv
 SHELL = 'shell' in sys.argv or 'shell_plus' in sys.argv
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -168,13 +170,31 @@ else:
     CELERY_TASK_EAGER_PROPAGATES = True
     CELERY_BROKER_URL = 'memory://'
 
+# Celery TIME_ZONE should be equal to django TIME_ZONE
+# In order to schedule run_iperf3_checks on the correct time intervals
+CELERY_TIMEZONE = TIME_ZONE
+
 CELERY_BEAT_SCHEDULE = {
     'run_checks': {
         'task': 'openwisp_monitoring.check.tasks.run_checks',
+        # Executes only ping & config check every 5 min
         'schedule': timedelta(minutes=5),
-        'args': None,
+        'args': (
+            [  # Checks path
+                'openwisp_monitoring.check.classes.Ping',
+                'openwisp_monitoring.check.classes.ConfigApplied',
+            ],
+        ),
         'relative': True,
-    }
+    },
+    'run_iperf3_checks': {
+        'task': 'openwisp_monitoring.check.tasks.run_checks',
+        # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
+        # Executes only iperf3 check every 5 mins from 00:00 AM to 6:00 AM (night)
+        'schedule': crontab(minute='*/5', hour='0-6'),
+        'args': (['openwisp_monitoring.check.classes.Iperf3'],),
+        'relative': True,
+    },
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
@@ -196,6 +216,8 @@ if TESTING:
     OPENWISP_MONITORING_MAC_VENDOR_DETECTION = False
     OPENWISP_MONITORING_API_URLCONF = 'openwisp_monitoring.urls'
     OPENWISP_MONITORING_API_BASEURL = 'http://testserver'
+    # for testing AUTO_IPERF3
+    OPENWISP_MONITORING_AUTO_IPERF3 = True
 
 # Temporarily added to identify slow tests
 TEST_RUNNER = 'openwisp_utils.tests.TimeLoggingTestRunner'

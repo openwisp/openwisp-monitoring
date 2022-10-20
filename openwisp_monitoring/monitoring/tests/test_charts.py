@@ -177,6 +177,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
                 'trace_type': c.trace_type,
                 'trace_order': c.trace_order,
                 'calculate_total': False,
+                'connect_points': c.connect_points,
                 'colors': c.colors,
             }
         )
