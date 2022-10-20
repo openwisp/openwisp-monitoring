@@ -9,8 +9,8 @@ from swapper import load_model
 
 from ...device.tests import TestDeviceMonitoringMixin
 from .. import settings as app_settings
-from ..classes import ConfigApplied, Iperf, Ping
-from ..tasks import auto_create_config_check, auto_create_iperf_check, auto_create_ping
+from ..classes import ConfigApplied, Iperf3, Ping
+from ..tasks import auto_create_config_check, auto_create_iperf3_check, auto_create_ping
 
 Check = load_model('check', 'Check')
 Metric = load_model('monitoring', 'Metric')
@@ -22,7 +22,7 @@ Notification = load_model('openwisp_notifications', 'Notification')
 class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
     _PING = app_settings.CHECK_CLASSES[0][0]
     _CONFIG_APPLIED = app_settings.CHECK_CLASSES[1][0]
-    _IPERF = app_settings.CHECK_CLASSES[2][0]
+    _IPERF3 = app_settings.CHECK_CLASSES[2][0]
 
     def test_check_str(self):
         c = Check(name='Test check')
@@ -49,12 +49,12 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
                 check_type=self._CONFIG_APPLIED,
             )
             self.assertEqual(c.check_class, ConfigApplied)
-        with self.subTest('Test Iperf check Class'):
+        with self.subTest('Test Iperf3 check Class'):
             c = Check(
-                name='Iperf class check',
-                check_type=self._IPERF,
+                name='Iperf3 class check',
+                check_type=self._IPERF3,
             )
-            self.assertEqual(c.check_class, Iperf)
+            self.assertEqual(c.check_class, Iperf3)
 
     def test_base_check_class(self):
         path = 'openwisp_monitoring.check.classes.base.BaseCheck'
@@ -89,15 +89,15 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
             self.assertEqual(i.related_object, obj)
             self.assertEqual(i.params, c.params)
 
-        with self.subTest('Test Iperf check instance'):
+        with self.subTest('Test Iperf3 check instance'):
             c = Check(
-                name='Iperf class check',
-                check_type=self._IPERF,
+                name='Iperf3 class check',
+                check_type=self._IPERF3,
                 content_object=obj,
                 params={},
             )
             i = c.check_instance
-            self.assertIsInstance(i, Iperf)
+            self.assertIsInstance(i, Iperf3)
             self.assertEqual(i.related_object, obj)
             self.assertEqual(i.params, c.params)
 
@@ -133,10 +133,10 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
             c2 = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
             self.assertEqual(c2.content_object, d)
             self.assertEqual(self._CONFIG_APPLIED, c2.check_type)
-        with self.subTest('Test AUTO_IPERF'):
-            c3 = Check.objects.filter(check_type=self._IPERF).first()
+        with self.subTest('Test AUTO_IPERF3'):
+            c3 = Check.objects.filter(check_type=self._IPERF3).first()
             self.assertEqual(c3.content_object, d)
-            self.assertEqual(self._IPERF, c3.check_type)
+            self.assertEqual(self._IPERF3, c3.check_type)
 
     def test_device_deleted(self):
         self.assertEqual(Check.objects.count(), 0)
@@ -246,7 +246,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
             app_label=Device._meta.app_label,
             object_id=str(d.pk),
         )
-        auto_create_iperf_check.delay(
+        auto_create_iperf3_check.delay(
             model=Device.__name__.lower(),
             app_label=Device._meta.app_label,
             object_id=str(d.pk),
