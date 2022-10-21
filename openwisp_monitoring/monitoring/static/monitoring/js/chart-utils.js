@@ -1,5 +1,6 @@
 'use strict';
 const isCustomDateRange = 'ow2-chart-custom-daterange'; // true/false
+const isChartZoomed = 'ow2-chart-custom-zoom'; // true/false
 const timeRangeKey = 'ow2-chart-time-range'; // 30d
 const startDayKey = 'ow2-chart-start-day'; // September 3, 2022
 const endDayKey = 'ow2-chart-end-day'; // October 3, 2022
@@ -35,6 +36,42 @@ django.jQuery(function ($) {
         }
       }, initDateRangePickerWidget);
       initDateRangePickerWidget(start, end);
+
+    function handleChartZoomChange(chartsId) {
+      // Handle chart zooming with custom dates
+      var zoomChart = document.getElementById(chartsId);
+      zoomChart.on('plotly_relayout',
+        function (eventdata) {
+          var pickerEnd = moment(eventdata['xaxis.range[1]']);
+          var pickerStart = moment(eventdata['xaxis.range[0]']);
+          var pickerDays = pickerEnd.diff(pickerStart, 'days') + 'd';
+          if (pickerDays === '0d') {
+            pickerDays = '1d';
+          }
+          // Set custom date range values
+          localStorage.setItem(startDateTimeKey, pickerStart.format('YYYY-MM-DD HH:mm:ss'));
+          localStorage.setItem(endDateTimeKey, pickerEnd.format('YYYY-MM-DD HH:mm:ss'));
+          localStorage.setItem(startDayKey, pickerStart.format('MMMM D, YYYY'));
+          localStorage.setItem(endDayKey, pickerEnd.format('MMMM D, YYYY'));
+          localStorage.setItem(isCustomDateRange, true);
+          localStorage.setItem(timeRangeKey, pickerDays);
+          localStorage.setItem(isChartZoomed, true);
+          // Set custom date range labels & select custom date ranges for the widget
+          $('#daterangepicker-widget span').html(pickerStart.format('MMMM D, YYYY') + ' - ' + pickerEnd.format('MMMM D, YYYY'));
+          $('#daterangepicker-widget').data('daterangepicker').setStartDate(moment(pickerStart.format('MMMM D, YYYY')).format('MM/DD/YYYY'));
+          $('#daterangepicker-widget').data('daterangepicker').setEndDate(moment(pickerEnd.format('MMMM D, YYYY')).format('MM/DD/YYYY'));
+          // Now, load the charts with custom date ranges
+          loadCharts(pickerDays, true);
+          // refresh every 2.5 minutes
+          // clearInterval(window.owChartRefresh);
+          window.owChartRefresh = setInterval(loadCharts,
+            1000 * 60 * 2.5,
+            pickerDays,
+            false
+          );
+        }
+      );
+    }
 
     var chartQuickLinks, chartContents = $('#ow-chart-contents'),
       fallback = $('#ow-chart-fallback'),
@@ -78,10 +115,11 @@ django.jQuery(function ($) {
               if (!chartDiv.length) {
                 chartContents.append(
                   '<div id="' + htmlId + '" class="ow-chart">' +
-                  '<div class="js-plotly-plot"></div></div>'
+                  '<div id="js-plotly-zoom" class="js-plotly-plot"></div></div>'
                 );
               }
               createChart(chart, data.x, htmlId, chart.title, chart.type, chartQuickLink);
+              handleChartZoomChange('js-plotly-zoom');
             });
           },
           error: function () {
