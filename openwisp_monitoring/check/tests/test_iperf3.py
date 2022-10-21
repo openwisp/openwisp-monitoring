@@ -83,14 +83,14 @@ class TestIperf3(
         self._EXPECTED_COMMAND_CALLS = [
             call(
                 (
-                    'iperf3 -c iperf3.openwisptestserver.com -p 5201 -t 10 --connect-timeout 1 '
+                    'iperf3 -c iperf3.openwisptestserver.com -p 5201 -t 10 --connect-timeout 1000 '
                     '-b 0 -l 128K -w 0 -P 1  -J'
                 ),
                 raise_unexpected_exit=False,
             ),
             call(
                 (
-                    'iperf3 -c iperf3.openwisptestserver.com -p 5201 -t 10 --connect-timeout 1 '
+                    'iperf3 -c iperf3.openwisptestserver.com -p 5201 -t 10 --connect-timeout 1000 '
                     '-b 30M -l 0 -w 0 -P 1  -u -J'
                 ),
                 raise_unexpected_exit=False,
@@ -129,7 +129,7 @@ class TestIperf3(
                 (
                     f'echo "{test_prefix}{key}{test_suffix}" > {rsa_key_path} && '
                     f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p 5201 -t 10 '
-                    f'--username "{username}" --rsa-public-key-path {rsa_key_path} --connect-timeout 1 '
+                    f'--username "{username}" --rsa-public-key-path {rsa_key_path} --connect-timeout 1000 '
                     f'-b 0 -l 128K -w 0 -P 1  -J'
                 ),
                 raise_unexpected_exit=False,
@@ -137,7 +137,7 @@ class TestIperf3(
             call(
                 (
                     f'IPERF3_PASSWORD="{password}" iperf3 -c {server} -p 5201 -t 10 '
-                    f'--username "{username}" --rsa-public-key-path {rsa_key_path} --connect-timeout 1 '
+                    f'--username "{username}" --rsa-public-key-path {rsa_key_path} --connect-timeout 1000 '
                     f'-b 30M -l 0 -w 0 -P 1  -u -J '
                     f'&& rm -f {rsa_key_path}'
                 ),
@@ -667,14 +667,14 @@ class TestIperf3(
         self._EXPECTED_COMMAND_CALLS_SERVER_1 = [
             call(
                 (
-                    f'iperf3 -c {self._IPERF3_TEST_MULTIPLE_SERVERS[0]} -p 5201 -t 10 --connect-timeout 1 '
+                    f'iperf3 -c {self._IPERF3_TEST_MULTIPLE_SERVERS[0]} -p 5201 -t 10 --connect-timeout 1000 '
                     '-b 0 -l 128K -w 0 -P 1  -J'
                 ),
                 raise_unexpected_exit=False,
             ),
             call(
                 (
-                    f'iperf3 -c {self._IPERF3_TEST_MULTIPLE_SERVERS[0]} -p 5201 -t 10 --connect-timeout 1 '
+                    f'iperf3 -c {self._IPERF3_TEST_MULTIPLE_SERVERS[0]} -p 5201 -t 10 --connect-timeout 1000 '
                     '-b 30M -l 0 -w 0 -P 1  -u -J'
                 ),
                 raise_unexpected_exit=False,
@@ -683,14 +683,14 @@ class TestIperf3(
         self._EXPECTED_COMMAND_CALLS_SERVER_2 = [
             call(
                 (
-                    f'iperf3 -c {self._IPERF3_TEST_MULTIPLE_SERVERS[1]} -p 5201 -t 10 --connect-timeout 1 '
+                    f'iperf3 -c {self._IPERF3_TEST_MULTIPLE_SERVERS[1]} -p 5201 -t 10 --connect-timeout 1000 '
                     '-b 0 -l 128K -w 0 -P 1  -J'
                 ),
                 raise_unexpected_exit=False,
             ),
             call(
                 (
-                    f'iperf3 -c {self._IPERF3_TEST_MULTIPLE_SERVERS[1]} -p 5201 -t 10 --connect-timeout 1 '
+                    f'iperf3 -c {self._IPERF3_TEST_MULTIPLE_SERVERS[1]} -p 5201 -t 10 --connect-timeout 1000 '
                     '-b 30M -l 0 -w 0 -P 1  -u -J'
                 ),
                 raise_unexpected_exit=False,

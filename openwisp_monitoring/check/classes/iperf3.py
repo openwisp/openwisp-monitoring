@@ -102,10 +102,10 @@ DEFAULT_IPERF3_CHECK_CONFIG = {
             'connect_timeout': {
                 # set timeout for establishing the initial
                 # control connection to the server, in milliseconds (ms)
-                # providing a shorter value (ex. 1 ms) may
+                # providing a shorter value (ex. 1000 ms (1 sec)) may
                 # speed up detection of a down iperf3 server
                 'type': 'integer',
-                'default': 1,
+                'default': 1000,
                 'minimum': 1,
                 # arbitrary chosen to avoid slowing down the queue (1000 sec)
                 'maximum': 1000000,

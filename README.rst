@@ -1185,7 +1185,7 @@ Currently, iperf3 check supports the following parameters:
 |                       | +---------------------+----------+------------------------------------------+ |
 |                       | | ``bidirectional``   | ``bool`` | ``False``                                | |
 |                       | +---------------------+----------+------------------------------------------+ |
-|                       | | ``connect_timeout`` | ``int``  | ``1``                                    | |
+|                       | | ``connect_timeout`` | ``int``  | ``1000``                                 | |
 |                       | +---------------------+----------+------------------------------------------+ |
 |                       | | ``tcp``             | +----------------+----------+---------------------+ | |
 |                       | |                     | | **Parameters** | **Type** | **Default Value**   | | |
@@ -1531,8 +1531,8 @@ For example, you can change the values of `supported iperf3 check parameters <#i
                'parallel': 5,
                # Set the connect_timeout (in milliseconds) for establishing
                # the initial control connection to the server, the lower the value
-               # the faster the down iperf3 server will be detected
-               'connect_timeout': 1,
+               # the faster the down iperf3 server will be detected (ex. 1000 ms (1 sec))
+               'connect_timeout': 1000,
                # Window size / socket buffer size
                'window': '300K',
                # Only one reverse condition can be chosen,
