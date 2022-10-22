@@ -1041,7 +1041,7 @@ to enable alerts for the iperf3 check.
 Iperf3 Check Usage Instructions
 -------------------------------
 
-4. Make sure iperf3 is installed on the device
+1. Make sure iperf3 is installed on the device
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Register your device to OpenWISP and make sure the `iperf3 openwrt package
