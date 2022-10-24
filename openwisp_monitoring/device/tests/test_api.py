@@ -996,11 +996,11 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     def test_device_custom_date_metrics(self):
         now = datetime.now()
         dd = self.create_test_data()
-        chart_group = Chart.GROUP_MAP.items()
         d = self.device_model.objects.get(pk=dd.pk)
 
         def _assert_chart_group(url, status_code, expected):
             response = self.client.get(url)
+            chart_group = Chart._get_group_map(expected[0]).items()
             self.assertEqual(response.status_code, status_code)
             self.assertIn(expected, chart_group)
 

@@ -544,6 +544,33 @@ class AbstractChart(TimeStampedEditableModel):
             q += default_chart_query[1]
         return q
 
+    @classmethod
+    def _get_group_map(cls, time=None):
+        """
+        Returns the chart group map for the specified days,
+        otherwise the default Chart.GROUP_MAP is returned
+        """
+        if not time or not isinstance(time, str) or time[-1] != 'd':
+            return cls.GROUP_MAP
+        group = '10m'
+        days = int(time.split('d')[0])
+        # Use copy of class variable to avoid unpredictable results
+        CUSTOM_GROUP_MAP = cls.GROUP_MAP.copy()
+        # custom grouping between 1 to 2 days
+        if days > 0 and days < 3:
+            group = '10m'
+        # custom grouping between 3 to 6 days (base 5)
+        elif days >= 3 and days < 7:
+            group = str(5 * round(((days / 3) * 20) / 5)) + 'm'
+        # custom grouping between 8 to 27 days
+        elif days > 7 and days < 28:
+            group = str(round(days / 7)) + 'h'
+        # custom grouping between 28 to 364 days
+        elif days >= 28 and days < 365:
+            group = str(round(days / 28)) + 'd'
+        CUSTOM_GROUP_MAP.update({time: group})
+        return CUSTOM_GROUP_MAP
+
     def get_query(
         self,
         time=DEFAULT_TIME,
@@ -561,7 +588,14 @@ class AbstractChart(TimeStampedEditableModel):
         params.update(additional_params)
         params.update({'start_date': start_date, 'end_date': end_date})
         return timeseries_db.get_query(
-            self.type, params, time, self.GROUP_MAP, summary, fields, query, timezone
+            self.type,
+            params,
+            time,
+            self._get_group_map(time),
+            summary,
+            fields,
+            query,
+            timezone,
         )
 
     def get_top_fields(self, number):
@@ -574,7 +608,7 @@ class AbstractChart(TimeStampedEditableModel):
         return timeseries_db._get_top_fields(
             query=q,
             chart_type=self.type,
-            group_map=self.GROUP_MAP,
+            group_map=self._get_group_map(params['days']),
             number=number,
             params=params,
             time=self.DEFAULT_TIME,
@@ -586,6 +620,7 @@ class AbstractChart(TimeStampedEditableModel):
             field_name=m.field_name,
             key=m.key,
             time=self._get_time(time, start_date, end_date),
+            days=time,
         )
         if m.object_id:
             params.update(
@@ -605,7 +640,7 @@ class AbstractChart(TimeStampedEditableModel):
             return start_date
         if not isinstance(time, str):
             return str(time)
-        if time in cls.GROUP_MAP.keys():
+        if time in cls._get_group_map().keys():
             days = int(time.strip('d'))
             now = timezone.now()
             if days > 3:
