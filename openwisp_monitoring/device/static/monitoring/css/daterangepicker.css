@@ -355,6 +355,8 @@
   text-decoration: none;
   border-radius: 3px;
   cursor: pointer;
+  border: 0;
+  padding: 0.5rem 1rem;
 }
 .daterangepicker td.active,
 .daterangepicker td.active:hover {
