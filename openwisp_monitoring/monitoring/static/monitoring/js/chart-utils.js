@@ -261,9 +261,14 @@ django.jQuery(function ($) {
       var time = localStorage.getItem(timeRangeKey);
       location.href = baseUrl + time + '&csv=1';
       // If custom pass pickerEndDate and pickerStartDate to csv url
-      if (localStorage.getItem(isCustomDateRange) === 'true') {
+      if (localStorage.getItem(isCustomDateRange) === 'true' || localStorage.getItem(pickerChosenLabelKey) === 'Custom Range') {
       var startDate = localStorage.getItem(startDateTimeKey);
       var endDate = localStorage.getItem(endDateTimeKey);
+      if (localStorage.getItem(isChartZoomed) === 'true') {
+        time = localStorage.getItem(zoomtimeRangeKey);
+        endDate = localStorage.getItem(zoomEndDateTimeKey);
+        startDate = localStorage.getItem(zoomStartDateTimeKey);
+      }
       location.href = `${baseUrl}${time}&start=${startDate}&end=${endDate}&csv=1`;
       }
     });
