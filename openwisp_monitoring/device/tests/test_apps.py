@@ -34,6 +34,6 @@ class TestApps(TestCase):
                 'monitoring/js/device-map.js',
                 'leaflet/leaflet.js',
                 'leaflet/leaflet.extras.js',
-                'monitoring/js/leaflet.fullscreen.min.js',
+                'monitoring/js/lib/leaflet.fullscreen.min.js',
             ),
         )

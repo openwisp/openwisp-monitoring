@@ -1,17 +1,17 @@
 {% load i18n %}
-
+{% load static %}
 <div id="ow-chart-inner-container">
+    <script type="text/javascript" src="{% static 'monitoring/js/lib/daterangepicker.min.js' %}"></script>
     <span id="monitoring-timeseries-api-url" data-value="{{ api_url }}"></span>
     <span id="monitoring-timeseries-original-key" data-value="{{ original.key }}"></span>
     <span id="monitoring-timeseries-default-time" data-value="{{ default_time }}"></span>
     <div id="ow-chart-time">
-        <a class="time" data-time="1d">1 {% trans 'day' %}</a>
-        <a class="time" data-time="3d">3 {% trans 'days' %}</a>
-        <a class="time" data-time="7d">1 {% trans 'week' %}</a>
-        <a class="time" data-time="30d">1 {% trans 'month' %}</a>
-        <a class="time" data-time="365d">1 {% trans 'year' %}</a>
         <a class="export">{% trans 'export data' %}</a>
+
     </div>
+    <a id="daterangepicker-widget">
+        <span></span>
+    </a>
     <div id="chart-loading-overlay"><div class="ow-loading-spinner"></div></div>
     <div id="ow-chart-contents"></div>
     <div id="ow-chart-fallback" class="form-row">

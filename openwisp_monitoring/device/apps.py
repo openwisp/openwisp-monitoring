@@ -259,7 +259,7 @@ class DeviceMonitoringConfig(AppConfig):
                         'monitoring/js/device-map.js',
                         'leaflet/leaflet.js',
                         'leaflet/leaflet.extras.js',
-                        'monitoring/js/leaflet.fullscreen.min.js',
+                        'monitoring/js/lib/leaflet.fullscreen.min.js',
                     ),
                 },
                 extra_config={
@@ -273,12 +273,15 @@ class DeviceMonitoringConfig(AppConfig):
             config={
                 'template': 'monitoring/paritals/chart.html',
                 'css': (
+                    'monitoring/css/daterangepicker.css',
                     'monitoring/css/percircle.min.css',
                     'monitoring/css/chart.css',
                     'monitoring/css/dashboard-chart.css',
                 ),
                 'js': (
-                    'monitoring/js/percircle.min.js',
+                    'monitoring/js/lib/moment.min.js',
+                    'monitoring/js/lib/daterangepicker.min.js',
+                    'monitoring/js/lib/percircle.min.js',
                     'monitoring/js/chart.js',
                     'monitoring/js/chart-utils.js',
                     'monitoring/js/dashboard-chart.js',

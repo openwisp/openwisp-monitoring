@@ -2,14 +2,14 @@ chart_query = {
     'uptime': {
         'influxdb': (
             "SELECT MEAN({field_name})*100 AS uptime FROM {key} WHERE "
-            "time >= '{time}' AND content_type = '{content_type}' AND "
+            "time >= '{time}' {end_date} AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
     'packet_loss': {
         'influxdb': (
             "SELECT MEAN(loss) AS packet_loss FROM {key} WHERE "
-            "time >= '{time}' AND content_type = '{content_type}' AND "
+            "time >= '{time}' {end_date} AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
@@ -17,14 +17,14 @@ chart_query = {
         'influxdb': (
             "SELECT MEAN(rtt_avg) AS RTT_average, MEAN(rtt_max) AS "
             "RTT_max, MEAN(rtt_min) AS RTT_min FROM {key} WHERE "
-            "time >= '{time}' AND content_type = '{content_type}' AND "
+            "time >= '{time}' {end_date} AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
     'wifi_clients': {
         'influxdb': (
             "SELECT COUNT(DISTINCT({field_name})) AS wifi_clients FROM {key} "
-            "WHERE time >= '{time}' AND content_type = '{content_type}' "
+            "WHERE time >= '{time}' {end_date} AND content_type = '{content_type}' "
             "AND object_id = '{object_id}' AND ifname = '{ifname}' "
             "GROUP BY time(1d)"
         )
@@ -32,7 +32,7 @@ chart_query = {
     'general_wifi_clients': {
         'influxdb': (
             "SELECT COUNT(DISTINCT({field_name})) AS wifi_clients FROM {key} "
-            "WHERE time >= '{time}' {organization_id} {location_id} {floorplan_id} "
+            "WHERE time >= '{time}' {end_date} {organization_id} {location_id} {floorplan_id} "
             "GROUP BY time(1d)"
         )
     },
@@ -40,7 +40,7 @@ chart_query = {
         'influxdb': (
             "SELECT SUM(tx_bytes) / 1000000000 AS upload, "
             "SUM(rx_bytes) / 1000000000 AS download FROM {key} "
-            "WHERE time >= '{time}' AND content_type = '{content_type}' "
+            "WHERE time >= '{time}' {end_date} AND content_type = '{content_type}' "
             "AND object_id = '{object_id}' AND ifname = '{ifname}' "
             "GROUP BY time(1d)"
         )
@@ -49,7 +49,7 @@ chart_query = {
         'influxdb': (
             "SELECT SUM(tx_bytes) / 1000000000 AS upload, "
             "SUM(rx_bytes) / 1000000000 AS download FROM {key} "
-            "WHERE time >= '{time}' {organization_id} {location_id} "
+            "WHERE time >= '{time}' {end_date} {organization_id} {location_id} "
             "{floorplan_id} {ifname} "
             "GROUP BY time(1d)"
         )
@@ -57,21 +57,21 @@ chart_query = {
     'memory': {
         'influxdb': (
             "SELECT MEAN(percent_used) AS memory_usage "
-            "FROM {key} WHERE time >= '{time}' AND content_type = '{content_type}' "
+            "FROM {key} WHERE time >= '{time}' {end_date} AND content_type = '{content_type}' "
             "AND object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
     'cpu': {
         'influxdb': (
             "SELECT MEAN(cpu_usage) AS CPU_load FROM {key} WHERE "
-            "time >= '{time}' AND content_type = '{content_type}' AND "
+            "time >= '{time}' {end_date} AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
     'disk': {
         'influxdb': (
             "SELECT MEAN(used_disk) AS disk_usage FROM {key} WHERE "
-            "time >= '{time}' AND content_type = '{content_type}' AND "
+            "time >= '{time}' {end_date} AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
@@ -79,7 +79,7 @@ chart_query = {
         'influxdb': (
             "SELECT ROUND(MEAN(signal_strength)) AS signal_strength, "
             "ROUND(MEAN(signal_power)) AS signal_power FROM {key} WHERE "
-            "time >= '{time}' AND content_type = '{content_type}' AND "
+            "time >= '{time}' {end_date} AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
@@ -87,14 +87,14 @@ chart_query = {
         'influxdb': (
             "SELECT ROUND(MEAN(signal_quality)) AS signal_quality, "
             "ROUND(MEAN(snr)) AS signal_to_noise_ratio FROM {key} WHERE "
-            "time >= '{time}' AND content_type = '{content_type}' AND "
+            "time >= '{time}' {end_date} AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
     'access_tech': {
         'influxdb': (
             "SELECT MODE(access_tech) AS access_tech FROM {key} WHERE "
-            "time >= '{time}' AND content_type = '{content_type}' AND "
+            "time >= '{time}' {end_date} AND content_type = '{content_type}' AND "
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
@@ -146,7 +146,7 @@ chart_query = {
 }
 
 default_chart_query = [
-    "SELECT {field_name} FROM {key} WHERE time >= '{time}'",
+    "SELECT {field_name} FROM {key} WHERE time >= '{time}' {end_date}",
     " AND content_type = '{content_type}' AND object_id = '{object_id}'",
 ]
 

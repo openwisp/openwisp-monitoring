@@ -544,6 +544,38 @@ class AbstractChart(TimeStampedEditableModel):
             q += default_chart_query[1]
         return q
 
+    @classmethod
+    def _get_group_map(cls, time=None):
+        """
+        Returns the chart group map for the specified days,
+        otherwise the default Chart.GROUP_MAP is returned
+        """
+        if (
+            not time
+            or time in cls.GROUP_MAP.keys()
+            or not isinstance(time, str)
+            or time[-1] != 'd'
+        ):
+            return cls.GROUP_MAP
+        group = '10m'
+        days = int(time.split('d')[0])
+        # Use copy of class variable to avoid unpredictable results
+        custom_group_map = cls.GROUP_MAP.copy()
+        # custom grouping between 1 to 2 days
+        if days > 0 and days < 3:
+            group = '10m'
+        # custom grouping between 3 to 6 days (base 5)
+        elif days >= 3 and days < 7:
+            group = str(5 * round(((days / 3) * 20) / 5)) + 'm'
+        # custom grouping between 8 to 27 days
+        elif days > 7 and days < 28:
+            group = str(round(days / 7)) + 'h'
+        # custom grouping between 28 to 364 days
+        elif days >= 28 and days < 365:
+            group = str(round(days / 28)) + 'd'
+        custom_group_map.update({time: group})
+        return custom_group_map
+
     def get_query(
         self,
         time=DEFAULT_TIME,
@@ -551,14 +583,24 @@ class AbstractChart(TimeStampedEditableModel):
         fields=None,
         query=None,
         timezone=settings.TIME_ZONE,
+        start_date=None,
+        end_date=None,
         additional_params=None,
     ):
         query = query or self.query
         additional_params = additional_params or {}
-        params = self._get_query_params(time)
+        params = self._get_query_params(time, start_date, end_date)
         params.update(additional_params)
+        params.update({'start_date': start_date, 'end_date': end_date})
         return timeseries_db.get_query(
-            self.type, params, time, self.GROUP_MAP, summary, fields, query, timezone
+            self.type,
+            params,
+            time,
+            self._get_group_map(time),
+            summary,
+            fields,
+            query,
+            timezone,
         )
 
     def get_top_fields(self, number):
@@ -571,15 +613,20 @@ class AbstractChart(TimeStampedEditableModel):
         return timeseries_db._get_top_fields(
             query=q,
             chart_type=self.type,
-            group_map=self.GROUP_MAP,
+            group_map=self._get_group_map(params['days']),
             number=number,
             params=params,
             time=self.DEFAULT_TIME,
         )
 
-    def _get_query_params(self, time):
+    def _get_query_params(self, time, start_date=None, end_date=None):
         m = self.metric
-        params = dict(field_name=m.field_name, key=m.key, time=self._get_time(time))
+        params = dict(
+            field_name=m.field_name,
+            key=m.key,
+            time=self._get_time(time, start_date, end_date),
+            days=time,
+        )
         if m.object_id:
             params.update(
                 {
@@ -593,10 +640,12 @@ class AbstractChart(TimeStampedEditableModel):
         return params
 
     @classmethod
-    def _get_time(cls, time):
+    def _get_time(cls, time, start_date=None, end_date=None):
+        if start_date and end_date:
+            return start_date
         if not isinstance(time, str):
             return str(time)
-        if time in cls.GROUP_MAP.keys():
+        if time in cls._get_group_map().keys():
             days = int(time.strip('d'))
             now = timezone.now()
             if days > 3:
@@ -614,6 +663,8 @@ class AbstractChart(TimeStampedEditableModel):
         time=DEFAULT_TIME,
         x_axys=True,
         timezone=settings.TIME_ZONE,
+        start_date=None,
+        end_date=None,
         additional_query_kwargs=None,
     ):
         additional_query_kwargs = additional_query_kwargs or {}
@@ -621,7 +672,9 @@ class AbstractChart(TimeStampedEditableModel):
         if x_axys:
             x = []
         try:
-            query_kwargs = dict(time=time, timezone=timezone)
+            query_kwargs = dict(
+                time=time, timezone=timezone, start_date=start_date, end_date=end_date
+            )
             query_kwargs.update(additional_query_kwargs)
             if self.top_fields:
                 fields = self.get_top_fields(self.top_fields)

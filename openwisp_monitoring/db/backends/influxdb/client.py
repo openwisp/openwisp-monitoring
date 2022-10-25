@@ -212,6 +212,10 @@ class DatabaseClient(object):
         return False
 
     def _clean_params(self, params):
+        if params.get('end_date'):
+            params['end_date'] = f'AND time <= \'{params["end_date"]}\''
+        else:
+            params['end_date'] = ''
         for key, value in params.items():
             if isinstance(value, list) or isinstance(value, tuple):
                 params[key] = self._get_where_query(key, value)

@@ -1,10 +1,12 @@
 import csv
 import logging
 from collections import OrderedDict
+from datetime import datetime
 from io import StringIO
 
 from django.conf import settings
 from django.http import HttpResponse
+from pytz import timezone
 from pytz import timezone as tz
 from pytz.exceptions import UnknownTimeZoneError
 from rest_framework.exceptions import ValidationError
@@ -32,19 +34,41 @@ class MonitoringApiViewMixin:
         """
         return {}
 
+    def _validate_custom_date(self, start, end, tmz):
+        try:
+            start = datetime.strptime(start, '%Y-%m-%d %H:%M:%S')
+            end = datetime.strptime(end, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            raise ValidationError(
+                'Incorrect custom date format, should be YYYY-MM-DD H:M:S'
+            )
+        if start > end:
+            raise ValidationError('start_date cannot be greater than end_date')
+        now_tz = datetime.now(tz=timezone(tmz)).strftime('%Y-%m-%d %H:%M:%S')
+        now = datetime.strptime(now_tz, '%Y-%m-%d %H:%M:%S')
+        if start > now:
+            raise ValidationError("start_date cannot be greater than today's date")
+        if end > now:
+            raise ValidationError("end_date cannot be greater than today's date")
+
     def get(self, request, *args, **kwargs):
         time = request.query_params.get('time', Chart.DEFAULT_TIME)
-        if time not in Chart.GROUP_MAP.keys():
-            raise ValidationError('Time range not supported')
+        start_date = request.query_params.get('start', None)
+        end_date = request.query_params.get('end', None)
         # try to read timezone
         timezone = request.query_params.get('timezone', settings.TIME_ZONE)
         try:
             tz(timezone)
         except UnknownTimeZoneError:
             raise ValidationError('Unkown Time Zone')
+        # if custom dates are provided then validate custom dates
+        if start_date and end_date:
+            self._validate_custom_date(start_date, end_date, timezone)
+        if time not in Chart._get_group_map(time).keys():
+            raise ValidationError('Time range not supported')
         charts = self._get_charts(request, *args, **kwargs)
         # prepare response data
-        data = self._get_charts_data(charts, time, timezone)
+        data = self._get_charts_data(charts, time, timezone, start_date, end_date)
         # csv export has a different response
         if request.query_params.get('csv'):
             response = HttpResponse(self._get_csv(data), content_type='text/csv')
@@ -59,7 +83,7 @@ class MonitoringApiViewMixin:
         """
         return None
 
-    def _get_charts_data(self, charts, time, timezone):
+    def _get_charts_data(self, charts, time, timezone, start_date, end_date):
         chart_map = {}
         x_axys = True
         data = OrderedDict({'charts': []})
@@ -70,6 +94,8 @@ class MonitoringApiViewMixin:
                     time=time,
                     x_axys=x_axys,
                     timezone=timezone,
+                    start_date=start_date,
+                    end_date=end_date,
                     additional_query_kwargs=self._get_chart_additional_query_kwargs(
                         chart
                     ),
