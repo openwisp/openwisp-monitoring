@@ -1032,13 +1032,6 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             url = f'{self._url(d.pk, d.key)}{custom_date_query}'
             _assert_chart_group(url, 200, ('99d', '4d'))
 
-        with self.subTest('Test custom grouping between 28 to 364 days'):
-            custom_date_query = (
-                '&time=99d&start=2011-07-04%2000:00:00&end=2011-10-11%2015:50:56'
-            )
-            url = f'{self._url(d.pk, d.key)}{custom_date_query}'
-            _assert_chart_group(url, 200, ('99d', '4d'))
-
         with self.subTest('Test invalid custom dates'):
             invalid_custom_dates = (
                 '&time=99d&start=2022-07-04&end=2022-10-11',

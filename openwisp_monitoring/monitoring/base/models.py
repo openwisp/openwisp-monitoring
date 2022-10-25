@@ -550,12 +550,17 @@ class AbstractChart(TimeStampedEditableModel):
         Returns the chart group map for the specified days,
         otherwise the default Chart.GROUP_MAP is returned
         """
-        if not time or not isinstance(time, str) or time[-1] != 'd':
+        if (
+            not time
+            or time in cls.GROUP_MAP.keys()
+            or not isinstance(time, str)
+            or time[-1] != 'd'
+        ):
             return cls.GROUP_MAP
         group = '10m'
         days = int(time.split('d')[0])
         # Use copy of class variable to avoid unpredictable results
-        CUSTOM_GROUP_MAP = cls.GROUP_MAP.copy()
+        custom_group_map = cls.GROUP_MAP.copy()
         # custom grouping between 1 to 2 days
         if days > 0 and days < 3:
             group = '10m'
@@ -568,8 +573,8 @@ class AbstractChart(TimeStampedEditableModel):
         # custom grouping between 28 to 364 days
         elif days >= 28 and days < 365:
             group = str(round(days / 28)) + 'd'
-        CUSTOM_GROUP_MAP.update({time: group})
-        return CUSTOM_GROUP_MAP
+        custom_group_map.update({time: group})
+        return custom_group_map
 
     def get_query(
         self,

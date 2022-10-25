@@ -187,7 +187,7 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         q = c.get_query(time='30d')
         last30d = now() - timedelta(days=30)
         self.assertIn(str(last30d)[0:10], q)
-        self.assertIn('group by time(1d)', q.lower())
+        self.assertIn('group by time(24h)', q.lower())
 
     def test_retention_policy(self):
         manage_short_retention_policy()
