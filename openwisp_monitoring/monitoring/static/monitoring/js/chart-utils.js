@@ -73,7 +73,7 @@ django.jQuery(function ($) {
               clearInterval(window.owChartRefresh);
               window.owChartRefresh = setInterval(loadCharts,
                 1000 * 60 * 2.5,
-                pickerDays,
+                daysBeforeZoom,
                 false
               );
               return;
@@ -126,8 +126,8 @@ django.jQuery(function ($) {
           var startDate = localStorage.getItem(startDateTimeKey);
           var endDate = localStorage.getItem(endDateTimeKey);
           if (localStorage.getItem(isChartZoomed) === 'true') {
-            startDate = localStorage.getItem(zoomStartDateTimeKey);
             endDate = localStorage.getItem(zoomEndDateTimeKey);
+            startDate = localStorage.getItem(zoomStartDateTimeKey);
           }
           url = `${baseUrl}${time}&start=${startDate}&end=${endDate}`;
         }
