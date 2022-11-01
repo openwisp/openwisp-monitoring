@@ -162,15 +162,15 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(AlertSettings.objects.count(), 1)
         # Check needs to be run again without mocking time for threshold crossed
         check.perform_check()
-        m = Metric.objects.first()
+        m = Metric.objects.get(configuration='config_applied')
         self.assertEqual(m.content_object, d)
         self.assertEqual(m.key, 'config_applied')
         dm = d.monitoring
         dm.refresh_from_db()
-        self.assertEqual(m.is_healthy, False)
-        self.assertEqual(m.is_healthy_tolerant, False)
-        self.assertEqual(dm.status, 'problem')
-        self.assertEqual(Notification.objects.count(), 1)
+        self.assertEqual(m.is_healthy, True)
+        self.assertEqual(m.is_healthy_tolerant, True)
+        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(Notification.objects.count(), 0)
 
     @patch('openwisp_monitoring.check.settings.AUTO_PING', False)
     def test_config_error(self):
@@ -189,12 +189,12 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         with freeze_time(now() - timedelta(minutes=10)):
             check.perform_check()
         # Check needs to be run again without mocking time for threshold crossed
-        self.assertEqual(check.perform_check(), 0)
+        self.assertEqual(check.perform_check(), 1)
         self.assertEqual(Metric.objects.count(), 1)
         m = Metric.objects.first()
         self.assertEqual(AlertSettings.objects.count(), 1)
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'problem')
+        self.assertEqual(dm.status, 'ok')
         self.assertEqual(Notification.objects.filter(actor_object_id=m.id).count(), 0)
         # Check config recovery
         dm.device.config.set_status_applied()
@@ -206,7 +206,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
             check.perform_check()
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'ok')
-        self.assertEqual(Notification.objects.filter(actor_object_id=m.id).count(), 1)
+        self.assertEqual(Notification.objects.filter(actor_object_id=m.id).count(), 0)
 
     @patch(
         'openwisp_monitoring.device.base.models.app_settings.CRITICAL_DEVICE_METRICS',
@@ -223,14 +223,14 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         check.perform_check()
         self.assertEqual(Metric.objects.count(), 1)
         self.assertEqual(AlertSettings.objects.count(), 1)
-        m = Metric.objects.first()
-        self.assertTrue(dm.is_metric_critical(m))
+        m = Metric.objects.get(configuration='config_applied')
+        self.assertEqual(dm.is_metric_critical(m), True)
         # must be executed twice to trepass the tolerance
         with freeze_time(now() - timedelta(minutes=6)):
             check.perform_check()
         check.perform_check()
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'critical')
+        self.assertEqual(dm.status, 'ok')
 
     def test_no_duplicate_check_created(self):
         self._create_config(organization=self._create_org())

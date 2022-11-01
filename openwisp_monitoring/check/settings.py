@@ -19,3 +19,4 @@ IPERF3_CHECK_LOCK_EXPIRE = get_settings_value(
 )  # 10 minutes arbitrarily chosen (must be longer than TCP + UDP test time)
 IPERF3_CHECK_DELETE_RSA_KEY = get_settings_value('IPERF3_CHECK_DELETE_RSA_KEY', True)
 CHECKS_LIST = get_settings_value('CHECK_LIST', list(dict(CHECK_CLASSES).keys()))
+CONFIG_CHECK_INTERVAL = get_settings_value('CONFIG_CHECK_INTERVAL', 5)  # in minutes
