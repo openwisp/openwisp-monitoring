@@ -1,5 +1,6 @@
 'use strict';
 const isChartZoomed = 'ow2-chart-custom-zoom'; // true/false
+const isChartZoomScroll = 'ow2-chart-custom-zoom-scroll'; // true/false
 const isCustomDateRange = 'ow2-chart-custom-daterange'; // true/false
 const timeRangeKey = 'ow2-chart-time-range'; // 30d
 const startDayKey = 'ow2-chart-start-day'; // September 3, 2022
@@ -12,6 +13,7 @@ const zoomStartDayKey = 'ow2-chart-zoom-start-day'; // September 3, 2022
 const zoomEndDayKey = 'ow2-chart-zoom-end-day'; // October 3, 2022
 const zoomStartDateTimeKey = 'ow2-chart-zoom-start-datetime'; // 2022-09-03 00:00:00
 const zoomEndDateTimeKey = 'ow2-chart-zoom-end-datetime'; // 2022-09-03 00:00:00
+const zoomChartIdKey = 'ow2-chart-zoom-id'; // true/false
 
 django.jQuery(function ($) {
   $(document).ready(function () {
@@ -46,6 +48,14 @@ django.jQuery(function ($) {
     function handleChartZoomChange(chartsContainers) {
       // Handle chart zooming with custom dates
       var zoomCharts = document.getElementsByClassName(chartsContainers);
+      // Set zoomChartId, required for scrolling after the zoom event
+      $('.js-plotly-plot').on("click dblclick mouseover mouseout", function () {
+        var zoomChartId = $(this).parent().prop('id');
+        if (zoomChartId === 'chart-0') {
+          zoomChartId = 'container';
+        }
+        localStorage.setItem(zoomChartIdKey, zoomChartId);
+      });
       for (var zoomChart of zoomCharts) {
         if (!zoomChart) {
           localStorage.setItem(isChartZoomed, false);
@@ -56,9 +66,12 @@ django.jQuery(function ($) {
           function (eventdata) { // jshint ignore:line
             var eventEnd = eventdata['xaxis.range[1]'];
             var eventStart = eventdata['xaxis.range[0]'];
+            // When the chart is zoomed out, then load charts with initial zoom level
             if (!eventEnd || !eventStart) {
               localStorage.setItem(isChartZoomed, false);
               localStorage.setItem(isCustomDateRange, false);
+              // After zoomed out, it should scroll back initial zoom container
+              localStorage.setItem(isChartZoomScroll, true);
               var daysBeforeZoom = localStorage.getItem(timeRangeKey);
               // Set custom date range labels & select custom date ranges for the widget
               var initialStartLabel = localStorage.getItem(startDayKey) || moment().format('MMMM D, YYYY');
@@ -78,6 +91,7 @@ django.jQuery(function ($) {
               );
               return;
             }
+            // When the chart zoomed in,
             var pickerEnd = moment(eventEnd);
             var pickerStart = moment(eventStart);
             var pickerDays = pickerEnd.diff(pickerStart, 'days') + 'd';
@@ -89,6 +103,7 @@ django.jQuery(function ($) {
             localStorage.setItem(zoomEndDateTimeKey, pickerEnd.format('YYYY-MM-DD HH:mm:ss'));
             localStorage.setItem(zoomStartDayKey, pickerStart.format('MMMM D, YYYY'));
             localStorage.setItem(zoomEndDayKey, pickerEnd.format('MMMM D, YYYY'));
+            localStorage.setItem(isChartZoomScroll, true);
             localStorage.setItem(isChartZoomed, true);
             localStorage.setItem(isCustomDateRange, true);
             localStorage.setItem(zoomtimeRangeKey, pickerDays);
@@ -167,6 +182,11 @@ django.jQuery(function ($) {
           },
           complete: function () {
             handleChartZoomChange('js-plotly-plot');
+            const zoomChartContainer = document.getElementById(localStorage.getItem(zoomChartIdKey));
+            // If the chart zoom scrolling is active, then scroll to the zoomed chart container
+            if (localStorage.getItem(isChartZoomScroll) === 'true' && zoomChartContainer) {
+              zoomChartContainer.scrollIntoView();
+            }
             localLoadingOverlay.fadeOut(200, function() {
               if (showLoading) {
                 globalLoadingOverlay.fadeOut(200);
@@ -186,6 +206,8 @@ django.jQuery(function ($) {
       var range = localStorage.getItem(timeRangeKey) || defaultTimeRange;
       var startLabel = localStorage.getItem(startDayKey) || moment().format('MMMM D, YYYY');
       var endLabel = localStorage.getItem(endDayKey) || moment().format('MMMM D, YYYY');
+      // Disable zoom charts scrolling on page refresh
+      localStorage.setItem(isChartZoomScroll, false);
       if (localStorage.getItem(isChartZoomed) === 'true') {
         range = localStorage.getItem(zoomtimeRangeKey);
         endLabel = localStorage.getItem(zoomEndDayKey);
@@ -260,7 +282,7 @@ django.jQuery(function ($) {
     $('#ow-chart-time a.export').click(function () {
       var time = localStorage.getItem(timeRangeKey);
       location.href = baseUrl + time + '&csv=1';
-      // If custom pass pickerEndDate and pickerStartDate to csv url
+      // If custom or pickerChosenLabelKey is 'Custom Range', pass pickerEndDate and pickerStartDate to csv url
       if (localStorage.getItem(isCustomDateRange) === 'true' || localStorage.getItem(pickerChosenLabelKey) === 'Custom Range') {
       var startDate = localStorage.getItem(startDateTimeKey);
       var endDate = localStorage.getItem(endDateTimeKey);
