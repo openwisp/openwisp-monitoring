@@ -144,7 +144,8 @@ django.jQuery(function ($) {
             endDate = localStorage.getItem(zoomEndDateTimeKey);
             startDate = localStorage.getItem(zoomStartDateTimeKey);
           }
-          url = `${baseUrl}${time}&start=${startDate}&end=${endDate}`;
+          var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          url = `${apiUrl}?key=${originalKey}&timezone=${timezone}&start=${startDate}&end=${endDate}`;
         }
         $.ajax(url, {
           dataType: 'json',
@@ -291,7 +292,8 @@ django.jQuery(function ($) {
         endDate = localStorage.getItem(zoomEndDateTimeKey);
         startDate = localStorage.getItem(zoomStartDateTimeKey);
       }
-      location.href = `${baseUrl}${time}&start=${startDate}&end=${endDate}&csv=1`;
+      var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      location.href = `${apiUrl}?key=${originalKey}&timezone=${timezone}&start=${startDate}&end=${endDate}&csv=1`;
       }
     });
   });

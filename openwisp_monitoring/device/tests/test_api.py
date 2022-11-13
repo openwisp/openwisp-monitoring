@@ -1005,39 +1005,31 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             self.assertIn(expected, chart_group)
 
         with self.subTest('Test custom grouping between 1 to 2 days'):
-            custom_date_query = (
-                '&time=2d&start=2022-10-02%2000:00:00&end=2022-10-04%2023:59:59'
-            )
+            custom_date_query = '&start=2022-10-02%2000:00:00&end=2022-10-04%2023:59:59'
             url = f'{self._url(d.pk, d.key)}{custom_date_query}'
             _assert_chart_group(url, 200, ('2d', '10m'))
 
         with self.subTest('Test custom grouping between 3 to 6 days'):
-            custom_date_query = (
-                '&time=4d&start=2022-10-02%2000:00:00&end=2022-10-06%2023:59:59'
-            )
+            custom_date_query = '&start=2022-10-02%2000:00:00&end=2022-10-06%2023:59:59'
             url = f'{self._url(d.pk, d.key)}{custom_date_query}'
             _assert_chart_group(url, 200, ('4d', '25m'))
 
         with self.subTest('Test custom grouping between 8 to 27 days'):
-            custom_date_query = (
-                '&time=12d&start=2022-09-29%2000:00:00&end=2022-10-11%2015:50:56'
-            )
+            custom_date_query = '&start=2022-09-29%2000:00:00&end=2022-10-11%2015:50:56'
             url = f'{self._url(d.pk, d.key)}{custom_date_query}'
             _assert_chart_group(url, 200, ('12d', '2h'))
 
         with self.subTest('Test custom grouping between 28 to 364 days'):
-            custom_date_query = (
-                '&time=99d&start=2022-07-04%2000:00:00&end=2022-10-11%2015:50:56'
-            )
+            custom_date_query = '&start=2022-07-04%2000:00:00&end=2022-10-11%2015:50:56'
             url = f'{self._url(d.pk, d.key)}{custom_date_query}'
             _assert_chart_group(url, 200, ('99d', '1d'))
 
         with self.subTest('Test invalid custom dates'):
             invalid_custom_dates = (
-                '&time=99d&start=2022-07-04&end=2022-10-11',
-                '&time=15d&start=September&end=October',
-                '&time=23d&start=2022-07-04&end=10-11-2022%2015:50:56',
-                '&time=33d&start=09-08-2022%2000:00:00&end=10-11-2022%2016:39:29',
+                '&start=2022-07-04&end=2022-10-11',
+                '&start=September&end=October',
+                '&start=2022-07-04&end=10-11-2022%2015:50:56',
+                '&start=09-08-2022%2000:00:00&end=10-11-2022%2016:39:29',
             )
             for invalid_date in invalid_custom_dates:
                 url = f'{self._url(d.pk, d.key)}{invalid_date}'
@@ -1050,7 +1042,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             'Test device metrics when start date is greater than end date'
         ):
             start_greater_than_end = (
-                '&time=10d&start=2022-09-23%2000:00:00&end=2022-09-13%2023:59:59'
+                '&start=2022-09-23%2000:00:00&end=2022-09-13%2023:59:59'
             )
             url = f'{self._url(d.pk, d.key)}{start_greater_than_end}'
             r = self.client.get(url)
@@ -1064,7 +1056,9 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         ):
             start_greater = (now + timedelta(days=5)).strftime('%Y-%m-%d')
             end_greater = (now + timedelta(days=9)).strftime('%Y-%m-%d')
-            start_greater_than_now = f'&time=4d&start={start_greater}%2000:00:00&end={end_greater}%2023:59:59'
+            start_greater_than_now = (
+                f'&start={start_greater}%2000:00:00&end={end_greater}%2023:59:59'
+            )
             url = f'{self._url(d.pk, d.key)}{start_greater_than_now}'
             r = self.client.get(url)
             self.assertEqual(r.status_code, 400)
@@ -1078,7 +1072,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             start_lesser = (now - timedelta(days=2)).strftime('%Y-%m-%d')
             end_greater = (now + timedelta(days=5)).strftime('%Y-%m-%d')
             end_greater_than_now = (
-                f'&time=7d&start={start_lesser}%2000:00:00&end={end_greater}%2023:59:59'
+                f'&start={start_lesser}%2000:00:00&end={end_greater}%2023:59:59'
             )
             url = f'{self._url(d.pk, d.key)}{end_greater_than_now}'
             r = self.client.get(url)
@@ -1092,7 +1086,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             'Test device metrics when date range is greater than 365 days'
         ):
             greater_than_365_days = (
-                '&time=366d&start=2021-11-11%2000:00:00&end=2022-11-12%2023:59:59'
+                '&start=2021-11-11%2000:00:00&end=2022-11-12%2023:59:59'
             )
             url = f'{self._url(d.pk, d.key)}{greater_than_365_days}'
             r = self.client.get(url)
@@ -1112,7 +1106,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             self._create_chart(metric=m, configuration='histogram')
             m.write(None, extra_values={'http2': 90, 'ssh': 100, 'udp': 80, 'spdy': 70})
             custom_date_query = (
-                f'&time=2d&start={start_date}%2000:00:00&end={end_date}%2000:00:00'
+                f'&start={start_date}%2000:00:00&end={end_date}%2000:00:00'
             )
             url = f'{self._url(d.pk, d.key)}{custom_date_query}&csv=1'
             response = self.client.get(url)
