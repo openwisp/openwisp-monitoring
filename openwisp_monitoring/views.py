@@ -64,6 +64,13 @@ class MonitoringApiViewMixin:
         # if custom dates are provided then validate custom dates
         if start_date and end_date:
             self._validate_custom_date(start_date, end_date, timezone)
+            # if valid custom dates then calculate custom days
+            time = '1d'
+            end = datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
+            start = datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
+            custom_days = (end - start).days
+            if custom_days:
+                time = f'{custom_days}d'
         if time not in Chart._get_group_map(time).keys():
             raise ValidationError('Time range not supported')
         charts = self._get_charts(request, *args, **kwargs)
