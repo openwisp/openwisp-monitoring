@@ -42,6 +42,8 @@ class MonitoringApiViewMixin:
             raise ValidationError(
                 'Incorrect custom date format, should be YYYY-MM-DD H:M:S'
             )
+        if (end - start).days > 365:
+            raise ValidationError("The date range shouldn't be greater than 365 days")
         if start > end:
             raise ValidationError('start_date cannot be greater than end_date')
         now_tz = datetime.now(tz=timezone(tmz)).strftime('%Y-%m-%d %H:%M:%S')
