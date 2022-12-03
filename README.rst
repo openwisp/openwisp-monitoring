@@ -1488,6 +1488,18 @@ validating custom parameters of a ``Check`` object.
 This setting allows you to choose whether `config_applied <#configuration-applied>`_ checks should be
 created automatically for newly registered devices. It's enabled by default.
 
+``OPENWISP_MONITORING_CONFIG_CHECK_INTERVAL``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``int``     |
++--------------+-------------+
+| **default**: | ``5``       |
++--------------+-------------+
+
+This setting allows you to configure the config check interval used by
+`config_applied <#configuration-applied>`_. By default it is set to 5 minutes.
+
 ``OPENWISP_MONITORING_AUTO_IPERF3``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
