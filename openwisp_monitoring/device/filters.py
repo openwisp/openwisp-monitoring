@@ -1,13 +1,13 @@
 from django.utils.translation import gettext_lazy as _
 from swapper import load_model
 
-from openwisp_users.multitenancy import MultitenantRelatedOrgFilter
+from openwisp_users.multitenancy import MultitenantOrgFilter
 from openwisp_utils.admin_theme.filters import AutocompleteFilter
 
 Device = load_model('config', 'Device')
 
 
-class DeviceOrganizationFilter(MultitenantRelatedOrgFilter):
+class DeviceOrganizationFilter(MultitenantOrgFilter):
     rel_model = Device
     parameter_name = 'device__organization'
 
