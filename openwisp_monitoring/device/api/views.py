@@ -222,7 +222,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
                 return tech
 
     def _write_mobile_signal(self, interface, ifname, ct, pk, current=False, time=None):
-        access_type = self._get_mobile_signal_type(interface['mobile']['signal'])
+        access_type = self._get_mobile_signal_type(interface['mobile'].get('signal'))
         if not access_type:
             return
         data = interface['mobile']['signal'][access_type]

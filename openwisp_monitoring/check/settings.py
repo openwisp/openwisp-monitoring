@@ -1,3 +1,5 @@
+from django.conf import settings
+
 from ..settings import get_settings_value
 
 CHECK_CLASSES = get_settings_value(
@@ -10,7 +12,12 @@ CHECK_CLASSES = get_settings_value(
 )
 AUTO_PING = get_settings_value('AUTO_PING', True)
 AUTO_CONFIG_CHECK = get_settings_value('AUTO_DEVICE_CONFIG_CHECK', True)
-MANAGEMENT_IP_ONLY = get_settings_value('MANAGEMENT_IP_ONLY', True)
+# If OPENWISP_MONITORING_MANAGEMENT_IP_ONLY is not configured, use
+# OPENWISP_CONTROLLER_MANAGEMENT_IP_ONLY.
+MANAGEMENT_IP_ONLY = get_settings_value(
+    'MANAGEMENT_IP_ONLY',
+    getattr(settings, 'OPENWISP_CONTROLLER_MANAGEMENT_IP_ONLY', True),
+)
 PING_CHECK_CONFIG = get_settings_value('PING_CHECK_CONFIG', {})
 AUTO_IPERF3 = get_settings_value('AUTO_IPERF3', False)
 IPERF3_CHECK_CONFIG = get_settings_value('IPERF3_CHECK_CONFIG', {})

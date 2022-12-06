@@ -1662,6 +1662,12 @@ If the devices are connecting to your OpenWISP instance using a shared layer2
 network, hence the OpenWSP server can reach the devices using the ``last_ip``
 field, you can set this to ``False``.
 
+**Note:** If this setting is not configured, it will fallback to the value of
+`OPENWISP_CONTROLLER_MANAGEMENT_IP_ONLY setting
+<https://github.com/openwisp/openwisp-controller#openwisp_controller_management_ip_only>`_.
+If ``OPENWISP_CONTROLLER_MANAGEMENT_IP_ONLY`` also not configured,
+then it will fallback to ``True``.
+
 ``OPENWISP_MONITORING_DEVICE_RECOVERY_DETECTION``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
