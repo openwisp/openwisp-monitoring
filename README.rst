@@ -1489,7 +1489,7 @@ This setting allows you to choose whether `config_applied <#configuration-applie
 created automatically for newly registered devices. It's enabled by default.
 
 ``OPENWISP_MONITORING_CONFIG_CHECK_INTERVAL``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 +--------------+-------------+
 | **type**:    | ``int``     |

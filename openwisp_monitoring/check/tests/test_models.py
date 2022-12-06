@@ -290,16 +290,16 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self._create_config(device=d)
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         self.assertEqual(Check.objects.count(), 3)
-        self.assertEqual(Metric.objects.count(), 0)
-        self.assertEqual(AlertSettings.objects.count(), 0),
+        self.assertEqual(AlertSettings.objects.count(), 0)
+        self.assertFalse(Metric.objects.filter(configuration='config_applied').exists())
         d.monitoring.update_status('ok')
         # Running check just after config modified
         check.perform_check()
         d.monitoring.refresh_from_db()
         # Device monitoring status should be remain unchanged
         self.assertEqual(d.monitoring.status, 'ok')
-        self.assertEqual(Metric.objects.count(), 1)
         self.assertEqual(AlertSettings.objects.count(), 1)
+        self.assertTrue(Metric.objects.filter(configuration='config_applied').exists())
         # Running check just when config was modified more than CONFIG_CHECK_INTERVAL ago
         with freeze_time(
             now() + timedelta(minutes=app_settings.CONFIG_CHECK_INTERVAL + 1)
