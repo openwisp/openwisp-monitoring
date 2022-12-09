@@ -2362,16 +2362,17 @@ multi-tenancy and allows filtering monitoring data by ``organization_slug``,
 
     GET /api/v1/monitoring/dashboard/?organization_slug=<org1-slug>,<org2-slug>&location_id=<location1-id>,<location2-id>&floorplan_id=<floorplan1-id>,<floorplan2-id>
 
-Another parameter that can be used is ``time``, which allows you to specify the time frame, or if you want to get
-general monitoring chart data for a specific date range, you can add ``start`` and ``end`` parameters to the API endpoint as shown below.
+- When retrieving chart data, the ``time`` parameter allows to specify
+  the time frame, eg:
 
-- ``1d``: returns data of the last day
-- ``3d``: returns data of the last 3 days
-- ``7d``: returns data of the last 7 days
-- ``30d``: returns data of the last 30 days
-- ``365d``: returns data of the last 365 days
+  - ``1d``: returns data of the last day
+  - ``3d``: returns data of the last 3 days
+  - ``7d``: returns data of the last 7 days
+  - ``30d``: returns data of the last 30 days
+  - ``365d``: returns data of the last 365 days
 
-To get general monitoring charts data for a specific date range:
+- In alternative to ``time`` it is possible to request chart data for a custom
+  date range by using the ``start`` and ``end`` parameters, eg:
 
 .. code-block:: text
 
@@ -2392,9 +2393,11 @@ The format used for Device Status is inspired by
 
 **Notes**:
 
-- If the request is made without ``?status=true`` then only device charts data would be returned.
-- When retrieving data, the ``time`` parameter allows you to specify the time frame, or if you want to get device monitoring chart data
-  for a specific date range, you can add ``start`` and ``end`` parameters to the API endpoint as shown below.
+- If the request is made without ``?status=true`` the response will
+  contain only charts data and will not include any device status information
+  (current load average, ARP table, DCHP leases, etc.).
+- When retrieving chart data, the ``time`` parameter allows to specify
+  the time frame, eg:
 
   - ``1d``: returns data of the last day
   - ``3d``: returns data of the last 3 days
@@ -2402,13 +2405,14 @@ The format used for Device Status is inspired by
   - ``30d``: returns data of the last 30 days
   - ``365d``: returns data of the last 365 days
 
-To get device charts and device status data for a specific date range:
+- In alternative to ``time`` it is possible to request chart data for a custom
+  date range by using the ``start`` and ``end`` parameters, eg:
 
 .. code-block:: text
 
     GET /api/v1/monitoring/device/{pk}/?key={key}&status=true&start={start_datetime}&end={end_datetime}
 
-**Note**: ``start`` and  ``end`` parameters should be in the format
+**Note**: ``start`` and  ``end`` parameters must be in the format
 ``YYYY-MM-DD H:M:S``, otherwise 400 Bad Response will be returned.
 
 Collect device metrics and status
