@@ -142,36 +142,21 @@ django.jQuery(function ($) {
       pickerStart = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
       pickerEnd = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
       pickerDays = pickerEnd.diff(pickerStart, 'days') + 'd';
-
       // set date values required for daterangepicker labels
       localStorage.setItem(startDateTimeKey, picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
       localStorage.setItem(endDateTimeKey, picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
       localStorage.setItem(startDayKey, pickerStart.format('MMMM D, YYYY'));
       localStorage.setItem(endDayKey, pickerEnd.format('MMMM D, YYYY'));
-
-      // daterangepicker with custom time ranges
-      if (pickerChosenLabel === "Custom Range") {
-        localStorage.setItem(isCustomDateRange, true);
-        localStorage.setItem(timeRangeKey, pickerDays);
-        loadCharts(pickerDays, true);
-        // refresh every 2.5 minutes
-        clearInterval(window.owChartRefresh);
-        window.owChartRefresh = setInterval(loadFetchedCharts,
-          1000 * 60 * 2.5,
-          pickerDays
-        );}
-
-      // daterangepicker with default time ranges
-      else {
-        localStorage.setItem(isCustomDateRange, false);
-        localStorage.setItem(timeRangeKey, pickerDays);
-        loadCharts(pickerDays, true);
-        // refresh every 2.5 minutes
-        clearInterval(window.owChartRefresh);
-        window.owChartRefresh = setInterval(loadFetchedCharts,
-          1000 * 60 * 2.5,
-          pickerDays
-        );}
+      localStorage.setItem(isCustomDateRange, pickerChosenLabel === "Custom Range");
+      localStorage.setItem(timeRangeKey, pickerDays);
+      loadCharts(pickerDays, true);
+      // refresh charts every 2.5 minutes
+      clearInterval(window.owChartRefresh);
+      window.owChartRefresh = setInterval(loadFetchedCharts,
+        1000 * 60 * 2.5,
+        pickerDays,
+        false
+      );
     });
     // bind export button
     $('#ow-chart-time a.export').click(function () {
@@ -184,8 +169,7 @@ django.jQuery(function ($) {
       location.href = `${baseUrl}${time}&start=${startDate}&end=${endDate}&csv=1`;
       }
     });
-    // fetch chart data every 2.5 minutes 
-    // and replace the older one with the new one
+    // fetch chart data and replace the old charts with the new ones
     function loadFetchedCharts(time){
       $.ajax(getChartFetchUrl(time), {
         dataType: 'json',
@@ -193,7 +177,7 @@ django.jQuery(function ($) {
           createCharts(data);
         },
         error: function () {
-          window.console.error('Unable to fetch chart data...');
+          window.console.error('Unable to fetch chart data.');
         },
       });
     }
