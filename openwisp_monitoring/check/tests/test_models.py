@@ -296,15 +296,21 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         # Running check just after config modified
         check.perform_check()
         d.monitoring.refresh_from_db()
+        self.assertTrue(Metric.objects.filter(configuration='config_applied').exists())
+        metric = Metric.objects.get(configuration='config_applied', object_id=str(d.pk))
+        # metric health should not change because the config
+        # hasn't been changed for more than the interval
+        self.assertTrue(metric.is_healthy)
         # Device monitoring status should be remain unchanged
         self.assertEqual(d.monitoring.status, 'ok')
         self.assertEqual(AlertSettings.objects.count(), 1)
-        self.assertTrue(Metric.objects.filter(configuration='config_applied').exists())
         # Running check just when config was modified more than CONFIG_CHECK_INTERVAL ago
         with freeze_time(
             now() + timedelta(minutes=app_settings.CONFIG_CHECK_INTERVAL + 1)
         ):
             result = check.perform_check()
         d.monitoring.refresh_from_db()
+        metric.refresh_from_db()
         self.assertEqual(result, 0)
+        self.assertFalse(metric.is_healthy)
         self.assertEqual(d.monitoring.status, 'problem')
