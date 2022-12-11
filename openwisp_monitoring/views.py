@@ -50,6 +50,7 @@ class MonitoringApiViewMixin:
             raise ValidationError("start_date cannot be greater than today's date")
         if end > now:
             raise ValidationError("end_date cannot be greater than today's date")
+        return start, end
 
     def get(self, request, *args, **kwargs):
         time = request.query_params.get('time', Chart.DEFAULT_TIME)
@@ -63,12 +64,12 @@ class MonitoringApiViewMixin:
             raise ValidationError('Unkown Time Zone')
         # if custom dates are provided then validate custom dates
         if start_date and end_date:
-            self._validate_custom_date(start_date, end_date, timezone)
+            start_datetime, end_datetime = self._validate_custom_date(
+                start_date, end_date, timezone
+            )
             # if valid custom dates then calculate custom days
             time = '1d'
-            end = datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
-            start = datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
-            custom_days = (end - start).days
+            custom_days = (end_datetime - start_datetime).days
             if custom_days:
                 time = f'{custom_days}d'
         if time not in Chart._get_group_map(time).keys():
