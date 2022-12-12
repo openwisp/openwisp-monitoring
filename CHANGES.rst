@@ -1,6 +1,18 @@
 Changelog
 =========
 
+Version 1.0.3 [2022-12-29]
+--------------------------
+
+Bugfixes
+~~~~~~~~
+
+- Fixed data collection for missing mobile signal:
+  Skip writing mobile signal metric if mobile signal
+  info is missing.
+- Fixed device health status changing to ``problem``
+  when the configuration status changes to ``modified``.
+
 Version 1.0.2 [2022-08-04]
 --------------------------
 
