@@ -133,8 +133,7 @@ django.jQuery(function ($) {
       baseUrl = `${apiUrl}?key=${originalKey}&time=`,
       globalLoadingOverlay = $('#loading-overlay'),
       localLoadingOverlay = $('#chart-loading-overlay'),
-
-      loadCharts = function (time, showLoading) {
+      getChartFetchUrl = function (time) {
         var url = baseUrl + time;
         // pass pickerEndDate and pickerStartDate to url
         if (localStorage.getItem(isCustomDateRange) === 'true' || localStorage.getItem(pickerChosenLabelKey) === 'Custom Range') {
@@ -147,7 +146,24 @@ django.jQuery(function ($) {
           var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           url = `${apiUrl}?key=${originalKey}&timezone=${timezone}&start=${startDate}&end=${endDate}`;
         }
-        $.ajax(url, {
+        return url;
+      },
+      createCharts = function (data){
+        $.each(data.charts, function (i, chart) {
+          var htmlId = 'chart-' + i,
+            chartDiv = $('#' + htmlId),
+            chartQuickLink = chartQuickLinks[chart.title];
+          if (!chartDiv.length) {
+            chartContents.append(
+              '<div id="' + htmlId + '" class="ow-chart">' +
+              '<div class="js-plotly-plot"></div></div>'
+            );
+          }
+          createChart(chart, data.x, htmlId, chart.title, chart.type, chartQuickLink);
+        });
+      },
+      loadCharts = function (time, showLoading) {
+        $.ajax(getChartFetchUrl(time), {
           dataType: 'json',
           beforeSend: function () {
             chartContents.hide();
@@ -165,18 +181,7 @@ django.jQuery(function ($) {
             } else {
               fallback.show();
             }
-            $.each(data.charts, function (i, chart) {
-              var htmlId = 'chart-' + i,
-                chartDiv = $('#' + htmlId),
-                chartQuickLink = chartQuickLinks[chart.title];
-              if (!chartDiv.length) {
-                chartContents.append(
-                  '<div id="' + htmlId + '" class="ow-chart">' +
-                  '<div class="js-plotly-plot"></div></div>'
-                );
-              }
-              createChart(chart, data.x, htmlId, chart.title, chart.type, chartQuickLink);
-            });
+            createCharts(data);
           },
           error: function () {
             alert('Something went wrong while loading the charts');
@@ -243,41 +248,23 @@ django.jQuery(function ($) {
       pickerStart = moment(picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
       pickerEnd = moment(picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
       pickerDays = pickerEnd.diff(pickerStart, 'days') + 'd';
-
       // set date values required for daterangepicker labels
       localStorage.setItem(pickerChosenLabelKey, pickerChosenLabel);
       localStorage.setItem(startDateTimeKey, picker.startDate.format('YYYY-MM-DD HH:mm:ss'));
       localStorage.setItem(endDateTimeKey, picker.endDate.format('YYYY-MM-DD HH:mm:ss'));
       localStorage.setItem(startDayKey, pickerStart.format('MMMM D, YYYY'));
       localStorage.setItem(endDayKey, pickerEnd.format('MMMM D, YYYY'));
-
-      // daterangepicker with custom time ranges
-      if (pickerChosenLabel === "Custom Range") {
-        localStorage.setItem(isChartZoomed, false);
-        localStorage.setItem(isCustomDateRange, true);
-        localStorage.setItem(timeRangeKey, pickerDays);
-        loadCharts(pickerDays, true);
-        // refresh every 2.5 minutes
-        clearInterval(window.owChartRefresh);
-        window.owChartRefresh = setInterval(loadCharts,
-          1000 * 60 * 2.5,
-          pickerDays,
-          false
-        );}
-
-      // daterangepicker with default time ranges
-      else {
-        localStorage.setItem(isChartZoomed, false);
-        localStorage.setItem(isCustomDateRange, false);
-        localStorage.setItem(timeRangeKey, pickerDays);
-        loadCharts(pickerDays, true);
-        // refresh every 2.5 minutes
-        clearInterval(window.owChartRefresh);
-        window.owChartRefresh = setInterval(loadCharts,
-          1000 * 60 * 2.5,
-          pickerDays,
-          false
-        );}
+      localStorage.setItem(isChartZoomed, false);
+      localStorage.setItem(timeRangeKey, pickerDays);
+      localStorage.setItem(isCustomDateRange, pickerChosenLabel === "Custom Range");
+      loadCharts(pickerDays, true);
+      // refresh charts every 2.5 minutes
+      clearInterval(window.owChartRefresh);
+      window.owChartRefresh = setInterval(loadFetchedCharts,
+        1000 * 60 * 2.5,
+        pickerDays,
+        false
+      );
     });
     // bind export button
     $('#ow-chart-time a.export').click(function () {
@@ -296,5 +283,17 @@ django.jQuery(function ($) {
       location.href = `${apiUrl}?key=${originalKey}&timezone=${timezone}&start=${startDate}&end=${endDate}&csv=1`;
       }
     });
+    // fetch chart data and replace the old charts with the new ones
+    function loadFetchedCharts(time){
+      $.ajax(getChartFetchUrl(time), {
+        dataType: 'json',
+        success: function (data) {
+          createCharts(data);
+        },
+        error: function () {
+          window.console.error('Unable to fetch chart data.');
+        },
+      });
+    }
   });
 }(django.jQuery));

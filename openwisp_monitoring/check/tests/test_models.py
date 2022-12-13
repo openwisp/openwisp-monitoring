@@ -149,7 +149,10 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
     def test_config_modified_device_problem(self):
         self._create_admin()
         self.assertEqual(Check.objects.count(), 0)
-        self._create_config(status='modified', organization=self._create_org())
+        with freeze_time(
+            now() - timedelta(minutes=app_settings.CONFIG_CHECK_INTERVAL + 10)
+        ):
+            self._create_config(status='modified', organization=self._create_org())
         d = Device.objects.first()
         d.monitoring.update_status('ok')
         self.assertEqual(Check.objects.count(), 3)
@@ -162,7 +165,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(AlertSettings.objects.count(), 1)
         # Check needs to be run again without mocking time for threshold crossed
         check.perform_check()
-        m = Metric.objects.first()
+        m = Metric.objects.filter(configuration='config_applied').first()
         self.assertEqual(m.content_object, d)
         self.assertEqual(m.key, 'config_applied')
         dm = d.monitoring
@@ -179,7 +182,10 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         """
         self._create_admin()
         self.assertEqual(Check.objects.count(), 0)
-        self._create_config(status='error', organization=self._create_org())
+        with freeze_time(
+            now() - timedelta(minutes=app_settings.CONFIG_CHECK_INTERVAL + 10)
+        ):
+            self._create_config(status='error', organization=self._create_org())
         dm = Device.objects.first().monitoring
         dm.update_status('ok')
         self.assertEqual(Check.objects.count(), 3)
@@ -214,7 +220,10 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
     )
     @patch('openwisp_monitoring.check.settings.AUTO_PING', False)
     def test_config_check_critical_metric(self):
-        self._create_config(status='modified', organization=self._create_org())
+        with freeze_time(
+            now() - timedelta(minutes=app_settings.CONFIG_CHECK_INTERVAL + 6)
+        ):
+            self._create_config(status='modified', organization=self._create_org())
         self.assertEqual(Check.objects.count(), 3)
         d = Device.objects.first()
         dm = d.monitoring
@@ -274,3 +283,34 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(Metric.objects.count(), 0)
         self.assertEqual(Notification.objects.count(), 0)
         self.assertIsNone(c2.perform_check())
+
+    def test_config_check_problem_with_interval(self):
+        self._create_admin()
+        d = self._create_device(organization=self._create_org())
+        self._create_config(device=d)
+        check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
+        self.assertEqual(Check.objects.count(), 3)
+        self.assertEqual(AlertSettings.objects.count(), 0)
+        self.assertFalse(Metric.objects.filter(configuration='config_applied').exists())
+        d.monitoring.update_status('ok')
+        # Running check just after config modified
+        check.perform_check()
+        d.monitoring.refresh_from_db()
+        self.assertTrue(Metric.objects.filter(configuration='config_applied').exists())
+        metric = Metric.objects.get(configuration='config_applied', object_id=str(d.pk))
+        # metric health should not change because the config
+        # hasn't been changed for more than the interval
+        self.assertTrue(metric.is_healthy)
+        # Device monitoring status should be remain unchanged
+        self.assertEqual(d.monitoring.status, 'ok')
+        self.assertEqual(AlertSettings.objects.count(), 1)
+        # Running check just when config was modified more than CONFIG_CHECK_INTERVAL ago
+        with freeze_time(
+            now() + timedelta(minutes=app_settings.CONFIG_CHECK_INTERVAL + 1)
+        ):
+            result = check.perform_check()
+        d.monitoring.refresh_from_db()
+        metric.refresh_from_db()
+        self.assertEqual(result, 0)
+        self.assertFalse(metric.is_healthy)
+        self.assertEqual(d.monitoring.status, 'problem')

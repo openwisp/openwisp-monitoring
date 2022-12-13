@@ -943,6 +943,11 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             dd.data['interfaces'][0]['mobile'], data['interfaces'][0]['mobile']
         )
 
+        with self.subTest('signal key not present at all'):
+            del data['interfaces'][0]['mobile']['signal']
+            response = self._post_data(device.id, device.key, data)
+            self.assertEqual(response.status_code, 200)
+
     def test_pre_metric_write_signal(self):
         d = self._create_device(organization=self._create_org())
         data = {'type': 'DeviceMonitoring', 'resources': {'cpus': 1, 'load': [0, 0, 0]}}

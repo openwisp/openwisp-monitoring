@@ -1488,6 +1488,18 @@ validating custom parameters of a ``Check`` object.
 This setting allows you to choose whether `config_applied <#configuration-applied>`_ checks should be
 created automatically for newly registered devices. It's enabled by default.
 
+``OPENWISP_MONITORING_CONFIG_CHECK_INTERVAL``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``int``     |
++--------------+-------------+
+| **default**: | ``5``       |
++--------------+-------------+
+
+This setting allows you to configure the config check interval used by
+`config_applied <#configuration-applied>`_. By default it is set to 5 minutes.
+
 ``OPENWISP_MONITORING_AUTO_IPERF3``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1649,6 +1661,12 @@ the devices.
 If the devices are connecting to your OpenWISP instance using a shared layer2
 network, hence the OpenWSP server can reach the devices using the ``last_ip``
 field, you can set this to ``False``.
+
+**Note:** If this setting is not configured, it will fallback to the value of
+`OPENWISP_CONTROLLER_MANAGEMENT_IP_ONLY setting
+<https://github.com/openwisp/openwisp-controller#openwisp_controller_management_ip_only>`_.
+If ``OPENWISP_CONTROLLER_MANAGEMENT_IP_ONLY`` also not configured,
+then it will fallback to ``True``.
 
 ``OPENWISP_MONITORING_DEVICE_RECOVERY_DETECTION``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2344,14 +2362,24 @@ multi-tenancy and allows filtering monitoring data by ``organization_slug``,
 
     GET /api/v1/monitoring/dashboard/?organization_slug=<org1-slug>,<org2-slug>&location_id=<location1-id>,<location2-id>&floorplan_id=<floorplan1-id>,<floorplan2-id>
 
-Another parameter that can be used is ``time``, which allows to specify the
-time frame, the allowed values are:
+- When retrieving chart data, the ``time`` parameter allows to specify
+  the time frame, eg:
 
-- ``1d``: returns data of the last day
-- ``3d``: returns data of the last 3 days
-- ``7d``: returns data of the last 7 days
-- ``30d``: returns data of the last 30 days
-- ``365d``: returns data of the last 365 days
+  - ``1d``: returns data of the last day
+  - ``3d``: returns data of the last 3 days
+  - ``7d``: returns data of the last 7 days
+  - ``30d``: returns data of the last 30 days
+  - ``365d``: returns data of the last 365 days
+
+- In alternative to ``time`` it is possible to request chart data for a custom
+  date range by using the ``start`` and ``end`` parameters, eg:
+
+.. code-block:: text
+
+    GET /api/v1/monitoring/dashboard/?start={start_datetime}&end={end_datetime}
+
+**Note**: ``start`` and  ``end`` parameters should be in the format
+``YYYY-MM-DD H:M:S``, otherwise 400 Bad Response will be returned.
 
 Retrieve device charts and device status data
 #############################################
@@ -2365,14 +2393,27 @@ The format used for Device Status is inspired by
 
 **Notes**:
 
-- If the request is made without ``?status=true`` then only device charts data would be returned.
-- When retrieving data, the ``time`` parameter allows to specify the time frame, the allowed values are:
+- If the request is made without ``?status=true`` the response will
+  contain only charts data and will not include any device status information
+  (current load average, ARP table, DCHP leases, etc.).
+- When retrieving chart data, the ``time`` parameter allows to specify
+  the time frame, eg:
 
   - ``1d``: returns data of the last day
   - ``3d``: returns data of the last 3 days
   - ``7d``: returns data of the last 7 days
   - ``30d``: returns data of the last 30 days
   - ``365d``: returns data of the last 365 days
+
+- In alternative to ``time`` it is possible to request chart data for a custom
+  date range by using the ``start`` and ``end`` parameters, eg:
+
+.. code-block:: text
+
+    GET /api/v1/monitoring/device/{pk}/?key={key}&status=true&start={start_datetime}&end={end_datetime}
+
+**Note**: ``start`` and  ``end`` parameters must be in the format
+``YYYY-MM-DD H:M:S``, otherwise 400 Bad Response will be returned.
 
 Collect device metrics and status
 #################################
