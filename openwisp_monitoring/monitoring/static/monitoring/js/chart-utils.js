@@ -51,7 +51,8 @@ django.jQuery(function ($) {
         if (localStorage.getItem(isCustomDateRange) === 'true') {
           var startDate = localStorage.getItem(startDateTimeKey);
           var endDate = localStorage.getItem(endDateTimeKey);
-          url = `${baseUrl}${time}&start=${startDate}&end=${endDate}`;
+          var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          url = `${apiUrl}?key=${originalKey}&timezone=${timezone}&start=${startDate}&end=${endDate}`;
         }
         $.ajax(url, {
           dataType: 'json',
@@ -178,7 +179,8 @@ django.jQuery(function ($) {
       if (localStorage.getItem(isCustomDateRange) === 'true') {
       var startDate = localStorage.getItem(startDateTimeKey);
       var endDate = localStorage.getItem(endDateTimeKey);
-      location.href = `${baseUrl}${time}&start=${startDate}&end=${endDate}&csv=1`;
+      var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      location.href = `${apiUrl}?key=${originalKey}&timezone=${timezone}&start=${startDate}&end=${endDate}&csv=1`;
       }
     });
   });
