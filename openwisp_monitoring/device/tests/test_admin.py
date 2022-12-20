@@ -627,6 +627,20 @@ class TestAdmin(
             self.assertEqual(Metric.objects.count(), 1)
             self.assertEqual(AlertSettings.objects.count(), 0)
 
+    def test_device_admin_recover_button_visibility(self):
+        self._create_device(organization=self._create_org())
+        url = reverse('admin:config_device_changelist')
+        response = self.client.get(url)
+        self.assertContains(
+            response,
+            """
+                <li>
+                    <a href="/admin/config/device/recover/" class="recoverlink">Recover deleted Devices</a>
+                </li>
+            """,
+            html=True,
+        )
+
 
 class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
     location_model = Location
