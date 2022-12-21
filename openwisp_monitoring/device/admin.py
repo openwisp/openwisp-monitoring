@@ -329,6 +329,8 @@ class DeviceResource(BaseDeviceResource):
 
 class DeviceAdminExportable(ImportExportMixin, DeviceAdmin):
     resource_class = DeviceResource
+    # Added to support both reversion and import-export
+    change_list_template = 'admin/config/change_list_device.html'
 
 
 class WifiSessionAdminHelperMixin:
