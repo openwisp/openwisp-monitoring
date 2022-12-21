@@ -76,6 +76,7 @@ django.jQuery(function ($) {
           function (eventdata) { // jshint ignore:line
             var eventEnd = eventdata['xaxis.range[1]'];
             var eventStart = eventdata['xaxis.range[0]'];
+            console.log(eventEnd, eventStart)
             // If not monitoring charts location, then just return
             if (!isMonitoringChartsLocation()) {
               return;
@@ -95,14 +96,15 @@ django.jQuery(function ($) {
               $('#daterangepicker-widget span').html(initialstartDate.format('MMMM D, YYYY') + ' - ' + initialEndDate.format('MMMM D, YYYY'));
               $('#daterangepicker-widget').data('daterangepicker').setStartDate(moment(initialstartDate.format('MMMM D, YYYY')).format('MM/DD/YYYY'));
               $('#daterangepicker-widget').data('daterangepicker').setEndDate(moment(initialEndDate.format('MMMM D, YYYY')).format('MM/DD/YYYY'));
+              console.log('zoom out')
               loadCharts(daysBeforeZoom, true);
               // refresh every 2.5 minutes
-              clearInterval(window.owChartRefresh);
-              window.owChartRefresh = setInterval(loadCharts,
-                1000 * 60 * 2.5,
-                daysBeforeZoom,
-                false
-              );
+              // clearInterval(window.owChartRefresh);
+              // window.owChartRefresh = setInterval(loadCharts,
+              //   1000 * 60 * 2.5,
+              //   daysBeforeZoom,
+              //   false
+              // );
               return;
             }
             // When the chart zoomed in,
@@ -127,14 +129,14 @@ django.jQuery(function ($) {
             $('#daterangepicker-widget').data('daterangepicker').setEndDate(moment(pickerEnd.format('MMMM D, YYYY')).format('MM/DD/YYYY'));
             // Now, load the charts with custom date ranges
             console.log('zoom in')
-            loadCharts(pickerDays, true);
+            loadFetchedCharts(pickerDays);
             // refresh every 2.5 minutes
-            clearInterval(window.owChartRefresh);
-            window.owChartRefresh = setInterval(loadCharts,
-              1000 * 60 * 2.5,
-              pickerDays,
-              false
-            );
+            // clearInterval(window.owChartRefresh);
+            // window.owChartRefresh = setInterval(loadCharts,
+            //   1000 * 60 * 2.5,
+            //   pickerDays,
+            //   false
+            // );
           }
         );
       }
@@ -203,13 +205,12 @@ django.jQuery(function ($) {
               alert('Something went wrong while loading the charts');
           },
           complete: function () {
-            console.log('ajax charts', window.location.hash)
-            handleChartZoomChange('js-plotly-plot');
             const zoomChartContainer = document.getElementById(localStorage.getItem(zoomChartIdKey));
             // If the chart zoom scrolling is active, then scroll to the zoomed chart container
             if (localStorage.getItem(isChartZoomScroll) === 'true' && zoomChartContainer) {
               zoomChartContainer.scrollIntoView();
             }
+            handleChartZoomChange('js-plotly-plot');
             localLoadingOverlay.fadeOut(200, function() {
               if (showLoading) {
                 globalLoadingOverlay.fadeOut(200);
@@ -301,11 +302,33 @@ django.jQuery(function ($) {
       }
     });
     // fetch chart data and replace the old charts with the new ones
-    function loadFetchedCharts(time){
+    function loadFetchedCharts(time, showLoading=true){
       $.ajax(getChartFetchUrl(time), {
         dataType: 'json',
+        beforeSend: function () {
+          if (showLoading) {
+            globalLoadingOverlay.show();
+          }
+        },
         success: function (data) {
-          createCharts(data);
+          if (data.charts.length) {
+            chartContents.show();
+            createCharts(data);
+            console.log('fetch ajax charts', window.location.hash)
+            handleChartZoomChange('js-plotly-plot');
+            const zoomChartContainer = document.getElementById(localStorage.getItem(zoomChartIdKey));
+            // If the chart zoom scrolling is active, then scroll to the zoomed chart container
+            if (localStorage.getItem(isChartZoomScroll) === 'true' && zoomChartContainer) {
+              zoomChartContainer.scrollIntoView();
+            }
+          }
+        },
+        complete: function () {
+          localLoadingOverlay.fadeOut(200, function() {
+            if (showLoading) {
+              globalLoadingOverlay.fadeOut(200);
+            }
+          });
         },
         error: function () {
           window.console.error('Unable to fetch chart data.');
