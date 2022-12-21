@@ -45,14 +45,24 @@ django.jQuery(function ($) {
       }, initDateRangePickerWidget);
       initDateRangePickerWidget(start, end);
 
+    function isMonitoringChartsLocation() {
+      // If active monitoring charts location is not #ow-chart-container and not admin
+      return window.location.hash === '#ow-chart-container' ||  window.location.pathname === '/admin/'
+    }
+
     function handleChartZoomChange(chartsContainers) {
+      console.log(window.location.pathname)
+      // If not monitoring charts location, then just return
+      if (!isMonitoringChartsLocation()) {
+        return;
+      }
       // Handle chart zooming with custom dates
       var zoomCharts = document.getElementsByClassName(chartsContainers);
       // Set zoomChartId, required for scrolling after the zoom event
       $('.js-plotly-plot').on("click dblclick mouseover mouseout", function () {
         var zoomChartId = $(this).parent().prop('id');
         if (zoomChartId === 'chart-0') {
-          zoomChartId = 'container';
+         zoomChartId = window.location.hash === '#ow-chart-container' ? 'container' : 'ow-chart-inner-container'
         }
         localStorage.setItem(zoomChartIdKey, zoomChartId);
       });
@@ -66,8 +76,12 @@ django.jQuery(function ($) {
           function (eventdata) { // jshint ignore:line
             var eventEnd = eventdata['xaxis.range[1]'];
             var eventStart = eventdata['xaxis.range[0]'];
+            // If not monitoring charts location, then just return
+            if (!isMonitoringChartsLocation()) {
+              return;
+            }
             // When the chart is zoomed out, then load charts with initial zoom level
-            if (!eventEnd || !eventStart) {
+            if (!eventEnd && !eventStart) {
               localStorage.setItem(isChartZoomed, false);
               localStorage.setItem(isCustomDateRange, false);
               // After zoomed out, it should scroll back initial zoom container
@@ -112,6 +126,7 @@ django.jQuery(function ($) {
             $('#daterangepicker-widget').data('daterangepicker').setStartDate(moment(pickerStart.format('MMMM D, YYYY')).format('MM/DD/YYYY'));
             $('#daterangepicker-widget').data('daterangepicker').setEndDate(moment(pickerEnd.format('MMMM D, YYYY')).format('MM/DD/YYYY'));
             // Now, load the charts with custom date ranges
+            console.log('zoom in')
             loadCharts(pickerDays, true);
             // refresh every 2.5 minutes
             clearInterval(window.owChartRefresh);
@@ -163,6 +178,7 @@ django.jQuery(function ($) {
         });
       },
       loadCharts = function (time, showLoading) {
+        console.log('Charts Ajax call')
         $.ajax(getChartFetchUrl(time), {
           dataType: 'json',
           beforeSend: function () {
@@ -184,9 +200,10 @@ django.jQuery(function ($) {
             createCharts(data);
           },
           error: function () {
-            alert('Something went wrong while loading the charts');
+              alert('Something went wrong while loading the charts');
           },
           complete: function () {
+            console.log('ajax charts', window.location.hash)
             handleChartZoomChange('js-plotly-plot');
             const zoomChartContainer = document.getElementById(localStorage.getItem(zoomChartIdKey));
             // If the chart zoom scrolling is active, then scroll to the zoomed chart container
