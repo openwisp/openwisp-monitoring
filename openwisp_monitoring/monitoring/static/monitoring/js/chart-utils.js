@@ -47,22 +47,22 @@ django.jQuery(function ($) {
 
     function isMonitoringChartsLocation() {
       // If active monitoring charts location is not #ow-chart-container and not admin
-      return window.location.hash === '#ow-chart-container' ||  window.location.pathname === '/admin/'
+      return window.location.hash === '#ow-chart-container' ||  window.location.pathname === '/admin/';
     }
 
     function handleChartZoomChange(chartsContainers) {
-      console.log(window.location.pathname)
-      // If not monitoring charts location, then just return
+      // Simply return if we are not at the monitoring chart location
       if (!isMonitoringChartsLocation()) {
         return;
       }
       // Handle chart zooming with custom dates
       var zoomCharts = document.getElementsByClassName(chartsContainers);
-      // Set zoomChartId, required for scrolling after the zoom event
+      // Set zoomChartId, required for scrolling after the zoom-in event
       $('.js-plotly-plot').on("click dblclick mouseover mouseout", function () {
         var zoomChartId = $(this).parent().prop('id');
         if (zoomChartId === 'chart-0') {
-         zoomChartId = window.location.hash === '#ow-chart-container' ? 'container' : 'ow-chart-inner-container'
+         var activeChartsLocation = window.location.hash;
+         zoomChartId = activeChartsLocation === '#ow-chart-container' ? 'container' : 'ow-chart-inner-container';
         }
         localStorage.setItem(zoomChartIdKey, zoomChartId);
       });
@@ -76,8 +76,7 @@ django.jQuery(function ($) {
           function (eventdata) { // jshint ignore:line
             var eventEnd = eventdata['xaxis.range[1]'];
             var eventStart = eventdata['xaxis.range[0]'];
-            console.log(eventEnd, eventStart)
-            // If not monitoring charts location, then just return
+            // Simply return if we are not at the monitoring chart location
             if (!isMonitoringChartsLocation()) {
               return;
             }
@@ -96,15 +95,15 @@ django.jQuery(function ($) {
               $('#daterangepicker-widget span').html(initialstartDate.format('MMMM D, YYYY') + ' - ' + initialEndDate.format('MMMM D, YYYY'));
               $('#daterangepicker-widget').data('daterangepicker').setStartDate(moment(initialstartDate.format('MMMM D, YYYY')).format('MM/DD/YYYY'));
               $('#daterangepicker-widget').data('daterangepicker').setEndDate(moment(initialEndDate.format('MMMM D, YYYY')).format('MM/DD/YYYY'));
-              console.log('zoom out')
+              // On zoom out, load all charts to their initial zoom level
               loadCharts(daysBeforeZoom, true);
               // refresh every 2.5 minutes
-              // clearInterval(window.owChartRefresh);
-              // window.owChartRefresh = setInterval(loadCharts,
-              //   1000 * 60 * 2.5,
-              //   daysBeforeZoom,
-              //   false
-              // );
+              clearInterval(window.owChartRefresh);
+              window.owChartRefresh = setInterval(loadFetchedCharts,
+                1000 * 60 * 2.5,
+                daysBeforeZoom,
+                false
+              );
               return;
             }
             // When the chart zoomed in,
@@ -128,20 +127,27 @@ django.jQuery(function ($) {
             $('#daterangepicker-widget').data('daterangepicker').setStartDate(moment(pickerStart.format('MMMM D, YYYY')).format('MM/DD/YYYY'));
             $('#daterangepicker-widget').data('daterangepicker').setEndDate(moment(pickerEnd.format('MMMM D, YYYY')).format('MM/DD/YYYY'));
             // Now, load the charts with custom date ranges
-            console.log('zoom in')
             loadFetchedCharts(pickerDays);
             // refresh every 2.5 minutes
-            // clearInterval(window.owChartRefresh);
-            // window.owChartRefresh = setInterval(loadCharts,
-            //   1000 * 60 * 2.5,
-            //   pickerDays,
-            //   false
-            // );
+            clearInterval(window.owChartRefresh);
+            window.owChartRefresh = setInterval(loadFetchedCharts,
+              1000 * 60 * 2.5,
+              pickerDays,
+              false
+            );
           }
         );
       }
     }
 
+    function triggerZoomCharts (containerClassName) {
+      handleChartZoomChange(containerClassName);
+      const zoomChartContainer = document.getElementById(localStorage.getItem(zoomChartIdKey));
+      // If the chart zoom scrolling is active, then scroll to the zoomed chart container
+      if (localStorage.getItem(isChartZoomScroll) === 'true' && zoomChartContainer) {
+        zoomChartContainer.scrollIntoView();
+      }
+    }
     var chartQuickLinks, chartContents = $('#ow-chart-contents'),
       fallback = $('#ow-chart-fallback'),
       defaultTimeRange = localStorage.getItem(timeRangeKey) || $('#monitoring-timeseries-default-time').data('value'),
@@ -160,6 +166,11 @@ django.jQuery(function ($) {
             endDate = localStorage.getItem(zoomEndDateTimeKey);
             startDate = localStorage.getItem(zoomStartDateTimeKey);
           }
+          // Ensure that the 'endDate' of zooming events
+          // is never greater than the 'now' date time
+          const now = moment().format('YYYY-MM-DD HH:mm:ss');
+          const endDateTime = moment(endDate).format('YYYY-MM-DD HH:mm:ss');
+          endDate = endDateTime > now ? now : endDateTime;
           var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
           url = `${apiUrl}?key=${originalKey}&timezone=${timezone}&start=${startDate}&end=${endDate}`;
         }
@@ -180,7 +191,6 @@ django.jQuery(function ($) {
         });
       },
       loadCharts = function (time, showLoading) {
-        console.log('Charts Ajax call')
         $.ajax(getChartFetchUrl(time), {
           dataType: 'json',
           beforeSend: function () {
@@ -202,15 +212,10 @@ django.jQuery(function ($) {
             createCharts(data);
           },
           error: function () {
-              alert('Something went wrong while loading the charts');
+            alert('Something went wrong while loading the charts');
           },
           complete: function () {
-            const zoomChartContainer = document.getElementById(localStorage.getItem(zoomChartIdKey));
-            // If the chart zoom scrolling is active, then scroll to the zoomed chart container
-            if (localStorage.getItem(isChartZoomScroll) === 'true' && zoomChartContainer) {
-              zoomChartContainer.scrollIntoView();
-            }
-            handleChartZoomChange('js-plotly-plot');
+            triggerZoomCharts('js-plotly-plot');
             localLoadingOverlay.fadeOut(200, function() {
               if (showLoading) {
                 globalLoadingOverlay.fadeOut(200);
@@ -312,15 +317,8 @@ django.jQuery(function ($) {
         },
         success: function (data) {
           if (data.charts.length) {
-            chartContents.show();
             createCharts(data);
-            console.log('fetch ajax charts', window.location.hash)
-            handleChartZoomChange('js-plotly-plot');
-            const zoomChartContainer = document.getElementById(localStorage.getItem(zoomChartIdKey));
-            // If the chart zoom scrolling is active, then scroll to the zoomed chart container
-            if (localStorage.getItem(isChartZoomScroll) === 'true' && zoomChartContainer) {
-              zoomChartContainer.scrollIntoView();
-            }
+            triggerZoomCharts('js-plotly-plot');
           }
         },
         complete: function () {
