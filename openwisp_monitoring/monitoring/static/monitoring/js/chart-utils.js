@@ -14,6 +14,7 @@ const zoomEndDayKey = 'ow2-chart-zoom-end-day'; // October 3, 2022
 const zoomStartDateTimeKey = 'ow2-chart-zoom-start-datetime'; // 2022-09-03 00:00:00
 const zoomEndDateTimeKey = 'ow2-chart-zoom-end-datetime'; // 2022-09-03 00:00:00
 const zoomChartIdKey = 'ow2-chart-zoom-id'; // true/false
+const lastFetchedChartsData = 'ow2-chart-last-fetch-data'; // true/false
 
 django.jQuery(function ($) {
   $(document).ready(function () {
@@ -210,6 +211,7 @@ django.jQuery(function ($) {
               fallback.show();
             }
             createCharts(data);
+            localStorage.setItem(lastFetchedChartsData, JSON.stringify(data));
           },
           error: function () {
             alert('Something went wrong while loading the charts');
@@ -278,6 +280,7 @@ django.jQuery(function ($) {
       localStorage.setItem(startDayKey, pickerStart.format('MMMM D, YYYY'));
       localStorage.setItem(endDayKey, pickerEnd.format('MMMM D, YYYY'));
       localStorage.setItem(isChartZoomed, false);
+      localStorage.setItem(isChartZoomScroll, false);
       localStorage.setItem(timeRangeKey, pickerDays);
       localStorage.setItem(isCustomDateRange, pickerChosenLabel === "Custom Range");
       loadCharts(pickerDays, true);
@@ -307,26 +310,36 @@ django.jQuery(function ($) {
       }
     });
     // fetch chart data and replace the old charts with the new ones
-    function loadFetchedCharts(time, showLoading=true){
+    function loadFetchedCharts(time, isZooming=true){
       $.ajax(getChartFetchUrl(time), {
         dataType: 'json',
         beforeSend: function () {
-          if (showLoading) {
+          if (isZooming) {
+            fallback.hide();
+            chartContents.hide();
             globalLoadingOverlay.show();
+            localLoadingOverlay.show();
           }
         },
         success: function (data) {
+          if(isZooming){
+            chartContents.show();
+          }
           if (data.charts.length) {
             createCharts(data);
-            triggerZoomCharts('js-plotly-plot');
+            localStorage.setItem(lastFetchedChartsData, JSON.stringify(data));
           }
+          else {
+            createCharts(JSON.parse(localStorage.getItem(lastFetchedChartsData)));
+          }
+          triggerZoomCharts('js-plotly-plot');
         },
         complete: function () {
-          localLoadingOverlay.fadeOut(200, function() {
-            if (showLoading) {
+          if (isZooming) {
+            localLoadingOverlay.fadeOut(200, function() {
               globalLoadingOverlay.fadeOut(200);
-            }
           });
+          }
         },
         error: function () {
           window.console.error('Unable to fetch chart data.');
