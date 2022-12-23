@@ -333,6 +333,13 @@ Follow the setup instructions of `openwisp-controller
         'NAME': 'openwisp2',
         'HOST': 'localhost',
         'PORT': '8086',
+        'OPTIONS': {
+            # Specify additional options to be used while initializing
+            # database connection.
+            # Note: These options may differ based on the backend used.
+            'use_udp': True,
+            'udp_port': 8088,
+        }
     }
 
 ``urls.py``:

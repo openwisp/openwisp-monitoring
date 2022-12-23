@@ -81,6 +81,7 @@ class DatabaseClient(object):
             TIMESERIES_DB['USER'],
             TIMESERIES_DB['PASSWORD'],
             self.db_name,
+            **TIMESERIES_DB.get('OPTIONS', {}),
         )
 
     @retry
@@ -117,12 +118,10 @@ class DatabaseClient(object):
             timestamp = timestamp.isoformat(sep='T', timespec='microseconds')
         point['time'] = timestamp
         try:
-            self.db.write(
-                {'points': [point]},
-                {
-                    'db': kwargs.get('database') or self.db_name,
-                    'rp': kwargs.get('retention_policy'),
-                },
+            self.db.write_points(
+                points=[point],
+                database=kwargs.get('database') or self.db_name,
+                retention_policy=kwargs.get('retention_policy'),
             )
         except Exception as exception:
             logger.warning(f'got exception while writing to tsdb: {exception}')
