@@ -81,6 +81,7 @@ class DatabaseClient(object):
             TIMESERIES_DB['USER'],
             TIMESERIES_DB['PASSWORD'],
             self.db_name,
+            **TIMESERIES_DB.get('OPTIONS', {}),
         )
 
     @retry

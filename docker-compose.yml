@@ -16,8 +16,10 @@ services:
     image: influxdb:1.8-alpine
     volumes:
       - influxdb-data:/var/lib/influxdb
+      - ./tests/influxdb.conf:/etc/influxdb/influxdb.conf
     ports:
       - "8086:8086"
+      - "8088:8088/udp"
     environment:
       INFLUXDB_DB: openwisp2
       INFLUXDB_USER: openwisp
