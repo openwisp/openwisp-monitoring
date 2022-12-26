@@ -122,7 +122,6 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         d.delete()
         self.assertEqual(Check.objects.count(), 0)
 
-    @patch('openwisp_monitoring.check.settings.AUTO_PING', False)
     def test_config_modified_device_problem(self):
         self._create_admin()
         self.assertEqual(Check.objects.count(), 0)
@@ -152,7 +151,6 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(dm.status, 'problem')
         self.assertEqual(Notification.objects.count(), 1)
 
-    @patch('openwisp_monitoring.check.settings.AUTO_PING', False)
     def test_config_error(self):
         """
         Test that ConfigApplied checks are skipped when device config status is errored
@@ -195,7 +193,6 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         'openwisp_monitoring.device.base.models.app_settings.CRITICAL_DEVICE_METRICS',
         [{'key': 'config_applied', 'field_name': 'config_applied'}],
     )
-    @patch('openwisp_monitoring.check.settings.AUTO_PING', False)
     def test_config_check_critical_metric(self):
         with freeze_time(
             now() - timedelta(minutes=app_settings.CONFIG_CHECK_INTERVAL + 6)
