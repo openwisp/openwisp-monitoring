@@ -14,7 +14,6 @@ const zoomEndDayKey = 'ow2-chart-zoom-end-day'; // October 3, 2022
 const zoomStartDateTimeKey = 'ow2-chart-zoom-start-datetime'; // 2022-09-03 00:00:00
 const zoomEndDateTimeKey = 'ow2-chart-zoom-end-datetime'; // 2022-09-03 00:00:00
 const zoomChartIdKey = 'ow2-chart-zoom-id'; // true/false
-const lastFetchedChartsData = 'ow2-chart-last-fetch-data'; // true/false
 
 django.jQuery(function ($) {
   $(document).ready(function () {
@@ -106,8 +105,7 @@ django.jQuery(function ($) {
               clearInterval(window.owChartRefresh);
               window.owChartRefresh = setInterval(loadFetchedCharts,
                 1000 * 60 * 2.5,
-                daysBeforeZoom,
-                false
+                daysBeforeZoom
               );
               return;
             }
@@ -130,13 +128,12 @@ django.jQuery(function ($) {
             // Set date range picker widget labels
             setDateRangePickerWidgetLabel(pickerStartDate, pickerEndDate);
             // Now, load the charts with custom date ranges
-            loadFetchedCharts(pickerDays);
+            loadCharts(pickerDays, true);
             // refresh every 2.5 minutes
             clearInterval(window.owChartRefresh);
             window.owChartRefresh = setInterval(loadFetchedCharts,
               1000 * 60 * 2.5,
-              pickerDays,
-              false
+              pickerDays
             );
           }
         );
@@ -213,7 +210,6 @@ django.jQuery(function ($) {
               fallback.show();
             }
             createCharts(data);
-            localStorage.setItem(lastFetchedChartsData, JSON.stringify(data));
           },
           error: function () {
             alert('Something went wrong while loading the charts');
@@ -312,40 +308,12 @@ django.jQuery(function ($) {
       }
     });
     // fetch chart data and replace the old charts with the new ones
-    function loadFetchedCharts(time, isZooming=true){
+    function loadFetchedCharts(time){
       $.ajax(getChartFetchUrl(time), {
         dataType: 'json',
-        beforeSend: function () {
-          if (isZooming) {
-            fallback.hide();
-            chartContents.hide();
-            globalLoadingOverlay.show();
-            localLoadingOverlay.show();
-          }
-        },
         success: function (data) {
-          if(isZooming){
-            chartContents.show();
-          }
           if (data.charts.length) {
             createCharts(data);
-            localStorage.setItem(lastFetchedChartsData, JSON.stringify(data));
-          }
-          else {
-            var initialStartLabel = localStorage.getItem(startDayKey) || moment().format('MMMM D, YYYY');
-            var initialEndLabel = localStorage.getItem(endDayKey) || moment().format('MMMM D, YYYY');
-            var initialStartDate = moment(initialStartLabel, 'MMMM D, YYYY');
-            var initialEndDate = moment(initialEndLabel, 'MMMM D, YYYY');
-            setDateRangePickerWidgetLabel(initialStartDate, initialEndDate);
-            createCharts(JSON.parse(localStorage.getItem(lastFetchedChartsData)));
-          }
-          triggerZoomCharts('js-plotly-plot');
-        },
-        complete: function () {
-          if (isZooming) {
-            localLoadingOverlay.fadeOut(200, function() {
-              globalLoadingOverlay.fadeOut(200);
-          });
           }
         },
         error: function () {
