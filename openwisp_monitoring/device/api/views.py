@@ -121,6 +121,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
         data = self.instance.data
         ct = ContentType.objects.get_for_model(Device)
         device_extra_tags = self._get_extra_tags(self.instance)
+        self.write_device_metrics = []
         for interface in data.get('interfaces', []):
             ifname = interface['name']
             extra_tags = Metric._sort_dict(device_extra_tags)
@@ -150,7 +151,17 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
                     main_tags={'ifname': Metric._makekey(ifname)},
                     extra_tags=extra_tags,
                 )
-                metric.write(field_value, current, time=time, extra_values=extra_values)
+                self.write_device_metrics.append(
+                    (
+                        metric,
+                        {
+                            'value': field_value,
+                            'current': current,
+                            'time': time,
+                            'extra_values': extra_values,
+                        },
+                    )
+                )
                 if created:
                     self._create_traffic_chart(metric)
             try:
@@ -174,25 +185,37 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
             for client in clients:
                 if 'mac' not in client:
                     continue
-                metric.write(client['mac'], current, time=client_time)
+                self.write_device_metrics.append(
+                    (
+                        metric,
+                        {
+                            'value': client['mac'],
+                            'current': current,
+                            'time': client_time,
+                        },
+                    )
+                )
                 client_time += timedelta(microseconds=1)
             if created:
                 self._create_clients_chart(metric)
-        if 'resources' not in data:
-            return
-        if 'load' in data['resources'] and 'cpus' in data['resources']:
-            self._write_cpu(
-                data['resources']['load'],
-                data['resources']['cpus'],
-                pk,
-                ct,
-                current,
-                time=time,
-            )
-        if 'disk' in data['resources']:
-            self._write_disk(data['resources']['disk'], pk, ct, time=time)
-        if 'memory' in data['resources']:
-            self._write_memory(data['resources']['memory'], pk, ct, current, time=time)
+        if 'resources' in data:
+            if 'load' in data['resources'] and 'cpus' in data['resources']:
+                self._write_cpu(
+                    data['resources']['load'],
+                    data['resources']['cpus'],
+                    pk,
+                    ct,
+                    current,
+                    time=time,
+                )
+            if 'disk' in data['resources']:
+                self._write_disk(data['resources']['disk'], pk, ct, time=time)
+            if 'memory' in data['resources']:
+                self._write_memory(
+                    data['resources']['memory'], pk, ct, current, time=time
+                )
+
+        Metric.batch_write(self.write_device_metrics)
 
     def _get_extra_tags(self, device):
         tags = {'organization_id': str(device.organization_id)}
@@ -246,7 +269,17 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
                 name='signal strength',
                 key=ifname,
             )
-            metric.write(signal_strength, current, time=time, extra_values=extra_values)
+            self.write_device_metrics.append(
+                (
+                    metric,
+                    {
+                        'value': signal_strength,
+                        'current': current,
+                        'time': time,
+                        'extra_values': extra_values,
+                    },
+                )
+            )
             if created:
                 self._create_signal_strength_chart(metric)
 
@@ -272,7 +305,17 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
                 name='signal quality',
                 key=ifname,
             )
-            metric.write(signal_quality, current, time=time, extra_values=extra_values)
+            self.write_device_metrics.append(
+                (
+                    metric,
+                    {
+                        'value': signal_quality,
+                        'current': current,
+                        'time': time,
+                        'extra_values': extra_values,
+                    },
+                )
+            )
             if created:
                 self._create_signal_quality_chart(metric)
         # create access technology chart
@@ -283,8 +326,15 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
             name='access technology',
             key=ifname,
         )
-        metric.write(
-            list(ACCESS_TECHNOLOGIES.keys()).index(access_type), current, time=time
+        self.write_device_metrics.append(
+            (
+                metric,
+                {
+                    'value': list(ACCESS_TECHNOLOGIES.keys()).index(access_type),
+                    'current': current,
+                    'time': time,
+                },
+            )
         )
         if created:
             self._create_access_tech_chart(metric)
@@ -303,8 +353,16 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
         if created:
             self._create_resources_chart(metric, resource='cpu')
             self._create_resources_alert_settings(metric, resource='cpu')
-        metric.write(
-            100 * float(load[0] / cpus), current, time=time, extra_values=extra_values
+        self.write_device_metrics.append(
+            (
+                metric,
+                {
+                    'value': 100 * float(load[0] / cpus),
+                    'current': current,
+                    'time': time,
+                    'extra_values': extra_values,
+                },
+            )
         )
 
     def _write_disk(
@@ -321,7 +379,16 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
         if created:
             self._create_resources_chart(metric, resource='disk')
             self._create_resources_alert_settings(metric, resource='disk')
-        metric.write(100 * used_bytes / size_bytes, current, time=time)
+        self.write_device_metrics.append(
+            (
+                metric,
+                {
+                    'value': 100 * used_bytes / size_bytes,
+                    'current': current,
+                    'time': time,
+                },
+            )
+        )
 
     def _write_memory(
         self, memory, primary_key, content_type, current=False, time=None
@@ -350,7 +417,17 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
         if created:
             self._create_resources_chart(metric, resource='memory')
             self._create_resources_alert_settings(metric, resource='memory')
-        metric.write(percent_used, current, time=time, extra_values=extra_values)
+        self.write_device_metrics.append(
+            (
+                metric,
+                {
+                    'value': percent_used,
+                    'current': current,
+                    'time': time,
+                    'extra_values': extra_values,
+                },
+            )
+        )
 
     def _calculate_increment(self, ifname, stat, value):
         """

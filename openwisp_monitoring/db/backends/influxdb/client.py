@@ -111,17 +111,12 @@ class DatabaseClient(object):
             database=database,
         )
 
-    def write(self, name, values, **kwargs):
-        point = {'measurement': name, 'tags': kwargs.get('tags'), 'fields': values}
-        timestamp = kwargs.get('timestamp') or now()
-        if isinstance(timestamp, datetime):
-            timestamp = timestamp.isoformat(sep='T', timespec='microseconds')
-        point['time'] = timestamp
+    def _write(self, data, params):
         try:
             self.db.write_points(
-                points=[point],
-                database=kwargs.get('database') or self.db_name,
-                retention_policy=kwargs.get('retention_policy'),
+                points=data['points'],
+                database=params.get('db') or self.db_name,
+                retention_policy=params.get('rp'),
             )
         except Exception as exception:
             logger.warning(f'got exception while writing to tsdb: {exception}')
@@ -134,6 +129,54 @@ class DatabaseClient(object):
                 ):
                     return
             raise TimeseriesWriteException
+
+    def write(self, name, values, **kwargs):
+        timestamp = kwargs.get('timestamp') or now()
+        if isinstance(timestamp, datetime):
+            timestamp = timestamp.isoformat(sep='T', timespec='microseconds')
+        point = {
+            'measurement': name,
+            'tags': kwargs.get('tags'),
+            'fields': values,
+            'time': timestamp,
+        }
+        self._write(
+            data={'points': [point]},
+            params={
+                'db': kwargs.get('database') or self.db_name,
+                'rp': kwargs.get('retention_policy'),
+            },
+        )
+
+    def batch_write(self, metric_data):
+        data_points = {}
+        for data in metric_data:
+            org = data.get('database') or self.db_name
+            retention_policy = data.get('retention_policy')
+            if org not in data_points:
+                data_points[org] = {}
+            if retention_policy not in data_points[org]:
+                data_points[org][retention_policy] = []
+            timestamp = data.get('timestamp') or now()
+            if isinstance(timestamp, datetime):
+                timestamp = timestamp.isoformat(sep='T', timespec='microseconds')
+            data_points[org][retention_policy].append(
+                {
+                    'measurement': data.get('name'),
+                    'tags': data.get('tags'),
+                    'fields': data.get('values'),
+                    'time': timestamp,
+                }
+            )
+        for database in data_points.keys():
+            for rp in data_points[database].keys():
+                self._write(
+                    data={'points': data_points[database][rp]},
+                    params={
+                        'db': database,
+                        'rp': rp,
+                    },
+                )
 
     def read(self, key, fields, tags, **kwargs):
         extra_fields = kwargs.get('extra_fields')

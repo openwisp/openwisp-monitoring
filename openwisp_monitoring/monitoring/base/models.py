@@ -33,7 +33,7 @@ from ..configuration import (
 )
 from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
 from ..signals import pre_metric_write, threshold_crossed
-from ..tasks import delete_timeseries, timeseries_write
+from ..tasks import delete_timeseries, timeseries_batch_write, timeseries_write
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -164,6 +164,19 @@ class AbstractMetric(TimeStampedEditableModel):
             metric.save()
             created = True
         return metric, created
+
+    @classmethod
+    def batch_write(cls, raw_data):
+        error_dict = {}
+        write_data = []
+        for metric, kwargs in raw_data:
+            try:
+                write_data.append(metric.write(**kwargs, write=False))
+            except ValueError as error:
+                error_dict[metric.key] = str(error)
+        timeseries_batch_write.delay(write_data)
+        if error_dict:
+            raise ValueError(str(error_dict))
 
     @property
     def codename(self):
@@ -355,6 +368,7 @@ class AbstractMetric(TimeStampedEditableModel):
         extra_values=None,
         retention_policy=None,
         send_alert=True,
+        write=True,
     ):
         """write timeseries data"""
         values = {self.field_name: value}
@@ -403,7 +417,9 @@ class AbstractMetric(TimeStampedEditableModel):
                 options['check_threshold_kwargs'].update(
                     {'value': extra_values[self.alert_field]}
                 )
-        timeseries_write.delay(name=self.key, values=values, **options)
+        if write:
+            timeseries_write.delay(name=self.key, values=values, **options)
+        return {'name': self.key, 'values': values, **options}
 
     def read(self, **kwargs):
         """reads timeseries data"""
