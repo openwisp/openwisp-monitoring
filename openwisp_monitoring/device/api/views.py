@@ -13,6 +13,7 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from swapper import load_model
 
+from openwisp_controller.config.api.views import DeviceListCreateView
 from openwisp_controller.geo.api.views import (
     DevicePermission,
     GeoJsonLocationList,
@@ -23,7 +24,11 @@ from ...views import MonitoringApiViewMixin
 from ..schema import schema
 from ..signals import device_metrics_received
 from ..tasks import write_device_metrics
-from .serializers import MonitoringDeviceSerializer, MonitoringGeoJsonLocationSerializer
+from .serializers import (
+    MonitoringDeviceSerializer,
+    MonitoringGeoJsonLocationSerializer,
+    MonitoringLocationDeviceSerializer,
+)
 
 logger = logging.getLogger(__name__)
 Chart = load_model('monitoring', 'Chart')
@@ -129,10 +134,20 @@ monitoring_geojson_location_list = MonitoringGeoJsonLocationList.as_view()
 
 
 class MonitoringLocationDeviceList(LocationDeviceList):
-    serializer_class = MonitoringDeviceSerializer
+    serializer_class = MonitoringLocationDeviceSerializer
 
     def get_queryset(self):
         return super().get_queryset().select_related('monitoring').order_by('name')
 
 
 monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
+
+
+class MonitoringDeviceList(DeviceListCreateView):
+    serializer_class = MonitoringDeviceSerializer
+
+    def get_queryset(self):
+        return super().get_queryset().select_related('monitoring')
+
+
+monitoring_device_list = MonitoringDeviceList.as_view()
