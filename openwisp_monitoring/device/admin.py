@@ -5,6 +5,7 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline
 from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q
 from django.forms import ModelForm
 from django.templatetags.static import static
 from django.urls import resolve, reverse
@@ -21,13 +22,13 @@ from swapper import load_model
 
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
 from openwisp_controller.config.admin import DeviceResource as BaseDeviceResource
-from openwisp_users.multitenancy import MultitenantAdminMixin
+from openwisp_users.multitenancy import MultitenantAdminMixin, MultitenantOrgFilter
 from openwisp_utils.admin import ReadOnlyAdmin
+from openwisp_utils.admin_theme.filters import SimpleInputFilter
 
 from ..monitoring.admin import MetricAdmin
 from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from . import settings as app_settings
-from .filters import DeviceFilter, DeviceGroupFilter, DeviceOrganizationFilter
 
 DeviceData = load_model('device_monitoring', 'DeviceData')
 WifiSession = load_model('device_monitoring', 'WifiSession')
@@ -331,6 +332,26 @@ class DeviceAdminExportable(ImportExportMixin, DeviceAdmin):
     resource_class = DeviceResource
 
 
+class DeviceFilter(SimpleInputFilter):
+    """
+    Filters WifiSession queryset for input device name
+    or primary key
+    """
+
+    parameter_name = 'device'
+    title = _('device name or ID')
+
+    def queryset(self, request, queryset):
+        if self.value() is not None:
+            try:
+                uuid.UUID(self.value())
+            except ValueError:
+                lookup = Q(device__name=self.value())
+            else:
+                lookup = Q(device_id=self.value())
+            return queryset.filter(lookup)
+
+
 class WifiSessionAdminHelperMixin:
     def _get_boolean_html(self, value):
         icon = static('admin/img/icon-{}.svg'.format('yes' if value is True else 'no'))
@@ -470,11 +491,11 @@ class WifiSessionAdmin(
     ]
     search_fields = ['wifi_client__mac_address', 'device__name', 'device__mac_address']
     list_filter = [
-        DeviceOrganizationFilter,
-        DeviceFilter,
-        DeviceGroupFilter,
+        ('device__organization', MultitenantOrgFilter),
         'start_time',
         'stop_time',
+        'device__group',
+        DeviceFilter,
     ]
 
     def get_readonly_fields(self, request, obj=None):

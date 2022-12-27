@@ -778,6 +778,11 @@ class TestWifiSessionAdmin(
             )
 
         with self.subTest('Test device filter'):
+            # Filter by device name
+            response = self.client.get(url, {'device': org2_device.name})
+            _assert_org2_wifi_session_in_response(
+                response, org1_interface_data, org2_interface_data
+            )
             # Filter by device pk
             response = self.client.get(url, {'device': str(org2_device.pk)})
             _assert_org2_wifi_session_in_response(
