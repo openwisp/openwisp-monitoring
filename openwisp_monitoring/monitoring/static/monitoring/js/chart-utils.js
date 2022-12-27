@@ -286,8 +286,7 @@ django.jQuery(function ($) {
       clearInterval(window.owChartRefresh);
       window.owChartRefresh = setInterval(loadFetchedCharts,
         1000 * 60 * 2.5,
-        pickerDays,
-        false
+        pickerDays
       );
     });
     // bind export button
@@ -314,6 +313,7 @@ django.jQuery(function ($) {
         success: function (data) {
           if (data.charts.length) {
             createCharts(data);
+            triggerZoomCharts('js-plotly-plot');
           }
         },
         error: function () {
