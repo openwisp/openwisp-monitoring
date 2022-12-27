@@ -17,7 +17,7 @@ services:
     volumes:
       - influxdb-data:/var/lib/influxdb
     ports:
-      - "8086:8086"
+      - "8085:8085"
     environment:
       INFLUXDB_DB: openwisp2
       INFLUXDB_USER: openwisp
