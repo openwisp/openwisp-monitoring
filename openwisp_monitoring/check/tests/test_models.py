@@ -201,7 +201,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
             now() - timedelta(minutes=app_settings.CONFIG_CHECK_INTERVAL + 6)
         ):
             self._create_config(status='modified', organization=self._create_org())
-        self.assertEqual(Check.objects.count(), 3)
+        self.assertEqual(Check.objects.count(), 2)
         d = Device.objects.first()
         dm = d.monitoring
         dm.update_status('ok')
@@ -261,7 +261,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         d = self._create_device(organization=self._create_org())
         self._create_config(device=d)
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
-        self.assertEqual(Check.objects.count(), 3)
+        self.assertEqual(Check.objects.count(), 2)
         self.assertEqual(AlertSettings.objects.count(), 0)
         self.assertFalse(Metric.objects.filter(configuration='config_applied').exists())
         d.monitoring.update_status('ok')
