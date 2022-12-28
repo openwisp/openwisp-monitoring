@@ -30,6 +30,7 @@ Check = load_model('check', 'Check')
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
+DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 
 
 class TestIperf3(
@@ -364,6 +365,15 @@ class TestIperf3(
             mock_warn.assert_called_once_with(
                 f'Failed to get a working DeviceConnection for "{device2}", iperf3 check skipped!'
             )
+
+    @patch.object(iperf3_logger, 'warning')
+    def test_iperf3_check_device_monitoring_critical(self, mock_warn):
+        device_monitoring = DeviceMonitoring.objects.get(device=self.device)
+        device_monitoring.update_status('critical')
+        self._perform_iperf3_check()
+        mock_warn.assert_called_once_with(
+            f'"{self.device}" DeviceMonitoring health status is "critical", iperf3 check skipped!'
+        )
 
     def test_iperf3_check_content_object_none(self):
         check = Check(name='Iperf3 check', check_type=self._IPERF3, params={})
