@@ -69,7 +69,7 @@ jobs:
 
       - name: Install python system packages
         run: |
-          pip install -U "pip==20.2.4" wheel setuptools
+          pip install -U pip wheel setuptools
 
       - name: Install npm dependencies
         run: sudo npm install -g install jshint stylelint
