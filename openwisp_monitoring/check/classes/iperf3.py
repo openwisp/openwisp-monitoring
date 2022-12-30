@@ -9,7 +9,7 @@ from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
 from swapper import load_model
 
-from openwisp_controller.connection.settings import UPDATE_STRATEGIES
+from openwisp_controller.connection.exceptions import NoWorkingDeviceConnectionError
 
 from .. import settings as app_settings
 from .base import BaseCheck
@@ -235,16 +235,13 @@ class Iperf3(BaseCheck):
             return result
 
     def _run_iperf3_check(self, store, server, time):
-        device_connection = self._get_device_connection()
-        if not device_connection:
+        try:
+            device_connection = DeviceConnection.get_working_connection(
+                self.related_object
+            )
+        except NoWorkingDeviceConnectionError:
             logger.warning(
                 f'Failed to get a working DeviceConnection for "{self.related_object}", iperf3 check skipped!'
-            )
-            return
-        # The DeviceConnection could fail if the management tunnel is down.
-        if not device_connection.connect():
-            logger.warning(
-                f'DeviceConnection for "{self.related_object}" is not working, iperf3 check skipped!'
             )
             return
         command_tcp, command_udp = self._get_check_commands(server)
@@ -395,18 +392,6 @@ class Iperf3(BaseCheck):
         pem_suffix = '\n-----END PUBLIC KEY-----'
         key = key.strip()
         return f'{pem_prefix}{key}{pem_suffix}'
-
-    def _get_device_connection(self):
-        """
-        Returns an active SSH DeviceConnection for a device
-        """
-        openwrt_ssh = UPDATE_STRATEGIES[0][0]
-        device_connection = DeviceConnection.objects.filter(
-            device_id=self.related_object.id,
-            update_strategy=openwrt_ssh,
-            enabled=True,
-        ).first()
-        return device_connection
 
     def _deep_get(self, dictionary, keys, default=None):
         """
