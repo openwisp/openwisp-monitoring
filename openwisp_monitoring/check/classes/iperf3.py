@@ -20,7 +20,6 @@ Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 AlertSettings = load_model('monitoring', 'AlertSettings')
 DeviceConnection = load_model('connection', 'DeviceConnection')
-DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 
 DEFAULT_IPERF3_CHECK_CONFIG = {
     'host': {
@@ -202,10 +201,11 @@ class Iperf3(BaseCheck):
                 )
             )
             return
-        device_monitoring = DeviceMonitoring.objects.filter(
-            device=self.related_object
-        ).first()
-        if device_monitoring and device_monitoring.status in ('critical',):
+        # Avoid running the iperf3 check when the device monitoring status is "critical"
+        if (
+            self.related_object.monitoring
+            and self.related_object.monitoring.status in ('critical',)
+        ):
             logger.warning(
                 f'"{self.related_object}" DeviceMonitoring health status is "critical", iperf3 check skipped!'
             )
