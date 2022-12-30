@@ -7,6 +7,7 @@ from django.test import TransactionTestCase
 from swapper import load_model
 
 from openwisp_controller.connection.connectors.ssh import Ssh
+from openwisp_controller.connection.models import DeviceConnection
 from openwisp_controller.connection.settings import CONNECTORS, UPDATE_STRATEGIES
 from openwisp_controller.connection.tests.utils import CreateConnectionsMixin, SshServer
 from openwisp_monitoring.check.classes.iperf3 import get_iperf3_schema
@@ -318,6 +319,20 @@ class TestIperf3(
     @patch.object(iperf3_logger, 'warning')
     def test_iperf3_device_connection(self, mock_warn):
         dc = self.dc
+
+        with self.subTest(
+            'Test iperf3 check active device connection when the management tunnel is down'
+        ):
+            with patch.object(
+                DeviceConnection, 'connect', return_value=False
+            ) as mocked_connect:
+                self._perform_iperf3_check()
+                mock_warn.assert_called_once_with(
+                    f'Failed to get a working DeviceConnection for "{self.device}", iperf3 check skipped!'
+                )
+            self.assertEqual(mocked_connect.call_count, 1)
+        mock_warn.reset_mock()
+
         with self.subTest('Test iperf3 check when device connection is not enabled'):
             dc.enabled = False
             dc.save()
