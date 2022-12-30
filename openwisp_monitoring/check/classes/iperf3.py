@@ -206,8 +206,11 @@ class Iperf3(BaseCheck):
             self.related_object.monitoring
             and self.related_object.monitoring.status in ('critical',)
         ):
-            logger.warning(
-                f'"{self.related_object}" DeviceMonitoring health status is "critical", iperf3 check skipped!'
+            logger.info(
+                (
+                    f'"{self.related_object}" DeviceMonitoring '
+                    'health status is "critical", iperf3 check skipped!'
+                )
             )
             return
         time = self._get_param(
