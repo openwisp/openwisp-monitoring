@@ -176,7 +176,7 @@ class AbstractMetric(TimeStampedEditableModel):
                 error_dict[metric.key] = str(error)
         timeseries_batch_write.delay(write_data)
         if error_dict:
-            raise ValueError(str(error_dict))
+            raise ValueError(error_dict)
 
     @property
     def codename(self):
