@@ -81,7 +81,8 @@ class DatabaseClient(object):
             TIMESERIES_DB['USER'],
             TIMESERIES_DB['PASSWORD'],
             self.db_name,
-            **TIMESERIES_DB.get('OPTIONS', {}),
+            use_udp=TIMESERIES_DB.get('OPTIONS', {}).get('udp_writes', False),
+            udp_port=TIMESERIES_DB.get('OPTIONS', {}).get('udp_port', 8089),
         )
 
     @retry

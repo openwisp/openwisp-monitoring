@@ -337,8 +337,8 @@ Follow the setup instructions of `openwisp-controller
             # Specify additional options to be used while initializing
             # database connection.
             # Note: These options may differ based on the backend used.
-            'use_udp': True,
-            'udp_port': 8088,
+            'udp_writes': True,
+            'udp_port': 8089,
         }
     }
 

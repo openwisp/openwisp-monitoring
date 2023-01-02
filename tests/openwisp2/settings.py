@@ -28,7 +28,7 @@ TIMESERIES_DATABASE = {
     'NAME': 'openwisp2',
     'HOST': os.getenv('INFLUXDB_HOST', 'localhost'),
     'PORT': '8086',
-    'OPTIONS': {'use_udp': True, 'udp_port': 8088},
+    'OPTIONS': {'udp_writes': True, 'udp_port': 8089},
 }
 if TESTING:
     # Some automated tests queries InfluxDB just after
@@ -36,7 +36,7 @@ if TESTING:
     # is performed before InfluxDB has processed the UDP
     # packet which leads to failing test cases. Therefore,
     # we always run test suite without UDP support.
-    TIMESERIES_DATABASE['OPTIONS']['use_udp'] = False
+    TIMESERIES_DATABASE['OPTIONS']['udp_writes'] = False
 
 SECRET_KEY = 'fn)t*+$)ugeyip6-#txyy$5wf2ervc0d2n#h)qb)y5@ly$t*@w'
 

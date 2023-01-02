@@ -19,7 +19,8 @@ services:
       - ./tests/influxdb.conf:/etc/influxdb/influxdb.conf
     ports:
       - "8086:8086"
-      - "8088:8088/udp"
+      - "8089:8089/udp"
+      - "8090:8090/udp"
     environment:
       INFLUXDB_DB: openwisp2
       INFLUXDB_USER: openwisp
