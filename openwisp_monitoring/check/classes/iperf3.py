@@ -204,7 +204,7 @@ class Iperf3(BaseCheck):
         # Avoid running the iperf3 check when the device monitoring status is "critical"
         if (
             self.related_object.monitoring
-            and self.related_object.monitoring.status in ('critical',)
+            and self.related_object.monitoring.status == 'critical'
         ):
             logger.info(
                 (
