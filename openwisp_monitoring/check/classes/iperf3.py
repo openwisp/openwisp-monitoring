@@ -201,6 +201,18 @@ class Iperf3(BaseCheck):
                 )
             )
             return
+        # Avoid running the iperf3 check when the device monitoring status is "critical"
+        if (
+            self.related_object.monitoring
+            and self.related_object.monitoring.status == 'critical'
+        ):
+            logger.info(
+                (
+                    f'"{self.related_object}" DeviceMonitoring '
+                    'health status is "critical", iperf3 check skipped!'
+                )
+            )
+            return
         time = self._get_param(
             'client_options.time', 'client_options.properties.time.default'
         )

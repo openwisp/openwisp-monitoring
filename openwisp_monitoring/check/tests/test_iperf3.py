@@ -365,6 +365,17 @@ class TestIperf3(
                 f'Failed to get a working DeviceConnection for "{device2}", iperf3 check skipped!'
             )
 
+    @patch.object(iperf3_logger, 'info')
+    def test_iperf3_check_device_monitoring_critical(self, mock_info):
+        self.device.monitoring.update_status('critical')
+        self._perform_iperf3_check()
+        mock_info.assert_called_once_with(
+            (
+                f'"{self.device}" DeviceMonitoring '
+                'health status is "critical", iperf3 check skipped!'
+            )
+        )
+
     def test_iperf3_check_content_object_none(self):
         check = Check(name='Iperf3 check', check_type=self._IPERF3, params={})
         try:
