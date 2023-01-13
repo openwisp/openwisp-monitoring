@@ -93,6 +93,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
                     "noise": -103,
                     "signal": -56,
                     "ssid": "wifi-test",
+                    "htmode": "HT20",
                     "clients": [
                         {
                             "aid": 1,
@@ -149,6 +150,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
                     "ssid": "testnet",
                     "tx_power": 6,
                     "signal": -56,
+                    "htmode": "VHT80",
                     "clients": [
                         {
                             "aid": 1,

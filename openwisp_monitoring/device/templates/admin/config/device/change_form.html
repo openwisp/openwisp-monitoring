@@ -153,6 +153,22 @@
                           {{ interface.wireless.frequency }} GHz
                       </div>
                   </div>
+                  {% if interface.wireless.htmode %}
+                  <div class="form-row">
+                    <label>{% trans 'WiFi Version' %}:</label>
+                    <div class="readonly">
+                    {% if 'NOHT' in interface.wireless.htmode %}
+                        Legacy mode ({{ interface.wireless.htmode }})
+                    {% elif 'HE' in interface.wireless.htmode %}
+                        802.11ax/wifi6 ({{ interface.wireless.htmode }})
+                    {% elif 'VHT' in interface.wireless.htmode %}
+                        802.11ac/wifi5 ({{ interface.wireless.htmode }})
+                    {% elif 'HT' in interface.wireless.htmode %}
+                        802.11n/wifi4 ({{ interface.wireless.htmode }})
+                    {% endif %}
+                    </div>
+                  </div>
+                  {% endif %}
                   <div class="form-row">
                       <label>{% trans 'Transmission Power' %}:</label>
                       <div class="readonly">

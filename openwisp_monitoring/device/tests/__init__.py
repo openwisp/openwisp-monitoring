@@ -198,6 +198,7 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
                         'ssid': 'testnet',
                         'noise': -95,
                         'country': 'US',
+                        'htmode': 'HT20',
                         'clients': [
                             {
                                 'mac': '00:ee:ad:34:f5:3b',
@@ -242,6 +243,7 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
                         'ssid': 'testnet',
                         'noise': -95,
                         'country': 'US',
+                        'htmode': 'VHT80',
                         'clients': [
                             {
                                 'mac': 'b0:e1:7e:30:16:44',

@@ -149,6 +149,41 @@ class TestAdmin(
         with self.subTest('Neighbor IP is shown'):
             self.assertContains(r, 'fe80::9683:c4ff:fe02:c2bf')
 
+    def test_status_data_contains_wifi_version(self):
+        data = self._data()
+        d = self._create_device(organization=self._create_org())
+        url = reverse('admin:config_device_change', args=[d.pk])
+
+        def _assert_wifi_version(wireless0_version, wireless1_version):
+            self._post_data(d.id, d.key, data)
+            response = self.client.get(url)
+            self.assertContains(
+                response,
+                f"""
+                <div class="readonly">
+                        {wireless0_version}
+                </div>
+                """,
+                html=True,
+            )
+            self.assertContains(
+                response,
+                f"""
+                <div class="readonly">
+                        {wireless1_version}
+                </div>
+                """,
+                html=True,
+            )
+
+        with self.subTest('Test wifi version when htmode is HT and VHT'):
+            _assert_wifi_version('802.11ac/wifi5 (VHT80)', '802.11ac/wifi5 (VHT80)')
+
+        with self.subTest('Test wifi version when htmode is NOHT and HE40'):
+            data['interfaces'][0]['wireless'].update({'htmode': 'NOHT'})
+            data['interfaces'][1]['wireless'].update({'htmode': 'HE40'})
+            _assert_wifi_version('Legacy mode (NOHT)', '802.11ax/wifi6 (HE40)')
+
     def test_no_device_data(self):
         d = self._create_device(organization=self._create_org())
         url = reverse('admin:config_device_change', args=[d.pk])
