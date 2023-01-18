@@ -165,19 +165,6 @@ class AbstractMetric(TimeStampedEditableModel):
             created = True
         return metric, created
 
-    @classmethod
-    def batch_write(cls, raw_data):
-        error_dict = {}
-        write_data = []
-        for metric, kwargs in raw_data:
-            try:
-                write_data.append(metric.write(**kwargs, write=False))
-            except ValueError as error:
-                error_dict[metric.key] = str(error)
-        timeseries_batch_write.delay(write_data)
-        if error_dict:
-            raise ValueError(error_dict)
-
     @property
     def codename(self):
         """identifier stored in timeseries db"""
@@ -420,6 +407,19 @@ class AbstractMetric(TimeStampedEditableModel):
         if write:
             timeseries_write.delay(name=self.key, values=values, **options)
         return {'name': self.key, 'values': values, **options}
+
+    @classmethod
+    def batch_write(cls, raw_data):
+        error_dict = {}
+        write_data = []
+        for metric, kwargs in raw_data:
+            try:
+                write_data.append(metric.write(**kwargs, write=False))
+            except ValueError as error:
+                error_dict[metric.key] = str(error)
+        timeseries_batch_write.delay(write_data)
+        if error_dict:
+            raise ValueError(error_dict)
 
     def read(self, **kwargs):
         """reads timeseries data"""

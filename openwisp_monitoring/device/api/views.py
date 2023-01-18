@@ -112,9 +112,13 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
             data['interfaces_dict'][interface['name']] = interface
         self._previous_data = data
 
-    def _prepare_write_device_metrics(
+    def _append_metric_data(
         self, metric, value, current=False, time=None, extra_values=None
     ):
+        """
+        Appends to the data structure which holds metric data
+        and which will be sent to the timeseries DB.
+        """
         self.write_device_metrics.append(
             (
                 metric,
@@ -166,7 +170,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
                     main_tags={'ifname': Metric._makekey(ifname)},
                     extra_tags=extra_tags,
                 )
-                self._prepare_write_device_metrics(
+                self._append_metric_data(
                     metric, field_value, current, time=time, extra_values=extra_values
                 )
                 if created:
@@ -192,7 +196,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
             for client in clients:
                 if 'mac' not in client:
                     continue
-                self._prepare_write_device_metrics(
+                self._append_metric_data(
                     metric, client['mac'], current, time=client_time
                 )
                 client_time += timedelta(microseconds=1)
@@ -269,7 +273,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
                 name='signal strength',
                 key=ifname,
             )
-            self._prepare_write_device_metrics(
+            self._append_metric_data(
                 metric, signal_strength, current, time=time, extra_values=extra_values
             )
             if created:
@@ -297,7 +301,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
                 name='signal quality',
                 key=ifname,
             )
-            self._prepare_write_device_metrics(
+            self._append_metric_data(
                 metric, signal_quality, current, time=time, extra_values=extra_values
             )
             if created:
@@ -310,7 +314,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
             name='access technology',
             key=ifname,
         )
-        self._prepare_write_device_metrics(
+        self._append_metric_data(
             metric,
             list(ACCESS_TECHNOLOGIES.keys()).index(access_type),
             current,
@@ -333,7 +337,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
         if created:
             self._create_resources_chart(metric, resource='cpu')
             self._create_resources_alert_settings(metric, resource='cpu')
-        self._prepare_write_device_metrics(
+        self._append_metric_data(
             metric,
             100 * float(load[0] / cpus),
             current,
@@ -355,7 +359,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
         if created:
             self._create_resources_chart(metric, resource='disk')
             self._create_resources_alert_settings(metric, resource='disk')
-        self._prepare_write_device_metrics(
+        self._append_metric_data(
             metric, 100 * used_bytes / size_bytes, current, time=time
         )
 
@@ -386,7 +390,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
         if created:
             self._create_resources_chart(metric, resource='memory')
             self._create_resources_alert_settings(metric, resource='memory')
-        self._prepare_write_device_metrics(
+        self._append_metric_data(
             metric, percent_used, current, time=time, extra_values=extra_values
         )
 

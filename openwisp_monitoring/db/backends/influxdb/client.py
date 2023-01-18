@@ -128,10 +128,14 @@ class DatabaseClient(object):
                     return
             raise TimeseriesWriteException
 
-    def write(self, name, values, **kwargs):
-        timestamp = kwargs.get('timestamp') or now()
+    def _get_timestamp(self, timestamp=None):
+        timestamp = timestamp or now()
         if isinstance(timestamp, datetime):
-            timestamp = timestamp.isoformat(sep='T', timespec='microseconds')
+            return timestamp.isoformat(sep='T', timespec='microseconds')
+        return timestamp
+
+    def write(self, name, values, **kwargs):
+        timestamp = self._get_timestamp(timestamp=kwargs.get('timestamp'))
         point = {
             'measurement': name,
             'tags': kwargs.get('tags'),
@@ -155,9 +159,7 @@ class DatabaseClient(object):
                 data_points[org] = {}
             if retention_policy not in data_points[org]:
                 data_points[org][retention_policy] = []
-            timestamp = data.get('timestamp') or now()
-            if isinstance(timestamp, datetime):
-                timestamp = timestamp.isoformat(sep='T', timespec='microseconds')
+            timestamp = self._get_timestamp(timestamp=data.get('timestamp'))
             data_points[org][retention_policy].append(
                 {
                     'measurement': data.get('name'),
