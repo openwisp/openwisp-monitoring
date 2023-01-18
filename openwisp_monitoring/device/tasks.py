@@ -97,3 +97,13 @@ def offline_device_close_session(device_id):
     WifiSession.objects.filter(device_id=device_id, stop_time__isnull=True).update(
         stop_time=now()
     )
+
+
+@shared_task
+def write_device_metrics(pk, data, time=None, current=False):
+    DeviceData = load_model('device_monitoring', 'DeviceData')
+    try:
+        device_data = DeviceData.objects.get(id=pk)
+    except DeviceData.DoesNotExist:
+        return
+    device_data.writer.write(data, time, current)
