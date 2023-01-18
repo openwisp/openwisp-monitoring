@@ -81,7 +81,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
             )
         except ValueError:
             return Response({'detail': _('Incorrect time format')}, status=400)
-        # write data
+        # writing data is intensive, let's pass that to the background workers
         write_device_metrics.delay(
             self.instance.pk, self.instance.data, time=time_obj, current=current
         )

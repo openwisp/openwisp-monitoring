@@ -19,6 +19,13 @@ logger = logging.getLogger(__name__)
 
 
 class DeviceDataWriter(object):
+    """
+    This class is in charge of writing the device metric data.
+    Before these methods were shipped in the REST API view
+    but later have been moved here to allow writing this data in
+    the background processes of OpenWISP.
+    """
+
     def __init__(self, device_data):
         self.device_data = device_data
 
