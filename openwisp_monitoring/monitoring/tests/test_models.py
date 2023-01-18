@@ -134,6 +134,26 @@ class TestModels(TestMonitoringMixin, TestCase):
         ):
             m.write(1, extra_values=extra_values)
 
+    def test_batch_metric_write_wrong_related_fields(self):
+        m = self._create_general_metric(name='ping', configuration='ping')
+        extra_values = {'reachable': 0, 'rtt_avg': 0.51, 'rtt_max': 0.6, 'rtt_min': 0.4}
+        with self.assertRaises(ValueError) as error:
+            Metric.batch_write(
+                [
+                    (
+                        m,
+                        {
+                            'value': 1,
+                            'extra_values': extra_values,
+                        },
+                    ),
+                ]
+            )
+        self.assertEqual(
+            error.exception.args[0]['ping'],
+            '"reachable" not defined in metric configuration',
+        )
+
     def test_tags(self):
         extra_tags = {'a': 'a', 'b': 'b1'}
         metric = self._create_object_metric(extra_tags=extra_tags)

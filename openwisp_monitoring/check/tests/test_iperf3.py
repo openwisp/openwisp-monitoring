@@ -7,8 +7,8 @@ from django.test import TransactionTestCase
 from swapper import load_model
 
 from openwisp_controller.connection.connectors.ssh import Ssh
-from openwisp_controller.connection.models import DeviceConnection as device_connection
-from openwisp_controller.connection.settings import UPDATE_STRATEGIES
+from openwisp_controller.connection.models import DeviceConnection
+from openwisp_controller.connection.settings import CONNECTORS, UPDATE_STRATEGIES
 from openwisp_controller.connection.tests.utils import CreateConnectionsMixin, SshServer
 from openwisp_monitoring.check.classes.iperf3 import get_iperf3_schema
 from openwisp_monitoring.check.classes.iperf3 import logger as iperf3_logger
@@ -26,10 +26,10 @@ from .iperf3_test_utils import (
     TEST_RSA_KEY,
 )
 
-Chart = load_model('monitoring', 'Chart')
-AlertSettings = load_model('monitoring', 'AlertSettings')
-Metric = load_model('monitoring', 'Metric')
 Check = load_model('check', 'Check')
+Chart = load_model('monitoring', 'Chart')
+Metric = load_model('monitoring', 'Metric')
+AlertSettings = load_model('monitoring', 'AlertSettings')
 
 
 class TestIperf3(
@@ -111,8 +111,10 @@ class TestIperf3(
             ),
         ]
 
-    def _perform_iperf3_check(self):
-        check = Check.objects.get(check_type=self._IPERF3)
+    def _perform_iperf3_check(self, object_id=None):
+        if not object_id:
+            object_id = self.device.id
+        check = Check.objects.get(check_type=self._IPERF3, object_id=object_id)
         return check.perform_check(store=False)
 
     def _set_auth_expected_calls(self, config):
@@ -317,33 +319,62 @@ class TestIperf3(
     @patch.object(iperf3_logger, 'warning')
     def test_iperf3_device_connection(self, mock_warn):
         dc = self.dc
-        with self.subTest('Test active device connection when management tunnel down'):
+
+        with self.subTest(
+            'Test iperf3 check active device connection when the management tunnel is down'
+        ):
             with patch.object(
-                device_connection, 'connect', return_value=False
+                DeviceConnection, 'connect', return_value=False
             ) as mocked_connect:
                 self._perform_iperf3_check()
-                mock_warn.assert_called_with(
-                    f'DeviceConnection for "{self.device}" is not working, iperf3 check skipped!'
+                mock_warn.assert_called_once_with(
+                    f'Failed to get a working DeviceConnection for "{self.device}", iperf3 check skipped!'
                 )
             self.assertEqual(mocked_connect.call_count, 1)
+        mock_warn.reset_mock()
 
-        with self.subTest('Test device connection is not enabled'):
+        with self.subTest('Test iperf3 check when device connection is not enabled'):
             dc.enabled = False
             dc.save()
             self._perform_iperf3_check()
-            mock_warn.assert_called_with(
+            mock_warn.assert_called_once_with(
                 f'Failed to get a working DeviceConnection for "{self.device}", iperf3 check skipped!'
+            )
+        mock_warn.reset_mock()
+
+        with self.subTest(
+            'Test iperf3 check with different credential connector type ie. snmp'
+        ):
+            device2 = self._create_device(
+                name='test-device-2', mac_address='00:11:22:33:44:66'
+            )
+            params = {'community': 'public', 'agent': 'snmp-agent', 'port': 161}
+            snmp_credentials = self._create_credentials(
+                params=params, connector=CONNECTORS[1][0], auto_add=True
+            )
+            dc2 = self._create_device_connection(
+                device=device2,
+                credentials=snmp_credentials,
+                update_strategy=UPDATE_STRATEGIES[0][0],
+            )
+            dc2.is_working = True
+            dc2.enabled = True
+            dc2.save()
+            self._perform_iperf3_check(object_id=device2.id)
+            mock_warn.assert_called_once_with(
+                f'Failed to get a working DeviceConnection for "{device2}", iperf3 check skipped!'
             )
 
-        with self.subTest('Test device connection is not with right update strategy'):
-            dc.update_strategy = UPDATE_STRATEGIES[1][0]
-            dc.is_working = True
-            dc.enabled = True
-            dc.save()
-            self._perform_iperf3_check()
-            mock_warn.assert_called_with(
-                f'Failed to get a working DeviceConnection for "{self.device}", iperf3 check skipped!'
+    @patch.object(iperf3_logger, 'info')
+    def test_iperf3_check_device_monitoring_critical(self, mock_info):
+        self.device.monitoring.update_status('critical')
+        self._perform_iperf3_check()
+        mock_info.assert_called_once_with(
+            (
+                f'"{self.device}" DeviceMonitoring '
+                'health status is "critical", iperf3 check skipped!'
             )
+        )
 
     def test_iperf3_check_content_object_none(self):
         check = Check(name='Iperf3 check', check_type=self._IPERF3, params={})

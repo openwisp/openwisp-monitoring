@@ -17,9 +17,17 @@ const zoomChartIdKey = 'ow2-chart-zoom-id'; // true/false
 
 django.jQuery(function ($) {
   $(document).ready(function () {
-    var pickerStart, pickerEnd, pickerDays, pickerChosenLabel, start = moment(), end = moment();
+    var pickerStart, pickerEnd, pickerDays, pickerChosenLabel, end = moment();
+    var range = localStorage.getItem(timeRangeKey) || $('#monitoring-timeseries-default-time').data('value');
+    var start = localStorage.getItem(isCustomDateRange) === 'true' ? moment() : moment().subtract(range.split('d')[0], 'days');
+
+      // Add label to daterangepicker widget
+      function addDateRangePickerLabel(startDate, endDate) {
+        $('#daterangepicker-widget span').html(startDate + ' - ' + endDate);
+      }
+
       function initDateRangePickerWidget(start, end) {
-        $('#daterangepicker-widget span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
+        addDateRangePickerLabel(start.format('MMMM D, YYYY'), end.format('MMMM D, YYYY'));
         $("[data-range-key='Last 1 Day']").attr('data-time', '1d');
         $("[data-range-key='Last 3 Days']").attr('data-time', '3d');
         $("[data-range-key='Last Week']").attr('data-time', '7d');
@@ -45,8 +53,8 @@ django.jQuery(function ($) {
       }, initDateRangePickerWidget);
       initDateRangePickerWidget(start, end);
 
-    function setDateRangePickerWidgetLabel(pickerStartDate, pickerEndDate) {
-      $('#daterangepicker-widget span').html(pickerStartDate.format('MMMM D, YYYY') + ' - ' + pickerEndDate.format('MMMM D, YYYY'));
+    function setDateRangePickerWidget(pickerStartDate, pickerEndDate) {
+      addDateRangePickerLabel(pickerStartDate.format('MMMM D, YYYY'), pickerEndDate.format('MMMM D, YYYY'));
       $('#daterangepicker-widget').data('daterangepicker').setStartDate(moment(pickerStartDate.format('MMMM D, YYYY')).format('MM/DD/YYYY'));
       $('#daterangepicker-widget').data('daterangepicker').setEndDate(moment(pickerEndDate.format('MMMM D, YYYY')).format('MM/DD/YYYY'));
     }
@@ -98,7 +106,7 @@ django.jQuery(function ($) {
               var initialStartDate = moment(initialStartLabel, 'MMMM D, YYYY');
               var initialEndDate = moment(initialEndLabel, 'MMMM D, YYYY');
               // Set date range picker widget labels
-              setDateRangePickerWidgetLabel(initialStartDate, initialEndDate);
+              setDateRangePickerWidget(initialStartDate, initialEndDate);
               // On zoom out, load all charts to their initial zoom level
               loadCharts(daysBeforeZoom, true);
               // refresh every 2.5 minutes
@@ -126,7 +134,7 @@ django.jQuery(function ($) {
             localStorage.setItem(isCustomDateRange, true);
             localStorage.setItem(zoomtimeRangeKey, pickerDays);
             // Set date range picker widget labels
-            setDateRangePickerWidgetLabel(pickerStartDate, pickerEndDate);
+            setDateRangePickerWidget(pickerStartDate, pickerEndDate);
             // Now, load the charts with custom date ranges
             loadCharts(pickerDays, true);
             // refresh every 2.5 minutes
@@ -235,6 +243,7 @@ django.jQuery(function ($) {
       var range = localStorage.getItem(timeRangeKey) || defaultTimeRange;
       var startLabel = localStorage.getItem(startDayKey) || moment().format('MMMM D, YYYY');
       var endLabel = localStorage.getItem(endDayKey) || moment().format('MMMM D, YYYY');
+      
       // Disable zoom charts scrolling on page refresh
       localStorage.setItem(isChartZoomScroll, false);
       if (localStorage.getItem(isChartZoomed) === 'true') {
@@ -242,9 +251,10 @@ django.jQuery(function ($) {
         endLabel = localStorage.getItem(zoomEndDayKey);
         startLabel = localStorage.getItem(zoomStartDayKey);
       }
-      // Add label to daterangepicker widget
-      $('#daterangepicker-widget span').html(startLabel + ' - ' + endLabel);
-      if (localStorage.getItem(isCustomDateRange) === 'true' || localStorage.getItem(isChartZoomed) === 'false' ) {
+  
+      if (localStorage.getItem(isCustomDateRange) === 'true' || localStorage.getItem(isChartZoomed) === 'false') {
+        // Add label to daterangepicker widget
+        addDateRangePickerLabel(startLabel, endLabel);
         // Set last selected custom date after page reload
         var startDate = moment(startLabel, 'MMMM D, YYYY');
         var endDate = moment(endLabel, 'MMMM D, YYYY');
@@ -253,7 +263,12 @@ django.jQuery(function ($) {
         // Then loads charts with custom ranges selected
         loadCharts(range, true);
       }
+
       else {
+        endLabel =  moment().format('MMMM D, YYYY');
+        startLabel = moment().subtract(range.split('d')[0], 'days').format('MMMM D, YYYY');
+        // Add label to daterangepicker widget
+        addDateRangePickerLabel(startLabel, endLabel);
         // Set last selected default dates after page reload
         $('.daterangepicker .ranges ul li[data-time=' + range + ']').trigger('click');
       }
