@@ -27,6 +27,7 @@ from openwisp_utils.admin import ReadOnlyAdmin
 from ..monitoring.admin import MetricAdmin
 from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from . import settings as app_settings
+from .exportable import _exportable_fields
 from .filters import DeviceFilter, DeviceGroupFilter, DeviceOrganizationFilter
 
 DeviceData = load_model('device_monitoring', 'DeviceData')
@@ -312,12 +313,6 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
             inlines.remove(CheckInline)
             inlines.remove(MetricInline)
         return inlines
-
-
-_exportable_fields = BaseDeviceResource.Meta.fields[:]  # copy
-_exportable_fields.insert(
-    _exportable_fields.index('config__status'), 'monitoring__status'
-)
 
 
 class DeviceResource(BaseDeviceResource):
