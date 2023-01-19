@@ -89,6 +89,14 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     def test_200_create(self):
         self.create_test_data(no_resources=True)
 
+    @patch('openwisp_monitoring.device.tasks.write_device_metrics.delay')
+    def test_background_write(self, mocked_task):
+        device = self._create_device(organization=self._create_org())
+        data = self._data()
+        r = self._post_data(device.id, device.key, data)
+        self.assertEqual(r.status_code, 200)
+        mocked_task.assert_called_once()
+
     def test_200_traffic_counter_incremented(self):
         dd = self.create_test_data(no_resources=True)
         d = self.device_model.objects.first()
