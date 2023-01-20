@@ -153,36 +153,26 @@ class TestAdmin(
         data = self._data()
         d = self._create_device(organization=self._create_org())
         url = reverse('admin:config_device_change', args=[d.pk])
-
-        def _assert_wifi_version(wireless0_version, wireless1_version):
-            self._post_data(d.id, d.key, data)
-            response = self.client.get(url)
-            self.assertContains(
-                response,
-                f"""
-                <div class="readonly">
-                        {wireless0_version}
-                </div>
-                """,
-                html=True,
-            )
-            self.assertContains(
-                response,
-                f"""
-                <div class="readonly">
-                        {wireless1_version}
-                </div>
-                """,
-                html=True,
-            )
-
-        with self.subTest('Test wifi version when htmode is HT and VHT'):
-            _assert_wifi_version('802.11ac/wifi5 (VHT80)', '802.11ac/wifi5 (VHT80)')
-
-        with self.subTest('Test wifi version when htmode is NOHT and HE40'):
-            data['interfaces'][0]['wireless'].update({'htmode': 'NOHT'})
-            data['interfaces'][1]['wireless'].update({'htmode': 'HE40'})
-            _assert_wifi_version('Legacy mode (NOHT)', '802.11ax/wifi6 (HE40)')
+        self._post_data(d.id, d.key, data)
+        response = self.client.get(url)
+        self.assertContains(
+            response,
+            """
+            <div class="readonly">
+                WiFi 4 (802.11n): HT20
+            </div>
+            """,
+            html=True,
+        )
+        self.assertContains(
+            response,
+            """
+            <div class="readonly">
+                WiFi 5 (802.11ac): VHT80
+            </div>
+            """,
+            html=True,
+        )
 
     def test_no_device_data(self):
         d = self._create_device(organization=self._create_org())
