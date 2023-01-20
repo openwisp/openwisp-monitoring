@@ -199,6 +199,7 @@ schema = {
                             "noise",
                             "ssid",
                             "tx_power",
+                            "htmode",
                         ],
                         "properties": {
                             "channel": {"type": "integer"},
@@ -209,6 +210,7 @@ schema = {
                             "signal": {"type": "integer"},
                             "ssid": {"type": "string"},
                             "tx_power": {"type": "integer"},
+                            "htmode": {"type": "string"},
                             "clients": {
                                 "type": "array",
                                 "title": "Wireless Clients",

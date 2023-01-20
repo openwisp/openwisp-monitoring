@@ -93,6 +93,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
                     "noise": -103,
                     "signal": -56,
                     "ssid": "wifi-test",
+                    "htmode": "HT20",
                     "clients": [
                         {
                             "aid": 1,
@@ -149,6 +150,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
                     "ssid": "testnet",
                     "tx_power": 6,
                     "signal": -56,
+                    "htmode": "VHT80",
                     "clients": [
                         {
                             "aid": 1,
@@ -345,6 +347,46 @@ class TestDeviceData(BaseTestCase):
         self.assertNotEqual(
             data['general']['uptime'], self._sample_data['general']['uptime']
         )
+
+    def test_wireless_interface_htmode(self):
+        dd = deepcopy(self.test_save_data())
+        dd = DeviceData(pk=dd.pk)
+        data = dd.data_user_friendly
+
+        with self.subTest('Test wireless interfaces with HT & VHT htmode'):
+            self.assertEqual(
+                data['interfaces'][0]['wireless']['htmode'], 'WiFi 4 (802.11n): HT20'
+            )
+            self.assertEqual(
+                data['interfaces'][1]['wireless']['htmode'], 'WiFi 5 (802.11ac): VHT80'
+            )
+
+        with self.subTest('Test wireless interfaces with HE & VHT htmode'):
+            test_data = deepcopy(self._sample_data)
+            test_data['interfaces'][0]['wireless'].update({'htmode': 'HE40'})
+            dd.data = test_data
+            dd.save_data()
+            data = dd.data_user_friendly
+            self.assertEqual(
+                data['interfaces'][0]['wireless']['htmode'], 'WiFi 6 (802.11ax): HE40'
+            )
+            self.assertEqual(
+                data['interfaces'][1]['wireless']['htmode'], 'WiFi 5 (802.11ac): VHT80'
+            )
+
+        with self.subTest('Test wireless interfaces with NOHT & OTHER htmode'):
+            test_data = deepcopy(self._sample_data)
+            test_data['interfaces'][0]['wireless'].update({'htmode': 'NOHT'})
+            test_data['interfaces'][1]['wireless'].update({'htmode': 'NEW_MODE'})
+            dd.data = test_data
+            dd.save_data()
+            data = dd.data_user_friendly
+            self.assertEqual(
+                data['interfaces'][0]['wireless']['htmode'], 'Legacy Mode: NOHT'
+            )
+            self.assertEqual(
+                data['interfaces'][1]['wireless']['htmode'], 'Other: NEW_MODE'
+            )
 
     def test_bad_address_fail(self):
         dd = self._create_device_data()

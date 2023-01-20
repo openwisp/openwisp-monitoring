@@ -149,6 +149,31 @@ class TestAdmin(
         with self.subTest('Neighbor IP is shown'):
             self.assertContains(r, 'fe80::9683:c4ff:fe02:c2bf')
 
+    def test_status_data_contains_wifi_version(self):
+        data = self._data()
+        d = self._create_device(organization=self._create_org())
+        url = reverse('admin:config_device_change', args=[d.pk])
+        self._post_data(d.id, d.key, data)
+        response = self.client.get(url)
+        self.assertContains(
+            response,
+            """
+            <div class="readonly">
+                WiFi 4 (802.11n): HT20
+            </div>
+            """,
+            html=True,
+        )
+        self.assertContains(
+            response,
+            """
+            <div class="readonly">
+                WiFi 5 (802.11ac): VHT80
+            </div>
+            """,
+            html=True,
+        )
+
     def test_no_device_data(self):
         d = self._create_device(organization=self._create_org())
         url = reverse('admin:config_device_change', args=[d.pk])
