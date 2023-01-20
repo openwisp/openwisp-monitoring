@@ -244,15 +244,11 @@ django.jQuery(function ($) {
       var startLabel = localStorage.getItem(startDayKey) || moment().format('MMMM D, YYYY');
       var endLabel = localStorage.getItem(endDayKey) || moment().format('MMMM D, YYYY');
       
-      // Disable zoom charts scrolling on page refresh
+      // Disable the zoom chart and scrolling when we refresh the page
       localStorage.setItem(isChartZoomScroll, false);
-      if (localStorage.getItem(isChartZoomed) === 'true') {
-        range = localStorage.getItem(zoomtimeRangeKey);
-        endLabel = localStorage.getItem(zoomEndDayKey);
-        startLabel = localStorage.getItem(zoomStartDayKey);
-      }
-  
-      if (localStorage.getItem(isCustomDateRange) === 'true' || localStorage.getItem(isChartZoomed) === 'false') {
+      localStorage.setItem(isChartZoomed, false);
+
+      if (localStorage.getItem(isCustomDateRange) === 'true') {
         // Add label to daterangepicker widget
         addDateRangePickerLabel(startLabel, endLabel);
         // Set last selected custom date after page reload
