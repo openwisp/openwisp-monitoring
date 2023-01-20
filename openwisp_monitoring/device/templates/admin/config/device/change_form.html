@@ -135,6 +135,14 @@
                           {{ interface.wireless.mode }}
                       </div>
                   </div>
+                  {% if interface.wireless.htmode %}
+                  <div class="form-row">
+                      <label>{% trans 'WiFi Version' %}:</label>
+                      <div class="readonly">
+                          {{ interface.wireless.htmode }}
+                      </div>
+                  </div>
+                  {% endif %}
                   <div class="form-row">
                       <label>{% trans 'SSID' %}:</label>
                       <div class="readonly">
@@ -153,14 +161,6 @@
                           {{ interface.wireless.frequency }} GHz
                       </div>
                   </div>
-                  {% if interface.wireless.htmode %}
-                  <div class="form-row">
-                    <label>{% trans 'WiFi Version' %}:</label>
-                    <div class="readonly">
-                        {{ interface.wireless.htmode }}
-                    </div>
-                  </div>
-                  {% endif %}
                   <div class="form-row">
                       <label>{% trans 'Transmission Power' %}:</label>
                       <div class="readonly">
