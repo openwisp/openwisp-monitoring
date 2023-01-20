@@ -1035,7 +1035,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         with self.subTest('Test custom grouping between 28 to 364 days'):
             custom_date_query = '&start=2022-07-04%2000:00:00&end=2022-10-11%2015:50:56'
             url = f'{self._url(d.pk, d.key)}{custom_date_query}'
-            _assert_chart_group(url, 200, ('99d', '4d'))
+            _assert_chart_group(url, 200, ('99d', '1d'))
 
         with self.subTest('Test invalid custom dates'):
             invalid_custom_dates = (
@@ -1092,6 +1092,20 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             self.assertEqual(r.status_code, 400)
             self.assertIn(
                 "end_date cannot be greater than today's date",
+                r.data,
+            )
+
+        with self.subTest(
+            'Test device metrics when date range is greater than 365 days'
+        ):
+            greater_than_365_days = (
+                '&start=2021-11-11%2000:00:00&end=2022-11-12%2023:59:59'
+            )
+            url = f'{self._url(d.pk, d.key)}{greater_than_365_days}'
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 400)
+            self.assertIn(
+                "The date range shouldn't be greater than 365 days",
                 r.data,
             )
 

@@ -442,7 +442,7 @@ class AbstractChart(TimeStampedEditableModel):
     configuration = models.CharField(
         max_length=16, null=True, choices=CHART_CONFIGURATION_CHOICES
     )
-    GROUP_MAP = {'1d': '10m', '3d': '20m', '7d': '1h', '30d': '24h', '365d': '24h'}
+    GROUP_MAP = {'1d': '10m', '3d': '20m', '7d': '1h', '30d': '24h', '365d': '7d'}
     DEFAULT_TIME = '7d'
 
     class Meta:
@@ -586,9 +586,12 @@ class AbstractChart(TimeStampedEditableModel):
         # custom grouping between 8 to 27 days
         elif days > 7 and days < 28:
             group = str(round(days / 7)) + 'h'
-        # custom grouping between 28 to 364 days
-        elif days >= 28 and days < 365:
-            group = str(round(days / 28)) + 'd'
+        # custom grouping between 1 month to 7 month
+        elif days >= 30 and days <= 210:
+            group = '1d'
+        # custom grouping between 7 month to 1 year
+        elif days > 210 and days <= 365:
+            group = '7d'
         custom_group_map.update({time: group})
         return custom_group_map
 
