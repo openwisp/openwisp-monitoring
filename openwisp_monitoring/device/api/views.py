@@ -1,10 +1,9 @@
 import logging
 import uuid
-from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
@@ -20,11 +19,10 @@ from openwisp_controller.geo.api.views import (
     LocationDeviceList,
 )
 
-from ... import settings as monitoring_settings
-from ...monitoring.configuration import ACCESS_TECHNOLOGIES
 from ...views import MonitoringApiViewMixin
 from ..schema import schema
 from ..signals import device_metrics_received
+from ..tasks import write_device_metrics
 from .serializers import MonitoringDeviceSerializer, MonitoringGeoJsonLocationSerializer
 
 logger = logging.getLogger(__name__)
@@ -66,7 +64,6 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
 
     def post(self, request, pk):
         self.instance = self.get_object()
-        self._init_previous_data()
         self.instance.data = request.data
         # validate incoming data
         try:
@@ -84,12 +81,10 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
             )
         except ValueError:
             return Response({'detail': _('Incorrect time format')}, status=400)
-        try:
-            # write data
-            self._write(request, self.instance.pk, time=time)
-        except ValidationError as e:
-            logger.info(e.message_dict)
-            return Response(e.message_dict, status=status.HTTP_400_BAD_REQUEST)
+        # writing data is intensive, let's pass that to the background workers
+        write_device_metrics.delay(
+            self.instance.pk, self.instance.data, time=time_obj, current=current
+        )
         device_metrics_received.send(
             sender=self.model,
             instance=self.instance,
@@ -98,372 +93,6 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
             current=current,
         )
         return Response(None)
-
-    def _init_previous_data(self):
-        """
-        makes NetJSON interfaces of previous
-        snapshots more easy to access
-        """
-        data = self.instance.data or {}
-        if data:
-            data = deepcopy(data)
-            data['interfaces_dict'] = {}
-        for interface in data.get('interfaces', []):
-            data['interfaces_dict'][interface['name']] = interface
-        self._previous_data = data
-
-    def _append_metric_data(
-        self, metric, value, current=False, time=None, extra_values=None
-    ):
-        """
-        Appends to the data structure which holds metric data
-        and which will be sent to the timeseries DB.
-        """
-        self.write_device_metrics.append(
-            (
-                metric,
-                {
-                    'value': value,
-                    'current': current,
-                    'time': time,
-                    'extra_values': extra_values,
-                },
-            )
-        )
-
-    def _write(self, request, pk, time=None, current=False):
-        """
-        write metrics to database
-        """
-        # saves raw device data
-        self.instance.save_data()
-        data = self.instance.data
-        ct = ContentType.objects.get_for_model(Device)
-        device_extra_tags = self._get_extra_tags(self.instance)
-        self.write_device_metrics = []
-        for interface in data.get('interfaces', []):
-            ifname = interface['name']
-            extra_tags = Metric._sort_dict(device_extra_tags)
-            if 'mobile' in interface:
-                self._write_mobile_signal(interface, ifname, ct, pk, current, time=time)
-            ifstats = interface.get('statistics', {})
-            # Explicitly stated None to avoid skipping in case the stats are zero
-            if (
-                ifstats.get('rx_bytes') is not None
-                and ifstats.get('rx_bytes') is not None
-            ):
-                field_value = self._calculate_increment(
-                    ifname, 'rx_bytes', ifstats['rx_bytes']
-                )
-                extra_values = {
-                    'tx_bytes': self._calculate_increment(
-                        ifname, 'tx_bytes', ifstats['tx_bytes']
-                    )
-                }
-                name = f'{ifname} traffic'
-                metric, created = Metric._get_or_create(
-                    object_id=pk,
-                    content_type=ct,
-                    configuration='traffic',
-                    name=name,
-                    key='traffic',
-                    main_tags={'ifname': Metric._makekey(ifname)},
-                    extra_tags=extra_tags,
-                )
-                self._append_metric_data(
-                    metric, field_value, current, time=time, extra_values=extra_values
-                )
-                if created:
-                    self._create_traffic_chart(metric)
-            try:
-                clients = interface['wireless']['clients']
-            except KeyError:
-                continue
-            if not isinstance(clients, list):
-                continue
-            name = '{0} wifi clients'.format(ifname)
-            metric, created = Metric._get_or_create(
-                object_id=pk,
-                content_type=ct,
-                configuration='clients',
-                name=name,
-                key='wifi_clients',
-                main_tags={'ifname': Metric._makekey(ifname)},
-                extra_tags=extra_tags,
-            )
-            # avoid tsdb overwrite clients
-            client_time = time
-            for client in clients:
-                if 'mac' not in client:
-                    continue
-                self._append_metric_data(
-                    metric, client['mac'], current, time=client_time
-                )
-                client_time += timedelta(microseconds=1)
-            if created:
-                self._create_clients_chart(metric)
-        if 'resources' in data:
-            if 'load' in data['resources'] and 'cpus' in data['resources']:
-                self._write_cpu(
-                    data['resources']['load'],
-                    data['resources']['cpus'],
-                    pk,
-                    ct,
-                    current,
-                    time=time,
-                )
-            if 'disk' in data['resources']:
-                self._write_disk(data['resources']['disk'], pk, ct, time=time)
-            if 'memory' in data['resources']:
-                self._write_memory(
-                    data['resources']['memory'], pk, ct, current, time=time
-                )
-
-        Metric.batch_write(self.write_device_metrics)
-
-    def _get_extra_tags(self, device):
-        tags = {'organization_id': str(device.organization_id)}
-        try:
-            device_location = device.devicelocation
-        except ObjectDoesNotExist:
-            pass
-        else:
-            tags['location_id'] = str(device_location.location_id)
-            if device_location.floorplan_id:
-                tags['floorplan_id'] = str(device_location.floorplan_id)
-        return tags
-
-    def _get_mobile_signal_type(self, signal):
-        if not signal:
-            return
-        # if only one access technology in use, return that
-        sections = list(signal.keys())
-        if len(sections) == 1:
-            return sections[0]
-        # if multiple access technologies are in use,
-        # return the most advanced one
-        access_technologies = list(ACCESS_TECHNOLOGIES.keys())
-        access_technologies.reverse()
-        for tech in access_technologies:
-            if tech in signal:
-                return tech
-
-    def _write_mobile_signal(self, interface, ifname, ct, pk, current=False, time=None):
-        access_type = self._get_mobile_signal_type(interface['mobile'].get('signal'))
-        if not access_type:
-            return
-        data = interface['mobile']['signal'][access_type]
-        signal_power = signal_strength = None
-        extra_values = {}
-        if 'rssi' in data:
-            signal_strength = data['rssi']
-        if 'rsrp' in data:
-            signal_power = data['rsrp']
-        elif 'rscp' in data:
-            signal_power = data['rscp']
-        if signal_power is not None:
-            extra_values = {'signal_power': float(signal_power)}
-        if signal_strength is not None:
-            signal_strength = float(signal_strength)
-        if signal_strength is not None or signal_power is not None:
-            metric, created = Metric._get_or_create(
-                object_id=pk,
-                content_type=ct,
-                configuration='signal_strength',
-                name='signal strength',
-                key=ifname,
-            )
-            self._append_metric_data(
-                metric, signal_strength, current, time=time, extra_values=extra_values
-            )
-            if created:
-                self._create_signal_strength_chart(metric)
-
-        snr = signal_quality = None
-        extra_values = {}
-        if 'snr' in data:
-            snr = data['snr']
-        if 'rsrq' in data:
-            signal_quality = data['rsrq']
-        if 'ecio' in data:
-            snr = data['ecio']
-        if 'sinr' in data:
-            snr = data['sinr']
-        if snr is not None:
-            extra_values = {'snr': float(snr)}
-        if signal_quality is not None:
-            signal_quality = float(signal_quality)
-        if snr is not None or signal_quality is not None:
-            metric, created = Metric._get_or_create(
-                object_id=pk,
-                content_type=ct,
-                configuration='signal_quality',
-                name='signal quality',
-                key=ifname,
-            )
-            self._append_metric_data(
-                metric, signal_quality, current, time=time, extra_values=extra_values
-            )
-            if created:
-                self._create_signal_quality_chart(metric)
-        # create access technology chart
-        metric, created = Metric._get_or_create(
-            object_id=pk,
-            content_type=ct,
-            configuration='access_tech',
-            name='access technology',
-            key=ifname,
-        )
-        self._append_metric_data(
-            metric,
-            list(ACCESS_TECHNOLOGIES.keys()).index(access_type),
-            current,
-            time=time,
-        )
-        if created:
-            self._create_access_tech_chart(metric)
-
-    def _write_cpu(
-        self, load, cpus, primary_key, content_type, current=False, time=None
-    ):
-        extra_values = {
-            'load_1': float(load[0]),
-            'load_5': float(load[1]),
-            'load_15': float(load[2]),
-        }
-        metric, created = Metric._get_or_create(
-            object_id=primary_key, content_type=content_type, configuration='cpu'
-        )
-        if created:
-            self._create_resources_chart(metric, resource='cpu')
-            self._create_resources_alert_settings(metric, resource='cpu')
-        self._append_metric_data(
-            metric,
-            100 * float(load[0] / cpus),
-            current,
-            time=time,
-            extra_values=extra_values,
-        )
-
-    def _write_disk(
-        self, disk_list, primary_key, content_type, current=False, time=None
-    ):
-        used_bytes, size_bytes, available_bytes = 0, 0, 0
-        for disk in disk_list:
-            used_bytes += disk['used_bytes']
-            size_bytes += disk['size_bytes']
-            available_bytes += disk['available_bytes']
-        metric, created = Metric._get_or_create(
-            object_id=primary_key, content_type=content_type, configuration='disk'
-        )
-        if created:
-            self._create_resources_chart(metric, resource='disk')
-            self._create_resources_alert_settings(metric, resource='disk')
-        self._append_metric_data(
-            metric, 100 * used_bytes / size_bytes, current, time=time
-        )
-
-    def _write_memory(
-        self, memory, primary_key, content_type, current=False, time=None
-    ):
-        extra_values = {
-            'total_memory': memory['total'],
-            'free_memory': memory['free'],
-            'buffered_memory': memory['buffered'],
-            'shared_memory': memory['shared'],
-        }
-        if 'cached' in memory:
-            extra_values['cached_memory'] = memory.get('cached')
-        percent_used = 100 * (
-            1 - (memory['free'] + memory['buffered']) / memory['total']
-        )
-        # Available Memory is not shown in some systems (older openwrt versions)
-        if 'available' in memory:
-            extra_values.update({'available_memory': memory['available']})
-            if memory['available'] > memory['free']:
-                percent_used = 100 * (
-                    1 - (memory['available'] + memory['buffered']) / memory['total']
-                )
-        metric, created = Metric._get_or_create(
-            object_id=primary_key, content_type=content_type, configuration='memory'
-        )
-        if created:
-            self._create_resources_chart(metric, resource='memory')
-            self._create_resources_alert_settings(metric, resource='memory')
-        self._append_metric_data(
-            metric, percent_used, current, time=time, extra_values=extra_values
-        )
-
-    def _calculate_increment(self, ifname, stat, value):
-        """
-        compares value with previously stored counter and
-        calculates the increment of the value (which is returned)
-        """
-        # get previous counters
-        data = self._previous_data
-        try:
-            previous_counter = data['interfaces_dict'][ifname]['statistics'][stat]
-        except KeyError:
-            # if no previous measurements present, counter will start from zero
-            previous_counter = 0
-        # if current value is higher than previous value,
-        # it means the interface traffic counter is increasing
-        # and to calculate the traffic performed since the last
-        # measurement we have to calculate the difference
-        if value >= previous_counter:
-            return value - previous_counter
-        # on the other side, if the current value is less than
-        # the previous value, it means that the counter was restarted
-        # (eg: reboot, configuration reload), so we keep the whole amount
-        else:
-            return value
-
-    def _create_traffic_chart(self, metric):
-        """
-        create "traffic (GB)" chart
-        """
-        if 'traffic' not in monitoring_settings.AUTO_CHARTS:
-            return
-        chart = Chart(metric=metric, configuration='traffic')
-        chart.full_clean()
-        chart.save()
-
-    def _create_clients_chart(self, metric):
-        """
-        creates "WiFi associations" chart
-        """
-        if 'wifi_clients' not in monitoring_settings.AUTO_CHARTS:
-            return
-        chart = Chart(metric=metric, configuration='wifi_clients')
-        chart.full_clean()
-        chart.save()
-
-    def _create_resources_chart(self, metric, resource):
-        if resource not in monitoring_settings.AUTO_CHARTS:
-            return
-        chart = Chart(metric=metric, configuration=resource)
-        chart.full_clean()
-        chart.save()
-
-    def _create_resources_alert_settings(self, metric, resource):
-        alert_settings = AlertSettings(metric=metric)
-        alert_settings.full_clean()
-        alert_settings.save()
-
-    def _create_signal_strength_chart(self, metric):
-        chart = Chart(metric=metric, configuration='signal_strength')
-        chart.full_clean()
-        chart.save()
-
-    def _create_signal_quality_chart(self, metric):
-        chart = Chart(metric=metric, configuration='signal_quality')
-        chart.full_clean()
-        chart.save()
-
-    def _create_access_tech_chart(self, metric):
-        chart = Chart(metric=metric, configuration='access_tech')
-        chart.full_clean()
-        chart.save()
 
 
 device_metric = DeviceMetricView.as_view()

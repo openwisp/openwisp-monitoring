@@ -48,7 +48,10 @@ class AbstractDeviceData(object):
     __data_timestamp = None
 
     def __init__(self, *args, **kwargs):
+        from ..writer import DeviceDataWriter
+
         self.data = kwargs.pop('data', None)
+        self.writer = DeviceDataWriter(self)
         super().__init__(*args, **kwargs)
 
     def can_be_updated(self):
