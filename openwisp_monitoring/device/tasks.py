@@ -5,12 +5,14 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.utils.timezone import now, timedelta
 from swapper import load_model
 
+from openwisp_utils.tasks import OpenwispCeleryTask
+
 from ..check.tasks import perform_check
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task
+@shared_task(base=OpenwispCeleryTask)
 def trigger_device_checks(pk, recovery=True):
     """
     Retrieves all related checks to the passed ``device``
@@ -34,7 +36,7 @@ def trigger_device_checks(pk, recovery=True):
         device.monitoring.update_status(status)
 
 
-@shared_task
+@shared_task(base=OpenwispCeleryTask)
 def save_wifi_clients_and_sessions(device_data, device_pk):
     _WIFICLIENT_FIELDS = ['vendor', 'ht', 'vht', 'wmm', 'wds', 'wps']
     WifiClient = load_model('device_monitoring', 'WifiClient')
@@ -80,7 +82,7 @@ def save_wifi_clients_and_sessions(device_data, device_pk):
     ).update(stop_time=now())
 
 
-@shared_task
+@shared_task(base=OpenwispCeleryTask)
 def delete_wifi_clients_and_sessions(days=6 * 30):
     WifiClient = load_model('device_monitoring', 'WifiClient')
     WifiSession = load_model('device_monitoring', 'WifiSession')
@@ -91,7 +93,7 @@ def delete_wifi_clients_and_sessions(days=6 * 30):
     ).delete()
 
 
-@shared_task
+@shared_task(base=OpenwispCeleryTask)
 def offline_device_close_session(device_id):
     WifiSession = load_model('device_monitoring', 'WifiSession')
     WifiSession.objects.filter(device_id=device_id, stop_time__isnull=True).update(
@@ -99,7 +101,7 @@ def offline_device_close_session(device_id):
     )
 
 
-@shared_task
+@shared_task(base=OpenwispCeleryTask)
 def write_device_metrics(pk, data, time=None, current=False):
     DeviceData = load_model('device_monitoring', 'DeviceData')
     try:

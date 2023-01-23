@@ -7,6 +7,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
 from swapper import load_model
 
+from openwisp_utils.tasks import OpenwispCeleryTask
+
 from .settings import CHECKS_LIST
 
 logger = logging.getLogger(__name__)
@@ -16,7 +18,7 @@ def get_check_model():
     return load_model('check', 'Check')
 
 
-@shared_task
+@shared_task(time_limit=60 * 60)
 def run_checks(checks=None):
     """
     Retrieves the id of all active checks in chunks of 2000 items
@@ -49,7 +51,7 @@ def run_checks(checks=None):
         perform_check.delay(check['id'])
 
 
-@shared_task
+@shared_task(time_limit=30 * 60)
 def perform_check(uuid):
     """
     Retrieves check according to the passed UUID
@@ -65,7 +67,7 @@ def perform_check(uuid):
         print(json.dumps(result, indent=4, sort_keys=True))
 
 
-@shared_task
+@shared_task(base=OpenwispCeleryTask)
 def auto_create_ping(
     model, app_label, object_id, check_model=None, content_type_model=None
 ):
@@ -90,7 +92,7 @@ def auto_create_ping(
     check.save()
 
 
-@shared_task
+@shared_task(base=OpenwispCeleryTask)
 def auto_create_config_check(
     model, app_label, object_id, check_model=None, content_type_model=None
 ):
@@ -117,7 +119,7 @@ def auto_create_config_check(
     check.save()
 
 
-@shared_task
+@shared_task(base=OpenwispCeleryTask)
 def auto_create_iperf3_check(
     model, app_label, object_id, check_model=None, content_type_model=None
 ):

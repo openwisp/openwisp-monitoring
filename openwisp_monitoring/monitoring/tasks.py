@@ -2,6 +2,8 @@ from celery import shared_task
 from django.core.exceptions import ObjectDoesNotExist
 from swapper import load_model
 
+from openwisp_utils.tasks import OpenwispCeleryTask
+
 from ..db import timeseries_db
 from ..db.exceptions import TimeseriesWriteException
 from .settings import RETRY_OPTIONS
@@ -29,7 +31,12 @@ def _metric_post_write(name, values, metric_pk, check_threshold_kwargs, **kwargs
         post_metric_write.send(**signal_kwargs)
 
 
-@shared_task(bind=True, autoretry_for=(TimeseriesWriteException,), **RETRY_OPTIONS)
+@shared_task(
+    base=OpenwispCeleryTask,
+    bind=True,
+    autoretry_for=(TimeseriesWriteException,),
+    **RETRY_OPTIONS
+)
 def timeseries_write(
     self, name, values, metric_pk=None, check_threshold_kwargs=None, **kwargs
 ):
@@ -40,7 +47,12 @@ def timeseries_write(
     _metric_post_write(name, values, metric_pk, check_threshold_kwargs, **kwargs)
 
 
-@shared_task(bind=True, autoretry_for=(TimeseriesWriteException,), **RETRY_OPTIONS)
+@shared_task(
+    base=OpenwispCeleryTask,
+    bind=True,
+    autoretry_for=(TimeseriesWriteException,),
+    **RETRY_OPTIONS
+)
 def timeseries_batch_write(self, data):
     """
     Similar to timeseries_write function above, but operates on
@@ -51,7 +63,7 @@ def timeseries_batch_write(self, data):
         _metric_post_write(**metric_data)
 
 
-@shared_task
+@shared_task(base=OpenwispCeleryTask)
 def delete_timeseries(key, tags):
     timeseries_db.delete_series(key=key, tags=tags)
 
