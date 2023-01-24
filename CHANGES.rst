@@ -1,6 +1,16 @@
 Changelog
 =========
 
+Version 1.0.4 [2023-01-24]
+--------------------------
+
+Bugfixes
+~~~~~~~~
+
+- Allow additional properties on wifi/mobile signal.
+  This will help to reduce backward compatibility issues
+  when new properties are added to the monitoring agent.
+
 Version 1.0.3 [2022-12-29]
 --------------------------
 
