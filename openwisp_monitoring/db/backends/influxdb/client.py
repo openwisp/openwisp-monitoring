@@ -112,11 +112,12 @@ class DatabaseClient(object):
             database=database,
         )
 
-    def _write(self, data, params):
+    def _write(self, points, database, retention_policy):
         try:
-            self.db.write(
-                data=data,
-                params=params,
+            self.db.write_points(
+                points=points,
+                database=database,
+                retention_policy=retention_policy,
             )
         except Exception as exception:
             logger.warning(f'got exception while writing to tsdb: {exception}')
@@ -145,11 +146,9 @@ class DatabaseClient(object):
             'time': timestamp,
         }
         self._write(
-            data={'points': [point]},
-            params={
-                'db': kwargs.get('database') or self.db_name,
-                'rp': kwargs.get('retention_policy'),
-            },
+            points=[point],
+            database=kwargs.get('database') or self.db_name,
+            retention_policy=kwargs.get('retention_policy'),
         )
 
     def batch_write(self, metric_data):
@@ -173,11 +172,9 @@ class DatabaseClient(object):
         for database in data_points.keys():
             for rp in data_points[database].keys():
                 self._write(
-                    data={'points': data_points[database][rp]},
-                    params={
-                        'db': database,
-                        'rp': rp,
-                    },
+                    points=data_points[database][rp],
+                    database=database,
+                    retention_policy=rp,
                 )
 
     def read(self, key, fields, tags, **kwargs):
