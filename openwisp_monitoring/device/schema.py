@@ -190,7 +190,7 @@ schema = {
                     },
                     "wireless": {
                         "type": "object",
-                        "additionalProperties": False,
+                        "additionalProperties": True,
                         "required": [
                             "channel",
                             "country",
@@ -256,7 +256,7 @@ schema = {
                     },
                     "mobile": {
                         "type": "object",
-                        "additionalProperties": False,
+                        "additionalProperties": True,
                         "required": [
                             "imei",
                             "operator_code",
@@ -286,17 +286,17 @@ schema = {
                             "model": {"type": "string"},
                             "signal": {
                                 "type": "object",
-                                "additionalProperties": False,
+                                "additionalProperties": True,
                                 "properties": {
                                     "gsm": {
                                         "type": "object",
-                                        "additionalProperties": False,
+                                        "additionalProperties": True,
                                         "required": ["rssi"],
                                         "properties": {"rssi": {"type": "number"}},
                                     },
                                     "cdma1x": {
                                         "type": "object",
-                                        "additionalProperties": False,
+                                        "additionalProperties": True,
                                         "required": ["rssi", "ecio"],
                                         "properties": {
                                             "rssi": {"type": "number"},
@@ -305,7 +305,7 @@ schema = {
                                     },
                                     "evdo": {
                                         "type": "object",
-                                        "additionalProperties": False,
+                                        "additionalProperties": True,
                                         "required": ["rssi", "ecio", "io", "sinr"],
                                         "properties": {
                                             "rssi": {"type": "number"},
@@ -316,7 +316,7 @@ schema = {
                                     },
                                     "umts": {
                                         "type": "object",
-                                        "additionalProperties": False,
+                                        "additionalProperties": True,
                                         "required": ["ecio"],
                                         "properties": {
                                             "rssi": {"type": "number"},
@@ -326,7 +326,7 @@ schema = {
                                     },
                                     "lte": {
                                         "type": "object",
-                                        "additionalProperties": False,
+                                        "additionalProperties": True,
                                         "required": ["rssi", "rsrp", "rsrq", "snr"],
                                         "properties": {
                                             "rssi": {"type": "number"},
@@ -337,7 +337,7 @@ schema = {
                                     },
                                     "5g": {
                                         "type": "object",
-                                        "additionalProperties": False,
+                                        "additionalProperties": True,
                                         "required": ["rsrp", "rsrq", "snr"],
                                         "properties": {
                                             "rsrp": {"type": "number"},
