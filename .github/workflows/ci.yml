@@ -23,12 +23,6 @@ jobs:
         image: redis
         ports:
           - 6379:6379
-      influxdb:
-        image: influxdb:1.8.4-alpine
-        options: >-
-          --name "influxdb"
-        ports:
-          - 8086:8086
 
     strategy:
       fail-fast: false
@@ -73,6 +67,9 @@ jobs:
 
       - name: Install npm dependencies
         run: sudo npm install -g install jshint stylelint
+
+      - name: Start InfluxDB container
+        run: docker-compose up -d influxdb
 
       - name: Install test dependencies
         run: |
