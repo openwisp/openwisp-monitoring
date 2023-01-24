@@ -199,7 +199,6 @@ schema = {
                             "noise",
                             "ssid",
                             "tx_power",
-                            "htmode",
                         ],
                         "properties": {
                             "channel": {"type": "integer"},
