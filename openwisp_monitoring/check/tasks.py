@@ -18,7 +18,7 @@ def get_check_model():
     return load_model('check', 'Check')
 
 
-@shared_task(time_limit=60 * 60)
+@shared_task(time_limit=2 * 60 * 60)
 def run_checks(checks=None):
     """
     Retrieves the id of all active checks in chunks of 2000 items
