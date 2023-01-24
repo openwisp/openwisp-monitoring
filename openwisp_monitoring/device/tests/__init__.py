@@ -85,7 +85,9 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
                 main_tags={'ifname': ifname},
                 extra_tags=extra_tags,
             )
-            points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
+            points = self._read_metric(
+                m, limit=10, order='-time', extra_fields=['tx_bytes']
+            )
             self.assertEqual(len(points), 1)
             for field in ['rx_bytes', 'tx_bytes']:
                 self.assertEqual(points[0][field], iface['statistics'][field])
@@ -96,7 +98,7 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
                 extra_tags=extra_tags,
                 main_tags={'ifname': ifname},
             )
-            points = m.read(limit=10, order='-time')
+            points = self._read_metric(m, limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']))
         return dd
 

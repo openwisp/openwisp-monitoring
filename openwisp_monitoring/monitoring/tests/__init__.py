@@ -1,3 +1,4 @@
+import time
 from datetime import timedelta
 
 from django.utils.timezone import now
@@ -244,3 +245,19 @@ class TestMonitoringMixin(TestOrganizationMixin):
         c.full_clean()
         c.save()
         return c
+
+    def _read_chart_or_metric(self, obj, *args, **kwargs):
+        if TIMESERIES_DB.get('OPTIONS', {}).get('udp_writes', False):
+            time.sleep(0.12)
+        return obj.read(*args, **kwargs)
+
+    def _read_metric(self, metric, *args, **kwargs):
+        return self._read_chart_or_metric(metric, *args, **kwargs)
+
+    def _read_chart(self, chart, *args, **kwargs):
+        return self._read_chart_or_metric(chart, *args, **kwargs)
+
+    def _write_metric(self, metric, *args, **kwargs):
+        if TIMESERIES_DB.get('OPTIONS', {}).get('udp_writes', False):
+            time.sleep(0.12)
+        metric.write(*args, **kwargs)

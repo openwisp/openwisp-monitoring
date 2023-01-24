@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from celery.exceptions import Retry
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import TestCase, tag
 from django.utils.timezone import now
 from freezegun import freeze_time
 from influxdb import InfluxDBClient
@@ -32,6 +32,7 @@ Chart = load_model('monitoring', 'Chart')
 Notification = load_model('openwisp_notifications', 'Notification')
 
 
+@tag('timeseries_db')
 class TestDatabaseClient(TestMonitoringMixin, TestCase):
     def test_forbidden_queries(self):
         queries = [

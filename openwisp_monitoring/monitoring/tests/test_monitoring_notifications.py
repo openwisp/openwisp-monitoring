@@ -1,3 +1,4 @@
+import time
 from datetime import timedelta
 
 from django.utils import timezone
@@ -127,10 +128,12 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 0)
 
+        time.sleep(0.1)
         with self.subTest('Test no notification is generated when check=False'):
             m.write(91, time=ten_minutes_ago, check=False)
             self.assertEqual(Notification.objects.count(), 0)
 
+        time.sleep(0.1)
         with self.subTest('Test notification for metric with current timestamp'):
             m.write(92)
             m.refresh_from_db()
@@ -143,6 +146,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(n.action_object, m.alertsettings)
             self.assertEqual(n.level, 'warning')
 
+        time.sleep(0.1)
         with self.subTest('Test no recovery notification yet (tolerance not passed)'):
             m.write(50)
             m.refresh_from_db()
@@ -150,6 +154,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
 
+        time.sleep(0.1)
         with self.subTest('Tolerance still not passed, not expecting a recovery yet'):
             with freeze_time(start_time + timedelta(minutes=2)):
                 m.write(51)
@@ -158,6 +163,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
 
+        time.sleep(0.1)
         with self.subTest('Test recovery notification after tolerance is passed'):
             with freeze_time(ten_minutes_after):
                 m.write(50)
@@ -262,11 +268,11 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         alert_s = self._create_alert_settings(
             metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=1
         )
-        om.write(89, time=ten_minutes_ago)
+        self._write_metric(om, 89, time=ten_minutes_ago)
         self.assertEqual(Notification.objects.count(), 0)
-        om.write(91, time=ten_minutes_ago, check=False)
+        self._write_metric(om, 91, time=ten_minutes_ago, check=False)
         self.assertEqual(Notification.objects.count(), 0)
-        om.write(92)
+        self._write_metric(om, 92)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, False)
         self.assertEqual(om.is_healthy_tolerant, False)
@@ -278,20 +284,20 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(n.target, om.content_object)
         self.assertEqual(n.level, 'warning')
         # ensure double alarm not sent
-        om.write(95)
+        self._write_metric(om, 95)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, False)
         self.assertEqual(om.is_healthy_tolerant, False)
         self.assertEqual(Notification.objects.count(), 1)
         # value back to normal but tolerance not passed yet
-        om.write(60)
+        self._write_metric(om, 60)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, True)
         self.assertEqual(om.is_healthy_tolerant, False)
         self.assertEqual(Notification.objects.count(), 1)
         # tolerance passed
         with freeze_time(ten_minutes_after):
-            om.write(60)
+            self._write_metric(om, 60)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, True)
         self.assertEqual(om.is_healthy_tolerant, True)
@@ -304,7 +310,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(n.level, 'info')
         # ensure double alarm not sent
         with freeze_time(ten_minutes_after + timedelta(minutes=5)):
-            om.write(40)
+            self._write_metric(om, 40)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, True)
         self.assertEqual(om.is_healthy_tolerant, True)

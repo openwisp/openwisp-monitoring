@@ -166,17 +166,17 @@ class TestModels(TestMonitoringMixin, TestCase):
     def test_read_general_metric(self):
         m = self._create_general_metric(name='load')
         m.write(50, check=False)
-        self.assertEqual(m.read()[0][m.field_name], 50)
+        self.assertEqual(self._read_metric(m)[0][m.field_name], 50)
         m.write(1, check=False)
-        self.assertEqual(m.read()[0][m.field_name], 50)
-        self.assertEqual(m.read(order='-time')[0][m.field_name], 1)
+        self.assertEqual(self._read_metric(m)[0][m.field_name], 50)
+        self.assertEqual(self._read_metric(m, order='-time')[0][m.field_name], 1)
 
     def test_read_object_metric(self):
         om = self._create_object_metric(name='load')
         om.write(50)
         om.write(3)
-        om.read(extra_fields='*')
-        self.assertEqual(om.read()[0][om.field_name], 50)
+        self._read_metric(om, extra_fields='*')
+        self.assertEqual(self._read_metric(om)[0][om.field_name], 50)
 
     def test_alert_settings_max_seconds(self):
         m = self._create_general_metric(name='load')
@@ -375,13 +375,13 @@ class TestModels(TestMonitoringMixin, TestCase):
         metric2 = self._create_general_metric(name='traffic')
         metric1.write(99)
         metric2.write(5000)
-        self.assertNotEqual(metric1.read(), [])
-        self.assertNotEqual(metric2.read(), [])
+        self.assertNotEqual(self._read_metric(metric1), [])
+        self.assertNotEqual(self._read_metric(metric2), [])
         metric1.delete()
-        self.assertEqual(metric1.read(), [])
+        self.assertEqual(self._read_metric(metric1), [])
         # Only the timeseries data related to the deleted metric
         # should be deleted
-        self.assertNotEqual(metric2.read(), [])
+        self.assertNotEqual(self._read_metric(metric2), [])
 
     def test_metric_invalid_field_name(self):
         metric = self._create_general_metric(configuration='test_alert_field')
