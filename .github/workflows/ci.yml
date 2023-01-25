@@ -88,6 +88,7 @@ jobs:
         run: |
           SAMPLE_APP=1 coverage run --source=openwisp_monitoring runtests.py
           coverage run -a --source=openwisp_monitoring runtests.py
+          TIMESERIES_UDP=1 coverage run -a --source=openwisp_monitoring runtests.py
 
       - name: Upload Coverage
         run: coveralls --service=github

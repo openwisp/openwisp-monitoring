@@ -1,4 +1,3 @@
-import time
 from datetime import timedelta
 
 from django.utils import timezone
@@ -128,12 +127,15 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 0)
 
-        time.sleep(0.1)
+        # When using UDP for writing data to the timeseries, reading the
+        # metric from the database provides a time delay that allows the
+        # timeseries database to process the transaction.
+        self._read_metric(m)
         with self.subTest('Test no notification is generated when check=False'):
             m.write(91, time=ten_minutes_ago, check=False)
             self.assertEqual(Notification.objects.count(), 0)
 
-        time.sleep(0.1)
+        self._read_metric(m)
         with self.subTest('Test notification for metric with current timestamp'):
             m.write(92)
             m.refresh_from_db()
@@ -146,7 +148,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(n.action_object, m.alertsettings)
             self.assertEqual(n.level, 'warning')
 
-        time.sleep(0.1)
+        self._read_metric(m)
         with self.subTest('Test no recovery notification yet (tolerance not passed)'):
             m.write(50)
             m.refresh_from_db()
@@ -154,7 +156,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
 
-        time.sleep(0.1)
+        self._read_metric(m)
         with self.subTest('Tolerance still not passed, not expecting a recovery yet'):
             with freeze_time(start_time + timedelta(minutes=2)):
                 m.write(51)
@@ -163,7 +165,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
 
-        time.sleep(0.1)
+        self._read_metric(m)
         with self.subTest('Test recovery notification after tolerance is passed'):
             with freeze_time(ten_minutes_after):
                 m.write(50)

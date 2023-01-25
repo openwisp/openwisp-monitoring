@@ -32,7 +32,7 @@ Chart = load_model('monitoring', 'Chart')
 Notification = load_model('openwisp_notifications', 'Notification')
 
 
-@tag('timeseries_db')
+@tag('timeseries_client')
 class TestDatabaseClient(TestMonitoringMixin, TestCase):
     def test_forbidden_queries(self):
         queries = [

@@ -75,15 +75,38 @@ class DatabaseClient(object):
     @cached_property
     def db(self):
         """Returns an ``InfluxDBClient`` instance"""
-        return InfluxDBClient(
-            TIMESERIES_DB['HOST'],
-            TIMESERIES_DB['PORT'],
-            TIMESERIES_DB['USER'],
-            TIMESERIES_DB['PASSWORD'],
-            self.db_name,
-            use_udp=TIMESERIES_DB.get('OPTIONS', {}).get('udp_writes', False),
-            udp_port=TIMESERIES_DB.get('OPTIONS', {}).get('udp_port', 8089),
-        )
+        return self.dbs['default']
+
+    @cached_property
+    def dbs(self):
+        dbs = {
+            'default': InfluxDBClient(
+                TIMESERIES_DB['HOST'],
+                TIMESERIES_DB['PORT'],
+                TIMESERIES_DB['USER'],
+                TIMESERIES_DB['PASSWORD'],
+                self.db_name,
+                use_udp=TIMESERIES_DB.get('OPTIONS', {}).get('udp_writes', False),
+                udp_port=TIMESERIES_DB.get('OPTIONS', {}).get('udp_port', 8089),
+            ),
+        }
+        if TIMESERIES_DB.get('OPTIONS', {}).get('udp_writes', False):
+            # When using UDP, InfluxDB allows only using one retention policy
+            # per port. Therefore, we need to have different instances of
+            # InfluxDBClient.
+            dbs['short'] = InfluxDBClient(
+                TIMESERIES_DB['HOST'],
+                TIMESERIES_DB['PORT'],
+                TIMESERIES_DB['USER'],
+                TIMESERIES_DB['PASSWORD'],
+                self.db_name,
+                use_udp=TIMESERIES_DB.get('OPTIONS', {}).get('udp_writes', False),
+                udp_port=TIMESERIES_DB.get('OPTIONS', {}).get('udp_port', 8089) + 1,
+            )
+
+        else:
+            dbs['short'] = dbs['default']
+        return dbs
 
     @retry
     def create_or_alter_retention_policy(self, name, duration):
@@ -113,8 +136,9 @@ class DatabaseClient(object):
         )
 
     def _write(self, points, database, retention_policy):
+        db = self.dbs['short'] if retention_policy else self.dbs['default']
         try:
-            self.db.write_points(
+            db.write_points(
                 points=points,
                 database=database,
                 retention_policy=retention_policy,

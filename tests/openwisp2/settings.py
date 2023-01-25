@@ -31,7 +31,10 @@ TIMESERIES_DATABASE = {
     'OPTIONS': {'udp_writes': True, 'udp_port': 8089},
 }
 if TESTING:
-    TIMESERIES_DATABASE['OPTIONS']['udp_port'] = 8090
+    if os.environ.get('TIMESERIES_UDP', False):
+        TIMESERIES_DATABASE['OPTIONS']['udp_port'] = 8091
+    else:
+        TIMESERIES_DATABASE['OPTIONS']['udp_writes'] = False
 
 SECRET_KEY = 'fn)t*+$)ugeyip6-#txyy$5wf2ervc0d2n#h)qb)y5@ly$t*@w'
 

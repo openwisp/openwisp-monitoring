@@ -247,12 +247,16 @@ class TestCharts(TestMonitoringMixin, TestCase):
         m = self._create_object_metric(name='test', configuration='get_top_fields')
         c = self._create_chart(metric=m, test_data=None, configuration='histogram')
         self.assertEqual(c.get_top_fields(number=3), [])
-        m.write(None, extra_values={'http2': 100, 'ssh': 90, 'udp': 80, 'spdy': 70})
+        self._write_metric(
+            m, None, extra_values={'http2': 100, 'ssh': 90, 'udp': 80, 'spdy': 70}
+        )
         self.assertEqual(c.get_top_fields(number=3), ['http2', 'ssh', 'udp'])
 
     def test_query_histogram(self):
         m = self._create_object_metric(name='histogram', configuration='get_top_fields')
-        m.write(None, extra_values={'http2': 100, 'ssh': 90, 'udp': 80, 'spdy': 70})
+        self._write_metric(
+            m, None, extra_values={'http2': 100, 'ssh': 90, 'udp': 80, 'spdy': 70}
+        )
         c = Chart(metric=m, configuration='histogram')
         c.full_clean()
         c.save()

@@ -188,6 +188,7 @@ class TestMonitoringMixin(TestOrganizationMixin):
         # defined in settings when apps are loaded. We don't want that while testing
         timeseries_db.db_name = cls.TEST_DB
         del timeseries_db.db
+        del timeseries_db.dbs
         timeseries_db.create_database()
         for key, value in metrics.items():
             register_metric(key, value)
@@ -246,8 +247,12 @@ class TestMonitoringMixin(TestOrganizationMixin):
         c.save()
         return c
 
+    @property
+    def _is_timeseries_udp_writes(self):
+        return TIMESERIES_DB.get('OPTIONS', {}).get('udp_writes', False)
+
     def _read_chart_or_metric(self, obj, *args, **kwargs):
-        if TIMESERIES_DB.get('OPTIONS', {}).get('udp_writes', False):
+        if self._is_timeseries_udp_writes:
             time.sleep(0.12)
         return obj.read(*args, **kwargs)
 
@@ -258,6 +263,6 @@ class TestMonitoringMixin(TestOrganizationMixin):
         return self._read_chart_or_metric(chart, *args, **kwargs)
 
     def _write_metric(self, metric, *args, **kwargs):
-        if TIMESERIES_DB.get('OPTIONS', {}).get('udp_writes', False):
+        if self._is_timeseries_udp_writes:
             time.sleep(0.12)
         metric.write(*args, **kwargs)

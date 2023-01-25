@@ -186,15 +186,15 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         dm = Device.objects.first().monitoring
         dm.update_status('ok')
         self.assertEqual(Check.objects.count(), 3)
-        self.assertEqual(Metric.objects.count(), 0)
+        self.assertEqual(Metric.objects.filter(object_id=dm.id).count(), 0)
         self.assertEqual(AlertSettings.objects.count(), 0)
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         with freeze_time(now() - timedelta(minutes=10)):
             check.perform_check()
         # Check needs to be run again without mocking time for threshold crossed
         self.assertEqual(check.perform_check(), 0)
-        self.assertEqual(Metric.objects.count(), 1)
-        m = Metric.objects.first()
+        self.assertEqual(Metric.objects.filter(object_id=dm.device_id).count(), 1)
+        m = Metric.objects.filter(object_id=dm.device_id).first()
         self.assertEqual(AlertSettings.objects.count(), 1)
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'problem')
