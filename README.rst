@@ -1424,7 +1424,8 @@ Settings
         'PORT': '8086',
         'OPTIONS': {
             'udp_writes': False,
-            'udp_port': 8089
+            'udp_port': 8089,
+        }
     }
 
 The following table describes all keys available in ``TIMESERIES_DATABASE``
