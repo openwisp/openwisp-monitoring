@@ -2120,7 +2120,7 @@ An example usage has been shown below.
                 'type': 'scatter',
                 'title': _('Round Trip Time'),
                 'description': _(
-                    'Round trip time observed in ICMP probes, measuered in milliseconds.'
+                    'Round trip time observed in ICMP probes, measured in milliseconds.'
                 ),
                 'summary_labels': [
                     _('Average RTT'),
