@@ -20,6 +20,7 @@ from openwisp_utils.admin_theme import (
 from openwisp_utils.admin_theme.menu import register_menu_subitem
 
 from ..check import settings as check_settings
+from ..monitoring.signals import threshold_crossed
 from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from ..utils import transaction_on_commit
 from . import settings as app_settings
@@ -180,11 +181,11 @@ class DeviceMonitoringConfig(AppConfig):
         if not app_settings.WIFI_SESSIONS_ENABLED:
             return
 
-        DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+        Metric = load_model('monitoring', 'Metric')
         WifiSession = load_model('device_monitoring', 'WifiSession')
-        health_status_changed.connect(
+        threshold_crossed.connect(
             WifiSession.offline_device_close_session,
-            sender=DeviceMonitoring,
+            sender=Metric,
             dispatch_uid='offline_device_close_session',
         )
 
