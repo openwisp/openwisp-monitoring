@@ -1,6 +1,7 @@
 import logging
 import operator
 import re
+import sys
 from collections import OrderedDict
 from datetime import datetime
 
@@ -11,6 +12,7 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
+from influxdb.line_protocol import make_lines
 
 from openwisp_monitoring.utils import retry
 
@@ -103,9 +105,16 @@ class DatabaseClient(object):
                 use_udp=TIMESERIES_DB.get('OPTIONS', {}).get('udp_writes', False),
                 udp_port=TIMESERIES_DB.get('OPTIONS', {}).get('udp_port', 8089) + 1,
             )
-
+            dbs['__all__'] = InfluxDBClient(
+                TIMESERIES_DB['HOST'],
+                TIMESERIES_DB['PORT'],
+                TIMESERIES_DB['USER'],
+                TIMESERIES_DB['PASSWORD'],
+                self.db_name,
+            )
         else:
             dbs['short'] = dbs['default']
+            dbs['__all__'] = dbs['default']
         return dbs
 
     @retry
@@ -137,11 +146,17 @@ class DatabaseClient(object):
 
     def _write(self, points, database, retention_policy):
         db = self.dbs['short'] if retention_policy else self.dbs['default']
+        # If the size of data exceeds the limit of the UDP packet, then
+        # fallback to use TCP connection for writing data.
+        lines = make_lines({'points': points})
+        if sys.getsizeof(lines) > 65000:
+            db = self.dbs['__all__']
         try:
             db.write_points(
-                points=points,
+                points=lines.split('\n')[:-1],
                 database=database,
                 retention_policy=retention_policy,
+                protocol='line',
             )
         except Exception as exception:
             logger.warning(f'got exception while writing to tsdb: {exception}')

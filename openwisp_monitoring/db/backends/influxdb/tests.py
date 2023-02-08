@@ -354,3 +354,20 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
                 'Error while executing method "query":\nServer error\nAttempt '
                 f'{max_retries} out of {max_retries}.\n'
             )
+
+
+class TestDatabaseClientUdp(TestMonitoringMixin, TestCase):
+    def test_exceed_udp_packet_limit(self):
+        # When using UDP to write data to InfluxDB, writing
+        # huge data that exceeds UDP packet limit should not raise
+        # an error. Instead, the client should fallback to the
+        # TCP connection.
+        timeseries_db.write(
+            'test_udp_write', dict(value='O' * 66000), database=self.TEST_DB
+        )
+        measurement = list(
+            timeseries_db.query(
+                'select * from test_udp_write', database=self.TEST_DB
+            ).get_points()
+        )
+        self.assertEqual(len(measurement), 1)
