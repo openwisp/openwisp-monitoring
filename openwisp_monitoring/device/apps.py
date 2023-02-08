@@ -268,44 +268,7 @@ class DeviceMonitoringConfig(AppConfig):
                 },
             )
 
-        register_dashboard_template(
-            position=55,
-            config={
-                'template': 'monitoring/paritals/chart.html',
-                'css': (
-                    'monitoring/css/daterangepicker.css',
-                    'monitoring/css/percircle.min.css',
-                    'monitoring/css/chart.css',
-                    'monitoring/css/dashboard-chart.css',
-                ),
-                'js': (
-                    'monitoring/js/lib/moment.min.js',
-                    'monitoring/js/lib/daterangepicker.min.js',
-                    'monitoring/js/lib/percircle.min.js',
-                    'monitoring/js/chart.js',
-                    'monitoring/js/chart-utils.js',
-                    'monitoring/js/dashboard-chart.js',
-                ),
-            },
-            extra_config={
-                'api_url': reverse_lazy('monitoring_general:api_dashboard_timeseries'),
-                'default_time': Chart.DEFAULT_TIME,
-                'chart_quick_links': {
-                    'General WiFi Clients': {
-                        'url': reverse_lazy(
-                            'admin:{app_label}_{model_name}_changelist'.format(
-                                app_label=WifiSession._meta.app_label,
-                                model_name=WifiSession._meta.model_name,
-                            )
-                        ),
-                        'label': _('Open WiFi session list'),
-                        'title': _('View full history of WiFi Sessions'),
-                    }
-                },
-            },
-            after_charts=True,
-        )
-
+        general_wifi_client_quick_links = {}
         if app_settings.WIFI_SESSIONS_ENABLED:
             register_dashboard_chart(
                 position=13,
@@ -352,6 +315,46 @@ class DeviceMonitoringConfig(AppConfig):
                     },
                 },
             )
+
+            general_wifi_client_quick_links = {
+                'General WiFi Clients': {
+                    'url': reverse_lazy(
+                        'admin:{app_label}_{model_name}_changelist'.format(
+                            app_label=WifiSession._meta.app_label,
+                            model_name=WifiSession._meta.model_name,
+                        )
+                    ),
+                    'label': _('Open WiFi session list'),
+                    'title': _('View full history of WiFi Sessions'),
+                }
+            }
+
+        register_dashboard_template(
+            position=55,
+            config={
+                'template': 'monitoring/paritals/chart.html',
+                'css': (
+                    'monitoring/css/daterangepicker.css',
+                    'monitoring/css/percircle.min.css',
+                    'monitoring/css/chart.css',
+                    'monitoring/css/dashboard-chart.css',
+                ),
+                'js': (
+                    'monitoring/js/lib/moment.min.js',
+                    'monitoring/js/lib/daterangepicker.min.js',
+                    'monitoring/js/lib/percircle.min.js',
+                    'monitoring/js/chart.js',
+                    'monitoring/js/chart-utils.js',
+                    'monitoring/js/dashboard-chart.js',
+                ),
+            },
+            extra_config={
+                'api_url': reverse_lazy('monitoring_general:api_dashboard_timeseries'),
+                'default_time': Chart.DEFAULT_TIME,
+                'chart_quick_links': general_wifi_client_quick_links,
+            },
+            after_charts=True,
+        )
 
     def register_menu_groups(self):
         if app_settings.WIFI_SESSIONS_ENABLED:
