@@ -1457,8 +1457,7 @@ setting:
 +---------------+--------------------------------------------------------------------------------------+
 
 **Note:** UDP packets can have a maximum size of 64KB. When using UDP for writing timeseries
-data, if the size of data exceeds 64KB, then TCP connection will be used for writing
-data to the timeseries database.
+data, if the size of the data exceeds 64KB, TCP mode will be used instead.
 
 **Note:** If you want to use the ``openwisp_monitoring.db.backends.influxdb`` backend
 with UDP writes enabled, then you need to enable two different ports for UDP
