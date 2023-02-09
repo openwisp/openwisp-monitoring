@@ -30,7 +30,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
 
     def test_read(self):
         c = self._create_chart()
-        data = c.read()
+        data = self._read_chart(c)
         key = c.metric.field_name
         self.assertIn('x', data)
         self.assertIn('traces', data)
@@ -46,7 +46,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         m.write(1, time=now() - timedelta(days=2))
         m.write(2, time=now() - timedelta(days=1))
         m.write(3, time=now())
-        data = c.read()
+        data = self._read_chart(c)
         self.assertEqual(data['summary'], {'value': 2})
 
     def test_read_summary_sum(self):
@@ -55,13 +55,13 @@ class TestCharts(TestMonitoringMixin, TestCase):
         m.write(5, time=now() - timedelta(days=2))
         m.write(4, time=now() - timedelta(days=1))
         m.write(1, time=now())
-        data = c.read()
+        data = self._read_chart(c)
         self.assertEqual(data['summary'], {'value': 10})
 
     def test_read_summary_not_aggregate(self):
         m = self._create_object_metric(name='summary_hidden')
         c = self._create_chart(metric=m)
-        data = c.read()
+        data = self._read_chart(c)
         self.assertEqual(data['summary'], {'value': None})
 
     def test_read_summary_top_fields(self):
@@ -98,7 +98,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
             },
             time=now() - timedelta(days=0),
         )
-        data = c.read()
+        data = self._read_chart(c)
         self.assertEqual(data['summary'], {'google': 200.0, 'facebook': 0.0061})
 
     def test_read_summary_top_fields_acid(self):
@@ -132,7 +132,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
             extra_values={'google': 0.0, 'facebook': 6000.0, 'reddit': 0.0},
             time=now() - timedelta(days=0),
         )
-        data = c.read()
+        data = self._read_chart(c)
         self.assertEqual(data['summary'], {'google': 87500000, 'facebook': 37503000})
         self.assertEqual(c.get_top_fields(2), ['google', 'facebook'])
 
@@ -150,7 +150,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
             time = now_ - timedelta(days=n)
             m1.write(n + 1, time=time)
             m2.write(n + 2, time=time)
-        data = c.read()
+        data = self._read_chart(c)
         f1 = m1.field_name
         f2 = 'value2'
         self.assertIn('x', data)
@@ -166,7 +166,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
 
     def test_json(self):
         c = self._create_chart()
-        data = c.read()
+        data = self._read_chart(c)
         # convert tuples to lists otherwise comparison will fail
         for i, chart in enumerate(data['traces']):
             data['traces'][i] = list(chart)
@@ -230,7 +230,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         m.write('00:23:4a:00:00:00')
         m.write('00:14:5c:00:00:00')
         c.save()
-        data = c.read(time='30d')
+        data = self._read_chart(c, time='30d')
         self.assertEqual(data['traces'][0][0], 'wifi_clients')
         # last 10 days
         self.assertEqual(data['traces'][0][1][-10:], [0, 2, 2, 2, 2, 2, 2, 2, 2, 4])
@@ -247,12 +247,16 @@ class TestCharts(TestMonitoringMixin, TestCase):
         m = self._create_object_metric(name='test', configuration='get_top_fields')
         c = self._create_chart(metric=m, test_data=None, configuration='histogram')
         self.assertEqual(c.get_top_fields(number=3), [])
-        m.write(None, extra_values={'http2': 100, 'ssh': 90, 'udp': 80, 'spdy': 70})
+        self._write_metric(
+            m, None, extra_values={'http2': 100, 'ssh': 90, 'udp': 80, 'spdy': 70}
+        )
         self.assertEqual(c.get_top_fields(number=3), ['http2', 'ssh', 'udp'])
 
     def test_query_histogram(self):
         m = self._create_object_metric(name='histogram', configuration='get_top_fields')
-        m.write(None, extra_values={'http2': 100, 'ssh': 90, 'udp': 80, 'spdy': 70})
+        self._write_metric(
+            m, None, extra_values={'http2': 100, 'ssh': 90, 'udp': 80, 'spdy': 70}
+        )
         c = Chart(metric=m, configuration='histogram')
         c.full_clean()
         c.save()

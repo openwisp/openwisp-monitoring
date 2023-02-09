@@ -491,7 +491,9 @@ class TestIperf3(
             iperf3_metric = Metric.objects.get(key='iperf3')
             self.assertEqual(Metric.objects.count(), 3)
             self.assertEqual(iperf3_metric.content_object, self.device)
-            points = iperf3_metric.read(limit=None, extra_fields=list(result.keys()))
+            points = self._read_metric(
+                iperf3_metric, limit=None, extra_fields=list(result.keys())
+            )
             self.assertEqual(len(points), 1)
             self.assertEqual(points[0]['iperf3_result'], result['iperf3_result'])
             self.assertEqual(points[0]['sent_bps_tcp'], result['sent_bps_tcp'])

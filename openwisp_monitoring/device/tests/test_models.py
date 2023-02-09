@@ -706,13 +706,13 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         )
         ping1.write(0)
         ping2.write(0)
-        self.assertNotEqual(ping1.read(), [])
-        self.assertNotEqual(ping2.read(), [])
+        self.assertNotEqual(self._read_metric(ping1), [])
+        self.assertNotEqual(self._read_metric(ping2), [])
         dm1.device.delete()
         # Only the metric related to the deleted device
         # is deleted
-        self.assertEqual(ping1.read(), [])
-        self.assertNotEqual(ping2.read(), [])
+        self.assertEqual(self._read_metric(ping1), [])
+        self.assertNotEqual(self._read_metric(ping2), [])
 
 
 class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):

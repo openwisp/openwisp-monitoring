@@ -28,7 +28,12 @@ TIMESERIES_DATABASE = {
     'NAME': 'openwisp2',
     'HOST': os.getenv('INFLUXDB_HOST', 'localhost'),
     'PORT': '8086',
+    # UDP writes are disabled by default
+    'OPTIONS': {'udp_writes': False, 'udp_port': 8089},
 }
+if TESTING:
+    if os.environ.get('TIMESERIES_UDP', False):
+        TIMESERIES_DATABASE['OPTIONS'] = {'udp_writes': True, 'udp_port': 8091}
 
 SECRET_KEY = 'fn)t*+$)ugeyip6-#txyy$5wf2ervc0d2n#h)qb)y5@ly$t*@w'
 

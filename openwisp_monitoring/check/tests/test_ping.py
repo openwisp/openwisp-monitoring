@@ -251,7 +251,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         m = Metric.objects.first()
         self.assertEqual(m.content_object, device)
         self.assertEqual(m.key, 'ping')
-        points = m.read(limit=None, extra_fields=list(result.keys()))
+        points = self._read_metric(m, limit=None, extra_fields=list(result.keys()))
         self.assertEqual(len(points), 1)
         self.assertEqual(points[0]['reachable'], result['reachable'])
         self.assertEqual(points[0]['loss'], result['loss'])

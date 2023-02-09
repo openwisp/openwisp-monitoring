@@ -16,4 +16,6 @@ if __name__ == '__main__':
         args.insert(2, 'openwisp_monitoring')
     else:
         args.insert(2, 'openwisp2')
+    if os.environ.get('TIMESERIES_UDP', False):
+        args.extend(['--exclude-tag', 'timeseries_client'])
     execute_from_command_line(args)

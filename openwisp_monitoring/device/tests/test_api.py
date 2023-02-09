@@ -118,13 +118,15 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
             m = self.metric_queryset.get(name=f'{ifname} traffic', object_id=d.pk)
-            points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
+            points = self._read_metric(
+                m, limit=10, order='-time', extra_fields=['tx_bytes']
+            )
             self.assertEqual(len(points), 2)
             for field in ['rx_bytes', 'tx_bytes']:
                 expected = iface['statistics'][field] - points[1][field]
                 self.assertEqual(points[0][field], expected)
             m = self.metric_queryset.get(name=f'{ifname} wifi clients', object_id=d.pk)
-            points = m.read(limit=10, order='-time')
+            points = self._read_metric(m, limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
     def test_200_traffic_counter_reset(self):
@@ -148,13 +150,15 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
             m = self.metric_queryset.get(name=f'{ifname} traffic', object_id=d.pk)
-            points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
+            points = self._read_metric(
+                m, limit=10, order='-time', extra_fields=['tx_bytes']
+            )
             self.assertEqual(len(points), 2)
             for field in ['rx_bytes', 'tx_bytes']:
                 expected = iface['statistics'][field]
                 self.assertEqual(points[0][field], expected)
             m = self.metric_queryset.get(name=f'{ifname} wifi clients', object_id=d.pk)
-            points = m.read(limit=10, order='-time')
+            points = self._read_metric(m, limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
     def test_device_with_location(self):
@@ -177,8 +181,11 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(self.metric_queryset.count(), 4)
         self.assertEqual(self.chart_queryset.count(), 4)
         for metric in self.metric_queryset.filter(object_id__isnull=False):
-            points = metric.read(
-                limit=10, order='-time', extra_fields=['location_id', 'floorplan_id']
+            points = self._read_metric(
+                metric,
+                limit=10,
+                order='-time',
+                extra_fields=['location_id', 'floorplan_id'],
             )
             for point in points:
                 self.assertEqual(point['location_id'], str(location.id))
@@ -195,7 +202,9 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         }
         # wlan0 traffic
         m = self.metric_queryset.get(name='wlan0 traffic', object_id=dd.pk)
-        points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
+        points = self._read_metric(
+            m, limit=10, order='-time', extra_fields=['tx_bytes']
+        )
         self.assertEqual(len(points), 4)
         expected = [700000000, 100000000, 399999676, 324]
         for i, point in enumerate(points):
@@ -204,14 +213,16 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         for i, point in enumerate(points):
             self.assertEqual(point['tx_bytes'], expected[i])
         c = m.chart_set.first()
-        data = c.read()
+        data = self._read_chart(c)
         # expected download wlan0
         self.assertEqual(data['traces'][0][1][-1], 1.2)
         # expected upload wlan0
         self.assertEqual(data['traces'][1][1][-1], 0.6)
         # wlan1 traffic
         m = self.metric_queryset.get(name='wlan1 traffic', object_id=dd.pk)
-        points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
+        points = self._read_metric(
+            m, limit=10, order='-time', extra_fields=['tx_bytes']
+        )
         self.assertEqual(len(points), 4)
         expected = [1000000000, 0, 1999997725, 2275]
         for i, point in enumerate(points):
@@ -220,7 +231,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         for i, point in enumerate(points):
             self.assertEqual(point['tx_bytes'], expected[i])
         c = m.chart_set.first()
-        data = c.read()
+        data = self._read_chart(c)
         # expected download wlan1
         self.assertEqual(data['traces'][0][1][-1], 3.0)
         # expected upload wlan1
@@ -386,7 +397,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             'openwisp_monitoring.monitoring.base.models.AbstractChart.read',
             return_value=mock,
         ):
-            self.assertEqual(c.read(), mock)
+            self.assertEqual(self._read_chart(c), mock)
             r = self.client.get('{0}&csv=1'.format(self._url(d.pk, d.key)))
         self.assertEqual(r.get('Content-Disposition'), 'attachment; filename=data.csv')
         self.assertEqual(r.get('Content-Type'), 'text/csv')
@@ -458,14 +469,14 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             del data['resources']['memory']['available']
             r = self._post_data(d.id, d.key, data)
             m = self.metric_queryset.get(key='memory')
-            metric_data = m.read(order='-time', extra_fields='*')[0]
+            metric_data = self._read_metric(m, order='-time', extra_fields='*')[0]
             self.assertEqual(metric_data['percent_used'], 9.729419481797308)
             self.assertIsNone(metric_data.get('available_memory'))
             self.assertEqual(r.status_code, 200)
         with self.subTest('Test when available memory is less than free memory'):
             data['resources']['memory']['available'] = 2232664
             r = self._post_data(d.id, d.key, data)
-            metric_data = m.read(order='-time', extra_fields='*')[0]
+            metric_data = self._read_metric(m, order='-time', extra_fields='*')[0]
             self.assertEqual(metric_data['percent_used'], 9.729419481797308)
             self.assertEqual(metric_data['available_memory'], 2232664)
             self.assertEqual(r.status_code, 200)
@@ -473,7 +484,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             data['resources']['memory']['available'] = 225567664
             r = self._post_data(d.id, d.key, data)
             m = self.metric_queryset.get(key='memory')
-            metric_data = m.read(order='-time', extra_fields='*')[0]
+            metric_data = self._read_metric(m, order='-time', extra_fields='*')[0]
             self.assertEqual(metric_data['percent_used'], 9.301032356920302)
             self.assertEqual(metric_data['available_memory'], 225567664)
             self.assertEqual(r.status_code, 200)
