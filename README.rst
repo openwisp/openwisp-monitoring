@@ -1482,7 +1482,7 @@ section of your InfluxDB should look similar to the following:
 If you are using `ansible-openwisp2 <https://github.com/openwisp/ansible-openwisp2>`_
 for deploying OpenWISP, you can set the ``influxdb_udp_mode`` ansible variable to ``true``
 in your playbook, this will make the ansible role automatically configure the InfluxDB UDP listeners.
-You can refer to `ansible-ow-influxdb <https://github.com/openwisp/ansible-ow-influxdb#role-variables>`
+You can refer to the `ansible-ow-influxdb's <https://github.com/openwisp/ansible-ow-influxdb#role-variables>`_
 (a dependency of ansible-openwisp2) documentation to learn more.
 
 ``OPENWISP_MONITORING_DEFAULT_RETENTION_POLICY``
