@@ -871,29 +871,40 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         # Sanity check
         _assert_open_wifi_session(1)
 
-        # WiFi session does not close when a non-critical metric trepasses the threshold
+        # WiFi session is not closed when a non-critical metric trepasses the threshold
         load.write(95)
         _assert_open_wifi_session(1)
 
-        # WiFi session does not close when a critical metric trepasses the threshold
+        # WiFi session is not closed when a critical metric trepasses the threshold
         # within the tolerance limit
         ping.write(0)
         _assert_open_wifi_session(1)
 
-        # WiFi session closes when a critical metric trepasses the threshold
+        # WiFi session is closed when a critical metric trepasses the threshold
         # beyond the tolerance limit
         with freeze_time(start_time + timedelta(minutes=2)):
             ping.write(0)
         _assert_open_wifi_session(0)
 
         WifiSession.objects.update(stop_time=None)
+        # Reset ping.is_healthy and ping.is_healthy_tolerant
+        # Sets ping.is_healthy to True
         with freeze_time(start_time + timedelta(minutes=2)):
             ping.write(1)
+        # Sets ping.is_healthy_tolerant to True
+        with freeze_time(start_time + timedelta(minutes=3)):
+            ping.write(1)
+        _assert_open_wifi_session(1)
 
-        # WiFi session closes when a critical metric trepasses the threshold
+        # WiFi session is closed when when a critical metric trepasses the threshold
         # beyond the tolerance limit when alerts are turned off
         ping_alerts.is_active = False
         ping_alerts.save()
-        with freeze_time(now() + timedelta(minutes=3)):
+        # Sets ping.is_healthy to False, doesn't closes WiFi Session
+        with freeze_time(start_time + timedelta(minutes=4)):
+            ping.write(0)
+        _assert_open_wifi_session(1)
+        # Sets ping.is_healthy_tolerant to False, closes WiFi Session
+        with freeze_time(start_time + timedelta(minutes=5)):
             ping.write(0)
         _assert_open_wifi_session(0)
