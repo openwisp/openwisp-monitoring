@@ -488,7 +488,7 @@ class TestDashboardTimeseriesView(
         self.client.logout()
         with self.subTest('Test unauthenticated user exporting csv'):
             response = self.client.get(path, {'csv': 1})
-            self.assertEqual(response.status_code, 403)
+            self.assertEqual(response.status_code, 401)
 
     def test_filter_with_location_id(self):
         path = reverse('monitoring_general:api_dashboard_timeseries')

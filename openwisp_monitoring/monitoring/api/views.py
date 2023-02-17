@@ -4,6 +4,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from swapper import load_model
 
+from openwisp_users.api.mixins import ProtectedAPIMixin
+
 from ...views import MonitoringApiViewMixin
 from ..configuration import DEFAULT_DASHBOARD_TRAFFIC_CHART
 
@@ -14,7 +16,7 @@ Location = load_model('geo', 'Location')
 FloorPlan = load_model('geo', 'FloorPlan')
 
 
-class DashboardTimeseriesView(MonitoringApiViewMixin, APIView):
+class DashboardTimeseriesView(ProtectedAPIMixin, MonitoringApiViewMixin, APIView):
     """
     Multi-tenant view that returns general monitoring
     charts for the admin dashboard.
