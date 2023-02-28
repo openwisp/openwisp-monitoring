@@ -838,12 +838,73 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         self.assertEqual(WifiSession.objects.count(), 0)
 
     def test_device_offline_close_session(self):
+        start_time = now()
         device_monitoring = self._create_device_monitoring()
+        ping = self._create_object_metric(
+            name='ping',
+            key='ping',
+            field_name='reachable',
+            content_object=device_monitoring.device,
+        )
+        ping_alerts = self._create_alert_settings(
+            metric=ping, custom_operator='<', custom_threshold=1, custom_tolerance=1
+        )
+        load = self._create_object_metric(
+            name='load', content_object=device_monitoring.device
+        )
+        self._create_alert_settings(
+            metric=load, custom_operator='>', custom_threshold=90, custom_tolerance=0
+        )
+        ping.write(1)
+        load.write(50)
         wifi_client = self._create_wifi_client()
         self._create_wifi_session(
             wifi_client=wifi_client, device=device_monitoring.device
         )
-        self.assertEqual(WifiSession.objects.filter(stop_time__isnull=True).count(), 1)
-        device_monitoring.update_status('critical')
-        self.assertEqual(WifiSession.objects.filter(stop_time__isnull=True).count(), 0)
-        self.assertEqual(WifiSession.objects.count(), 1)
+
+        def _assert_open_wifi_session(count):
+            self.assertEqual(
+                WifiSession.objects.filter(stop_time__isnull=True).count(), count
+            )
+            self.assertEqual(WifiSession.objects.count(), 1)
+
+        # Sanity check
+        _assert_open_wifi_session(1)
+
+        # WiFi session is not closed when a non-critical metric trepasses the threshold
+        load.write(95)
+        _assert_open_wifi_session(1)
+
+        # WiFi session is not closed when a critical metric trepasses the threshold
+        # within the tolerance limit
+        ping.write(0)
+        _assert_open_wifi_session(1)
+
+        # WiFi session is closed when a critical metric trepasses the threshold
+        # beyond the tolerance limit
+        with freeze_time(start_time + timedelta(minutes=2)):
+            ping.write(0)
+        _assert_open_wifi_session(0)
+
+        WifiSession.objects.update(stop_time=None)
+        # Reset ping.is_healthy and ping.is_healthy_tolerant
+        # Sets ping.is_healthy to True
+        with freeze_time(start_time + timedelta(minutes=2)):
+            ping.write(1)
+        # Sets ping.is_healthy_tolerant to True
+        with freeze_time(start_time + timedelta(minutes=3)):
+            ping.write(1)
+        _assert_open_wifi_session(1)
+
+        # WiFi session is closed when when a critical metric trepasses the threshold
+        # beyond the tolerance limit when alerts are turned off
+        ping_alerts.is_active = False
+        ping_alerts.save()
+        # Sets ping.is_healthy to False, doesn't closes WiFi Session
+        with freeze_time(start_time + timedelta(minutes=4)):
+            ping.write(0)
+        _assert_open_wifi_session(1)
+        # Sets ping.is_healthy_tolerant to False, closes WiFi Session
+        with freeze_time(start_time + timedelta(minutes=5)):
+            ping.write(0)
+        _assert_open_wifi_session(0)

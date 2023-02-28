@@ -407,6 +407,13 @@ class AbstractWifiSession(TimeStampedEditableModel):
         return self.wifi_client.vendor
 
     @classmethod
-    def offline_device_close_session(cls, instance, *args, **kwargs):
-        if kwargs['status'] == 'critical':
-            tasks.offline_device_close_session.delay(device_id=instance.device_id)
+    def offline_device_close_session(
+        cls, metric, tolerance_crossed, first_time, target, **kwargs
+    ):
+        if (
+            not first_time
+            and tolerance_crossed
+            and not metric.is_healthy_tolerant
+            and AbstractDeviceMonitoring.is_metric_critical(metric)
+        ):
+            tasks.offline_device_close_session.delay(device_id=target.pk)
