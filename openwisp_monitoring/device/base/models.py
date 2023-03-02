@@ -48,7 +48,10 @@ class AbstractDeviceData(object):
     __data_timestamp = None
 
     def __init__(self, *args, **kwargs):
+        from ..writer import DeviceDataWriter
+
         self.data = kwargs.pop('data', None)
+        self.writer = DeviceDataWriter(self)
         super().__init__(*args, **kwargs)
 
     def can_be_updated(self):
@@ -57,6 +60,18 @@ class AbstractDeviceData(object):
         """
         can_be_updated = super().can_be_updated()
         return can_be_updated and self.monitoring.status not in ['critical', 'unknown']
+
+    def _get_wifi_version(self, htmode):
+        wifi_version_htmode = f'{_("Other")}: {htmode}'
+        if 'NOHT' in htmode:
+            wifi_version_htmode = f'{_("Legacy Mode")}: {htmode}'
+        elif 'HE' in htmode:
+            wifi_version_htmode = f'WiFi 6 (802.11ax): {htmode}'
+        elif 'VHT' in htmode:
+            wifi_version_htmode = f'WiFi 5 (802.11ac): {htmode}'
+        elif 'HT' in htmode:
+            wifi_version_htmode = f'WiFi 4 (802.11n): {htmode}'
+        return wifi_version_htmode
 
     @property
     def data_user_friendly(self):
@@ -90,6 +105,12 @@ class AbstractDeviceData(object):
             # convert to GHz
             if 'wireless' in interface and 'frequency' in interface['wireless']:
                 interface['wireless']['frequency'] /= 1000
+            # add wifi version
+            if 'wireless' in interface and 'htmode' in interface['wireless']:
+                interface['wireless']['htmode'] = self._get_wifi_version(
+                    interface['wireless']['htmode']
+                )
+
             interface_dict[interface['name']] = interface
         # reorder interfaces in alphabetical order
         interface_dict = OrderedDict(sorted(interface_dict.items()))
@@ -387,6 +408,13 @@ class AbstractWifiSession(TimeStampedEditableModel):
         return self.wifi_client.vendor
 
     @classmethod
-    def offline_device_close_session(cls, instance, *args, **kwargs):
-        if kwargs['status'] == 'critical':
-            tasks.offline_device_close_session.delay(device_id=instance.device_id)
+    def offline_device_close_session(
+        cls, metric, tolerance_crossed, first_time, target, **kwargs
+    ):
+        if (
+            not first_time
+            and tolerance_crossed
+            and not metric.is_healthy_tolerant
+            and AbstractDeviceMonitoring.is_metric_critical(metric)
+        ):
+            tasks.offline_device_close_session.delay(device_id=target.pk)

@@ -110,7 +110,7 @@
               {% endif %}
               {% if device_data.interfaces %}
               {% for interface in device_data.interfaces %}
-              <div class="inline-group">
+              <div class="inline-group" id="status-if-{{ interface.name }}">
                   <h2>{% trans 'Interface status' %}: {{ interface.name }}</h2>
                   {% if interface.mac %}
                   <div class="form-row">
@@ -135,6 +135,14 @@
                           {{ interface.wireless.mode }}
                       </div>
                   </div>
+                  {% if interface.wireless.htmode %}
+                  <div class="form-row">
+                      <label>{% trans 'WiFi Version' %}:</label>
+                      <div class="readonly">
+                          {{ interface.wireless.htmode }}
+                      </div>
+                  </div>
+                  {% endif %}
                   <div class="form-row">
                       <label>{% trans 'SSID' %}:</label>
                       <div class="readonly">
@@ -334,7 +342,9 @@
                   <div class="form-row">
                       <label>{% trans 'Bridge Members' %}:</label>
                       <div class="readonly">
-                          {{ interface.bridge_members|join:", " }}
+                          {% for element in interface.bridge_members %}
+                          <a class="bridge-member" href="javascript:scrollToElement('status-if-{{ element }}')">{{ element }}</a>{% if not forloop.last %}, {% endif %}
+                          {% endfor %}
                       </div>
                   </div>
                   {% endif %}
@@ -342,7 +352,7 @@
                   <div class="form-row">
                       <label>{% trans 'Spanning Tree Protocol' %}:</label>
                       <div class="readonly">
-                          <img src="{% static '/admin/img/' %}icon-{{ interface.stp|yesno:'yes,no,no' }}.svg">
+                          <img src="{% get_static_prefix %}admin/img/icon-{{ interface.stp|yesno:'yes,no,no' }}.svg">
                       </div>
                   </div>
                   {% endif %}
@@ -350,7 +360,7 @@
                   <div class="form-row">
                       <label>{% trans 'Up' %}:</label>
                       <div class="readonly">
-                          <img src="{% static '/admin/img/' %}icon-{{ interface.up|yesno:'yes,no,no' }}.svg">
+                          <img src="{% get_static_prefix %}admin/img/icon-{{ interface.up|yesno:'yes,no,no' }}.svg">
                       </div>
                   </div>
                   {% endif %}
@@ -358,7 +368,7 @@
                   <div class="form-row">
                       <label>{% trans 'Multicast' %}:</label>
                       <div class="readonly">
-                           <img src="{% static '/admin/img/' %}icon-{{ interface.multicast|yesno:'yes,no,no' }}.svg">
+                           <img src="{% get_static_prefix %}admin/img/icon-{{ interface.multicast|yesno:'yes,no,no' }}.svg">
                       </div>
                   </div>
                   {% endif %}
@@ -417,19 +427,19 @@
                           </td>
                           {% endif %}
                           <td class="ht">
-                              <img src="{% static '/admin/img/' %}icon-{{ client.ht|yesno:'yes,no,no' }}.svg">
+                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.ht|yesno:'yes,no,no' }}.svg">
                           </td>
                           <td class="vht">
-                              <img src="{% static '/admin/img/' %}icon-{{ client.vht|yesno:'yes,no,no' }}.svg">
+                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.vht|yesno:'yes,no,no' }}.svg">
                           </td>
                           <td class="wmm">
-                              <img src="{% static '/admin/img/' %}icon-{{ client.wmm|yesno:'yes,no,no' }}.svg">
+                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.wmm|yesno:'yes,no,no' }}.svg">
                           </td>
                           <td class="wds">
-                              <img src="{% static '/admin/img/' %}icon-{{ client.wds|yesno:'yes,no,no' }}.svg">
+                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.wds|yesno:'yes,no,no' }}.svg">
                           </td>
                           <td class="wps">
-                              <img src="{% static '/admin/img/' %}icon-{{ client.wps|yesno:'yes,no,no' }}.svg">
+                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.wps|yesno:'yes,no,no' }}.svg">
                           </td>
                       </tr>
                       {% endfor %}
@@ -545,6 +555,9 @@
         }
     });
   });
+  function scrollToElement(id) {
+    document.getElementById(id).scrollIntoView();
+  }
 </script>
 {% endif %}
 {% endblock %}

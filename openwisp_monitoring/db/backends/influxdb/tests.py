@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from celery.exceptions import Retry
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import TestCase, tag
 from django.utils.timezone import now
 from freezegun import freeze_time
 from influxdb import InfluxDBClient
@@ -11,8 +11,16 @@ from influxdb.exceptions import InfluxDBClientError, InfluxDBServerError
 from pytz import timezone as tz
 from swapper import load_model
 
-from openwisp_monitoring.device.settings import SHORT_RETENTION_POLICY
-from openwisp_monitoring.device.utils import SHORT_RP, manage_short_retention_policy
+from openwisp_monitoring.device.settings import (
+    DEFAULT_RETENTION_POLICY,
+    SHORT_RETENTION_POLICY,
+)
+from openwisp_monitoring.device.utils import (
+    DEFAULT_RP,
+    SHORT_RP,
+    manage_default_retention_policy,
+    manage_short_retention_policy,
+)
 from openwisp_monitoring.monitoring.tests import TestMonitoringMixin
 from openwisp_monitoring.settings import MONITORING_TIMESERIES_RETRY_OPTIONS
 from openwisp_utils.tests import capture_stderr
@@ -24,6 +32,7 @@ Chart = load_model('monitoring', 'Chart')
 Notification = load_model('openwisp_notifications', 'Notification')
 
 
+@tag('timeseries_client')
 class TestDatabaseClient(TestMonitoringMixin, TestCase):
     def test_forbidden_queries(self):
         queries = [
@@ -71,7 +80,7 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
     def test_default_query(self):
         c = self._create_chart(test_data=False)
         q = (
-            "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND "
+            "SELECT {field_name} FROM {key} WHERE time >= '{time}' {end_date} AND "
             "content_type = '{content_type}' AND object_id = '{object_id}'"
         )
         self.assertEqual(c.query, q)
@@ -183,12 +192,15 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
 
     def test_retention_policy(self):
         manage_short_retention_policy()
+        manage_default_retention_policy()
         rp = timeseries_db.get_list_retention_policies()
         self.assertEqual(len(rp), 2)
+        self.assertEqual(rp[0]['name'], DEFAULT_RP)
+        self.assertEqual(rp[0]['default'], True)
+        self.assertEqual(rp[0]['duration'], DEFAULT_RETENTION_POLICY)
         self.assertEqual(rp[1]['name'], SHORT_RP)
         self.assertEqual(rp[1]['default'], False)
-        duration = SHORT_RETENTION_POLICY
-        self.assertEqual(rp[1]['duration'], duration)
+        self.assertEqual(rp[1]['duration'], SHORT_RETENTION_POLICY)
 
     def test_query_set(self):
         c = self._create_chart(configuration='histogram')
@@ -342,3 +354,20 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
                 'Error while executing method "query":\nServer error\nAttempt '
                 f'{max_retries} out of {max_retries}.\n'
             )
+
+
+class TestDatabaseClientUdp(TestMonitoringMixin, TestCase):
+    def test_exceed_udp_packet_limit(self):
+        # When using UDP to write data to InfluxDB, writing
+        # huge data that exceeds UDP packet limit should not raise
+        # an error. Instead, the client should fallback to the
+        # TCP connection.
+        timeseries_db.write(
+            'test_udp_write', dict(value='O' * 66000), database=self.TEST_DB
+        )
+        measurement = list(
+            timeseries_db.query(
+                'select * from test_udp_write', database=self.TEST_DB
+            ).get_points()
+        )
+        self.assertEqual(len(measurement), 1)

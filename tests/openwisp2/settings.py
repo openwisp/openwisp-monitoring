@@ -2,6 +2,8 @@ import os
 import sys
 from datetime import timedelta
 
+from celery.schedules import crontab
+
 TESTING = 'test' in sys.argv
 SHELL = 'shell' in sys.argv or 'shell_plus' in sys.argv
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -26,7 +28,12 @@ TIMESERIES_DATABASE = {
     'NAME': 'openwisp2',
     'HOST': os.getenv('INFLUXDB_HOST', 'localhost'),
     'PORT': '8086',
+    # UDP writes are disabled by default
+    'OPTIONS': {'udp_writes': False, 'udp_port': 8089},
 }
+if TESTING:
+    if os.environ.get('TIMESERIES_UDP', False):
+        TIMESERIES_DATABASE['OPTIONS'] = {'udp_writes': True, 'udp_port': 8091}
 
 SECRET_KEY = 'fn)t*+$)ugeyip6-#txyy$5wf2ervc0d2n#h)qb)y5@ly$t*@w'
 
@@ -62,6 +69,7 @@ INSTALLED_APPS = [
     # openwisp2 admin theme
     # (must be loaded here)
     'openwisp_utils.admin_theme',
+    'admin_auto_filters',
     'django.contrib.admin',
     'django.forms',
     # other dependencies
@@ -101,9 +109,6 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'openwisp2.urls'
-
-ASGI_APPLICATION = 'openwisp_controller.geo.channels.routing.channel_routing'
-CHANNEL_LAYERS = {'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}}
 
 TIME_ZONE = 'Europe/Rome'
 LANGUAGE_CODE = 'en-gb'
@@ -167,19 +172,38 @@ else:
     CELERY_TASK_EAGER_PROPAGATES = True
     CELERY_BROKER_URL = 'memory://'
 
+# Celery TIME_ZONE should be equal to django TIME_ZONE
+# In order to schedule run_iperf3_checks on the correct time intervals
+CELERY_TIMEZONE = TIME_ZONE
+
 CELERY_BEAT_SCHEDULE = {
     'run_checks': {
         'task': 'openwisp_monitoring.check.tasks.run_checks',
+        # Executes only ping & config check every 5 min
         'schedule': timedelta(minutes=5),
-        'args': None,
+        'args': (
+            [  # Checks path
+                'openwisp_monitoring.check.classes.Ping',
+                'openwisp_monitoring.check.classes.ConfigApplied',
+            ],
+        ),
         'relative': True,
-    }
+    },
+    'run_iperf3_checks': {
+        'task': 'openwisp_monitoring.check.tasks.run_checks',
+        # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
+        # Executes only iperf3 check every 5 mins from 00:00 AM to 6:00 AM (night)
+        'schedule': crontab(minute='*/5', hour='0-6'),
+        'args': (['openwisp_monitoring.check.classes.Iperf3'],),
+        'relative': True,
+    },
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 CELERY_EMAIL_BACKEND = EMAIL_BACKEND
 
 ASGI_APPLICATION = 'openwisp2.routing.application'
+
 if TESTING:
     CHANNEL_LAYERS = {'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}}
 else:
@@ -195,6 +219,8 @@ if TESTING:
     OPENWISP_MONITORING_MAC_VENDOR_DETECTION = False
     OPENWISP_MONITORING_API_URLCONF = 'openwisp_monitoring.urls'
     OPENWISP_MONITORING_API_BASEURL = 'http://testserver'
+    # for testing AUTO_IPERF3
+    OPENWISP_MONITORING_AUTO_IPERF3 = True
 
 # Temporarily added to identify slow tests
 TEST_RUNNER = 'openwisp_utils.tests.TimeLoggingTestRunner'

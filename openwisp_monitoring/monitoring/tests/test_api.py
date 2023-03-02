@@ -205,7 +205,7 @@ class TestDashboardTimeseriesView(
         def _test_chart_properties(chart):
             self.assertEqual(chart['title'], 'General Traffic')
             self.assertEqual(chart['type'], 'stackedbar+lines')
-            self.assertEqual(chart['unit'], ' GB')
+            self.assertEqual(chart['unit'], 'adaptive_prefix+B')
             self.assertEqual(
                 chart['summary_labels'],
                 ['Total traffic', 'Total download traffic', 'Total upload traffic'],
@@ -214,7 +214,7 @@ class TestDashboardTimeseriesView(
             self.assertEqual(chart['colorscale'], None)
             self.assertEqual(
                 chart['description'],
-                'Network traffic of the whole network (total, download, upload) measured in GB.',
+                'Network traffic of the whole network (total, download, upload).',
             )
 
         path = reverse('monitoring_general:api_dashboard_timeseries')
@@ -440,7 +440,6 @@ class TestDashboardTimeseriesView(
                     'time',
                     'wifi_clients - General WiFi Clients',
                     'download - General Traffic',
-                    'total - General Traffic',
                     'upload - General Traffic',
                 ],
             )
@@ -469,7 +468,7 @@ class TestDashboardTimeseriesView(
             last_line = _test_csv_response(response)
             self.assertEqual(
                 last_line,
-                [last_line[0], '3', '3.0', '', ''],
+                [last_line[0], '3', '3.0', ''],
             )
 
         self.client.force_login(org2_administrator)
@@ -478,7 +477,7 @@ class TestDashboardTimeseriesView(
             last_line = _test_csv_response(response)
             self.assertEqual(
                 last_line,
-                [last_line[0], '2', '2.0', '', ''],
+                [last_line[0], '2', '2.0', ''],
             )
 
         self.client.force_login(operator)
@@ -489,7 +488,7 @@ class TestDashboardTimeseriesView(
         self.client.logout()
         with self.subTest('Test unauthenticated user exporting csv'):
             response = self.client.get(path, {'csv': 1})
-            self.assertEqual(response.status_code, 403)
+            self.assertEqual(response.status_code, 401)
 
     def test_filter_with_location_id(self):
         path = reverse('monitoring_general:api_dashboard_timeseries')

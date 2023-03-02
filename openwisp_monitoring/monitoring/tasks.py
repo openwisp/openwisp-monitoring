@@ -2,20 +2,15 @@ from celery import shared_task
 from django.core.exceptions import ObjectDoesNotExist
 from swapper import load_model
 
+from openwisp_utils.tasks import OpenwispCeleryTask
+
 from ..db import timeseries_db
 from ..db.exceptions import TimeseriesWriteException
 from .settings import RETRY_OPTIONS
 from .signals import post_metric_write
 
 
-@shared_task(bind=True, autoretry_for=(TimeseriesWriteException,), **RETRY_OPTIONS)
-def timeseries_write(
-    self, name, values, metric_pk=None, check_threshold_kwargs=None, **kwargs
-):
-    """
-    write with exponential backoff on a failure
-    """
-    timeseries_db.write(name, values, **kwargs)
+def _metric_post_write(name, values, metric_pk, check_threshold_kwargs, **kwargs):
     if not metric_pk or not check_threshold_kwargs:
         return
     try:
@@ -34,6 +29,43 @@ def timeseries_write(
             current=kwargs.get('current', 'False'),
         )
         post_metric_write.send(**signal_kwargs)
+
+
+@shared_task(
+    base=OpenwispCeleryTask,
+    bind=True,
+    autoretry_for=(TimeseriesWriteException,),
+    **RETRY_OPTIONS
+)
+def timeseries_write(
+    self, name, values, metric_pk=None, check_threshold_kwargs=None, **kwargs
+):
+    """
+    write with exponential backoff on a failure
+    """
+    timeseries_db.write(name, values, **kwargs)
+    _metric_post_write(name, values, metric_pk, check_threshold_kwargs, **kwargs)
+
+
+@shared_task(
+    base=OpenwispCeleryTask,
+    bind=True,
+    autoretry_for=(TimeseriesWriteException,),
+    **RETRY_OPTIONS
+)
+def timeseries_batch_write(self, data):
+    """
+    Similar to timeseries_write function above, but operates on
+    list of metric data (batch operation)
+    """
+    timeseries_db.batch_write(data)
+    for metric_data in data:
+        _metric_post_write(**metric_data)
+
+
+@shared_task(base=OpenwispCeleryTask)
+def delete_timeseries(key, tags):
+    timeseries_db.delete_series(key=key, tags=tags)
 
 
 @shared_task

@@ -5,7 +5,6 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline
 from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Q
 from django.forms import ModelForm
 from django.templatetags.static import static
 from django.urls import resolve, reverse
@@ -22,13 +21,14 @@ from swapper import load_model
 
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
 from openwisp_controller.config.admin import DeviceResource as BaseDeviceResource
-from openwisp_users.multitenancy import MultitenantAdminMixin, MultitenantOrgFilter
+from openwisp_users.multitenancy import MultitenantAdminMixin
 from openwisp_utils.admin import ReadOnlyAdmin
-from openwisp_utils.admin_theme.filters import SimpleInputFilter
 
 from ..monitoring.admin import MetricAdmin
 from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from . import settings as app_settings
+from .exportable import _exportable_fields
+from .filters import DeviceFilter, DeviceGroupFilter, DeviceOrganizationFilter
 
 DeviceData = load_model('device_monitoring', 'DeviceData')
 WifiSession = load_model('device_monitoring', 'WifiSession')
@@ -48,26 +48,61 @@ class CheckInlineFormSet(BaseGenericInlineFormSet):
             obj = form.instance
             if not obj.content_type or not obj.object_id:
                 setattr(
-                    form.instance,
+                    obj,
                     self.ct_field.get_attname(),
                     ContentType.objects.get_for_model(self.instance).pk,
                 )
-                setattr(form.instance, self.ct_fk_field.get_attname(), self.instance.pk)
+                setattr(obj, self.ct_fk_field.get_attname(), self.instance.pk)
         super().full_clean()
 
 
-class CheckInline(GenericStackedInline):
+class InlinePermissionMixin:
+    def has_add_permission(self, request, obj=None):
+        # User will be able to add objects from inline even
+        # if it only has permission to add a model object
+        return super().has_add_permission(request, obj) or request.user.has_perm(
+            f'{self.model._meta.app_label}.add_{self.inline_permission_suffix}'
+        )
+
+    def has_change_permission(self, request, obj=None):
+        return super().has_change_permission(request, obj) or request.user.has_perm(
+            f'{self.model._meta.app_label}.change_{self.inline_permission_suffix}'
+        )
+
+    def has_view_permission(self, request, obj=None):
+        return super().has_view_permission(request, obj) or request.user.has_perm(
+            f'{self.model._meta.app_label}.view_{self.inline_permission_suffix}'
+        )
+
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj) or request.user.has_perm(
+            f'{self.model._meta.app_label}.delete_{self.inline_permission_suffix}'
+        )
+
+
+class CheckInline(InlinePermissionMixin, GenericStackedInline):
     model = Check
     extra = 0
     formset = CheckInlineFormSet
-    fields = ['check_type', 'is_active']
-    readonly_fields = ['check_type']
+    fields = [
+        'is_active',
+        'check_type',
+    ]
+    inline_permission_suffix = 'check_inline'
 
-    def has_add_permission(self, request, obj=None):
-        return False
+    def get_fields(self, request, obj=None):
+        if not self.has_change_permission(request, obj) or not self.has_view_permission(
+            request, obj
+        ):
+            return ['check_type', 'is_active']
+        return super().get_fields(request, obj)
 
-    def has_delete_permission(self, request, obj=None):
-        return False
+    def get_readonly_fields(self, request, obj=None):
+        if not self.has_change_permission(request, obj) or not self.has_view_permission(
+            request, obj
+        ):
+            return ['check_type']
+        return super().get_readonly_fields(request, obj)
 
 
 class AlertSettingsForm(ModelForm):
@@ -81,42 +116,91 @@ class AlertSettingsForm(ModelForm):
             }
         super().__init__(*args, **kwargs)
 
+    def _post_clean(self):
+        self.instance._delete_instance = False
+        if all(
+            self.cleaned_data[field] is None
+            for field in [
+                'custom_operator',
+                'custom_threshold',
+                'custom_tolerance',
+            ]
+        ):
+            # "_delete_instance" flag signifies that
+            # the fields have been set to None by the
+            # user. Hence, the object should be deleted.
+            self.instance._delete_instance = True
+        super()._post_clean()
 
-class AlertSettingsInline(NestedStackedInline):
+    def save(self, commit=True):
+        if self.instance._delete_instance:
+            self.instance.delete()
+            return self.instance
+        return super().save(commit)
+
+
+class AlertSettingsInline(InlinePermissionMixin, NestedStackedInline):
     model = AlertSettings
-    extra = 0
-    max_num = 0
+    extra = 1
+    max_num = 1
     exclude = ['created', 'modified']
     form = AlertSettingsForm
+    inline_permission_suffix = 'alertsettings_inline'
 
     def get_queryset(self, request):
         return super().get_queryset(request).order_by('created')
 
-    def has_add_permission(self, request, obj=None):
-        return False
 
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-
-class MetricInline(NestedGenericStackedInline):
+class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
     model = Metric
     extra = 0
     inlines = [AlertSettingsInline]
+    fieldsets = [
+        (
+            None,
+            {
+                'fields': (
+                    'name',
+                    'is_healthy',
+                )
+            },
+        ),
+        (
+            _('Advanced options'),
+            {'classes': ('collapse',), 'fields': ('field_name',)},
+        ),
+    ]
+
     readonly_fields = ['name', 'is_healthy']
-    fields = ['name', 'is_healthy']
     # Explicitly changed name from Metrics to Alert Settings
     verbose_name = _('Alert Settings')
     verbose_name_plural = verbose_name
+    inline_permission_suffix = 'alertsettings_inline'
+    # Ordering queryset by metric name
+    ordering = ('name',)
+
+    def get_fieldsets(self, request, obj=None):
+        if not self.has_change_permission(request, obj) or not self.has_view_permission(
+            request, obj
+        ):
+            return [
+                (None, {'fields': ('is_healthy',)}),
+            ]
+        return super().get_fieldsets(request, obj)
+
+    def get_queryset(self, request):
+        # Only show 'Metrics' that have 'AlertSettings' objects
+        return super().get_queryset(request).filter(alertsettings__isnull=False)
 
     def has_add_permission(self, request, obj=None):
+        # We need to restrict the users from adding the 'metrics' since
+        # they're created by the system automatically with default 'alertsettings'
         return False
 
     def has_delete_permission(self, request, obj=None):
+        # We need to restrict the users from deleting the 'metrics' since
+        # they're created by the system automatically with default 'alertsettings'
         return False
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).filter(alertsettings__isnull=False)
 
 
 class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
@@ -131,14 +215,20 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         js = (
             tuple(BaseDeviceAdmin.Media.js)
             + (
-                'monitoring/js/percircle.min.js',
+                'monitoring/js/lib/percircle.min.js',
                 'monitoring/js/alert-settings.js',
             )
             + MetricAdmin.Media.js
             + ('monitoring/js/chart-utils.js',)
+            + ('monitoring/js/lib/moment.min.js',)
+            + ('monitoring/js/lib/daterangepicker.min.js',)
         )
         css = {
-            'all': ('monitoring/css/percircle.min.css',) + MetricAdmin.Media.css['all']
+            'all': (
+                'monitoring/css/percircle.min.css',
+                'monitoring/css/daterangepicker.css',
+            )
+            + MetricAdmin.Media.css['all']
         }
 
     def get_extra_context(self, pk=None):
@@ -166,9 +256,9 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         metric_rows = []
         for metric in DeviceData(pk=obj.pk).metrics.filter(alertsettings__isnull=False):
             health = 'yes' if metric.is_healthy else 'no'
+            icon_url = static(f'admin/img/icon-{health}.svg')
             metric_rows.append(
-                f'<li><img src="/static/admin/img/icon-{health}.svg" '
-                f'alt="health"> {metric.name}</li>'
+                f'<li><img src="{icon_url}" ' f'alt="health"> {metric.name}</li>'
             )
         return format_html(
             mark_safe(f'<ul class="health_checks">{"".join(metric_rows)}</ul>')
@@ -220,14 +310,9 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
             if not hasattr(inline, 'sortable_options'):
                 inline.sortable_options = {'disabled': True}
         if not obj or obj._state.adding:
+            inlines.remove(CheckInline)
             inlines.remove(MetricInline)
         return inlines
-
-
-_exportable_fields = BaseDeviceResource.Meta.fields[:]  # copy
-_exportable_fields.insert(
-    _exportable_fields.index('config__status'), 'monitoring__status'
-)
 
 
 class DeviceResource(BaseDeviceResource):
@@ -239,26 +324,8 @@ class DeviceResource(BaseDeviceResource):
 
 class DeviceAdminExportable(ImportExportMixin, DeviceAdmin):
     resource_class = DeviceResource
-
-
-class DeviceFilter(SimpleInputFilter):
-    """
-    Filters WifiSession queryset for input device name
-    or primary key
-    """
-
-    parameter_name = 'device'
-    title = _('device name or ID')
-
-    def queryset(self, request, queryset):
-        if self.value() is not None:
-            try:
-                uuid.UUID(self.value())
-            except ValueError:
-                lookup = Q(device__name=self.value())
-            else:
-                lookup = Q(device_id=self.value())
-            return queryset.filter(lookup)
+    # Added to support both reversion and import-export
+    change_list_template = 'admin/config/change_list_device.html'
 
 
 class WifiSessionAdminHelperMixin:
@@ -400,11 +467,11 @@ class WifiSessionAdmin(
     ]
     search_fields = ['wifi_client__mac_address', 'device__name', 'device__mac_address']
     list_filter = [
-        ('device__organization', MultitenantOrgFilter),
+        DeviceOrganizationFilter,
+        DeviceFilter,
+        DeviceGroupFilter,
         'start_time',
         'stop_time',
-        'device__group',
-        DeviceFilter,
     ]
 
     def get_readonly_fields(self, request, obj=None):

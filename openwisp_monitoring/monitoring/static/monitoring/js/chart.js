@@ -16,6 +16,72 @@
         }
         return newArr;
     }
+
+    function getAdaptiveScale(value, multiplier, unit) {
+        if (value == 0) {
+            multiplier = 1;
+            unit = unit;
+        } else if (value < 0.001) {
+            multiplier = 1000000;
+            unit = 'K' + unit;
+        } else if (value < 1) {
+            multiplier = 1000;
+            unit = 'M' + unit;
+        } else if (value < 1000) {
+            multiplier = 1;
+            unit = 'G' + unit;
+        } else if (value >= 1000) {
+            multiplier = 0.001;
+            unit = 'T' + unit;
+        }
+        return {
+            multiplier: multiplier,
+            unit: unit
+        };
+    }
+
+    function getAdaptiveBytes(value, multiplier) {
+        return Math.round((value * multiplier) * 100) / 100;
+    }
+
+    function adaptiveFilterPoints(charts, layout, yRawVal, chartUnit = '') {
+        var y = charts[0].y, sum = 0, count = 0, shownVal, average;
+        for (var i=0; i < y.length; i++) {
+            sum += y[i];
+            if (y[i]) {
+                count++;
+            }
+        }
+        average = sum / count;
+        var scales = getAdaptiveScale(average, 1, chartUnit);
+        var multiplier = scales.multiplier,
+            unit = scales.unit;
+        for (i=0; i < y.length; i++) {
+            for (var j=0; j < charts.length; j++) {
+                if (yRawVal[i] == null) {
+                    charts[j].hovertemplate[i] = 'N/A' + '<extra></extra>';
+                    continue;
+                }
+                shownVal = charts[j].y[i];
+                charts[j].y[i] = getAdaptiveBytes(charts[j].y[i], multiplier);
+                var hoverScales = getAdaptiveScale(shownVal, 1, chartUnit);
+                var hoverMultiplier = hoverScales.multiplier,
+                    hoverUnit = hoverScales.unit;
+                shownVal = getAdaptiveBytes(shownVal, hoverMultiplier);
+                charts[j].hovertemplate[i] = shownVal + ' ' + hoverUnit;
+            }
+        }
+        layout.yaxis.title = unit;
+    }
+
+    function adaptiveFilterSummary(i, percircles, value, chartUnit = '') {
+        var scales = getAdaptiveScale(value, 1, chartUnit),
+            multiplier = scales.multiplier,
+            unit = scales.unit;
+        value = getAdaptiveBytes(value, multiplier);
+        percircles[i].text = value + ' ' + unit;
+    }
+
     window.createChart = function (data, x, id, title, type, quickLink) {
         if (data === false) {
             alert(gettext('error while receiving data from server'));
@@ -72,7 +138,7 @@
         if (type === 'histogram') {
             layout.hovermode = 'closest';
         }
-        var map, mapped, label, fixedValue, key;
+        var map, mapped, label, fixedValue, key, chartUnit, yValues;
         // given a value, returns its color and description
         // according to the color map configuration of this chart
         function findInColorMap(value) {
@@ -88,6 +154,18 @@
                 }
             }
             return {color: color, desc: desc};
+        }
+        if (data.calculate_total === true) {
+            var total = data.traces[0][1].slice();
+            for (i = 1; i < data.traces.length; ++i) {
+                for (var j = 0; j < data.traces[i][1].length; ++j) {
+                    total[j] += data.traces[i][1][j];
+                }
+            }
+            data.traces.push(["total", total]);
+            data.summary.total = Object.values(data.summary).reduce(function (a, b) {
+                return a + b;
+            }, 0);
         }
         // loop over traces to put them on the chart
         for (var i=0; i<data.traces.length; i++) {
@@ -112,6 +190,7 @@
                     // We use the "_key" field to sort the charts
                     // according to the order defined in "data.trace_order"
                     _key: key,
+                    _connectPoints : data.connect_points || false,
                 },
                 yValuesRaw = data.traces[i][1];
             if (type !== 'histogram') {
@@ -130,7 +209,10 @@
                         options.type = 'scatter';
                         options.mode = 'lines+markers';
                         options.line = {shape: 'hvh'};
-                        options.fill = "none";
+                        options.fill = data.fill;
+                    }
+                    if (options._connectPoints) {
+                        options.mode = 'lines';
                     }
                 }
             }
@@ -149,6 +231,11 @@
                     layout.showlegend = false;
                     layout.margin.b = 45;
                 }
+            }
+
+            var xValuesRaw = options.x;
+            if (options._connectPoints) {
+                options.x = [];
             }
             // adjust text to be displayed in Y values
             // differentiate between values with zero and no values at all (N/A)
@@ -169,6 +256,10 @@
                 }
                 // prepare data shown in chart on hover
                 if (val === null) {
+                    // filter 'y' null points from options.y
+                    if (options._connectPoints) {
+                        continue;
+                    }
                     // set data to zero on gaps unless
                     // the horizontal zeroline is hidden
                     // otherwise fills get badly drawn
@@ -185,14 +276,34 @@
                     fixedYMax = val;
                 }
                 options.y.push(val);
+                // push only those 'x' points to options.x which has non null 'y' points
+                if (options._connectPoints) {
+                    options.x.push(xValuesRaw[c]);
+                }
                 options.hovertemplate.push(hovertemplate);
             }
             if (data.trace_order){
                 options.marker = {color: data.colors[data.trace_order.indexOf(key)]};
             }
             charts.push(options);
+            yValues = options.y;
         }
         charts = sortByTraceOrder(data.trace_order, charts, '_key');
+
+        if (unit.includes('adaptive_prefix')) {
+            var yRawVal;
+            for (i=0; i < charts.length; i++) {
+                yRawVal = data.traces[i][1];
+            }
+            if (data.connect_points) {
+                yRawVal = yValues;
+            }
+            if (unit.includes('+')) {
+                chartUnit = unit.split('+')[1];
+            }
+            adaptiveFilterPoints(charts, layout, yRawVal, chartUnit);
+        }
+
         if (fixedY) { layout.yaxis = {range: [0, fixedYMax]}; }
 
         Plotly.newPlot(plotlyContainer, charts, layout, {responsive: true});
@@ -265,6 +376,13 @@
                     percircleOptions.progressBarColor = data.colors[data.trace_order.indexOf(key)];
                 }
                 percircles.push(percircleOptions);
+
+                if (unit.includes('adaptive_prefix')) {
+                    if (unit.includes('+')) {
+                        chartUnit = unit.split('+')[1];
+                    }
+                    adaptiveFilterSummary(i, percircles, value, chartUnit);
+                }
             }
             percircles = sortByTraceOrder(data.trace_order, percircles, '_key');
             for (i=0; i<percircles.length; ++i) {

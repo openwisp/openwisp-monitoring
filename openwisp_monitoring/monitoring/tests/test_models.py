@@ -134,6 +134,26 @@ class TestModels(TestMonitoringMixin, TestCase):
         ):
             m.write(1, extra_values=extra_values)
 
+    def test_batch_metric_write_wrong_related_fields(self):
+        m = self._create_general_metric(name='ping', configuration='ping')
+        extra_values = {'reachable': 0, 'rtt_avg': 0.51, 'rtt_max': 0.6, 'rtt_min': 0.4}
+        with self.assertRaises(ValueError) as error:
+            Metric.batch_write(
+                [
+                    (
+                        m,
+                        {
+                            'value': 1,
+                            'extra_values': extra_values,
+                        },
+                    ),
+                ]
+            )
+        self.assertEqual(
+            error.exception.args[0]['ping'],
+            '"reachable" not defined in metric configuration',
+        )
+
     def test_tags(self):
         extra_tags = {'a': 'a', 'b': 'b1'}
         metric = self._create_object_metric(extra_tags=extra_tags)
@@ -146,17 +166,17 @@ class TestModels(TestMonitoringMixin, TestCase):
     def test_read_general_metric(self):
         m = self._create_general_metric(name='load')
         m.write(50, check=False)
-        self.assertEqual(m.read()[0][m.field_name], 50)
+        self.assertEqual(self._read_metric(m)[0][m.field_name], 50)
         m.write(1, check=False)
-        self.assertEqual(m.read()[0][m.field_name], 50)
-        self.assertEqual(m.read(order='-time')[0][m.field_name], 1)
+        self.assertEqual(self._read_metric(m)[0][m.field_name], 50)
+        self.assertEqual(self._read_metric(m, order='-time')[0][m.field_name], 1)
 
     def test_read_object_metric(self):
         om = self._create_object_metric(name='load')
         om.write(50)
         om.write(3)
-        om.read(extra_fields='*')
-        self.assertEqual(om.read()[0][om.field_name], 50)
+        self._read_metric(om, extra_fields='*')
+        self.assertEqual(self._read_metric(om)[0][om.field_name], 50)
 
     def test_alert_settings_max_seconds(self):
         m = self._create_general_metric(name='load')
@@ -349,3 +369,41 @@ class TestModels(TestMonitoringMixin, TestCase):
         m = self._create_general_metric(name='load')
         now = timezone.now()
         self.assertEqual(m._get_time(now.isoformat()), now)
+
+    def test_deleting_metric_deletes_timeseries(self):
+        metric1 = self._create_general_metric(name='load')
+        metric2 = self._create_general_metric(name='traffic')
+        metric1.write(99)
+        metric2.write(5000)
+        self.assertNotEqual(self._read_metric(metric1), [])
+        self.assertNotEqual(self._read_metric(metric2), [])
+        metric1.delete()
+        self.assertEqual(self._read_metric(metric1), [])
+        # Only the timeseries data related to the deleted metric
+        # should be deleted
+        self.assertNotEqual(self._read_metric(metric2), [])
+
+    def test_metric_invalid_field_name(self):
+        metric = self._create_general_metric(configuration='test_alert_field')
+        metric.field_name = 'invalid_field'
+        with self.assertRaises(ValidationError) as err:
+            metric.full_clean()
+            metric.save()
+        self.assertIn(
+            f'"{metric.field_name}" must be one of the following metric fields',
+            str(err.exception),
+        )
+
+    def test_alert_field_property(self):
+        m = self._create_general_metric(configuration='test_alert_field')
+        # When metric field_name == config['field_name']
+        self.assertEqual(m.field_name, 'test_alert_field')
+        # Get the alert_field from the config
+        self.assertEqual(m.alert_field, 'test_related_2')
+        m.field_name = 'test_related_3'
+        m.full_clean()
+        m.save()
+        # When metric field_name != config['field_name']
+        self.assertEqual(m.field_name, 'test_related_3')
+        # alert_field same as field_name
+        self.assertEqual(m.alert_field, 'test_related_3')

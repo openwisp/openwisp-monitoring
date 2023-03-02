@@ -1,7 +1,8 @@
 from django.apps import AppConfig
 from django.conf import settings
+from django.db.models.signals import post_delete
 from django.utils.translation import gettext_lazy as _
-from swapper import get_model_name
+from swapper import get_model_name, load_model
 
 from openwisp_utils.admin_theme.menu import register_menu_group
 
@@ -21,6 +22,7 @@ class MonitoringConfig(AppConfig):
         for metric_name, metric_config in metrics.items():
             register_metric_notifications(metric_name, metric_config)
         self.register_menu_groups()
+        self.connect_metric_signals()
 
     def register_menu_groups(self):
         register_menu_group(
@@ -43,4 +45,12 @@ class MonitoringConfig(AppConfig):
                 },
                 'icon': 'ow-monitoring',
             },
+        )
+
+    def connect_metric_signals(self):
+        Metric = load_model('monitoring', 'Metric')
+        post_delete.connect(
+            Metric.post_delete_receiver,
+            sender=Metric,
+            dispatch_uid='metric_post_delete_receiver',
         )

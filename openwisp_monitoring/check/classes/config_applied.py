@@ -1,6 +1,10 @@
+from datetime import timedelta
+
+from django.utils import timezone
 from swapper import load_model
 
 from ...device.utils import SHORT_RP
+from ..settings import CONFIG_CHECK_INTERVAL
 from .base import BaseCheck
 
 AlertSettings = load_model('monitoring', 'AlertSettings')
@@ -15,7 +19,11 @@ class ConfigApplied(BaseCheck):
             'unknown',
         ] or not hasattr(self.related_object, 'config'):
             return
-        result = int(self.related_object.config.status == 'applied')
+        result = int(
+            self.related_object.config.status == 'applied'
+            or self.related_object.modified
+            > timezone.now() - timedelta(minutes=CONFIG_CHECK_INTERVAL)
+        )
         # If the device config is in error status we don't need to notify
         # the user (because that's already done by openwisp-controller)
         # but we need to ensure health status will be changed

@@ -33,7 +33,7 @@ from ..configuration import (
 )
 from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
 from ..signals import pre_metric_write, threshold_crossed
-from ..tasks import timeseries_write
+from ..tasks import delete_timeseries, timeseries_batch_write, timeseries_write
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -44,7 +44,12 @@ class AbstractMetric(TimeStampedEditableModel):
     key = models.SlugField(
         max_length=64, blank=True, help_text=_('leave blank to determine automatically')
     )
-    field_name = models.CharField(max_length=16, default='value')
+    field_name = models.CharField(
+        max_length=16,
+        default='value',
+        blank=True,
+        help_text=_('leave blank to determine automatically'),
+    )
     configuration = models.CharField(
         max_length=16, null=True, choices=METRIC_CONFIGURATION_CHOICES
     )
@@ -96,11 +101,6 @@ class AbstractMetric(TimeStampedEditableModel):
         return super().__setattr__(attrname, value)
 
     def clean(self):
-        if (
-            self.field_name == 'value'
-            and self.config_dict['field_name'] != '{field_name}'
-        ):
-            self.field_name = self.config_dict['field_name']
         if self.key:
             return
         elif self.config_dict['key'] != '{key}':
@@ -108,12 +108,35 @@ class AbstractMetric(TimeStampedEditableModel):
         else:
             self.key = self.codename
 
+    def validate_alert_fields(self):
+        # When field_name is not provided while creating a metric
+        # then use config_dict['field_name] as metric field_name
+        if self.config_dict['field_name'] != '{field_name}':
+            if self.field_name in ['', 'value']:
+                self.field_name = self.config_dict['field_name']
+                return
+            # field_name must be one of the metric fields
+            alert_fields = [self.config_dict['field_name']] + self.related_fields
+            if self.field_name not in alert_fields:
+                raise ValidationError(
+                    f'"{self.field_name}" must be one of the following metric fields ie. {alert_fields}'
+                )
+
     def full_clean(self, *args, **kwargs):
+        # The name of the metric will be the same as the
+        # configuration chosen by the user only when the
+        # name field is empty (useful for AlertSettingsInline)
         if not self.name:
-            self.name = self.config_dict['name']
+            self.name = self.get_configuration_display()
         # clean up key before field validation
         self.key = self._makekey(self.key)
+        # validate metric field_name for alerts
+        self.validate_alert_fields()
         return super().full_clean(*args, **kwargs)
+
+    @classmethod
+    def post_delete_receiver(cls, instance, *args, **kwargs):
+        delete_timeseries.delay(instance.key, instance.tags)
 
     @classmethod
     def _get_or_create(cls, **kwargs):
@@ -197,6 +220,16 @@ class AbstractMetric(TimeStampedEditableModel):
             return '.'.join(self.content_type.natural_key())
         except AttributeError:
             return None
+
+    @property
+    def alert_field(self):
+        if self.field_name != self.config_dict['field_name']:
+            return self.field_name
+        return self.config_dict.get('alert_field', self.field_name)
+
+    @property
+    def alert_on_related_field(self):
+        return self.alert_field in self.related_fields
 
     def _get_time(self, time):
         """
@@ -322,6 +355,7 @@ class AbstractMetric(TimeStampedEditableModel):
         extra_values=None,
         retention_policy=None,
         send_alert=True,
+        write=True,
     ):
         """write timeseries data"""
         values = {self.field_name: value}
@@ -355,7 +389,37 @@ class AbstractMetric(TimeStampedEditableModel):
                 'send_alert': send_alert,
             }
             options['metric_pk'] = self.pk
-        timeseries_write.delay(name=self.key, values=values, **options)
+
+            # if alert_on_related_field then check threshold
+            # on the related_field instead of field_name
+            if self.alert_on_related_field:
+                if not extra_values:
+                    raise ValueError(
+                        'write() missing keyword argument: "extra_values" required for alert on related field'
+                    )
+                if self.alert_field not in extra_values.keys():
+                    raise ValueError(
+                        f'"{key}" is not defined for alert_field in metric configuration'
+                    )
+                options['check_threshold_kwargs'].update(
+                    {'value': extra_values[self.alert_field]}
+                )
+        if write:
+            timeseries_write.delay(name=self.key, values=values, **options)
+        return {'name': self.key, 'values': values, **options}
+
+    @classmethod
+    def batch_write(cls, raw_data):
+        error_dict = {}
+        write_data = []
+        for metric, kwargs in raw_data:
+            try:
+                write_data.append(metric.write(**kwargs, write=False))
+            except ValueError as error:
+                error_dict[metric.key] = str(error)
+        timeseries_batch_write.delay(write_data)
+        if error_dict:
+            raise ValueError(error_dict)
 
     def read(self, **kwargs):
         """reads timeseries data"""
@@ -378,7 +442,7 @@ class AbstractChart(TimeStampedEditableModel):
     configuration = models.CharField(
         max_length=16, null=True, choices=CHART_CONFIGURATION_CHOICES
     )
-    GROUP_MAP = {'1d': '10m', '3d': '20m', '7d': '1h', '30d': '24h', '365d': '24h'}
+    GROUP_MAP = {'1d': '10m', '3d': '20m', '7d': '1h', '30d': '24h', '365d': '7d'}
     DEFAULT_TIME = '7d'
 
     class Meta:
@@ -437,6 +501,14 @@ class AbstractChart(TimeStampedEditableModel):
         return self.config_dict.get('trace_order', [])
 
     @property
+    def calculate_total(self):
+        return self.config_dict.get('calculate_total', False)
+
+    @property
+    def connect_points(self):
+        return self.config_dict.get('connect_points', False)
+
+    @property
     def description(self):
         return self.config_dict['description'].format(
             metric=self.metric, **self.metric.tags
@@ -488,6 +560,41 @@ class AbstractChart(TimeStampedEditableModel):
             q += default_chart_query[1]
         return q
 
+    @classmethod
+    def _get_group_map(cls, time=None):
+        """
+        Returns the chart group map for the specified days,
+        otherwise the default Chart.GROUP_MAP is returned
+        """
+        if (
+            not time
+            or time in cls.GROUP_MAP.keys()
+            or not isinstance(time, str)
+            or time[-1] != 'd'
+        ):
+            return cls.GROUP_MAP
+        group = '10m'
+        days = int(time.split('d')[0])
+        # Use copy of class variable to avoid unpredictable results
+        custom_group_map = cls.GROUP_MAP.copy()
+        # custom grouping between 1 to 2 days
+        if days > 0 and days < 3:
+            group = '10m'
+        # custom grouping between 3 to 6 days (base 5)
+        elif days >= 3 and days < 7:
+            group = str(5 * round(((days / 3) * 20) / 5)) + 'm'
+        # custom grouping between 8 to 27 days
+        elif days > 7 and days < 28:
+            group = str(round(days / 7)) + 'h'
+        # custom grouping between 1 month to 7 month
+        elif days >= 30 and days <= 210:
+            group = '1d'
+        # custom grouping between 7 month to 1 year
+        elif days > 210 and days <= 365:
+            group = '7d'
+        custom_group_map.update({time: group})
+        return custom_group_map
+
     def get_query(
         self,
         time=DEFAULT_TIME,
@@ -495,14 +602,24 @@ class AbstractChart(TimeStampedEditableModel):
         fields=None,
         query=None,
         timezone=settings.TIME_ZONE,
+        start_date=None,
+        end_date=None,
         additional_params=None,
     ):
         query = query or self.query
         additional_params = additional_params or {}
-        params = self._get_query_params(time)
+        params = self._get_query_params(time, start_date, end_date)
         params.update(additional_params)
+        params.update({'start_date': start_date, 'end_date': end_date})
         return timeseries_db.get_query(
-            self.type, params, time, self.GROUP_MAP, summary, fields, query, timezone
+            self.type,
+            params,
+            time,
+            self._get_group_map(time),
+            summary,
+            fields,
+            query,
+            timezone,
         )
 
     def get_top_fields(self, number):
@@ -515,15 +632,20 @@ class AbstractChart(TimeStampedEditableModel):
         return timeseries_db._get_top_fields(
             query=q,
             chart_type=self.type,
-            group_map=self.GROUP_MAP,
+            group_map=self._get_group_map(params['days']),
             number=number,
             params=params,
             time=self.DEFAULT_TIME,
         )
 
-    def _get_query_params(self, time):
+    def _get_query_params(self, time, start_date=None, end_date=None):
         m = self.metric
-        params = dict(field_name=m.field_name, key=m.key, time=self._get_time(time))
+        params = dict(
+            field_name=m.field_name,
+            key=m.key,
+            time=self._get_time(time, start_date, end_date),
+            days=time,
+        )
         if m.object_id:
             params.update(
                 {
@@ -537,10 +659,12 @@ class AbstractChart(TimeStampedEditableModel):
         return params
 
     @classmethod
-    def _get_time(cls, time):
+    def _get_time(cls, time, start_date=None, end_date=None):
+        if start_date and end_date:
+            return start_date
         if not isinstance(time, str):
             return str(time)
-        if time in cls.GROUP_MAP.keys():
+        if time in cls._get_group_map().keys():
             days = int(time.strip('d'))
             now = timezone.now()
             if days > 3:
@@ -558,6 +682,8 @@ class AbstractChart(TimeStampedEditableModel):
         time=DEFAULT_TIME,
         x_axys=True,
         timezone=settings.TIME_ZONE,
+        start_date=None,
+        end_date=None,
         additional_query_kwargs=None,
     ):
         additional_query_kwargs = additional_query_kwargs or {}
@@ -565,7 +691,9 @@ class AbstractChart(TimeStampedEditableModel):
         if x_axys:
             x = []
         try:
-            query_kwargs = dict(time=time, timezone=timezone)
+            query_kwargs = dict(
+                time=time, timezone=timezone, start_date=start_date, end_date=end_date
+            )
             query_kwargs.update(additional_query_kwargs)
             if self.top_fields:
                 fields = self.get_top_fields(self.top_fields)
@@ -621,6 +749,8 @@ class AbstractChart(TimeStampedEditableModel):
                     'unit': self.unit,
                     'trace_type': self.trace_type,
                     'trace_order': self.trace_order,
+                    'calculate_total': self.calculate_total,
+                    'connect_points': self.connect_points,
                     'colors': self.colors,
                 }
             )
@@ -679,6 +809,12 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         abstract = True
         verbose_name = _('Alert settings')
         verbose_name_plural = verbose_name
+        permissions = (
+            ('add_alertsettings_inline', 'Can add Alert settings inline'),
+            ('change_alertsettings_inline', 'Can change Alert settings inline'),
+            ('delete_alertsettings_inline', 'Can delete Alert settings inline'),
+            ('view_alertsettings_inline', 'Can view Alert settings inline'),
+        )
 
     def full_clean(self, *args, **kwargs):
         if self.custom_threshold == self.config_dict['threshold']:
@@ -748,6 +884,11 @@ class AbstractAlertSettings(TimeStampedEditableModel):
             return value_crossed
         # tolerance is set, we must go back in time
         # to ensure the threshold is trepassed for enough time
+        # if alert field is supplied, retrieve such field when reading
+        # so that we can let the system calculate the threshold on it
+        extra_fields = []
+        if self.metric.alert_on_related_field:
+            extra_fields = [self.metric.alert_field]
         if time is None:
             # retrieves latest measurements, ordered by most recent first
             points = self.metric.read(
@@ -755,6 +896,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
                 limit=None,
                 order='-time',
                 retention_policy=retention_policy,
+                extra_fields=extra_fields,
             )
             # store a list with the results
             results = [value_crossed]
@@ -766,7 +908,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
                     continue
                 utc_time = utc.localize(datetime.utcfromtimestamp(point['time']))
                 # did this point cross the threshold? Append to result list
-                results.append(self._value_crossed(point[self.metric.field_name]))
+                results.append(self._value_crossed(point[self.metric.alert_field]))
                 # tolerance is trepassed
                 if self._time_crossed(utc_time):
                     # if the latest results are consistent, the metric being

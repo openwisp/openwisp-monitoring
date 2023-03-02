@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -93,6 +94,14 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     def test_200_create(self):
         self.create_test_data(no_resources=True)
 
+    @patch('openwisp_monitoring.device.tasks.write_device_metrics.delay')
+    def test_background_write(self, mocked_task):
+        device = self._create_device(organization=self._create_org())
+        data = self._data()
+        r = self._post_data(device.id, device.key, data)
+        self.assertEqual(r.status_code, 200)
+        mocked_task.assert_called_once()
+
     def test_200_traffic_counter_incremented(self):
         dd = self.create_test_data(no_resources=True)
         d = self.device_model.objects.first()
@@ -114,13 +123,15 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
             m = self.metric_queryset.get(name=f'{ifname} traffic', object_id=d.pk)
-            points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
+            points = self._read_metric(
+                m, limit=10, order='-time', extra_fields=['tx_bytes']
+            )
             self.assertEqual(len(points), 2)
             for field in ['rx_bytes', 'tx_bytes']:
                 expected = iface['statistics'][field] - points[1][field]
                 self.assertEqual(points[0][field], expected)
             m = self.metric_queryset.get(name=f'{ifname} wifi clients', object_id=d.pk)
-            points = m.read(limit=10, order='-time')
+            points = self._read_metric(m, limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
     def test_200_traffic_counter_reset(self):
@@ -144,13 +155,15 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         for ifname in ['wlan0', 'wlan1']:
             iface = if_dict[ifname]
             m = self.metric_queryset.get(name=f'{ifname} traffic', object_id=d.pk)
-            points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
+            points = self._read_metric(
+                m, limit=10, order='-time', extra_fields=['tx_bytes']
+            )
             self.assertEqual(len(points), 2)
             for field in ['rx_bytes', 'tx_bytes']:
                 expected = iface['statistics'][field]
                 self.assertEqual(points[0][field], expected)
             m = self.metric_queryset.get(name=f'{ifname} wifi clients', object_id=d.pk)
-            points = m.read(limit=10, order='-time')
+            points = self._read_metric(m, limit=10, order='-time')
             self.assertEqual(len(points), len(iface['wireless']['clients']) * 2)
 
     def test_device_with_location(self):
@@ -173,8 +186,11 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(self.metric_queryset.count(), 4)
         self.assertEqual(self.chart_queryset.count(), 4)
         for metric in self.metric_queryset.filter(object_id__isnull=False):
-            points = metric.read(
-                limit=10, order='-time', extra_fields=['location_id', 'floorplan_id']
+            points = self._read_metric(
+                metric,
+                limit=10,
+                order='-time',
+                extra_fields=['location_id', 'floorplan_id'],
             )
             for point in points:
                 self.assertEqual(point['location_id'], str(location.id))
@@ -191,7 +207,9 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         }
         # wlan0 traffic
         m = self.metric_queryset.get(name='wlan0 traffic', object_id=dd.pk)
-        points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
+        points = self._read_metric(
+            m, limit=10, order='-time', extra_fields=['tx_bytes']
+        )
         self.assertEqual(len(points), 4)
         expected = [700000000, 100000000, 399999676, 324]
         for i, point in enumerate(points):
@@ -200,16 +218,16 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         for i, point in enumerate(points):
             self.assertEqual(point['tx_bytes'], expected[i])
         c = m.chart_set.first()
-        data = c.read()
+        data = self._read_chart(c)
         # expected download wlan0
         self.assertEqual(data['traces'][0][1][-1], 1.2)
-        # expected total wlan0
-        self.assertEqual(data['traces'][1][1][-1], 1.8)
         # expected upload wlan0
-        self.assertEqual(data['traces'][2][1][-1], 0.6)
+        self.assertEqual(data['traces'][1][1][-1], 0.6)
         # wlan1 traffic
         m = self.metric_queryset.get(name='wlan1 traffic', object_id=dd.pk)
-        points = m.read(limit=10, order='-time', extra_fields=['tx_bytes'])
+        points = self._read_metric(
+            m, limit=10, order='-time', extra_fields=['tx_bytes']
+        )
         self.assertEqual(len(points), 4)
         expected = [1000000000, 0, 1999997725, 2275]
         for i, point in enumerate(points):
@@ -218,13 +236,11 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         for i, point in enumerate(points):
             self.assertEqual(point['tx_bytes'], expected[i])
         c = m.chart_set.first()
-        data = c.read()
+        data = self._read_chart(c)
         # expected download wlan1
         self.assertEqual(data['traces'][0][1][-1], 3.0)
-        # expected total wlan1
-        self.assertEqual(data['traces'][1][1][-1], 4.5)
         # expected upload wlan1
-        self.assertEqual(data['traces'][2][1][-1], 1.5)
+        self.assertEqual(data['traces'][1][1][-1], 1.5)
 
     def test_200_no_date_supplied(self):
         o = self._create_org()
@@ -344,10 +360,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 'wifi_clients - WiFi clients: wlan0',
                 'wifi_clients - WiFi clients: wlan1',
                 'download - Traffic: wlan0',
-                'total - Traffic: wlan0',
                 'upload - Traffic: wlan0',
                 'download - Traffic: wlan1',
-                'total - Traffic: wlan1',
                 'upload - Traffic: wlan1',
                 'memory_usage - Memory Usage',
                 'CPU_load - CPU Load',
@@ -362,10 +376,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 '1',
                 '2',
                 '0.4',
-                '0.5',
                 '0.1',
                 '2.0',
-                '3.0',
                 '1.0',
                 '9.73',
                 '0.0',
@@ -390,7 +402,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             'openwisp_monitoring.monitoring.base.models.AbstractChart.read',
             return_value=mock,
         ):
-            self.assertEqual(c.read(), mock)
+            self.assertEqual(self._read_chart(c), mock)
             r = self.client.get('{0}&csv=1'.format(self._url(d.pk, d.key)))
         self.assertEqual(r.get('Content-Disposition'), 'attachment; filename=data.csv')
         self.assertEqual(r.get('Content-Type'), 'text/csv')
@@ -462,14 +474,14 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             del data['resources']['memory']['available']
             r = self._post_data(d.id, d.key, data)
             m = self.metric_queryset.get(key='memory')
-            metric_data = m.read(order='-time', extra_fields='*')[0]
+            metric_data = self._read_metric(m, order='-time', extra_fields='*')[0]
             self.assertEqual(metric_data['percent_used'], 9.729419481797308)
             self.assertIsNone(metric_data.get('available_memory'))
             self.assertEqual(r.status_code, 200)
         with self.subTest('Test when available memory is less than free memory'):
             data['resources']['memory']['available'] = 2232664
             r = self._post_data(d.id, d.key, data)
-            metric_data = m.read(order='-time', extra_fields='*')[0]
+            metric_data = self._read_metric(m, order='-time', extra_fields='*')[0]
             self.assertEqual(metric_data['percent_used'], 9.729419481797308)
             self.assertEqual(metric_data['available_memory'], 2232664)
             self.assertEqual(r.status_code, 200)
@@ -477,7 +489,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             data['resources']['memory']['available'] = 225567664
             r = self._post_data(d.id, d.key, data)
             m = self.metric_queryset.get(key='memory')
-            metric_data = m.read(order='-time', extra_fields='*')[0]
+            metric_data = self._read_metric(m, order='-time', extra_fields='*')[0]
             self.assertEqual(metric_data['percent_used'], 9.301032356920302)
             self.assertEqual(metric_data['available_memory'], 225567664)
             self.assertEqual(r.status_code, 200)
@@ -919,6 +931,47 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(charts[0]['summary']['signal_power'], None)
         self.assertEqual(charts[0]['summary']['signal_strength'], -70.0)
 
+    def test_mobile_signal_missing(self):
+        org = self._create_org()
+        device = self._create_device(organization=org)
+        data = {
+            'type': 'DeviceMonitoring',
+            'interfaces': [
+                {
+                    'name': 'mobile0',
+                    'mac': '00:00:00:00:00:00',
+                    'mtu': 1900,
+                    'multicast': True,
+                    'txqueuelen': 1000,
+                    'type': 'modem-manager',
+                    'up': True,
+                    'mobile': {
+                        'connection_status': 'connected',
+                        'imei': '865847055230161',
+                        'manufacturer': 'QUALCOMM INCORPORATED',
+                        'model': 'QUECTEL Mobile Broadband Module',
+                        'operator_code': '22250',
+                        'operator_name': 'Iliad',
+                        'power_status': 'on',
+                        'signal': {},
+                    },
+                }
+            ],
+        }
+        self._post_data(device.id, device.key, data)
+        response = self.client.get(self._url(device.pk.hex, device.key))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['charts'], [])
+        dd = DeviceData(name=device.name, pk=device.pk)
+        self.assertEqual(
+            dd.data['interfaces'][0]['mobile'], data['interfaces'][0]['mobile']
+        )
+
+        with self.subTest('signal key not present at all'):
+            del data['interfaces'][0]['mobile']['signal']
+            response = self._post_data(device.id, device.key, data)
+            self.assertEqual(response.status_code, 200)
+
     def test_pre_metric_write_signal(self):
         d = self._create_device(organization=self._create_org())
         data = {'type': 'DeviceMonitoring', 'resources': {'cpus': 1, 'load': [0, 0, 0]}}
@@ -968,6 +1021,133 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             current=False,
         )
         self.assertEqual(signal_calls[0][1], expected_arguments)
+
+    def test_device_custom_date_metrics(self):
+        now = datetime.now()
+        dd = self.create_test_data()
+        d = self.device_model.objects.get(pk=dd.pk)
+
+        def _assert_chart_group(url, status_code, expected):
+            response = self.client.get(url)
+            chart_group = Chart._get_group_map(expected[0]).items()
+            self.assertEqual(response.status_code, status_code)
+            self.assertIn(expected, chart_group)
+
+        with self.subTest('Test custom grouping between 1 to 2 days'):
+            custom_date_query = '&start=2022-10-02%2000:00:00&end=2022-10-04%2023:59:59'
+            url = f'{self._url(d.pk, d.key)}{custom_date_query}'
+            _assert_chart_group(url, 200, ('2d', '10m'))
+
+        with self.subTest('Test custom grouping between 3 to 6 days'):
+            custom_date_query = '&start=2022-10-02%2000:00:00&end=2022-10-06%2023:59:59'
+            url = f'{self._url(d.pk, d.key)}{custom_date_query}'
+            _assert_chart_group(url, 200, ('4d', '25m'))
+
+        with self.subTest('Test custom grouping between 8 to 27 days'):
+            custom_date_query = '&start=2022-09-29%2000:00:00&end=2022-10-11%2015:50:56'
+            url = f'{self._url(d.pk, d.key)}{custom_date_query}'
+            _assert_chart_group(url, 200, ('12d', '2h'))
+
+        with self.subTest('Test custom grouping between 28 to 364 days'):
+            custom_date_query = '&start=2022-07-04%2000:00:00&end=2022-10-11%2015:50:56'
+            url = f'{self._url(d.pk, d.key)}{custom_date_query}'
+            _assert_chart_group(url, 200, ('99d', '1d'))
+
+        with self.subTest('Test invalid custom dates'):
+            invalid_custom_dates = (
+                '&start=2022-07-04&end=2022-10-11',
+                '&start=September&end=October',
+                '&start=2022-07-04&end=10-11-2022%2015:50:56',
+                '&start=09-08-2022%2000:00:00&end=10-11-2022%2016:39:29',
+            )
+            for invalid_date in invalid_custom_dates:
+                url = f'{self._url(d.pk, d.key)}{invalid_date}'
+                r = self.client.get(url)
+                self.assertEqual(r.status_code, 400)
+                self.assertIn(
+                    'Incorrect custom date format, should be YYYY-MM-DD H:M:S', r.data
+                )
+        with self.subTest(
+            'Test device metrics when start date is greater than end date'
+        ):
+            start_greater_than_end = (
+                '&start=2022-09-23%2000:00:00&end=2022-09-13%2023:59:59'
+            )
+            url = f'{self._url(d.pk, d.key)}{start_greater_than_end}'
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 400)
+            self.assertIn(
+                'start_date cannot be greater than end_date',
+                r.data,
+            )
+        with self.subTest(
+            'Test device metrics when start date is greater than today date'
+        ):
+            start_greater = (now + timedelta(days=5)).strftime('%Y-%m-%d')
+            end_greater = (now + timedelta(days=9)).strftime('%Y-%m-%d')
+            start_greater_than_now = (
+                f'&start={start_greater}%2000:00:00&end={end_greater}%2023:59:59'
+            )
+            url = f'{self._url(d.pk, d.key)}{start_greater_than_now}'
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 400)
+            self.assertIn(
+                "start_date cannot be greater than today's date",
+                r.data,
+            )
+        with self.subTest(
+            'Test device metrics when end date is greater than today date'
+        ):
+            start_lesser = (now - timedelta(days=2)).strftime('%Y-%m-%d')
+            end_greater = (now + timedelta(days=5)).strftime('%Y-%m-%d')
+            end_greater_than_now = (
+                f'&start={start_lesser}%2000:00:00&end={end_greater}%2023:59:59'
+            )
+            url = f'{self._url(d.pk, d.key)}{end_greater_than_now}'
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 400)
+            self.assertIn(
+                "end_date cannot be greater than today's date",
+                r.data,
+            )
+
+        with self.subTest(
+            'Test device metrics when date range is greater than 365 days'
+        ):
+            greater_than_365_days = (
+                '&start=2021-11-11%2000:00:00&end=2022-11-12%2023:59:59'
+            )
+            url = f'{self._url(d.pk, d.key)}{greater_than_365_days}'
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 400)
+            self.assertIn(
+                "The date range shouldn't be greater than 365 days",
+                r.data,
+            )
+
+        with self.subTest('Test device metrics csv export with custom dates'):
+            end_date = now.strftime('%Y-%m-%d')
+            start_date = (now - timedelta(days=2)).strftime('%Y-%m-%d')
+            self._create_multiple_measurements(create=False, count=2)
+            m = self._create_object_metric(
+                content_object=d, name='applications', configuration='get_top_fields'
+            )
+            self._create_chart(metric=m, configuration='histogram')
+            m.write(None, extra_values={'http2': 90, 'ssh': 100, 'udp': 80, 'spdy': 70})
+            custom_date_query = (
+                f'&start={start_date}%2000:00:00&end={end_date}%2000:00:00'
+            )
+            url = f'{self._url(d.pk, d.key)}{custom_date_query}&csv=1'
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(
+                response.get('Content-Disposition'), 'attachment; filename=data.csv'
+            )
+            self.assertEqual(response.get('Content-Type'), 'text/csv')
+            rows = response.content.decode('utf8').strip().split('\n')
+            self.assertEqual(rows[-3].strip(), 'Histogram')
+            self.assertEqual(rows[-2].strip().split(','), ['ssh', '100.0'])
+            self.assertEqual(rows[-1].strip().split(','), ['http2', '90.0'])
 
 
 class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):

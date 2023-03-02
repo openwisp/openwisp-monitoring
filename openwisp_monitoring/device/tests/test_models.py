@@ -93,6 +93,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
                     "noise": -103,
                     "signal": -56,
                     "ssid": "wifi-test",
+                    "htmode": "HT20",
                     "clients": [
                         {
                             "aid": 1,
@@ -149,6 +150,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
                     "ssid": "testnet",
                     "tx_power": 6,
                     "signal": -56,
+                    "htmode": "VHT80",
                     "clients": [
                         {
                             "aid": 1,
@@ -345,6 +347,46 @@ class TestDeviceData(BaseTestCase):
         self.assertNotEqual(
             data['general']['uptime'], self._sample_data['general']['uptime']
         )
+
+    def test_wireless_interface_htmode(self):
+        dd = deepcopy(self.test_save_data())
+        dd = DeviceData(pk=dd.pk)
+        data = dd.data_user_friendly
+
+        with self.subTest('Test wireless interfaces with HT & VHT htmode'):
+            self.assertEqual(
+                data['interfaces'][0]['wireless']['htmode'], 'WiFi 4 (802.11n): HT20'
+            )
+            self.assertEqual(
+                data['interfaces'][1]['wireless']['htmode'], 'WiFi 5 (802.11ac): VHT80'
+            )
+
+        with self.subTest('Test wireless interfaces with HE & VHT htmode'):
+            test_data = deepcopy(self._sample_data)
+            test_data['interfaces'][0]['wireless'].update({'htmode': 'HE40'})
+            dd.data = test_data
+            dd.save_data()
+            data = dd.data_user_friendly
+            self.assertEqual(
+                data['interfaces'][0]['wireless']['htmode'], 'WiFi 6 (802.11ax): HE40'
+            )
+            self.assertEqual(
+                data['interfaces'][1]['wireless']['htmode'], 'WiFi 5 (802.11ac): VHT80'
+            )
+
+        with self.subTest('Test wireless interfaces with NOHT & OTHER htmode'):
+            test_data = deepcopy(self._sample_data)
+            test_data['interfaces'][0]['wireless'].update({'htmode': 'NOHT'})
+            test_data['interfaces'][1]['wireless'].update({'htmode': 'NEW_MODE'})
+            dd.data = test_data
+            dd.save_data()
+            data = dd.data_user_friendly
+            self.assertEqual(
+                data['interfaces'][0]['wireless']['htmode'], 'Legacy Mode: NOHT'
+            )
+            self.assertEqual(
+                data['interfaces'][1]['wireless']['htmode'], 'Other: NEW_MODE'
+            )
 
     def test_bad_address_fail(self):
         dd = self._create_device_data()
@@ -649,6 +691,29 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'critical')
 
+    def test_deleting_device_deletes_tsdb(self):
+        dm1, ping1, _, _ = self._create_env()
+        device2 = self._create_device(
+            name='default.test.device2',
+            mac_address='22:33:44:55:66:77',
+            organization=dm1.device.organization,
+        )
+        dm2 = device2.monitoring
+        dm2.status = 'ok'
+        dm2.save()
+        ping2 = self._create_object_metric(
+            name='ping', key='ping', field_name='reachable', content_object=device2
+        )
+        ping1.write(0)
+        ping2.write(0)
+        self.assertNotEqual(self._read_metric(ping1), [])
+        self.assertNotEqual(self._read_metric(ping2), [])
+        dm1.device.delete()
+        # Only the metric related to the deleted device
+        # is deleted
+        self.assertEqual(self._read_metric(ping1), [])
+        self.assertNotEqual(self._read_metric(ping2), [])
+
 
 class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
     wifi_client_model = WifiClient
@@ -773,12 +838,73 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         self.assertEqual(WifiSession.objects.count(), 0)
 
     def test_device_offline_close_session(self):
+        start_time = now()
         device_monitoring = self._create_device_monitoring()
+        ping = self._create_object_metric(
+            name='ping',
+            key='ping',
+            field_name='reachable',
+            content_object=device_monitoring.device,
+        )
+        ping_alerts = self._create_alert_settings(
+            metric=ping, custom_operator='<', custom_threshold=1, custom_tolerance=1
+        )
+        load = self._create_object_metric(
+            name='load', content_object=device_monitoring.device
+        )
+        self._create_alert_settings(
+            metric=load, custom_operator='>', custom_threshold=90, custom_tolerance=0
+        )
+        ping.write(1)
+        load.write(50)
         wifi_client = self._create_wifi_client()
         self._create_wifi_session(
             wifi_client=wifi_client, device=device_monitoring.device
         )
-        self.assertEqual(WifiSession.objects.filter(stop_time__isnull=True).count(), 1)
-        device_monitoring.update_status('critical')
-        self.assertEqual(WifiSession.objects.filter(stop_time__isnull=True).count(), 0)
-        self.assertEqual(WifiSession.objects.count(), 1)
+
+        def _assert_open_wifi_session(count):
+            self.assertEqual(
+                WifiSession.objects.filter(stop_time__isnull=True).count(), count
+            )
+            self.assertEqual(WifiSession.objects.count(), 1)
+
+        # Sanity check
+        _assert_open_wifi_session(1)
+
+        # WiFi session is not closed when a non-critical metric trepasses the threshold
+        load.write(95)
+        _assert_open_wifi_session(1)
+
+        # WiFi session is not closed when a critical metric trepasses the threshold
+        # within the tolerance limit
+        ping.write(0)
+        _assert_open_wifi_session(1)
+
+        # WiFi session is closed when a critical metric trepasses the threshold
+        # beyond the tolerance limit
+        with freeze_time(start_time + timedelta(minutes=2)):
+            ping.write(0)
+        _assert_open_wifi_session(0)
+
+        WifiSession.objects.update(stop_time=None)
+        # Reset ping.is_healthy and ping.is_healthy_tolerant
+        # Sets ping.is_healthy to True
+        with freeze_time(start_time + timedelta(minutes=2)):
+            ping.write(1)
+        # Sets ping.is_healthy_tolerant to True
+        with freeze_time(start_time + timedelta(minutes=3)):
+            ping.write(1)
+        _assert_open_wifi_session(1)
+
+        # WiFi session is closed when when a critical metric trepasses the threshold
+        # beyond the tolerance limit when alerts are turned off
+        ping_alerts.is_active = False
+        ping_alerts.save()
+        # Sets ping.is_healthy to False, doesn't closes WiFi Session
+        with freeze_time(start_time + timedelta(minutes=4)):
+            ping.write(0)
+        _assert_open_wifi_session(1)
+        # Sets ping.is_healthy_tolerant to False, closes WiFi Session
+        with freeze_time(start_time + timedelta(minutes=5)):
+            ping.write(0)
+        _assert_open_wifi_session(0)

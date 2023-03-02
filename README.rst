@@ -35,6 +35,8 @@ openwisp-monitoring
 
 ------------
 
+**Need a quick overview?** `Try the OpenWISP Demo <https://openwisp.org/demo.html>`_.
+
 OpenWISP Monitoring is a network monitoring system written in Python and Django,
 designed to be **extensible**, **programmable**, **scalable** and easy to use by end users:
 once the system is configured, monitoring checks, alerts and metric collection
@@ -87,7 +89,9 @@ Available Features
   `RAM usage <#memory-usage>`_, `CPU load <#cpu-load>`_, `flash/disk usage <#disk-usage>`_,
   mobile signal (LTE/UMTS/GSM `signal strength <#mobile-signal-strength>`_,
   `signal quality <#mobile-signal-quality>`_,
-  `access technology in use <#mobile-access-technology-in-use>`_)
+  `access technology in use <#mobile-access-technology-in-use>`_), `bandwidth <#iperf3>`_,
+  `transferred data <#iperf3>`_, `restransmits <#iperf3>`_, `jitter <#iperf3>`_,
+  `datagram <#iperf3>`_, `datagram loss <#iperf3>`_
 * Maintains a record of `WiFi sessions <#monitoring-wifi-sessions>`_ with clients'
   MAC address and vendor, session start and stop time and connected device
   along with other information
@@ -105,6 +109,8 @@ Available Features
 * Extensible metrics and charts: it's possible to define new metrics and new charts
 * API to retrieve the chart metrics and status information of each device
   based on `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_
+* `Iperf3 check <#iperf3-1>`_ that provides network performance measurements such as maximum
+  achievable bandwidth, jitter, datagram loss etc of the openwrt device using `iperf3 utility <https://iperf.fr/>`_
 
 ------------
 
@@ -310,6 +316,7 @@ Follow the setup instructions of `openwisp-controller
         'openwisp_notifications',
         # openwisp2 admin theme (must be loaded here)
         'openwisp_utils.admin_theme',
+        'admin_auto_filters',
         # admin
         'django.contrib.admin',
         'django.forms',
@@ -326,6 +333,13 @@ Follow the setup instructions of `openwisp-controller
         'NAME': 'openwisp2',
         'HOST': 'localhost',
         'PORT': '8086',
+        'OPTIONS': {
+            # Specify additional options to be used while initializing
+            # database connection.
+            # Note: These options may differ based on the backend used.
+            'udp_writes': True,
+            'udp_port': 8089,
+        }
     }
 
 ``urls.py``:
@@ -375,7 +389,15 @@ Configure celery (you may use a different broker if you want):
     CELERY_BEAT_SCHEDULE = {
         'run_checks': {
             'task': 'openwisp_monitoring.check.tasks.run_checks',
+            # Executes only ping & config check every 5 min
             'schedule': timedelta(minutes=5),
+            'args': (
+                [  # Checks path
+                    'openwisp_monitoring.check.classes.Ping',
+                    'openwisp_monitoring.check.classes.ConfigApplied',
+                ],
+            ),
+            'relative': True,
         },
         # Delete old WifiSession
         'delete_wifi_clients_and_sessions': {
@@ -802,10 +824,63 @@ Mobile Access Technology in use
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/access-technology.png
   :align: center
 
+Iperf3
+~~~~~~
+
++--------------------+---------------------------------------------------------------------------------------------------------------------------+
+| **measurement**:   | ``iperf3``                                                                                                                |
++--------------------+---------------------------------------------------------------------------------------------------------------------------+
+| **types**:         | | ``int`` (iperf3_result, sent_bytes_tcp, received_bytes_tcp, retransmits, sent_bytes_udp, total_packets, lost_packets),  |
+|                    | | ``float`` (sent_bps_tcp, received_bps_tcp, sent_bps_udp, jitter, lost_percent)                                          |
++--------------------+---------------------------------------------------------------------------------------------------------------------------+
+| **fields**:        | | ``iperf3_result``, ``sent_bps_tcp``, ``received_bps_tcp``, ``sent_bytes_tcp``, ``received_bytes_tcp``, ``retransmits``, |
+|                    | | ``sent_bps_udp``, ``sent_bytes_udp``, ``jitter``, ``total_packets``, ``lost_packets``, ``lost_percent``                 |
++--------------------+---------------------------------------------------------------------------------------------------------------------------+
+| **configuration**: | ``iperf3``                                                                                                                |
++--------------------+---------------------------------------------------------------------------------------------------------------------------+
+| **charts**:        | ``bandwidth``, ``transfer``, ``retransmits``, ``jitter``, ``datagram``, ``datagram_loss``                                 |
++--------------------+---------------------------------------------------------------------------------------------------------------------------+
+
+**Bandwidth**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/bandwidth.png
+  :align: center
+
+**Transferred Data**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/transferred-data.png
+  :align: center
+
+**Retransmits**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/retransmits.png
+  :align: center
+
+**Jitter**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/jitter.png
+  :align: center
+
+**Datagram**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/datagram.png
+  :align: center
+
+**Datagram loss**:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/datagram-loss.png
+  :align: center
+
+For more info on how to configure and use Iperf3, please refer to
+`iperf3 check usage instructions <#iperf3-check-usage-instructions>`_.
+
+**Note:** Iperf3 charts uses ``connect_points=True`` in
+`default chart configuration <#openwisp_monitoring_charts>`_ that joins it's individual chart data points.
+
 Dashboard Monitoring Charts
 ---------------------------
 
-.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-controller/docs/docs/1.1/dashboard-charts.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/blob/docs/docs/1.1/dashboard-charts.png
   :align: center
 
 OpenWISP Monitoring adds two timeseries charts to the admin dashboard:
@@ -817,6 +892,36 @@ OpenWISP Monitoring adds two timeseries charts to the admin dashboard:
 You can configure the interfaces included in the **General traffic chart** using
 the `"OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART"
 <#openwisp_monitoring_dashboard_traffic_chart>`_ setting.
+
+Adaptive size charts
+--------------------
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/adaptive-chart.png
+   :align: center
+
+When configuring charts, it is possible to flag their unit
+as ``adaptive_prefix``, this allows to make the charts more readable because
+the units are shown in either `K`, `M`, `G` and `T` depending on
+the size of each point, the summary values and Y axis are also resized.
+
+Example taken from the default configuration of the traffic chart:
+
+.. code-block:: python
+
+    'traffic': {
+        # other configurations for this chart
+
+        # traffic measured in 'B' (bytes)
+        # unit B, KB, MB, GB, TB
+        'unit': 'adaptive_prefix+B',
+    },
+
+    'bandwidth': {
+        # adaptive unit for bandwidth related charts
+        # bandwidth measured in 'bps'(bits/sec)
+        # unit bps, Kbps, Mbps, Gbps, Tbps
+        'unit': 'adaptive_prefix+bps',
+    },
 
 Monitoring WiFi Sessions
 ------------------------
@@ -918,8 +1023,478 @@ configuration status of a device changes, this ensures the check reacts
 quickly to events happening in the network and informs the user promptly
 if there's anything that is not working as intended.
 
+Iperf3
+~~~~~~
+
+This check provides network performance measurements such as maximum achievable bandwidth,
+jitter, datagram loss etc of the device using `iperf3 utility <https://iperf.fr/>`_.
+
+This check is **disabled by default**. You can enable auto creation of this check by setting the
+`OPENWISP_MONITORING_AUTO_IPERF3 <#OPENWISP_MONITORING_AUTO_IPERF3>`_ to ``True``.
+
+You can also `add the iperf3 check
+<#add-checks-and-alert-settings-from-the-device-page>`_ directly from the device page.
+
+It also supports tuning of various parameters.
+
+You can also change the parameters used for iperf3 checks (e.g. timing, port, username,
+password, rsa_publc_key etc) using the `OPENWISP_MONITORING_IPERF3_CHECK_CONFIG
+<#OPENWISP_MONITORING_IPERF3_CHECK_CONFIG>`_ setting.
+
+**Note:** When setting `OPENWISP_MONITORING_AUTO_IPERF3 <#OPENWISP_MONITORING_AUTO_IPERF3>`_  to ``True``,
+you may need to update the `metric configuration <#add-checks-and-alert-settings-from-the-device-page>`_
+to enable alerts for the iperf3 check.
+
+Iperf3 Check Usage Instructions
+-------------------------------
+
+1. Make sure iperf3 is installed on the device
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Register your device to OpenWISP and make sure the `iperf3 openwrt package
+<https://openwrt.org/packages/pkgdata/iperf3>`_ is installed on the device,
+eg:
+
+.. code-block:: shell
+
+    opkg install iperf3  # if using without authentication
+    opkg install iperf3-ssl  # if using with authentication (read below for more info)
+
+2. Ensure SSH access from OpenWISP is enabled on your devices
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Follow the steps in `"How to configure push updates" section of the
+OpenWISP documentation
+<https://openwisp.io/docs/user/configure-push-updates.html>`_
+to allow SSH access to you device from OpenWISP.
+
+**Note:** Make sure device connection is enabled
+& working with right update strategy i.e. ``OpenWRT SSH``.
+
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/enable-openwrt-ssh.png
+  :alt: Enable ssh access from openwisp to device
+  :align: center
+
+3. Set up and configure Iperf3 server settings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+After having deployed your Iperf3 servers, you need to
+configure the iperf3 settings on the django side of OpenWISP,
+see the `test project settings for reference
+<https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_.
+
+The host can be specified by hostname, IPv4 literal, or IPv6 literal.
+Example:
+
+.. code-block:: python
+
+   OPENWISP_MONITORING_IPERF3_CHECK_CONFIG = {
+       # 'org_pk' : {'host' : [], 'client_options' : {}}
+       'a9734710-db30-46b0-a2fc-01f01046fe4f': {
+           # Some public iperf3 servers
+           # https://iperf.fr/iperf-servers.php#public-servers
+           'host': ['iperf3.openwisp.io', '2001:db8::1', '192.168.5.2'],
+           'client_options': {
+               'port': 5209,
+               'udp': {'bitrate': '30M'},
+               'tcp': {'bitrate': '0'},
+           },
+       },
+       # another org
+       'b9734710-db30-46b0-a2fc-01f01046fe4f': {
+           # available iperf3 servers
+           'host': ['iperf3.openwisp2.io', '192.168.5.3'],
+           'client_options': {
+               'port': 5207,
+               'udp': {'bitrate': '50M'},
+               'tcp': {'bitrate': '20M'},
+           },
+       },
+   }
+
+**Note:** If an organization has more than one iperf3 server configured, then it enables
+the iperf3 checks to run concurrently on different devices. If all of the available servers
+are busy, then it will add the check back in the queue.
+
+The celery-beat configuration for the iperf3 check needs to be added too:
+
+.. code-block:: python
+
+    from celery.schedules import crontab
+
+    # Celery TIME_ZONE should be equal to django TIME_ZONE
+    # In order to schedule run_iperf3_checks on the correct time intervals
+    CELERY_TIMEZONE = TIME_ZONE
+    CELERY_BEAT_SCHEDULE = {
+        # Other celery beat configurations
+        # Celery beat configuration for iperf3 check
+        'run_iperf3_checks': {
+            'task': 'openwisp_monitoring.check.tasks.run_checks',
+            # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
+            # Executes check every 5 mins from 00:00 AM to 6:00 AM (night)
+            'schedule': crontab(minute='*/5', hour='0-6'),
+            # Iperf3 check path
+            'args': (['openwisp_monitoring.check.classes.Iperf3'],),
+            'relative': True,
+        }
+    }
+
+Once the changes are saved, you will need to restart all the processes.
+
+**Note:** We recommended to configure this check to run in non peak
+traffic times to not interfere with standard traffic.
+
+4. Run the check
+~~~~~~~~~~~~~~~~
+
+This should happen automatically if you have celery-beat correctly
+configured and running in the background.
+For testing purposes, you can run this check manually using the
+`run_checks <#run_checks>`_ command.
+
+After that, you should see the iperf3 network measurements charts.
+
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/iperf3-charts.png
+  :alt: Iperf3 network measurement charts
+
+Iperf3 check parameters
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Currently, iperf3 check supports the following parameters:
+
++-----------------------+----------+--------------------------------------------------------------------+
+| **Parameter**         | **Type** | **Default Value**                                                  |
++-----------------------+----------+--------------------------------------------------------------------+
+|``host``               | ``list`` | ``[]``                                                             |
++-----------------------+----------+--------------------------------------------------------------------+
+|``username``           | ``str``  | ``''``                                                             |
++-----------------------+----------+--------------------------------------------------------------------+
+|``password``           | ``str``  | ``''``                                                             |
++-----------------------+----------+--------------------------------------------------------------------+
+|``rsa_public_key``     | ``str``  | ``''``                                                             |
++-----------------------+----------+--------------------------------------------------------------------+
+|``client_options``     | +---------------------+----------+------------------------------------------+ |
+|                       | | **Parameters**      | **Type** | **Default Value**                        | |
+|                       | +---------------------+----------+------------------------------------------+ |
+|                       | | ``port``            | ``int``  | ``5201``                                 | |
+|                       | +---------------------+----------+------------------------------------------+ |
+|                       | | ``time``            | ``int``  | ``10``                                   | |
+|                       | +---------------------+----------+------------------------------------------+ |
+|                       | | ``bytes``           | ``str``  | ``''``                                   | |
+|                       | +---------------------+----------+------------------------------------------+ |
+|                       | | ``blockcount``      | ``str``  | ``''``                                   | |
+|                       | +---------------------+----------+------------------------------------------+ |
+|                       | | ``window``          | ``str``  | ``0``                                    | |
+|                       | +---------------------+----------+------------------------------------------+ |
+|                       | | ``parallel``        | ``int``  | ``1``                                    | |
+|                       | +---------------------+----------+------------------------------------------+ |
+|                       | | ``reverse``         | ``bool`` | ``False``                                | |
+|                       | +---------------------+----------+------------------------------------------+ |
+|                       | | ``bidirectional``   | ``bool`` | ``False``                                | |
+|                       | +---------------------+----------+------------------------------------------+ |
+|                       | | ``connect_timeout`` | ``int``  | ``1000``                                 | |
+|                       | +---------------------+----------+------------------------------------------+ |
+|                       | | ``tcp``             | +----------------+----------+---------------------+ | |
+|                       | |                     | | **Parameters** | **Type** | **Default Value**   | | |
+|                       | |                     | +----------------+----------+---------------------+ | |
+|                       | |                     | |``bitrate``     | ``str``  | ``0``               | | |
+|                       | |                     | +----------------+----------+---------------------+ | |
+|                       | |                     | |``length``      | ``str``  | ``128K``            | | |
+|                       | |                     | +----------------+----------+---------------------+ | |
+|                       | +---------------------+-----------------------------------------------------+ |
+|                       | | ``udp``             | +----------------+----------+---------------------+ | |
+|                       | |                     | | **Parameters** | **Type** | **Default Value**   | | |
+|                       | |                     | +----------------+----------+---------------------+ | |
+|                       | |                     | |``bitrate``     | ``str``  | ``30M``             | | |
+|                       | |                     | +----------------+----------+---------------------+ | |
+|                       | |                     | |``length``      | ``str``  | ``0``               | | |
+|                       | |                     | +----------------+----------+---------------------+ | |
+|                       | +---------------------+-----------------------------------------------------+ |
++-----------------------+-------------------------------------------------------------------------------+
+
+To learn how to use these parameters, please see the
+`iperf3 check configuration example <#OPENWISP_MONITORING_IPERF3_CHECK_CONFIG>`_.
+
+Visit the `official documentation <https://www.mankier.com/1/iperf3>`_
+to learn more about the iperf3 parameters.
+
+Iperf3 authentication
+~~~~~~~~~~~~~~~~~~~~~
+
+By default iperf3 check runs without any kind of **authentication**,
+in this section we will explain how to configure **RSA authentication**
+between the **client** and the **server** to restrict connections
+to authenticated clients.
+
+Server side
+###########
+
+1. Generate RSA keypair
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: shell
+
+   openssl genrsa -des3 -out private.pem 2048
+   openssl rsa -in private.pem -outform PEM -pubout -out public_key.pem
+   openssl rsa -in private.pem -out private_key.pem -outform PEM
+
+After running the commands mentioned above, the public key will be stored in
+``public_key.pem`` which will be used in **rsa_public_key** parameter
+in `OPENWISP_MONITORING_IPERF3_CHECK_CONFIG
+<#OPENWISP_MONITORING_IPERF3_CHECK_CONFIG>`_
+and the private key will be contained in the file ``private_key.pem``
+which will be used with **--rsa-private-key-path** command option when
+starting the iperf3 server.
+
+2. Create user credentials
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: shell
+
+   USER=iperfuser PASSWD=iperfpass
+   echo -n "{$USER}$PASSWD" | sha256sum | awk '{ print $1 }'
+   ----
+   ee17a7f98cc87a6424fb52682396b2b6c058e9ab70e946188faa0714905771d7 #This is the hash of "iperfuser"
+
+Add the above hash with username in ``credentials.csv``
+
+.. code-block:: shell
+
+   # file format: username,sha256
+   iperfuser,ee17a7f98cc87a6424fb52682396b2b6c058e9ab70e946188faa0714905771d7
+
+3. Now start the iperf3 server with auth options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: shell
+
+   iperf3 -s --rsa-private-key-path ./private_key.pem --authorized-users-path ./credentials.csv
+
+Client side (OpenWrt device)
+############################
+
+1. Install iperf3-ssl
+^^^^^^^^^^^^^^^^^^^^^
+
+Install the `iperf3-ssl openwrt package
+<https://openwrt.org/packages/pkgdata/iperf3-ssl>`_
+instead of the normal
+`iperf3 openwrt package <https://openwrt.org/packages/pkgdata/iperf3>`_
+because the latter comes without support for authentication.
+
+You may also check your installed **iperf3 openwrt package** features:
+
+.. code-block:: shell
+
+   root@vm-openwrt:~ iperf3 -v
+   iperf 3.7 (cJSON 1.5.2)
+   Linux vm-openwrt 4.14.171 #0 SMP Thu Feb 27 21:05:12 2020 x86_64
+   Optional features available: CPU affinity setting, IPv6 flow label, TCP congestion algorithm setting,
+   sendfile / zerocopy, socket pacing, authentication # contains 'authentication'
+
+2. Configure iperf3 check auth parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Now, add the following iperf3 authentication parameters
+to `OPENWISP_MONITORING_IPERF3_CHECK_CONFIG
+<#OPENWISP_MONITORING_IPERF3_CHECK_CONFIG>`_
+in the settings:
+
+.. code-block:: python
+
+   OPENWISP_MONITORING_IPERF3_CHECK_CONFIG = {
+       'a9734710-db30-46b0-a2fc-01f01046fe4f': {
+           'host': ['iperf1.openwisp.io', 'iperf2.openwisp.io', '192.168.5.2'],
+           # All three parameters (username, password, rsa_publc_key)
+           # are required for iperf3 authentication
+           'username': 'iperfuser',
+           'password': 'iperfpass',
+           # Add RSA public key without any headers
+           # ie. -----BEGIN PUBLIC KEY-----, -----BEGIN END KEY-----
+           'rsa_public_key': (
+               """
+               MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwuEm+iYrfSWJOupy6X3N
+               dxZvUCxvmoL3uoGAs0O0Y32unUQrwcTIxudy38JSuCccD+k2Rf8S4WuZSiTxaoea
+               6Du99YQGVZeY67uJ21SWFqWU+w6ONUj3TrNNWoICN7BXGLE2BbSBz9YaXefE3aqw
+               GhEjQz364Itwm425vHn2MntSp0weWb4hUCjQUyyooRXPrFUGBOuY+VvAvMyAG4Uk
+               msapnWnBSxXt7Tbb++A5XbOMdM2mwNYDEtkD5ksC/x3EVBrI9FvENsH9+u/8J9Mf
+               2oPl4MnlCMY86MQypkeUn7eVWfDnseNky7TyC0/IgCXve/iaydCCFdkjyo1MTAA4
+               BQIDAQAB
+               """
+           ),
+           'client_options': {
+               'port': 5209,
+               'udp': {'bitrate': '20M'},
+               'tcp': {'bitrate': '0'},
+           },
+       }
+   }
+
+Adding Checks and Alert settings from the device page
+-----------------------------------------------------
+
+We can add checks and define alert settings directly from the **device page**.
+
+To add a check, you just need to select an available **check type** as shown below:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-check.png
+  :align: center
+
+The following example shows how to use the
+`OPENWISP_MONITORING_METRICS setting <#openwisp_monitoring_metrics>`_
+to reconfigure the system for `iperf3 check <#iperf3-1>`_ to send an alert if
+the measured **TCP bandwidth** has been less than **10 Mbit/s** for more than **2 days**.
+
+1. By default, `Iperf3 checks <#iperf3-1>`_ come with default alert settings,
+but it is easy to customize alert settings through the device page as shown below:
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-alertsettings.png
+  :align: center
+
+2. Now, add the following notification configuration to send an alert for **TCP bandwidth**:
+
+.. code-block:: python
+
+   # Main project settings.py
+   from django.utils.translation import gettext_lazy as _
+
+   OPENWISP_MONITORING_METRICS = {
+       'iperf3': {
+           'notification': {
+               'problem': {
+                   'verbose_name': 'Iperf3 PROBLEM',
+                   'verb': _('Iperf3 bandwidth is less than normal value'),
+                   'level': 'warning',
+                   'email_subject': _(
+                       '[{site.name}] PROBLEM: {notification.target} {notification.verb}'
+                   ),
+                   'message': _(
+                       'The device [{notification.target}]({notification.target_link}) '
+                       '{notification.verb}.'
+                   ),
+               },
+               'recovery': {
+                   'verbose_name': 'Iperf3 RECOVERY',
+                   'verb': _('Iperf3 bandwidth now back to normal'),
+                   'level': 'info',
+                   'email_subject': _(
+                       '[{site.name}] RECOVERY: {notification.target} {notification.verb}'
+                   ),
+                   'message': _(
+                       'The device [{notification.target}]({notification.target_link}) '
+                       '{notification.verb}.'
+                   ),
+               },
+           },
+       },
+   }
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_warn.png
+  :align: center
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_info.png
+  :align: center
+
+**Note:** To access the features described above, the user must have permissions for ``Check`` and ``AlertSetting`` inlines,
+these permissions are included by default in the "Administrator" and "Operator" groups and are shown in the screenshot below.
+
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/inline-permissions.png
+  :align: center
+
 Settings
 --------
+
+``TIMESERIES_DATABASE``
+~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-----------+
+| **type**:    | ``str``   |
++--------------+-----------+
+| **default**: | see below |
++--------------+-----------+
+
+.. code-block:: python
+
+    TIMESERIES_DATABASE = {
+        'BACKEND': 'openwisp_monitoring.db.backends.influxdb',
+        'USER': 'openwisp',
+        'PASSWORD': 'openwisp',
+        'NAME': 'openwisp2',
+        'HOST': 'localhost',
+        'PORT': '8086',
+        'OPTIONS': {
+            'udp_writes': False,
+            'udp_port': 8089,
+        }
+    }
+
+The following table describes all keys available in ``TIMESERIES_DATABASE``
+setting:
+
++---------------+--------------------------------------------------------------------------------------+
+| **Key**       | ``Description``                                                                      |
++---------------+--------------------------------------------------------------------------------------+
+| ``BACKEND``   | The timeseries database backend to use. You can select one of the backends           |
+|               | located in ``openwisp_monitoring.db.backends``                                       |
++---------------+--------------------------------------------------------------------------------------+
+| ``USER``      | User for logging into the timeseries database                                        |
++---------------+--------------------------------------------------------------------------------------+
+| ``PASSWORD``  | Password of the timeseries database user                                             |
++---------------+--------------------------------------------------------------------------------------+
+| ``NAME``      | Name of the timeseries database                                                      |
++---------------+--------------------------------------------------------------------------------------+
+| ``HOST``      | IP address/hostname of machine where the timeseries database is running              |
++---------------+--------------------------------------------------------------------------------------+
+| ``PORT``      | Port for connecting to the timeseries database                                       |
++---------------+--------------------------------------------------------------------------------------+
+| ``OPTIONS``   | These settings depends on the timeseries backend:                                    |
+|               |                                                                                      |
+|               | +-----------------+----------------------------------------------------------------+ |
+|               | | ``udp_writes``  | Whether to use UDP for writing data to the timeseries database | |
+|               | +-----------------+----------------------------------------------------------------+ |
+|               | | ``udp_port``    | Timeseries database port for writing data using UDP            | |
+|               | +-----------------+----------------------------------------------------------------+ |
++---------------+--------------------------------------------------------------------------------------+
+
+**Note:** UDP packets can have a maximum size of 64KB. When using UDP for writing timeseries
+data, if the size of the data exceeds 64KB, TCP mode will be used instead.
+
+**Note:** If you want to use the ``openwisp_monitoring.db.backends.influxdb`` backend
+with UDP writes enabled, then you need to enable two different ports for UDP
+(each for different retention policy) in your InfluxDB configuration. The UDP configuration
+section of your InfluxDB should look similar to the following:
+
+.. code-block:: text
+
+    # For writing data with the "default" retention policy
+    [[udp]]
+    enabled = true
+    bind-address = "127.0.0.1:8089"
+    database = "openwisp2"
+
+    # For writing data with the "short" retention policy
+    [[udp]]
+    enabled = true
+    bind-address = "127.0.0.1:8090"
+    database = "openwisp2"
+    retention-policy = 'short'
+
+If you are using `ansible-openwisp2 <https://github.com/openwisp/ansible-openwisp2>`_
+for deploying OpenWISP, you can set the ``influxdb_udp_mode`` ansible variable to ``true``
+in your playbook, this will make the ansible role automatically configure the InfluxDB UDP listeners.
+You can refer to the `ansible-ow-influxdb's <https://github.com/openwisp/ansible-ow-influxdb#role-variables>`_
+(a dependency of ansible-openwisp2) documentation to learn more.
+
+``OPENWISP_MONITORING_DEFAULT_RETENTION_POLICY``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+--------------------------+
+| **type**:    | ``str``                  |
++--------------+--------------------------+
+| **default**: | ``26280h0m0s`` (3 years) |
++--------------+--------------------------+
+
+The default retention policy that applies to the timeseries data.
 
 ``OPENWISP_MONITORING_SHORT_RETENTION_POLICY``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1001,6 +1576,103 @@ validating custom parameters of a ``Check`` object.
 This setting allows you to choose whether `config_applied <#configuration-applied>`_ checks should be
 created automatically for newly registered devices. It's enabled by default.
 
+``OPENWISP_MONITORING_CONFIG_CHECK_INTERVAL``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``int``     |
++--------------+-------------+
+| **default**: | ``5``       |
++--------------+-------------+
+
+This setting allows you to configure the config check interval used by
+`config_applied <#configuration-applied>`_. By default it is set to 5 minutes.
+
+``OPENWISP_MONITORING_AUTO_IPERF3``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``bool``    |
++--------------+-------------+
+| **default**: | ``False``   |
++--------------+-------------+
+
+This setting allows you to choose whether `iperf3 <#iperf3-1>`_ checks should be
+created automatically for newly registered devices. It's disabled by default.
+
+``OPENWISP_MONITORING_IPERF3_CHECK_CONFIG``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------+
+| **type**:    | ``dict``    |
++--------------+-------------+
+| **default**: | ``{}``      |
++--------------+-------------+
+
+This setting allows to override the default iperf3 check configuration defined in
+``openwisp_monitoring.check.classes.iperf3.DEFAULT_IPERF3_CHECK_CONFIG``.
+
+For example, you can change the values of `supported iperf3 check parameters <#iperf3-check-parameters>`_.
+
+.. code-block:: python
+
+   OPENWISP_MONITORING_IPERF3_CHECK_CONFIG = {
+       # 'org_pk' : {'host' : [], 'client_options' : {}}
+       'a9734710-db30-46b0-a2fc-01f01046fe4f': {
+           # Some public iperf3 servers
+           # https://iperf.fr/iperf-servers.php#public-servers
+           'host': ['iperf3.openwisp.io', '2001:db8::1', '192.168.5.2'],
+           'client_options': {
+               'port': 6209,
+               # Number of parallel client streams to run
+               # note that iperf3 is single threaded
+               # so if you are CPU bound this will not
+               # yield higher throughput
+               'parallel': 5,
+               # Set the connect_timeout (in milliseconds) for establishing
+               # the initial control connection to the server, the lower the value
+               # the faster the down iperf3 server will be detected (ex. 1000 ms (1 sec))
+               'connect_timeout': 1000,
+               # Window size / socket buffer size
+               'window': '300K',
+               # Only one reverse condition can be chosen,
+               # reverse or bidirectional
+               'reverse': True,
+               # Only one test end condition can be chosen,
+               # time, bytes or blockcount
+               'blockcount': '1K',
+               'udp': {'bitrate': '50M', 'length': '1460K'},
+               'tcp': {'bitrate': '20M', 'length': '256K'},
+           },
+       }
+   }
+
+``OPENWISP_MONITORING_IPERF3_CHECK_DELETE_RSA_KEY``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------------------------+
+| **type**:    | ``bool``                      |
++--------------+-------------------------------+
+| **default**: | ``True``                      |
++--------------+-------------------------------+
+
+This setting allows you to set whether
+`iperf3 check RSA public key <#configure-iperf3-check-for-authentication>`_
+will be deleted after successful completion of the check or not.
+
+``OPENWISP_MONITORING_IPERF3_CHECK_LOCK_EXPIRE``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+-------------------------------+
+| **type**:    | ``int``                       |
++--------------+-------------------------------+
+| **default**: | ``600``                       |
++--------------+-------------------------------+
+
+This setting allows you to set a cache lock expiration time for the iperf3 check when
+running on multiple servers. Make sure it is always greater than the total iperf3 check
+time, i.e. greater than the TCP + UDP test time. By default, it is set to **600 seconds (10 mins)**.
+
 ``OPENWISP_MONITORING_AUTO_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1078,6 +1750,12 @@ If the devices are connecting to your OpenWISP instance using a shared layer2
 network, hence the OpenWSP server can reach the devices using the ``last_ip``
 field, you can set this to ``False``.
 
+**Note:** If this setting is not configured, it will fallback to the value of
+`OPENWISP_CONTROLLER_MANAGEMENT_IP_ONLY setting
+<https://github.com/openwisp/openwisp-controller#openwisp_controller_management_ip_only>`_.
+If ``OPENWISP_CONTROLLER_MANAGEMENT_IP_ONLY`` also not configured,
+then it will fallback to ``True``.
+
 ``OPENWISP_MONITORING_DEVICE_RECOVERY_DETECTION``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1145,6 +1823,10 @@ This feature makes the monitoring system resilient to temporary outages and help
 For more information regarding these settings, consult the `celery documentation
 regarding automatic retries for known errors
 <https://docs.celeryproject.org/en/stable/userguide/tasks.html#automatic-retry-for-known-exceptions>`_.
+
+**Note:** The retry mechanism does not work when using ``UDP`` for writing
+data to the timeseries database. It is due to the nature of ``UDP`` protocol
+which does not acknowledge receipt of data packets.
 
 ``OPENWISP_MONITORING_TIMESERIES_RETRY_OPTIONS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1358,26 +2040,16 @@ This setting allows to define additional charts or to override
 the default chart configuration defined in
 ``openwisp_monitoring.monitoring.configuration.DEFAULT_CHARTS``.
 
-For example, if you want to change the traffic chart to show
-MB (megabytes) instead of GB (Gigabytes) you can use:
+In the following example, we modify the description of the traffic chart:
 
 .. code-block:: python
 
     OPENWISP_MONITORING_CHARTS = {
         'traffic': {
-            'unit': ' MB',
             'description': (
                 'Network traffic, download and upload, measured on '
-                'the interface "{metric.key}", measured in MB.'
+                'the interface "{metric.key}", custom message here.'
             ),
-            'query': {
-                'influxdb': (
-                    "SELECT SUM(tx_bytes) / 1000000 AS upload, "
-                    "SUM(rx_bytes) / 1000000 AS download FROM {key} "
-                    "WHERE time >= '{time}' AND content_type = '{content_type}' "
-                    "AND object_id = '{object_id}' GROUP BY time(1d)"
-                )
-            },
         }
     }
 
@@ -1412,7 +2084,7 @@ In case you just want to change the colors used in a chart here's how to do it:
 
     OPENWISP_MONITORING_CHARTS = {
         'traffic': {
-            'colors': ['#000000', '#cccccc']
+            'colors': ['#000000', '#cccccc', '#111111']
         }
     }
 
@@ -1591,6 +2263,10 @@ two notification types (named ``ping_recovery``, ``ping_problem``) as defined in
 The ``AlertSettings`` of ``ping`` metric will by default use ``threshold`` and ``tolerance``
 defined in the ``alert_settings`` key.
 You can always override them and define your own custom values via the *admin*.
+
+You can also use the ``alert_field`` key in metric configuration
+which allows ``AlertSettings`` to check the ``threshold`` on
+``alert_field`` instead of the default ``field_name`` key.
 
 **Note**: It will raise ``ImproperlyConfigured`` exception if a metric configuration
 is already registered with same name (not to be confused with verbose_name).
@@ -1771,46 +2447,93 @@ Retrieve general monitoring charts
     GET /api/v1/monitoring/dashboard/
 
 This API endpoint is used to show dashboard monitoring charts. It supports
-multi-tenancy and allows filtering monitoring data with ``organization_slug``,
+multi-tenancy and allows filtering monitoring data by ``organization_slug``,
 ``location_id`` and ``floorplan_id`` e.g.:
 
 .. code-block:: text
 
     GET /api/v1/monitoring/dashboard/?organization_slug=<org1-slug>,<org2-slug>&location_id=<location1-id>,<location2-id>&floorplan_id=<floorplan1-id>,<floorplan2-id>
 
+- When retrieving chart data, the ``time`` parameter allows to specify
+  the time frame, eg:
+
+  - ``1d``: returns data of the last day
+  - ``3d``: returns data of the last 3 days
+  - ``7d``: returns data of the last 7 days
+  - ``30d``: returns data of the last 30 days
+  - ``365d``: returns data of the last 365 days
+
+- In alternative to ``time`` it is possible to request chart data for a custom
+  date range by using the ``start`` and ``end`` parameters, eg:
+
+.. code-block:: text
+
+    GET /api/v1/monitoring/dashboard/?start={start_datetime}&end={end_datetime}
+
+**Note**: ``start`` and  ``end`` parameters should be in the format
+``YYYY-MM-DD H:M:S``, otherwise 400 Bad Response will be returned.
+
 Retrieve device charts and device status data
 #############################################
 
 .. code-block:: text
 
-    GET /api/v1/monitoring/device/{pk}/?key={key}&status=true
+    GET /api/v1/monitoring/device/{pk}/?key={key}&status=true&time={timeframe}
 
-The format used for Device Status is inspired by `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_.
+The format used for Device Status is inspired by
+`NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_.
 
-**Note**: If the request is made without ``?status=true`` then only device charts
-data would be returned.
+**Notes**:
+
+- If the request is made without ``?status=true`` the response will
+  contain only charts data and will not include any device status information
+  (current load average, ARP table, DCHP leases, etc.).
+- When retrieving chart data, the ``time`` parameter allows to specify
+  the time frame, eg:
+
+  - ``1d``: returns data of the last day
+  - ``3d``: returns data of the last 3 days
+  - ``7d``: returns data of the last 7 days
+  - ``30d``: returns data of the last 30 days
+  - ``365d``: returns data of the last 365 days
+
+- In alternative to ``time`` it is possible to request chart data for a custom
+  date range by using the ``start`` and ``end`` parameters, eg:
+
+.. code-block:: text
+
+    GET /api/v1/monitoring/device/{pk}/?key={key}&status=true&start={start_datetime}&end={end_datetime}
+
+**Note**: ``start`` and  ``end`` parameters must be in the format
+``YYYY-MM-DD H:M:S``, otherwise 400 Bad Response will be returned.
 
 Collect device metrics and status
 #################################
 
 .. code-block:: text
 
-    POST /api/v1/monitoring/device/{pk}/?key={key}&time={time}
+    POST /api/v1/monitoring/device/{pk}/?key={key}&time={datetime}
 
 If data is latest then an additional parameter current can also be passed. For e.g.:
 
 .. code-block:: text
 
-    POST /api/v1/monitoring/device/{pk}/?key={key}&time={time}&current=true
+    POST /api/v1/monitoring/device/{pk}/?key={key}&time={datetime}&current=true
 
-The format used for Device Status is inspired by `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_.
+The format used for Device Status is inspired by
+`NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_.
 
-**Note**: Device data will be saved with in timeseries database with the specified ``time``,
-this should be in the format ``%d-%m-%Y_%H:%M:%S.%f``, otherwise 400 Bad Response will be returned.
+**Note**: the device data will be saved in the timeseries database using
+the date time specified ``time``, this should be in the format
+``%d-%m-%Y_%H:%M:%S.%f``, otherwise 400 Bad Response will be returned.
 
-If the request is made without passing the ``time`` argument, the server local time will be used.
+If the request is made without passing the ``time`` argument,
+the server local time will be used.
 
-The ``time`` parameter was added to support `resilient collection and sending of data by the OpenWISP Monitoring Agent <https://github.com/openwisp/openwrt-openwisp-monitoring#collecting-vs-sending>`_.
+The ``time`` parameter was added to support `resilient collection
+and sending of data by the OpenWISP Monitoring Agent
+<https://github.com/openwisp/openwrt-openwisp-monitoring#collecting-vs-sending>`_,
+this feature allows sending data collected while the device is offline.
 
 List wifi session
 #################

@@ -106,29 +106,6 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.create_test_data()
         self.assertEqual(Notification.objects.count(), 0)
 
-    def test_cpu_metric_threshold_crossed(self):
-        admin = self._create_admin()
-        org = self._create_org()
-        device = self._create_device(organization=org)
-        # creates metric and alert settings
-        data = self._data()
-        data['resources']['load'] = [0.99, 0.99, 0.99]
-        response = self._post_data(device.id, device.key, data)
-        self.assertEqual(response.status_code, 200)
-        # retrieve created metric
-        metric = Metric.objects.get(name='CPU usage')
-        # simplify test by setting tolerance to 0
-        metric.alertsettings.custom_tolerance = 0
-        metric.alertsettings.save()
-        # trigger alert
-        metric.write(99.0)
-        self.assertEqual(Notification.objects.count(), 1)
-        n = Notification.objects.first()
-        self.assertEqual(n.recipient, admin)
-        self.assertEqual(n.actor, metric)
-        self.assertEqual(n.action_object, metric.alertsettings)
-        self.assertEqual(n.level, 'warning')
-
     def test_general_check_threshold_crossed_for_long_time(self):
         """
         this is going to be the most realistic scenario:
@@ -150,10 +127,15 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 0)
 
+        # When using UDP for writing data to the timeseries, reading the
+        # metric from the database provides a time delay that allows the
+        # timeseries database to process the transaction.
+        self._read_metric(m)
         with self.subTest('Test no notification is generated when check=False'):
             m.write(91, time=ten_minutes_ago, check=False)
             self.assertEqual(Notification.objects.count(), 0)
 
+        self._read_metric(m)
         with self.subTest('Test notification for metric with current timestamp'):
             m.write(92)
             m.refresh_from_db()
@@ -166,6 +148,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(n.action_object, m.alertsettings)
             self.assertEqual(n.level, 'warning')
 
+        self._read_metric(m)
         with self.subTest('Test no recovery notification yet (tolerance not passed)'):
             m.write(50)
             m.refresh_from_db()
@@ -173,6 +156,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
 
+        self._read_metric(m)
         with self.subTest('Tolerance still not passed, not expecting a recovery yet'):
             with freeze_time(start_time + timedelta(minutes=2)):
                 m.write(51)
@@ -181,6 +165,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
 
+        self._read_metric(m)
         with self.subTest('Test recovery notification after tolerance is passed'):
             with freeze_time(ten_minutes_after):
                 m.write(50)
@@ -285,11 +270,11 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         alert_s = self._create_alert_settings(
             metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=1
         )
-        om.write(89, time=ten_minutes_ago)
+        self._write_metric(om, 89, time=ten_minutes_ago)
         self.assertEqual(Notification.objects.count(), 0)
-        om.write(91, time=ten_minutes_ago, check=False)
+        self._write_metric(om, 91, time=ten_minutes_ago, check=False)
         self.assertEqual(Notification.objects.count(), 0)
-        om.write(92)
+        self._write_metric(om, 92)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, False)
         self.assertEqual(om.is_healthy_tolerant, False)
@@ -301,20 +286,20 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(n.target, om.content_object)
         self.assertEqual(n.level, 'warning')
         # ensure double alarm not sent
-        om.write(95)
+        self._write_metric(om, 95)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, False)
         self.assertEqual(om.is_healthy_tolerant, False)
         self.assertEqual(Notification.objects.count(), 1)
         # value back to normal but tolerance not passed yet
-        om.write(60)
+        self._write_metric(om, 60)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, True)
         self.assertEqual(om.is_healthy_tolerant, False)
         self.assertEqual(Notification.objects.count(), 1)
         # tolerance passed
         with freeze_time(ten_minutes_after):
-            om.write(60)
+            self._write_metric(om, 60)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, True)
         self.assertEqual(om.is_healthy_tolerant, True)
@@ -327,7 +312,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(n.level, 'info')
         # ensure double alarm not sent
         with freeze_time(ten_minutes_after + timedelta(minutes=5)):
-            om.write(40)
+            self._write_metric(om, 40)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, True)
         self.assertEqual(om.is_healthy_tolerant, True)
@@ -425,6 +410,132 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(d.monitoring.status, 'problem')
         self.assertEqual(Notification.objects.count(), 0)
 
+    def test_alert_field(self):
+        admin = self._create_admin()
+
+        def _create_alert_field_test_env():
+            m = self._create_general_metric(configuration='test_alert_field')
+            self._create_alert_settings(
+                metric=m, custom_operator='>', custom_threshold=30, custom_tolerance=0
+            )
+            return m
+
+        with self.subTest('Test notification for metric without related field'):
+            m = _create_alert_field_test_env()
+            with self.assertRaises(ValueError) as err:
+                m.write(1)
+            self.assertEqual(
+                str(err.exception),
+                'write() missing keyword argument: "extra_values" required for alert on related field',
+            )
+            m.refresh_from_db()
+            self.assertEqual(m.is_healthy, True)
+            self.assertEqual(m.is_healthy_tolerant, True)
+            self.assertEqual(Notification.objects.count(), 0)
+
+        with self.subTest('Test notification for metric on different related field'):
+            m = _create_alert_field_test_env()
+            with self.assertRaises(ValueError) as err:
+                m.write(10, extra_values={'test_related_3': 40})
+            self.assertEqual(
+                str(err.exception),
+                '"test_related_3" is not defined for alert_field in metric configuration',
+            )
+            m.refresh_from_db()
+            self.assertEqual(m.is_healthy, True)
+            self.assertEqual(m.is_healthy_tolerant, True)
+            self.assertEqual(Notification.objects.count(), 0)
+
+        with self.subTest('Test notification for metric with multiple related fields'):
+            m = _create_alert_field_test_env()
+            m.write(10, extra_values={'test_related_2': 40, 'test_related_3': 20})
+            m.refresh_from_db()
+            self.assertEqual(m.is_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
+            self.assertEqual(Notification.objects.count(), 1)
+            n = notification_queryset.first()
+            self.assertEqual(n.recipient, admin)
+            self.assertEqual(n.actor, m)
+            self.assertEqual(n.action_object, m.alertsettings)
+            self.assertEqual(n.level, 'warning')
+        Notification.objects.all().delete()
+
+        with self.subTest(
+            'Test notification for metric exceeding related field alert settings'
+        ):
+            m = _create_alert_field_test_env()
+            m.write(10, extra_values={'test_related_2': 40})
+            m.refresh_from_db()
+            self.assertEqual(m.is_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
+            self.assertEqual(Notification.objects.count(), 1)
+            n = notification_queryset.first()
+            self.assertEqual(n.recipient, admin)
+            self.assertEqual(n.actor, m)
+            self.assertEqual(n.action_object, m.alertsettings)
+            self.assertEqual(n.level, 'warning')
+        Notification.objects.all().delete()
+
+        with self.subTest(
+            'Test notification for metric falling behind related field alert settings'
+        ):
+            m = _create_alert_field_test_env()
+            m.write(30, extra_values={'test_related_2': 25})
+            m.refresh_from_db()
+            self.assertEqual(m.is_healthy, True)
+            self.assertEqual(m.is_healthy_tolerant, True)
+            self.assertEqual(Notification.objects.count(), 0)
+
+        with self.subTest(
+            'Test no double alarm for metric exceeding related field alert settings'
+        ):
+            m = _create_alert_field_test_env()
+            m.write(20, extra_values={'test_related_2': 35})
+            m.refresh_from_db()
+            self.assertEqual(m.is_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
+            self.assertEqual(Notification.objects.count(), 1)
+            n = notification_queryset.first()
+            Notification.objects.all().delete()
+            # check for double alarm
+            m.write(20, extra_values={'test_related_2': 40})
+            m.refresh_from_db()
+            self.assertEqual(m.is_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, False)
+            self.assertEqual(Notification.objects.count(), 0)
+
+    def test_general_check_threshold_with_alert_field_crossed_deferred(self):
+        admin = self._create_admin()
+        m = self._create_general_metric(configuration='test_alert_field')
+        self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=30, custom_tolerance=1
+        )
+        m.write(10, time=ten_minutes_ago, extra_values={'test_related_2': 35})
+        m.refresh_from_db()
+        self.assertEqual(m.is_healthy, False)
+        self.assertEqual(m.is_healthy_tolerant, False)
+        self.assertEqual(Notification.objects.count(), 1)
+        n = notification_queryset.first()
+        self.assertEqual(n.recipient, admin)
+        self.assertEqual(n.actor, m)
+        self.assertEqual(n.action_object, m.alertsettings)
+        self.assertEqual(n.level, 'warning')
+
+    def test_general_check_threshold_with_alert_field_deferred_not_crossed(self):
+        self._create_admin()
+        m = self._create_general_metric(configuration='test_alert_field')
+        self._create_alert_settings(
+            metric=m, custom_operator='>', custom_threshold=30, custom_tolerance=1
+        )
+        m.write(10, extra_values={'test_related_2': 32})
+        self.assertEqual(m.is_healthy, True)
+        self.assertEqual(m.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
+        m.write(20, extra_values={'test_related_2': 35})
+        self.assertEqual(m.is_healthy, True)
+        self.assertEqual(m.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
+
 
 class TestTransactionMonitoringNotifications(DeviceMonitoringTransactionTestcase):
     device_model = Device
@@ -437,6 +548,29 @@ class TestTransactionMonitoringNotifications(DeviceMonitoringTransactionTestcase
         self.assertEqual(notification.action_object, metric.alertsettings)
         self.assertEqual(notification.level, 'warning')
         self.assertEqual(notification.verb, 'is not reachable')
+
+    def test_cpu_metric_threshold_crossed(self):
+        admin = self._create_admin()
+        org = self._create_org()
+        device = self._create_device(organization=org)
+        # creates metric and alert settings
+        data = self._data()
+        data['resources']['load'] = [0.99, 0.99, 0.99]
+        response = self._post_data(device.id, device.key, data)
+        self.assertEqual(response.status_code, 200)
+        # retrieve created metric
+        metric = Metric.objects.get(name='CPU usage')
+        # simplify test by setting tolerance to 0
+        metric.alertsettings.custom_tolerance = 0
+        metric.alertsettings.save()
+        # trigger alert
+        metric.write(99.0)
+        self.assertEqual(Notification.objects.count(), 1)
+        n = Notification.objects.first()
+        self.assertEqual(n.recipient, admin)
+        self.assertEqual(n.actor, metric)
+        self.assertEqual(n.action_object, metric.alertsettings)
+        self.assertEqual(n.level, 'warning')
 
     def test_multiple_notifications(self):
         testorg = self._create_org()

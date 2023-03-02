@@ -9,7 +9,11 @@ from django.utils.translation import gettext_lazy as _
 from jsonfield import JSONField
 
 from openwisp_monitoring.check import settings as app_settings
-from openwisp_monitoring.check.tasks import auto_create_config_check, auto_create_ping
+from openwisp_monitoring.check.tasks import (
+    auto_create_config_check,
+    auto_create_iperf3_check,
+    auto_create_ping,
+)
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...utils import transaction_on_commit
@@ -50,6 +54,13 @@ class AbstractCheck(TimeStampedEditableModel):
         abstract = True
         unique_together = ('name', 'object_id', 'content_type')
 
+        permissions = (
+            ('add_check_inline', 'Can add check inline'),
+            ('change_check_inline', 'Can change check inline'),
+            ('delete_check_inline', 'Can delete check inline'),
+            ('view_check_inline', 'Can view check inline'),
+        )
+
     def __str__(self):
         if not self.object_id or not self.content_type:
             return self.name
@@ -59,6 +70,14 @@ class AbstractCheck(TimeStampedEditableModel):
 
     def clean(self):
         self.check_instance.validate()
+
+    def full_clean(self, *args, **kwargs):
+        # The name of the check will be the same as the
+        # 'check_type' chosen by the user when the
+        # name field is empty (useful for CheckInline)
+        if not self.name:
+            self.name = self.get_check_type_display()
+        return super().full_clean(*args, **kwargs)
 
     @cached_property
     def check_class(self):
@@ -80,6 +99,11 @@ class AbstractCheck(TimeStampedEditableModel):
         initiates check instance and calls its check method
         """
         return self.check_instance.check(store=True)
+
+    def perform_check_delayed(self, duration=0):
+        from ..tasks import perform_check
+
+        perform_check.apply_async(args=[self.id], countdown=duration)
 
 
 def auto_ping_receiver(sender, instance, created, **kwargs):
@@ -111,6 +135,24 @@ def auto_config_check_receiver(sender, instance, created, **kwargs):
         return
     transaction_on_commit(
         lambda: auto_create_config_check.delay(
+            model=sender.__name__.lower(),
+            app_label=sender._meta.app_label,
+            object_id=str(instance.pk),
+        )
+    )
+
+
+def auto_iperf3_check_receiver(sender, instance, created, **kwargs):
+    """
+    Implements OPENWISP_MONITORING_AUTO_IPERF3
+    The creation step is executed in the background
+    """
+    # we need to skip this otherwise this task will be executed
+    # every time the configuration is requested via checksum
+    if not created:
+        return
+    transaction_on_commit(
+        lambda: auto_create_iperf3_check.delay(
             model=sender.__name__.lower(),
             app_label=sender._meta.app_label,
             object_id=str(instance.pk),

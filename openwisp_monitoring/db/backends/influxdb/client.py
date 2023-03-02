@@ -1,6 +1,7 @@
 import logging
 import operator
 import re
+import sys
 from collections import OrderedDict
 from datetime import datetime
 
@@ -11,6 +12,7 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
+from influxdb.line_protocol import make_lines
 
 from openwisp_monitoring.utils import retry
 
@@ -75,13 +77,45 @@ class DatabaseClient(object):
     @cached_property
     def db(self):
         """Returns an ``InfluxDBClient`` instance"""
-        return InfluxDBClient(
-            TIMESERIES_DB['HOST'],
-            TIMESERIES_DB['PORT'],
-            TIMESERIES_DB['USER'],
-            TIMESERIES_DB['PASSWORD'],
-            self.db_name,
-        )
+        return self.dbs['default']
+
+    @cached_property
+    def dbs(self):
+        dbs = {
+            'default': InfluxDBClient(
+                TIMESERIES_DB['HOST'],
+                TIMESERIES_DB['PORT'],
+                TIMESERIES_DB['USER'],
+                TIMESERIES_DB['PASSWORD'],
+                self.db_name,
+                use_udp=TIMESERIES_DB.get('OPTIONS', {}).get('udp_writes', False),
+                udp_port=TIMESERIES_DB.get('OPTIONS', {}).get('udp_port', 8089),
+            ),
+        }
+        if TIMESERIES_DB.get('OPTIONS', {}).get('udp_writes', False):
+            # When using UDP, InfluxDB allows only using one retention policy
+            # per port. Therefore, we need to have different instances of
+            # InfluxDBClient.
+            dbs['short'] = InfluxDBClient(
+                TIMESERIES_DB['HOST'],
+                TIMESERIES_DB['PORT'],
+                TIMESERIES_DB['USER'],
+                TIMESERIES_DB['PASSWORD'],
+                self.db_name,
+                use_udp=TIMESERIES_DB.get('OPTIONS', {}).get('udp_writes', False),
+                udp_port=TIMESERIES_DB.get('OPTIONS', {}).get('udp_port', 8089) + 1,
+            )
+            dbs['__all__'] = InfluxDBClient(
+                TIMESERIES_DB['HOST'],
+                TIMESERIES_DB['PORT'],
+                TIMESERIES_DB['USER'],
+                TIMESERIES_DB['PASSWORD'],
+                self.db_name,
+            )
+        else:
+            dbs['short'] = dbs['default']
+            dbs['__all__'] = dbs['default']
+        return dbs
 
     @retry
     def create_or_alter_retention_policy(self, name, duration):
@@ -110,19 +144,19 @@ class DatabaseClient(object):
             database=database,
         )
 
-    def write(self, name, values, **kwargs):
-        point = {'measurement': name, 'tags': kwargs.get('tags'), 'fields': values}
-        timestamp = kwargs.get('timestamp') or now()
-        if isinstance(timestamp, datetime):
-            timestamp = timestamp.isoformat(sep='T', timespec='microseconds')
-        point['time'] = timestamp
+    def _write(self, points, database, retention_policy):
+        db = self.dbs['short'] if retention_policy else self.dbs['default']
+        # If the size of data exceeds the limit of the UDP packet, then
+        # fallback to use TCP connection for writing data.
+        lines = make_lines({'points': points})
+        if sys.getsizeof(lines) > 65000:
+            db = self.dbs['__all__']
         try:
-            self.db.write(
-                {'points': [point]},
-                {
-                    'db': kwargs.get('database') or self.db_name,
-                    'rp': kwargs.get('retention_policy'),
-                },
+            db.write_points(
+                points=lines.split('\n')[:-1],
+                database=database,
+                retention_policy=retention_policy,
+                protocol='line',
             )
         except Exception as exception:
             logger.warning(f'got exception while writing to tsdb: {exception}')
@@ -135,6 +169,52 @@ class DatabaseClient(object):
                 ):
                     return
             raise TimeseriesWriteException
+
+    def _get_timestamp(self, timestamp=None):
+        timestamp = timestamp or now()
+        if isinstance(timestamp, datetime):
+            return timestamp.isoformat(sep='T', timespec='microseconds')
+        return timestamp
+
+    def write(self, name, values, **kwargs):
+        timestamp = self._get_timestamp(timestamp=kwargs.get('timestamp'))
+        point = {
+            'measurement': name,
+            'tags': kwargs.get('tags'),
+            'fields': values,
+            'time': timestamp,
+        }
+        self._write(
+            points=[point],
+            database=kwargs.get('database') or self.db_name,
+            retention_policy=kwargs.get('retention_policy'),
+        )
+
+    def batch_write(self, metric_data):
+        data_points = {}
+        for data in metric_data:
+            org = data.get('database') or self.db_name
+            retention_policy = data.get('retention_policy')
+            if org not in data_points:
+                data_points[org] = {}
+            if retention_policy not in data_points[org]:
+                data_points[org][retention_policy] = []
+            timestamp = self._get_timestamp(timestamp=data.get('timestamp'))
+            data_points[org][retention_policy].append(
+                {
+                    'measurement': data.get('name'),
+                    'tags': data.get('tags'),
+                    'fields': data.get('values'),
+                    'time': timestamp,
+                }
+            )
+        for database in data_points.keys():
+            for rp in data_points[database].keys():
+                self._write(
+                    points=data_points[database][rp],
+                    database=database,
+                    retention_policy=rp,
+                )
 
     def read(self, key, fields, tags, **kwargs):
         extra_fields = kwargs.get('extra_fields')
@@ -212,6 +292,10 @@ class DatabaseClient(object):
         return False
 
     def _clean_params(self, params):
+        if params.get('end_date'):
+            params['end_date'] = f'AND time <= \'{params["end_date"]}\''
+        else:
+            params['end_date'] = ''
         for key, value in params.items():
             if isinstance(value, list) or isinstance(value, tuple):
                 params[key] = self._get_where_query(key, value)

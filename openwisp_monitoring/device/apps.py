@@ -20,11 +20,16 @@ from openwisp_utils.admin_theme import (
 from openwisp_utils.admin_theme.menu import register_menu_subitem
 
 from ..check import settings as check_settings
+from ..monitoring.signals import threshold_crossed
 from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from ..utils import transaction_on_commit
 from . import settings as app_settings
 from .signals import device_metrics_received, health_status_changed
-from .utils import get_device_cache_key, manage_short_retention_policy
+from .utils import (
+    get_device_cache_key,
+    manage_default_retention_policy,
+    manage_short_retention_policy,
+)
 
 
 class DeviceMonitoringConfig(AppConfig):
@@ -33,6 +38,7 @@ class DeviceMonitoringConfig(AppConfig):
     verbose_name = _('Device Monitoring')
 
     def ready(self):
+        manage_default_retention_policy()
         manage_short_retention_policy()
         self.connect_is_working_changed()
         self.connect_device_signals()
@@ -175,11 +181,11 @@ class DeviceMonitoringConfig(AppConfig):
         if not app_settings.WIFI_SESSIONS_ENABLED:
             return
 
-        DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+        Metric = load_model('monitoring', 'Metric')
         WifiSession = load_model('device_monitoring', 'WifiSession')
-        health_status_changed.connect(
+        threshold_crossed.connect(
             WifiSession.offline_device_close_session,
-            sender=DeviceMonitoring,
+            sender=Metric,
             dispatch_uid='offline_device_close_session',
         )
 
@@ -254,7 +260,7 @@ class DeviceMonitoringConfig(AppConfig):
                         'monitoring/js/device-map.js',
                         'leaflet/leaflet.js',
                         'leaflet/leaflet.extras.js',
-                        'monitoring/js/leaflet.fullscreen.min.js',
+                        'monitoring/js/lib/leaflet.fullscreen.min.js',
                     ),
                 },
                 extra_config={
@@ -263,41 +269,7 @@ class DeviceMonitoringConfig(AppConfig):
                 },
             )
 
-        register_dashboard_template(
-            position=55,
-            config={
-                'template': 'monitoring/paritals/chart.html',
-                'css': (
-                    'monitoring/css/percircle.min.css',
-                    'monitoring/css/chart.css',
-                    'monitoring/css/dashboard-chart.css',
-                ),
-                'js': (
-                    'monitoring/js/percircle.min.js',
-                    'monitoring/js/chart.js',
-                    'monitoring/js/chart-utils.js',
-                    'monitoring/js/dashboard-chart.js',
-                ),
-            },
-            extra_config={
-                'api_url': reverse_lazy('monitoring_general:api_dashboard_timeseries'),
-                'default_time': Chart.DEFAULT_TIME,
-                'chart_quick_links': {
-                    'General WiFi Clients': {
-                        'url': reverse_lazy(
-                            'admin:{app_label}_{model_name}_changelist'.format(
-                                app_label=WifiSession._meta.app_label,
-                                model_name=WifiSession._meta.model_name,
-                            )
-                        ),
-                        'label': _('Open WiFi session list'),
-                        'title': _('View full history of WiFi Sessions'),
-                    }
-                },
-            },
-            after_charts=True,
-        )
-
+        general_wifi_client_quick_links = {}
         if app_settings.WIFI_SESSIONS_ENABLED:
             register_dashboard_chart(
                 position=13,
@@ -319,6 +291,7 @@ class DeviceMonitoringConfig(AppConfig):
                         'aggregate': {
                             'active__sum': Sum('active'),
                         },
+                        'organization_field': 'device__organization_id',
                     },
                     'filters': {
                         'key': 'stop_time__isnull',
@@ -343,6 +316,46 @@ class DeviceMonitoringConfig(AppConfig):
                     },
                 },
             )
+
+            general_wifi_client_quick_links = {
+                'General WiFi Clients': {
+                    'url': reverse_lazy(
+                        'admin:{app_label}_{model_name}_changelist'.format(
+                            app_label=WifiSession._meta.app_label,
+                            model_name=WifiSession._meta.model_name,
+                        )
+                    ),
+                    'label': _('Open WiFi session list'),
+                    'title': _('View full history of WiFi Sessions'),
+                }
+            }
+
+        register_dashboard_template(
+            position=55,
+            config={
+                'template': 'monitoring/paritals/chart.html',
+                'css': (
+                    'monitoring/css/daterangepicker.css',
+                    'monitoring/css/percircle.min.css',
+                    'monitoring/css/chart.css',
+                    'monitoring/css/dashboard-chart.css',
+                ),
+                'js': (
+                    'monitoring/js/lib/moment.min.js',
+                    'monitoring/js/lib/daterangepicker.min.js',
+                    'monitoring/js/lib/percircle.min.js',
+                    'monitoring/js/chart.js',
+                    'monitoring/js/chart-utils.js',
+                    'monitoring/js/dashboard-chart.js',
+                ),
+            },
+            extra_config={
+                'api_url': reverse_lazy('monitoring_general:api_dashboard_timeseries'),
+                'default_time': Chart.DEFAULT_TIME,
+                'chart_quick_links': general_wifi_client_quick_links,
+            },
+            after_charts=True,
+        )
 
     def register_menu_groups(self):
         if app_settings.WIFI_SESSIONS_ENABLED:

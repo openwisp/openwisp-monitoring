@@ -6,6 +6,42 @@ Version 1.1.0 [unreleased]
 
 WIP
 
+Version 1.0.3 [2022-12-29]
+--------------------------
+
+Bugfixes
+~~~~~~~~
+
+- Fixed data collection for missing mobile signal:
+  Skip writing mobile signal metric if mobile signal
+  info is missing.
+- Fixed device health status changing to ``problem``
+  when the configuration status changes to ``modified``.
+
+Version 1.0.2 [2022-08-04]
+--------------------------
+
+Bugfixes
+~~~~~~~~
+
+- Fixed migrations which create checks for existing devices;
+  this problem was happening to OpenWISP instances which were
+  deployed without OpenWISP Monitoring and then enabled
+  the monitoring features
+
+Version 1.0.1 [2022-07-01]
+--------------------------
+
+Bugfixes
+~~~~~~~~
+
+- Removed hardcoded static URLs which created
+  issues when static files are served using an
+  external service (e.g. S3 storage buckets)
+- Fixed `"migrate_timeseries" command stalling
+  when measurements exceeds retention policy
+  <https://github.com/openwisp/openwisp-monitoring/issues/401>`_
+
 Version 1.0.0 [2022-05-05]
 --------------------------
 

@@ -1,6 +1,7 @@
 from copy import deepcopy
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.forms import generic_inlineformset_factory
 from django.test import TestCase
 from django.urls import reverse
@@ -19,6 +20,7 @@ from . import DeviceMonitoringTestCase, TestWifiClientSessionMixin
 
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
+AlertSettings = load_model('monitoring', 'AlertSettings')
 DeviceData = load_model('device_monitoring', 'DeviceData')
 WifiClient = load_model('device_monitoring', 'WifiClient')
 WifiSession = load_model('device_monitoring', 'WifiSession')
@@ -28,6 +30,9 @@ Check = load_model('check', 'Check')
 Device = load_model('config', 'Device')
 DeviceLocation = load_model('geo', 'DeviceLocation')
 Location = load_model('geo', 'Location')
+# model_name changes if swapped
+check_model_name = get_model_name('check', 'Check').lower().replace('.', '-')
+metric_model_name = get_model_name('monitoring', 'Metric').lower().replace('.', '-')
 
 
 class TestAdmin(
@@ -40,6 +45,38 @@ class TestAdmin(
     resources_fields = TestImportExportMixin.resource_fields
     resources_fields.append('monitoring__status')
     app_label = 'config'
+    _device_params = {
+        'group': '',
+        'management_ip': '',
+        'model': '',
+        'os': '',
+        'system': '',
+        'notes': '',
+        'config-TOTAL_FORMS': '0',
+        'config-INITIAL_FORMS': '0',
+        'config-MIN_NUM_FORMS': '0',
+        'config-MAX_NUM_FORMS': '1',
+        # devicelocation
+        'devicelocation-TOTAL_FORMS': '0',
+        'devicelocation-INITIAL_FORMS': '0',
+        'devicelocation-MIN_NUM_FORMS': '0',
+        'devicelocation-MAX_NUM_FORMS': '1',
+        # deviceconnection
+        'deviceconnection_set-TOTAL_FORMS': '0',
+        'deviceconnection_set-INITIAL_FORMS': '0',
+        'deviceconnection_set-MIN_NUM_FORMS': '0',
+        'deviceconnection_set-MAX_NUM_FORMS': '1000',
+        # command
+        'command_set-TOTAL_FORMS': '0',
+        'command_set-INITIAL_FORMS': '0',
+        'command_set-MIN_NUM_FORMS': '0',
+        'command_set-MAX_NUM_FORMS': '1000',
+        # check
+        f'{check_model_name}-content_type-object_id-TOTAL_FORMS': '0',
+        f'{check_model_name}-content_type-object_id-INITIAL_FORMS': '0',
+        f'{check_model_name}-content_type-object_id-MIN_NUM_FORMS': '0',
+        f'{check_model_name}-content_type-object_id-MAX_NUM_FORMS': '1000',
+    }
 
     def setUp(self):
         self._login_admin()
@@ -112,6 +149,31 @@ class TestAdmin(
         with self.subTest('Neighbor IP is shown'):
             self.assertContains(r, 'fe80::9683:c4ff:fe02:c2bf')
 
+    def test_status_data_contains_wifi_version(self):
+        data = self._data()
+        d = self._create_device(organization=self._create_org())
+        url = reverse('admin:config_device_change', args=[d.pk])
+        self._post_data(d.id, d.key, data)
+        response = self.client.get(url)
+        self.assertContains(
+            response,
+            """
+            <div class="readonly">
+                WiFi 4 (802.11n): HT20
+            </div>
+            """,
+            html=True,
+        )
+        self.assertContains(
+            response,
+            """
+            <div class="readonly">
+                WiFi 5 (802.11ac): VHT80
+            </div>
+            """,
+            html=True,
+        )
+
     def test_no_device_data(self):
         d = self._create_device(organization=self._create_org())
         url = reverse('admin:config_device_change', args=[d.pk])
@@ -126,7 +188,6 @@ class TestAdmin(
         self.assertContains(r, '<h2>Configuration</h2>')
         self.assertContains(r, '<h2>Map</h2>')
         self.assertContains(r, '<h2>Credentials</h2>')
-        self.assertContains(r, '<h2>Checks</h2>')
 
     def test_remove_invalid_interface(self):
         d = self._create_device(organization=self._create_org())
@@ -181,7 +242,36 @@ class TestAdmin(
         r1 = self.client.get(url, follow=True)
         self.assertEqual(r1.status_code, 200)
         self.assertContains(r1, 'Bridge Members')
-        self.assertContains(r1, 'tap0, wlan0, wlan1')
+        self.assertContains(
+            r1,
+            """
+                <a class="bridge-member"
+                   href="javascript:scrollToElement('status-if-tap0')">
+                    tap0
+                </a>
+            """,
+            html=True,
+        )
+        self.assertContains(
+            r1,
+            """
+                <a class="bridge-member"
+                    href="javascript:scrollToElement('status-if-wlan0')">
+                     wlan0
+                </a>
+            """,
+            html=True,
+        )
+        self.assertContains(
+            r1,
+            """
+                <a class="bridge-member"
+                   href="javascript:scrollToElement('status-if-wlan1')">
+                    wlan1
+                </a>
+            """,
+            html=True,
+        )
         self.assertContains(r1, 'Spanning Tree Protocol')
 
     def test_interface_mobile_admin(self):
@@ -236,9 +326,7 @@ class TestAdmin(
         check_inline_formset = generic_inlineformset_factory(
             model=Check, form=CheckInline.form, formset=CheckInlineFormSet
         )
-        # model_name changes if swapped
-        model_name = get_model_name('check', 'Check').lower().replace('.', '-')
-        ct = f'{model_name}-content_type-object_id'
+        ct = f'{check_model_name}-content_type-object_id'
         data = {
             f'{ct}-TOTAL_FORMS': '1',
             f'{ct}-INITIAL_FORMS': '0',
@@ -316,6 +404,268 @@ class TestAdmin(
             self.assertNotContains(response, '<h2>WiFi Sessions</h2>')
             self.assertNotContains(response, 'monitoring-wifisession-changelist-url')
 
+    def test_check_alertsetting_inline(self):
+        test_user = self._create_user(
+            username='test', email='test@inline.com', is_staff=True
+        )
+        self._create_org_user(is_admin=True, user=test_user)
+        device = self._create_device()
+        ping_check = Check(
+            check_type=CHECK_CLASSES[0][0], content_object=device, params={}
+        )
+        ping_check.full_clean()
+        ping_check.save()
+        url = reverse('admin:config_device_change', args=[device.pk])
+        metric = self._create_general_metric(
+            name='', content_object=device, configuration='ping'
+        )
+        self._create_alert_settings(metric=metric)
+        self.client.force_login(test_user)
+
+        def _add_device_permissions(user):
+            test_user.user_permissions.clear()
+            self.assertEqual(user.user_permissions.count(), 0)
+            device_permissions = Permission.objects.filter(codename__endswith='device')
+            # Permissions required to access device page
+            test_user.user_permissions.add(*device_permissions),
+            self.assertEqual(user.user_permissions.count(), 4)
+
+        def _add_user_permissions(user, permission_query, expected_perm_count):
+            user.user_permissions.add(*Permission.objects.filter(**permission_query))
+            self.assertEqual(user.user_permissions.count(), expected_perm_count)
+
+        def _assert_check_inline_in_response(response):
+            self.assertContains(response, '<h2>Checks</h2>', html=True)
+            self.assertContains(response, 'check-content_type-object_id-0-is_active')
+            self.assertContains(response, 'check-content_type-object_id-0-check_type')
+            self.assertContains(response, 'check-content_type-object_id-0-DELETE')
+
+        def _assert_alertsettings_inline_in_response(response):
+            self.assertContains(response, '<h2>Alert Settings</h2>', html=True)
+            self.assertContains(response, 'form-row field-name')
+            self.assertContains(
+                response,
+                '<img src="/static/admin/img/icon-yes.svg" alt="True">',
+                html=True,
+            )
+            self.assertContains(response, '<h2>Advanced options</h2>', html=True)
+            self.assertContains(
+                response,
+                'metric-content_type-object_id-0-alertsettings-0-is_active',
+            )
+            self.assertContains(
+                response, '<option value="&lt;" selected>less than</option>'
+            )
+            self.assertContains(
+                response,
+                'metric-content_type-object_id-0-alertsettings-0-custom_threshold" value="1"',
+            )
+            self.assertContains(
+                response,
+                'metric-content_type-object_id-0-alertsettings-0-custom_tolerance" value="0"',
+            )
+
+        with self.subTest(
+            'Test when a user does not have permission to access models or inline'
+        ):
+            _add_device_permissions(test_user)
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertNotContains(response, '<h2>Checks</h2>', html=True)
+            self.assertNotContains(response, '<h2>Alert Settings</h2>', html=True)
+
+        with self.subTest('Test check & alert settings with model permissions'):
+            _add_device_permissions(test_user)
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            _add_user_permissions(test_user, {'codename__endswith': 'check'}, 8)
+            _add_user_permissions(test_user, {'codename__endswith': 'metric'}, 12)
+            _add_user_permissions(
+                test_user, {'codename__endswith': 'alertsettings'}, 16
+            )
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            _assert_check_inline_in_response(response)
+            _assert_alertsettings_inline_in_response(response)
+
+        with self.subTest('Test all inline permissions'):
+            _add_device_permissions(test_user)
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            _add_user_permissions(test_user, {'codename__endswith': 'inline'}, 12)
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            _assert_check_inline_in_response(response)
+            _assert_alertsettings_inline_in_response(response)
+
+        with self.subTest('Test view inline permissions'):
+            _add_device_permissions(test_user)
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            _add_user_permissions(
+                test_user, {'codename__endswith': 'view_check_inline'}, 5
+            )
+            _add_user_permissions(
+                test_user, {'codename__endswith': 'view_alertsettings_inline'}, 6
+            )
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, '<h2>Checks</h2>', html=True)
+            self.assertContains(response, 'form-row field-check_type')
+            self.assertContains(response, 'form-row field-is_active')
+            self.assertContains(response, '<h2>Alert Settings</h2>', html=True)
+            self.assertContains(response, 'form-row field-is_healthy djn-form-row-last')
+            self.assertContains(
+                response,
+                '<img src="/static/admin/img/icon-yes.svg" alt="True">',
+                html=True,
+            )
+            self.assertContains(
+                response,
+                'form-row field-is_active',
+            )
+            self.assertContains(response, 'form-row field-custom_operator')
+            self.assertContains(
+                response,
+                'form-row field-custom_threshold',
+            )
+            self.assertContains(
+                response,
+                'form-row field-custom_tolerance',
+            )
+
+    def test_alert_settings_inline_post(self):
+        device = self._create_device()
+        metric = self._create_general_metric(
+            name='', content_object=device, configuration='iperf3'
+        )
+        url = reverse('admin:config_device_change', args=[device.pk])
+        alertsettings = self._create_alert_settings(metric=metric)
+        test_inline_params = {
+            'name': device.name,
+            'organization': str(device.organization.id),
+            'mac_address': device.mac_address,
+            'key': device.key,
+            # metric & alertsettings
+            f'{metric_model_name}-content_type-object_id-TOTAL_FORMS': '1',
+            f'{metric_model_name}-content_type-object_id-INITIAL_FORMS': '1',
+            f'{metric_model_name}-content_type-object_id-MIN_NUM_FORMS': '0',
+            f'{metric_model_name}-content_type-object_id-MAX_NUM_FORMS': '1000',
+            f'{metric_model_name}-content_type-object_id-0-field_name': 'iperf3_result',
+            f'{metric_model_name}-content_type-object_id-0-id': str(metric.id),
+            f'{metric_model_name}-content_type-object_id-0-alertsettings-TOTAL_FORMS': '1',
+            f'{metric_model_name}-content_type-object_id-0-alertsettings-INITIAL_FORMS': '0',
+            f'{metric_model_name}-content_type-object_id-0-alertsettings-MIN_NUM_FORMS': '0',
+            f'{metric_model_name}-content_type-object_id-0-alertsettings-MAX_NUM_FORMS': '1',
+            f'{metric_model_name}-content_type-object_id-0-alertsettings-0-is_active': 'on',
+            f'{metric_model_name}-content_type-object_id-0-alertsettings-0-custom_operator': '<',
+            f'{metric_model_name}-content_type-object_id-0-alertsettings-0-custom_threshold': '9',
+            f'{metric_model_name}-content_type-object_id-0-alertsettings-0-custom_tolerance': '1800',
+            f'{metric_model_name}-content_type-object_id-0-alertsettings-0-id': '',
+            f'{metric_model_name}-content_type-object_id-0-alertsettings-0-metric': '',
+        }
+        # General metrics (clients & traffic) & Iperf3 are present
+        self.assertEqual(Metric.objects.count(), 3)
+        self.assertEqual(AlertSettings.objects.count(), 1)
+
+        def _reset_alertsettings_inline():
+            AlertSettings.objects.all().delete()
+
+        # Delete AlertSettings objects before any subTests
+        _reset_alertsettings_inline()
+        # Delete all Metrics other than 'iperf3' before any subTests
+        Metric.objects.exclude(configuration='iperf3').delete()
+
+        def _assert_alertsettings_inline(response, operator, threshold, tolerance):
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(Metric.objects.count(), 1)
+            self.assertEqual(AlertSettings.objects.count(), 1)
+            alertsettings = AlertSettings.objects.first()
+            self.assertEqual(alertsettings.operator, operator)
+            self.assertEqual(alertsettings.threshold, threshold)
+            self.assertEqual(alertsettings.tolerance, tolerance)
+
+        with self.subTest('Test alert settings inline when all fields are provided'):
+            self._device_params.update(test_inline_params)
+            response = self.client.post(url, self._device_params)
+            _assert_alertsettings_inline(response, '<', 9, 1800)
+        _reset_alertsettings_inline()
+
+        with self.subTest(
+            'Test alert settings inline when partial fields are provided'
+        ):
+            test_inline_default_1 = {
+                f'{metric_model_name}-content_type-object_id-0-alertsettings-0-custom_operator': '>',
+                f'{metric_model_name}-content_type-object_id-0-alertsettings-0-custom_threshold': '',
+                f'{metric_model_name}-content_type-object_id-0-alertsettings-0-custom_tolerance': '',
+            }
+            self._device_params.update(test_inline_default_1)
+            response = self.client.post(url, self._device_params)
+            # 'threshold' and 'tolerance' are set to their default values
+            _assert_alertsettings_inline(response, '>', 1, 0)
+            _reset_alertsettings_inline()
+
+            test_inline_default_2 = {
+                f'{metric_model_name}-content_type-object_id-0-alertsettings-0-custom_operator': '',
+                f'{metric_model_name}-content_type-object_id-0-alertsettings-0-custom_threshold': '18',
+                f'{metric_model_name}-content_type-object_id-0-alertsettings-0-custom_tolerance': '99',
+            }
+            self._device_params.update(test_inline_default_2)
+            response = self.client.post(url, self._device_params)
+            # 'operator' are set to their default values
+            _assert_alertsettings_inline(response, '<', 18, 99)
+        _reset_alertsettings_inline()
+
+        with self.subTest('Test alert settings inline when all fields are absent'):
+            test_inline_params_present = {
+                f'{metric_model_name}-content_type-object_id-0-alertsettings-0-custom_operator': '<',
+                f'{metric_model_name}-content_type-object_id-0-alertsettings-0-custom_threshold': '99',
+                f'{metric_model_name}-content_type-object_id-0-alertsettings-0-custom_tolerance': '1880',
+            }
+            self._device_params.update(test_inline_params_present)
+            response = self.client.post(url, self._device_params)
+            _assert_alertsettings_inline(response, '<', 99, 1880)
+
+            alertsettings = AlertSettings.objects.first()
+            metric = Metric.objects.first()
+
+            test_inline_params_absent = {
+                f'{metric_model_name}-content_type-object_id-INITIAL_FORMS': '1',
+                f'{metric_model_name}-content_type-object_id-0-id': str(metric.id),
+                f'{metric_model_name}-content_type-object_id-0-field_name': 'iperf3_result',
+                f'{metric_model_name}-content_type-object_id-0-alertsettings-INITIAL_FORMS': '1',
+                f'{metric_model_name}-content_type-object_id-0-alertsettings-0-id': str(
+                    alertsettings.id
+                ),
+                f'{metric_model_name}-content_type-object_id-0-alertsettings-0-metric': str(
+                    metric.id
+                ),
+                f'{metric_model_name}-content_type-object_id-0-alertsettings-0-custom_operator': '',
+                f'{metric_model_name}-content_type-object_id-0-alertsettings-0-custom_threshold': '',
+                f'{metric_model_name}-content_type-object_id-0-alertsettings-0-custom_tolerance': '',
+            }
+            self._device_params.update(test_inline_params_absent)
+            response = self.client.post(url, self._device_params)
+            # If all the fields are empty, then it deletes the AlertSettings object
+            # to prevent the default value from being used as a fallback
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(Metric.objects.count(), 1)
+            self.assertEqual(AlertSettings.objects.count(), 0)
+
+    def test_device_admin_recover_button_visibility(self):
+        self._create_device(organization=self._create_org())
+        url = reverse('admin:config_device_changelist')
+        response = self.client.get(url)
+        self.assertContains(
+            response,
+            """
+                <li>
+                    <a href="/admin/config/device/recover/" class="recoverlink">Recover deleted Devices</a>
+                </li>
+            """,
+            html=True,
+        )
+
 
 class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
     location_model = Location
@@ -334,7 +684,7 @@ class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
             'monitoring/js/device-map.js',
             'leaflet/leaflet.js',
             'leaflet/leaflet.extras.js',
-            'monitoring/js/leaflet.fullscreen.min.js',
+            'monitoring/js/lib/leaflet.fullscreen.min.js',
         ]
         for static_file in static_files:
             self.assertContains(response, static_file)
@@ -467,11 +817,6 @@ class TestWifiSessionAdmin(
             )
 
         with self.subTest('Test device filter'):
-            # Filter by device name
-            response = self.client.get(url, {'device': org2_device.name})
-            _assert_org2_wifi_session_in_response(
-                response, org1_interface_data, org2_interface_data
-            )
             # Filter by device pk
             response = self.client.get(url, {'device': str(org2_device.pk)})
             _assert_org2_wifi_session_in_response(
@@ -499,3 +844,17 @@ class TestWifiSessionAdmin(
         response = self.client.post(path, {'post': 'yes'}, follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Device.objects.count(), 0)
+
+    def test_dashboard_wifi_session_chart(self):
+        org1 = self._create_org(name='org1', slug='org1')
+        org1_device = self._create_device(organization=org1)
+        self._create_wifi_session(device=org1_device)
+        org2 = self._create_org(name='org2', slug='org2')
+        administrator = self._create_administrator([org2])
+        self.client.force_login(administrator)
+        response = self.client.get(reverse('admin:index'))
+        self.assertEqual(response.status_code, 200)
+        self.assertDictEqual(
+            response.context['dashboard_charts'][13]['query_params'],
+            {'labels': [], 'values': []},
+        )
