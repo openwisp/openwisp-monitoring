@@ -8,7 +8,7 @@ from django.db.models import Count, Q
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from pytz import UTC
-from rest_framework import serializers, status
+from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from swapper import load_model
@@ -43,7 +43,7 @@ Location = load_model('geo', 'Location')
 class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
     model = DeviceData
     queryset = DeviceData.objects.select_related('devicelocation').all()
-    serializer_class = serializers.Serializer
+    serializer_class = MonitoringDeviceSerializer
     permission_classes = [DevicePermission]
     schema = schema
 
@@ -54,7 +54,9 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
         except ValueError:
             return Response({'detail': 'not found'}, status=404)
         self.instance = self.get_object()
-        return super().get(request, pk)
+        monitoring_data = dict(super().get(request, pk).data)
+        device_data = MonitoringDeviceSerializer(self.instance).data
+        return Response({**device_data, **monitoring_data}, status=status.HTTP_200_OK)
 
     def _get_charts(self, request, *args, **kwargs):
         ct = ContentType.objects.get_for_model(Device)
