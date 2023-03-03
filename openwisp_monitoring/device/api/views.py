@@ -10,6 +10,7 @@ from django.utils.translation import gettext_lazy as _
 from pytz import UTC
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
+from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 from swapper import load_model
 
@@ -18,6 +19,7 @@ from openwisp_controller.geo.api.views import (
     DevicePermission,
     GeoJsonLocationList,
     LocationDeviceList,
+    ProtectedAPIMixin,
 )
 
 from ...views import MonitoringApiViewMixin
@@ -46,6 +48,16 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
     serializer_class = MonitoringDeviceSerializer
     permission_classes = [DevicePermission]
     schema = schema
+
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            self.permission_classes = ProtectedAPIMixin.permission_classes
+        return super().get_permissions()
+
+    def get_authenticators(self):
+        if self.request.method in SAFE_METHODS:
+            self.permission_classes = ProtectedAPIMixin.authentication_classes
+        return super().get_authenticators()
 
     def get(self, request, pk):
         # ensure valid UUID
