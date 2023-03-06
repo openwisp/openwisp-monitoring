@@ -66,9 +66,14 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
         except ValueError:
             return Response({'detail': 'not found'}, status=404)
         self.instance = self.get_object()
-        monitoring_data = dict(super().get(request, pk).data)
-        device_data = MonitoringDeviceSerializer(self.instance).data
-        return Response({**device_data, **monitoring_data}, status=status.HTTP_200_OK)
+        response = super().get(request, pk)
+        if not request.query_params.get('csv'):
+            monitoring_data = dict(response.data)
+            device_data = MonitoringDeviceSerializer(self.instance).data
+            return Response(
+                {**device_data, **monitoring_data}, status=status.HTTP_200_OK
+            )
+        return response
 
     def _get_charts(self, request, *args, **kwargs):
         ct = ContentType.objects.get_for_model(Device)
@@ -161,7 +166,7 @@ class MonitoringDeviceList(DeviceListCreateView):
     serializer_class = MonitoringDeviceSerializer
 
     def get_queryset(self):
-        return super().get_queryset().select_related('monitoring')
+        return super().get_queryset().select_related('monitoring').order_by('name')
 
 
 monitoring_device_list = MonitoringDeviceList.as_view()

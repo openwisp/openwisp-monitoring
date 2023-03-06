@@ -2500,12 +2500,24 @@ The format used for Device Status is inspired by
 - In alternative to ``time`` it is possible to request chart data for a custom
   date range by using the ``start`` and ``end`` parameters, eg:
 
+- Response contains device information, monitoring status, charts and device
+  status only if ``?status=true`` and a list of metrics with their respective statuses.
+
 .. code-block:: text
 
     GET /api/v1/monitoring/device/{pk}/?key={key}&status=true&start={start_datetime}&end={end_datetime}
 
 **Note**: ``start`` and  ``end`` parameters must be in the format
 ``YYYY-MM-DD H:M:S``, otherwise 400 Bad Response will be returned.
+
+List device monitoring information
+##################################
+
+.. code-block:: text
+
+    GET /api/v1/monitoring/device/
+
+Response contains device information, monitoring status, and a list of metrics with their respective statuses.
 
 Collect device metrics and status
 #################################
