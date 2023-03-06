@@ -8,3 +8,7 @@ td.original p {
 #wifisession_set-group {
   margin-bottom: 0px;
 }
+
+#wifisession_set-group th {
+  border-top: 0 none;
+}
