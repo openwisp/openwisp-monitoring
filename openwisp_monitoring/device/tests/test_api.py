@@ -85,14 +85,14 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(data['notes'], device.notes)
         self.assertIsNone(data['config'])
 
-    def _assert_device_metrics_info(self, data=None, charts=True):
-        if charts:
-            self.assertEqual(len(list(data['charts'])), 7)
+    def _assert_device_metrics_info(self, data=None, detail=True, charts=True):
         self.assertIn('monitoring', data)
         self.assertIn('status', data['monitoring'])
-        self.assertIn('related_metrics', data['monitoring'])
-        metrics = list(data['monitoring']['related_metrics'])
-        if metrics:
+        if charts:
+            self.assertEqual(len(list(data['charts'])), 7)
+        if detail:
+            self.assertIn('related_metrics', data['monitoring'])
+            metrics = list(data['monitoring']['related_metrics'])
             self.assertEqual(metrics[0]['name'], 'CPU usage')
             self.assertEqual(metrics[0]['is_healthy'], True)
             self.assertEqual(metrics[1]['name'], 'Disk usage')
@@ -399,7 +399,9 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             self.assertIn(key, results)
         self._assert_device_info(device=d1, data=r.data['results'][0])
         self._assert_device_info(device=d2, data=r.data['results'][1])
-        self._assert_device_metrics_info(data=r.data['results'][0], charts=False)
+        self._assert_device_metrics_info(
+            data=r.data['results'][0], detail=False, charts=False
+        )
 
     def test_get_device_metrics_histogram_ignore_x(self):
         o = self._create_org()

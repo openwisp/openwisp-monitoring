@@ -41,8 +41,11 @@ class MonitoringLocationDeviceSerializer(LocationDeviceSerializer):
     monitoring = DeviceMonitoringLocationSerializer()
 
 
-class MonitoringDeviceSerializer(DeviceListSerializer):
-    monitoring = DeviceMonitoringSerializer(read_only=True)
+class MonitoringDeviceListSerializer(DeviceListSerializer):
+    monitoring = BaseDeviceMonitoringSerializer(read_only=True)
+
+    def get_status(self, obj):
+        return obj.get_status_display()
 
     class Meta:
         model = Device
@@ -64,6 +67,10 @@ class MonitoringDeviceSerializer(DeviceListSerializer):
             'created',
             'modified',
         ]
+
+
+class MonitoringDeviceDetailSerializer(MonitoringDeviceListSerializer):
+    monitoring = DeviceMonitoringSerializer(read_only=True)
 
 
 class MonitoringGeoJsonLocationSerializer(GeoJsonLocationSerializer):

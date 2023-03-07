@@ -8,7 +8,7 @@ from django.db.models import Count, Q
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from pytz import UTC
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
@@ -27,7 +27,8 @@ from ..schema import schema
 from ..signals import device_metrics_received
 from ..tasks import write_device_metrics
 from .serializers import (
-    MonitoringDeviceSerializer,
+    MonitoringDeviceDetailSerializer,
+    MonitoringDeviceListSerializer,
     MonitoringGeoJsonLocationSerializer,
     MonitoringLocationDeviceSerializer,
 )
@@ -44,8 +45,12 @@ Location = load_model('geo', 'Location')
 
 class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
     model = DeviceData
-    queryset = DeviceData.objects.select_related('devicelocation').all()
-    serializer_class = MonitoringDeviceSerializer
+    queryset = (
+        DeviceData.objects.select_related('devicelocation')
+        .select_related('monitoring')
+        .all()
+    )
+    serializer_class = serializers.Serializer
     permission_classes = [DevicePermission]
     schema = schema
 
@@ -68,10 +73,10 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
         self.instance = self.get_object()
         response = super().get(request, pk)
         if not request.query_params.get('csv'):
-            monitoring_data = dict(response.data)
-            device_data = MonitoringDeviceSerializer(self.instance).data
+            charts_data = dict(response.data)
+            device_metrics_data = MonitoringDeviceDetailSerializer(self.instance).data
             return Response(
-                {**device_data, **monitoring_data}, status=status.HTTP_200_OK
+                {**device_metrics_data, **charts_data}, status=status.HTTP_200_OK
             )
         return response
 
@@ -163,7 +168,7 @@ monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
 
 
 class MonitoringDeviceList(DeviceListCreateView):
-    serializer_class = MonitoringDeviceSerializer
+    serializer_class = MonitoringDeviceListSerializer
 
     def get_queryset(self):
         return super().get_queryset().select_related('monitoring').order_by('name')
