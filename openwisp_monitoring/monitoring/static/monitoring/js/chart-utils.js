@@ -173,8 +173,7 @@ django.jQuery(function ($) {
       fallback = $('#ow-chart-fallback'),
       defaultTimeRange = localStorage.getItem(timeRangeKey) || $('#monitoring-timeseries-default-time').data('value'),
       apiUrl = $('#monitoring-timeseries-api-url').data('value'),
-      originalKey = $('#monitoring-timeseries-original-key').data('value'),
-      baseUrl = `${apiUrl}?key=${originalKey}&time=`,
+      baseUrl = `${apiUrl}?time=`,
       globalLoadingOverlay = $('#loading-overlay'),
       localLoadingOverlay = $('#chart-loading-overlay'),
       getChartFetchUrl = function (time) {
@@ -193,7 +192,7 @@ django.jQuery(function ($) {
           const endDateTime = moment(endDate).format('YYYY-MM-DD HH:mm:ss');
           endDate = endDateTime > now ? now : endDateTime;
           var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-          url = `${apiUrl}?key=${originalKey}&timezone=${timezone}&start=${startDate}&end=${endDate}`;
+          url = `${apiUrl}?timezone=${timezone}&start=${startDate}&end=${endDate}`;
         }
         return url;
       },
@@ -327,7 +326,7 @@ django.jQuery(function ($) {
         startDate = localStorage.getItem(zoomStartDateTimeKey);
       }
       var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      location.href = `${apiUrl}?key=${originalKey}&timezone=${timezone}&start=${startDate}&end=${endDate}&csv=1`;
+      location.href = `${apiUrl}?timezone=${timezone}&start=${startDate}&end=${endDate}&csv=1`;
       }
     });
     // fetch chart data and replace the old charts with the new ones

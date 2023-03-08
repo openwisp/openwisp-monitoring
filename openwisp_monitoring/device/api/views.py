@@ -9,8 +9,10 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from pytz import UTC
 from rest_framework import serializers, status
+from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import SAFE_METHODS
+from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
 from rest_framework.response import Response
 from swapper import load_model
 
@@ -55,13 +57,15 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
     schema = schema
 
     def get_permissions(self):
-        if self.request.method in SAFE_METHODS:
+        if self.request.method in SAFE_METHODS and not self.request.query_params.get(
+            'key'
+        ):
             self.permission_classes = ProtectedAPIMixin.permission_classes
         return super().get_permissions()
 
     def get_authenticators(self):
-        if self.request.method in SAFE_METHODS:
-            self.permission_classes = ProtectedAPIMixin.authentication_classes
+        if self.request.method in SAFE_METHODS and not self.request.GET.get('key'):
+            self.authentication_classes = ProtectedAPIMixin.authentication_classes
         return super().get_authenticators()
 
     def get(self, request, pk):
@@ -167,11 +171,33 @@ class MonitoringLocationDeviceList(LocationDeviceList):
 monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
 
 
+class MonitoringDeviceBrowsableAPIRenderer(BrowsableAPIRenderer):
+    """
+    Overrides the standard DRF Browsable API renderer
+    """
+
+    def get_context(self, *args, **kwargs):
+        context = super(MonitoringDeviceBrowsableAPIRenderer, self).get_context(
+            *args, **kwargs
+        )
+        # Remove "POST" request form
+        context['display_edit_forms'] = False
+        return context
+
+
 class MonitoringDeviceList(DeviceListCreateView):
     serializer_class = MonitoringDeviceListSerializer
+    http_method_names = ['get', 'head', 'options']
+    renderer_classes = [MonitoringDeviceBrowsableAPIRenderer, JSONRenderer]
 
     def get_queryset(self):
         return super().get_queryset().select_related('monitoring').order_by('name')
+
+    def create(self, request, *args, **kwargs):  # pragma: no cover
+        # Prohibit the use of the POST method
+        if request.method == 'POST':
+            raise MethodNotAllowed(request.method)
+        return super().create(request, *args, **kwargs)
 
 
 monitoring_device_list = MonitoringDeviceList.as_view()

@@ -424,13 +424,13 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         r = self.client.get(self._url('WRONG', 'MADEUP'))
         self.assertEqual(r.status_code, 404)
 
-    def test_get_device_metrics_403(self):
+    def test_get_device_metrics_401(self):
         d = self._create_device(organization=self._create_org())
         self.client.logout()
         # try to access the device metrics
         # ie. api view without authentication
         r = self.client.get(self._url(d.pk))
-        self.assertEqual(r.status_code, 403)
+        self.assertEqual(r.status_code, 401)
 
     def test_get_device_list_metrics_401(self):
         self._create_device(organization=self._create_org())
