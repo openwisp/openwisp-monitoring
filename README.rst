@@ -2500,8 +2500,13 @@ The format used for Device Status is inspired by
 - In alternative to ``time`` it is possible to request chart data for a custom
   date range by using the ``start`` and ``end`` parameters, eg:
 
-- Response contains device information, monitoring status, charts and device
-  status only if ``?status=true`` and a list of metrics with their respective statuses.
+- The response contains device information, monitoring status (health status),
+  a list of metrics with their respective statuses, chart data and
+  device status information (only if ``?status=true``).
+
+- This endpoint can be accessed with session authentication, token authentication,
+  or alternatively with the device key passed as query parameters
+  (this method is meant to be used by the devices) as shown above.
 
 .. code-block:: text
 
@@ -2517,7 +2522,14 @@ List device monitoring information
 
     GET /api/v1/monitoring/device/
 
-Response contains device information, monitoring status, and a list of metrics with their respective statuses.
+**Notes**:
+
+- The response contains device information and monitoring status (health status),
+  but it does not include information about the list of device metrics and their
+  respective statuses. This is done to avoid generating extra queries for each device.
+
+- This endpoint can be accessed with session authentication and token authentication.
+
 
 Collect device metrics and status
 #################################
