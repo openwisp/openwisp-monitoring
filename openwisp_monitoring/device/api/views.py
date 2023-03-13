@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
+from django_filters.rest_framework import DjangoFilterBackend
 from pytz import UTC
 from rest_framework import serializers, status
 from rest_framework.generics import GenericAPIView
@@ -193,6 +194,8 @@ class MonitoringDeviceList(DeviceListCreateView):
 
     serializer_class = MonitoringDeviceListSerializer
     http_method_names = ['get', 'head', 'options']
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['monitoring__status']
 
     def get_queryset(self):
         return super().get_queryset().select_related('monitoring').order_by('name')

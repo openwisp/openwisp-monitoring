@@ -403,6 +403,22 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             data=r.data['results'][0], detail=False, charts=False
         )
 
+        with self.subTest('Test filtering using monitoring health status'):
+            r = self.client.get(f'{url}?monitoring__status=ok')
+            self.assertEqual(r.data['count'], 1)
+            self._assert_device_info(device=d1, data=r.data['results'][0])
+            self._assert_device_metrics_info(
+                data=r.data['results'][0], detail=False, charts=False
+            )
+            # Update device (d2) health status to 'critical'
+            d2.monitoring.update_status('critical')
+            r = self.client.get(f'{url}?monitoring__status=critical')
+            self.assertEqual(r.data['count'], 1)
+            self._assert_device_info(device=d2, data=r.data['results'][0])
+            self._assert_device_metrics_info(
+                data=r.data['results'][0], detail=False, charts=False
+            )
+
     def test_get_device_metrics_histogram_ignore_x(self):
         o = self._create_org()
         d = self._create_device(organization=o)
