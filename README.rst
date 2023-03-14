@@ -2522,6 +2522,15 @@ List device monitoring information
 
     GET /api/v1/monitoring/device/
 
+**Available filters**
+
+You can use the ``monitoring_health_status`` filter (e.g. critical, ok, problem, and unknown)
+to obtain a list of device metrics and their corresponding monitoring status.
+
+.. code-block:: text
+
+   GET /api/v1/monitoring/device/?monitoring__status={monitoring_health_status}
+
 **Notes**:
 
 - The response contains device information and monitoring status (health status),
