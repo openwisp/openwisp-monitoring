@@ -30,9 +30,9 @@ django.jQuery(function ($) {
         addDateRangePickerLabel(start.format('MMMM D, YYYY'), end.format('MMMM D, YYYY'));
         $("[data-range-key='Last 1 Day']").attr('data-time', '1d');
         $("[data-range-key='Last 3 Days']").attr('data-time', '3d');
-        $("[data-range-key='Last Week']").attr('data-time', '7d');
-        $("[data-range-key='Last Month']").attr('data-time', '30d');
-        $("[data-range-key='Last Year']").attr('data-time', '365d');
+        $("[data-range-key='Last 7 Days']").attr('data-time', '7d');
+        $("[data-range-key='Last 30 Days']").attr('data-time', '30d');
+        $("[data-range-key='Last 365 Days']").attr('data-time', '365d');
         $("[data-range-key='Custom Range']").attr('data-time', 'Custom Range');
       }
 
@@ -46,9 +46,9 @@ django.jQuery(function ($) {
         ranges: {
           'Last 1 Day': [moment().subtract(1, 'days'), moment()],
           'Last 3 Days': [moment().subtract(3, 'days'), moment()],
-          'Last Week': [moment().subtract(7, 'days'), moment()],
-          'Last Month': [moment().subtract(30, 'days'), moment()],
-          'Last Year': [moment().subtract(365, 'days'), moment()],
+          'Last 7 Days': [moment().subtract(7, 'days'), moment()],
+          'Last 30 Days': [moment().subtract(30, 'days'), moment()],
+          'Last 365 Days': [moment().subtract(365, 'days'), moment()],
         }
       }, initDateRangePickerWidget);
       initDateRangePickerWidget(start, end);
