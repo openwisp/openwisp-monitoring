@@ -95,7 +95,7 @@ Available Features
 * Maintains a record of `WiFi sessions <#monitoring-wifi-sessions>`_ with clients'
   MAC address and vendor, session start and stop time and connected device
   along with other information
-* Charts can be viewed at resolutions of 1 day, 3 days, a week, a month and a year
+* Charts can be viewed at resolutions of the last 1 day, 3 days, 7 days, 30 days, and 365 days
 * Configurable alerts
 * CSV Export of monitoring data
 * An overview of the status of the network is shown in the admin dashboard,
