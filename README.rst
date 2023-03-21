@@ -2507,7 +2507,8 @@ The format used for Device Status is inspired by
 
 - This endpoint can be accessed with session authentication, token authentication,
   or alternatively with the device key passed as query string parameter
-  (this method is meant to be used by the devices) as shown below `?key={key}`.
+  as shown below (`?key={key}`);
+  note: this method is meant to be used by the devices.
 
 .. code-block:: text
 
@@ -2523,23 +2524,25 @@ List device monitoring information
 
     GET /api/v1/monitoring/device/
 
-**Available filters**
-
-You can use the ``monitoring_health_status`` filter (e.g. critical, ok, problem, and unknown)
-to obtain a list of device metrics and their corresponding monitoring status.
-
-.. code-block:: text
-
-   GET /api/v1/monitoring/device/?monitoring__status={monitoring_health_status}
-
 **Notes**:
 
 - The response contains device information and monitoring status (health status),
-  but it does not include information about the list of device metrics and their
-  respective statuses. This is done to avoid generating extra queries for each device.
+  but it does not include the information and
+  health status of the specific metrics, this information
+  can be retrieved in the detail endpoint of each device.
 
 - This endpoint can be accessed with session authentication and token authentication.
 
+**Available filters**
+
+Data can be filtered by health status (e.g. critical, ok, problem, and unknown)
+to obtain the list of devices in the corresponding status, for example,
+to retrieve the list of devices which are in critical conditions
+(eg: unreachable), the following will work:
+
+.. code-block:: text
+
+   GET /api/v1/monitoring/device/?monitoring__status=ok
 
 Collect device metrics and status
 #################################

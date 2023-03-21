@@ -46,13 +46,13 @@ Location = load_model('geo', 'Location')
 
 class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
     """
-    APIView for device information, monitoring status (health status),
-    a list of metrics with their respective statuses, chart data and
-    device status information (only if ``?status=true``).
+    Retrieve device information, monitoring status (health status),
+    a list of metrics, chart data and
+    optionally device status information (if ``?status=true``).
 
-    * Requires session authentication, token authentication,
-    or alternatively with the device key passed as query
-    parameters (this method is meant to be used by the devices)
+    Suports session authentication, token authentication,
+    or alternatively device key authentication passed as query
+    string parameter (this method is meant to be used by network devices).
     """
 
     model = DeviceData
@@ -182,14 +182,13 @@ monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
 
 class MonitoringDeviceList(DeviceListCreateView):
     """
-    APIView for listing device information
-    and monitoring status (health status).
+    Lists devices and their monitoring status (health status).
 
-    * Requires session authentication and token authentication.
+    Supports session authentication and token authentication.
 
-    `NOTE:` The response does not include information
-    about the list of device metrics and their respective statuses
-    in order to avoid generating extra queries for each device.
+    `NOTE:` The response does not include the information and
+    health status of the specific metrics, this information
+    can be retrieved in the detail endpoint of each device.
     """
 
     serializer_class = MonitoringDeviceListSerializer
