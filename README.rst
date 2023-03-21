@@ -2488,6 +2488,7 @@ The format used for Device Status is inspired by
 - If the request is made without ``?status=true`` the response will
   contain only charts data and will not include any device status information
   (current load average, ARP table, DCHP leases, etc.).
+
 - When retrieving chart data, the ``time`` parameter allows to specify
   the time frame, eg:
 
@@ -2505,8 +2506,8 @@ The format used for Device Status is inspired by
   device status information (only if ``?status=true``).
 
 - This endpoint can be accessed with session authentication, token authentication,
-  or alternatively with the device key passed as query parameters
-  (this method is meant to be used by the devices) as shown above.
+  or alternatively with the device key passed as query string parameter
+  (this method is meant to be used by the devices) as shown below `?key={key}`.
 
 .. code-block:: text
 
