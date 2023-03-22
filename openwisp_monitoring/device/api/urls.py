@@ -5,6 +5,11 @@ from . import views
 app_name = 'monitoring'
 
 urlpatterns = [
+    path(
+        'api/v1/monitoring/device/',
+        views.monitoring_device_list,
+        name='api_monitoring_device_list',
+    ),
     re_path(
         r'^api/v1/monitoring/device/(?P<pk>[^/]+)/$',
         views.device_metric,

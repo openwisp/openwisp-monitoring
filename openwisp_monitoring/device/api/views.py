@@ -7,23 +7,32 @@ from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
+from django_filters.rest_framework import DjangoFilterBackend
 from pytz import UTC
 from rest_framework import serializers, status
 from rest_framework.generics import GenericAPIView
+from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 from swapper import load_model
 
+from openwisp_controller.config.api.views import DeviceListCreateView
 from openwisp_controller.geo.api.views import (
     DevicePermission,
     GeoJsonLocationList,
     LocationDeviceList,
+    ProtectedAPIMixin,
 )
 
 from ...views import MonitoringApiViewMixin
 from ..schema import schema
 from ..signals import device_metrics_received
 from ..tasks import write_device_metrics
-from .serializers import MonitoringDeviceSerializer, MonitoringGeoJsonLocationSerializer
+from .serializers import (
+    MonitoringDeviceDetailSerializer,
+    MonitoringDeviceListSerializer,
+    MonitoringGeoJsonLocationSerializer,
+    MonitoringLocationDeviceSerializer,
+)
 
 logger = logging.getLogger(__name__)
 Chart = load_model('monitoring', 'Chart')
@@ -36,11 +45,37 @@ Location = load_model('geo', 'Location')
 
 
 class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
+    """
+    Retrieve device information, monitoring status (health status),
+    a list of metrics, chart data and
+    optionally device status information (if ``?status=true``).
+
+    Suports session authentication, token authentication,
+    or alternatively device key authentication passed as query
+    string parameter (this method is meant to be used by network devices).
+    """
+
     model = DeviceData
-    queryset = DeviceData.objects.select_related('devicelocation').all()
+    queryset = (
+        DeviceData.objects.select_related('devicelocation')
+        .select_related('monitoring')
+        .all()
+    )
     serializer_class = serializers.Serializer
     permission_classes = [DevicePermission]
     schema = schema
+
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS and not self.request.query_params.get(
+            'key'
+        ):
+            self.permission_classes = ProtectedAPIMixin.permission_classes
+        return super().get_permissions()
+
+    def get_authenticators(self):
+        if self.request.method in SAFE_METHODS and not self.request.GET.get('key'):
+            self.authentication_classes = ProtectedAPIMixin.authentication_classes
+        return super().get_authenticators()
 
     def get(self, request, pk):
         # ensure valid UUID
@@ -49,7 +84,14 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
         except ValueError:
             return Response({'detail': 'not found'}, status=404)
         self.instance = self.get_object()
-        return super().get(request, pk)
+        response = super().get(request, pk)
+        if not request.query_params.get('csv'):
+            charts_data = dict(response.data)
+            device_metrics_data = MonitoringDeviceDetailSerializer(self.instance).data
+            return Response(
+                {**device_metrics_data, **charts_data}, status=status.HTTP_200_OK
+            )
+        return response
 
     def _get_charts(self, request, *args, **kwargs):
         ct = ContentType.objects.get_for_model(Device)
@@ -129,10 +171,33 @@ monitoring_geojson_location_list = MonitoringGeoJsonLocationList.as_view()
 
 
 class MonitoringLocationDeviceList(LocationDeviceList):
-    serializer_class = MonitoringDeviceSerializer
+    serializer_class = MonitoringLocationDeviceSerializer
 
     def get_queryset(self):
         return super().get_queryset().select_related('monitoring').order_by('name')
 
 
 monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
+
+
+class MonitoringDeviceList(DeviceListCreateView):
+    """
+    Lists devices and their monitoring status (health status).
+
+    Supports session authentication and token authentication.
+
+    `NOTE:` The response does not include the information and
+    health status of the specific metrics, this information
+    can be retrieved in the detail endpoint of each device.
+    """
+
+    serializer_class = MonitoringDeviceListSerializer
+    http_method_names = ['get', 'head', 'options']
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['monitoring__status']
+
+    def get_queryset(self):
+        return super().get_queryset().select_related('monitoring').order_by('name')
+
+
+monitoring_device_list = MonitoringDeviceList.as_view()

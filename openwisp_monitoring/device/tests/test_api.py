@@ -18,6 +18,7 @@ from ..signals import device_metrics_received
 from . import DeviceMonitoringTestCase
 
 start_time = timezone.now()
+User = get_user_model()
 Chart = load_model('monitoring', 'Chart')
 Metric = load_model('monitoring', 'Metric')
 DeviceData = load_model('device_monitoring', 'DeviceData')
@@ -41,6 +42,71 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     metric_queryset = Metric.objects.exclude(object_id=None)
     # Exclude general charts from the query
     chart_queryset = Chart.objects.exclude(metric__object_id=None)
+    _RESPONSE_KEYS = [
+        'id',
+        'name',
+        'organization',
+        'group',
+        'mac_address',
+        'key',
+        'last_ip',
+        'management_ip',
+        'model',
+        'os',
+        'system',
+        'notes',
+        'config',
+        'monitoring',
+        'created',
+        'modified',
+        'charts',
+        'x',
+    ]
+
+    def setUp(self):
+        self._login_admin()
+
+    def _login_admin(self):
+        u = User.objects.create_superuser('admin', 'admin', 'test@test.com')
+        self.client.force_login(u)
+
+    def _assert_device_info(self, device=None, data=None):
+        self.assertEqual(data['id'], str(device.pk))
+        self.assertEqual(data['name'], device.name)
+        self.assertEqual(data['organization'], device.organization.pk)
+        self.assertEqual(data['group'], device.group)
+        self.assertEqual(data['mac_address'], device.mac_address)
+        self.assertEqual(data['key'], device.key)
+        self.assertEqual(data['last_ip'], device.last_ip)
+        self.assertEqual(data['management_ip'], device.management_ip)
+        self.assertEqual(data['model'], device.model)
+        self.assertEqual(data['os'], device.os)
+        self.assertEqual(data['system'], device.system)
+        self.assertEqual(data['notes'], device.notes)
+        self.assertIsNone(data['config'])
+
+    def _assert_device_metrics_info(self, data=None, detail=True, charts=True):
+        self.assertIn('monitoring', data)
+        self.assertIn('status', data['monitoring'])
+        if charts:
+            self.assertEqual(len(list(data['charts'])), 7)
+        if detail:
+            self.assertIn('related_metrics', data['monitoring'])
+            metrics = list(data['monitoring']['related_metrics'])
+            self.assertEqual(metrics[0]['name'], 'CPU usage')
+            self.assertEqual(metrics[0]['is_healthy'], True)
+            self.assertEqual(metrics[1]['name'], 'Disk usage')
+            self.assertEqual(metrics[1]['is_healthy'], True)
+            self.assertEqual(metrics[2]['name'], 'Memory usage')
+            self.assertEqual(metrics[2]['is_healthy'], True)
+            self.assertEqual(metrics[3]['name'], 'wlan0 traffic')
+            self.assertEqual(metrics[3]['is_healthy'], None)
+            self.assertEqual(metrics[4]['name'], 'wlan0 wifi clients')
+            self.assertEqual(metrics[4]['is_healthy'], None)
+            self.assertEqual(metrics[5]['name'], 'wlan1 traffic')
+            self.assertEqual(metrics[5]['is_healthy'], None)
+            self.assertEqual(metrics[6]['name'], 'wlan1 wifi clients')
+            self.assertEqual(metrics[6]['is_healthy'], None)
 
     def test_404(self):
         r = self._post_data(self.device_model().pk, '123', self._data())
@@ -278,30 +344,80 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         d = self.device_model.objects.get(pk=dd.pk)
         r = self.client.get(self._url(d.pk.hex, d.key))
         self.assertEqual(r.status_code, 200)
-        self.assertIsInstance(r.data['charts'], list)
-        self.assertEqual(len(r.data['charts']), 7)
-        self.assertIn('x', r.data)
-        charts = r.data['charts']
-        for chart in charts:
-            self.assertIn('traces', chart)
-            self.assertIn('title', chart)
-            self.assertIn('description', chart)
-            self.assertIn('type', chart)
-            self.assertIn('summary', chart)
-            self.assertIsInstance(chart['summary'], dict)
-            self.assertIn('summary_labels', chart)
-            self.assertIsInstance(chart['summary_labels'], list)
-            self.assertIn('unit', chart)
-            self.assertIn('colors', chart)
-            self.assertIn('colorscale', chart)
-        # test order
-        self.assertEqual(charts[0]['title'], 'WiFi clients: wlan0')
-        self.assertEqual(charts[1]['title'], 'WiFi clients: wlan1')
-        self.assertEqual(charts[2]['title'], 'Traffic: wlan0')
-        self.assertEqual(charts[3]['title'], 'Traffic: wlan1')
-        self.assertEqual(charts[4]['title'], 'Memory Usage')
-        self.assertEqual(charts[5]['title'], 'CPU Load')
-        self.assertEqual(charts[6]['title'], 'Disk Usage')
+
+        with self.subTest('Test device metrics 200 without the device key'):
+            r1 = self.client.get(self._url(d.pk.hex))
+            self.assertEqual(r1.status_code, 200)
+            for key in self._RESPONSE_KEYS:
+                self.assertIn(key, r.data.keys())
+
+        with self.subTest('Test device information in the response'):
+            self._assert_device_info(device=d, data=r.data)
+
+        with self.subTest('Test device metrics in the response'):
+            self._assert_device_metrics_info(data=r.data)
+
+        with self.subTest('Test device charts in the response'):
+            self.assertIn('x', r.data)
+            charts = r.data['charts']
+            for chart in charts:
+                self.assertIn('traces', chart)
+                self.assertIn('title', chart)
+                self.assertIn('description', chart)
+                self.assertIn('type', chart)
+                self.assertIn('summary', chart)
+                self.assertIsInstance(chart['summary'], dict)
+                self.assertIn('summary_labels', chart)
+                self.assertIsInstance(chart['summary_labels'], list)
+                self.assertIn('unit', chart)
+                self.assertIn('colors', chart)
+                self.assertIn('colorscale', chart)
+            # test charts order
+            self.assertEqual(charts[0]['title'], 'WiFi clients: wlan0')
+            self.assertEqual(charts[1]['title'], 'WiFi clients: wlan1')
+            self.assertEqual(charts[2]['title'], 'Traffic: wlan0')
+            self.assertEqual(charts[3]['title'], 'Traffic: wlan1')
+            self.assertEqual(charts[4]['title'], 'Memory Usage')
+            self.assertEqual(charts[5]['title'], 'CPU Load')
+            self.assertEqual(charts[6]['title'], 'Disk Usage')
+
+    def test_get_device_metrics_list_200(self):
+        dd1 = self.create_test_data()
+        url = reverse('monitoring:api_monitoring_device_list')
+        d1 = self.device_model.objects.get(pk=dd1.pk)
+        d2 = self._create_device(name='test-device-2', mac_address='00:11:22:33:44:66')
+        r = self.client.get(url)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data['count'], 2)
+        self.assertEqual(r.data['next'], None)
+        self.assertEqual(r.data['previous'], None)
+        results = r.data['results'][0].keys()
+        _RESPONSE_KEYS = self._RESPONSE_KEYS.copy()
+        _RESPONSE_KEYS.remove('x')
+        _RESPONSE_KEYS.remove('charts')
+        for key in _RESPONSE_KEYS:
+            self.assertIn(key, results)
+        self._assert_device_info(device=d1, data=r.data['results'][0])
+        self._assert_device_info(device=d2, data=r.data['results'][1])
+        self._assert_device_metrics_info(
+            data=r.data['results'][0], detail=False, charts=False
+        )
+
+        with self.subTest('Test filtering using monitoring health status'):
+            r = self.client.get(f'{url}?monitoring__status=ok')
+            self.assertEqual(r.data['count'], 1)
+            self._assert_device_info(device=d1, data=r.data['results'][0])
+            self._assert_device_metrics_info(
+                data=r.data['results'][0], detail=False, charts=False
+            )
+            # Update device (d2) health status to 'critical'
+            d2.monitoring.update_status('critical')
+            r = self.client.get(f'{url}?monitoring__status=critical')
+            self.assertEqual(r.data['count'], 1)
+            self._assert_device_info(device=d2, data=r.data['results'][0])
+            self._assert_device_metrics_info(
+                data=r.data['results'][0], detail=False, charts=False
+            )
 
     def test_get_device_metrics_histogram_ignore_x(self):
         o = self._create_org()
@@ -324,10 +440,22 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         r = self.client.get(self._url('WRONG', 'MADEUP'))
         self.assertEqual(r.status_code, 404)
 
-    def test_get_device_metrics_403(self):
+    def test_get_device_metrics_401(self):
         d = self._create_device(organization=self._create_org())
+        self.client.logout()
+        # try to access the device metrics
+        # ie. api view without authentication
         r = self.client.get(self._url(d.pk))
-        self.assertEqual(r.status_code, 403)
+        self.assertEqual(r.status_code, 401)
+
+    def test_get_device_list_metrics_401(self):
+        self._create_device(organization=self._create_org())
+        self.client.logout()
+        # try to access the device metrics list
+        # ie. api view without authentication
+        url = reverse('monitoring:api_monitoring_device_list')
+        r = self.client.get(url)
+        self.assertEqual(r.status_code, 401)
 
     def test_get_device_metrics_400_bad_time_range(self):
         d = self._create_device(organization=self._create_org())
