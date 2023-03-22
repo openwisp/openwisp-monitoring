@@ -2542,7 +2542,7 @@ to retrieve the list of devices which are in critical conditions
 
 .. code-block:: text
 
-   GET /api/v1/monitoring/device/?monitoring__status=ok
+   GET /api/v1/monitoring/device/?monitoring__status=critical
 
 Collect device metrics and status
 #################################
