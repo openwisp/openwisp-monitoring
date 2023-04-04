@@ -344,7 +344,12 @@ class DeviceAdminExportable(ImportExportMixin, DeviceAdmin):
 
 class WifiSessionAdminHelperMixin:
     def _get_boolean_html(self, value):
-        icon = static('admin/img/icon-{}.svg'.format('yes' if value is True else 'no'))
+        icon_type = 'unknown'
+        if value is True:
+            icon_type = 'yes'
+        elif value is False:
+            icon_type = 'no'
+        icon = static(f'admin/img/icon-{icon_type}.svg')
         return mark_safe(f'<img src="{icon}">')
 
     def ht(self, obj):

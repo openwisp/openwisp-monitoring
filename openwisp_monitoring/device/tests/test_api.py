@@ -176,7 +176,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         data2['interfaces'][1]['statistics']['tx_bytes'] = 4567
         r = self._post_data(d.id, d.key, data2)
         self.assertEqual(r.status_code, 200)
-        self.assertDictEqual(dd.data, data2)
+        self.assertDataDict(dd.data, data2)
         # Add 1 for general metric and chart
         self.assertEqual(self.metric_queryset.count(), 4)
         self.assertEqual(self.chart_queryset.count(), 4)
@@ -208,7 +208,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         data2['interfaces'][1]['statistics']['tx_bytes'] = 120
         r = self._post_data(d.id, d.key, data2)
         self.assertEqual(r.status_code, 200)
-        self.assertDictEqual(dd.data, data2)
+        self.assertDataDict(dd.data, data2)
         # Add 1 for general metric and chart
         self.assertEqual(self.metric_queryset.count(), 4)
         self.assertEqual(self.chart_queryset.count(), 4)

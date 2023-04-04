@@ -183,6 +183,27 @@ class AbstractDeviceData(object):
                 for signal_key, signal_values in interface['mobile']['signal'].items():
                     for key, value in signal_values.items():
                         signal_values[key] = float(value)
+            # If HT/VHT is not being used ie. htmode = 'NOHT',
+            # set the HT/VHT field of WiFi clients to None.
+            # This is necessary because some clients may be
+            # VHT capable but VHT is not enabled at the radio level,
+            # which can mislead into thinking the client is not HT/VHT capable.
+            if (
+                'wireless' in interface
+                and 'htmode' in interface['wireless']
+                and 'clients' in interface['wireless']
+            ):
+                for client in interface['wireless']['clients']:
+                    # NOHT : disables 11n (ie. ht and vht both are False)
+                    if interface['wireless']['htmode'] == 'NOHT':
+                        client['ht'] = None
+                        client['vht'] = None
+                    # If only HT is enabled, set client vht to None
+                    elif (
+                        interface['wireless']['htmode'].startswith('HT')
+                        and not client['vht']
+                    ):
+                        client['vht'] = None
             # add mac vendor to wireless clients if present
             if (
                 not mac_detection
@@ -350,8 +371,8 @@ class AbstractWifiClient(TimeStampedEditableModel):
         help_text=_('MAC address'),
     )
     vendor = models.CharField(max_length=200, blank=True, null=True)
-    ht = models.BooleanField(default=False, verbose_name='HT')
-    vht = models.BooleanField(default=False, verbose_name='VHT')
+    ht = models.BooleanField(null=True, blank=True, default=None, verbose_name='HT')
+    vht = models.BooleanField(null=True, blank=True, default=None, verbose_name='VHT')
     wmm = models.BooleanField(default=False, verbose_name='WMM')
     wds = models.BooleanField(default=False, verbose_name='WDS')
     wps = models.BooleanField(default=False, verbose_name='WPS')

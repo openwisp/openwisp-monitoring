@@ -128,8 +128,18 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ('vendor', models.CharField(blank=True, max_length=200, null=True)),
-                ('ht', models.BooleanField(default=False, verbose_name='HT')),
-                ('vht', models.BooleanField(default=False, verbose_name='VHT')),
+                (
+                    'ht',
+                    models.BooleanField(
+                        blank=True, default=None, null=True, verbose_name='HT'
+                    ),
+                ),
+                (
+                    'vht',
+                    models.BooleanField(
+                        blank=True, default=None, null=True, verbose_name='VHT'
+                    ),
+                ),
                 ('wmm', models.BooleanField(default=False, verbose_name='WMM')),
                 ('wds', models.BooleanField(default=False, verbose_name='WDS')),
                 ('wps', models.BooleanField(default=False, verbose_name='WPS')),

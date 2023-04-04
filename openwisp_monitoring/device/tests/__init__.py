@@ -52,6 +52,42 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
         dm.save()
         return dm
 
+    def _transform_wireless_interface_test_data(self, data):
+        interfaces = data.get('interfaces', [])
+        wireless_interfaces = [
+            interface
+            for interface in interfaces
+            if 'wireless' in interface
+            and 'htmode' in interface['wireless']
+            and 'clients' in interface['wireless']
+        ]
+        for interface in wireless_interfaces:
+            for client in interface['wireless']['clients']:
+                if (
+                    interface['wireless']['htmode'] == 'NOHT'
+                    and not client['ht']
+                    and not client['vht']
+                ):
+                    client['ht'] = None
+                    client['vht'] = None
+                elif (
+                    interface['wireless']['htmode'].startswith('HT')
+                    and client['ht']
+                    and not client['vht']
+                ):
+                    client['vht'] = None
+
+        return data
+
+    def assertDataDict(self, dd_data, data):
+        """
+        This method is necessary as the wireless interface data
+        is modified by the `AbstractDeviceData._transform_data`
+        method.
+        """
+        data = self._transform_wireless_interface_test_data(data)
+        self.assertDictEqual(dd_data, data)
+
     def create_test_data(self, no_resources=False):
         o = self._create_org()
         d = self._create_device(organization=o)
@@ -63,7 +99,7 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
         r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 200)
         dd = DeviceData(pk=d.pk)
-        self.assertDictEqual(dd.data, data)
+        self.assertDataDict(dd.data, data)
         if no_resources:
             metric_count, chart_count = 4, 4
         else:
@@ -136,7 +172,7 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
         data4['interfaces'][1]['statistics']['tx_bytes'] = 500000000
         r = self._post_data(d.id, d.key, data4)
         self.assertEqual(r.status_code, 200)
-        self.assertDictEqual(dd.data, data4)
+        self.assertDataDict(dd.data, data4)
         return dd
 
     def _data(self):
