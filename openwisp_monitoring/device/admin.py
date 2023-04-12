@@ -275,6 +275,20 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
 
     health_status.short_description = _('health status')
 
+    def get_object(self, request, object_id, from_field=None):
+        obj = super().get_object(request, object_id, from_field=from_field)
+        if obj and obj.wifisession_set.exists():
+            # We need to provide default formset values
+            # to avoid management formset errors when wifi sessions
+            # are created while editing the DeviceAdmin change page
+            wifisession_formset_data = {
+                'wifisession_set-TOTAL_FORMS': '1',
+                'wifisession_set-INITIAL_FORMS': '1',
+            }
+            request.POST = request.POST.copy()
+            request.POST.update(wifisession_formset_data)
+        return obj
+
     def get_form(self, request, obj=None, **kwargs):
         """
         Adds the help_text of DeviceMonitoring.status field
