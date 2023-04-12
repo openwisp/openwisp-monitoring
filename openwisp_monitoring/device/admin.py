@@ -275,9 +275,9 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
 
     health_status.short_description = _('health status')
 
-    def change_view(self, request, object_id, form_url='', extra_context=None):
-        device = self.get_object(request, object_id)
-        if device and device.wifisession_set.exists():
+    def get_object(self, request, object_id, from_field=None):
+        obj = super().get_object(request, object_id, from_field=from_field)
+        if obj and obj.wifisession_set.exists():
             # We need to provide default formset values
             # to avoid management formset errors when wifi sessions
             # are created while editing the DeviceAdmin change page
@@ -287,9 +287,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
             }
             request.POST = request.POST.copy()
             request.POST.update(wifisession_formset_data)
-        return super().change_view(
-            request, object_id, form_url=form_url, extra_context=extra_context
-        )
+        return obj
 
     def get_form(self, request, obj=None, **kwargs):
         """
