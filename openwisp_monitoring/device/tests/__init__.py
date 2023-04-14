@@ -283,6 +283,48 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
             ],
         }
 
+    mesh_interface = {
+        "addresses": [
+            {
+                "address": "fe80::6670:2ff:fe3e:9e8b",
+                "family": "ipv6",
+                "mask": 64,
+                "proto": "static",
+            }
+        ],
+        "mac": "64:70:02:3e:9e:8b",
+        "mtu": 1500,
+        "multicast": True,
+        "name": "mesh0-mng",
+        "txqueuelen": 1000,
+        "type": "wireless",
+        "up": True,
+        "wireless": {
+            "channel": 11,
+            "clients": [
+                {
+                    "auth": True,
+                    "authorized": True,
+                    "ht": True,
+                    "mac": "A0:F3:C1:A5:FA:35",
+                    "mfp": False,
+                    "noise": -95,
+                    "signal": 4,
+                    "vht": False,
+                    "wmm": True,
+                }
+            ],
+            "country": "ES",
+            "frequency": 2462,
+            "htmode": "HT20",
+            "mode": "802.11s",
+            "noise": -95,
+            "signal": 4,
+            "ssid": "battlemesh-mng",
+            "tx_power": 17,
+        },
+    }
+
 
 class DeviceMonitoringTestCase(TestDeviceMonitoringMixin, TestCase):
     pass

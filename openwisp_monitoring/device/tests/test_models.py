@@ -721,7 +721,9 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
     device_data_model = DeviceData
 
     def test_wifi_client_session_created(self):
-        device_data = self._save_device_data()
+        data = self._sample_data
+        data['interfaces'].append(self.mesh_interface)
+        device_data = self._save_device_data(data=data)
         self.assertEqual(WifiClient.objects.count(), 3)
         self.assertEqual(WifiSession.objects.count(), 3)
         wifi_client1 = WifiClient.objects.get(mac_address='00:ee:ad:34:f5:3b')
