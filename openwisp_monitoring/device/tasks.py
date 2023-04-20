@@ -38,7 +38,7 @@ def trigger_device_checks(pk, recovery=True):
 
 @shared_task(base=OpenwispCeleryTask)
 def save_wifi_clients_and_sessions(device_data, device_pk):
-    _WIFICLIENT_FIELDS = ['vendor', 'ht', 'vht', 'wmm', 'wds', 'wps']
+    _WIFICLIENT_FIELDS = ['vendor', 'ht', 'vht', 'he', 'wmm', 'wds', 'wps']
     WifiClient = load_model('device_monitoring', 'WifiClient')
     WifiSession = load_model('device_monitoring', 'WifiSession')
 
@@ -61,6 +61,11 @@ def save_wifi_clients_and_sessions(device_data, device_pk):
             update_fields = []
             for field in _WIFICLIENT_FIELDS:
                 if getattr(client_obj, field) != client.get(field):
+                    # The wifi 6 client information (he) is optional
+                    # so when it is not available, we should make
+                    # sure its default value remains unchanged ie. False
+                    if field == 'he' and field not in client:
+                        continue
                     setattr(client_obj, field, client.get(field))
                     update_fields.append(field)
             if update_fields:

@@ -140,6 +140,12 @@ class Migration(migrations.Migration):
                         blank=True, default=None, null=True, verbose_name='VHT'
                     ),
                 ),
+                (
+                    'he',
+                    models.BooleanField(
+                        blank=True, default=False, null=True, verbose_name='HE'
+                    ),
+                ),
                 ('wmm', models.BooleanField(default=False, verbose_name='WMM')),
                 ('wds', models.BooleanField(default=False, verbose_name='WDS')),
                 ('wps', models.BooleanField(default=False, verbose_name='WPS')),

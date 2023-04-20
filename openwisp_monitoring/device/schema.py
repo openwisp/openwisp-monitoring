@@ -236,6 +236,7 @@ schema = {
                                         "authorized": {"type": "boolean"},
                                         "ht": {"type": "boolean"},
                                         "vht": {"type": "boolean"},
+                                        "he": {"type": "boolean"},
                                         "wds": {"type": "boolean"},
                                         "wmm": {"type": "boolean"},
                                         "wps": {"type": "boolean"},

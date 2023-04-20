@@ -174,43 +174,77 @@ class TestAdmin(
             html=True,
         )
 
-    def test_status_data_contains_wifi_client_ht_vht_unknown(self):
+    def test_status_data_contains_wifi_client_he_vht_ht_unknown(self):
         data = deepcopy(self._data())
         d = self._create_device(organization=self._create_org())
         url = reverse('admin:config_device_change', args=[d.pk])
         wireless_interface = data['interfaces'][0]['wireless']
         client = data['interfaces'][0]['wireless']['clients'][0]
 
-        with self.subTest('Test when HT is disabled'):
+        with self.subTest('Test when htmode is NOHT'):
             wireless_interface.update({'htmode': 'NOHT'})
             self._post_data(d.id, d.key, data)
             response = self.client.get(url)
+            # make sure 'he', 'vht' and 'ht' are set to None
             self.assertContains(
                 response,
                 """
-                    <td class="ht">
+                    <td class="he">
                         <img src="/static/admin/img/icon-unknown.svg">
                     </td>
                     <td class="vht">
+                        <img src="/static/admin/img/icon-unknown.svg">
+                    </td>
+                    <td class="ht">
                         <img src="/static/admin/img/icon-unknown.svg">
                     </td>
                 """,
                 html=True,
             )
 
-        with self.subTest('Test when HT is enabled'):
+        with self.subTest('Test when htmode is HT and client he and vht are False'):
             wireless_interface.update({'htmode': 'HT40'})
+            # both 'he' and 'vht' are False
+            self.assertEqual(client['he'], False)
             self.assertEqual(client['vht'], False)
             self._post_data(d.id, d.key, data)
             response = self.client.get(url)
+            # make sure 'he' and 'vht' are set to None
             self.assertContains(
                 response,
                 """
-                    <td class="ht">
-                        <img src="/static/admin/img/icon-yes.svg">
+                    <td class="he">
+                        <img src="/static/admin/img/icon-unknown.svg">
                     </td>
                     <td class="vht">
                         <img src="/static/admin/img/icon-unknown.svg">
+                    </td>
+                    <td class="ht">
+                        <img src="/static/admin/img/icon-yes.svg">
+                    </td>
+                """,
+                html=True,
+            )
+
+        with self.subTest('Test when htmode is VHT and client he is False'):
+            wireless_interface.update({'htmode': 'VHT80'})
+            client.update({'vht': True})
+            self.assertEqual(client['he'], False)
+            self.assertEqual(client['vht'], True)
+            self._post_data(d.id, d.key, data)
+            response = self.client.get(url)
+            # make sure only 'he' is set to None
+            self.assertContains(
+                response,
+                """
+                    <td class="he">
+                        <img src="/static/admin/img/icon-unknown.svg">
+                    </td>
+                    <td class="vht">
+                        <img src="/static/admin/img/icon-yes.svg">
+                    </td>
+                    <td class="ht">
+                        <img src="/static/admin/img/icon-yes.svg">
                     </td>
                 """,
                 html=True,
@@ -902,8 +936,8 @@ class TestWifiSessionAdmin(
             {'labels': [], 'values': []},
         )
 
-    def test_wifi_client_ht_vht_unknown(self):
-        test_wifi_client = self._create_wifi_client(ht=None, vht=None)
+    def test_wifi_client_he_vht_ht_unknown(self):
+        test_wifi_client = self._create_wifi_client(he=None, vht=None, ht=None)
         test_wifi_session = self._create_wifi_session(wifi_client=test_wifi_client)
         device = Device.objects.all().first()
 
@@ -913,10 +947,13 @@ class TestWifiSessionAdmin(
             self.assertContains(
                 response,
                 """
-                    <td class="field-ht">
+                    <td class="field-he">
                         <p><img src="/static/admin/img/icon-unknown.svg"></p>
                     </td>
                     <td class="field-vht">
+                        <p><img src="/static/admin/img/icon-unknown.svg"></p>
+                    </td>
+                    <td class="field-ht">
                         <p><img src="/static/admin/img/icon-unknown.svg"></p>
                     </td>
                 """,
@@ -930,10 +967,13 @@ class TestWifiSessionAdmin(
             self.assertContains(
                 response,
                 """
-                    <td class="field-ht">
+                    <td class="field-he">
                         <img src="/static/admin/img/icon-unknown.svg">
                     </td>
                     <td class="field-vht">
+                        <img src="/static/admin/img/icon-unknown.svg">
+                    </td>
+                    <td class="field-ht">
                         <img src="/static/admin/img/icon-unknown.svg">
                     </td>
                 """,
@@ -948,9 +988,9 @@ class TestWifiSessionAdmin(
             self.assertContains(
                 response,
                 """
-                    <div class="form-row field-ht">
+                    <div class="form-row field-he">
                     <div>
-                        <label>HT:</label>
+                        <label>WiFi 6 (802.11ax):</label>
                             <div class="readonly">
                                 <img src="/static/admin/img/icon-unknown.svg">
                             </div>
@@ -958,7 +998,15 @@ class TestWifiSessionAdmin(
                     </div>
                     <div class="form-row field-vht">
                     <div>
-                        <label>VHT:</label>
+                        <label>WiFi 5 (802.11ac):</label>
+                            <div class="readonly">
+                                <img src="/static/admin/img/icon-unknown.svg">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row field-ht">
+                    <div>
+                        <label>WiFi 4 (802.11n):</label>
                             <div class="readonly">
                                 <img src="/static/admin/img/icon-unknown.svg">
                             </div>
