@@ -78,7 +78,8 @@ jobs:
       - name: Install openwisp-monitoring
         run: |
           pip install -U -I -e .
-          pip install --force-reinstall ${{ matrix.django-version }}
+          pip uninstall -y django
+          pip install ${{ matrix.django-version }}
 
       - name: QA checks
         run: |
