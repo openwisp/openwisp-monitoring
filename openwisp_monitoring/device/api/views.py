@@ -27,6 +27,7 @@ from ...views import MonitoringApiViewMixin
 from ..schema import schema
 from ..signals import device_metrics_received
 from ..tasks import write_device_metrics
+from .filters import MonitoringDeviceFilter
 from .serializers import (
     MonitoringDeviceDetailSerializer,
     MonitoringDeviceListSerializer,
@@ -194,7 +195,7 @@ class MonitoringDeviceList(DeviceListCreateView):
     serializer_class = MonitoringDeviceListSerializer
     http_method_names = ['get', 'head', 'options']
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['monitoring__status']
+    filterset_class = MonitoringDeviceFilter
 
     def get_queryset(self):
         return super().get_queryset().select_related('monitoring').order_by('name')

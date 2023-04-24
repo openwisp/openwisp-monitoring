@@ -2544,6 +2544,20 @@ to retrieve the list of devices which are in critical conditions
 
    GET /api/v1/monitoring/device/?monitoring__status=critical
 
+To filter a list of device monitoring data based
+on their organization, you can use the ``organization_id``.
+
+.. code-block:: text
+
+   GET /api/v1/monitoring/device/?organization={organization_id}
+
+To filter a list of device monitoring data based
+on their organization slug, you can use the ``organization_slug``.
+
+.. code-block:: text
+
+   GET /api/v1/monitoring/device/?organization_slug={organization_slug}
+
 Collect device metrics and status
 #################################
 
