@@ -18,6 +18,7 @@ from .. import settings as app_settings
 from ..signals import health_status_changed
 from ..tasks import delete_wifi_clients_and_sessions, trigger_device_checks
 from ..utils import get_device_cache_key
+from ..writer import DeviceDataWriter
 from . import DeviceMonitoringTestCase, TestWifiClientSessionMixin
 
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
@@ -539,6 +540,12 @@ class TestDeviceData(BaseTestCase):
         device.monitoring.save()
         update_config.delay(device.pk)
         mocked_logger_info.assert_called_once()
+
+    def test_calculate_increment(self):
+        dd = self._create_device_data()
+        dd.writer._init_previous_data()
+        result = dd.writer._calculate_increment('wlan0', 'rx_bytes', 1234.56)
+        self.assertEqual(result, 1234)
 
 
 class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
