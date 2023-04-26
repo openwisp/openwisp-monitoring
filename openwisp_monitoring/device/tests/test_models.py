@@ -18,7 +18,6 @@ from .. import settings as app_settings
 from ..signals import health_status_changed
 from ..tasks import delete_wifi_clients_and_sessions, trigger_device_checks
 from ..utils import get_device_cache_key
-from ..writer import DeviceDataWriter
 from . import DeviceMonitoringTestCase, TestWifiClientSessionMixin
 
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
