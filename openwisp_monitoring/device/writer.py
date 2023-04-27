@@ -354,12 +354,12 @@ class DeviceDataWriter(object):
         # and to calculate the traffic performed since the last
         # measurement we have to calculate the difference
         if value >= previous_counter:
-            return value - previous_counter
+            return int(value - previous_counter)
         # on the other side, if the current value is less than
         # the previous value, it means that the counter was restarted
         # (eg: reboot, configuration reload), so we keep the whole amount
         else:
-            return value
+            return int(value)
 
     def _create_traffic_chart(self, metric):
         """

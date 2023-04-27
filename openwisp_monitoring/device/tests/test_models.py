@@ -540,6 +540,12 @@ class TestDeviceData(BaseTestCase):
         update_config.delay(device.pk)
         mocked_logger_info.assert_called_once()
 
+    def test_calculate_increment(self):
+        dd = self._create_device_data()
+        dd.writer._init_previous_data()
+        result = dd.writer._calculate_increment('wlan0', 'rx_bytes', 1234.56)
+        self.assertEqual(result, 1234)
+
 
 class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
     """
