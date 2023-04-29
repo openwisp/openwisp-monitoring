@@ -92,12 +92,11 @@ jobs:
           TIMESERIES_UDP=1 coverage run -a --source=openwisp_monitoring runtests.py
 
       - name: Upload Coverage
-        run: coveralls --service=github
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COVERALLS_FLAG_NAME: |
-            python-${{ matrix.python-version }}-${{ matrix.django-version }}
-          COVERALLS_PARALLEL: true
+        uses: coverallsapp/github-action@v2
+        with:
+          parallel: true
+          flag-name: python-${{ matrix.python-version }}-${{ matrix.django-version }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
     name: Deploy Docker Image
@@ -116,14 +115,10 @@ jobs:
           docker push openwisp/openwisp-monitoring:develop
 
   coveralls:
-    name: Finish Coveralls
     needs: build
     runs-on: ubuntu-latest
-    container: python:3-slim
     steps:
-      - name: Finished
-        run: |
-          pip install --upgrade coveralls
-          coveralls --finish
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Coveralls Finished
+        uses: coverallsapp/github-action@v2
+        with:
+          parallel-finished: true
