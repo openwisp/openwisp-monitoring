@@ -385,7 +385,10 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         dd1 = self.create_test_data()
         url = reverse('monitoring:api_monitoring_device_list')
         d1 = self.device_model.objects.get(pk=dd1.pk)
-        d2 = self._create_device(name='test-device-2', mac_address='00:11:22:33:44:66')
+        o2 = self._create_org(name='test org 2')
+        d2 = self._create_device(
+            name='test-device-2', mac_address='00:11:22:33:44:66', organization=o2
+        )
         r = self.client.get(url)
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.data['count'], 2)
@@ -413,6 +416,34 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             # Update device (d2) health status to 'critical'
             d2.monitoring.update_status('critical')
             r = self.client.get(f'{url}?monitoring__status=critical')
+            self.assertEqual(r.data['count'], 1)
+            self._assert_device_info(device=d2, data=r.data['results'][0])
+            self._assert_device_metrics_info(
+                data=r.data['results'][0], detail=False, charts=False
+            )
+
+        with self.subTest('Test filtering using organization id'):
+            r = self.client.get(f'{url}?organization={d1.organization.id}')
+            self.assertEqual(r.data['count'], 1)
+            self._assert_device_info(device=d1, data=r.data['results'][0])
+            self._assert_device_metrics_info(
+                data=r.data['results'][0], detail=False, charts=False
+            )
+            r = self.client.get(f'{url}?organization={d2.organization.id}')
+            self.assertEqual(r.data['count'], 1)
+            self._assert_device_info(device=d2, data=r.data['results'][0])
+            self._assert_device_metrics_info(
+                data=r.data['results'][0], detail=False, charts=False
+            )
+
+        with self.subTest('Test filtering using organization slug'):
+            r = self.client.get(f'{url}?organization_slug={d1.organization.slug}')
+            self.assertEqual(r.data['count'], 1)
+            self._assert_device_info(device=d1, data=r.data['results'][0])
+            self._assert_device_metrics_info(
+                data=r.data['results'][0], detail=False, charts=False
+            )
+            r = self.client.get(f'{url}?organization_slug={d2.organization.slug}')
             self.assertEqual(r.data['count'], 1)
             self._assert_device_info(device=d2, data=r.data['results'][0])
             self._assert_device_metrics_info(
