@@ -374,7 +374,7 @@ class AbstractWifiClient(TimeStampedEditableModel):
         help_text=_('MAC address'),
     )
     vendor = models.CharField(max_length=200, blank=True, null=True)
-    he = models.BooleanField(null=True, blank=True, default=False, verbose_name='HE')
+    he = models.BooleanField(null=True, blank=True, default=None, verbose_name='HE')
     vht = models.BooleanField(null=True, blank=True, default=None, verbose_name='VHT')
     ht = models.BooleanField(null=True, blank=True, default=None, verbose_name='HT')
     wmm = models.BooleanField(default=False, verbose_name='WMM')

@@ -143,7 +143,7 @@ class Migration(migrations.Migration):
                 (
                     'he',
                     models.BooleanField(
-                        blank=True, default=False, null=True, verbose_name='HE'
+                        blank=True, default=None, null=True, verbose_name='HE'
                     ),
                 ),
                 ('wmm', models.BooleanField(default=False, verbose_name='WMM')),

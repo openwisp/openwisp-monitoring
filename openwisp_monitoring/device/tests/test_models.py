@@ -743,7 +743,7 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
 
         wifi_client2 = WifiClient.objects.get(mac_address='b0:e1:7e:30:16:44')
         self.assertEqual(wifi_client2.vendor, None)
-        self.assertEqual(wifi_client2.he, False)
+        self.assertEqual(wifi_client2.he, None)
         self.assertEqual(wifi_client2.vht, False)
         self.assertEqual(wifi_client2.ht, True)
         self.assertEqual(wifi_client2.wmm, True)
@@ -752,7 +752,7 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
 
         wifi_client3 = WifiClient.objects.get(mac_address='c0:ee:fb:34:f5:4b')
         self.assertEqual(wifi_client3.vendor, None)
-        self.assertEqual(wifi_client3.he, False)
+        self.assertEqual(wifi_client3.he, None)
         self.assertEqual(wifi_client3.vht, False)
         self.assertEqual(wifi_client3.ht, True)
         self.assertEqual(wifi_client3.wmm, True)

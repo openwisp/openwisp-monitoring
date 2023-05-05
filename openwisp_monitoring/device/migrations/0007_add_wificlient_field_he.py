@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
             model_name='wificlient',
             name='he',
             field=models.BooleanField(
-                blank=True, default=False, null=True, verbose_name='HE'
+                blank=True, default=None, null=True, verbose_name='HE'
             ),
         ),
     ]
