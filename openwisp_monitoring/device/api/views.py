@@ -12,11 +12,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from pytz import UTC
 from rest_framework import pagination, serializers, status
 from rest_framework.authentication import SessionAuthentication
-from rest_framework.generics import (
-    GenericAPIView,
-    ListCreateAPIView,
-    RetrieveUpdateDestroyAPIView,
-)
+from rest_framework.generics import GenericAPIView, ListAPIView, RetrieveAPIView
 from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 from swapper import load_model
@@ -42,9 +38,7 @@ from .serializers import (
     MonitoringDeviceListSerializer,
     MonitoringGeoJsonLocationSerializer,
     MonitoringLocationDeviceSerializer,
-    WifiClientSerializer,
-    WifiSessionCreateUpdateSerializer,
-    WifiSessionReadSerializer,
+    WifiSessionSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -69,13 +63,6 @@ class WifiSessionProtectedAPIMixin(FilterByOrganizationManaged):
     authentication_classes = [BearerAuthentication, SessionAuthentication]
     permission_classes = list(FilterByOrganizationManaged.permission_classes) + [
         IsOrganizationManager,
-        DjangoModelPermissions,
-    ]
-
-
-class WifiClientProtectedAPIMixin(FilterByOrganizationManaged):
-    authentication_classes = [BearerAuthentication, SessionAuthentication]
-    permission_classes = list(FilterByOrganizationManaged.permission_classes) + [
         DjangoModelPermissions,
     ]
 
@@ -176,82 +163,6 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
 device_metric = DeviceMetricView.as_view()
 
 
-class WifiSessionFilter(filters.FilterSet):
-    organization_slug = filters.CharFilter(
-        field_name='device__organization__slug', label='Organization slug'
-    )
-
-    class Meta:
-        model = WifiSession
-        fields = {
-            'device': ['exact'],
-            'device__group': ['exact'],
-            'start_time': ['exact', 'gt', 'gte', 'lt', 'lte'],
-            'stop_time': ['exact', 'gt', 'gte', 'lt', 'lte'],
-        }
-
-
-class WifiSessionListCreateView(WifiSessionProtectedAPIMixin, ListCreateAPIView):
-    queryset = WifiSession.objects.select_related(
-        'device', 'wifi_client', 'device__organization', 'device__group'
-    )
-    organization_field = 'device__organization'
-    filter_backends = [DjangoFilterBackend]
-    pagination_class = ListViewPagination
-    filterset_class = WifiSessionFilter
-
-    def get_serializer_class(self):
-        if self.request.method in SAFE_METHODS:
-            return WifiSessionReadSerializer
-        return WifiSessionCreateUpdateSerializer
-
-
-wifi_session_list = WifiSessionListCreateView.as_view()
-
-
-class WifiSessionDetailView(WifiSessionProtectedAPIMixin, RetrieveUpdateDestroyAPIView):
-    queryset = WifiSession.objects.select_related(
-        'device', 'wifi_client', 'device__organization'
-    )
-    organization_field = 'device__organization'
-
-    def get_serializer_class(self):
-        if self.request.method in SAFE_METHODS:
-            return WifiSessionReadSerializer
-        return WifiSessionCreateUpdateSerializer
-
-
-wifi_session_detail = WifiSessionDetailView.as_view()
-
-
-class WifiClientListCreateView(WifiClientProtectedAPIMixin, ListCreateAPIView):
-    serializer_class = WifiClientSerializer
-    queryset = WifiClient.objects.all()
-    filter_backends = [DjangoFilterBackend]
-    pagination_class = ListViewPagination
-    filterset_fields = ['vendor']
-    organization_field = 'wifisession__device__organization'
-
-    def get_permissions(self):
-        if self.request.method in ['GET']:
-            self.permission_classes = WifiClientProtectedAPIMixin.permission_classes + [
-                IsOrganizationManager
-            ]
-        return [permission() for permission in self.permission_classes]
-
-
-wifi_client_list = WifiClientListCreateView.as_view()
-
-
-class WifiClientDetailView(WifiClientProtectedAPIMixin, RetrieveUpdateDestroyAPIView):
-    serializer_class = WifiClientSerializer
-    queryset = WifiClient.objects.all()
-    organization_field = 'wifisession__device__organization'
-
-
-wifi_client_detail = WifiClientDetailView.as_view()
-
-
 class MonitoringGeoJsonLocationList(GeoJsonLocationList):
     serializer_class = MonitoringGeoJsonLocationSerializer
     queryset = (
@@ -313,3 +224,43 @@ class MonitoringDeviceList(DeviceListCreateView):
 
 
 monitoring_device_list = MonitoringDeviceList.as_view()
+
+
+class WifiSessionFilter(filters.FilterSet):
+    organization_slug = filters.CharFilter(
+        field_name='device__organization__slug', label='Organization slug'
+    )
+
+    class Meta:
+        model = WifiSession
+        fields = {
+            'device': ['exact'],
+            'device__group': ['exact'],
+            'start_time': ['exact', 'gt', 'gte', 'lt', 'lte'],
+            'stop_time': ['exact', 'gt', 'gte', 'lt', 'lte'],
+        }
+
+
+class WifiSessionListView(WifiSessionProtectedAPIMixin, ListAPIView):
+    queryset = WifiSession.objects.select_related(
+        'device', 'wifi_client', 'device__organization', 'device__group'
+    )
+    organization_field = 'device__organization'
+    filter_backends = [DjangoFilterBackend]
+    pagination_class = ListViewPagination
+    filterset_class = WifiSessionFilter
+    serializer_class = WifiSessionSerializer
+
+
+wifi_session_list = WifiSessionListView.as_view()
+
+
+class WifiSessionDetailView(WifiSessionProtectedAPIMixin, RetrieveAPIView):
+    queryset = WifiSession.objects.select_related(
+        'device', 'wifi_client', 'device__organization'
+    )
+    organization_field = 'device__organization'
+    serializer_class = WifiSessionSerializer
+
+
+wifi_session_detail = WifiSessionDetailView.as_view()

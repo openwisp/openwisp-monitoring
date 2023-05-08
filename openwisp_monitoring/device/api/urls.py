@@ -35,14 +35,4 @@ urlpatterns = [
         views.wifi_session_detail,
         name='api_wifi_session_detail',
     ),
-    path(
-        'api/v1/monitoring/wifi-client/',
-        views.wifi_client_list,
-        name='api_wifi_client_list',
-    ),
-    re_path(
-        r'^api/v1/monitoring/wifi-client/(?P<pk>[^/]+)/$',
-        views.wifi_client_detail,
-        name='api_wifi_client_detail',
-    ),
 ]

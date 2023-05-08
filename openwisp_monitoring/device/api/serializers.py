@@ -1,4 +1,3 @@
-from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from swapper import load_model
 
@@ -75,6 +74,17 @@ class MonitoringDeviceListSerializer(DeviceListSerializer):
         ]
 
 
+class MonitoringDeviceDetailSerializer(MonitoringDeviceListSerializer):
+    monitoring = DeviceMonitoringSerializer(read_only=True)
+
+
+class MonitoringGeoJsonLocationSerializer(GeoJsonLocationSerializer):
+    ok_count = serializers.IntegerField()
+    problem_count = serializers.IntegerField()
+    critical_count = serializers.IntegerField()
+    unknown_count = serializers.IntegerField()
+
+
 class WifiClientSerializer(FilterSerializerByOrgManaged, ValidatedModelSerializer):
     class Meta:
         model = WifiClient
@@ -95,32 +105,7 @@ class WifiClientSerializer(FilterSerializerByOrgManaged, ValidatedModelSerialize
         )
 
 
-class WifiSessionCreateUpdateSerializer(
-    FilterSerializerByOrgManaged, ValidatedModelSerializer
-):
-    organization_lookup = 'wifisession__device__organization__in'
-
-    class Meta:
-        model = WifiSession
-        fields = ['device', 'wifi_client', 'ssid', 'interface_name']
-        # When a relationship or ChoiceField has too many items,
-        # rendering the widget containing all the options can become very slow,
-        # and cause the browsable API rendering to perform poorly, Changed select field to input.
-        extra_kwargs = {
-            'device': {'style': {'base_template': 'input.html'}},
-            'wifi_client': {'style': {'base_template': 'input.html'}},
-        }
-
-    def validate_device(self, device):
-        user = self.context['request'].user
-        if user and not user.is_manager(device.organization_id):
-            raise serializers.ValidationError(
-                _('Device organization must be in user managed organization')
-            )
-        return device
-
-
-class WifiSessionReadSerializer(FilterSerializerByOrgManaged, ValidatedModelSerializer):
+class WifiSessionSerializer(FilterSerializerByOrgManaged, ValidatedModelSerializer):
     client = WifiClientSerializer(source='wifi_client')
     device_name = serializers.CharField(source='device.name', read_only=True)
     organization_id = serializers.CharField(
@@ -146,14 +131,3 @@ class WifiSessionReadSerializer(FilterSerializerByOrgManaged, ValidatedModelSeri
             'modified',
         ]
         read_only_fields = ('stop_time', 'modified')
-
-
-class MonitoringDeviceDetailSerializer(MonitoringDeviceListSerializer):
-    monitoring = DeviceMonitoringSerializer(read_only=True)
-
-
-class MonitoringGeoJsonLocationSerializer(GeoJsonLocationSerializer):
-    ok_count = serializers.IntegerField()
-    problem_count = serializers.IntegerField()
-    critical_count = serializers.IntegerField()
-    unknown_count = serializers.IntegerField()

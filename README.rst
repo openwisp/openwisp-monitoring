@@ -2633,13 +2633,6 @@ You can filter to get list of wifi sessions using ``stop_time`` **(gt, gte, lt, 
    # Less than stop_time
    GET /api/v1/monitoring/wifi-session/?stop_time__lt={stop_time}
 
-Create wifi session
-###################
-
-.. code-block:: text
-   
-   POST /api/v1/monitoring/wifi-session/
-
 Get wifi session
 ################
 
@@ -2647,53 +2640,10 @@ Get wifi session
    
    GET /api/v1/monitoring/wifi-session/{id}/
 
-Change wifi session
-###################
-
-.. code-block:: text
-   
-   PUT /api/v1/monitoring/wifi-session/{id}/
-
-List wifi client
-################
-
-.. code-block:: text
-   
-   GET /api/v1/monitoring/wifi-client/
-
-**Available filters**
-
-You can filter to get list of wifi clients using ``vendor``.
-
-.. code-block:: text
-   
-   GET /api/v1/monitoring/wifi-client/?vendor={vendor}
-
-Create wifi client
-##################
-
-.. code-block:: text
-   
-   POST /api/v1/monitoring/wifi-client/
-
-Get wifi client
-###############
-
-.. code-block:: text
-   
-   GET /api/v1/monitoring/wifi-client/{id}/
-
-Change wifi client
-##################
-
-.. code-block:: text
-   
-   PUT /api/v1/monitoring/wifi-client/{id}/
-
 Pagination
 ##########
 
-Wifi session & Wifi client list endpoints support the ``page_size`` parameter that allows paginating the results in conjunction with the page parameter.
+Wifi session endpoint support the ``page_size`` parameter that allows paginating the results in conjunction with the page parameter.
 
 .. code-block:: text
    
