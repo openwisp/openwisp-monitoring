@@ -49,7 +49,8 @@ def save_wifi_clients_and_sessions(device_data, device_pk):
             continue
         interface_name = interface.get('name')
         wireless = interface.get('wireless', {})
-
+        if not wireless or wireless['mode'] != 'access_point':
+            continue
         ssid = wireless.get('ssid')
         clients = wireless.get('clients', [])
         for client in clients:

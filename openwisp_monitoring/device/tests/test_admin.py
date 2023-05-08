@@ -158,21 +158,63 @@ class TestAdmin(
         self.assertContains(
             response,
             """
-            <div class="readonly">
-                WiFi 4 (802.11n): HT20
-            </div>
+                <div class="readonly">
+                    WiFi 4 (802.11n): HT20
+                </div>
             """,
             html=True,
         )
         self.assertContains(
             response,
             """
-            <div class="readonly">
-                WiFi 5 (802.11ac): VHT80
-            </div>
+                <div class="readonly">
+                    WiFi 5 (802.11ac): VHT80
+                </div>
             """,
             html=True,
         )
+
+    def test_status_data_contains_wifi_client_ht_vht_unknown(self):
+        data = deepcopy(self._data())
+        d = self._create_device(organization=self._create_org())
+        url = reverse('admin:config_device_change', args=[d.pk])
+        wireless_interface = data['interfaces'][0]['wireless']
+        client = data['interfaces'][0]['wireless']['clients'][0]
+
+        with self.subTest('Test when HT is disabled'):
+            wireless_interface.update({'htmode': 'NOHT'})
+            self._post_data(d.id, d.key, data)
+            response = self.client.get(url)
+            self.assertContains(
+                response,
+                """
+                    <td class="ht">
+                        <img src="/static/admin/img/icon-unknown.svg">
+                    </td>
+                    <td class="vht">
+                        <img src="/static/admin/img/icon-unknown.svg">
+                    </td>
+                """,
+                html=True,
+            )
+
+        with self.subTest('Test when HT is enabled'):
+            wireless_interface.update({'htmode': 'HT40'})
+            self.assertEqual(client['vht'], False)
+            self._post_data(d.id, d.key, data)
+            response = self.client.get(url)
+            self.assertContains(
+                response,
+                """
+                    <td class="ht">
+                        <img src="/static/admin/img/icon-yes.svg">
+                    </td>
+                    <td class="vht">
+                        <img src="/static/admin/img/icon-unknown.svg">
+                    </td>
+                """,
+                html=True,
+            )
 
     def test_no_device_data(self):
         d = self._create_device(organization=self._create_org())
@@ -698,16 +740,17 @@ class TestWifiSessionAdmin(
     TestWifiClientSessionMixin,
     TestCase,
 ):
+
+    wifi_session_app_label = WifiSession._meta.app_label
+    wifi_session_model_name = WifiSession._meta.model_name
+
     def setUp(self):
         admin = self._create_admin()
         self.client.force_login(admin)
 
     def test_changelist_filters_and_multitenancy(self):
         url = reverse(
-            'admin:{app_label}_{model_name}_changelist'.format(
-                app_label=WifiSession._meta.app_label,
-                model_name=WifiSession._meta.model_name,
-            )
+            f'admin:{self.wifi_session_app_label}_{self.wifi_session_model_name}_changelist'
         )
         org1 = self._create_org(name='org1', slug='org1')
         org1_device_group = self._create_device_group(
@@ -858,3 +901,69 @@ class TestWifiSessionAdmin(
             response.context['dashboard_charts'][13]['query_params'],
             {'labels': [], 'values': []},
         )
+
+    def test_wifi_client_ht_vht_unknown(self):
+        test_wifi_client = self._create_wifi_client(ht=None, vht=None)
+        test_wifi_session = self._create_wifi_session(wifi_client=test_wifi_client)
+        device = Device.objects.all().first()
+
+        with self.subTest('Test device wifi session inline'):
+            url = reverse('admin:config_device_change', args=[device.id])
+            response = self.client.get(url)
+            self.assertContains(
+                response,
+                """
+                    <td class="field-ht">
+                        <p><img src="/static/admin/img/icon-unknown.svg"></p>
+                    </td>
+                    <td class="field-vht">
+                        <p><img src="/static/admin/img/icon-unknown.svg"></p>
+                    </td>
+                """,
+                html=True,
+            )
+        with self.subTest('Test device wifi session list'):
+            url = reverse(
+                f'admin:{self.wifi_session_app_label}_{self.wifi_session_model_name}_changelist'
+            )
+            response = self.client.get(url)
+            self.assertContains(
+                response,
+                """
+                    <td class="field-ht">
+                        <img src="/static/admin/img/icon-unknown.svg">
+                    </td>
+                    <td class="field-vht">
+                        <img src="/static/admin/img/icon-unknown.svg">
+                    </td>
+                """,
+                html=True,
+            )
+        with self.subTest('Test device wifi session change'):
+            url = reverse(
+                f'admin:{self.wifi_session_app_label}_{self.wifi_session_model_name}_change',
+                args=[test_wifi_session.id],
+            )
+            response = self.client.get(url)
+            self.assertContains(
+                response,
+                """
+                    <div class="form-row field-ht">
+                    <div>
+                        <label>HT:</label>
+                            <div class="readonly">
+                                <img src="/static/admin/img/icon-unknown.svg">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row field-vht">
+                    <div>
+                        <label>VHT:</label>
+                            <div class="readonly">
+                                <img src="/static/admin/img/icon-unknown.svg">
+                            </div>
+                        </div>
+                    </div>
+                """,
+                html=True,
+            )

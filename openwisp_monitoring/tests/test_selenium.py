@@ -14,7 +14,10 @@ from swapper import load_model
 
 from openwisp_controller.connection.tests.utils import CreateConnectionsMixin
 from openwisp_controller.tests.utils import SeleniumTestMixin as BaseSeleniumTestMixin
-from openwisp_monitoring.device.tests import TestDeviceMonitoringMixin
+from openwisp_monitoring.device.tests import (
+    TestDeviceMonitoringMixin,
+    TestWifiClientSessionMixin,
+)
 from openwisp_monitoring.monitoring.configuration import DEFAULT_DASHBOARD_TRAFFIC_CHART
 from openwisp_monitoring.monitoring.migrations import create_general_metrics
 
@@ -239,5 +242,75 @@ class TestDashboardCharts(
             'Open WiFi session list',
             self.web_driver.find_element_by_css_selector(
                 '#chart-0-quick-link-container'
+            ).get_attribute('innerHTML'),
+        )
+
+
+class TestWifiSessionInlineAdmin(
+    SeleniumTestMixin,
+    TestWifiClientSessionMixin,
+    StaticLiveServerTestCase,
+):
+    config_app_label = 'config'
+
+    def test_device_wifi_session_inline_change(self):
+        dm = self._create_device_monitoring()
+        device = dm.device
+        self.login()
+        path = f'admin:{self.config_app_label}_device_change'
+        self.open(reverse(path, args=[device.pk]))
+        # Make sure the wifi session inline doesn't exist
+        WebDriverWait(self.web_driver, 2).until(
+            EC.invisibility_of_element_located(
+                (By.CSS_SELECTOR, '#wifisession_set-group')
+            )
+        )
+        # We are still on the device change page,
+        # and now we will create new wifi sessions
+        ws1 = self._create_wifi_session(device=device)
+        wc2 = self._create_wifi_client(mac_address='22:33:44:55:66:88')
+        ws2 = self._create_wifi_session(
+            device=device, wifi_client=wc2, ssid='Test Wifi Session'
+        )
+        # Now press the 'Save' button on the device change page
+        self.web_driver.find_element_by_xpath(
+            '//*[@id="device_form"]/div/div[1]/input[3]'
+        ).click()
+        # Make sure the wifi session tab now
+        # exists with the correct wifi sessions
+        wifi_session_inline = self.web_driver.find_element_by_xpath(
+            '//*[@id="tabs-container"]/ul/li[7]/a'
+        )
+        wifi_session_inline.click()
+        wifi_session_inline_form_error = (
+            "ManagementForm data is missing "
+            "or has been tampered with. Missing fields: "
+            "wifisession_set-TOTAL_FORMS, wifisession_set-INITIAL_FORMS."
+        )
+        # Make sure no inline formset errors
+        # were encountered after saving
+        self.assertNotIn(
+            wifi_session_inline_form_error,
+            self.web_driver.find_element_by_css_selector(
+                '#wifisession_set-group'
+            ).get_attribute('innerHTML'),
+        )
+        # Make sure all wifi sessions are present
+        self.assertIn(
+            f'{ws1.ssid}',
+            self.web_driver.find_element_by_css_selector(
+                '#wifisession_set-group'
+            ).get_attribute('innerHTML'),
+        )
+        self.assertIn(
+            f'{ws2.ssid}',
+            self.web_driver.find_element_by_css_selector(
+                '#wifisession_set-group'
+            ).get_attribute('innerHTML'),
+        )
+        self.assertIn(
+            'View Full History of WiFi Sessions',
+            self.web_driver.find_element_by_css_selector(
+                '#wifisession_set-group'
             ).get_attribute('innerHTML'),
         )

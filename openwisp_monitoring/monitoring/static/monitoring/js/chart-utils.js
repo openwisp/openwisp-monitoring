@@ -21,6 +21,14 @@ django.jQuery(function ($) {
     var range = localStorage.getItem(timeRangeKey) || $('#monitoring-timeseries-default-time').data('value');
     var start = localStorage.getItem(isCustomDateRange) === 'true' ? moment() : moment().subtract(range.split('d')[0], 'days');
 
+    // Initialize date range picker labels
+    var last1DayLabel = gettext('Last 1 Day');
+    var last3DaysLabel = gettext('Last 3 Days');
+    var last7DaysLabel = gettext('Last 7 Days');
+    var last30DaysLabel = gettext('Last 30 Days');
+    var last365DaysLabel = gettext('Last 365 Days');
+    var customDateRangeLabel = gettext('Custom Range');
+
       // Add label to daterangepicker widget
       function addDateRangePickerLabel(startDate, endDate) {
         $('#daterangepicker-widget span').html(startDate + ' - ' + endDate);
@@ -28,12 +36,12 @@ django.jQuery(function ($) {
 
       function initDateRangePickerWidget(start, end) {
         addDateRangePickerLabel(start.format('MMMM D, YYYY'), end.format('MMMM D, YYYY'));
-        $("[data-range-key='Last 1 Day']").attr('data-time', '1d');
-        $("[data-range-key='Last 3 Days']").attr('data-time', '3d');
-        $("[data-range-key='Last Week']").attr('data-time', '7d');
-        $("[data-range-key='Last Month']").attr('data-time', '30d');
-        $("[data-range-key='Last Year']").attr('data-time', '365d');
-        $("[data-range-key='Custom Range']").attr('data-time', 'Custom Range');
+        $(`[data-range-key='${last1DayLabel}']`).attr('data-time', '1d');
+        $(`[data-range-key='${last3DaysLabel}']`).attr('data-time', '3d');
+        $(`[data-range-key='${last7DaysLabel}']`).attr('data-time', '7d');
+        $(`[data-range-key='${last30DaysLabel}']`).attr('data-time', '30d');
+        $(`[data-range-key='${last365DaysLabel}']`).attr('data-time', '365d');
+        $(`[data-range-key='${customDateRangeLabel}']`).attr('data-time', customDateRangeLabel);
       }
 
       $('#daterangepicker-widget').daterangepicker({
@@ -43,12 +51,17 @@ django.jQuery(function ($) {
         maxSpan: {
           "year": 1,
         },
+        locale: {
+          applyLabel: gettext('Apply'),
+          cancelLabel: gettext('Cancel'),
+          customRangeLabel: gettext(customDateRangeLabel),
+        },
         ranges: {
-          'Last 1 Day': [moment().subtract(1, 'days'), moment()],
-          'Last 3 Days': [moment().subtract(3, 'days'), moment()],
-          'Last Week': [moment().subtract(7, 'days'), moment()],
-          'Last Month': [moment().subtract(30, 'days'), moment()],
-          'Last Year': [moment().subtract(365, 'days'), moment()],
+          [`${last1DayLabel}`]: [moment().subtract(1, 'days'), moment()],
+          [`${last3DaysLabel}`]: [moment().subtract(3, 'days'), moment()],
+          [`${last7DaysLabel}`]: [moment().subtract(7, 'days'), moment()],
+          [`${last30DaysLabel}`]: [moment().subtract(30, 'days'), moment()],
+          [`${last365DaysLabel}`]: [moment().subtract(365, 'days'), moment()],
         }
       }, initDateRangePickerWidget);
       initDateRangePickerWidget(start, end);
@@ -160,14 +173,13 @@ django.jQuery(function ($) {
       fallback = $('#ow-chart-fallback'),
       defaultTimeRange = localStorage.getItem(timeRangeKey) || $('#monitoring-timeseries-default-time').data('value'),
       apiUrl = $('#monitoring-timeseries-api-url').data('value'),
-      originalKey = $('#monitoring-timeseries-original-key').data('value'),
-      baseUrl = `${apiUrl}?key=${originalKey}&time=`,
+      baseUrl = `${apiUrl}?time=`,
       globalLoadingOverlay = $('#loading-overlay'),
       localLoadingOverlay = $('#chart-loading-overlay'),
       getChartFetchUrl = function (time) {
         var url = baseUrl + time;
         // pass pickerEndDate and pickerStartDate to url
-        if (localStorage.getItem(isCustomDateRange) === 'true' || localStorage.getItem(pickerChosenLabelKey) === 'Custom Range') {
+        if (localStorage.getItem(isCustomDateRange) === 'true' || localStorage.getItem(pickerChosenLabelKey) === customDateRangeLabel) {
           var startDate = localStorage.getItem(startDateTimeKey);
           var endDate = localStorage.getItem(endDateTimeKey);
           if (localStorage.getItem(isChartZoomed) === 'true') {
@@ -180,7 +192,7 @@ django.jQuery(function ($) {
           const endDateTime = moment(endDate).format('YYYY-MM-DD HH:mm:ss');
           endDate = endDateTime > now ? now : endDateTime;
           var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-          url = `${apiUrl}?key=${originalKey}&timezone=${timezone}&start=${startDate}&end=${endDate}`;
+          url = `${apiUrl}?timezone=${timezone}&start=${startDate}&end=${endDate}`;
         }
         return url;
       },
@@ -305,7 +317,7 @@ django.jQuery(function ($) {
       var time = localStorage.getItem(timeRangeKey);
       location.href = baseUrl + time + '&csv=1';
       // If custom or pickerChosenLabelKey is 'Custom Range', pass pickerEndDate and pickerStartDate to csv url
-      if (localStorage.getItem(isCustomDateRange) === 'true' || localStorage.getItem(pickerChosenLabelKey) === 'Custom Range') {
+      if (localStorage.getItem(isCustomDateRange) === 'true' || localStorage.getItem(pickerChosenLabelKey) === customDateRangeLabel) {
       var startDate = localStorage.getItem(startDateTimeKey);
       var endDate = localStorage.getItem(endDateTimeKey);
       if (localStorage.getItem(isChartZoomed) === 'true') {
@@ -314,7 +326,7 @@ django.jQuery(function ($) {
         startDate = localStorage.getItem(zoomStartDateTimeKey);
       }
       var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      location.href = `${apiUrl}?key=${originalKey}&timezone=${timezone}&start=${startDate}&end=${endDate}&csv=1`;
+      location.href = `${apiUrl}?timezone=${timezone}&start=${startDate}&end=${endDate}&csv=1`;
       }
     });
     // fetch chart data and replace the old charts with the new ones

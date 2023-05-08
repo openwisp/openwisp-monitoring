@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('device_monitoring', '0005_add_group_permissions'),
+        ('device_monitoring', '0006_alter_wificlient_field_ht_vht'),
     ]
 
     operations = [

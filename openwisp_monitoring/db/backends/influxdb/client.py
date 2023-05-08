@@ -162,11 +162,8 @@ class DatabaseClient(object):
             logger.warning(f'got exception while writing to tsdb: {exception}')
             if isinstance(exception, self.client_error):
                 exception_code = getattr(exception, 'code', None)
-                exception_message = getattr(exception, 'content')
-                if (
-                    exception_code == 400
-                    and 'points beyond retention policy dropped' in exception_message
-                ):
+                # do not retry any request which returns 400
+                if exception_code == 400:
                     return
             raise TimeseriesWriteException
 

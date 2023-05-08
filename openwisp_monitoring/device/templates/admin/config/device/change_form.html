@@ -427,10 +427,10 @@
                           </td>
                           {% endif %}
                           <td class="ht">
-                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.ht|yesno:'yes,no,no' }}.svg">
+                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.ht|yesno:'yes,no,unknown' }}.svg">
                           </td>
                           <td class="vht">
-                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.vht|yesno:'yes,no,no' }}.svg">
+                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.vht|yesno:'yes,no,unknown' }}.svg">
                           </td>
                           <td class="wmm">
                               <img src="{% get_static_prefix %}admin/img/icon-{{ client.wmm|yesno:'yes,no,no' }}.svg">

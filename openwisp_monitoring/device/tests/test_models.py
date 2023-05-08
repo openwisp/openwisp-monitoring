@@ -540,6 +540,12 @@ class TestDeviceData(BaseTestCase):
         update_config.delay(device.pk)
         mocked_logger_info.assert_called_once()
 
+    def test_calculate_increment(self):
+        dd = self._create_device_data()
+        dd.writer._init_previous_data()
+        result = dd.writer._calculate_increment('wlan0', 'rx_bytes', 1234.56)
+        self.assertEqual(result, 1234)
+
 
 class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
     """
@@ -721,13 +727,15 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
     device_data_model = DeviceData
 
     def test_wifi_client_session_created(self):
-        device_data = self._save_device_data()
+        data = self._sample_data
+        data['interfaces'].append(self.mesh_interface)
+        device_data = self._save_device_data(data=data)
         self.assertEqual(WifiClient.objects.count(), 3)
         self.assertEqual(WifiSession.objects.count(), 3)
         wifi_client1 = WifiClient.objects.get(mac_address='00:ee:ad:34:f5:3b')
         self.assertEqual(wifi_client1.vendor, None)
         self.assertEqual(wifi_client1.ht, True)
-        self.assertEqual(wifi_client1.vht, False)
+        self.assertEqual(wifi_client1.vht, None)
         self.assertEqual(wifi_client1.wmm, True)
         self.assertEqual(wifi_client1.wds, False)
         self.assertEqual(wifi_client1.wps, False)
@@ -796,6 +804,7 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
             self.assertEqual(WifiClient.objects.count(), 3)
 
         with self.subTest('Test re-opening session for exising clients'):
+            data = deepcopy(self._sample_data)
             self._save_device_data(device_data, data)
             self.assertEqual(WifiSession.objects.filter(stop_time=None).count(), 3)
             self.assertEqual(WifiSession.objects.count(), 6)
@@ -809,23 +818,27 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         self.assertEqual(WifiSession.objects.count(), 0)
 
     def test_database_queries(self):
-        data = deepcopy(self._sample_data)
         device_data = self._create_device_data()
+
         with self.subTest('Test creating new clients and sessions'):
+            data = deepcopy(self._sample_data)
             with self.assertNumQueries(28):
                 self._save_device_data(device_data, data)
 
         with self.subTest('Test updating existing clients and sessions'):
+            data = deepcopy(self._sample_data)
             with self.assertNumQueries(7):
                 self._save_device_data(device_data, data)
 
         with self.subTest('Test closing existing sessions'):
+            data = deepcopy(self._sample_data)
             with self.assertNumQueries(1):
                 self._save_device_data(
                     device_data, data={'type': 'DeviceMonitoring', 'interface': []}
                 )
 
         with self.subTest('Test new sessions for existing clients'):
+            data = deepcopy(self._sample_data)
             with self.assertNumQueries(16):
                 self._save_device_data(device_data, data)
 

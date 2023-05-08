@@ -95,7 +95,7 @@ Available Features
 * Maintains a record of `WiFi sessions <#monitoring-wifi-sessions>`_ with clients'
   MAC address and vendor, session start and stop time and connected device
   along with other information
-* Charts can be viewed at resolutions of 1 day, 3 days, a week, a month and a year
+* Charts can be viewed at resolutions of the last 1 day, 3 days, 7 days, 30 days, and 365 days
 * Configurable alerts
 * CSV Export of monitoring data
 * An overview of the status of the network is shown in the admin dashboard,
@@ -2488,6 +2488,7 @@ The format used for Device Status is inspired by
 - If the request is made without ``?status=true`` the response will
   contain only charts data and will not include any device status information
   (current load average, ARP table, DCHP leases, etc.).
+
 - When retrieving chart data, the ``time`` parameter allows to specify
   the time frame, eg:
 
@@ -2500,12 +2501,62 @@ The format used for Device Status is inspired by
 - In alternative to ``time`` it is possible to request chart data for a custom
   date range by using the ``start`` and ``end`` parameters, eg:
 
+- The response contains device information, monitoring status (health status),
+  a list of metrics with their respective statuses, chart data and
+  device status information (only if ``?status=true``).
+
+- This endpoint can be accessed with session authentication, token authentication,
+  or alternatively with the device key passed as query string parameter
+  as shown below (`?key={key}`);
+  note: this method is meant to be used by the devices.
+
 .. code-block:: text
 
     GET /api/v1/monitoring/device/{pk}/?key={key}&status=true&start={start_datetime}&end={end_datetime}
 
 **Note**: ``start`` and  ``end`` parameters must be in the format
 ``YYYY-MM-DD H:M:S``, otherwise 400 Bad Response will be returned.
+
+List device monitoring information
+##################################
+
+.. code-block:: text
+
+    GET /api/v1/monitoring/device/
+
+**Notes**:
+
+- The response contains device information and monitoring status (health status),
+  but it does not include the information and
+  health status of the specific metrics, this information
+  can be retrieved in the detail endpoint of each device.
+
+- This endpoint can be accessed with session authentication and token authentication.
+
+**Available filters**
+
+Data can be filtered by health status (e.g. critical, ok, problem, and unknown)
+to obtain the list of devices in the corresponding status, for example,
+to retrieve the list of devices which are in critical conditions
+(eg: unreachable), the following will work:
+
+.. code-block:: text
+
+   GET /api/v1/monitoring/device/?monitoring__status=critical
+
+To filter a list of device monitoring data based
+on their organization, you can use the ``organization_id``.
+
+.. code-block:: text
+
+   GET /api/v1/monitoring/device/?organization={organization_id}
+
+To filter a list of device monitoring data based
+on their organization slug, you can use the ``organization_slug``.
+
+.. code-block:: text
+
+   GET /api/v1/monitoring/device/?organization_slug={organization_slug}
 
 Collect device metrics and status
 #################################
