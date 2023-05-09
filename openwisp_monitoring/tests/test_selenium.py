@@ -114,8 +114,8 @@ class TestDeviceConnectionInlineAdmin(
         self.open(
             reverse(f'admin:{self.config_app_label}_device_change', args=[device.id])
         )
-        self.web_driver.find_element_by_xpath(
-            '//*[@id="device_form"]/div/div[1]/input[1]'
+        self.web_driver.find_element(
+            By.XPATH, '//*[@id="device_form"]/div/div[1]/input[1]'
         ).click()
         try:
             WebDriverWait(self.web_driver, 5).until(
@@ -128,8 +128,8 @@ class TestDeviceConnectionInlineAdmin(
         self.open(
             reverse(f'admin:{self.config_app_label}_device_delete', args=[device.id])
         )
-        self.web_driver.find_element_by_xpath(
-            '//*[@id="content"]/form/div/input[2]'
+        self.web_driver.find_element(
+            By.XPATH, '//*[@id="content"]/form/div/input[2]'
         ).click()
         self.assertEqual(Device.objects.count(), 0)
         self.assertEqual(DeviceConnection.objects.count(), 0)
@@ -144,8 +144,8 @@ class TestDeviceConnectionInlineAdmin(
                 f'admin:{self.config_app_label}_device_recover', args=[version_obj.id]
             )
         )
-        self.web_driver.find_element_by_xpath(
-            '//*[@id="device_form"]/div/div[1]/input[1]'
+        self.web_driver.find_element(
+            By.XPATH, '//*[@id="device_form"]/div/div[1]/input[1]'
         ).click()
         try:
             WebDriverWait(self.web_driver, 5).until(
@@ -205,8 +205,8 @@ class TestDashboardCharts(
         else:
             self.assertIn(
                 'Insufficient data for selected time period.',
-                self.web_driver.find_element_by_css_selector(
-                    '#ow-chart-fallback'
+                self.web_driver.find_element(
+                    By.CSS_SELECTOR, '#ow-chart-fallback'
                 ).get_attribute('innerHTML'),
             )
         self.create_test_data()
@@ -228,20 +228,20 @@ class TestDashboardCharts(
 
         self.assertIn(
             'General WiFi Clients',
-            self.web_driver.find_element_by_css_selector('#chart-0 > h3').get_attribute(
-                'innerHTML'
-            ),
+            self.web_driver.find_element(
+                By.CSS_SELECTOR, '#chart-0 > h3'
+            ).get_attribute('innerHTML'),
         )
         self.assertIn(
             'General Traffic',
-            self.web_driver.find_element_by_css_selector('#chart-1 > h3').get_attribute(
-                'innerHTML'
-            ),
+            self.web_driver.find_element(
+                By.CSS_SELECTOR, '#chart-1 > h3'
+            ).get_attribute('innerHTML'),
         )
         self.assertIn(
             'Open WiFi session list',
-            self.web_driver.find_element_by_css_selector(
-                '#chart-0-quick-link-container'
+            self.web_driver.find_element(
+                By.CSS_SELECTOR, '#chart-0-quick-link-container'
             ).get_attribute('innerHTML'),
         )
 
@@ -273,13 +273,13 @@ class TestWifiSessionInlineAdmin(
             device=device, wifi_client=wc2, ssid='Test Wifi Session'
         )
         # Now press the 'Save' button on the device change page
-        self.web_driver.find_element_by_xpath(
-            '//*[@id="device_form"]/div/div[1]/input[3]'
+        self.web_driver.find_element(
+            By.XPATH, '//*[@id="device_form"]/div/div[1]/input[3]'
         ).click()
         # Make sure the wifi session tab now
         # exists with the correct wifi sessions
-        wifi_session_inline = self.web_driver.find_element_by_xpath(
-            '//*[@id="tabs-container"]/ul/li[7]/a'
+        wifi_session_inline = self.web_driver.find_element(
+            By.XPATH, '//*[@id="tabs-container"]/ul/li[7]/a'
         )
         wifi_session_inline.click()
         wifi_session_inline_form_error = (
@@ -291,26 +291,26 @@ class TestWifiSessionInlineAdmin(
         # were encountered after saving
         self.assertNotIn(
             wifi_session_inline_form_error,
-            self.web_driver.find_element_by_css_selector(
-                '#wifisession_set-group'
+            self.web_driver.find_element(
+                By.CSS_SELECTOR, '#wifisession_set-group'
             ).get_attribute('innerHTML'),
         )
         # Make sure all wifi sessions are present
         self.assertIn(
             f'{ws1.ssid}',
-            self.web_driver.find_element_by_css_selector(
-                '#wifisession_set-group'
+            self.web_driver.find_element(
+                By.CSS_SELECTOR, '#wifisession_set-group'
             ).get_attribute('innerHTML'),
         )
         self.assertIn(
             f'{ws2.ssid}',
-            self.web_driver.find_element_by_css_selector(
-                '#wifisession_set-group'
+            self.web_driver.find_element(
+                By.CSS_SELECTOR, '#wifisession_set-group'
             ).get_attribute('innerHTML'),
         )
         self.assertIn(
             'View Full History of WiFi Sessions',
-            self.web_driver.find_element_by_css_selector(
-                '#wifisession_set-group'
+            self.web_driver.find_element(
+                By.CSS_SELECTOR, '#wifisession_set-group'
             ).get_attribute('innerHTML'),
         )
