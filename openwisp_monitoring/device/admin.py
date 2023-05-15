@@ -352,15 +352,20 @@ class WifiSessionAdminHelperMixin:
         icon = static(f'admin/img/icon-{icon_type}.svg')
         return mark_safe(f'<img src="{icon}">')
 
-    def ht(self, obj):
-        return self._get_boolean_html(obj.wifi_client.ht)
+    def he(self, obj):
+        return self._get_boolean_html(obj.wifi_client.he)
 
-    ht.short_description = 'HT'
+    he.short_description = 'WiFi 6 (802.11ax)'
 
     def vht(self, obj):
         return self._get_boolean_html(obj.wifi_client.vht)
 
-    vht.short_description = 'VHT'
+    vht.short_description = 'WiFi 5 (802.11ac)'
+
+    def ht(self, obj):
+        return self._get_boolean_html(obj.wifi_client.ht)
+
+    ht.short_description = 'WiFi 4 (802.11n)'
 
     def wmm(self, obj):
         return self._get_boolean_html(obj.wifi_client.wmm)
@@ -409,8 +414,9 @@ class WiFiSessionInline(WifiSessionAdminHelperMixin, admin.TabularInline):
         'vendor',
         'ssid',
         'interface_name',
-        'ht',
+        'he',
         'vht',
+        'ht',
         'start_time',
         'get_stop_time',
     ]
@@ -463,8 +469,9 @@ class WifiSessionAdmin(
         'related_organization',
         'related_device',
         'ssid',
-        'ht',
+        'he',
         'vht',
+        'ht',
         'start_time',
         'get_stop_time',
     ]
@@ -475,8 +482,9 @@ class WifiSessionAdmin(
         'related_device',
         'ssid',
         'interface_name',
-        'ht',
+        'he',
         'vht',
+        'ht',
         'wmm',
         'wds',
         'wps',
@@ -499,8 +507,9 @@ class WifiSessionAdmin(
             'related_organization',
             'mac_address',
             'vendor',
-            'ht',
+            'he',
             'vht',
+            'ht',
             'wmm',
             'wds',
             'wps',

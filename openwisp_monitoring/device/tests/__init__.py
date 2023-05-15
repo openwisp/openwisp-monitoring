@@ -53,30 +53,26 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
         return dm
 
     def _transform_wireless_interface_test_data(self, data):
-        interfaces = data.get('interfaces', [])
-        wireless_interfaces = [
-            interface
-            for interface in interfaces
-            if 'wireless' in interface
-            and 'htmode' in interface['wireless']
-            and 'clients' in interface['wireless']
-        ]
-        for interface in wireless_interfaces:
-            for client in interface['wireless']['clients']:
-                if (
-                    interface['wireless']['htmode'] == 'NOHT'
-                    and not client['ht']
-                    and not client['vht']
-                ):
-                    client['ht'] = None
-                    client['vht'] = None
-                elif (
-                    interface['wireless']['htmode'].startswith('HT')
-                    and client['ht']
-                    and not client['vht']
-                ):
-                    client['vht'] = None
-
+        for interface in data.get('interfaces', []):
+            wireless = interface.get('wireless')
+            if wireless and all(key in wireless for key in ('htmode', 'clients')):
+                for client in wireless['clients']:
+                    htmode = wireless['htmode']
+                    ht_enabled = htmode.startswith('HT')
+                    vht_enabled = htmode.startswith('VHT')
+                    noht_enabled = htmode == 'NOHT'
+                    if noht_enabled:
+                        client['ht'] = client['vht'] = None
+                        # since 'he' field is optional
+                        if 'he' in client:
+                            client['he'] = None
+                    elif ht_enabled:
+                        if client['vht'] is False:
+                            client['vht'] = None
+                        if client.get('he') is False:
+                            client['he'] = None
+                    elif vht_enabled and client.get('he') is False:
+                        client['he'] = None
         return data
 
     def assertDataDict(self, dd_data, data):
@@ -247,6 +243,7 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
                                 'assoc': True,
                                 'authorized': True,
                                 'vht': False,
+                                'he': False,
                                 'wmm': True,
                                 'aid': 1,
                                 'mfp': False,
