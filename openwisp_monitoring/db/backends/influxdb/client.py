@@ -117,6 +117,10 @@ class DatabaseClient(object):
             dbs['__all__'] = dbs['default']
         return dbs
 
+    @cached_property
+    def use_udp(self):
+        return TIMESERIES_DB.get('OPTIONS', {}).get('udp_writes', False)
+
     @retry
     def create_or_alter_retention_policy(self, name, duration):
         """creates or alters existing retention policy if necessary"""

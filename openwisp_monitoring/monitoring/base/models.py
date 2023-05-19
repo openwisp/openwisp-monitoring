@@ -379,6 +379,10 @@ class AbstractMetric(TimeStampedEditableModel):
             retention_policy=retention_policy,
             current=current,
         )
+        if isinstance(options['timestamp'], datetime):
+            options['timestamp'] = datetime.strftime(
+                options['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ'
+            )
         # check can be disabled,
         # mostly for automated testing and debugging purposes
         if check:
@@ -405,7 +409,7 @@ class AbstractMetric(TimeStampedEditableModel):
                     {'value': extra_values[self.alert_field]}
                 )
         if write:
-            timeseries_write.delay(name=self.key, values=values, **options)
+            timeseries_write(name=self.key, values=values, **options)
         return {'name': self.key, 'values': values, **options}
 
     @classmethod
@@ -417,7 +421,7 @@ class AbstractMetric(TimeStampedEditableModel):
                 write_data.append(metric.write(**kwargs, write=False))
             except ValueError as error:
                 error_dict[metric.key] = str(error)
-        timeseries_batch_write.delay(write_data)
+        timeseries_batch_write(write_data)
         if error_dict:
             raise ValueError(error_dict)
 

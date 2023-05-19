@@ -244,7 +244,7 @@ class AbstractDeviceData(object):
         self._transform_data()
         time = time or now()
         options = dict(tags={'pk': self.pk}, timestamp=time, retention_policy=SHORT_RP)
-        timeseries_write.delay(name=self.__key, values={'data': self.json()}, **options)
+        timeseries_write(name=self.__key, values={'data': self.json()}, **options)
         cache_key = get_device_cache_key(device=self, context='current-data')
         # cache current data to allow getting it without querying the timeseries DB
         cache.set(
@@ -258,12 +258,55 @@ class AbstractDeviceData(object):
             timeout=86400,  # 24 hours
         )
         if app_settings.WIFI_SESSIONS_ENABLED:
-            tasks.save_wifi_clients_and_sessions.delay(
-                device_data=self.data, device_pk=self.pk
-            )
+            self.save_wifi_clients_and_sessions()
 
     def json(self, *args, **kwargs):
         return json.dumps(self.data, *args, **kwargs)
+
+    def save_wifi_clients_and_sessions(self):
+        _WIFICLIENT_FIELDS = ['vendor', 'ht', 'vht', 'he', 'wmm', 'wds', 'wps']
+        WifiClient = load_model('device_monitoring', 'WifiClient')
+        WifiSession = load_model('device_monitoring', 'WifiSession')
+
+        active_sessions = []
+        interfaces = self.data.get('interfaces', [])
+        for interface in interfaces:
+            if interface.get('type') != 'wireless':
+                continue
+            interface_name = interface.get('name')
+            wireless = interface.get('wireless', {})
+            if not wireless or wireless['mode'] != 'access_point':
+                continue
+            ssid = wireless.get('ssid')
+            clients = wireless.get('clients', [])
+            for client in clients:
+                # Save WifiClient
+                client_obj, created = WifiClient.objects.get_or_create(
+                    mac_address=client.get('mac')
+                )
+                update_fields = []
+                for field in _WIFICLIENT_FIELDS:
+                    if getattr(client_obj, field) != client.get(field):
+                        setattr(client_obj, field, client.get(field))
+                        update_fields.append(field)
+                if update_fields:
+                    client_obj.full_clean()
+                    client_obj.save(update_fields=update_fields)
+
+                # Save WifiSession
+                session_obj, _ = WifiSession.objects.get_or_create(
+                    device_id=self.id,
+                    interface_name=interface_name,
+                    ssid=ssid,
+                    wifi_client=client_obj,
+                    stop_time=None,
+                )
+                active_sessions.append(session_obj.pk)
+
+        # Close open WifiSession
+        WifiSession.objects.filter(device_id=self.id, stop_time=None,).exclude(
+            pk__in=active_sessions
+        ).update(stop_time=now())
 
 
 class AbstractDeviceMonitoring(TimeStampedEditableModel):
