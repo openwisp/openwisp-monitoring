@@ -84,7 +84,7 @@ def auto_create_ping(
     if has_check:
         return
     content_type_model = content_type_model or ContentType
-    ct = content_type_model.objects.get(app_label=app_label, model=model)
+    ct = content_type_model.objects.get_by_natural_key(app_label=app_label, model=model)
     check = Check(
         name='Ping', check_type=ping_path, content_type=ct, object_id=object_id
     )
@@ -108,7 +108,7 @@ def auto_create_config_check(
     if has_check:
         return
     content_type_model = content_type_model or ContentType
-    ct = content_type_model.objects.get(app_label=app_label, model=model)
+    ct = content_type_model.objects.get_by_natural_key(app_label=app_label, model=model)
     check = Check(
         name='Configuration Applied',
         check_type=config_check_path,
@@ -135,7 +135,7 @@ def auto_create_iperf3_check(
     if has_check:
         return
     content_type_model = content_type_model or ContentType
-    ct = content_type_model.objects.get(app_label=app_label, model=model)
+    ct = content_type_model.objects.get_by_natural_key(app_label=app_label, model=model)
     check = Check(
         name='Iperf3',
         check_type=iperf3_check_path,

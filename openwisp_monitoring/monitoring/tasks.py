@@ -55,21 +55,16 @@ def timeseries_write(
     then write data synchronously.
     """
     if timeseries_db.use_udp:
-        _timeseries_write(
-            name=name,
-            values=values,
-            metric_pk=metric_pk,
-            check_threshold_kwargs=check_threshold_kwargs,
-            **kwargs
-        )
+        func = _timeseries_write
     else:
-        _timeseries_write.delay(
-            name=name,
-            values=values,
-            metric_pk=metric_pk,
-            check_threshold_kwargs=check_threshold_kwargs,
-            **kwargs
-        )
+        func = _timeseries_write.delay
+    func(
+        name=name,
+        values=values,
+        metric_pk=metric_pk,
+        check_threshold_kwargs=check_threshold_kwargs,
+        **kwargs
+    )
 
 
 @shared_task(

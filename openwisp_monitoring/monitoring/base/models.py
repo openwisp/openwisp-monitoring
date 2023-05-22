@@ -4,6 +4,7 @@ from collections import OrderedDict
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 
+from cache_memoize import cache_memoize
 from dateutil.parser import parse as parse_date
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -37,6 +38,14 @@ from ..tasks import delete_timeseries, timeseries_batch_write, timeseries_write
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+
+def cache_hit(*args, **kwargs):
+    print('cache hit for', args, kwargs)
+
+
+def cache_miss(*args, **kwargs):
+    print('cache miss for', args, kwargs)
 
 
 class AbstractMetric(TimeStampedEditableModel):
@@ -139,19 +148,37 @@ class AbstractMetric(TimeStampedEditableModel):
         delete_timeseries.delay(instance.key, instance.tags)
 
     @classmethod
-    def _get_or_create(cls, **kwargs):
+    @cache_memoize(24 * 60 * 60, hit_callable=cache_hit, miss_callable=cache_miss)
+    def _get_or_create(
+        cls,
+        content_type_id,
+        object_id,
+        configuration,
+        main_tags=None,
+        key=None,
+        **kwargs,
+    ):
         """
         like ``get_or_create`` method of django model managers
         but with validation before creation
         """
-        if 'key' in kwargs:
-            kwargs['key'] = cls._makekey(kwargs['key'])
+        main_tags = main_tags or {}
+        if key:
+            key = cls._makekey(key)
         try:
             lookup_kwargs = deepcopy(kwargs)
             if lookup_kwargs.get('name'):
                 del lookup_kwargs['name']
             extra_tags = lookup_kwargs.pop('extra_tags', {})
-            metric = cls.objects.get(**lookup_kwargs)
+            options = {
+                'key': key,
+                'content_type': content_type_id,
+                'object_id': object_id,
+                'configuration': configuration,
+                'main_tags': main_tags,
+                **lookup_kwargs,
+            }
+            metric = cls.objects.get(**options)
             created = False
 
             if extra_tags != metric.extra_tags:
@@ -159,7 +186,7 @@ class AbstractMetric(TimeStampedEditableModel):
                 metric.extra_tags = cls._sort_dict(metric.extra_tags)
                 metric.save()
         except cls.DoesNotExist:
-            metric = cls(**kwargs)
+            metric = cls(**options)
             metric.full_clean()
             metric.save()
             created = True
@@ -380,9 +407,7 @@ class AbstractMetric(TimeStampedEditableModel):
             current=current,
         )
         if isinstance(options['timestamp'], datetime):
-            options['timestamp'] = datetime.strftime(
-                options['timestamp'], '%Y-%m-%dT%H:%M:%S.%fZ'
-            )
+            options['timestamp'] = options['timestamp'].isoformat()
         # check can be disabled,
         # mostly for automated testing and debugging purposes
         if check:

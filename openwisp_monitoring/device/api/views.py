@@ -2,6 +2,7 @@ import logging
 import uuid
 from datetime import datetime
 
+from cache_memoize import cache_memoize
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
@@ -69,6 +70,13 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
     queryset = (
         DeviceData.objects.select_related('devicelocation')
         .select_related('monitoring')
+        .only(
+            'id',
+            'key',
+            'organization_id',
+            'devicelocation__floorplan_id',
+            'devicelocation__location_id',
+        )
         .all()
     )
     serializer_class = serializers.Serializer
@@ -93,7 +101,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
             pk = str(uuid.UUID(pk))
         except ValueError:
             return Response({'detail': 'not found'}, status=404)
-        self.instance = self.get_object()
+        self.instance = self.get_object(pk)
         response = super().get(request, pk)
         if not request.query_params.get('csv'):
             charts_data = dict(response.data)
@@ -106,7 +114,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
     def _get_charts(self, request, *args, **kwargs):
         ct = ContentType.objects.get_for_model(Device)
         return Chart.objects.filter(
-            metric__object_id=args[0], metric__content_type=ct
+            metric__object_id=args[0], metric__content_type_id=ct.id
         ).select_related('metric')
 
     def _get_additional_data(self, request, *args, **kwargs):
@@ -114,8 +122,12 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
             return {'data': self.instance.data}
         return {}
 
+    @cache_memoize(24 * 60 * 60)
+    def get_object(self, pk):
+        return super().get_object()
+
     def post(self, request, pk):
-        self.instance = self.get_object()
+        self.instance = self.get_object(pk)
         self.instance.data = request.data
         # validate incoming data
         try:
