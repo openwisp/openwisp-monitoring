@@ -51,6 +51,8 @@ class DeviceMonitoringConfig(AppConfig):
         self.add_connection_ignore_notification_reasons()
 
     def connect_device_signals(self):
+        from .api.views import DeviceMetricView
+
         Device = load_model('config', 'Device')
 
         post_save.connect(
@@ -63,6 +65,11 @@ class DeviceMonitoringConfig(AppConfig):
             self.device_post_delete_receiver,
             sender=Device,
             dispatch_uid='device_post_delete_receiver',
+        )
+        post_delete.connect(
+            DeviceMetricView.invalidate_get_device_cache,
+            sender=Device,
+            dispatch_uid=('device_post_delete_invalidate_view_cache'),
         )
 
     @classmethod

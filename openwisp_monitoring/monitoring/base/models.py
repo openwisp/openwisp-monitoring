@@ -4,12 +4,12 @@ from collections import OrderedDict
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 
-from cache_memoize import cache_memoize
 from dateutil.parser import parse as parse_date
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import models
@@ -40,12 +40,16 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
-def cache_hit(*args, **kwargs):
-    print('cache hit for', args, kwargs)
-
-
-def cache_miss(*args, **kwargs):
-    print('cache miss for', args, kwargs)
+def get_or_create_metric_cache_key(**kwargs):
+    cache_key = [
+        'get_or_create_metric',
+    ]
+    cache_key.append('key={}'.format(kwargs.get('key', kwargs.get('name'))))
+    for key in ['content_type_id', 'object_id', 'configuration']:
+        cache_key.append('{}={}'.format(key, kwargs.get(key)))
+    cache_key.append('main_tags={}'.format(kwargs.get('main_tags', OrderedDict())))
+    cache_key = ','.join(cache_key)
+    return cache_key
 
 
 class AbstractMetric(TimeStampedEditableModel):
@@ -147,50 +151,62 @@ class AbstractMetric(TimeStampedEditableModel):
     def post_delete_receiver(cls, instance, *args, **kwargs):
         delete_timeseries.delay(instance.key, instance.tags)
 
+    def _get_metric(cls, **kwargs):
+        if kwargs.get('metric'):
+            return kwargs['metric']
+        if kwargs.get('name'):
+            del kwargs['name']
+        return cls.objects.get(**kwargs)
+
     @classmethod
-    @cache_memoize(24 * 60 * 60, hit_callable=cache_hit, miss_callable=cache_miss)
     def _get_or_create(
         cls,
-        content_type_id,
-        object_id,
-        configuration,
-        main_tags=None,
-        key=None,
         **kwargs,
     ):
         """
         like ``get_or_create`` method of django model managers
         but with validation before creation
         """
-        main_tags = main_tags or {}
-        if key:
-            key = cls._makekey(key)
+        if 'key' in kwargs:
+            kwargs['key'] = cls._makekey(kwargs['key'])
         try:
             lookup_kwargs = deepcopy(kwargs)
             if lookup_kwargs.get('name'):
                 del lookup_kwargs['name']
             extra_tags = lookup_kwargs.pop('extra_tags', {})
-            options = {
-                'key': key,
-                'content_type': content_type_id,
-                'object_id': object_id,
-                'configuration': configuration,
-                'main_tags': main_tags,
-                **lookup_kwargs,
-            }
-            metric = cls.objects.get(**options)
+            metric_cache_key = get_or_create_metric_cache_key(**kwargs)
+            metric = cache.get(metric_cache_key)
+            if not metric:
+                metric = cls.objects.get(**lookup_kwargs)
+                cache.set(metric_cache_key, metric, 24 * 60 * 60)
             created = False
-
             if extra_tags != metric.extra_tags:
                 metric.extra_tags.update(kwargs['extra_tags'])
                 metric.extra_tags = cls._sort_dict(metric.extra_tags)
                 metric.save()
         except cls.DoesNotExist:
-            metric = cls(**options)
+            metric = cls(**kwargs)
             metric.full_clean()
             metric.save()
+            cache.set(metric_cache_key, metric, 24 * 60 * 60)
             created = True
         return metric, created
+
+    @classmethod
+    def invalidate_cache(cls, instance, *args, **kwargs):
+        if kwargs.get('created', False):
+            return
+        cache_key = get_or_create_metric_cache_key(
+            **{
+                'name': instance.name,
+                'key': instance.key,
+                'content_type_id': instance.content_type_id,
+                'object_id': instance.object_id,
+                'configuration': instance.configuration,
+                'main_tags': instance.main_tags,
+            }
+        )
+        cache.delete(cache_key)
 
     @property
     def codename(self):
@@ -219,7 +235,7 @@ class AbstractMetric(TimeStampedEditableModel):
     @property
     def tags(self):
         tags = {}
-        if self.content_type and self.object_id:
+        if self.content_type_id and self.object_id:
             tags.update(
                 {
                     'content_type': self.content_type_key,
@@ -244,7 +260,8 @@ class AbstractMetric(TimeStampedEditableModel):
     @property
     def content_type_key(self):
         try:
-            return '.'.join(self.content_type.natural_key())
+            content_type = ContentType.objects.get_for_id(self.content_type_id)
+            return '.'.join(content_type.natural_key())
         except AttributeError:
             return None
 
@@ -417,7 +434,7 @@ class AbstractMetric(TimeStampedEditableModel):
                 'retention_policy': retention_policy,
                 'send_alert': send_alert,
             }
-            options['metric_pk'] = self.pk
+            options['metric'] = self
 
             # if alert_on_related_field then check threshold
             # on the related_field instead of field_name
@@ -844,6 +861,11 @@ class AbstractAlertSettings(TimeStampedEditableModel):
             ('delete_alertsettings_inline', 'Can delete Alert settings inline'),
             ('view_alertsettings_inline', 'Can view Alert settings inline'),
         )
+
+    @classmethod
+    def invalidate_cache(cls, instance, *args, **kwargs):
+        Metric = instance.metric._meta.model
+        Metric.invalidate_cache(instance.metric)
 
     def full_clean(self, *args, **kwargs):
         if self.custom_threshold == self.config_dict['threshold']:

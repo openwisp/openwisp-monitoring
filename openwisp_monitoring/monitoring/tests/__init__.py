@@ -1,6 +1,7 @@
 import time
 from datetime import timedelta
 
+from django.core.cache import cache
 from django.utils.timezone import now
 from swapper import load_model
 
@@ -194,6 +195,7 @@ class TestMonitoringMixin(TestOrganizationMixin):
             register_metric(key, value)
         for key, value in charts.items():
             register_chart(key, value)
+        cache.clear()
         super().setUpClass()
 
     @classmethod
@@ -203,6 +205,7 @@ class TestMonitoringMixin(TestOrganizationMixin):
             unregister_metric(metric_name)
         for key in charts.keys():
             unregister_chart(key)
+        cache.clear()
         super().tearDownClass()
 
     def tearDown(self):

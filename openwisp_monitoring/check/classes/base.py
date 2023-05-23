@@ -35,15 +35,15 @@ class BaseCheck(object):
         Gets or creates metric
         """
         check = self.check_instance
-        if check.object_id and check.content_type:
+        if check.object_id and check.content_type_id:
             obj_id = check.object_id
-            ct = check.content_type
+            ct = ContentType.objects.get_for_id(check.content_type_id)
         else:
             obj_id = str(check.id)
             ct = ContentType.objects.get_for_model(Check)
         options = dict(
             object_id=obj_id,
-            content_type=ct,
+            content_type_id=ct.id,
             configuration=configuration or self.__class__.__name__.lower(),
         )
         metric, created = Metric._get_or_create(**options)

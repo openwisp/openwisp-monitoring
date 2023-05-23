@@ -55,6 +55,17 @@ class ListViewPagination(pagination.PageNumberPagination):
     max_page_size = 100
 
 
+def get_device_args_rewrite(view, pk):
+    """
+    Use only the PK parameter for calculating the cache key
+    """
+    try:
+        pk = uuid.UUID(pk)
+    except ValueError:
+        return pk
+    return pk.hex
+
+
 class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
     """
     Retrieve device information, monitoring status (health status),
@@ -67,21 +78,22 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
     """
 
     model = DeviceData
-    queryset = (
-        DeviceData.objects.select_related('devicelocation')
-        .select_related('monitoring')
-        .only(
-            'id',
-            'key',
-            'organization_id',
-            'devicelocation__floorplan_id',
-            'devicelocation__location_id',
-        )
-        .all()
-    )
+    queryset = DeviceData.objects.only(
+        'id',
+        'key',
+    ).all()
     serializer_class = serializers.Serializer
     permission_classes = [DevicePermission]
     schema = schema
+
+    @classmethod
+    def invalidate_get_device_cache(cls, instance, **kwargs):
+        """
+        Called from signal receiver which performs cache invalidation
+        """
+        view = cls()
+        view.get_object.invalidate(view, str(instance.pk))
+        logger.debug(f'invalidated view cache for device ID {instance.pk}')
 
     def get_permissions(self):
         if self.request.method in SAFE_METHODS and not self.request.query_params.get(
@@ -122,7 +134,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
             return {'data': self.instance.data}
         return {}
 
-    @cache_memoize(24 * 60 * 60)
+    @cache_memoize(24 * 60 * 60, args_rewrite=get_device_args_rewrite)
     def get_object(self, pk):
         return super().get_object()
 

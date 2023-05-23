@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
@@ -21,6 +22,10 @@ Notification = load_model('openwisp_notifications', 'Notification')
 
 
 class TestModels(TestMonitoringMixin, TestCase):
+    def tearDown(self):
+        cache.clear()
+        super().tearDown()
+
     def test_general_metric_str(self):
         m = Metric(name='Test metric')
         self.assertEqual(str(m), m.name)
@@ -110,7 +115,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         m, created = Metric._get_or_create(
             name='logins',
             configuration='test_metric',
-            content_type=ct,
+            content_type_id=ct.id,
             object_id=obj.pk,
         )
         self.assertTrue(created)
@@ -119,7 +124,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         m2, created = Metric._get_or_create(
             name='logins',
             configuration='test_metric',
-            content_type=ct,
+            content_type_id=ct.id,
             object_id=obj.pk,
         )
         self.assertEqual(m.id, m2.id)

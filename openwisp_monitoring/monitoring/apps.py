@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 from django.conf import settings
-from django.db.models.signals import post_delete
+from django.db.models.signals import post_delete, post_save
 from django.utils.translation import gettext_lazy as _
 from swapper import get_model_name, load_model
 
@@ -49,8 +49,29 @@ class MonitoringConfig(AppConfig):
 
     def connect_metric_signals(self):
         Metric = load_model('monitoring', 'Metric')
+        AlertSettings = load_model('monitoring', 'AlertSettings')
         post_delete.connect(
             Metric.post_delete_receiver,
             sender=Metric,
             dispatch_uid='metric_post_delete_receiver',
+        )
+        post_save.connect(
+            Metric.invalidate_cache,
+            sender=Metric,
+            dispatch_uid='post_save_invalidate_metric_cache',
+        )
+        post_delete.connect(
+            Metric.invalidate_cache,
+            sender=Metric,
+            dispatch_uid='post_delete_invalidate_metric_cache',
+        )
+        post_save.connect(
+            AlertSettings.invalidate_cache,
+            sender=AlertSettings,
+            dispatch_uid='post_save_invalidate_metric_cache',
+        )
+        post_delete.connect(
+            AlertSettings.invalidate_cache,
+            sender=AlertSettings,
+            dispatch_uid='post_delete_invalidate_metric_cache',
         )

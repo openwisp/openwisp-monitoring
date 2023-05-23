@@ -146,19 +146,22 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         o = self._create_org()
         d = self._create_device(organization=o)
         data = {'type': 'DeviceMonitoring', 'interfaces': []}
-        with self.assertNumQueries(6):
-            r = self._post_data(d.id, d.key, data)
-        self.assertEqual(r.status_code, 200)
-        # Add 1 for general metric and chart
-        self.assertEqual(self.metric_queryset.count(), 0)
-        self.assertEqual(self.chart_queryset.count(), 0)
-        data = {'type': 'DeviceMonitoring'}
         with self.assertNumQueries(4):
             r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 200)
         # Add 1 for general metric and chart
         self.assertEqual(self.metric_queryset.count(), 0)
         self.assertEqual(self.chart_queryset.count(), 0)
+        data = {'type': 'DeviceMonitoring'}
+        with self.assertNumQueries(3):
+            r = self._post_data(d.id, d.key, data)
+        self.assertEqual(r.status_code, 200)
+        # Add 1 for general metric and chart
+        self.assertEqual(self.metric_queryset.count(), 0)
+        self.assertEqual(self.chart_queryset.count(), 0)
+        d.delete()
+        r = self._post_data(d.id, d.key, data)
+        self.assertEqual(r.status_code, 404)
 
     def test_200_create(self):
         self.create_test_data(no_resources=True)
@@ -249,9 +252,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         # creation of resources metrics can be avoided here as it is not involved
         # this speeds up the test by reducing requests made
         del data2['resources']
-        with self.assertNumQueries(32):
-            response = self._post_data(device.id, device.key, data2)
-        with self.assertNumQueries(24):
+        with self.assertNumQueries(18):
             response = self._post_data(device.id, device.key, data2)
         self.assertEqual(response.status_code, 200)
         # Add 1 for general metric and chart
