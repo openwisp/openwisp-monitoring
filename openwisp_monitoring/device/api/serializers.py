@@ -96,38 +96,45 @@ class WifiClientSerializer(FilterSerializerByOrgManaged, ValidatedModelSerialize
             'wmm',
             'wds',
             'wps',
-            'modified',
-            'created',
         ]
-        read_only_fields = (
-            'created',
-            'modified',
-        )
 
 
-class WifiSessionSerializer(FilterSerializerByOrgManaged, ValidatedModelSerializer):
-    client = WifiClientSerializer(source='wifi_client')
-    device_name = serializers.CharField(source='device.name', read_only=True)
-    organization_id = serializers.CharField(
-        source='device.organization.id', read_only=True
-    )
-    organization_name = serializers.CharField(
-        source='device.organization', read_only=True
-    )
+class WifiSessionListSerializer(FilterSerializerByOrgManaged, ValidatedModelSerializer):
+    organization = serializers.CharField(source='device.organization', read_only=True)
+    ht = serializers.CharField(source='wifi_client.ht', read_only=True)
+    vht = serializers.CharField(source='wifi_client.vht', read_only=True)
 
     class Meta:
         model = WifiSession
         fields = [
             'id',
-            'device_name',
+            'mac_address',
+            'vendor',
+            'organization',
             'device',
-            'organization_name',
-            'organization_id',
+            'ssid',
+            'ht',
+            'vht',
+            'start_time',
+            'stop_time',
+        ]
+
+
+class WifiSessionDetailSerializer(
+    FilterSerializerByOrgManaged, ValidatedModelSerializer
+):
+    client = WifiClientSerializer(source='wifi_client')
+    organization = serializers.CharField(source='device.organization', read_only=True)
+
+    class Meta:
+        model = WifiSession
+        fields = [
+            'id',
+            'organization',
+            'device',
             'client',
             'ssid',
-            'interface_name',
             'start_time',
             'stop_time',
             'modified',
         ]
-        read_only_fields = ('stop_time', 'modified')
