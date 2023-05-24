@@ -86,13 +86,18 @@ class MonitoringGeoJsonLocationSerializer(GeoJsonLocationSerializer):
 
 
 class WifiClientSerializer(FilterSerializerByOrgManaged, ValidatedModelSerializer):
+    wifi6 = serializers.CharField(source='he', read_only=True)
+    wifi5 = serializers.CharField(source='vht', read_only=True)
+    wifi4 = serializers.CharField(source='ht', read_only=True)
+
     class Meta:
         model = WifiClient
         fields = [
             'mac_address',
             'vendor',
-            'ht',
-            'vht',
+            'wifi6',
+            'wifi5',
+            'wifi4',
             'wmm',
             'wds',
             'wps',
@@ -101,8 +106,10 @@ class WifiClientSerializer(FilterSerializerByOrgManaged, ValidatedModelSerialize
 
 class WifiSessionListSerializer(FilterSerializerByOrgManaged, ValidatedModelSerializer):
     organization = serializers.CharField(source='device.organization', read_only=True)
-    ht = serializers.CharField(source='wifi_client.ht', read_only=True)
-    vht = serializers.CharField(source='wifi_client.vht', read_only=True)
+    device = serializers.CharField(source='device.name', read_only=True)
+    wifi6 = serializers.CharField(source='wifi_client.he', read_only=True)
+    wifi5 = serializers.CharField(source='wifi_client.vht', read_only=True)
+    wifi4 = serializers.CharField(source='wifi_client.ht', read_only=True)
 
     class Meta:
         model = WifiSession
@@ -113,8 +120,9 @@ class WifiSessionListSerializer(FilterSerializerByOrgManaged, ValidatedModelSeri
             'organization',
             'device',
             'ssid',
-            'ht',
-            'vht',
+            'wifi6',
+            'wifi5',
+            'wifi4',
             'start_time',
             'stop_time',
         ]
@@ -125,14 +133,15 @@ class WifiSessionDetailSerializer(
 ):
     client = WifiClientSerializer(source='wifi_client')
     organization = serializers.CharField(source='device.organization', read_only=True)
+    device = serializers.CharField(source='device.name', read_only=True)
 
     class Meta:
         model = WifiSession
         fields = [
             'id',
             'organization',
-            'device',
             'client',
+            'device',
             'ssid',
             'start_time',
             'stop_time',
