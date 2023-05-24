@@ -401,11 +401,14 @@
                                   {% trans 'Vendor' %}
                               </th>
                               {% endif %}
-                              <th class="ht" title="{% trans 'High Throughput (802.11n)' %}">
-                                  HT
+                              <th class="vht" title="{% trans 'High Efficiency (802.11ax)' %}">
+                                WiFi 6 (802.11ax)
                               </th>
                               <th class="vht" title="{% trans 'Very High Throughput (802.11ac)' %}">
-                                  VHT
+                                WiFi 5 (802.11ac)
+                              </th>
+                              <th class="ht" title="{% trans 'High Throughput (802.11n)' %}">
+                                WiFi 4 (802.11n)
                               </th>
                               <th class="wmm" title="{% trans 'Wi-Fi Multimedia' %}">
                                   WMM
@@ -426,11 +429,14 @@
                               {{ client.vendor }}
                           </td>
                           {% endif %}
-                          <td class="ht">
-                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.ht|yesno:'yes,no,unknown' }}.svg">
+                          <td class="he">
+                            <img src="{% get_static_prefix %}admin/img/icon-{{ client.he|yesno:'yes,no,unknown' }}.svg">
                           </td>
                           <td class="vht">
-                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.vht|yesno:'yes,no,unknown' }}.svg">
+                            <img src="{% get_static_prefix %}admin/img/icon-{{ client.vht|yesno:'yes,no,unknown' }}.svg">
+                          </td>
+                          <td class="ht">
+                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.ht|yesno:'yes,no,unknown' }}.svg">
                           </td>
                           <td class="wmm">
                               <img src="{% get_static_prefix %}admin/img/icon-{{ client.wmm|yesno:'yes,no,no' }}.svg">

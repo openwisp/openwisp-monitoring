@@ -38,7 +38,7 @@ def trigger_device_checks(pk, recovery=True):
 
 @shared_task(base=OpenwispCeleryTask)
 def save_wifi_clients_and_sessions(device_data, device_pk):
-    _WIFICLIENT_FIELDS = ['vendor', 'ht', 'vht', 'wmm', 'wds', 'wps']
+    _WIFICLIENT_FIELDS = ['vendor', 'ht', 'vht', 'he', 'wmm', 'wds', 'wps']
     WifiClient = load_model('device_monitoring', 'WifiClient')
     WifiSession = load_model('device_monitoring', 'WifiSession')
 

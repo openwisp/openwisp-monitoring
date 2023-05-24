@@ -183,27 +183,30 @@ class AbstractDeviceData(object):
                 for signal_key, signal_values in interface['mobile']['signal'].items():
                     for key, value in signal_values.items():
                         signal_values[key] = float(value)
-            # If HT/VHT is not being used ie. htmode = 'NOHT',
-            # set the HT/VHT field of WiFi clients to None.
+            # If HT/VHT/HE is not being used ie. htmode = 'NOHT',
+            # set the HT/VHT/HE field of WiFi clients to None.
             # This is necessary because some clients may be
             # VHT capable but VHT is not enabled at the radio level,
-            # which can mislead into thinking the client is not HT/VHT capable.
-            if (
-                'wireless' in interface
-                and 'htmode' in interface['wireless']
-                and 'clients' in interface['wireless']
-            ):
-                for client in interface['wireless']['clients']:
-                    # NOHT : disables 11n (ie. ht and vht both are False)
-                    if interface['wireless']['htmode'] == 'NOHT':
-                        client['ht'] = None
-                        client['vht'] = None
-                    # If only HT is enabled, set client vht to None
-                    elif (
-                        interface['wireless']['htmode'].startswith('HT')
-                        and not client['vht']
-                    ):
-                        client['vht'] = None
+            # which can mislead into thinking the client is not HT/VHT/HE capable.
+            wireless = interface.get('wireless')
+            if wireless and all(key in wireless for key in ('htmode', 'clients')):
+                for client in wireless['clients']:
+                    htmode = wireless['htmode']
+                    ht_enabled = htmode.startswith('HT')
+                    vht_enabled = htmode.startswith('VHT')
+                    noht_enabled = htmode == 'NOHT'
+                    if noht_enabled:
+                        client['ht'] = client['vht'] = None
+                        # since 'he' field is optional
+                        if 'he' in client:
+                            client['he'] = None
+                    elif ht_enabled:
+                        if client['vht'] is False:
+                            client['vht'] = None
+                        if client.get('he') is False:
+                            client['he'] = None
+                    elif vht_enabled and client.get('he') is False:
+                        client['he'] = None
             # add mac vendor to wireless clients if present
             if (
                 not mac_detection
@@ -371,8 +374,9 @@ class AbstractWifiClient(TimeStampedEditableModel):
         help_text=_('MAC address'),
     )
     vendor = models.CharField(max_length=200, blank=True, null=True)
-    ht = models.BooleanField(null=True, blank=True, default=None, verbose_name='HT')
+    he = models.BooleanField(null=True, blank=True, default=None, verbose_name='HE')
     vht = models.BooleanField(null=True, blank=True, default=None, verbose_name='VHT')
+    ht = models.BooleanField(null=True, blank=True, default=None, verbose_name='HT')
     wmm = models.BooleanField(default=False, verbose_name='WMM')
     wds = models.BooleanField(default=False, verbose_name='WDS')
     wps = models.BooleanField(default=False, verbose_name='WPS')
