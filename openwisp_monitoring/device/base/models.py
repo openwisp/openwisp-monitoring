@@ -54,6 +54,31 @@ class AbstractDeviceData(object):
         self.writer = DeviceDataWriter(self)
         super().__init__(*args, **kwargs)
 
+    @classmethod
+    @cache_memoize(24 * 60 * 60)
+    def get_devicedata(cls, pk):
+        obj = (
+            cls.objects.select_related('devicelocation')
+            .only(
+                'id',
+                'organization_id',
+                'devicelocation__location_id',
+                'devicelocation__floorplan_id',
+            )
+            .get(id=pk)
+        )
+        return obj
+
+    @classmethod
+    def invalidate_cache(cls, instance, *args, **kwargs):
+        if isinstance(instance, load_model('geo', 'DeviceLocation')):
+            pk = instance.content_object_id
+        else:
+            if kwargs.get('created'):
+                return
+            pk = instance.pk
+        cls.get_devicedata.invalidate(cls, str(pk))
+
     def can_be_updated(self):
         """
         Do not attempt at pushing the conf if the device is not reachable

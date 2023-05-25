@@ -55,11 +55,23 @@ class DeviceMonitoringConfig(AppConfig):
         from .api.views import DeviceMetricView
 
         Device = load_model('config', 'Device')
+        DeviceData = load_model('device_monitoring', 'DeviceData')
+        DeviceLocation = load_model('geo', 'DeviceLocation')
 
         post_save.connect(
             self.device_post_save_receiver,
             sender=Device,
             dispatch_uid='device_post_save_receiver',
+        )
+        post_save.connect(
+            DeviceData.invalidate_cache,
+            sender=Device,
+            dispatch_uid='post_save_device_invalidate_devicedata_cache',
+        )
+        post_save.connect(
+            DeviceData.invalidate_cache,
+            sender=DeviceLocation,
+            dispatch_uid='post_save_devicelocation_invalidate_devicedata_cache',
         )
 
         post_delete.connect(
@@ -71,6 +83,16 @@ class DeviceMonitoringConfig(AppConfig):
             DeviceMetricView.invalidate_get_device_cache,
             sender=Device,
             dispatch_uid=('device_post_delete_invalidate_view_cache'),
+        )
+        post_delete.connect(
+            DeviceData.invalidate_cache,
+            sender=Device,
+            dispatch_uid='post_delete_device_invalidate_devicedata_cache',
+        )
+        post_delete.connect(
+            DeviceData.invalidate_cache,
+            sender=DeviceLocation,
+            dispatch_uid='post_delete_devicelocation_invalidate_devicedata_cache',
         )
 
     @classmethod

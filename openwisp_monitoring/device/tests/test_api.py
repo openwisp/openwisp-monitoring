@@ -158,7 +158,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(self.metric_queryset.count(), 0)
         self.assertEqual(self.chart_queryset.count(), 0)
         data = {'type': 'DeviceMonitoring'}
-        with self.assertNumQueries(3):
+        with self.assertNumQueries(2):
             r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 200)
         # Add 1 for general metric and chart
@@ -258,6 +258,9 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         # this speeds up the test by reducing requests made
         del data2['resources']
         with self.assertNumQueries(18):
+            response = self._post_data(device.id, device.key, data2)
+        # Ensure cache is working
+        with self.assertNumQueries(14):
             response = self._post_data(device.id, device.key, data2)
         self.assertEqual(response.status_code, 200)
         # Add 1 for general metric and chart

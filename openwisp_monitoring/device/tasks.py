@@ -59,7 +59,7 @@ def offline_device_close_session(device_id):
 def write_device_metrics(pk, data, time=None, current=False):
     DeviceData = load_model('device_monitoring', 'DeviceData')
     try:
-        device_data = DeviceData.objects.select_related('devicelocation').get(id=pk)
+        device_data = DeviceData.get_devicedata(str(pk))
     except DeviceData.DoesNotExist:
         return
     device_data.writer.write(data, time, current)
