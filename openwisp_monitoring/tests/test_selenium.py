@@ -1,25 +1,24 @@
 from unittest.mock import patch
 
-from django.conf import settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.urls.base import reverse
 from reversion.models import Version
-from selenium import webdriver
 from selenium.common.exceptions import TimeoutException, UnexpectedAlertPresentException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from swapper import load_model
 
 from openwisp_controller.connection.tests.utils import CreateConnectionsMixin
-from openwisp_controller.tests.utils import SeleniumTestMixin as BaseSeleniumTestMixin
 from openwisp_monitoring.device.tests import (
     TestDeviceMonitoringMixin,
     TestWifiClientSessionMixin,
 )
 from openwisp_monitoring.monitoring.configuration import DEFAULT_DASHBOARD_TRAFFIC_CHART
 from openwisp_monitoring.monitoring.migrations import create_general_metrics
+from openwisp_utils.test_selenium_mixins import (
+    SeleniumTestMixin as BaseSeleniumTestMixin,
+)
 
 Device = load_model('config', 'Device')
 DeviceConnection = load_model('connection', 'DeviceConnection')
@@ -31,29 +30,6 @@ Check = load_model('check', 'Check')
 
 
 class SeleniumTestMixin(BaseSeleniumTestMixin):
-    admin_username = 'admin'
-    admin_password = 'password'
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        chrome_options = webdriver.ChromeOptions()
-        if getattr(settings, 'SELENIUM_HEADLESS', True):
-            chrome_options.add_argument('--headless')
-        chrome_options.add_argument('--window-size=1366,768')
-        chrome_options.add_argument('--ignore-certificate-errors')
-        chrome_options.add_argument('--remote-debugging-port=9222')
-        capabilities = DesiredCapabilities.CHROME
-        capabilities['goog:loggingPrefs'] = {'browser': 'ALL'}
-        cls.web_driver = webdriver.Chrome(
-            options=chrome_options, desired_capabilities=capabilities
-        )
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.web_driver.quit()
-        super().tearDownClass()
-
     def setUp(self):
         self.admin = self._create_admin(
             username=self.admin_username, password=self.admin_password
@@ -283,9 +259,9 @@ class TestWifiSessionInlineAdmin(
         )
         wifi_session_inline.click()
         wifi_session_inline_form_error = (
-            "ManagementForm data is missing "
-            "or has been tampered with. Missing fields: "
-            "wifisession_set-TOTAL_FORMS, wifisession_set-INITIAL_FORMS."
+            'ManagementForm data is missing '
+            'or has been tampered with. Missing fields: '
+            'wifisession_set-TOTAL_FORMS, wifisession_set-INITIAL_FORMS.'
         )
         # Make sure no inline formset errors
         # were encountered after saving
