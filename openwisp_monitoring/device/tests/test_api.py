@@ -4,6 +4,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
@@ -71,6 +72,10 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
 
     def setUp(self):
         self._login_admin()
+
+    def tearDown(self):
+        super().tearDown()
+        cache.clear()
 
     def _login_admin(self):
         u = User.objects.create_superuser('admin', 'admin', 'test@test.com')

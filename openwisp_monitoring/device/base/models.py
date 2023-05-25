@@ -281,9 +281,7 @@ class AbstractDeviceData(object):
             clients = wireless.get('clients', [])
             for client in clients:
                 # Save WifiClient
-                client_obj, created = WifiClient.objects.get_or_create(
-                    mac_address=client.get('mac')
-                )
+                client_obj = WifiClient.get_wifi_client(client.get('mac'))
                 update_fields = []
                 for field in _WIFICLIENT_FIELDS:
                     if getattr(client_obj, field) != client.get(field):
@@ -428,6 +426,18 @@ class AbstractWifiClient(TimeStampedEditableModel):
         abstract = True
         verbose_name = _('WiFi Client')
         ordering = ('-created',)
+
+    @classmethod
+    @cache_memoize(24 * 60 * 60)
+    def get_wifi_client(cls, mac_address):
+        wifi_client, _ = cls.objects.get_or_create(mac_address=mac_address)
+        return wifi_client
+
+    @classmethod
+    def invalidate_cache(cls, instance, *args, **kwargs):
+        if kwargs.get('created'):
+            return
+        cls.get_wifi_client.invalidate(cls, instance.mac_address)
 
 
 class AbstractWifiSession(TimeStampedEditableModel):
