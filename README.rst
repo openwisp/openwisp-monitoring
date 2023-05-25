@@ -2595,43 +2595,35 @@ List wifi session
 
 **Available filters**
 
-You can filter using ``device_id`` to get list of wifi sessions related to that particular device.
+The list of wifi session provides the following filters:
+
+- ``device__organization`` (Organization ID of the device)
+- ``device``  (Device ID)
+- ``device__group``  (Device group ID)
+- ``start_time`` (Start time of the wifi session)
+- ``stop_time`` (Stop time of the wifi session)
+
+Here's a few examples:
 
 .. code-block:: text
-   
+
+   GET /api/v1/monitoring/wifi-session/?device__organization={organization_id}
    GET /api/v1/monitoring/wifi-session/?device={device_id}
-
-You can filter using ``organization_slug`` to get list of wifi sessions belongs to an organization.
-
-.. code-block:: text
-   
-   GET /api/v1/monitoring/wifi-session/?organization_slug={organization_slug}
-
-You can filter using ``group_id`` to get list of wifi sessions belongs to a device group.
-
-.. code-block:: text
-   
    GET /api/v1/monitoring/wifi-session/?device__group={group_id}
-
-You can filter to get list of wifi sessions using ``start_time`` **(gt, gte, lt, lte).**
-
-.. code-block:: text
-
-   # Exact start_time
-   GET /api/v1/monitoring/wifi-session/?start_time={start_time}
-   
-   # Greater than start_time
-   GET /api/v1/monitoring/wifi-session/?start_time__gt={start_time}
-
-You can filter to get list of wifi sessions using ``stop_time`` **(gt, gte, lt, lte).**
-
-.. code-block:: text
-   
-   # Exact stop_time
+   GET /api/v1/monitoring/wifi-session/?start_time={stop_time}
    GET /api/v1/monitoring/wifi-session/?stop_time={stop_time}
 
-   # Less than stop_time
+**Note:** Both `start_time` and `stop_time` support
+greater than or equal to, as well as less than or equal to, filter lookups.
+
+For example:
+
+.. code-block:: text
+
+   GET /api/v1/monitoring/wifi-session/?start_time__gt={start_time}
+   GET /api/v1/monitoring/wifi-session/?start_time__gte={start_time}
    GET /api/v1/monitoring/wifi-session/?stop_time__lt={stop_time}
+   GET /api/v1/monitoring/wifi-session/?stop_time__lte={stop_time}
 
 Get wifi session
 ################
@@ -2643,7 +2635,8 @@ Get wifi session
 Pagination
 ##########
 
-Wifi session endpoint support the ``page_size`` parameter that allows paginating the results in conjunction with the page parameter.
+Wifi session endpoint support the ``page_size`` parameter
+that allows paginating the results in conjunction with the page parameter.
 
 .. code-block:: text
    

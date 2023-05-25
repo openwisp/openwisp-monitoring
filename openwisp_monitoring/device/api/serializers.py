@@ -6,8 +6,6 @@ from openwisp_controller.geo.api.serializers import (
     GeoJsonLocationSerializer,
     LocationDeviceSerializer,
 )
-from openwisp_users.api.mixins import FilterSerializerByOrgManaged
-from openwisp_utils.api.serializers import ValidatedModelSerializer
 
 Device = load_model('config', 'Device')
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
@@ -85,7 +83,7 @@ class MonitoringGeoJsonLocationSerializer(GeoJsonLocationSerializer):
     unknown_count = serializers.IntegerField()
 
 
-class WifiClientSerializer(FilterSerializerByOrgManaged, ValidatedModelSerializer):
+class WifiClientSerializer(serializers.ModelSerializer):
     wifi6 = serializers.CharField(source='he', read_only=True)
     wifi5 = serializers.CharField(source='vht', read_only=True)
     wifi4 = serializers.CharField(source='ht', read_only=True)
@@ -104,7 +102,7 @@ class WifiClientSerializer(FilterSerializerByOrgManaged, ValidatedModelSerialize
         ]
 
 
-class WifiSessionListSerializer(FilterSerializerByOrgManaged, ValidatedModelSerializer):
+class WifiSessionListSerializer(serializers.ModelSerializer):
     organization = serializers.CharField(source='device.organization', read_only=True)
     device = serializers.CharField(source='device.name', read_only=True)
     wifi6 = serializers.CharField(source='wifi_client.he', read_only=True)
@@ -128,9 +126,7 @@ class WifiSessionListSerializer(FilterSerializerByOrgManaged, ValidatedModelSeri
         ]
 
 
-class WifiSessionDetailSerializer(
-    FilterSerializerByOrgManaged, ValidatedModelSerializer
-):
+class WifiSessionDetailSerializer(serializers.ModelSerializer):
     client = WifiClientSerializer(source='wifi_client')
     organization = serializers.CharField(source='device.organization', read_only=True)
     device = serializers.CharField(source='device.name', read_only=True)
@@ -140,9 +136,10 @@ class WifiSessionDetailSerializer(
         fields = [
             'id',
             'organization',
-            'client',
             'device',
             'ssid',
+            'interface_name',
+            'client',
             'start_time',
             'stop_time',
             'modified',
