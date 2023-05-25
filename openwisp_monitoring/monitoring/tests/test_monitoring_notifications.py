@@ -96,7 +96,8 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=1
         )
         m.write(99)
-        self.assertEqual(m.is_healthy, True)
+        m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
+        self.assertEqual(m.is_healthy, False)
         self.assertEqual(m.is_healthy_tolerant, True)
         self.assertEqual(Notification.objects.count(), 0)
 
@@ -528,11 +529,12 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             metric=m, custom_operator='>', custom_threshold=30, custom_tolerance=1
         )
         m.write(10, extra_values={'test_related_2': 32})
-        self.assertEqual(m.is_healthy, True)
+        m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
+        self.assertEqual(m.is_healthy, False)
         self.assertEqual(m.is_healthy_tolerant, True)
         self.assertEqual(Notification.objects.count(), 0)
         m.write(20, extra_values={'test_related_2': 35})
-        self.assertEqual(m.is_healthy, True)
+        self.assertEqual(m.is_healthy, False)
         self.assertEqual(m.is_healthy_tolerant, True)
         self.assertEqual(Notification.objects.count(), 0)
 

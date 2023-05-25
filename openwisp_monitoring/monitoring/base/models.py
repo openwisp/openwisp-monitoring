@@ -44,7 +44,11 @@ def get_or_create_metric_cache_key(**kwargs):
     cache_key = [
         'get_or_create_metric',
     ]
-    cache_key.append('key={}'.format(kwargs.get('key', kwargs.get('name'))))
+    cache_key.append(
+        'key={}'.format(
+            kwargs.get('key', kwargs.get('name', kwargs.get('configuration')))
+        )
+    )
     for key in ['content_type_id', 'object_id', 'configuration']:
         cache_key.append('{}={}'.format(key, kwargs.get(key)))
     cache_key.append('main_tags={}'.format(kwargs.get('main_tags', OrderedDict())))
@@ -416,15 +420,16 @@ class AbstractMetric(TimeStampedEditableModel):
             current=current,
         )
         pre_metric_write.send(**signal_kwargs)
+        timestamp = time or timezone.now()
+        if isinstance(timestamp, str):
+            timestamp = parse_date(timestamp)
         options = dict(
             tags=self.tags,
-            timestamp=time or timezone.now(),
+            timestamp=timestamp.isoformat(),
             database=database,
             retention_policy=retention_policy,
             current=current,
         )
-        if isinstance(options['timestamp'], datetime):
-            options['timestamp'] = options['timestamp'].isoformat()
         # check can be disabled,
         # mostly for automated testing and debugging purposes
         if check:

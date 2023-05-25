@@ -237,7 +237,8 @@ class TestModels(TestMonitoringMixin, TestCase):
         )
         m.write(60)
         m.write(99)
-        self.assertEqual(m.is_healthy, True)
+        m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
+        self.assertEqual(m.is_healthy, False)
         self.assertEqual(m.is_healthy_tolerant, True)
 
     def test_general_check_threshold_no_exception(self):
@@ -300,7 +301,7 @@ class TestModels(TestMonitoringMixin, TestCase):
                 metric=om,
                 values={om.field_name: 3},
                 signal=post_metric_write,
-                time=start_time.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+                time=start_time.isoformat(),
                 current=True,
             )
 
@@ -337,22 +338,24 @@ class TestModels(TestMonitoringMixin, TestCase):
         )
         with self.subTest('within tolerance, no alerts expected'):
             m.write(99, time=timezone.now() - timedelta(minutes=2))
-            self.assertEqual(m.is_healthy, True)
+            m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
+            self.assertEqual(m.is_healthy, False)
             self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 0)
             m.write(99, time=timezone.now() - timedelta(minutes=4))
-            self.assertEqual(m.is_healthy, True)
+            m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
+            self.assertEqual(m.is_healthy, False)
             self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 0)
         with self.subTest('tolerance trepassed, alerts expected'):
             m.write(99, time=timezone.now() - timedelta(minutes=6))
-            m.refresh_from_db()
+            m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
             self.assertEqual(m.is_healthy, False)
             self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
         with self.subTest('value back to normal, tolerance not considered'):
             m.write(71, time=timezone.now() - timedelta(minutes=7))
-            m.refresh_from_db()
+            m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
             self.assertEqual(m.is_healthy, True)
             self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 2)

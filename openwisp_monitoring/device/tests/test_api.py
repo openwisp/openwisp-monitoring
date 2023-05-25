@@ -257,10 +257,11 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         # creation of resources metrics can be avoided here as it is not involved
         # this speeds up the test by reducing requests made
         del data2['resources']
-        with self.assertNumQueries(18):
+        additional_queries = 0 if self._is_timeseries_udp_writes else 1
+        with self.assertNumQueries(17 + additional_queries):
             response = self._post_data(device.id, device.key, data2)
         # Ensure cache is working
-        with self.assertNumQueries(14):
+        with self.assertNumQueries(13 + additional_queries):
             response = self._post_data(device.id, device.key, data2)
         self.assertEqual(response.status_code, 200)
         # Add 1 for general metric and chart
@@ -1191,7 +1192,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             signal=post_metric_write,
             sender=Metric,
             values=values,
-            time=start_time.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+            time=start_time.isoformat(),
             current=False,
         )
         self.assertEqual(signal_calls[0][1], expected_arguments)

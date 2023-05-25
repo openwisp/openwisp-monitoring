@@ -266,6 +266,6 @@ class TestMonitoringMixin(TestOrganizationMixin):
         return self._read_chart_or_metric(chart, *args, **kwargs)
 
     def _write_metric(self, metric, *args, **kwargs):
+        metric.write(*args, **kwargs)
         if self._is_timeseries_udp_writes:
             time.sleep(0.12)
-        metric.write(*args, **kwargs)

@@ -169,7 +169,9 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(m.key, 'config_applied')
         dm = d.monitoring
         dm.refresh_from_db()
+        m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
         self.assertEqual(m.is_healthy, False)
+        self.assertEqual(m.is_healthy_tolerant, False)
         self.assertEqual(dm.status, 'problem')
         self.assertEqual(Notification.objects.count(), 1)
 
