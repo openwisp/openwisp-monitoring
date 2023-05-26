@@ -17,7 +17,7 @@ from openwisp_utils.tests import capture_any_output, catch_signal
 
 from ... import settings as monitoring_settings
 from ...monitoring.signals import post_metric_write, pre_metric_write
-from ..api.serializers import WifiSessionDetailSerializer, WifiSessionListSerializer
+from ..api.serializers import WifiSessionSerializer
 from ..signals import device_metrics_received
 from . import DeviceMonitoringTestCase, TestWifiClientSessionMixin
 
@@ -1389,12 +1389,12 @@ class TestWifiSessionApi(
 
     def _serialize_wifi_session(self, wifi_session, many=False, list_single=False):
         if many:
-            serializer = WifiSessionListSerializer(wifi_session, many=many)
+            serializer = WifiSessionSerializer(wifi_session, many=many)
             return serializer.data
         if list_single:
-            serializer = WifiSessionListSerializer(wifi_session)
+            serializer = WifiSessionSerializer(wifi_session)
             return serializer.data
-        serializer = WifiSessionDetailSerializer()
+        serializer = WifiSessionSerializer()
         return dict(serializer.to_representation(wifi_session))
 
     def _create_wifi_session_multi_env(self):

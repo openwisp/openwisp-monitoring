@@ -102,31 +102,7 @@ class WifiClientSerializer(serializers.ModelSerializer):
         ]
 
 
-class WifiSessionListSerializer(serializers.ModelSerializer):
-    organization = serializers.CharField(source='device.organization', read_only=True)
-    device = serializers.CharField(source='device.name', read_only=True)
-    wifi6 = serializers.CharField(source='wifi_client.he', read_only=True)
-    wifi5 = serializers.CharField(source='wifi_client.vht', read_only=True)
-    wifi4 = serializers.CharField(source='wifi_client.ht', read_only=True)
-
-    class Meta:
-        model = WifiSession
-        fields = [
-            'id',
-            'mac_address',
-            'vendor',
-            'organization',
-            'device',
-            'ssid',
-            'wifi6',
-            'wifi5',
-            'wifi4',
-            'start_time',
-            'stop_time',
-        ]
-
-
-class WifiSessionDetailSerializer(serializers.ModelSerializer):
+class WifiSessionSerializer(serializers.ModelSerializer):
     client = WifiClientSerializer(source='wifi_client')
     organization = serializers.CharField(source='device.organization', read_only=True)
     device = serializers.CharField(source='device.name', read_only=True)

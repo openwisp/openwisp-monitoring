@@ -34,8 +34,7 @@ from .serializers import (
     MonitoringDeviceListSerializer,
     MonitoringGeoJsonLocationSerializer,
     MonitoringLocationDeviceSerializer,
-    WifiSessionDetailSerializer,
-    WifiSessionListSerializer,
+    WifiSessionSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -222,7 +221,7 @@ class WifiSessionListView(ProtectedAPIMixin, FilterByOrganizationManaged, ListAP
     filter_backends = [DjangoFilterBackend]
     pagination_class = ListViewPagination
     filterset_class = WifiSessionFilter
-    serializer_class = WifiSessionListSerializer
+    serializer_class = WifiSessionSerializer
 
 
 wifi_session_list = WifiSessionListView.as_view()
@@ -235,7 +234,7 @@ class WifiSessionDetailView(
         'device', 'wifi_client', 'device__organization'
     )
     organization_field = 'device__organization'
-    serializer_class = WifiSessionDetailSerializer
+    serializer_class = WifiSessionSerializer
 
 
 wifi_session_detail = WifiSessionDetailView.as_view()
