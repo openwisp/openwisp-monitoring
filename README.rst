@@ -2586,6 +2586,63 @@ and sending of data by the OpenWISP Monitoring Agent
 <https://github.com/openwisp/openwrt-openwisp-monitoring#collecting-vs-sending>`_,
 this feature allows sending data collected while the device is offline.
 
+List wifi session
+#################
+
+.. code-block:: text
+   
+   GET /api/v1/monitoring/wifi-session/
+
+**Available filters**
+
+The list of wifi session provides the following filters:
+
+- ``device__organization`` (Organization ID of the device)
+- ``device``  (Device ID)
+- ``device__group``  (Device group ID)
+- ``start_time`` (Start time of the wifi session)
+- ``stop_time`` (Stop time of the wifi session)
+
+Here's a few examples:
+
+.. code-block:: text
+
+   GET /api/v1/monitoring/wifi-session/?device__organization={organization_id}
+   GET /api/v1/monitoring/wifi-session/?device={device_id}
+   GET /api/v1/monitoring/wifi-session/?device__group={group_id}
+   GET /api/v1/monitoring/wifi-session/?start_time={stop_time}
+   GET /api/v1/monitoring/wifi-session/?stop_time={stop_time}
+
+**Note:** Both `start_time` and `stop_time` support
+greater than or equal to, as well as less than or equal to, filter lookups.
+
+For example:
+
+.. code-block:: text
+
+   GET /api/v1/monitoring/wifi-session/?start_time__gt={start_time}
+   GET /api/v1/monitoring/wifi-session/?start_time__gte={start_time}
+   GET /api/v1/monitoring/wifi-session/?stop_time__lt={stop_time}
+   GET /api/v1/monitoring/wifi-session/?stop_time__lte={stop_time}
+
+Get wifi session
+################
+
+.. code-block:: text
+   
+   GET /api/v1/monitoring/wifi-session/{id}/
+
+Pagination
+##########
+
+Wifi session endpoint support the ``page_size`` parameter
+that allows paginating the results in conjunction with the page parameter.
+
+.. code-block:: text
+   
+   GET /api/v1/monitoring/wifi-session/?page_size=10
+   GET /api/v1/monitoring/wifi-session/?page_size=10&page=1
+
 Signals
 -------
 

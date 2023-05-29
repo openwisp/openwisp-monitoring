@@ -9,6 +9,9 @@ from openwisp_controller.geo.api.serializers import (
 
 Device = load_model('config', 'Device')
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+Device = load_model('config', 'Device')
+WifiSession = load_model('device_monitoring', 'WifiSession')
+WifiClient = load_model('device_monitoring', 'WifiClient')
 
 
 class BaseDeviceMonitoringSerializer(serializers.ModelSerializer):
@@ -78,3 +81,42 @@ class MonitoringGeoJsonLocationSerializer(GeoJsonLocationSerializer):
     problem_count = serializers.IntegerField()
     critical_count = serializers.IntegerField()
     unknown_count = serializers.IntegerField()
+
+
+class WifiClientSerializer(serializers.ModelSerializer):
+    wifi6 = serializers.CharField(source='he', read_only=True)
+    wifi5 = serializers.CharField(source='vht', read_only=True)
+    wifi4 = serializers.CharField(source='ht', read_only=True)
+
+    class Meta:
+        model = WifiClient
+        fields = [
+            'mac_address',
+            'vendor',
+            'wifi6',
+            'wifi5',
+            'wifi4',
+            'wmm',
+            'wds',
+            'wps',
+        ]
+
+
+class WifiSessionSerializer(serializers.ModelSerializer):
+    client = WifiClientSerializer(source='wifi_client')
+    organization = serializers.CharField(source='device.organization', read_only=True)
+    device = serializers.CharField(source='device.name', read_only=True)
+
+    class Meta:
+        model = WifiSession
+        fields = [
+            'id',
+            'organization',
+            'device',
+            'ssid',
+            'interface_name',
+            'client',
+            'start_time',
+            'stop_time',
+            'modified',
+        ]

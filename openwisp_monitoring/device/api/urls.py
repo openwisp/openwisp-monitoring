@@ -25,4 +25,14 @@ urlpatterns = [
         views.monitoring_location_device_list,
         name='api_location_device_list',
     ),
+    path(
+        'api/v1/monitoring/wifi-session/',
+        views.wifi_session_list,
+        name='api_wifi_session_list',
+    ),
+    re_path(
+        r'^api/v1/monitoring/wifi-session/(?P<pk>[^/]+)/$',
+        views.wifi_session_detail,
+        name='api_wifi_session_detail',
+    ),
 ]

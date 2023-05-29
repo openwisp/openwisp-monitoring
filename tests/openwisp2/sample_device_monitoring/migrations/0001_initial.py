@@ -157,6 +157,8 @@ class Migration(migrations.Migration):
             options={
                 'verbose_name': 'WiFi Client',
                 'abstract': False,
+                # To prevent DRF UnorderedObjectListWarning in pagination
+                'ordering': ('-created',),
             },
         ),
         migrations.CreateModel(

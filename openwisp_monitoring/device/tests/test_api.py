@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timedelta
 from unittest.mock import patch
+from uuid import uuid4
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -8,14 +9,17 @@ from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from swapper import load_model
 
+from openwisp_controller.config.tests.utils import CreateDeviceGroupMixin
 from openwisp_controller.geo.tests.utils import TestGeoMixin
 from openwisp_users.tests.test_api import AuthenticationMixin
+from openwisp_users.tests.utils import TestMultitenantAdminMixin
 from openwisp_utils.tests import capture_any_output, catch_signal
 
 from ... import settings as monitoring_settings
 from ...monitoring.signals import post_metric_write, pre_metric_write
+from ..api.serializers import WifiSessionSerializer
 from ..signals import device_metrics_received
-from . import DeviceMonitoringTestCase
+from . import DeviceMonitoringTestCase, TestWifiClientSessionMixin
 
 start_time = timezone.now()
 User = get_user_model()
@@ -27,6 +31,8 @@ Device = load_model('config', 'Device')
 DeviceLocation = load_model('geo', 'DeviceLocation')
 FloorPlan = load_model('geo', 'FloorPlan')
 Location = load_model('geo', 'Location')
+WifiClient = load_model('device_monitoring', 'WifiClient')
+WifiSession = load_model('device_monitoring', 'WifiSession')
 
 
 class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase):
@@ -1369,3 +1375,263 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
                 HTTP_AUTHORIZATION=f'Bearer {token}',
             )
             self.assertEqual(response.status_code, 200)
+
+
+class TestWifiSessionApi(
+    AuthenticationMixin,
+    TestMultitenantAdminMixin,
+    TestWifiClientSessionMixin,
+    CreateDeviceGroupMixin,
+    DeviceMonitoringTestCase,
+):
+    def _login_admin(self):
+        self._login()
+
+    def _serialize_wifi_session(self, wifi_session, many=False, list_single=False):
+        if many:
+            serializer = WifiSessionSerializer(wifi_session, many=many)
+            return serializer.data
+        if list_single:
+            serializer = WifiSessionSerializer(wifi_session)
+            return serializer.data
+        serializer = WifiSessionSerializer()
+        return dict(serializer.to_representation(wifi_session))
+
+    def _create_wifi_session_multi_env(self):
+        org1 = self._get_org()
+        dg1 = self._create_device_group(organization=org1)
+        d1 = self._create_device(
+            mac_address='00:11:22:33:44:66', group=dg1, organization=org1
+        )
+        ws1 = self._create_wifi_session(device=d1)
+        ws1.wifi_client
+        org2 = self._create_org(name='test-org-2')
+        dg2 = self._create_device_group(organization=org2)
+        d2 = self._create_device(
+            mac_address='00:11:22:33:44:77', group=dg2, organization=org2
+        )
+        wc2 = self._create_wifi_client(mac_address='22:33:44:55:66:88')
+        ws2 = self._create_wifi_session(device=d2, wifi_client=wc2)
+        return org1, org2, d1, d2, dg1, dg2, ws1, ws2
+
+    def _assert_wifi_session_list_filters(self, query_num, ws, filter_params={}):
+        url = reverse('monitoring:api_wifi_session_list')
+        with self.assertNumQueries(query_num):
+            response = self.client.get(url, filter_params)
+        self.assertEqual(response.status_code, 200)
+        serializer_dict = self._serialize_wifi_session(ws, list_single=True)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0], serializer_dict)
+
+    def test_wifi_session_list_unauthorized(self):
+        device = self._create_device()
+        wifi_session = self._create_wifi_session(device=device)
+        with self.assertNumQueries(0):
+            response = self.client.get(
+                reverse('monitoring:api_wifi_session_detail', args=[wifi_session.id])
+            )
+        self.assertEqual(response.status_code, 401)
+        response = self.client.get(reverse('monitoring:api_wifi_session_list'))
+        self.assertEqual(response.status_code, 401)
+
+    def test_wifi_session_detail_unauthorized(self):
+        wifi_session = self._create_wifi_session()
+        url = reverse('monitoring:api_wifi_session_detail', args=[wifi_session.id])
+        with self.assertNumQueries(0):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, 401)
+
+    def test_wifi_session_detail_404(self):
+        wifi_session_id = uuid4()
+        self._login_admin()
+        url = reverse('monitoring:api_wifi_session_detail', args=[wifi_session_id])
+        with self.assertNumQueries(2):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {'detail': 'Not found.'})
+
+    def test_wifi_session_detail_get(self):
+        device = self._create_device()
+        wifi_session = self._create_wifi_session(device=device)
+        wifi_session.wifi_client
+        self._login_admin()
+        url = reverse('monitoring:api_wifi_session_detail', args=[wifi_session.id])
+        with self.assertNumQueries(2):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        serializer_dict = self._serialize_wifi_session(wifi_session)
+        self.assertEqual(response.data, serializer_dict)
+
+    def test_wifisession_list_get(self):
+        self._create_wifi_session_multi_env()
+        self._login_admin()
+        url = reverse('monitoring:api_wifi_session_list')
+        with self.assertNumQueries(3):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        wifi_session_qs = WifiSession.objects.order_by('-start_time')
+        serializer_list = self._serialize_wifi_session(wifi_session_qs, many=True)
+        self.assertEqual(response.data['results'], serializer_list)
+
+    def test_wifisession_list_filters(self):
+        org1, org2, d1, d2, dg1, dg2, ws1, ws2 = self._create_wifi_session_multi_env()
+        self._login_admin()
+
+        with self.subTest('Test filtering using organization id'):
+            self._assert_wifi_session_list_filters(
+                4, ws1, {'device__organization': org1.id}
+            )
+            self._assert_wifi_session_list_filters(
+                4, ws2, {'device__organization': org2.id}
+            )
+
+        with self.subTest('Test filtering using device id'):
+            self._assert_wifi_session_list_filters(4, ws1, {'device': d1.id})
+            self._assert_wifi_session_list_filters(4, ws2, {'device': d2.id})
+
+        with self.subTest('Test filtering using device group id'):
+            self._assert_wifi_session_list_filters(4, ws1, {'device__group': dg1.id})
+            self._assert_wifi_session_list_filters(4, ws2, {'device__group': dg2.id})
+
+        with self.subTest('Test filtering using start time'):
+            filter_time = ws2.start_time
+            url = reverse('monitoring:api_wifi_session_list')
+            wifi_session_qs = WifiSession.objects.order_by('-start_time')
+            response = self.client.get(url, {'start_time': filter_time})
+            self.assertEqual(response.data['count'], 1)
+            # Make sure the correct WiFi session is returned in the response
+            serializer_dict = self._serialize_wifi_session(ws2, list_single=True)
+            self.assertEqual(response.data['results'][0], serializer_dict)
+            response = self.client.get(url, {'start_time__gt': filter_time})
+            self.assertEqual(response.data['count'], 0)
+            response = self.client.get(url, {'start_time__gte': filter_time})
+            self.assertEqual(response.data['count'], 1)
+            serializer_dict = self._serialize_wifi_session(ws2, list_single=True)
+            self.assertEqual(response.data['results'][0], serializer_dict)
+            response = self.client.get(url, {'start_time__lt': filter_time})
+            serializer_dict = self._serialize_wifi_session(ws1, list_single=True)
+            self.assertEqual(response.data['results'][0], serializer_dict)
+            response = self.client.get(url, {'start_time__lte': filter_time})
+            self.assertEqual(response.data['count'], 2)
+            serializer_dict = self._serialize_wifi_session(wifi_session_qs, many=True)
+            self.assertEqual(response.data['results'], serializer_dict)
+
+        with self.subTest('Test filtering using stop time'):
+            ws2.stop_time = timezone.now()
+            ws2.save()
+            ws1.stop_time = timezone.now()
+            ws1.save()
+            filter_time = ws2.stop_time
+            url = reverse('monitoring:api_wifi_session_list')
+            wifi_session_qs = WifiSession.objects.order_by('-start_time')
+            response = self.client.get(url, {'stop_time': filter_time})
+            self.assertEqual(response.data['count'], 1)
+            serializer_dict = self._serialize_wifi_session(ws2, list_single=True)
+            self.assertEqual(response.data['results'][0], serializer_dict)
+            response = self.client.get(url, {'stop_time__gt': filter_time})
+            self.assertEqual(response.data['count'], 1)
+            serializer_dict = self._serialize_wifi_session(ws1, list_single=True)
+            self.assertEqual(response.data['results'][0], serializer_dict)
+            response = self.client.get(url, {'stop_time__gte': filter_time})
+            self.assertEqual(response.data['count'], 2)
+            serializer_dict = self._serialize_wifi_session(wifi_session_qs, many=True)
+            self.assertEqual(response.data['results'], serializer_dict)
+            response = self.client.get(url, {'stop_time__lt': filter_time})
+            self.assertEqual(response.data['count'], 0)
+            response = self.client.get(url, {'stop_time__lte': filter_time})
+            self.assertEqual(response.data['count'], 1)
+            serializer_dict = self._serialize_wifi_session(ws2, list_single=True)
+            self.assertEqual(response.data['results'][0], serializer_dict)
+
+    def test_wifi_session_list_detail_multitenancy(self):
+        org1, org2, d1, d2, dg1, dg2, ws1, ws2 = self._create_wifi_session_multi_env()
+        org1_manager = self._create_operator(
+            organizations=[org1],
+            username='org1_manager',
+            email='orgmanager@test.com',
+        )
+        org1_member = self._create_operator(
+            username='org1_member', email='orgmember@test.com'
+        )
+        org1_admin = self._create_operator(
+            username='org_admin', email='org_admin@test.com', is_superuser=True
+        )
+
+        with self.subTest('Test wifi session list org manager'):
+            self.client.force_login(org1_manager)
+            url = reverse('monitoring:api_wifi_session_list')
+            with self.assertNumQueries(5):
+                response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data['count'], 1)
+            serializer_dict = self._serialize_wifi_session(ws1, list_single=True)
+            self.assertEqual(response.data['results'][0], serializer_dict)
+
+        with self.subTest('Test wifi session detail org manager'):
+            self.client.force_login(org1_manager)
+            url = reverse('monitoring:api_wifi_session_detail', args=[ws1.id])
+            with self.assertNumQueries(4):
+                response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            serializer_dict = self._serialize_wifi_session(ws1)
+            self.assertEqual(response.data, serializer_dict)
+            # Make sure the WiFi session belonging to org2 is not accessible
+            url = reverse('monitoring:api_wifi_session_detail', args=[ws2.pk])
+            with self.assertNumQueries(4):
+                response = self.client.get(url)
+            self.assertEqual(response.status_code, 404)
+            self.assertEqual(response.data['detail'], 'Not found.')
+
+        with self.subTest('Test wifi session list org member (403 forbidden)'):
+            self.client.force_login(org1_member)
+            url = reverse('monitoring:api_wifi_session_list')
+            err = 'User is not a manager of the organization'
+            with self.assertNumQueries(1):
+                response = self.client.get(url)
+            self.assertEqual(response.status_code, 403)
+            self.assertIn(err, response.json()['detail'])
+
+        with self.subTest('Test wifi session detail org member (403 forbidden)'):
+            self.client.force_login(org1_member)
+            url = reverse('monitoring:api_wifi_session_detail', args=[ws1.pk])
+            err = 'User is not a manager of the organization'
+            with self.assertNumQueries(1):
+                response = self.client.get(url)
+            self.assertEqual(response.status_code, 403)
+            self.assertIn(err, response.json()['detail'])
+            url = reverse('monitoring:api_wifi_session_detail', args=[ws2.pk])
+            with self.assertNumQueries(1):
+                r = self.client.get(url)
+            self.assertEqual(response.status_code, 403)
+            self.assertIn(err, response.json()['detail'])
+
+        with self.subTest('Test upgrade operation list org admin'):
+            # Superuser (org1_admin) can view
+            # wifi sessions of both organizations
+            self.client.force_login(org1_admin)
+            wifi_session_qs = WifiSession.objects.order_by('-start_time')
+            url = reverse('monitoring:api_wifi_session_list')
+            with self.assertNumQueries(3):
+                r = self.client.get(url)
+            self.assertEqual(r.status_code, 200)
+            serializer_list = self._serialize_wifi_session(wifi_session_qs, many=True)
+            self.assertEqual(r.data['results'], serializer_list)
+            url = reverse('monitoring:api_wifi_session_list')
+            with self.assertNumQueries(3):
+                r = self.client.get(url)
+            self.assertEqual(r.status_code, 200)
+            serializer_list = self._serialize_wifi_session(wifi_session_qs, many=True)
+            self.assertEqual(r.data['results'], serializer_list)
+            # Ensure similar results for wifi_session detail
+            url = reverse('monitoring:api_wifi_session_detail', args=[ws1.pk])
+            with self.assertNumQueries(2):
+                r = self.client.get(url)
+            self.assertEqual(r.status_code, 200)
+            serializer_dict = self._serialize_wifi_session(ws1)
+            self.assertEqual(r.data, serializer_dict)
+            url = reverse('monitoring:api_wifi_session_detail', args=[ws2.pk])
+            with self.assertNumQueries(2):
+                r = self.client.get(url)
+            self.assertEqual(r.status_code, 200)
+            serializer_dict = self._serialize_wifi_session(ws2)
+            self.assertEqual(r.data, serializer_dict)

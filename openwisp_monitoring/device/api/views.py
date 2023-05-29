@@ -9,8 +9,8 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
 from pytz import UTC
-from rest_framework import serializers, status
-from rest_framework.generics import GenericAPIView
+from rest_framework import pagination, serializers, status
+from rest_framework.generics import GenericAPIView, ListAPIView, RetrieveAPIView
 from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 from swapper import load_model
@@ -22,17 +22,19 @@ from openwisp_controller.geo.api.views import (
     LocationDeviceList,
     ProtectedAPIMixin,
 )
+from openwisp_users.api.mixins import FilterByOrganizationManaged
 
 from ...views import MonitoringApiViewMixin
 from ..schema import schema
 from ..signals import device_metrics_received
 from ..tasks import write_device_metrics
-from .filters import MonitoringDeviceFilter
+from .filters import MonitoringDeviceFilter, WifiSessionFilter
 from .serializers import (
     MonitoringDeviceDetailSerializer,
     MonitoringDeviceListSerializer,
     MonitoringGeoJsonLocationSerializer,
     MonitoringLocationDeviceSerializer,
+    WifiSessionSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,6 +45,13 @@ Device = load_model('config', 'Device')
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 DeviceData = load_model('device_monitoring', 'DeviceData')
 Location = load_model('geo', 'Location')
+WifiSession = load_model('device_monitoring', 'WifiSession')
+
+
+class ListViewPagination(pagination.PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
@@ -202,3 +211,30 @@ class MonitoringDeviceList(DeviceListCreateView):
 
 
 monitoring_device_list = MonitoringDeviceList.as_view()
+
+
+class WifiSessionListView(ProtectedAPIMixin, FilterByOrganizationManaged, ListAPIView):
+    queryset = WifiSession.objects.select_related(
+        'device', 'wifi_client', 'device__organization', 'device__group'
+    )
+    organization_field = 'device__organization'
+    filter_backends = [DjangoFilterBackend]
+    pagination_class = ListViewPagination
+    filterset_class = WifiSessionFilter
+    serializer_class = WifiSessionSerializer
+
+
+wifi_session_list = WifiSessionListView.as_view()
+
+
+class WifiSessionDetailView(
+    ProtectedAPIMixin, FilterByOrganizationManaged, RetrieveAPIView
+):
+    queryset = WifiSession.objects.select_related(
+        'device', 'wifi_client', 'device__organization'
+    )
+    organization_field = 'device__organization'
+    serializer_class = WifiSessionSerializer
+
+
+wifi_session_detail = WifiSessionDetailView.as_view()
