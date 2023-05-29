@@ -155,13 +155,6 @@ class AbstractMetric(TimeStampedEditableModel):
     def post_delete_receiver(cls, instance, *args, **kwargs):
         delete_timeseries.delay(instance.key, instance.tags)
 
-    def _get_metric(cls, **kwargs):
-        if kwargs.get('metric'):
-            return kwargs['metric']
-        if kwargs.get('name'):
-            del kwargs['name']
-        return cls.objects.get(**kwargs)
-
     @classmethod
     def _get_or_create(
         cls,
