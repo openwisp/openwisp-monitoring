@@ -1,3 +1,4 @@
+from cache_memoize import cache_memoize
 from django.db.models import Q
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import IsAuthenticated
@@ -6,6 +7,7 @@ from swapper import load_model
 
 from openwisp_users.api.mixins import ProtectedAPIMixin
 
+from ...settings import CACHE_TIMEOUT
 from ...views import MonitoringApiViewMixin
 from ..configuration import DEFAULT_DASHBOARD_TRAFFIC_CHART
 
@@ -142,10 +144,27 @@ class DashboardTimeseriesView(ProtectedAPIMixin, MonitoringApiViewMixin, APIView
             additional_params['ifname'] = self._get_interface()
         return {'additional_params': additional_params}
 
+    @cache_memoize(
+        CACHE_TIMEOUT,
+        key_generator_callable=lambda *args, **kwargs: 'ow-monitoring-dashboard-charts',
+    )
     def _get_charts(self, request, *args, **kwargs):
         return Chart.objects.filter(
             metric__object_id=None, metric__content_type=None
         ).select_related('metric')
+
+    @classmethod
+    def invalidate_cache(cls, instance, *args, **kwargs):
+        if isinstance(instance, Chart):
+            if (
+                instance.metric.object_id is not None
+                or instance.metric.content_type is not None
+            ):
+                return
+        elif isinstance(instance, Metric):
+            if instance.object_id is not None or instance.content_type is not None:
+                return
+        cls._get_charts.invalidate()
 
 
 dashboard_timeseries = DashboardTimeseriesView.as_view()

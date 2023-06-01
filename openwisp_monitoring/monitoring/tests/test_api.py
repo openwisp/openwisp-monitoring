@@ -30,9 +30,6 @@ class TestDashboardTimeseriesView(
     org2_id = str(uuid.uuid4())
     org3_id = str(uuid.uuid4())
 
-    def setUp(self):
-        super().setUp()
-
     def _test_response_data(self, response):
         self.assertIn('x', response.data)
         charts = response.data['charts']
@@ -245,7 +242,8 @@ class TestDashboardTimeseriesView(
 
         self.client.force_login(admin)
         with self.subTest('Test superuser retrieves metric for all organizations'):
-            response = self.client.get(path)
+            with self.assertNumQueries(2):
+                response = self.client.get(path)
             self.assertEqual(response.status_code, 200)
             self._test_response_data(response)
             chart = response.data['charts'][0]
@@ -425,6 +423,10 @@ class TestDashboardTimeseriesView(
         with self.subTest('Test non-org admin retrieve metric'):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 403)
+
+        with self.subTest('Test view cache'):
+            with self.assertNumQueries(1):
+                response = self.client.get(path)
 
     def test_exporting_data_as_csv(self):
         def _test_csv_response(response):

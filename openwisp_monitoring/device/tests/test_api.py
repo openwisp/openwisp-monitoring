@@ -4,6 +4,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.urls import reverse
 from django.utils import timezone
@@ -69,6 +70,12 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         'charts',
         'x',
     ]
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # Populate the ContentType cache to avoid queries during test
+        ContentType.objects.get_for_model(Device)
 
     def setUp(self):
         self._login_admin()
@@ -258,7 +265,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         # this speeds up the test by reducing requests made
         del data2['resources']
         additional_queries = 0 if self._is_timeseries_udp_writes else 1
-        with self.assertNumQueries(17 + additional_queries):
+        with self.assertNumQueries(21 + additional_queries):
             response = self._post_data(device.id, device.key, data2)
         # Ensure cache is working
         with self.assertNumQueries(13 + additional_queries):
@@ -363,7 +370,10 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     def test_get_device_metrics_200(self):
         dd = self.create_test_data()
         d = self.device_model.objects.get(pk=dd.pk)
-        r = self.client.get(self._url(d.pk.hex, d.key))
+        with self.assertNumQueries(17):
+            r = self.client.get(self._url(d.pk.hex, d.key))
+        with self.assertNumQueries(16):
+            r = self.client.get(self._url(d.pk.hex, d.key))
         self.assertEqual(r.status_code, 200)
 
         with self.subTest('Test device metrics 200 without the device key'):

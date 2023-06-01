@@ -57,6 +57,8 @@ class DeviceMonitoringConfig(AppConfig):
         Device = load_model('config', 'Device')
         DeviceData = load_model('device_monitoring', 'DeviceData')
         DeviceLocation = load_model('geo', 'DeviceLocation')
+        Metric = load_model('monitoring', 'Metric')
+        Chart = load_model('monitoring', 'Chart')
 
         post_save.connect(
             self.device_post_save_receiver,
@@ -73,6 +75,16 @@ class DeviceMonitoringConfig(AppConfig):
             sender=DeviceLocation,
             dispatch_uid='post_save_devicelocation_invalidate_devicedata_cache',
         )
+        post_save.connect(
+            DeviceMetricView.invalidate_get_charts_cache,
+            sender=Metric,
+            dispatch_uid=('metric_post_save_invalidate_view_charts_cache'),
+        )
+        post_save.connect(
+            DeviceMetricView.invalidate_get_charts_cache,
+            sender=Chart,
+            dispatch_uid=('chart_post_save_invalidate_view_charts_cache'),
+        )
 
         post_delete.connect(
             self.device_post_delete_receiver,
@@ -82,7 +94,22 @@ class DeviceMonitoringConfig(AppConfig):
         post_delete.connect(
             DeviceMetricView.invalidate_get_device_cache,
             sender=Device,
-            dispatch_uid=('device_post_delete_invalidate_view_cache'),
+            dispatch_uid=('device_post_delete_invalidate_view_device_cache'),
+        )
+        post_delete.connect(
+            DeviceMetricView.invalidate_get_charts_cache,
+            sender=Device,
+            dispatch_uid=('device_post_delete_invalidate_view_charts_cache'),
+        )
+        post_delete.connect(
+            DeviceMetricView.invalidate_get_charts_cache,
+            sender=Metric,
+            dispatch_uid=('metric_post_delete_invalidate_view_charts_cache'),
+        )
+        post_delete.connect(
+            DeviceMetricView.invalidate_get_charts_cache,
+            sender=Chart,
+            dispatch_uid=('chart_post_delete_invalidate_view_charts_cache'),
         )
         post_delete.connect(
             DeviceData.invalidate_cache,

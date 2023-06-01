@@ -48,7 +48,10 @@ class MonitoringConfig(AppConfig):
         )
 
     def connect_metric_signals(self):
+        from .api.views import DashboardTimeseriesView
+
         Metric = load_model('monitoring', 'Metric')
+        Chart = load_model('monitoring', 'Chart')
         AlertSettings = load_model('monitoring', 'AlertSettings')
         post_delete.connect(
             Metric.post_delete_receiver,
@@ -74,4 +77,24 @@ class MonitoringConfig(AppConfig):
             AlertSettings.invalidate_cache,
             sender=AlertSettings,
             dispatch_uid='post_delete_invalidate_metric_cache',
+        )
+        post_save.connect(
+            DashboardTimeseriesView.invalidate_cache,
+            sender=Metric,
+            dispatch_uid='post_save_dashboard_tsdb_view_invalidate_cache',
+        )
+        post_save.connect(
+            DashboardTimeseriesView.invalidate_cache,
+            sender=Chart,
+            dispatch_uid='post_save_dashboard_tsdb_view_invalidate_cache',
+        )
+        post_delete.connect(
+            DashboardTimeseriesView.invalidate_cache,
+            sender=Metric,
+            dispatch_uid='post_delete_dashboard_tsdb_view_invalidate_cache',
+        )
+        post_delete.connect(
+            DashboardTimeseriesView.invalidate_cache,
+            sender=Chart,
+            dispatch_uid='post_delete_dashboard_tsdb_view_invalidate_cache',
         )

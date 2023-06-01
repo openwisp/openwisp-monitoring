@@ -26,6 +26,7 @@ from openwisp_utils.base import TimeStampedEditableModel
 from ...db import device_data_query, timeseries_db
 from ...monitoring.signals import threshold_crossed
 from ...monitoring.tasks import timeseries_write
+from ...settings import CACHE_TIMEOUT
 from .. import settings as app_settings
 from .. import tasks
 from ..schema import schema
@@ -55,7 +56,7 @@ class AbstractDeviceData(object):
         super().__init__(*args, **kwargs)
 
     @classmethod
-    @cache_memoize(24 * 60 * 60)
+    @cache_memoize(CACHE_TIMEOUT)
     def get_devicedata(cls, pk):
         obj = (
             cls.objects.select_related('devicelocation')
@@ -280,7 +281,7 @@ class AbstractDeviceData(object):
                     'time': time.astimezone(tz=tz('UTC')).isoformat(timespec='seconds'),
                 }
             ],
-            timeout=86400,  # 24 hours
+            timeout=CACHE_TIMEOUT,
         )
         if app_settings.WIFI_SESSIONS_ENABLED:
             self.save_wifi_clients_and_sessions()
@@ -453,7 +454,7 @@ class AbstractWifiClient(TimeStampedEditableModel):
         ordering = ('-created',)
 
     @classmethod
-    @cache_memoize(24 * 60 * 60)
+    @cache_memoize(CACHE_TIMEOUT)
     def get_wifi_client(cls, mac_address):
         wifi_client, _ = cls.objects.get_or_create(mac_address=mac_address)
         return wifi_client

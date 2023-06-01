@@ -2127,6 +2127,17 @@ domain, you can use this option to change the base of the url, this will
 enable you to point all the API urls to your openwisp-monitoring API server's
 domain, example: ``https://mymonitoring.myapp.com``.
 
+``OPENWISP_MONITORING_CACHE_TIMEOUT``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++--------------+----------------------------------+
+| **type**:    | ``int``                          |
++--------------+----------------------------------+
+| **default**: | ``86400`` (24 hours in seconds)  |
++--------------+----------------------------------+
+
+This setting allows to configure timeout (in seconds) for monitoring data cache.
+
 Registering / Unregistering Metric Configuration
 ------------------------------------------------
 

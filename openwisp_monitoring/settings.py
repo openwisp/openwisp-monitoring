@@ -24,3 +24,7 @@ MONITORING_API_BASEURL = get_settings_value('API_BASEURL', None)
 MONITORING_TIMESERIES_RETRY_OPTIONS = get_settings_value(
     'TIMESERIES_RETRY_OPTIONS', dict(max_retries=6, delay=2)
 )
+CACHE_TIMEOUT = get_settings_value(
+    'CACHE_TIMEOUT',
+    24 * 60 * 60,  # 24 hours in seconds
+)

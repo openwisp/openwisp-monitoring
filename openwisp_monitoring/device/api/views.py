@@ -25,6 +25,7 @@ from openwisp_controller.geo.api.views import (
 )
 from openwisp_users.api.mixins import FilterByOrganizationManaged
 
+from ...settings import CACHE_TIMEOUT
 from ...views import MonitoringApiViewMixin
 from ..schema import schema
 from ..signals import device_metrics_received
@@ -66,6 +67,10 @@ def get_device_args_rewrite(view, pk):
     return pk.hex
 
 
+def get_charts_args_rewrite(view, request, pk):
+    return (pk,)
+
+
 class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
     """
     Retrieve device information, monitoring status (health status),
@@ -95,6 +100,16 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
         view.get_object.invalidate(view, str(instance.pk))
         logger.debug(f'invalidated view cache for device ID {instance.pk}')
 
+    @classmethod
+    def invalidate_get_charts_cache(cls, instance, *args, **kwargs):
+        if isinstance(instance, Device):
+            pk = instance.id
+        elif isinstance(instance, Metric):
+            pk = instance.object_id
+        elif isinstance(instance, Chart):
+            pk = instance.metric.object_id
+        cls._get_charts.invalidate(None, None, pk)
+
     def get_permissions(self):
         if self.request.method in SAFE_METHODS and not self.request.query_params.get(
             'key'
@@ -123,6 +138,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
             )
         return response
 
+    @cache_memoize(CACHE_TIMEOUT, args_rewrite=get_charts_args_rewrite)
     def _get_charts(self, request, *args, **kwargs):
         ct = ContentType.objects.get_for_model(Device)
         return Chart.objects.filter(
@@ -134,7 +150,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
             return {'data': self.instance.data}
         return {}
 
-    @cache_memoize(24 * 60 * 60, args_rewrite=get_device_args_rewrite)
+    @cache_memoize(CACHE_TIMEOUT, args_rewrite=get_device_args_rewrite)
     def get_object(self, pk):
         return super().get_object()
 

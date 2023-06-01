@@ -4,12 +4,12 @@ from collections import OrderedDict
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 
+from cache_memoize import cache_memoize
 from dateutil.parser import parse as parse_date
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import models
@@ -25,6 +25,7 @@ from openwisp_monitoring.monitoring.utils import clean_timeseries_data_key
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...db import default_chart_query, timeseries_db
+from ...settings import CACHE_TIMEOUT
 from ..configuration import (
     CHART_CONFIGURATION_CHOICES,
     DEFAULT_COLORS,
@@ -40,7 +41,7 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
-def get_or_create_metric_cache_key(**kwargs):
+def get_metric_cache_key(*args, **kwargs):
     cache_key = [
         'get_or_create_metric',
     ]
@@ -171,11 +172,7 @@ class AbstractMetric(TimeStampedEditableModel):
             if lookup_kwargs.get('name'):
                 del lookup_kwargs['name']
             extra_tags = lookup_kwargs.pop('extra_tags', {})
-            metric_cache_key = get_or_create_metric_cache_key(**kwargs)
-            metric = cache.get(metric_cache_key)
-            if not metric:
-                metric = cls.objects.get(**lookup_kwargs)
-                cache.set(metric_cache_key, metric, 24 * 60 * 60)
+            metric = cls._get_metric(**lookup_kwargs)
             created = False
             if extra_tags != metric.extra_tags:
                 metric.extra_tags.update(kwargs['extra_tags'])
@@ -185,15 +182,19 @@ class AbstractMetric(TimeStampedEditableModel):
             metric = cls(**kwargs)
             metric.full_clean()
             metric.save()
-            cache.set(metric_cache_key, metric, 24 * 60 * 60)
             created = True
         return metric, created
+
+    @classmethod
+    @cache_memoize(CACHE_TIMEOUT, key_generator_callable=get_metric_cache_key)
+    def _get_metric(cls, *args, **kwargs):
+        return cls.objects.get(**kwargs)
 
     @classmethod
     def invalidate_cache(cls, instance, *args, **kwargs):
         if kwargs.get('created', False):
             return
-        cache_key = get_or_create_metric_cache_key(
+        cls._get_metric.invalidate(
             **{
                 'name': instance.name,
                 'key': instance.key,
@@ -203,7 +204,6 @@ class AbstractMetric(TimeStampedEditableModel):
                 'main_tags': instance.main_tags,
             }
         )
-        cache.delete(cache_key)
 
     @property
     def codename(self):
