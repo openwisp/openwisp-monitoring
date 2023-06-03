@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
@@ -21,6 +22,10 @@ Notification = load_model('openwisp_notifications', 'Notification')
 
 
 class TestModels(TestMonitoringMixin, TestCase):
+    def tearDown(self):
+        cache.clear()
+        super().tearDown()
+
     def test_general_metric_str(self):
         m = Metric(name='Test metric')
         self.assertEqual(str(m), m.name)
@@ -110,7 +115,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         m, created = Metric._get_or_create(
             name='logins',
             configuration='test_metric',
-            content_type=ct,
+            content_type_id=ct.id,
             object_id=obj.pk,
         )
         self.assertTrue(created)
@@ -119,7 +124,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         m2, created = Metric._get_or_create(
             name='logins',
             configuration='test_metric',
-            content_type=ct,
+            content_type_id=ct.id,
             object_id=obj.pk,
         )
         self.assertEqual(m.id, m2.id)
@@ -232,7 +237,8 @@ class TestModels(TestMonitoringMixin, TestCase):
         )
         m.write(60)
         m.write(99)
-        self.assertEqual(m.is_healthy, True)
+        m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
+        self.assertEqual(m.is_healthy, False)
         self.assertEqual(m.is_healthy_tolerant, True)
 
     def test_general_check_threshold_no_exception(self):
@@ -295,7 +301,7 @@ class TestModels(TestMonitoringMixin, TestCase):
                 metric=om,
                 values={om.field_name: 3},
                 signal=post_metric_write,
-                time=start_time.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+                time=start_time.isoformat(),
                 current=True,
             )
 
@@ -332,22 +338,24 @@ class TestModels(TestMonitoringMixin, TestCase):
         )
         with self.subTest('within tolerance, no alerts expected'):
             m.write(99, time=timezone.now() - timedelta(minutes=2))
-            self.assertEqual(m.is_healthy, True)
+            m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
+            self.assertEqual(m.is_healthy, False)
             self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 0)
             m.write(99, time=timezone.now() - timedelta(minutes=4))
-            self.assertEqual(m.is_healthy, True)
+            m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
+            self.assertEqual(m.is_healthy, False)
             self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 0)
         with self.subTest('tolerance trepassed, alerts expected'):
             m.write(99, time=timezone.now() - timedelta(minutes=6))
-            m.refresh_from_db()
+            m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
             self.assertEqual(m.is_healthy, False)
             self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
         with self.subTest('value back to normal, tolerance not considered'):
             m.write(71, time=timezone.now() - timedelta(minutes=7))
-            m.refresh_from_db()
+            m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
             self.assertEqual(m.is_healthy, True)
             self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 2)

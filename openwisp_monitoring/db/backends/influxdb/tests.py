@@ -331,7 +331,7 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
                 retention_policy=None,
                 tags={},
                 # this should be the original time at the moment of first failure
-                timestamp='2020-01-14T00:00:00Z',
+                timestamp=datetime(2020, 1, 14, tzinfo=tz('UTC')).isoformat(),
                 current=False,
             )
 

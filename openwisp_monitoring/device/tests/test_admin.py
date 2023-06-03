@@ -3,6 +3,7 @@ from copy import deepcopy
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.forms import generic_inlineformset_factory
+from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 from django.utils.timezone import now, timedelta
@@ -80,6 +81,9 @@ class TestAdmin(
 
     def setUp(self):
         self._login_admin()
+
+    def tearDown(self):
+        cache.clear()
 
     def _login_admin(self):
         u = User.objects.create_superuser('admin', 'admin', 'test@test.com')

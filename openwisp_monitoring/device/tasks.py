@@ -37,53 +37,6 @@ def trigger_device_checks(pk, recovery=True):
 
 
 @shared_task(base=OpenwispCeleryTask)
-def save_wifi_clients_and_sessions(device_data, device_pk):
-    _WIFICLIENT_FIELDS = ['vendor', 'ht', 'vht', 'he', 'wmm', 'wds', 'wps']
-    WifiClient = load_model('device_monitoring', 'WifiClient')
-    WifiSession = load_model('device_monitoring', 'WifiSession')
-
-    active_sessions = []
-    interfaces = device_data.get('interfaces', [])
-    for interface in interfaces:
-        if interface.get('type') != 'wireless':
-            continue
-        interface_name = interface.get('name')
-        wireless = interface.get('wireless', {})
-        if not wireless or wireless['mode'] != 'access_point':
-            continue
-        ssid = wireless.get('ssid')
-        clients = wireless.get('clients', [])
-        for client in clients:
-            # Save WifiClient
-            client_obj, created = WifiClient.objects.get_or_create(
-                mac_address=client.get('mac')
-            )
-            update_fields = []
-            for field in _WIFICLIENT_FIELDS:
-                if getattr(client_obj, field) != client.get(field):
-                    setattr(client_obj, field, client.get(field))
-                    update_fields.append(field)
-            if update_fields:
-                client_obj.full_clean()
-                client_obj.save(update_fields=update_fields)
-
-            # Save WifiSession
-            session_obj, _ = WifiSession.objects.get_or_create(
-                device_id=device_pk,
-                interface_name=interface_name,
-                ssid=ssid,
-                wifi_client=client_obj,
-                stop_time=None,
-            )
-            active_sessions.append(session_obj.pk)
-
-    # Close open WifiSession
-    WifiSession.objects.filter(device_id=device_pk, stop_time=None,).exclude(
-        pk__in=active_sessions
-    ).update(stop_time=now())
-
-
-@shared_task(base=OpenwispCeleryTask)
 def delete_wifi_clients_and_sessions(days=6 * 30):
     WifiClient = load_model('device_monitoring', 'WifiClient')
     WifiSession = load_model('device_monitoring', 'WifiSession')
@@ -106,7 +59,7 @@ def offline_device_close_session(device_id):
 def write_device_metrics(pk, data, time=None, current=False):
     DeviceData = load_model('device_monitoring', 'DeviceData')
     try:
-        device_data = DeviceData.objects.get(id=pk)
+        device_data = DeviceData.get_devicedata(str(pk))
     except DeviceData.DoesNotExist:
         return
     device_data.writer.write(data, time, current)

@@ -43,6 +43,7 @@ class DeviceMonitoringConfig(AppConfig):
         self.connect_is_working_changed()
         self.connect_device_signals()
         self.connect_config_status_changed()
+        self.connect_wifi_client_signals()
         self.connect_offline_device_close_wifisession()
         self.device_recovery_detection()
         self.set_update_config_model()
@@ -51,18 +52,74 @@ class DeviceMonitoringConfig(AppConfig):
         self.add_connection_ignore_notification_reasons()
 
     def connect_device_signals(self):
+        from .api.views import DeviceMetricView
+
         Device = load_model('config', 'Device')
+        DeviceData = load_model('device_monitoring', 'DeviceData')
+        DeviceLocation = load_model('geo', 'DeviceLocation')
+        Metric = load_model('monitoring', 'Metric')
+        Chart = load_model('monitoring', 'Chart')
 
         post_save.connect(
             self.device_post_save_receiver,
             sender=Device,
             dispatch_uid='device_post_save_receiver',
         )
+        post_save.connect(
+            DeviceData.invalidate_cache,
+            sender=Device,
+            dispatch_uid='post_save_device_invalidate_devicedata_cache',
+        )
+        post_save.connect(
+            DeviceData.invalidate_cache,
+            sender=DeviceLocation,
+            dispatch_uid='post_save_devicelocation_invalidate_devicedata_cache',
+        )
+        post_save.connect(
+            DeviceMetricView.invalidate_get_charts_cache,
+            sender=Metric,
+            dispatch_uid=('metric_post_save_invalidate_view_charts_cache'),
+        )
+        post_save.connect(
+            DeviceMetricView.invalidate_get_charts_cache,
+            sender=Chart,
+            dispatch_uid=('chart_post_save_invalidate_view_charts_cache'),
+        )
 
         post_delete.connect(
             self.device_post_delete_receiver,
             sender=Device,
             dispatch_uid='device_post_delete_receiver',
+        )
+        post_delete.connect(
+            DeviceMetricView.invalidate_get_device_cache,
+            sender=Device,
+            dispatch_uid=('device_post_delete_invalidate_view_device_cache'),
+        )
+        post_delete.connect(
+            DeviceMetricView.invalidate_get_charts_cache,
+            sender=Device,
+            dispatch_uid=('device_post_delete_invalidate_view_charts_cache'),
+        )
+        post_delete.connect(
+            DeviceMetricView.invalidate_get_charts_cache,
+            sender=Metric,
+            dispatch_uid=('metric_post_delete_invalidate_view_charts_cache'),
+        )
+        post_delete.connect(
+            DeviceMetricView.invalidate_get_charts_cache,
+            sender=Chart,
+            dispatch_uid=('chart_post_delete_invalidate_view_charts_cache'),
+        )
+        post_delete.connect(
+            DeviceData.invalidate_cache,
+            sender=Device,
+            dispatch_uid='post_delete_device_invalidate_devicedata_cache',
+        )
+        post_delete.connect(
+            DeviceData.invalidate_cache,
+            sender=DeviceLocation,
+            dispatch_uid='post_delete_devicelocation_invalidate_devicedata_cache',
         )
 
     @classmethod
@@ -175,6 +232,22 @@ class DeviceMonitoringConfig(AppConfig):
                 sender=Config,
                 dispatch_uid='monitoring.config_status_changed_receiver',
             )
+
+    @classmethod
+    def connect_wifi_client_signals(cls):
+        if not app_settings.WIFI_SESSIONS_ENABLED:
+            return
+        WifiClient = load_model('device_monitoring', 'WifiClient')
+        post_save.connect(
+            WifiClient.invalidate_cache,
+            sender=WifiClient,
+            dispatch_uid='post_save_invalidate_wificlient_cache',
+        )
+        post_delete.connect(
+            WifiClient.invalidate_cache,
+            sender=WifiClient,
+            dispatch_uid='post_delete_invalidate_wificlient_cache',
+        )
 
     @classmethod
     def connect_offline_device_close_wifisession(cls):

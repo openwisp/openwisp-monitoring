@@ -77,7 +77,7 @@ def create_general_metrics(apps, schema_editor):
         name='General Clients',
         key='wifi_clients',
         object_id=None,
-        content_type=None,
+        content_type_id=None,
     )
     if created:
         chart = Chart(metric=metric, configuration='gen_wifi_clients')
@@ -89,7 +89,7 @@ def create_general_metrics(apps, schema_editor):
         name='General Traffic',
         key='traffic',
         object_id=None,
-        content_type=None,
+        content_type_id=None,
     )
     if created:
         chart = Chart(metric=metric, configuration='general_traffic')

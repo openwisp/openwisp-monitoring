@@ -26,6 +26,7 @@ from openwisp_utils.base import TimeStampedEditableModel
 from ...db import device_data_query, timeseries_db
 from ...monitoring.signals import threshold_crossed
 from ...monitoring.tasks import timeseries_write
+from ...settings import CACHE_TIMEOUT
 from .. import settings as app_settings
 from .. import tasks
 from ..schema import schema
@@ -53,6 +54,31 @@ class AbstractDeviceData(object):
         self.data = kwargs.pop('data', None)
         self.writer = DeviceDataWriter(self)
         super().__init__(*args, **kwargs)
+
+    @classmethod
+    @cache_memoize(CACHE_TIMEOUT)
+    def get_devicedata(cls, pk):
+        obj = (
+            cls.objects.select_related('devicelocation')
+            .only(
+                'id',
+                'organization_id',
+                'devicelocation__location_id',
+                'devicelocation__floorplan_id',
+            )
+            .get(id=pk)
+        )
+        return obj
+
+    @classmethod
+    def invalidate_cache(cls, instance, *args, **kwargs):
+        if isinstance(instance, load_model('geo', 'DeviceLocation')):
+            pk = instance.content_object_id
+        else:
+            if kwargs.get('created'):
+                return
+            pk = instance.pk
+        cls.get_devicedata.invalidate(cls, str(pk))
 
     def can_be_updated(self):
         """
@@ -244,7 +270,7 @@ class AbstractDeviceData(object):
         self._transform_data()
         time = time or now()
         options = dict(tags={'pk': self.pk}, timestamp=time, retention_policy=SHORT_RP)
-        timeseries_write.delay(name=self.__key, values={'data': self.json()}, **options)
+        timeseries_write(name=self.__key, values={'data': self.json()}, **options)
         cache_key = get_device_cache_key(device=self, context='current-data')
         # cache current data to allow getting it without querying the timeseries DB
         cache.set(
@@ -255,15 +281,56 @@ class AbstractDeviceData(object):
                     'time': time.astimezone(tz=tz('UTC')).isoformat(timespec='seconds'),
                 }
             ],
-            timeout=86400,  # 24 hours
+            timeout=CACHE_TIMEOUT,
         )
         if app_settings.WIFI_SESSIONS_ENABLED:
-            tasks.save_wifi_clients_and_sessions.delay(
-                device_data=self.data, device_pk=self.pk
-            )
+            self.save_wifi_clients_and_sessions()
 
     def json(self, *args, **kwargs):
         return json.dumps(self.data, *args, **kwargs)
+
+    def save_wifi_clients_and_sessions(self):
+        _WIFICLIENT_FIELDS = ['vendor', 'ht', 'vht', 'he', 'wmm', 'wds', 'wps']
+        WifiClient = load_model('device_monitoring', 'WifiClient')
+        WifiSession = load_model('device_monitoring', 'WifiSession')
+
+        active_sessions = []
+        interfaces = self.data.get('interfaces', [])
+        for interface in interfaces:
+            if interface.get('type') != 'wireless':
+                continue
+            interface_name = interface.get('name')
+            wireless = interface.get('wireless', {})
+            if not wireless or wireless['mode'] != 'access_point':
+                continue
+            ssid = wireless.get('ssid')
+            clients = wireless.get('clients', [])
+            for client in clients:
+                # Save WifiClient
+                client_obj = WifiClient.get_wifi_client(client.get('mac'))
+                update_fields = []
+                for field in _WIFICLIENT_FIELDS:
+                    if getattr(client_obj, field) != client.get(field):
+                        setattr(client_obj, field, client.get(field))
+                        update_fields.append(field)
+                if update_fields:
+                    client_obj.full_clean()
+                    client_obj.save(update_fields=update_fields)
+
+                # Save WifiSession
+                session_obj, _ = WifiSession.objects.get_or_create(
+                    device_id=self.id,
+                    interface_name=interface_name,
+                    ssid=ssid,
+                    wifi_client=client_obj,
+                    stop_time=None,
+                )
+                active_sessions.append(session_obj.pk)
+
+        # Close open WifiSession
+        WifiSession.objects.filter(device_id=self.id, stop_time=None,).exclude(
+            pk__in=active_sessions
+        ).update(stop_time=now())
 
 
 class AbstractDeviceMonitoring(TimeStampedEditableModel):
@@ -385,6 +452,18 @@ class AbstractWifiClient(TimeStampedEditableModel):
         abstract = True
         verbose_name = _('WiFi Client')
         ordering = ('-created',)
+
+    @classmethod
+    @cache_memoize(CACHE_TIMEOUT)
+    def get_wifi_client(cls, mac_address):
+        wifi_client, _ = cls.objects.get_or_create(mac_address=mac_address)
+        return wifi_client
+
+    @classmethod
+    def invalidate_cache(cls, instance, *args, **kwargs):
+        if kwargs.get('created'):
+            return
+        cls.get_wifi_client.invalidate(cls, instance.mac_address)
 
 
 class AbstractWifiSession(TimeStampedEditableModel):

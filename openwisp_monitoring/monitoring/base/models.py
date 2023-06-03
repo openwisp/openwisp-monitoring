@@ -4,6 +4,7 @@ from collections import OrderedDict
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 
+from cache_memoize import cache_memoize
 from dateutil.parser import parse as parse_date
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -24,6 +25,7 @@ from openwisp_monitoring.monitoring.utils import clean_timeseries_data_key
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...db import default_chart_query, timeseries_db
+from ...settings import CACHE_TIMEOUT
 from ..configuration import (
     CHART_CONFIGURATION_CHOICES,
     DEFAULT_COLORS,
@@ -37,6 +39,22 @@ from ..tasks import delete_timeseries, timeseries_batch_write, timeseries_write
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+
+def get_metric_cache_key(*args, **kwargs):
+    cache_key = [
+        'get_or_create_metric',
+    ]
+    cache_key.append(
+        'key={}'.format(
+            kwargs.get('key', kwargs.get('name', kwargs.get('configuration')))
+        )
+    )
+    for key in ['content_type_id', 'object_id', 'configuration']:
+        cache_key.append('{}={}'.format(key, kwargs.get(key)))
+    cache_key.append('main_tags={}'.format(kwargs.get('main_tags', OrderedDict())))
+    cache_key = ','.join(cache_key)
+    return cache_key
 
 
 class AbstractMetric(TimeStampedEditableModel):
@@ -139,7 +157,10 @@ class AbstractMetric(TimeStampedEditableModel):
         delete_timeseries.delay(instance.key, instance.tags)
 
     @classmethod
-    def _get_or_create(cls, **kwargs):
+    def _get_or_create(
+        cls,
+        **kwargs,
+    ):
         """
         like ``get_or_create`` method of django model managers
         but with validation before creation
@@ -151,9 +172,8 @@ class AbstractMetric(TimeStampedEditableModel):
             if lookup_kwargs.get('name'):
                 del lookup_kwargs['name']
             extra_tags = lookup_kwargs.pop('extra_tags', {})
-            metric = cls.objects.get(**lookup_kwargs)
+            metric = cls._get_metric(**lookup_kwargs)
             created = False
-
             if extra_tags != metric.extra_tags:
                 metric.extra_tags.update(kwargs['extra_tags'])
                 metric.extra_tags = cls._sort_dict(metric.extra_tags)
@@ -164,6 +184,26 @@ class AbstractMetric(TimeStampedEditableModel):
             metric.save()
             created = True
         return metric, created
+
+    @classmethod
+    @cache_memoize(CACHE_TIMEOUT, key_generator_callable=get_metric_cache_key)
+    def _get_metric(cls, *args, **kwargs):
+        return cls.objects.get(**kwargs)
+
+    @classmethod
+    def invalidate_cache(cls, instance, *args, **kwargs):
+        if kwargs.get('created', False):
+            return
+        cls._get_metric.invalidate(
+            **{
+                'name': instance.name,
+                'key': instance.key,
+                'content_type_id': instance.content_type_id,
+                'object_id': instance.object_id,
+                'configuration': instance.configuration,
+                'main_tags': instance.main_tags,
+            }
+        )
 
     @property
     def codename(self):
@@ -192,7 +232,7 @@ class AbstractMetric(TimeStampedEditableModel):
     @property
     def tags(self):
         tags = {}
-        if self.content_type and self.object_id:
+        if self.content_type_id and self.object_id:
             tags.update(
                 {
                     'content_type': self.content_type_key,
@@ -217,7 +257,8 @@ class AbstractMetric(TimeStampedEditableModel):
     @property
     def content_type_key(self):
         try:
-            return '.'.join(self.content_type.natural_key())
+            content_type = ContentType.objects.get_for_id(self.content_type_id)
+            return '.'.join(content_type.natural_key())
         except AttributeError:
             return None
 
@@ -372,9 +413,12 @@ class AbstractMetric(TimeStampedEditableModel):
             current=current,
         )
         pre_metric_write.send(**signal_kwargs)
+        timestamp = time or timezone.now()
+        if isinstance(timestamp, str):
+            timestamp = parse_date(timestamp)
         options = dict(
             tags=self.tags,
-            timestamp=time or timezone.now(),
+            timestamp=timestamp.isoformat(),
             database=database,
             retention_policy=retention_policy,
             current=current,
@@ -388,7 +432,7 @@ class AbstractMetric(TimeStampedEditableModel):
                 'retention_policy': retention_policy,
                 'send_alert': send_alert,
             }
-            options['metric_pk'] = self.pk
+            options['metric'] = self
 
             # if alert_on_related_field then check threshold
             # on the related_field instead of field_name
@@ -405,7 +449,7 @@ class AbstractMetric(TimeStampedEditableModel):
                     {'value': extra_values[self.alert_field]}
                 )
         if write:
-            timeseries_write.delay(name=self.key, values=values, **options)
+            timeseries_write(name=self.key, values=values, **options)
         return {'name': self.key, 'values': values, **options}
 
     @classmethod
@@ -417,7 +461,7 @@ class AbstractMetric(TimeStampedEditableModel):
                 write_data.append(metric.write(**kwargs, write=False))
             except ValueError as error:
                 error_dict[metric.key] = str(error)
-        timeseries_batch_write.delay(write_data)
+        timeseries_batch_write(write_data)
         if error_dict:
             raise ValueError(error_dict)
 
@@ -815,6 +859,11 @@ class AbstractAlertSettings(TimeStampedEditableModel):
             ('delete_alertsettings_inline', 'Can delete Alert settings inline'),
             ('view_alertsettings_inline', 'Can view Alert settings inline'),
         )
+
+    @classmethod
+    def invalidate_cache(cls, instance, *args, **kwargs):
+        Metric = instance.metric._meta.model
+        Metric.invalidate_cache(instance.metric)
 
     def full_clean(self, *args, **kwargs):
         if self.custom_threshold == self.config_dict['threshold']:

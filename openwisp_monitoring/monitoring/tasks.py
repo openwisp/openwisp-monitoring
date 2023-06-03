@@ -10,11 +10,13 @@ from .settings import RETRY_OPTIONS
 from .signals import post_metric_write
 
 
-def _metric_post_write(name, values, metric_pk, check_threshold_kwargs, **kwargs):
-    if not metric_pk or not check_threshold_kwargs:
+def _metric_post_write(name, values, metric, check_threshold_kwargs, **kwargs):
+    if not metric or not check_threshold_kwargs:
         return
     try:
-        metric = load_model('monitoring', 'Metric').objects.get(pk=metric_pk)
+        Metric = load_model('monitoring', 'Metric')
+        if not isinstance(metric, Metric):
+            metric = Metric.objects.select_related('alertsettings').get(pk=metric)
     except ObjectDoesNotExist:
         # The metric can be deleted by the time threshold is being checked.
         # This can happen as the task is being run async.
@@ -37,14 +39,33 @@ def _metric_post_write(name, values, metric_pk, check_threshold_kwargs, **kwargs
     autoretry_for=(TimeseriesWriteException,),
     **RETRY_OPTIONS
 )
-def timeseries_write(
-    self, name, values, metric_pk=None, check_threshold_kwargs=None, **kwargs
+def _timeseries_write(
+    self, name, values, metric=None, check_threshold_kwargs=None, **kwargs
 ):
     """
     write with exponential backoff on a failure
     """
     timeseries_db.write(name, values, **kwargs)
-    _metric_post_write(name, values, metric_pk, check_threshold_kwargs, **kwargs)
+    _metric_post_write(name, values, metric, check_threshold_kwargs, **kwargs)
+
+
+def timeseries_write(name, values, metric=None, check_threshold_kwargs=None, **kwargs):
+    """
+    If the timeseries database is using UDP to write data,
+    then write data synchronously.
+    """
+    if timeseries_db.use_udp:
+        func = _timeseries_write
+    else:
+        func = _timeseries_write.delay
+        metric = metric.pk if metric else None
+    func(
+        name=name,
+        values=values,
+        metric=metric,
+        check_threshold_kwargs=check_threshold_kwargs,
+        **kwargs
+    )
 
 
 @shared_task(
@@ -53,7 +74,7 @@ def timeseries_write(
     autoretry_for=(TimeseriesWriteException,),
     **RETRY_OPTIONS
 )
-def timeseries_batch_write(self, data):
+def _timeseries_batch_write(self, data):
     """
     Similar to timeseries_write function above, but operates on
     list of metric data (batch operation)
@@ -61,6 +82,19 @@ def timeseries_batch_write(self, data):
     timeseries_db.batch_write(data)
     for metric_data in data:
         _metric_post_write(**metric_data)
+
+
+def timeseries_batch_write(data):
+    """
+    If the timeseries database is using UDP to write data,
+    then write data synchronously.
+    """
+    if timeseries_db.use_udp:
+        _timeseries_batch_write(data=data)
+    else:
+        for item in data:
+            item['metric'] = item['metric'].pk
+        _timeseries_batch_write.delay(data=data)
 
 
 @shared_task(base=OpenwispCeleryTask)

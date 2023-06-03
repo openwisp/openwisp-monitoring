@@ -726,6 +726,10 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
     wifi_session_model = WifiSession
     device_data_model = DeviceData
 
+    def tearDown(self):
+        super().tearDown()
+        cache.clear()
+
     def test_wifi_client_session_created(self):
         data = self._sample_data
         data['interfaces'].append(self.mesh_interface)
@@ -842,7 +846,7 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
 
         with self.subTest('Test new sessions for existing clients'):
             data = deepcopy(self._sample_data)
-            with self.assertNumQueries(16):
+            with self.assertNumQueries(13):
                 self._save_device_data(device_data, data)
 
     @patch.object(app_settings, 'WIFI_SESSIONS_ENABLED', False)

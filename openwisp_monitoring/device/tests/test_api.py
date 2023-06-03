@@ -4,6 +4,8 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
@@ -69,8 +71,18 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         'x',
     ]
 
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # Populate the ContentType cache to avoid queries during test
+        ContentType.objects.get_for_model(Device)
+
     def setUp(self):
         self._login_admin()
+
+    def tearDown(self):
+        super().tearDown()
+        cache.clear()
 
     def _login_admin(self):
         u = User.objects.create_superuser('admin', 'admin', 'test@test.com')
@@ -146,17 +158,22 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         o = self._create_org()
         d = self._create_device(organization=o)
         data = {'type': 'DeviceMonitoring', 'interfaces': []}
-        r = self._post_data(d.id, d.key, data)
+        with self.assertNumQueries(4):
+            r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 200)
         # Add 1 for general metric and chart
         self.assertEqual(self.metric_queryset.count(), 0)
         self.assertEqual(self.chart_queryset.count(), 0)
         data = {'type': 'DeviceMonitoring'}
-        r = self._post_data(d.id, d.key, data)
+        with self.assertNumQueries(2):
+            r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 200)
         # Add 1 for general metric and chart
         self.assertEqual(self.metric_queryset.count(), 0)
         self.assertEqual(self.chart_queryset.count(), 0)
+        d.delete()
+        r = self._post_data(d.id, d.key, data)
+        self.assertEqual(r.status_code, 404)
 
     def test_200_create(self):
         self.create_test_data(no_resources=True)
@@ -247,7 +264,12 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         # creation of resources metrics can be avoided here as it is not involved
         # this speeds up the test by reducing requests made
         del data2['resources']
-        response = self._post_data(device.id, device.key, data2)
+        additional_queries = 0 if self._is_timeseries_udp_writes else 1
+        with self.assertNumQueries(21 + additional_queries):
+            response = self._post_data(device.id, device.key, data2)
+        # Ensure cache is working
+        with self.assertNumQueries(13 + additional_queries):
+            response = self._post_data(device.id, device.key, data2)
         self.assertEqual(response.status_code, 200)
         # Add 1 for general metric and chart
         self.assertEqual(self.metric_queryset.count(), 4)
@@ -348,7 +370,10 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     def test_get_device_metrics_200(self):
         dd = self.create_test_data()
         d = self.device_model.objects.get(pk=dd.pk)
-        r = self.client.get(self._url(d.pk.hex, d.key))
+        with self.assertNumQueries(17):
+            r = self.client.get(self._url(d.pk.hex, d.key))
+        with self.assertNumQueries(16):
+            r = self.client.get(self._url(d.pk.hex, d.key))
         self.assertEqual(r.status_code, 200)
 
         with self.subTest('Test device metrics 200 without the device key'):
@@ -1177,7 +1202,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             signal=post_metric_write,
             sender=Metric,
             values=values,
-            time=start_time.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+            time=start_time.isoformat(),
             current=False,
         )
         self.assertEqual(signal_calls[0][1], expected_arguments)

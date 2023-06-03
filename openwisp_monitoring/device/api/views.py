@@ -2,6 +2,7 @@ import logging
 import uuid
 from datetime import datetime
 
+from cache_memoize import cache_memoize
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
@@ -24,6 +25,7 @@ from openwisp_controller.geo.api.views import (
 )
 from openwisp_users.api.mixins import FilterByOrganizationManaged
 
+from ...settings import CACHE_TIMEOUT
 from ...views import MonitoringApiViewMixin
 from ..schema import schema
 from ..signals import device_metrics_received
@@ -54,6 +56,21 @@ class ListViewPagination(pagination.PageNumberPagination):
     max_page_size = 100
 
 
+def get_device_args_rewrite(view, pk):
+    """
+    Use only the PK parameter for calculating the cache key
+    """
+    try:
+        pk = uuid.UUID(pk)
+    except ValueError:
+        return pk
+    return pk.hex
+
+
+def get_charts_args_rewrite(view, request, pk):
+    return (pk,)
+
+
 class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
     """
     Retrieve device information, monitoring status (health status),
@@ -66,14 +83,32 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
     """
 
     model = DeviceData
-    queryset = (
-        DeviceData.objects.select_related('devicelocation')
-        .select_related('monitoring')
-        .all()
-    )
+    queryset = DeviceData.objects.only(
+        'id',
+        'key',
+    ).all()
     serializer_class = serializers.Serializer
     permission_classes = [DevicePermission]
     schema = schema
+
+    @classmethod
+    def invalidate_get_device_cache(cls, instance, **kwargs):
+        """
+        Called from signal receiver which performs cache invalidation
+        """
+        view = cls()
+        view.get_object.invalidate(view, str(instance.pk))
+        logger.debug(f'invalidated view cache for device ID {instance.pk}')
+
+    @classmethod
+    def invalidate_get_charts_cache(cls, instance, *args, **kwargs):
+        if isinstance(instance, Device):
+            pk = instance.id
+        elif isinstance(instance, Metric):
+            pk = instance.object_id
+        elif isinstance(instance, Chart):
+            pk = instance.metric.object_id
+        cls._get_charts.invalidate(None, None, pk)
 
     def get_permissions(self):
         if self.request.method in SAFE_METHODS and not self.request.query_params.get(
@@ -93,7 +128,7 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
             pk = str(uuid.UUID(pk))
         except ValueError:
             return Response({'detail': 'not found'}, status=404)
-        self.instance = self.get_object()
+        self.instance = self.get_object(pk)
         response = super().get(request, pk)
         if not request.query_params.get('csv'):
             charts_data = dict(response.data)
@@ -103,10 +138,11 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
             )
         return response
 
+    @cache_memoize(CACHE_TIMEOUT, args_rewrite=get_charts_args_rewrite)
     def _get_charts(self, request, *args, **kwargs):
         ct = ContentType.objects.get_for_model(Device)
         return Chart.objects.filter(
-            metric__object_id=args[0], metric__content_type=ct
+            metric__object_id=args[0], metric__content_type_id=ct.id
         ).select_related('metric')
 
     def _get_additional_data(self, request, *args, **kwargs):
@@ -114,8 +150,12 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
             return {'data': self.instance.data}
         return {}
 
+    @cache_memoize(CACHE_TIMEOUT, args_rewrite=get_device_args_rewrite)
+    def get_object(self, pk):
+        return super().get_object()
+
     def post(self, request, pk):
-        self.instance = self.get_object()
+        self.instance = self.get_object(pk)
         self.instance.data = request.data
         # validate incoming data
         try:

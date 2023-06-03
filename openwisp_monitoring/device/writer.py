@@ -95,7 +95,7 @@ class DeviceDataWriter(object):
                 name = f'{ifname} traffic'
                 metric, created = Metric._get_or_create(
                     object_id=self.device_data.pk,
-                    content_type=ct,
+                    content_type_id=ct.id,
                     configuration='traffic',
                     name=name,
                     key='traffic',
@@ -116,7 +116,7 @@ class DeviceDataWriter(object):
             name = '{0} wifi clients'.format(ifname)
             metric, created = Metric._get_or_create(
                 object_id=self.device_data.pk,
-                content_type=ct,
+                content_type_id=ct.id,
                 configuration='clients',
                 name=name,
                 key='wifi_clients',
@@ -211,7 +211,7 @@ class DeviceDataWriter(object):
         if signal_strength is not None or signal_power is not None:
             metric, created = Metric._get_or_create(
                 object_id=self.device_data.pk,
-                content_type=ct,
+                content_type_id=ct.id,
                 configuration='signal_strength',
                 name='signal strength',
                 key=ifname,
@@ -239,7 +239,7 @@ class DeviceDataWriter(object):
         if snr is not None or signal_quality is not None:
             metric, created = Metric._get_or_create(
                 object_id=self.device_data.pk,
-                content_type=ct,
+                content_type_id=ct.id,
                 configuration='signal_quality',
                 name='signal quality',
                 key=ifname,
@@ -252,7 +252,7 @@ class DeviceDataWriter(object):
         # create access technology chart
         metric, created = Metric._get_or_create(
             object_id=self.device_data.pk,
-            content_type=ct,
+            content_type_id=ct.id,
             configuration='access_tech',
             name='access technology',
             key=ifname,
@@ -275,7 +275,7 @@ class DeviceDataWriter(object):
             'load_15': float(load[2]),
         }
         metric, created = Metric._get_or_create(
-            object_id=primary_key, content_type=content_type, configuration='cpu'
+            object_id=primary_key, content_type_id=content_type.id, configuration='cpu'
         )
         if created:
             self._create_resources_chart(metric, resource='cpu')
@@ -297,7 +297,7 @@ class DeviceDataWriter(object):
             size_bytes += disk['size_bytes']
             available_bytes += disk['available_bytes']
         metric, created = Metric._get_or_create(
-            object_id=primary_key, content_type=content_type, configuration='disk'
+            object_id=primary_key, content_type_id=content_type.id, configuration='disk'
         )
         if created:
             self._create_resources_chart(metric, resource='disk')
@@ -328,7 +328,9 @@ class DeviceDataWriter(object):
                     1 - (memory['available'] + memory['buffered']) / memory['total']
                 )
         metric, created = Metric._get_or_create(
-            object_id=primary_key, content_type=content_type, configuration='memory'
+            object_id=primary_key,
+            content_type_id=content_type.id,
+            configuration='memory',
         )
         if created:
             self._create_resources_chart(metric, resource='memory')
