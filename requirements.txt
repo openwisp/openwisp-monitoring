@@ -1,4 +1,4 @@
-openwisp-controller @ https://github.com/openwisp/openwisp-controller/tarball/master
+openwisp-controller @ https://github.com/openwisp/openwisp-controller/tarball/django-4.2-support
 influxdb~=5.3.1
 django-nested-admin~=4.0.2
 netaddr~=0.8
