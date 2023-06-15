@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+import django
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.forms import generic_inlineformset_factory
@@ -993,29 +994,39 @@ class TestWifiSessionAdmin(
                 response,
                 """
                     <div class="form-row field-he">
-                    <div>
-                        <label>WiFi 6 (802.11ax):</label>
-                            <div class="readonly">
-                                <img src="/static/admin/img/icon-unknown.svg">
-                            </div>
+                        <div>
+                            {start_div}
+                                <label>WiFi 6 (802.11ax):</label>
+                                    <div class="readonly">
+                                        <img src="/static/admin/img/icon-unknown.svg">
+                                    </div>
+                            {end_div}
                         </div>
                     </div>
                     <div class="form-row field-vht">
-                    <div>
-                        <label>WiFi 5 (802.11ac):</label>
-                            <div class="readonly">
-                                <img src="/static/admin/img/icon-unknown.svg">
-                            </div>
+                        <div>
+                            {start_div}<label>WiFi 5 (802.11ac):</label>
+                                <div class="readonly">
+                                    <img src="/static/admin/img/icon-unknown.svg">
+                                </div>
+                            {end_div}
                         </div>
                     </div>
                     <div class="form-row field-ht">
-                    <div>
-                        <label>WiFi 4 (802.11n):</label>
-                            <div class="readonly">
-                                <img src="/static/admin/img/icon-unknown.svg">
-                            </div>
+                        <div>
+                            {start_div}<label>WiFi 4 (802.11n):</label>
+                                <div class="readonly">
+                                    <img src="/static/admin/img/icon-unknown.svg">
+                                </div>
+                            {end_div}
                         </div>
                     </div>
-                """,
+                """.format(
+                    # TODO: Remove this when dropping support for Django 3.2 and 4.0
+                    start_div='<div class="flex-container">'
+                    if django.VERSION >= (4, 2)
+                    else '',
+                    end_div='</div>' if django.VERSION >= (4, 2) else '',
+                ),
                 html=True,
             )

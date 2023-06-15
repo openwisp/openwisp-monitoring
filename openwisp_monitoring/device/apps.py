@@ -11,7 +11,6 @@ from swapper import get_model_name, load_model
 
 from openwisp_controller.config.signals import checksum_requested, config_status_changed
 from openwisp_controller.connection import settings as connection_settings
-from openwisp_controller.connection.apps import ConnectionConfig
 from openwisp_controller.connection.signals import is_working_changed
 from openwisp_utils.admin_theme import (
     register_dashboard_chart,
@@ -444,6 +443,8 @@ class DeviceMonitoringConfig(AppConfig):
             )
 
     def add_connection_ignore_notification_reasons(self):
+        from openwisp_controller.connection.apps import ConnectionConfig
+
         ConnectionConfig._ignore_connection_notification_reasons.extend(
             ['timed out', 'Unable to connect']
         )
