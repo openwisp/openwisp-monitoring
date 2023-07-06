@@ -14,9 +14,7 @@ on:
 jobs:
   build:
     name: Python==${{ matrix.python-version }} | ${{ matrix.django-version }}
-    # Ubuntu 22.04 runs into an issue with spatialite:
-    # https://code.djangoproject.com/ticket/32935
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     services:
       redis:

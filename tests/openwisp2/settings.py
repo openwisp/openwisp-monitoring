@@ -16,7 +16,7 @@ INTERNAL_IPS = ['127.0.0.1']
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.spatialite',
+        'ENGINE': 'openwisp_utils.db.backends.spatialite',
         'NAME': 'openwisp-monitoring.db',
     }
 }
