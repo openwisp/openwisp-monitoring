@@ -147,6 +147,23 @@
             localStorage.removeItem(localStorageKey);
             mapContainer.slideDown();
         }
+        /* Workaround for https://github.com/openwisp/openwisp-monitoring/issues/462
+        Leaflet does not support looping (wrapping) the map. Therefore, to work around
+        abrupt automatic map panning due to bounds, we plot markers on three worlds.
+        This allow users to view devices around the International Date Line without
+        any weird affects.
+        */
+        let additionalFeatures = [];
+        data.features.forEach(element => {
+            additionalFeatures.push(element);
+            let leftFeature = window.structuredClone(element);
+            leftFeature.geometry.coordinates[0] += 360;
+            additionalFeatures.push(leftFeature);
+            let rightFeature = window.structuredClone(element);
+            rightFeature.geometry.coordinates[0] -= 360;
+            additionalFeatures.push(rightFeature);
+        });
+        data.features = additionalFeatures;
         /* global NetJSONGraph */
         const map = new NetJSONGraph(data, {
             el: '#device-map-container',
@@ -220,6 +237,11 @@
                 map.geoJSON.eachLayer(function (layer) {
                     layer[layer.feature.geometry.type == 'Point' ? 'bringToFront' : 'bringToBack']();
                 });
+
+                // Workaround for https://github.com/openwisp/openwisp-monitoring/issues/462
+                map.setMaxBounds(
+                    L.latLngBounds(L.latLng(-90, -540), L.latLng(90, 540))
+                );
             },
         });
         map.setUtils({
