@@ -153,8 +153,10 @@
         This allow users to view devices around the International Date Line without
         any weird affects.
         */
-        let additionalFeatures = [];
+
+        let additionalFeatures = [], originalCoordinates = [];
         data.features.forEach(element => {
+            originalCoordinates.push(element.geometry.coordinates.slice().reverse());
             additionalFeatures.push(element);
             let leftFeature = window.structuredClone(element);
             leftFeature.geometry.coordinates[0] += 360;
@@ -231,8 +233,10 @@
                 if (map.geoJSON.getLayers().length === 1) {
                     map.setView(map.geoJSON.getBounds().getCenter(), 10);
                 } else {
-                    map.fitBounds(map.geoJSON.getBounds());
-                    map.setZoom(map.getZoom() - 1);
+                    map.fitBounds(L.latLngBounds(originalCoordinates));
+                    if (map.getZoom() > 18) {
+                        map.setZoom(18);
+                    }
                 }
                 map.geoJSON.eachLayer(function (layer) {
                     layer[layer.feature.geometry.type == 'Point' ? 'bringToFront' : 'bringToBack']();
