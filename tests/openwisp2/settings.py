@@ -225,7 +225,21 @@ if TESTING:
 # Temporarily added to identify slow tests
 TEST_RUNNER = 'openwisp_utils.tests.TimeLoggingTestRunner'
 
-LEAFLET_CONFIG = {'RESET_VIEW': False}
+LEAFLET_CONFIG = {
+    'TILES': [
+        [
+            'OSM',
+            '//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        ],
+        [
+            'Satellite',
+            '//server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            '&copy; <a href="http://www.esri.com/">Esri</a> and the GIS User Community',
+        ],
+    ],
+    'RESET_VIEW': False,
+}
 
 LOGGING = {
     'version': 1,

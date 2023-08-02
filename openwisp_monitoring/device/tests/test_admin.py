@@ -760,12 +760,12 @@ class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
         response = self.client.get(reverse('admin:index'))
         static_files = [
             'monitoring/css/device-map.css',
-            'leaflet/leaflet.css',
             'monitoring/css/leaflet.fullscreen.css',
-            'monitoring/js/device-map.js',
-            'leaflet/leaflet.js',
-            'leaflet/leaflet.extras.js',
+            'monitoring/css/netjsongraph.css',
+            'leaflet/leaflet.css',
+            'monitoring/js/lib/netjsongraph.min.js',
             'monitoring/js/lib/leaflet.fullscreen.min.js',
+            'monitoring/js/device-map.js',
         ]
         for static_file in static_files:
             self.assertContains(response, static_file)
