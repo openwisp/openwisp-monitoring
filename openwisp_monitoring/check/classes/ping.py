@@ -89,7 +89,7 @@ class Ping(BaseCheck):
             'fping',
             '-e',  # show elapsed (round-trip) time of packets
             '-c %s' % count,  # count of pings to send to each target,
-            '-i %s' % interval,  # interval between sending pings(in ms)
+            '-p %s' % interval,  # interval between sending pings(in ms)
             '-b %s' % bytes_,  # amount of ping data to send
             '-t %s' % timeout,  # individual target initial timeout (in ms)
             '-q',
