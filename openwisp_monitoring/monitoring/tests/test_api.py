@@ -68,14 +68,12 @@ class TestDashboardTimeseriesView(
 
     def _create_test_users(self, org):
         admin = self._create_admin()
-        org2_administrator = self._create_user()
-        OrganizationUser.objects.create(
-            user=org2_administrator, organization=org, is_admin=True
-        )
+        org_admin = self._create_user()
+        OrganizationUser.objects.create(user=org_admin, organization=org, is_admin=True)
         groups = Group.objects.filter(name='Administrator')
-        org2_administrator.groups.set(groups)
+        org_admin.groups.set(groups)
         operator = self._create_operator()
-        return admin, org2_administrator, operator
+        return admin, org_admin, operator
 
     def test_wifi_client_chart(self):
         def _test_chart_properties(chart):
@@ -242,7 +240,7 @@ class TestDashboardTimeseriesView(
 
         self.client.force_login(admin)
         with self.subTest('Test superuser retrieves metric for all organizations'):
-            with self.assertNumQueries(2):
+            with self.assertNumQueries(3):
                 response = self.client.get(path)
             self.assertEqual(response.status_code, 200)
             self._test_response_data(response)
@@ -675,3 +673,49 @@ class TestDashboardTimeseriesView(
         with self.subTest('Test with invalid group time'):
             response = self.client.get(path, {'time': '3w'})
             self.assertEqual(response.status_code, 400)
+
+    def test_organizations_list(self):
+        path = reverse('monitoring_general:api_dashboard_timeseries')
+        Organization.objects.all().delete()
+        org1 = self._create_org(name='org1', slug='org1')
+        admin, org_admin, _ = self._create_test_users(org1)
+
+        self.client.force_login(admin)
+        with self.subTest('Superuser: Only one organization is present'):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200)
+            self.assertNotIn('organizations', response.data)
+
+        org2 = self._create_org(name='org2', slug='org2', id=self.org2_id)
+
+        with self.subTest('Superuser: Multiple organizations are present'):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('organizations', response.data)
+            self.assertEqual(len(response.data['organizations']), 2)
+            self.assertEqual(
+                response.data['organizations'],
+                [{'id': org.slug, 'text': org.name} for org in [org1, org2]],
+            )
+
+        self.client.logout()
+        self.client.force_login(org_admin)
+
+        with self.subTest('Non-superuser: Administrator of one organization'):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200)
+            self.assertNotIn('organizations', response.data)
+
+        OrganizationUser.objects.create(
+            user=org_admin, organization=org2, is_admin=True
+        )
+
+        with self.subTest('Non-superuser: Administrator of multiple organizations'):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('organizations', response.data)
+            self.assertEqual(len(response.data['organizations']), 2)
+            self.assertEqual(
+                response.data['organizations'],
+                [{'id': org.slug, 'text': org.name} for org in [org1, org2]],
+            )

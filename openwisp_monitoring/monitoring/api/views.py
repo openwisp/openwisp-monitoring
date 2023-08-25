@@ -166,5 +166,33 @@ class DashboardTimeseriesView(ProtectedAPIMixin, MonitoringApiViewMixin, APIView
                 return
         cls._get_charts.invalidate()
 
+    def _get_user_managed_orgs(self, request):
+        """
+        Return list of dictionary containing organization name and slug
+        in select2 compatible format.
+        """
+        orgs = []
+        qs = Organization.objects.only('slug', 'name')
+        if not request.user.is_superuser:
+            if len(request.user.organizations_managed) > 1:
+                qs = qs.filter(pk__in=request.user.organizations_managed)
+            else:
+                return orgs
+        for org in qs.iterator():
+            orgs.append({'id': org.slug, 'text': org.name})
+        if len(orgs) < 2:
+            # Handles scenarios for superuser when the project has only
+            # one organization.
+            return []
+        return orgs
+
+    def get(self, request, *args, **kwargs):
+        response = super().get(request, *args, **kwargs)
+        if not request.GET.get('csv'):
+            user_managed_orgs = self._get_user_managed_orgs(request)
+            if user_managed_orgs:
+                response.data['organizations'] = user_managed_orgs
+        return response
+
 
 dashboard_timeseries = DashboardTimeseriesView.as_view()

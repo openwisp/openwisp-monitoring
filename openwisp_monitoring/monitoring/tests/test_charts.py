@@ -164,6 +164,40 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertEqual(charts[0][1], [3, 2, 1])
         self.assertEqual(charts[1][1], [4, 3, 2])
 
+    def test_read_group_by_tag(self):
+        m1 = self._create_object_metric(
+            name='test metric 1',
+            key='test_metric',
+            field_name='item',
+            extra_tags={'metric_num': 'first'},
+        )
+        m2 = self._create_object_metric(
+            name='test metric 2',
+            key='test_metric',
+            field_name='item',
+            content_object=self._create_org(),
+            extra_tags={'metric_num': 'second'},
+        )
+        c = self._create_chart(metric=m1, test_data=False, configuration='group_by_tag')
+        now_ = now()
+        for n in range(0, 3):
+            time = now_ - timedelta(days=n)
+            m1.write(n + 1, time=time)
+            m2.write(n + 2, time=time)
+        data = self._read_chart(c, time='30d', start_date=time)
+        self.assertIn('x', data)
+        self.assertIn('traces', data)
+        self.assertEqual(len(data['x']), 3)
+        charts = data['traces']
+        self.assertIn('first', charts[0][0])
+        self.assertIn('second', charts[1][0])
+        self.assertEqual(len(charts[0][1]), 3)
+        self.assertEqual(len(charts[1][1]), 3)
+        self.assertEqual(charts[0][1], [3, 5, 6])
+        self.assertEqual(charts[1][1], [4, 7, 9])
+        self.assertEqual(data['summary']['first'], 6)
+        self.assertEqual(data['summary']['second'], 9)
+
     def test_json(self):
         c = self._create_chart()
         data = self._read_chart(c)
