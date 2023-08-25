@@ -602,6 +602,12 @@ class AbstractChart(TimeStampedEditableModel):
         return self._default_query
 
     @property
+    def summary_query(self):
+        query = self.config_dict.get('summary_query', None)
+        if query:
+            return query[timeseries_db.backend_name]
+
+    @property
     def top_fields(self):
         return self.config_dict.get('top_fields', None)
 
@@ -659,6 +665,8 @@ class AbstractChart(TimeStampedEditableModel):
         additional_params=None,
     ):
         query = query or self.query
+        if summary and self.summary_query:
+            query = self.summary_query
         additional_params = additional_params or {}
         params = self._get_query_params(time, start_date, end_date)
         params.update(additional_params)

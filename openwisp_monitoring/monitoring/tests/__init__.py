@@ -136,6 +136,25 @@ charts = {
             )
         },
     },
+    'group_by_tag': {
+        'type': 'stackedbars',
+        'title': 'Group by tag',
+        'description': 'Query is groupped by tag along with time',
+        'unit': 'n.',
+        'order': 999,
+        'query': {
+            'influxdb': (
+                "SELECT CUMULATIVE_SUM(SUM({field_name})) FROM {key} WHERE time >= '{time}'"
+                " GROUP BY time(1d), metric_num"
+            )
+        },
+        'summary_query': {
+            'influxdb': (
+                "SELECT SUM({field_name}) FROM {key} WHERE time >= '{time}'"
+                " GROUP BY time(30d), metric_num"
+            )
+        },
+    },
     'mean_test': {
         'type': 'line',
         'title': 'Mean test',
