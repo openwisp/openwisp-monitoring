@@ -90,7 +90,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
                     'fping',
                     '-e',
                     '-c 22',
-                    '-i 25',
+                    '-p 25',
                     '-b 1024',
                     '-t 10000',
                     '-q',
