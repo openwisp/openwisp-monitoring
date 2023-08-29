@@ -165,7 +165,7 @@ class TestDashboardCharts(
             self.fail('Timeseries chart container not found on dashboard')
         try:
             WebDriverWait(self.web_driver, 5).until(
-                EC.visibility_of_element_located((By.CSS_SELECTOR, '#ow-chart-time'))
+                EC.visibility_of_element_located((By.CSS_SELECTOR, '#ow-chart-utils'))
             )
         except TimeoutException:
             self.fail('Timeseries chart time filter not found on dashboard')
