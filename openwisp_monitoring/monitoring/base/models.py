@@ -25,7 +25,7 @@ from openwisp_monitoring.monitoring.utils import clean_timeseries_data_key
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...db import default_chart_query, timeseries_db
-from ...settings import CACHE_TIMEOUT
+from ...settings import CACHE_TIMEOUT, DEFAULT_CHART_TIME
 from ..configuration import (
     CHART_CONFIGURATION_CHOICES,
     DEFAULT_COLORS,
@@ -495,7 +495,7 @@ class AbstractChart(TimeStampedEditableModel):
         max_length=16, null=True, choices=CHART_CONFIGURATION_CHOICES
     )
     GROUP_MAP = {'1d': '10m', '3d': '20m', '7d': '1h', '30d': '24h', '365d': '7d'}
-    DEFAULT_TIME = '7d'
+    DEFAULT_TIME = DEFAULT_CHART_TIME
 
     class Meta:
         abstract = True

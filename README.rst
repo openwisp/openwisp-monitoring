@@ -2088,6 +2088,20 @@ In case you just want to change the colors used in a chart here's how to do it:
         }
     }
 
+``OPENWISP_MONITORING_DEFAULT_CHART_TIME``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++---------------------+---------------------------------------------+
+| **type**:           | ``str``                                     |
++---------------------+---------------------------------------------+
+| **default**:        | ``7d``                                      |
++---------------------+---------------------------------------------+
+| **possible values** | ``1d``, ``3d``, ``7d``, ``30d`` or ``365d`` |
++---------------------+---------------------------------------------+
+
+This setting allows you to set the default time period for showing
+charts.
+
 ``OPENWISP_MONITORING_AUTO_CLEAR_MANAGEMENT_IP``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
