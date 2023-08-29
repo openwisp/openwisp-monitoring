@@ -220,12 +220,12 @@ django.jQuery(function ($) {
       addOrganizationSelector = function (data) {
         var orgSelector = $('#org-selector');
         if (data.organizations === undefined) {
-          orgSelector.hide();
           return;
         }
         if (orgSelector.data('select2-id') === 'org-selector') {
           return;
         }
+        orgSelector.parent().show();
         orgSelector.select2({
           data: data.organizations,
           allowClear: true,
@@ -344,7 +344,7 @@ django.jQuery(function ($) {
       );
     });
     // bind export button
-    $('#ow-chart-time a.export').click(function () {
+    $('#ow-chart-export').click(function () {
       var queryString,
         queryParams = {'csv': 1};
         queryParams.time = localStorage.getItem(timeRangeKey);

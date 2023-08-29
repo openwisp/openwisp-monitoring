@@ -147,3 +147,12 @@
   display: none;
   font-size: 1.2em;
 }
+@media (max-width: 768px) {
+  #ow-chart-utils {
+    display: block;
+  }
+  #ow-chart-utils > span + span {
+    margin: 5px 0px;
+    justify-content: end;
+  }
+}
