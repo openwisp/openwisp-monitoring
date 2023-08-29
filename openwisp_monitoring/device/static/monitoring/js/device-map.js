@@ -154,18 +154,6 @@
         any weird affects.
         */
 
-        let additionalFeatures = [], originalCoordinates = [];
-        data.features.forEach(element => {
-            originalCoordinates.push(element.geometry.coordinates.slice().reverse());
-            additionalFeatures.push(element);
-            let leftFeature = window.structuredClone(element);
-            leftFeature.geometry.coordinates[0] += 360;
-            additionalFeatures.push(leftFeature);
-            let rightFeature = window.structuredClone(element);
-            rightFeature.geometry.coordinates[0] -= 360;
-            additionalFeatures.push(rightFeature);
-        });
-        data.features = additionalFeatures;
         /* global NetJSONGraph */
         const map = new NetJSONGraph(data, {
             el: '#device-map-container',
@@ -233,10 +221,8 @@
                 if (map.geoJSON.getLayers().length === 1) {
                     map.setView(map.geoJSON.getBounds().getCenter(), 10);
                 } else {
-                    map.fitBounds(L.latLngBounds(originalCoordinates));
-                    if (map.getZoom() > 18) {
-                        map.setZoom(18);
-                    }
+                    map.fitBounds(map.geoJSON.getBounds());
+                    map.setZoom(map.getZoom() - 1);
                 }
                 map.geoJSON.eachLayer(function (layer) {
                     layer[layer.feature.geometry.type == 'Point' ? 'bringToFront' : 'bringToBack']();
@@ -246,6 +232,27 @@
                 map.setMaxBounds(
                     L.latLngBounds(L.latLng(-90, -540), L.latLng(90, 540))
                 );
+                map.on('moveend', event => {
+                    let netjsonGraph = this;
+                    let bounds = event.target.getBounds();
+                    if (bounds._southWest.lng < -180 && !netjsonGraph.westWorldFeaturesAppended) {
+                        let westWorldFeatures = window.structuredClone(netjsonGraph.data);
+                        westWorldFeatures.features.forEach(element => {
+                            element.geometry.coordinates[0] -= 360;
+                        });
+                        netjsonGraph.utils.appendData(westWorldFeatures, netjsonGraph);
+                        netjsonGraph.westWorldFeaturesAppended = true;
+
+                    }
+                    if (bounds._northEast.lng > 180 && !netjsonGraph.eastWorldFeaturesAppended) {
+                        let eastWorldFeatures = window.structuredClone(netjsonGraph.data);
+                        eastWorldFeatures.features.forEach(element => {
+                            element.geometry.coordinates[0] += 360;
+                        });
+                        netjsonGraph.utils.appendData(eastWorldFeatures, netjsonGraph);
+                        netjsonGraph.eastWorldFeaturesAppended = true;
+                    }
+                });
             },
         });
         map.setUtils({
