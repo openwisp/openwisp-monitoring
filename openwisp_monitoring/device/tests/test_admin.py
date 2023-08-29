@@ -7,7 +7,7 @@ from django.contrib.contenttypes.forms import generic_inlineformset_factory
 from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
-from django.utils.timezone import now, timedelta
+from django.utils.timezone import datetime, now, timedelta
 from freezegun import freeze_time
 from swapper import get_model_name, load_model
 
@@ -1030,3 +1030,32 @@ class TestWifiSessionAdmin(
                 ),
                 html=True,
             )
+
+    def test_wifi_session_stop_time_formatting(self):
+        start_time = datetime.strptime('2023-8-24 17:08:00', '%Y-%m-%d %H:%M:%S')
+        stop_time = datetime.strptime('2023-8-24 19:46:00', '%Y-%m-%d %H:%M:%S')
+        session = self._create_wifi_session(stop_time=stop_time)
+        # WifiSession.start_time has "auto_now" set to True.
+        # To overwrite the current date, we set the start_time explicitly
+        WifiSession.objects.update(start_time=start_time)
+        url = reverse(
+            f'admin:{self.wifi_session_app_label}_{self.wifi_session_model_name}_change',
+            args=(session.id,),
+        )
+        response = self.client.get(url)
+        self.assertContains(
+            response,
+            (
+                '<label>Start time:</label>\n\n'
+                '<div class="readonly">Aug. 24, 2023, 5:08 p.m.</div>'
+            ),
+            html=True,
+        )
+        self.assertContains(
+            response,
+            (
+                '<label>Stop time:</label>\n\n'
+                '<div class="readonly">Aug. 24, 2023, 5:46 p.m.</div>'
+            ),
+            html=True,
+        )
