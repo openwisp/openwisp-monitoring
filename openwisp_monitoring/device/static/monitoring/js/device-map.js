@@ -235,7 +235,7 @@
                 map.on('moveend', event => {
                     let netjsonGraph = this;
                     let bounds = event.target.getBounds();
-                    if ((bounds._southWest.lng < -180) && !(netjsonGraph.westWorldFeaturesAppended)) {
+                    if (bounds._southWest.lng < -180 && !netjsonGraph.westWorldFeaturesAppended) {
                         let westWorldFeatures = window.structuredClone(netjsonGraph.data);
                         westWorldFeatures.features.forEach(element => {
                             element.geometry.coordinates[0] -= 360;
@@ -244,7 +244,7 @@
                         netjsonGraph.westWorldFeaturesAppended = true;
 
                     }
-                    if ((bounds._northEast.lng > 180) && !(netjsonGraph.eastWorldFeaturesAppended)) {
+                    if (bounds._northEast.lng > 180 && !netjsonGraph.eastWorldFeaturesAppended) {
                         let eastWorldFeatures = window.structuredClone(netjsonGraph.data);
                         eastWorldFeatures.features.forEach(element => {
                             element.geometry.coordinates[0] += 360;
