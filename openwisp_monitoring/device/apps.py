@@ -3,7 +3,7 @@ from urllib.parse import urljoin
 from django.apps import AppConfig
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Case, Count, Sum, When
+from django.db.models import Count
 from django.db.models.signals import post_delete, post_save
 from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
@@ -350,30 +350,21 @@ class DeviceMonitoringConfig(AppConfig):
                     'query_params': {
                         'app_label': WifiSession._meta.app_label,
                         'model': WifiSession._meta.model_name,
-                        'annotate': {
-                            'active': Count(
-                                Case(
-                                    When(
-                                        stop_time__isnull=True,
-                                        then=1,
-                                    )
-                                )
-                            ),
-                        },
+                        'filter': {'stop_time__isnull': True},
                         'aggregate': {
-                            'active__sum': Sum('active'),
+                            'active__count': Count('id'),
                         },
                         'organization_field': 'device__organization_id',
                     },
                     'filters': {
                         'key': 'stop_time__isnull',
-                        'active__sum': 'true',
+                        'active__count': 'true',
                     },
                     'colors': {
-                        'active__sum': '#267126',
+                        'active__count': '#267126',
                     },
                     'labels': {
-                        'active__sum': _('Currently Active WiFi Sessions'),
+                        'active__count': _('Currently Active WiFi Sessions'),
                     },
                     'quick_link': {
                         'url': reverse_lazy(

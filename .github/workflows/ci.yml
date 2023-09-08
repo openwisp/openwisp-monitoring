@@ -74,6 +74,7 @@ jobs:
       - name: Install openwisp-monitoring
         run: |
           pip install -U -I -e .
+          pip install --no-deps --no-cache-dir --force-reinstall --upgrade https://github.com/openwisp/openwisp-utils/tarball/dashboard-chart-filter
           pip uninstall -y django
           pip install ${{ matrix.django-version }}
 
