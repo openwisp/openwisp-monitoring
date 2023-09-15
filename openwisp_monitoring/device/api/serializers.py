@@ -6,9 +6,11 @@ from openwisp_controller.geo.api.serializers import (
     GeoJsonLocationSerializer,
     LocationDeviceSerializer,
 )
+from openwisp_users.api.mixins import FilterSerializerByOrgManaged
 
 Device = load_model('config', 'Device')
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+DeviceData = load_model('device_monitoring', 'DeviceData')
 Device = load_model('config', 'Device')
 WifiSession = load_model('device_monitoring', 'WifiSession')
 WifiClient = load_model('device_monitoring', 'WifiClient')
@@ -42,6 +44,38 @@ class DeviceMonitoringSerializer(BaseDeviceMonitoringSerializer):
 
 class MonitoringLocationDeviceSerializer(LocationDeviceSerializer):
     monitoring = DeviceMonitoringLocationSerializer()
+
+
+class MonitoringNearbyDeviceSerializer(
+    FilterSerializerByOrgManaged, serializers.ModelSerializer
+):
+    monitoring_status = serializers.CharField(source='monitoring.status')
+    distance = serializers.SerializerMethodField('get_distance')
+    monitoring_data = serializers.SerializerMethodField('get_monitoring_data')
+
+    class Meta(DeviceListSerializer.Meta):
+        model = Device
+        fields = [
+            'id',
+            'name',
+            'organization',
+            'group',
+            'mac_address',
+            'management_ip',
+            'model',
+            'os',
+            'system',
+            'notes',
+            'distance',
+            'monitoring_status',
+            'monitoring_data',
+        ]
+
+    def get_distance(self, obj):
+        return obj.distance.m
+
+    def get_monitoring_data(self, obj):
+        return DeviceData.objects.only('id').get(id=obj.id).data
 
 
 class MonitoringDeviceListSerializer(DeviceListSerializer):
