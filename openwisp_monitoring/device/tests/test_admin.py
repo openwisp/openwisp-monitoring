@@ -159,6 +159,14 @@ class TestAdmin(
                 ],
             }
         )
+        data['interfaces'].append(deepcopy(data['interfaces'][0]))
+        data['interfaces'][2].update(
+            {
+                'name': 'wlan2',
+                'mac': '44:d1:fa:4b:38:45',
+            }
+        )
+        data['interfaces'][2]['wireless']['mode'] = 'station'
         self._post_data(d.id, d.key, data)
         url = reverse('admin:config_device_change', args=[d.pk])
         r = self.client.get(url)
@@ -170,6 +178,19 @@ class TestAdmin(
             self.assertContains(r, '44:D1:FA:4B:00:02')
         with self.subTest('Neighbor IP is shown'):
             self.assertContains(r, 'fe80::9683:c4ff:fe02:c2bf')
+        with self.subTest('Wireless client table header is shown'):
+            self.assertContains(
+                r,
+                ('<th class="mac">\n\n' 'Associated client\n\nMAC address\n\n' '</th>'),
+                html=True,
+                count=2,
+            )
+            self.assertContains(
+                r,
+                ('<th class="mac">\n\n' 'Access Point\n\nMAC address\n\n' '</th>'),
+                html=True,
+                count=1,
+            )
 
     def test_status_data_contains_wifi_version(self):
         data = self._data()

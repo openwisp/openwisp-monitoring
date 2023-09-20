@@ -393,7 +393,11 @@
                       <thead>
                           <tr>
                               <th class="mac">
+                                  {% if interface.wireless.mode == 'station' %}
+                                  {% trans 'Access Point' %}
+                                  {% else %}
                                   {% trans 'Associated client' %}
+                                  {% endif %}
                                   {% trans 'MAC address' %}
                               </th>
                               {% if MAC_VENDOR_DETECTION %}
