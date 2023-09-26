@@ -12,7 +12,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import MaxValueValidator
-from django.db import models
+from django.db import IntegrityError, models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from jsonfield import JSONField
@@ -179,10 +179,18 @@ class AbstractMetric(TimeStampedEditableModel):
                 metric.extra_tags = cls._sort_dict(metric.extra_tags)
                 metric.save()
         except cls.DoesNotExist:
-            metric = cls(**kwargs)
-            metric.full_clean()
-            metric.save()
-            created = True
+            try:
+                metric = cls(**kwargs)
+                metric.full_clean()
+                metric.save()
+                created = True
+            except IntegrityError:
+                # Potential race conditions may arise when multiple
+                # celery workers concurrently write data to InfluxDB.
+                # These simultaneous writes can result in the database
+                # processing transactions from another "metric.save()"
+                # call, potentially leading to IntegrityError exceptions.
+                return cls._get_or_create(**kwargs)
         return metric, created
 
     @classmethod

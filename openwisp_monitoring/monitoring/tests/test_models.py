@@ -1,9 +1,11 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
 from swapper import load_model
@@ -130,6 +132,22 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertEqual(m.id, m2.id)
         self.assertEqual(m2.name, m.name)
         self.assertFalse(created)
+
+    @patch.object(
+        Metric.objects,
+        'get',
+        side_effect=[
+            Metric.DoesNotExist,
+            Metric(name='lan', configuration='test_metric'),
+        ],
+    )
+    @patch.object(Metric, 'save', side_effect=IntegrityError)
+    def test_get_or_create_integrity_error(self, mocked_save, mocked_get):
+        metric, _ = Metric._get_or_create(name='lan', configuration='test_metric')
+        mocked_save.assert_called_once()
+        self.assertEqual(mocked_get.call_count, 2)
+        self.assertEqual(metric.name, 'lan')
+        self.assertEqual(metric.configuration, 'test_metric')
 
     def test_metric_write_wrong_related_fields(self):
         m = self._create_general_metric(name='ping', configuration='ping')
