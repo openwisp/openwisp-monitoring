@@ -181,15 +181,28 @@ class TestAdmin(
         with self.subTest('Wireless client table header is shown'):
             self.assertContains(
                 r,
-                ('<th class="mac">\n\n' 'Associated client\n\nMAC address\n\n' '</th>'),
+                '<th class="mac">\n\nAssociated client\n\nMAC address\n\n' '</th>',
                 html=True,
                 count=2,
             )
             self.assertContains(
                 r,
-                ('<th class="mac">\n\n' 'Access Point\n\nMAC address\n\n' '</th>'),
+                '<th class="mac">\n\nAccess Point\n\nMAC address\n\n' '</th>',
                 html=True,
                 count=1,
+            )
+        with self.subTest('Wireless interface properties are shown'):
+            self.assertContains(
+                r,
+                '<div class="form-row">\n<label>Quality:</label>\n'
+                '<div class="readonly">\n65 / 70\n</div>\n</div>',
+                html=True,
+            )
+            self.assertContains(
+                r,
+                '<div class="form-row">\n<label>Bitrate:</label>\n'
+                '<div class="readonly">\n1000 KBits/s\n</div>\n</div>',
+                html=True,
             )
 
     def test_status_data_contains_wifi_version(self):

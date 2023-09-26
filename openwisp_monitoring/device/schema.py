@@ -229,7 +229,7 @@ schema = {
                                     ],
                                     "properties": {
                                         "aid": {"type": "integer"},
-                                        "singal": {"type": "integer"},
+                                        "signal": {"type": "integer"},
                                         "noise": {"type": "integer"},
                                         "assoc": {"type": "boolean"},
                                         "auth": {"type": "boolean"},
@@ -241,6 +241,9 @@ schema = {
                                         "wmm": {"type": "boolean"},
                                         "wps": {"type": "boolean"},
                                         "mac": {"type": "string"},
+                                        "bitrate": {"type": "integer"},
+                                        "quality": {"type": "integer"},
+                                        "quality_max": {"type": "integer"},
                                         "vendor": {"type": "string"},
                                         "mfp": {"type": "boolean"},
                                         "preauth": {"type": "boolean"},
