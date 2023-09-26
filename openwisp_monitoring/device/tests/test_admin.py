@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.forms import generic_inlineformset_factory
 from django.core.cache import cache
+from django.db import connection
 from django.test import TestCase
 from django.urls import reverse
 from django.utils.timezone import datetime, now, timedelta
@@ -117,6 +118,22 @@ class TestAdmin(
         response = self.client.get(url)
         self.assertContains(response, "geoJsonUrl: \'http://testserver/api")
         self.assertContains(response, "locationDeviceUrl: \'http://testserver/api")
+
+    def test_wifisession_dashboard_chart_query(self):
+        url = reverse('admin:index')
+        with self.assertNumQueries(10):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        device_monitoring_app_label = WifiSession._meta.app_label
+        for query in connection.queries:
+            if query['sql'] == (
+                f'SELECT COUNT("{device_monitoring_app_label}_wifisession"."id") '
+                f'AS "active__count" FROM "{device_monitoring_app_label}_wifisession" '
+                f'WHERE "{device_monitoring_app_label}_wifisession"."stop_time" IS NULL'
+            ):
+                break
+        else:
+            self.fail('WiFiSession dashboard query not found')
 
     def test_status_data(self):
         d = self._create_device(organization=self._create_org())
