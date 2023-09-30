@@ -201,7 +201,7 @@ class TestAdmin(
             self.assertContains(
                 r,
                 '<div class="form-row">\n<label>Bitrate:</label>\n'
-                '<div class="readonly">\n1000 KBits/s\n</div>\n</div>',
+                '<div class="readonly">\n1.1 MBits/s\n</div>\n</div>',
                 html=True,
             )
 
