@@ -175,6 +175,22 @@
                       </div>
                   </div>
                   {% endif %}
+                  {% if interface.wireless.bitrate %}
+                  <div class="form-row">
+                      <label>{% trans 'Bitrate' %}:</label>
+                      <div class="readonly">
+                          {{ interface.wireless.bitrate }} MBits/s
+                      </div>
+                  </div>
+                  {% endif %}
+                  {% if interface.wireless.quality and interface.wireless.quality_max %}
+                  <div class="form-row">
+                      <label>{% trans 'Quality' %}:</label>
+                      <div class="readonly">
+                          {{ interface.wireless.quality }} / {{ interface.wireless.quality_max }}
+                      </div>
+                  </div>
+                  {% endif %}
                   <div class="form-row">
                       <label>{% trans 'Noise' %}:</label>
                       <div class="readonly">
@@ -393,7 +409,11 @@
                       <thead>
                           <tr>
                               <th class="mac">
+                                  {% if interface.wireless.mode == 'station' %}
+                                  {% trans 'Access Point' %}
+                                  {% else %}
                                   {% trans 'Associated client' %}
+                                  {% endif %}
                                   {% trans 'MAC address' %}
                               </th>
                               {% if MAC_VENDOR_DETECTION %}

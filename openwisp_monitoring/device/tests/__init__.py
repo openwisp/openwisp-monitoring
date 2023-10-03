@@ -73,6 +73,8 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
                             client['he'] = None
                     elif vht_enabled and client.get('he') is False:
                         client['he'] = None
+            if wireless and 'bitrate' in wireless:
+                wireless['bitrate'] = round(wireless['bitrate'] / 1000.0, 1)
         return data
 
     def assertDataDict(self, dd_data, data):
@@ -276,6 +278,9 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
                         'tx_power': 6,
                         'channel': 6,
                         'ssid': 'testnet',
+                        'bitrate': 1100,
+                        'quality': 65,
+                        'quality_max': 70,
                         'noise': -95,
                         'country': 'US',
                         'htmode': 'VHT80',

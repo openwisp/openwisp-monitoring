@@ -159,6 +159,14 @@ class TestAdmin(
                 ],
             }
         )
+        data['interfaces'].append(deepcopy(data['interfaces'][0]))
+        data['interfaces'][2].update(
+            {
+                'name': 'wlan2',
+                'mac': '44:d1:fa:4b:38:45',
+            }
+        )
+        data['interfaces'][2]['wireless']['mode'] = 'station'
         self._post_data(d.id, d.key, data)
         url = reverse('admin:config_device_change', args=[d.pk])
         r = self.client.get(url)
@@ -170,6 +178,32 @@ class TestAdmin(
             self.assertContains(r, '44:D1:FA:4B:00:02')
         with self.subTest('Neighbor IP is shown'):
             self.assertContains(r, 'fe80::9683:c4ff:fe02:c2bf')
+        with self.subTest('Wireless client table header is shown'):
+            self.assertContains(
+                r,
+                '<th class="mac">\n\nAssociated client\n\nMAC address\n\n' '</th>',
+                html=True,
+                count=2,
+            )
+            self.assertContains(
+                r,
+                '<th class="mac">\n\nAccess Point\n\nMAC address\n\n' '</th>',
+                html=True,
+                count=1,
+            )
+        with self.subTest('Wireless interface properties are shown'):
+            self.assertContains(
+                r,
+                '<div class="form-row">\n<label>Quality:</label>\n'
+                '<div class="readonly">\n65 / 70\n</div>\n</div>',
+                html=True,
+            )
+            self.assertContains(
+                r,
+                '<div class="form-row">\n<label>Bitrate:</label>\n'
+                '<div class="readonly">\n1.1 MBits/s\n</div>\n</div>',
+                html=True,
+            )
 
     def test_status_data_contains_wifi_version(self):
         data = self._data()
