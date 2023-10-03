@@ -73,8 +73,8 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
                             client['he'] = None
                     elif vht_enabled and client.get('he') is False:
                         client['he'] = None
-            if wireless and wireless.get('bitrate'):
-                wireless['bitrate'] = round(wireless['bitrate'] / 1000, 1)
+            if wireless and 'bitrate' in wireless:
+                wireless['bitrate'] = round(wireless['bitrate'] / 1000.0, 1)
         return data
 
     def assertDataDict(self, dd_data, data):

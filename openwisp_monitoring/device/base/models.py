@@ -234,9 +234,9 @@ class AbstractDeviceData(object):
                     elif vht_enabled and client.get('he') is False:
                         client['he'] = None
             # Convert bitrate from KBits/s to MBits/s
-            if wireless and wireless.get('bitrate'):
+            if wireless and 'bitrate' in wireless:
                 interface['wireless']['bitrate'] = round(
-                    interface['wireless']['bitrate'] / 1000, 1
+                    interface['wireless']['bitrate'] / 1000.0, 1
                 )
             # add mac vendor to wireless clients if present
             if (
