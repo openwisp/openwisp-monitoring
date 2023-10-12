@@ -191,8 +191,11 @@ django.jQuery(function ($) {
           const now = moment().format('YYYY-MM-DD HH:mm:ss');
           const endDateTime = moment(endDate).format('YYYY-MM-DD HH:mm:ss');
           endDate = endDateTime > now ? now : endDateTime;
+          url = `${apiUrl}?start=${startDate}&end=${endDate}`;
           var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-          url = `${apiUrl}?timezone=${timezone}&start=${startDate}&end=${endDate}`;
+          if (timezone) {
+            url = `${url}&timezone=${timezone}`;
+          }
         }
         return url;
       },
@@ -255,7 +258,7 @@ django.jQuery(function ($) {
       var range = localStorage.getItem(timeRangeKey) || defaultTimeRange;
       var startLabel = localStorage.getItem(startDayKey) || moment().format('MMMM D, YYYY');
       var endLabel = localStorage.getItem(endDayKey) || moment().format('MMMM D, YYYY');
-      
+
       // Disable the zoom chart and scrolling when we refresh the page
       localStorage.setItem(isChartZoomScroll, false);
       localStorage.setItem(isChartZoomed, false);
@@ -271,7 +274,6 @@ django.jQuery(function ($) {
         // Then loads charts with custom ranges selected
         loadCharts(range, true);
       }
-
       else {
         endLabel =  moment().format('MMMM D, YYYY');
         startLabel = moment().subtract(range.split('d')[0], 'days').format('MMMM D, YYYY');
@@ -284,7 +286,9 @@ django.jQuery(function ($) {
     // try adding the browser timezone to the querystring
     try {
       var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      baseUrl = baseUrl.replace('time=', 'timezone=' + timezone + '&time=');
+      if (timezone) {
+        baseUrl = baseUrl.replace('time=', 'timezone=' + timezone + '&time=');
+      }
       // ignore failures (older browsers do not support this)
     } catch (e) {}
 
@@ -318,15 +322,19 @@ django.jQuery(function ($) {
       location.href = baseUrl + time + '&csv=1';
       // If custom or pickerChosenLabelKey is 'Custom Range', pass pickerEndDate and pickerStartDate to csv url
       if (localStorage.getItem(isCustomDateRange) === 'true' || localStorage.getItem(pickerChosenLabelKey) === customDateRangeLabel) {
-      var startDate = localStorage.getItem(startDateTimeKey);
-      var endDate = localStorage.getItem(endDateTimeKey);
-      if (localStorage.getItem(isChartZoomed) === 'true') {
-        time = localStorage.getItem(zoomtimeRangeKey);
-        endDate = localStorage.getItem(zoomEndDateTimeKey);
-        startDate = localStorage.getItem(zoomStartDateTimeKey);
-      }
-      var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      location.href = `${apiUrl}?timezone=${timezone}&start=${startDate}&end=${endDate}&csv=1`;
+        var startDate = localStorage.getItem(startDateTimeKey);
+        var endDate = localStorage.getItem(endDateTimeKey);
+        if (localStorage.getItem(isChartZoomed) === 'true') {
+          time = localStorage.getItem(zoomtimeRangeKey);
+          endDate = localStorage.getItem(zoomEndDateTimeKey);
+          startDate = localStorage.getItem(zoomStartDateTimeKey);
+        }
+        var url = `${apiUrl}?start=${startDate}&end=${endDate}&csv=1`;
+        var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (timezone) {
+          url = `${url}&timezone=${timezone}`;
+        }
+        location.href = url;
       }
     });
     // fetch chart data and replace the old charts with the new ones
