@@ -15,6 +15,11 @@ urlpatterns = [
         views.device_metric,
         name='api_device_metric',
     ),
+    re_path(
+        r'^api/v1/monitoring/device/(?P<pk>[^/]+)/nearby-devices/$',
+        views.monitoring_nearby_device_list,
+        name='api_monitoring_nearby_device_list',
+    ),
     path(
         'api/v1/monitoring/geojson/',
         views.monitoring_geojson_location_list,

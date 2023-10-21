@@ -35,6 +35,7 @@ FloorPlan = load_model('geo', 'FloorPlan')
 Location = load_model('geo', 'Location')
 WifiClient = load_model('device_monitoring', 'WifiClient')
 WifiSession = load_model('device_monitoring', 'WifiSession')
+Group = load_model('openwisp_users', 'Group')
 
 
 class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase):
@@ -1378,6 +1379,135 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
             data['results'][0]['monitoring'], {'status': 'ok', 'status_label': 'ok'}
         )
 
+    def test_api_monitoring_nearby_device_list(self):
+        admin = self._create_admin()
+        self.client.force_login(admin)
+        org1 = self._get_org()
+        org2 = self._create_org(name='org2', slug='org2')
+        device_without_location = self._create_device(organization=org1)
+        org1_device1 = self._create_device(
+            mac_address='11:22:33:44:55:66',
+            name='device1',
+            organization=org1,
+            model='TP-Link Archer C20',
+        )
+        org1_device2 = self._create_device(
+            mac_address='11:22:33:44:55:67',
+            name='device2',
+            organization=org1,
+            model='TP-Link Archer C50',
+        )
+        org2_device1 = self._create_device(
+            mac_address='11:22:33:44:55:68',
+            name='device3',
+            organization=org2,
+            model='TP-Link Archer C60',
+        )
+        org2_device1.monitoring.status = 'ok'
+        org2_device1.monitoring.save()
+
+        self._create_object_location(
+            content_object=org1_device1,
+            location=Location.objects.create(
+                organization=org1,
+                name='location1',
+                address='Uttrakhand',
+                geometry='SRID=4326;POINT (79.0676 30.7333)',
+                type='outdoor',
+            ),
+        )
+        self._create_object_location(
+            content_object=org1_device2,
+            location=Location.objects.create(
+                organization=org1,
+                name='location2',
+                address='Sunnyvale',
+                geometry='SRID=4326;POINT (-122.03749 37.37187)',
+                type='outdoor',
+            ),
+        )
+        self._create_object_location(
+            content_object=org2_device1,
+            location=Location.objects.create(
+                organization=org2,
+                name='location3',
+                address='Brussels',
+                geometry='SRID=4326;POINT (4.406264339 50.89806471)',
+                type='outdoor',
+            ),
+        )
+        with self.subTest('Test DeviceLocation does not exist'):
+            response = self.client.get(
+                reverse(
+                    'monitoring:api_monitoring_nearby_device_list',
+                    args=[device_without_location.id],
+                )
+            )
+            self.assertEqual(response.status_code, 404)
+
+        path = reverse(
+            'monitoring:api_monitoring_nearby_device_list', args=[org1_device1.id]
+        )
+        with self.subTest('Test device list'):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data['count'], 2)
+            self.assertIn('distance', response.data['results'][0])
+            self.assertIsInstance(response.data['results'][0]['distance'], float)
+            self.assertIn('monitoring_status', response.data['results'][0])
+            self.assertIn('monitoring_data', response.data['results'][0])
+
+        with self.subTest('Test filtering by model'):
+            response = self.client.get(path, data={'model': 'TP-Link Archer C50'})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data['count'], 1)
+            self.assertEqual(response.data['results'][0]['model'], 'TP-Link Archer C50')
+            # Test filtering with multiple models
+            response = self.client.get(
+                path, data={'model': 'TP-Link Archer C50|TP-Link Archer C60'}
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data['count'], 2)
+
+        with self.subTest('Test filtering by monitoring status'):
+            response = self.client.get(path, data={'monitoring__status': 'ok'})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data['count'], 1)
+            self.assertEqual(response.data['results'][0]['monitoring_status'], 'ok')
+
+        with self.subTest('Test filtering by distance'):
+            response = self.client.get(path, data={'distance__lte': '6373400'})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data['count'], 1)
+            self.assertEqual(response.data['results'][0]['distance'], 6373400)
+
+        with self.subTest('Test pagination'):
+            response = self.client.get(path, data={'page_size': '1'})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data['count'], 2)
+            self.assertEqual(len(response.data['results']), 1)
+            self.assertEqual(response.data['previous'], None)
+            self.assertNotEqual(response.data['next'], None)
+
+        user = self._create_org_user(is_admin=True, organization=org1).user
+        user.groups.add(Group.objects.get(name='Administrator'))
+        self.client.force_login(user)
+        with self.subTest('Test multi-tenancy'):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data['count'], 1)
+            self.assertEqual(response.data['results'][0]['id'], str(org1_device2.id))
+            self.assertNotEqual(response.data['results'][0]['id'], str(org2_device1.id))
+
+        self.client.logout()
+        with self.subTest('Test device key authentication'):
+            response = self.client.get(path, data={'key': org1_device1.key})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data['count'], 2)
+            # Test with inccorect device key
+            response = self.client.get(path, data={'key': 'incorrect'})
+            self.assertEqual(response.status_code, 404)
+
     @capture_any_output()
     def test_bearer_authentication(self):
         user = self._create_admin()
@@ -1396,6 +1526,17 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
         with self.subTest('Test GeoJsonLocationListView'):
             response = self.client.get(
                 reverse('monitoring:api_location_device_list', args=[location.id]),
+                content_type='application/json',
+                HTTP_AUTHORIZATION=f'Bearer {token}',
+            )
+            self.assertEqual(response.status_code, 200)
+
+        with self.subTest('Test MonitoringNearbyDeviceList'):
+            response = self.client.get(
+                reverse(
+                    'monitoring:api_monitoring_nearby_device_list',
+                    args=[device_location.content_object_id],
+                ),
                 content_type='application/json',
                 HTTP_AUTHORIZATION=f'Bearer {token}',
             )

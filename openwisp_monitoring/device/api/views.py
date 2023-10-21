@@ -4,14 +4,21 @@ from datetime import datetime
 
 from cache_memoize import cache_memoize
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.gis.db.models.functions import Distance
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
+from django.db.models.functions import Round
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
 from pytz import UTC
 from rest_framework import pagination, serializers, status
-from rest_framework.generics import GenericAPIView, ListAPIView, RetrieveAPIView
+from rest_framework.generics import (
+    GenericAPIView,
+    ListAPIView,
+    RetrieveAPIView,
+    get_object_or_404,
+)
 from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 from swapper import load_model
@@ -30,12 +37,17 @@ from ...views import MonitoringApiViewMixin
 from ..schema import schema
 from ..signals import device_metrics_received
 from ..tasks import write_device_metrics
-from .filters import MonitoringDeviceFilter, WifiSessionFilter
+from .filters import (
+    MonitoringDeviceFilter,
+    MonitoringNearbyDeviceFilter,
+    WifiSessionFilter,
+)
 from .serializers import (
     MonitoringDeviceDetailSerializer,
     MonitoringDeviceListSerializer,
     MonitoringGeoJsonLocationSerializer,
     MonitoringLocationDeviceSerializer,
+    MonitoringNearbyDeviceSerializer,
     WifiSessionSerializer,
 )
 
@@ -71,7 +83,23 @@ def get_charts_args_rewrite(view, request, pk):
     return (pk,)
 
 
-class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
+class DeviceKeyAuthenticationMixin(object):
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS and not self.request.query_params.get(
+            'key'
+        ):
+            self.permission_classes = ProtectedAPIMixin.permission_classes
+        return super().get_permissions()
+
+    def get_authenticators(self):
+        if self.request.method in SAFE_METHODS and not self.request.GET.get('key'):
+            self.authentication_classes = ProtectedAPIMixin.authentication_classes
+        return super().get_authenticators()
+
+
+class DeviceMetricView(
+    DeviceKeyAuthenticationMixin, MonitoringApiViewMixin, GenericAPIView
+):
     """
     Retrieve device information, monitoring status (health status),
     a list of metrics, chart data and
@@ -109,18 +137,6 @@ class DeviceMetricView(MonitoringApiViewMixin, GenericAPIView):
         elif isinstance(instance, Chart):
             pk = instance.metric.object_id
         cls._get_charts.invalidate(None, None, pk)
-
-    def get_permissions(self):
-        if self.request.method in SAFE_METHODS and not self.request.query_params.get(
-            'key'
-        ):
-            self.permission_classes = ProtectedAPIMixin.permission_classes
-        return super().get_permissions()
-
-    def get_authenticators(self):
-        if self.request.method in SAFE_METHODS and not self.request.GET.get('key'):
-            self.authentication_classes = ProtectedAPIMixin.authentication_classes
-        return super().get_authenticators()
 
     def get(self, request, pk):
         # ensure valid UUID
@@ -228,6 +244,41 @@ class MonitoringLocationDeviceList(LocationDeviceList):
 
 
 monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
+
+
+class MonitoringNearbyDeviceList(
+    DeviceKeyAuthenticationMixin, FilterByOrganizationManaged, ListAPIView
+):
+    serializer_class = MonitoringNearbyDeviceSerializer
+    pagination_class = ListViewPagination
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = MonitoringNearbyDeviceFilter
+    permission_classes = []
+
+    def get_queryset(self):
+        qs = Device.objects.select_related('monitoring')
+        location_lookup = Q(devicelocation__content_object_id=self.kwargs['pk'])
+        device_key = self.request.query_params.get('key')
+        if device_key:
+            location_lookup &= Q(devicelocation__content_object__key=device_key)
+        if not self.request.user.is_superuser and not device_key:
+            qs = self.get_organization_queryset(qs)
+        location = get_object_or_404(Location.objects, location_lookup)
+        return (
+            qs.exclude(id=self.kwargs['pk'])
+            .filter(
+                devicelocation__isnull=False,
+            )
+            .annotate(
+                distance=Round(
+                    Distance('devicelocation__location__geometry', location.geometry)
+                )
+            )
+            .order_by('distance')
+        )
+
+
+monitoring_nearby_device_list = MonitoringNearbyDeviceList.as_view()
 
 
 class MonitoringDeviceList(DeviceListCreateView):

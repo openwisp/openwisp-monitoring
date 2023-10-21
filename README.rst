@@ -2597,11 +2597,41 @@ and sending of data by the OpenWISP Monitoring Agent
 <https://github.com/openwisp/openwrt-openwisp-monitoring#collecting-vs-sending>`_,
 this feature allows sending data collected while the device is offline.
 
+List nearby devices
+###################
+
+.. code-block:: text
+
+    GET /api/v1/monitoring/device/{pk}/nearby-devices/
+
+Returns list of nearby devices along with respective distance (in metres) and
+monitoring status.
+
+**Available filters**
+
+The list of nearby devices provides the following filters:
+
+- ``organization`` (Organization ID of the device)
+- ``organization__slug``  (Organization slug of the device)
+- ``monitoring__status``  (Monitoring status (``unknown``, ``ok``, ``problem``, or ``critical``))
+- ``model`` (Pipe `|` separated list of device models)
+- ``distance__lte`` (Distance in metres)
+
+Here's a few examples:
+
+.. code-block:: text
+
+   GET /api/v1/monitoring/device/{pk}/nearby-devices/?organization={organization_id}
+   GET /api/v1/monitoring/device/{pk}/nearby-devices/?organization__slug={organization_slug}
+   GET /api/v1/monitoring/device/{pk}/nearby-devices/?monitoring__status={monitoring_status}
+   GET /api/v1/monitoring/device/{pk}/nearby-devices/?model={model1,model2}
+   GET /api/v1/monitoring/device/{pk}/nearby-devices/?distance__lte={distance}
+
 List wifi session
 #################
 
 .. code-block:: text
-   
+
    GET /api/v1/monitoring/wifi-session/
 
 **Available filters**
@@ -2640,7 +2670,7 @@ Get wifi session
 ################
 
 .. code-block:: text
-   
+
    GET /api/v1/monitoring/wifi-session/{id}/
 
 Pagination
@@ -2650,7 +2680,7 @@ Wifi session endpoint support the ``page_size`` parameter
 that allows paginating the results in conjunction with the page parameter.
 
 .. code-block:: text
-   
+
    GET /api/v1/monitoring/wifi-session/?page_size=10
    GET /api/v1/monitoring/wifi-session/?page_size=10&page=1
 

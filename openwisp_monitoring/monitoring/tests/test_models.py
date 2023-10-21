@@ -133,21 +133,22 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertEqual(m2.name, m.name)
         self.assertFalse(created)
 
-    @patch.object(
-        Metric.objects,
-        'get',
-        side_effect=[
-            Metric.DoesNotExist,
-            Metric(name='lan', configuration='test_metric'),
-        ],
-    )
-    @patch.object(Metric, 'save', side_effect=IntegrityError)
-    def test_get_or_create_integrity_error(self, mocked_save, mocked_get):
-        metric, _ = Metric._get_or_create(name='lan', configuration='test_metric')
-        mocked_save.assert_called_once()
-        self.assertEqual(mocked_get.call_count, 2)
-        self.assertEqual(metric.name, 'lan')
-        self.assertEqual(metric.configuration, 'test_metric')
+    def test_get_or_create_integrity_error(self):
+        with patch.object(
+            Metric.objects,
+            'get',
+            side_effect=[
+                Metric.DoesNotExist,
+                Metric(name='lan', configuration='test_metric'),
+            ],
+        ) as mocked_get, patch.object(
+            Metric, 'save', side_effect=IntegrityError
+        ) as mocked_save:
+            metric, _ = Metric._get_or_create(name='lan', configuration='test_metric')
+            mocked_save.assert_called_once()
+            self.assertEqual(mocked_get.call_count, 2)
+            self.assertEqual(metric.name, 'lan')
+            self.assertEqual(metric.configuration, 'test_metric')
 
     def test_metric_write_wrong_related_fields(self):
         m = self._create_general_metric(name='ping', configuration='ping')
