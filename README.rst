@@ -2099,8 +2099,7 @@ In case you just want to change the colors used in a chart here's how to do it:
 | **possible values** | ``1d``, ``3d``, ``7d``, ``30d`` or ``365d`` |
 +---------------------+---------------------------------------------+
 
-This setting allows you to set the default time period for showing
-charts.
+Allows to set the default time period of the time series charts.
 
 ``OPENWISP_MONITORING_AUTO_CLEAR_MANAGEMENT_IP``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
