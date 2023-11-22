@@ -58,6 +58,7 @@ class DeviceMonitoringConfig(AppConfig):
         DeviceLocation = load_model('geo', 'DeviceLocation')
         Metric = load_model('monitoring', 'Metric')
         Chart = load_model('monitoring', 'Chart')
+        Organization = load_model('openwisp_users', 'Organization')
 
         post_save.connect(
             self.device_post_save_receiver,
@@ -120,6 +121,11 @@ class DeviceMonitoringConfig(AppConfig):
             sender=DeviceLocation,
             dispatch_uid='post_delete_devicelocation_invalidate_devicedata_cache',
         )
+        post_save.connect(
+            self.organization_post_save_receiver,
+            sender=Organization,
+            dispatch_uid='post_save_organization_clear_management_ip_monitoring_status',
+        )
 
     @classmethod
     def device_post_save_receiver(cls, instance, created, **kwargs):
@@ -133,6 +139,13 @@ class DeviceMonitoringConfig(AppConfig):
         instance.__class__ = DeviceData
         instance.checks.all().delete()
         instance.metrics.all().delete()
+
+    @classmethod
+    def organization_post_save_receiver(cls, instance, *args, **kwargs):
+        if instance.is_active is False:
+            from .tasks import organization_disabled_handler
+
+            organization_disabled_handler.delay(str(instance.id))
 
     def device_recovery_detection(self):
         if not app_settings.DEVICE_RECOVERY_DETECTION:

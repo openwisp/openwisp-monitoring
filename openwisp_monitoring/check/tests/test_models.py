@@ -282,6 +282,16 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(Notification.objects.count(), 0)
         self.assertIsNone(c2.perform_check())
 
+    def test_device_organization_disabled_check_not_performed(self):
+        self._create_config(
+            status='modified', organization=self._create_org(is_active=False)
+        )
+        self.assertEqual(Check.objects.count(), 3)
+        check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
+        with patch(f'{self._CONFIG_APPLIED}.check') as mocked_check:
+            check.perform_check()
+        mocked_check.assert_not_called()
+
     def test_config_check_problem_with_interval(self):
         self._create_admin()
         d = self._create_device(organization=self._create_org())
