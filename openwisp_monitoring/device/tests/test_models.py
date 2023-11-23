@@ -720,7 +720,7 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         self.assertEqual(self._read_metric(ping1), [])
         self.assertNotEqual(self._read_metric(ping2), [])
 
-    def test_organization_disabled_handler(self):
+    def test_handle_disabled_organization(self):
         device_monitoring, _, _, _ = self._create_env()
         device = device_monitoring.device
         device.management_ip = '10.10.0.5'

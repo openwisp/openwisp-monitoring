@@ -436,7 +436,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         return False
 
     @classmethod
-    def organization_disabled_handler(cls, organization_id):
+    def handle_disabled_organization(cls, organization_id):
         """
         Clears the management IP of all devices belonging to a
         disabled organization and set their monitoring status to 'unknown'.

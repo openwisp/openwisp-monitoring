@@ -66,6 +66,6 @@ def write_device_metrics(pk, data, time=None, current=False):
 
 
 @shared_task(base=OpenwispCeleryTask)
-def organization_disabled_handler(organization_id):
+def handle_disabled_organization(organization_id):
     DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
-    DeviceMonitoring.organization_disabled_handler(organization_id)
+    DeviceMonitoring.handle_disabled_organization(organization_id)

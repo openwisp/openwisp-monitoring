@@ -124,7 +124,7 @@ class DeviceMonitoringConfig(AppConfig):
         post_save.connect(
             self.organization_post_save_receiver,
             sender=Organization,
-            dispatch_uid='post_save_organization_clear_management_ip_monitoring_status',
+            dispatch_uid='post_save_organization_disabled_monitoring',
         )
 
     @classmethod
@@ -143,9 +143,9 @@ class DeviceMonitoringConfig(AppConfig):
     @classmethod
     def organization_post_save_receiver(cls, instance, *args, **kwargs):
         if instance.is_active is False:
-            from .tasks import organization_disabled_handler
+            from .tasks import handle_disabled_organization
 
-            organization_disabled_handler.delay(str(instance.id))
+            handle_disabled_organization.delay(str(instance.id))
 
     def device_recovery_detection(self):
         if not app_settings.DEVICE_RECOVERY_DETECTION:
