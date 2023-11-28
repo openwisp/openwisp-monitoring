@@ -98,6 +98,11 @@ class AbstractCheck(TimeStampedEditableModel):
         """
         initiates check instance and calls its check method
         """
+        if (
+            hasattr(self.content_object, 'organization_id')
+            and self.content_object.organization.is_active is False
+        ):
+            return
         return self.check_instance.check(store=True)
 
     def perform_check_delayed(self, duration=0):

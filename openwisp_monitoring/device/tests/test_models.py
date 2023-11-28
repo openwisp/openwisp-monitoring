@@ -720,6 +720,20 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         self.assertEqual(self._read_metric(ping1), [])
         self.assertNotEqual(self._read_metric(ping2), [])
 
+    def test_handle_disabled_organization(self):
+        device_monitoring, _, _, _ = self._create_env()
+        device = device_monitoring.device
+        device.management_ip = '10.10.0.5'
+        device.save()
+        self.assertEqual(device_monitoring.status, 'ok')
+        org = device.organization
+        org.is_active = False
+        org.save(update_fields=['is_active'])
+        device_monitoring.refresh_from_db()
+        device.refresh_from_db()
+        self.assertEqual(device_monitoring.status, 'unknown')
+        self.assertEqual(device.management_ip, None)
+
 
 class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
     wifi_client_model = WifiClient

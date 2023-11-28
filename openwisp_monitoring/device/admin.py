@@ -324,7 +324,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         for inline in inlines:
             if not hasattr(inline, 'sortable_options'):
                 inline.sortable_options = {'disabled': True}
-        if not obj or obj._state.adding:
+        if not obj or obj._state.adding or obj.organization.is_active is False:
             inlines.remove(CheckInline)
             inlines.remove(MetricInline)
         return inlines

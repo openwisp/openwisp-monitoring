@@ -111,10 +111,14 @@ class DeviceMetricView(
     """
 
     model = DeviceData
-    queryset = DeviceData.objects.only(
-        'id',
-        'key',
-    ).all()
+    queryset = (
+        DeviceData.objects.filter(organization__is_active=True)
+        .only(
+            'id',
+            'key',
+        )
+        .all()
+    )
     serializer_class = serializers.Serializer
     permission_classes = [DevicePermission]
     schema = schema

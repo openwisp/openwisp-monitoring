@@ -341,6 +341,15 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         r = self.client.post(url, netjson, content_type='application/json')
         self.assertEqual(r.status_code, 200)
 
+    def test_404_disabled_organization(self):
+        org = self._create_org(is_active=False)
+        device = self._create_device(organization=org)
+        with self.assertNumQueries(2):
+            response = self._post_data(device.id, device.key, self._data())
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(self.metric_queryset.count(), 0)
+        self.assertEqual(self.chart_queryset.count(), 0)
+
     def test_garbage_wireless_clients(self):
         o = self._create_org()
         d = self._create_device(organization=o)

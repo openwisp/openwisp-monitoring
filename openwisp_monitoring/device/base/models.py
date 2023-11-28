@@ -435,6 +435,25 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
                 return True
         return False
 
+    @classmethod
+    def handle_disabled_organization(cls, organization_id):
+        """
+        Clears the management IP of all devices belonging to a
+        disabled organization and set their monitoring status to 'unknown'.
+
+        Parameters:
+            organization_id (int): The ID of the disabled organization.
+
+        Returns:
+            None
+        """
+        load_model('config', 'Device').objects.filter(
+            organization_id=organization_id
+        ).update(management_ip='')
+        cls.objects.filter(device__organization_id=organization_id).update(
+            status='unknown'
+        )
+
 
 class AbstractWifiClient(TimeStampedEditableModel):
     id = None

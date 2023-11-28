@@ -321,6 +321,25 @@ class TestAdmin(
         self.assertContains(r, '<h2>Map</h2>')
         self.assertContains(r, '<h2>Credentials</h2>')
 
+    def test_device_disabled_organization_admin(self):
+        self.create_test_data()
+        device = Device.objects.first()
+        Check.objects.create(
+            name='Ping check',
+            check_type=CHECK_CLASSES[0][0],
+            content_object=device,
+            params={},
+        )
+        org = device.organization
+        org.is_active = False
+        org.save()
+        url = reverse('admin:config_device_change', args=[device.pk])
+        response = self.client.get(url)
+        self.assertContains(response, '<h2>Status</h2>')
+        self.assertContains(response, '<h2>Charts</h2>')
+        self.assertNotContains(response, '<h2>Checks</h2>')
+        self.assertNotContains(response, '<h2>AlertSettings</h2>')
+
     def test_remove_invalid_interface(self):
         d = self._create_device(organization=self._create_org())
         dd = DeviceData(name='test-device', pk=d.pk)

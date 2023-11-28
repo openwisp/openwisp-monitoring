@@ -63,3 +63,9 @@ def write_device_metrics(pk, data, time=None, current=False):
     except DeviceData.DoesNotExist:
         return
     device_data.writer.write(data, time, current)
+
+
+@shared_task(base=OpenwispCeleryTask)
+def handle_disabled_organization(organization_id):
+    DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+    DeviceMonitoring.handle_disabled_organization(organization_id)
