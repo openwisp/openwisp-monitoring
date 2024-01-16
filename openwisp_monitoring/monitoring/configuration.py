@@ -34,6 +34,7 @@ ACCESS_TECHNOLOGIES = OrderedDict(
         ('umts', '#efdd50'),
         ('lte', '#67c368'),
         ('5g', '#377873'),
+        ('threshold', '#7f7f7f')
     )
 )
 
