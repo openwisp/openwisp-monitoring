@@ -428,7 +428,8 @@
   .daterangepicker .drp-buttons {
     text-align: center;
   }
-  .daterangepicker .ranges, .daterangepicker .drp-calendar {
+  .daterangepicker .ranges,
+  .daterangepicker .drp-calendar {
     float: none;
   }
 }

@@ -1,7 +1,7 @@
 #ow-device-status > fieldset > .inline-related {
   padding: 0 1px;
 }
-#ow-device-status h2{
+#ow-device-status h2 {
   color: #333;
   background-color: rgba(0, 0, 0, 0.05);
   outline: 1px solid rgba(0, 0, 0, 0.3);
@@ -9,7 +9,7 @@
 }
 #ow-device-status .form-row,
 #ow-device-status table th,
-#ow-device-status table td{
+#ow-device-status table td {
   padding: 15px 20px !important;
 }
 #ow-device-status .form-row label,
@@ -21,11 +21,11 @@
 #ow-device-status .form-row label {
   padding-top: 2px;
 }
-#ow-device-status .inline-group{
+#ow-device-status .inline-group {
   margin-bottom: 0;
   padding-top: 1px;
 }
-#ow-device-status table{
+#ow-device-status table {
   width: 100%;
   margin: 0;
 }
@@ -34,36 +34,57 @@
   background: #f9f9f9 !important;
 }
 td.field-health_status,
-.field-health_status .readonly{
+.field-health_status .readonly {
   font-weight: bold;
   text-transform: uppercase;
 }
-.health-unknown{ color: grey }
-.health-ok{ color: green }
-.health-problem{ color: orange }
-.health-critical{ color: red }
-#ow-device-status table.addresses td{ width: 50% }
+.health-unknown {
+  color: grey;
+}
+.health-ok {
+  color: green;
+}
+.health-problem {
+  color: orange;
+}
+.health-critical {
+  color: red;
+}
+#ow-device-status table.addresses td {
+  width: 50%;
+}
 .wifi-clients th.ht,
 .wifi-clients th.vht,
 .wifi-clients th.wmm,
 .wifi-clients th.wds,
-.wifi-clients th.wps{
+.wifi-clients th.wps {
   cursor: default;
 }
 #monitoring-metric-content_type-object_id-group .inline-related h3 {
   padding: 10px 20px;
 }
-#monitoring-metric-content_type-object_id-group .djn-group-nested fieldset.djn-fieldset.module > h2,
-#monitoring-metric-content_type-object_id-group .djn-group-nested fieldset.djn-fieldset.module .djn-inline-form > h3{
+#monitoring-metric-content_type-object_id-group
+  .djn-group-nested
+  fieldset.djn-fieldset.module
+  > h2,
+#monitoring-metric-content_type-object_id-group
+  .djn-group-nested
+  fieldset.djn-fieldset.module
+  .djn-inline-form
+  > h3 {
   display: none;
 }
-#monitoring-metric-content_type-object_id-group{
+#monitoring-metric-content_type-object_id-group {
   padding-top: 0 !important;
 }
 .form-row.field-health_checks div.readonly {
   margin-left: 0px !important;
 }
-.form-row.field-health_checks div div.flex-container div.readonly ul.health_checks {
+.form-row.field-health_checks
+  div
+  div.flex-container
+  div.readonly
+  ul.health_checks {
   margin-left: 0px !important;
   padding-left: 0px !important;
 }

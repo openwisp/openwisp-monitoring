@@ -40,7 +40,7 @@
   left: 49%;
 }
 #device-map-container .leaflet-interactive:focus {
-  outline: none
+  outline: none;
 }
 #leaflet-config {
   display: none;
