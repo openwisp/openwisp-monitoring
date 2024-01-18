@@ -779,7 +779,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             self.assertIsInstance(mobile_data['signal']['lte']['snr'], float)
             self.assertDictEqual(
                 mobile_data['signal'],
-                {'lte': {'rsrp': -75.00, 'rsrq': -8.00, 'rssi': -51.00, 'snr': 13.00}}
+                {'lte': {'rsrp': -75.00, 'rsrq': -8.00, 'rssi': -51.00, 'snr': 13.00}},
             )
 
     def test_empty_mobile_signal_data(self):
