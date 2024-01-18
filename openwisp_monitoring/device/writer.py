@@ -179,15 +179,15 @@ class DeviceDataWriter(object):
     def _get_mobile_signal_type(self, signal):
         if not signal:
             return
-        # if only one access technology in use, return that
+        access_techs = list(ACCESS_TECHNOLOGIES.keys())
+        access_techs.reverse()
+        # if only one access technology is in use, return that
         sections = list(signal.keys())
         if len(sections) == 1:
-            return sections[0]
-        # if multiple access technologies are in use,
-        # return the most advanced one
-        access_technologies = list(ACCESS_TECHNOLOGIES.keys())
-        access_technologies.reverse()
-        for tech in access_technologies:
+            return sections[0] if sections[0] in access_techs else None
+        # if multiple mobile access technologies are in use,
+        # return the most evolved technology in use
+        for tech in access_techs:
             if tech in signal:
                 return tech
 
