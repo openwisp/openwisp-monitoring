@@ -234,8 +234,14 @@ django.jQuery(function ($) {
             }
             createCharts(data);
           },
-          error: function () {
-            alert('Something went wrong while loading the charts');
+          error: function (response) {
+            var errorMessage = gettext('Something went wrong while loading the charts');
+            if (response.responseJSON) {
+              if (response.responseJSON.constructor === Array) {
+                errorMessage = errorMessage + ': ' + response.responseJSON.join(' ');
+              }
+            }
+            alert(errorMessage);
           },
           complete: function () {
             triggerZoomCharts('js-plotly-plot');
