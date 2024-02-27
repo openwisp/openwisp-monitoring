@@ -257,7 +257,7 @@ Run tests with:
 
 .. code-block:: shell
 
-    ./runtests.py --parallel
+    ./runtests.py  # using --parallel is not supported in this module
 
 Run quality assurance tests with:
 
