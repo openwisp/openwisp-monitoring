@@ -260,14 +260,14 @@ class DatabaseClient(object):
         if not len(result.keys()) or result.keys()[0][1] is None:
             return list(result.get_points())
         # Handles query which contains "GROUP BY TAG" clause
-        result_points = {}
+        result_points = OrderedDict()
         for (measurement, tag), group_points in result.items():
             tag_suffix = '_'.join(tag.values())
             for point in group_points:
                 values = {}
                 for key, value in point.items():
                     if key != 'time':
-                        values[f'{tag_suffix}'] = value
+                        values[tag_suffix] = value
                 values['time'] = point['time']
                 try:
                     result_points[values['time']].update(values)
