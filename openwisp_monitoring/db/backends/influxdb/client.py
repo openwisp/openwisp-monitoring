@@ -260,7 +260,7 @@ class DatabaseClient(object):
         if not len(result.keys()) or result.keys()[0][1] is None:
             return list(result.get_points())
         # Handles query which contains "GROUP BY TAG" clause
-        result_points = OrderedDict()
+        result_points = {}
         for (measurement, tag), group_points in result.items():
             tag_suffix = '_'.join(tag.values())
             for point in group_points:
