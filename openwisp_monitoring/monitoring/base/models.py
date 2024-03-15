@@ -671,7 +671,7 @@ class AbstractChart(TimeStampedEditableModel):
         params = self._get_query_params(time, start_date, end_date)
         params.update(additional_params)
         params.update({'start_date': start_date, 'end_date': end_date})
-        if not params.get('organization_id') and self.config_dict.get('filter__all__'):
+        if not params.get('organization_id') and self.config_dict.get('__all__', False):
             params['organization_id'] = ['__all__']
         return timeseries_db.get_query(
             self.type,
