@@ -27,7 +27,7 @@ if (typeof gettext === 'undefined') {
             wifiSessionLinkElement;
         wifiSessionUrl = `${wifiSessionUrl}?device=${getObjectIdFromUrl()}`;
         wifiSessionLinkElement = `
-            <div id="inline-wifisession-quick-link-container">
+            <div class="inline-quick-link-container">
                 <a href="${wifiSessionUrl}"
                     class="button"
                     id="inline-wifisession-quick-link"
