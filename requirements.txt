@@ -2,6 +2,5 @@ openwisp-controller @ https://github.com/openwisp/openwisp-controller/tarball/ma
 influxdb~=5.3.1
 django-nested-admin~=4.0.2
 netaddr~=0.8.0
-python-dateutil~=2.8.2
+python-dateutil>=2.7.0,<3.0.0
 openwisp-utils[rest] @ https://github.com/openwisp/openwisp-utils/tarball/master
-urllib3~=2.0.3
