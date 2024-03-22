@@ -197,6 +197,10 @@ django.jQuery(function ($) {
             url = `${url}&timezone=${timezone}`;
           }
         }
+        if ($('#org-selector').val()) {
+          var orgSlug = $('#org-selector').val();
+          url = `${url}&organization_slug=${orgSlug}`;
+        }
         return url;
       },
       createCharts = function (data){
@@ -212,6 +216,22 @@ django.jQuery(function ($) {
           }
           createChart(chart, data.x, htmlId, chart.title, chart.type, chartQuickLink);
         });
+      },
+      addOrganizationSelector = function (data) {
+        var orgSelector = $('#org-selector');
+        if (data.organizations === undefined) {
+          return;
+        }
+        if (orgSelector.data('select2-id') === 'org-selector') {
+          return;
+        }
+        orgSelector.parent().show();
+        orgSelector.select2({
+          data: data.organizations,
+          allowClear: true,
+          placeholder: gettext('Organization Filter')
+        });
+        orgSelector.show();
       },
       loadCharts = function (time, showLoading) {
         $.ajax(getChartFetchUrl(time), {
@@ -233,6 +253,7 @@ django.jQuery(function ($) {
               fallback.show();
             }
             createCharts(data);
+            addOrganizationSelector(data);
           },
           error: function (response) {
             var errorMessage = gettext('Something went wrong while loading the charts');
@@ -323,25 +344,31 @@ django.jQuery(function ($) {
       );
     });
     // bind export button
-    $('#ow-chart-time a.export').click(function () {
-      var time = localStorage.getItem(timeRangeKey);
-      location.href = baseUrl + time + '&csv=1';
+    $('#ow-chart-export').click(function () {
+      var queryString,
+        queryParams = {'csv': 1};
+        queryParams.time = localStorage.getItem(timeRangeKey);
       // If custom or pickerChosenLabelKey is 'Custom Range', pass pickerEndDate and pickerStartDate to csv url
       if (localStorage.getItem(isCustomDateRange) === 'true' || localStorage.getItem(pickerChosenLabelKey) === customDateRangeLabel) {
-        var startDate = localStorage.getItem(startDateTimeKey);
-        var endDate = localStorage.getItem(endDateTimeKey);
+        queryParams.start = localStorage.getItem(startDateTimeKey);
+        queryParams.end = localStorage.getItem(endDateTimeKey);
         if (localStorage.getItem(isChartZoomed) === 'true') {
-          time = localStorage.getItem(zoomtimeRangeKey);
-          endDate = localStorage.getItem(zoomEndDateTimeKey);
-          startDate = localStorage.getItem(zoomStartDateTimeKey);
+          queryParams.time = localStorage.getItem(zoomtimeRangeKey);
+          queryParams.end = localStorage.getItem(zoomEndDateTimeKey);
+          queryParams.start = localStorage.getItem(zoomStartDateTimeKey);
         }
-        var url = `${apiUrl}?start=${startDate}&end=${endDate}&csv=1`;
-        var timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         if (timezone) {
-          url = `${url}&timezone=${timezone}`;
+          queryParams.timezone = timezone;
         }
-        location.href = url;
       }
+      if ($('#org-selector').val()) {
+        queryParams.organization_slug = $('#org-selector').val();
+      }
+      queryString = Object.keys(queryParams)
+        .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(queryParams[key])}`)
+        .join('&');
+      location.href = `${apiUrl}?${queryString}`;
     });
     // fetch chart data and replace the old charts with the new ones
     function loadFetchedCharts(time){
@@ -358,5 +385,12 @@ django.jQuery(function ($) {
         },
       });
     }
+
+    $('#org-selector').change(function(){
+      loadCharts(
+        localStorage.getItem(timeRangeKey) || defaultTimeRange,
+        true
+      );
+    });
   });
 }(django.jQuery));

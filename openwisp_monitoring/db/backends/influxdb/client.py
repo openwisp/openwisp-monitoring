@@ -256,7 +256,24 @@ class DatabaseClient(object):
         return list(self.query(q, precision='s').get_points())
 
     def get_list_query(self, query, precision='s'):
-        return list(self.query(query, precision=precision).get_points())
+        result = self.query(query, precision=precision)
+        if not len(result.keys()) or result.keys()[0][1] is None:
+            return list(result.get_points())
+        # Handles query which contains "GROUP BY TAG" clause
+        result_points = {}
+        for (measurement, tag), group_points in result.items():
+            tag_suffix = '_'.join(tag.values())
+            for point in group_points:
+                values = {}
+                for key, value in point.items():
+                    if key != 'time':
+                        values[tag_suffix] = value
+                values['time'] = point['time']
+                try:
+                    result_points[values['time']].update(values)
+                except KeyError:
+                    result_points[values['time']] = values
+        return list(result_points.values())
 
     @retry
     def get_list_retention_policies(self):
@@ -329,7 +346,12 @@ class DatabaseClient(object):
             query = f'{query} LIMIT 1'
         return f"{query} tz('{timezone}')"
 
-    _group_by_regex = re.compile(r'GROUP BY time\(\w+\)', flags=re.IGNORECASE)
+    _group_by_time_tag_regex = re.compile(
+        r'GROUP BY ((time\(\w+\))(?:,\s+\w+)?)', flags=re.IGNORECASE
+    )
+    _group_by_time_regex = re.compile(r'GROUP BY time\(\w+\)\s?', flags=re.IGNORECASE)
+    _time_regex = re.compile(r'time\(\w+\)\s?', flags=re.IGNORECASE)
+    _time_comma_regex = re.compile(r'time\(\w+\),\s?', flags=re.IGNORECASE)
 
     def _group_by(self, query, time, chart_type, group_map, strip=False):
         if not self.validate_query(query):
@@ -343,7 +365,27 @@ class DatabaseClient(object):
         if 'GROUP BY' not in query.upper():
             query = f'{query} {group_by}'
         else:
-            query = re.sub(self._group_by_regex, group_by, query)
+            # The query could have GROUP BY clause for a TAG
+            if group_by:
+                # The query already contains "GROUP BY", therefore
+                # we remove it from the "group_by" to avoid duplicating
+                # "GROUP BY"
+                group_by = group_by.replace('GROUP BY ', '')
+                # We only need to substitute the time function.
+                # The resulting query would be "GROUP BY time(<group_by>), <tag>"
+                query = re.sub(self._time_regex, group_by, query)
+            else:
+                # The query should not include the "GROUP by time()"
+                matches = re.search(self._group_by_time_tag_regex, query)
+                group_by_fields = matches.group(1)
+                if len(group_by_fields.split(',')) > 1:
+                    # If the query has "GROUP BY time(), tag",
+                    # then return "GROUP BY tag"
+                    query = re.sub(self._time_comma_regex, '', query)
+                else:
+                    # If the query has only has "GROUP BY time()",
+                    # then remove the "GROUP BY" clause
+                    query = re.sub(self._group_by_time_regex, '', query)
         return query
 
     _fields_regex = re.compile(

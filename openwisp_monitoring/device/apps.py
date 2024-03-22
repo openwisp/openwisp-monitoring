@@ -415,8 +415,11 @@ class DeviceMonitoringConfig(AppConfig):
                     'monitoring/css/percircle.min.css',
                     'monitoring/css/chart.css',
                     'monitoring/css/dashboard-chart.css',
+                    'admin/css/vendor/select2/select2.min.css',
+                    'admin/css/autocomplete.css',
                 ),
                 'js': (
+                    'admin/js/vendor/select2/select2.full.min.js',
                     'monitoring/js/lib/moment.min.js',
                     'monitoring/js/lib/daterangepicker.min.js',
                     'monitoring/js/lib/percircle.min.js',

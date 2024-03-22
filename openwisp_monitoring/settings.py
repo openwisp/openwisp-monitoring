@@ -28,3 +28,4 @@ CACHE_TIMEOUT = get_settings_value(
     'CACHE_TIMEOUT',
     24 * 60 * 60,  # 24 hours in seconds
 )
+DEFAULT_CHART_TIME = get_settings_value('DEFAULT_CHART_TIME', '7d')

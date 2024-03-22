@@ -190,6 +190,48 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         self.assertIn(str(last30d)[0:10], q)
         self.assertIn('group by time(24h)', q.lower())
 
+    def test_group_by_tags(self):
+        self.assertEqual(
+            timeseries_db._group_by(
+                'SELECT COUNT(item) FROM measurement GROUP BY time(1d)',
+                time='30d',
+                chart_type='stackedbar+lines',
+                group_map={'30d': '30d'},
+                strip=False,
+            ),
+            'SELECT COUNT(item) FROM measurement GROUP BY time(30d)',
+        )
+        self.assertEqual(
+            timeseries_db._group_by(
+                'SELECT COUNT(item) FROM measurement GROUP BY time(1d)',
+                time='30d',
+                chart_type='stackedbar+lines',
+                group_map={'30d': '30d'},
+                strip=True,
+            ),
+            'SELECT COUNT(item) FROM measurement ',
+        )
+        self.assertEqual(
+            timeseries_db._group_by(
+                'SELECT COUNT(item) FROM measurement GROUP BY time(1d), tag',
+                time='30d',
+                chart_type='stackedbar+lines',
+                group_map={'30d': '30d'},
+                strip=False,
+            ),
+            'SELECT COUNT(item) FROM measurement GROUP BY time(30d), tag',
+        )
+        self.assertEqual(
+            timeseries_db._group_by(
+                'SELECT COUNT(item) FROM measurement GROUP BY time(1d), tag',
+                time='30d',
+                chart_type='stackedbar+lines',
+                group_map={'30d': '30d'},
+                strip=True,
+            ),
+            'SELECT COUNT(item) FROM measurement GROUP BY tag',
+        )
+
     def test_retention_policy(self):
         manage_short_retention_policy()
         manage_default_retention_policy()

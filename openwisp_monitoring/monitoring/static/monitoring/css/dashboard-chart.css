@@ -1,4 +1,5 @@
 #ow-chart-inner-container {
+  margin-top: 25px;
   padding: 0px 40px;
 }
 #ow-chart-inner-container .js-plotly-plot {
@@ -7,13 +8,23 @@
 #ow-chart-inner-container .quick-link-container {
   margin-top: 10px;
 }
-#ow-chart-time {
-  margin-top: 9px;
-}
 .ow-chart:first-child {
   margin-top: 45px;
 }
 #ow-chart-contents .ow-chart + .ow-chart {
   margin-top: 23px;
   padding-top: 23px;
+}
+.select2-dropdown {
+  min-width: 200px !important;
+}
+#ow-chart-utils > span {
+  display: inline;
+  width: auto;
+}
+@media (max-width: 768px) {
+  #ow-chart-utils > span {
+    display: flex;
+    width: 100%;
+  }
 }
