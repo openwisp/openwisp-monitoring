@@ -88,14 +88,18 @@ class Ping(BaseCheck):
         command = [
             'fping',
             '-e',  # show elapsed (round-trip) time of packets
-            '-c %s' % count,  # count of pings to send to each target,
-            '-p %s' % interval,  # interval between sending pings(in ms)
-            '-b %s' % bytes_,  # amount of ping data to send
-            '-t %s' % timeout,  # individual target initial timeout (in ms)
+            '-c', str(count),  # count of pings to send to each target
+            '-p', str(interval),  # interval between sending pings (in ms)
+            '-b', str(bytes_),  # amount of ping data to send
+            '-t', str(timeout),  # individual target initial timeout (in ms)
             '-q',
-            ip,
+            ip
         ]
-        stdout, stderr = self._command(command)
+        stdout, stderr, returncode = self._command(command)
+        # Check the return code and raise an exception if it's not zero
+        if returncode not in [0, 1]:
+            message = f'fping command failed with return code {returncode}:\n\n{stderr.decode("utf8")}'
+            raise OperationalError(message)
         # fpings shows statistics on stderr
         output = stderr.decode('utf8')
         try:
@@ -148,8 +152,12 @@ class Ping(BaseCheck):
         """
         Executes command (easier to mock)
         """
-        p = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return p.stdout, p.stderr
+        try:
+            p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = p.communicate()
+            return stdout, stderr, p.returncode
+        except Exception as e:
+            return None, str(e), 99
 
     def _get_metric(self):
         """
