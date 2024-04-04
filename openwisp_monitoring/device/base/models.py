@@ -25,7 +25,7 @@ from openwisp_utils.base import TimeStampedEditableModel
 
 from ...db import device_data_query, timeseries_db
 from ...monitoring.signals import threshold_crossed
-from ...monitoring.tasks import timeseries_write
+from ...monitoring.tasks import _timeseries_write
 from ...settings import CACHE_TIMEOUT
 from .. import settings as app_settings
 from .. import tasks
@@ -275,7 +275,7 @@ class AbstractDeviceData(object):
         self._transform_data()
         time = time or now()
         options = dict(tags={'pk': self.pk}, timestamp=time, retention_policy=SHORT_RP)
-        timeseries_write(name=self.__key, values={'data': self.json()}, **options)
+        _timeseries_write(name=self.__key, values={'data': self.json()}, **options)
         cache_key = get_device_cache_key(device=self, context='current-data')
         # cache current data to allow getting it without querying the timeseries DB
         cache.set(
