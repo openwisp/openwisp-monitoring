@@ -35,7 +35,7 @@ from ..configuration import (
 )
 from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
 from ..signals import pre_metric_write, threshold_crossed
-from ..tasks import delete_timeseries, timeseries_batch_write, timeseries_write
+from ..tasks import _timeseries_batch_write, _timeseries_write, delete_timeseries
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -457,7 +457,7 @@ class AbstractMetric(TimeStampedEditableModel):
                     {'value': extra_values[self.alert_field]}
                 )
         if write:
-            timeseries_write(name=self.key, values=values, **options)
+            _timeseries_write(name=self.key, values=values, **options)
         return {'name': self.key, 'values': values, **options}
 
     @classmethod
@@ -469,7 +469,7 @@ class AbstractMetric(TimeStampedEditableModel):
                 write_data.append(metric.write(**kwargs, write=False))
             except ValueError as error:
                 error_dict[metric.key] = str(error)
-        timeseries_batch_write(write_data)
+        _timeseries_batch_write(write_data)
         if error_dict:
             raise ValueError(error_dict)
 
