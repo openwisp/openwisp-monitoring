@@ -553,6 +553,10 @@ class AbstractChart(TimeStampedEditableModel):
         return self.config_dict.get('trace_order', [])
 
     @property
+    def trace_labels(self):
+        return self.config_dict.get('trace_labels', {})
+
+    @property
     def calculate_total(self):
         return self.config_dict.get('calculate_total', False)
 
