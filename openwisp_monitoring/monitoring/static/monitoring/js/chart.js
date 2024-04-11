@@ -162,7 +162,7 @@
                     total[j] += data.traces[i][1][j];
                 }
             }
-            data.traces.push(["total", total]);
+            data.traces.push(['total', total]);
             data.summary.total = Object.values(data.summary).reduce(function (a, b) {
                 return a + b;
             }, 0);
