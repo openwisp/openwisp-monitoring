@@ -46,7 +46,7 @@ class TestAdmin(
     """
 
     resources_fields = TestImportExportMixin.resource_fields
-    resources_fields.append('monitoring__status')
+    resources_fields.append('monitoring_status')
     app_label = 'config'
     _device_params = {
         'group': '',

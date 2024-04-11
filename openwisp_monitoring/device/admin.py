@@ -21,14 +21,13 @@ from nested_admin.nested import (
 from swapper import load_model
 
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
-from openwisp_controller.config.admin import DeviceResource as BaseDeviceResource
 from openwisp_users.multitenancy import MultitenantAdminMixin
 from openwisp_utils.admin import ReadOnlyAdmin
 
 from ..monitoring.admin import MetricAdmin
 from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from . import settings as app_settings
-from .exportable import _exportable_fields
+from .exportable import DeviceMonitoringResource
 from .filters import DeviceFilter, DeviceGroupFilter, DeviceOrganizationFilter
 
 DeviceData = load_model('device_monitoring', 'DeviceData')
@@ -330,15 +329,8 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         return inlines
 
 
-class DeviceResource(BaseDeviceResource):
-    class Meta:
-        model = Device
-        fields = _exportable_fields
-        export_order = fields
-
-
 class DeviceAdminExportable(ImportExportMixin, DeviceAdmin):
-    resource_class = DeviceResource
+    resource_class = DeviceMonitoringResource
     # Added to support both reversion and import-export
     change_list_template = 'admin/config/change_list_device.html'
 
