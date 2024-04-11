@@ -133,6 +133,8 @@ class MonitoringApiViewMixin:
                     chart_dict['calculate_total'] = chart.calculate_total
                 if chart.connect_points:
                     chart_dict['connect_points'] = chart.connect_points
+                if chart.trace_labels:
+                    chart_dict['trace_labels'] = chart.trace_labels
             except InvalidChartConfigException:
                 logger.exception(f'Skipped chart for metric {chart.metric}')
                 continue

@@ -25,7 +25,7 @@ from openwisp_monitoring.monitoring.utils import clean_timeseries_data_key
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...db import default_chart_query, timeseries_db
-from ...settings import CACHE_TIMEOUT
+from ...settings import CACHE_TIMEOUT, DEFAULT_CHART_TIME
 from ..configuration import (
     CHART_CONFIGURATION_CHOICES,
     DEFAULT_COLORS,
@@ -495,7 +495,7 @@ class AbstractChart(TimeStampedEditableModel):
         max_length=16, null=True, choices=CHART_CONFIGURATION_CHOICES
     )
     GROUP_MAP = {'1d': '10m', '3d': '20m', '7d': '1h', '30d': '24h', '365d': '7d'}
-    DEFAULT_TIME = '7d'
+    DEFAULT_TIME = DEFAULT_CHART_TIME
 
     class Meta:
         abstract = True
@@ -553,6 +553,10 @@ class AbstractChart(TimeStampedEditableModel):
         return self.config_dict.get('trace_order', [])
 
     @property
+    def trace_labels(self):
+        return self.config_dict.get('trace_labels', {})
+
+    @property
     def calculate_total(self):
         return self.config_dict.get('calculate_total', False)
 
@@ -600,6 +604,12 @@ class AbstractChart(TimeStampedEditableModel):
         if query:
             return query[timeseries_db.backend_name]
         return self._default_query
+
+    @property
+    def summary_query(self):
+        query = self.config_dict.get('summary_query', None)
+        if query:
+            return query[timeseries_db.backend_name]
 
     @property
     def top_fields(self):
@@ -659,10 +669,14 @@ class AbstractChart(TimeStampedEditableModel):
         additional_params=None,
     ):
         query = query or self.query
+        if summary and self.summary_query:
+            query = self.summary_query
         additional_params = additional_params or {}
         params = self._get_query_params(time, start_date, end_date)
         params.update(additional_params)
         params.update({'start_date': start_date, 'end_date': end_date})
+        if not params.get('organization_id') and self.config_dict.get('__all__', False):
+            params['organization_id'] = ['__all__']
         return timeseries_db.get_query(
             self.type,
             params,

@@ -5,13 +5,19 @@
     <span id="monitoring-timeseries-api-url" data-value="{{ api_url }}"></span>
     <span id="monitoring-timeseries-original-key" data-value="{{ original.key }}"></span>
     <span id="monitoring-timeseries-default-time" data-value="{{ default_time }}"></span>
-    <div id="ow-chart-time">
-        <a class="export">{% trans 'export data' %}</a>
-
+    <div id="ow-chart-utils">
+        <span>
+            <a id="daterangepicker-widget">
+                <span class="button" ></span>
+            </a>
+            <a id="ow-chart-export" class="button export">{% trans 'export data' %}</a>
+        </span>
+        <span style="display:none";>
+            <select name="org-selector" id="org-selector">
+                <option></option>
+            </select>
+        </span>
     </div>
-    <a id="daterangepicker-widget">
-        <span></span>
-    </a>
     <div id="chart-loading-overlay"><div class="ow-loading-spinner"></div></div>
     <div id="ow-chart-contents"></div>
     <div id="ow-chart-fallback" class="form-row">
