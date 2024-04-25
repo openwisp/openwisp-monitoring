@@ -531,6 +531,8 @@ does not have list of interfaces defined in ``OPENWISP_MONITORING_DASHBOARD_TRAF
 then the **General Traffic** chart will always show data from interfaces
 of ``__all__`` configuration.
 
+.. _openwisp_monitoring_metrics:
+
 ``OPENWISP_MONITORING_METRICS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

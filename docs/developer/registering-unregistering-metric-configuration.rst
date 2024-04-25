@@ -143,7 +143,7 @@ which allows ``AlertSettings`` to check the ``threshold`` on
 is already registered with same name (not to be confused with verbose_name).
 
 If you don't need to register a new metric but need to change a specific key of an
-existing metric configuration, you can use `OPENWISP_MONITORING_METRICS <#openwisp_monitoring_metrics>`_.
+existing metric configuration, you can use :ref:`OPENWISP_MONITORING_METRICS <#openwisp_monitoring_metrics>`_.
 
 ``unregister_metric``
 ~~~~~~~~~~~~~~~~~~~~~

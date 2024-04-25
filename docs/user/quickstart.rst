@@ -23,7 +23,7 @@ on your device.
 
 These packages collect and send the
 monitoring data from the device to OpenWISP Monitoring and
-are required to collect `metrics <#openwisp_monitoring_metrics>`_
+are required to collect :ref:`metrics <#openwisp_monitoring_metrics>`_
 like interface traffic, WiFi clients, CPU load, memory usage, etc.
 
 **Note**: if you are an existing user of *openwisp-monitoring* and are using

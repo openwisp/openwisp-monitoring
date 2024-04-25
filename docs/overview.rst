@@ -67,7 +67,7 @@ Available Features
   there are also `two timeseries charts which show the total unique WiFI clients and
   the traffic flowing to the network <dashboard-monitoring-charts>`_,
   a geographic map is also available for those who use the geographic features of OpenWISP
-* Possibility to configure additional `Metrics <#openwisp_monitoring_metrics>`_ and `Charts <#openwisp_monitoring_charts>`_
+* Possibility to configure additional :ref:`Metrics <#openwisp_monitoring_metrics>`_ and `Charts <#openwisp_monitoring_charts>`_
 * Extensible active check system: it's possible to write additional checks that
   are run periodically using python classes
 * Extensible metrics and charts: it's possible to define new metrics and new charts
