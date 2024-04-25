@@ -24,9 +24,9 @@ to allow SSH access to you device from OpenWISP.
 **Note:** Make sure device connection is enabled
 & working with right update strategy i.e. ``OpenWRT SSH``.
 
-.. .. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/enable-openwrt-ssh.png
-..   :alt: Enable ssh access from openwisp to device
-..   :align: center
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/enable-openwrt-ssh.png
+  :alt: Enable ssh access from openwisp to device
+  :align: center
 
 3. Set up and configure Iperf3 server settings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -107,8 +107,8 @@ For testing purposes, you can run this check manually using the
 
 After that, you should see the iperf3 network measurements charts.
 
-.. .. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/iperf3-charts.png
-..   :alt: Iperf3 network measurement charts
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/iperf3-charts.png
+  :alt: Iperf3 network measurement charts
 
 Iperf3 check parameters
 ~~~~~~~~~~~~~~~~~~~~~~~

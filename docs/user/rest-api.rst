@@ -4,15 +4,15 @@ Rest API
 Live documentation
 ~~~~~~~~~~~~~~~~~~
 
-image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/api-doc.png
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/api-doc.png
 
 A general live API documentation (following the OpenAPI specification) at ``/api/v1/docs/``.
 
 Browsable web interface
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/api-ui-1.png
-image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/api-ui-2.png
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/api-ui-1.png
+.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/api-ui-2.png
 
 Additionally, opening any of the endpoints `listed below <#list-of-endpoints>`_
 directly in the browser will show the `browsable API interface of Django-REST-Framework
