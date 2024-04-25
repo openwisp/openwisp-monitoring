@@ -16,7 +16,7 @@ are connected to or even directly by a *device* name or ID.
   :align: center
 
 You can disable this feature by configuring
-`OPENWISP_MONITORING_WIFI_SESSIONS_ENABLED <#openwisp_monitoring_wifi_sessions_enabled>`_
+:ref:`OPENWISP_MONITORING_WIFI_SESSIONS_ENABLED <openwisp_monitoring_wifi_sessions_enabled>`
 setting.
 
 You can also view open WiFi sessions of a device directly from the device's change admin
@@ -31,7 +31,7 @@ Scheduled deletion of WiFi sessions
 OpenWISP Monitoring provides a celery task to automatically delete
 WiFi sessions older than a pre-configured number of days. In order to run this
 task periodically, you will need to configure ``CELERY_BEAT_SCHEDULE`` setting as shown
-in `setup instructions <#setup-integrate-in-an-existing-django-project>`_.
+in :ref:`setup instructions <setup-integrate-in-an-existing-django-project>`.
 
 The celery task takes only one argument, i.e. number of days. You can provide
 any number of days in `args` key while configuring ``CELERY_BEAT_SCHEDULE`` setting.

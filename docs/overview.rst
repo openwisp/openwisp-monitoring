@@ -67,13 +67,13 @@ Available Features
   there are also `two timeseries charts which show the total unique WiFI clients and
   the traffic flowing to the network <dashboard-monitoring-charts>`_,
   a geographic map is also available for those who use the geographic features of OpenWISP
-* Possibility to configure additional :ref:`Metrics <#openwisp_monitoring_metrics>`_ and `Charts <#openwisp_monitoring_charts>`_
+* Possibility to configure additional :ref:`Metrics <openwisp_monitoring_metrics>` and :ref:`Charts <openwisp_monitoring_charts>`
 * Extensible active check system: it's possible to write additional checks that
   are run periodically using python classes
 * Extensible metrics and charts: it's possible to define new metrics and new charts
 * API to retrieve the chart metrics and status information of each device
   based on `NetJSON DeviceMonitoring <http://netjson.org/docs/what.html#devicemonitoring>`_
-* `Iperf3 check <#iperf3-1>`_ that provides network performance measurements such as maximum
+* :ref:`Iperf3 check <iperf3-1>` that provides network performance measurements such as maximum
   achievable bandwidth, jitter, datagram loss etc of the openwrt device using `iperf3 utility <https://iperf.fr/>`_
 
 .. toctree::

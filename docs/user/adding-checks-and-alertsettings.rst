@@ -9,11 +9,11 @@ To add a check, you just need to select an available **check type** as shown bel
   :align: center
 
 The following example shows how to use the
-:ref:`OPENWISP_MONITORING_METRICS setting <#openwisp_monitoring_metrics>`_
-to reconfigure the system for `iperf3 check <#iperf3-1>`_ to send an alert if
+:ref:`OPENWISP_MONITORING_METRICS setting <openwisp_monitoring_metrics>`
+to reconfigure the system for :ref:`iperf3 check <iperf3-1>` to send an alert if
 the measured **TCP bandwidth** has been less than **10 Mbit/s** for more than **2 days**.
 
-1. By default, `Iperf3 checks <#iperf3-1>`_ come with default alert settings,
+1. By default, :ref:`Iperf3 checks <iperf3-1>` come with default alert settings,
 but it is easy to customize alert settings through the device page as shown below:
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-alertsettings.png

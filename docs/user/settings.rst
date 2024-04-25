@@ -108,6 +108,8 @@ This data is only used to assess the recent status of devices, keeping
 it for a long time would not add much benefit and would cost a lot more
 in terms of disk space.
 
+.. _openwisp_monitoring_auto_ping:
+
 ``OPENWISP_MONITORING_AUTO_PING``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -118,6 +120,8 @@ in terms of disk space.
 +--------------+-------------+
 
 Whether ping checks are created automatically for devices.
+
+.. _openwisp_monitoring_ping_check_config:
 
 ``OPENWISP_MONITORING_PING_CHECK_CONFIG``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -161,6 +165,8 @@ as following:
 **Note:** Above ``maximum`` and ``minimum`` values are only used for
 validating custom parameters of a ``Check`` object.
 
+.. _openwisp_monitoring_auto_device_config_check:
+
 ``OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -185,6 +191,8 @@ created automatically for newly registered devices. It's enabled by default.
 This setting allows you to configure the config check interval used by
 `config_applied <#configuration-applied>`_. By default it is set to 5 minutes.
 
+.. _openwisp_monitoring_auto_iperf3:
+
 ``OPENWISP_MONITORING_AUTO_IPERF3``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -194,8 +202,10 @@ This setting allows you to configure the config check interval used by
 | **default**: | ``False``   |
 +--------------+-------------+
 
-This setting allows you to choose whether `iperf3 <#iperf3-1>`_ checks should be
+This setting allows you to choose whether :ref:`iperf3 <iperf3-1>` checks should be
 created automatically for newly registered devices. It's disabled by default.
+
+.. _openwisp_monitoring_iperf3_check_config:
 
 ``OPENWISP_MONITORING_IPERF3_CHECK_CONFIG``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -254,7 +264,7 @@ For example, you can change the values of `supported iperf3 check parameters <#i
 +--------------+-------------------------------+
 
 This setting allows you to set whether
-`iperf3 check RSA public key <#configure-iperf3-check-for-authentication>`_
+:ref:`iperf3 check RSA public key <configure-iperf3-check-auth-parameters>`
 will be deleted after successful completion of the check or not.
 
 ``OPENWISP_MONITORING_IPERF3_CHECK_LOCK_EXPIRE``
@@ -318,6 +328,8 @@ you can use the following configuration:
         'problem': 'problem',
         'critical': 'offline'
     }
+
+.. _openwisp_monitoring_wifi_sessions_enabled:
 
 ``OPENWISP_MONITORING_WIFI_SESSIONS_ENABLED``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -493,6 +505,8 @@ being set to ``True`` (which is the default).
 You can turn this off if you do not use the geographic features
 of OpenWISP.
 
+.. _openwisp_monitoring_dashboard_traffic_chart:
+
 ``OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -625,6 +639,8 @@ call in your custom code (eg: a custom check class), you can do so as follows:
             'related_fields': ['field1', 'field2', 'field3'],
         },
     }
+
+.. _openwisp_monitoring_charts:
 
 ``OPENWISP_MONITORING_CHARTS``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -47,7 +47,7 @@ An example usage has been shown below.
 is already registered with same name (not to be confused with verbose_name).
 
 If you don't need to register a new chart but need to change a specific key of an
-existing chart configuration, you can use `OPENWISP_MONITORING_CHARTS <#openwisp_monitoring_charts>`_.
+existing chart configuration, you can use :ref:`OPENWISP_MONITORING_CHARTS <openwisp_monitoring_charts>`.
 
 ``unregister_chart``
 ~~~~~~~~~~~~~~~~~~~~

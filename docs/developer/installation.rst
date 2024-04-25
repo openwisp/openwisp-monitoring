@@ -9,6 +9,8 @@ See:
 - `ansible-openwisp2 <https://github.com/openwisp/ansible-openwisp2>`_
 - `docker-openwisp <https://github.com/openwisp/docker-openwisp>`_
 
+.. _setup-integrate-in-an-existing-django-project:
+
 Install system dependencies
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -264,4 +264,4 @@ For more info on how to configure and use Iperf3, please refer to
 `iperf3 check usage instructions <#iperf3-check-usage-instructions>`_.
 
 **Note:** Iperf3 charts uses ``connect_points=True`` in
-`default chart configuration <#openwisp_monitoring_charts>`_ that joins it's individual chart data points.
+:ref:`default chart configuration <openwisp_monitoring_charts>` that joins it's individual chart data points.
