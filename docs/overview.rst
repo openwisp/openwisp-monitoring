@@ -1,41 +1,5 @@
-openwisp-monitoring
+OpenWISP Monitoring
 ===================
-
-.. image:: https://github.com/openwisp/openwisp-monitoring/workflows/OpenWISP%20Monitoring%20CI%20Build/badge.svg?branch=master
-    :target: https://github.com/openwisp/openwisp-monitoring/actions?query=workflow%3A%22OpenWISP+Monitoring+CI+Build%22
-    :alt: CI build status
-
-.. image:: https://coveralls.io/repos/github/openwisp/openwisp-monitoring/badge.svg?branch=master
-    :target: https://coveralls.io/github/openwisp/openwisp-monitoring?branch=master
-    :alt: Test coverage
-
-.. image:: https://img.shields.io/librariesio/github/openwisp/openwisp-monitoring
-   :target: https://libraries.io/github/openwisp/openwisp-monitoring#repository_dependencies
-   :alt: Dependency monitoring
-
-.. image:: https://badge.fury.io/py/openwisp-monitoring.svg
-    :target: http://badge.fury.io/py/openwisp-monitoring
-    :alt: pypi
-
-.. image:: https://pepy.tech/badge/openwisp-monitoring
-   :target: https://pepy.tech/project/openwisp-monitoring
-   :alt: downloads
-
-.. image:: https://img.shields.io/gitter/room/nwjs/nw.js.svg?style=flat-square
-   :target: https://gitter.im/openwisp/monitoring
-   :alt: support chat
-
-.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
-   :target: https://pypi.org/project/black/
-   :alt: code style: black
-
-.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/monitoring-demo.gif
-   :target: https://github.com/openwisp/openwisp-monitoring/tree/docs/docs/monitoring-demo.gif
-   :alt: Feature Highlights
-
-------------
-
-**Need a quick overview?** `Try the OpenWISP Demo <https://openwisp.org/demo.html>`_.
 
 OpenWISP Monitoring is a network monitoring system written in Python and Django,
 designed to be **extensible**, **programmable**, **scalable** and easy to use by end users:
@@ -112,15 +76,20 @@ Available Features
 * `Iperf3 check <#iperf3-1>`_ that provides network performance measurements such as maximum
   achievable bandwidth, jitter, datagram loss etc of the openwrt device using `iperf3 utility <https://iperf.fr/>`_
 
-------------
+.. toctree::
+   :maxdepth: 1
 
-.. contents:: **Table of Contents**:
-   :backlinks: none
-   :depth: 3
-
-------------
-
-Contributing
-------------
-
-Please refer to the `OpenWISP contributing guidelines <http://openwisp.io/docs/developer/contributing.html>`_.
+   ./user/quickstart.rst
+   ./user/passive-vs-active-metric-collection.rst
+   ./user/device-health-status.rst
+   ./user/default-metrics.rst
+   ./user/dashboard-monitoring-charts.rst
+   ./user/adaptive-size-charts.rst
+   ./user/wifi-sessions.rst
+   ./user/default-alerts-and-notifications.rst
+   ./user/available-checks.rst
+   ./user/iperf3-usage-instructions.rst
+   ./user/adding-checks-and-alertsettings.rst
+   ./user/settings.rst
+   ./user/rest-api.rst
+   ./developer/developer-docs.rst
