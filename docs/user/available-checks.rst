@@ -47,5 +47,5 @@ password, rsa_publc_key etc) using the :ref:`OPENWISP_MONITORING_IPERF3_CHECK_CO
 <#openwisp_monitoring_iperf3_check_config>`_ setting.
 
 **Note:** When setting :ref:`OPENWISP_MONITORING_AUTO_IPERF3 <openwisp_monitoring_auto_iperf3>`  to ``True``,
-you may need to update the :ref:`metric configuration <add-checks-and-alert-settings-from-the-device-page>`
+you may need to update the :ref:`metric configuration <Adding Checks and Alert settings from the device page>`
 to enable alerts for the iperf3 check.

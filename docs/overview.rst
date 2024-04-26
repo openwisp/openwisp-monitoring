@@ -38,8 +38,7 @@ see the
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/dashboard.png
   :align: center
 
-Available Features
-------------------
+**Available Features**
 
 * Collection of monitoring information in a timeseries database (currently only influxdb is supported)
 * Allows to browse alerts easily from the user interface with one click
