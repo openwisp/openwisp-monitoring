@@ -1,6 +1,8 @@
 Installation instructions
 -------------------------
 
+.. include:: /partials/developers-docs-warning.rst
+
 Deploy it in production
 ~~~~~~~~~~~~~~~~~~~~~~~
 

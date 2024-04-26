@@ -1,6 +1,8 @@
 Monitoring scripts
 ------------------
 
+.. include:: /partials/developers-docs-warning.rst
+
 Monitoring scripts are now deprecated in favour of `monitoring packages <https://github.com/openwisp/openwrt-openwisp-monitoring#openwrt-openwisp-monitoring>`_.
 Follow the migration guide in `Migrating from monitoring scripts to monitoring packages <#migrating-from-monitoring-scripts-to-monitoring-packages>`_
 section of this documentation.

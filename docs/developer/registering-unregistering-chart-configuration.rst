@@ -1,6 +1,8 @@
 Registering / Unregistering Chart Configuration
 -----------------------------------------------
 
+.. include:: /partials/developers-docs-warning.rst
+
 **OpenWISP Monitoring** provides registering and unregistering chart configuration through utility functions
 ``openwisp_monitoring.monitoring.configuration.register_chart`` and ``openwisp_monitoring.monitoring.configuration.unregister_chart``.
 Using these functions you can register or unregister chart configurations from anywhere in your code.

@@ -1,6 +1,8 @@
 Exceptions
 ----------
 
+.. include:: /partials/developers-docs-warning.rst
+
 ``TimeseriesWriteException``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

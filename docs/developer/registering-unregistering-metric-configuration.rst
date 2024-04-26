@@ -1,6 +1,8 @@
 Registering / Unregistering Metric Configuration
 ------------------------------------------------
 
+.. include:: /partials/developers-docs-warning.rst
+
 **OpenWISP Monitoring** provides registering and unregistering metric configuration through utility functions
 ``openwisp_monitoring.monitoring.configuration.register_metric`` and ``openwisp_monitoring.monitoring.configuration.unregister_metric``.
 Using these functions you can register or unregister metric configurations from anywhere in your code.

@@ -1,6 +1,8 @@
 Signals
 -------
 
+.. include:: /partials/developers-docs-warning.rst
+
 ``device_metrics_received``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

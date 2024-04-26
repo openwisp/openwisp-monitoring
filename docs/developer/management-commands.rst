@@ -1,6 +1,8 @@
 Management commands
 -------------------
 
+.. include:: /partials/developers-docs-warning.rst
+
 .. _run_checks:
 
 ``run_checks``
