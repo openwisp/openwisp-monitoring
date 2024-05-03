@@ -86,11 +86,13 @@ jobs:
           SAMPLE_APP=1 coverage run --source=openwisp_monitoring runtests.py
           coverage run -a --source=openwisp_monitoring runtests.py
           TIMESERIES_UDP=1 coverage run -a --source=openwisp_monitoring runtests.py
+          coverage xml
 
       - name: Upload Coverage
         uses: coverallsapp/github-action@v2
         with:
           parallel: true
+          format: cobertura
           flag-name: python-${{ matrix.python-version }}-${{ matrix.django-version }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
