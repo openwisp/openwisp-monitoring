@@ -9,6 +9,7 @@ from dateutil.relativedelta import relativedelta
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
@@ -453,6 +454,22 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         cls.objects.filter(device__organization_id=organization_id).update(
             status='unknown'
         )
+
+    @classmethod
+    def handle_critical_metric(cls, instance, **kwargs):
+        from openwisp_monitoring.device.settings import get_critical_device_metrics
+
+        critical_metrics = [metric['key'] for metric in get_critical_device_metrics()]
+        if instance.check_type in critical_metrics:
+            try:
+                device_monitoring = cls.objects.get(device=instance.content_object)
+                if not instance.is_active or kwargs.get('signal') == post_delete:
+                    device_monitoring.update_status('unknown')
+                    health_status_changed.send(
+                        sender=cls, instance=device_monitoring, status='unknown'
+                    )
+            except cls.DoesNotExist:
+                pass
 
 
 class AbstractWifiClient(TimeStampedEditableModel):

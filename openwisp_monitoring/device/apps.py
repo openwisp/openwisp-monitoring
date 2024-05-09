@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Count
 from django.db.models.signals import post_delete, post_save
+from django.dispatch import receiver
 from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
 from swapper import get_model_name, load_model
@@ -44,11 +45,35 @@ class DeviceMonitoringConfig(AppConfig):
         self.connect_config_status_changed()
         self.connect_wifi_client_signals()
         self.connect_offline_device_close_wifisession()
+        self.connect_check_signals()
         self.device_recovery_detection()
         self.set_update_config_model()
         self.register_dashboard_items()
         self.register_menu_groups()
         self.add_connection_ignore_notification_reasons()
+
+    def connect_check_signals(self):
+        from django.db.models.signals import post_delete, post_save
+        from swapper import load_model
+
+        Check = load_model('check', 'Check')
+        DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+
+        @receiver(post_save, sender=Check)
+        @receiver(post_delete, sender=Check)
+        def update_device_status(sender, instance, **kwargs):
+            DeviceMonitoring.handle_critical_metric(instance)
+
+        post_save.connect(
+            DeviceMonitoring.handle_critical_metric,
+            sender=Check,
+            dispatch_uid='check_post_save_receiver',
+        )
+        post_delete.connect(
+            DeviceMonitoring.handle_critical_metric,
+            sender=Check,
+            dispatch_uid='check_post_delete_receiver',
+        )
 
     def connect_device_signals(self):
         from .api.views import DeviceMetricView
