@@ -476,9 +476,13 @@ class DeviceMonitoringConfig(AppConfig):
 
 @receiver(post_save, sender=Check)
 def check_post_save_receiver(sender, instance, **kwargs):
+    if instance.is_active:
+        return
     handle_critical_check_change(instance)
 
 
 @receiver(post_delete, sender=Check)
 def check_post_delete_receiver(sender, instance, **kwargs):
-    handle_critical_check_change(instance)
+    critical_metrics = settings.OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS
+    if instance.metric.name in critical_metrics:
+        handle_critical_check_change(instance)
