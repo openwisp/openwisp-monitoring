@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Count
 from django.db.models.signals import post_delete, post_save
+from django.dispatch import receiver
 from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
 from swapper import get_model_name, load_model
@@ -26,9 +27,12 @@ from . import settings as app_settings
 from .signals import device_metrics_received, health_status_changed
 from .utils import (
     get_device_cache_key,
+    handle_critical_check_change,
     manage_default_retention_policy,
     manage_short_retention_policy,
 )
+
+Check = load_model('check', 'Check')
 
 
 class DeviceMonitoringConfig(AppConfig):
@@ -49,6 +53,19 @@ class DeviceMonitoringConfig(AppConfig):
         self.register_dashboard_items()
         self.register_menu_groups()
         self.add_connection_ignore_notification_reasons()
+        self.connect_check_signals()
+
+    def connect_check_signals(self):
+        post_save.connect(
+            check_post_save_receiver,
+            sender=Check,
+            dispatch_uid='check_post_save_receiver',
+        )
+        post_delete.connect(
+            check_post_delete_receiver,
+            sender=Check,
+            dispatch_uid='check_post_delete_receiver',
+        )
 
     def connect_device_signals(self):
         from .api.views import DeviceMetricView
@@ -455,3 +472,13 @@ class DeviceMonitoringConfig(AppConfig):
         ConnectionConfig._ignore_connection_notification_reasons.extend(
             ['timed out', 'Unable to connect']
         )
+
+
+@receiver(post_save, sender=Check)
+def check_post_save_receiver(sender, instance, **kwargs):
+    handle_critical_check_change(instance)
+
+
+@receiver(post_delete, sender=Check)
+def check_post_delete_receiver(sender, instance, **kwargs):
+    handle_critical_check_change(instance)

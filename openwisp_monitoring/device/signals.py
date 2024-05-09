@@ -8,3 +8,7 @@ device_metrics_received = Signal()
 device_metrics_received.__doc__ = """
 Providing arguments: ['instance', 'request', 'time', 'current']
 """
+device_status_unknown = Signal()
+device_status_unknown.__doc__ = """
+Providing arguments: ['instance']
+"""
