@@ -32,8 +32,6 @@ from .utils import (
     manage_short_retention_policy,
 )
 
-Check = load_model('check', 'Check')
-
 
 class DeviceMonitoringConfig(AppConfig):
     name = 'openwisp_monitoring.device'
@@ -56,15 +54,20 @@ class DeviceMonitoringConfig(AppConfig):
         self.connect_check_signals()
 
     def connect_check_signals(self):
+        from swapper import load_model
+
+        Check = load_model('check', 'Check')
+        DeviceData = load_model('device_monitoring', 'DeviceData')
+
+        @receiver(post_save, sender=Check)
+        def check_post_save_receiver(sender, instance, **kwargs):
+            if not instance.is_active:
+                handle_critical_check_change(instance)
+
         post_save.connect(
-            check_post_save_receiver,
+            DeviceData.handle_unknown_status_change,
             sender=Check,
             dispatch_uid='check_post_save_receiver',
-        )
-        post_delete.connect(
-            check_post_delete_receiver,
-            sender=Check,
-            dispatch_uid='check_post_delete_receiver',
         )
 
     def connect_device_signals(self):
@@ -472,17 +475,3 @@ class DeviceMonitoringConfig(AppConfig):
         ConnectionConfig._ignore_connection_notification_reasons.extend(
             ['timed out', 'Unable to connect']
         )
-
-
-@receiver(post_save, sender=Check)
-def check_post_save_receiver(sender, instance, **kwargs):
-    if instance.is_active:
-        return
-    handle_critical_check_change(instance)
-
-
-@receiver(post_delete, sender=Check)
-def check_post_delete_receiver(sender, instance, **kwargs):
-    critical_metrics = settings.OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS
-    if instance.metric.name in critical_metrics:
-        handle_critical_check_change(instance)
