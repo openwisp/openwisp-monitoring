@@ -27,7 +27,6 @@ from . import settings as app_settings
 from .signals import device_metrics_received, health_status_changed
 from .utils import (
     get_device_cache_key,
-    handle_critical_check_change,
     manage_default_retention_policy,
     manage_short_retention_policy,
 )
@@ -46,28 +45,36 @@ class DeviceMonitoringConfig(AppConfig):
         self.connect_config_status_changed()
         self.connect_wifi_client_signals()
         self.connect_offline_device_close_wifisession()
+        self.connect_check_signals()
         self.device_recovery_detection()
         self.set_update_config_model()
         self.register_dashboard_items()
         self.register_menu_groups()
         self.add_connection_ignore_notification_reasons()
-        self.connect_check_signals()
 
     def connect_check_signals(self):
         from swapper import load_model
 
         Check = load_model('check', 'Check')
-        DeviceData = load_model('device_monitoring', 'DeviceData')
+        DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 
         @receiver(post_save, sender=Check)
         def check_post_save_receiver(sender, instance, **kwargs):
-            if not instance.is_active:
-                handle_critical_check_change(instance)
+            DeviceMonitoring.handle_critical_metric(instance.metric)
+
+        @receiver(post_delete, sender=Check)
+        def check_post_delete_receiver(sender, instance, **kwargs):
+            DeviceMonitoring.handle_critical_metric(instance.metric)
 
         post_save.connect(
-            DeviceData.handle_unknown_status_change,
+            check_post_save_receiver,
             sender=Check,
             dispatch_uid='check_post_save_receiver',
+        )
+        post_delete.connect(
+            check_post_delete_receiver,
+            sender=Check,
+            dispatch_uid='check_post_delete_receiver',
         )
 
     def connect_device_signals(self):

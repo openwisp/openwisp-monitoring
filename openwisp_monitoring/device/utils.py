@@ -1,14 +1,8 @@
-from swapper import load_model
-
 from ..db import timeseries_db
 from . import settings as app_settings
 
 SHORT_RP = 'short'
 DEFAULT_RP = 'autogen'
-
-Device = load_model('config', 'Device')
-DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
-DeviceData = load_model('device_monitoring', 'DeviceData')
 
 
 def get_device_cache_key(device, context='react-to-updates'):
