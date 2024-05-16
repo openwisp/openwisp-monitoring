@@ -455,18 +455,25 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         )
 
     @classmethod
-    def handle_critical_metric(cls, metric):
+    def handle_critical_metric(cls, check, **kwargs):
         """
-        Updates the device status to 'unknown' if the given metric
-        is a critical metric from the CRITICAL_DEVICE_METRICS setting.
+        Updates the device status to 'unknown' if the given check
+        is for a critical metric from the CRITICAL_DEVICE_METRICS setting
+        and the check is not active.
         """
-        DeviceData = load_model('device_monitoring', 'DeviceData')
+        from django.conf import settings
 
-        if metric.name in [m['key'] for m in app_settings.CRITICAL_DEVICE_METRICS]:
-            device_data_instances = DeviceData.objects.filter(metrics=metric)
-            for device_data in device_data_instances:
-                device_monitoring = cls.objects.get(device=device_data.device)
+        critical_metrics = getattr(
+            settings,
+            'OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS',
+            [{'key': 'ping', 'field_name': 'reachable'}],
+        )
+        if check.check_type in [m['key'] for m in critical_metrics]:
+            try:
+                device_monitoring = cls.objects.get(device_id=check.object_id)
                 device_monitoring.update_status('unknown')
+            except cls.DoesNotExist:
+                pass
 
 
 class AbstractWifiClient(TimeStampedEditableModel):

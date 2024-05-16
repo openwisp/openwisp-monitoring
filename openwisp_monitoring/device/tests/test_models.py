@@ -11,6 +11,7 @@ from swapper import load_model
 
 from openwisp_controller.connection.tasks import update_config
 from openwisp_controller.connection.tests.base import CreateConnectionsMixin
+from openwisp_monitoring.check.settings import CHECK_CLASSES
 from openwisp_utils.tests import catch_signal
 
 from ...db import timeseries_db
@@ -577,6 +578,59 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
             custom_tolerance=0,
         )
         return dm, ping, load, process_count
+
+    def setUp(self):
+        from openwisp_monitoring.check.settings import CHECK_CLASSES
+
+        Check = load_model('check', 'Check')
+        self.device = self._create_device(organization=self._create_org())
+        self.ping_check = Check.objects.create(
+            name='Ping Check',
+            check_type=CHECK_CLASSES[0][0],
+            content_object=self.device,
+            params={},
+        )
+        self.device.monitoring.update_status('ok')
+
+    def test_check_signals(self):
+        with self.subTest('Test disabling a critical check'):
+            self.assertEqual(self.device.monitoring.status, 'ok')
+            with catch_signal(health_status_changed) as handler:
+                self.ping_check.is_active = False
+                self.ping_check.save()
+            self.assertEqual(handler.call_count, 1)
+            call_args = handler.call_args[0]
+            self.assertEqual(call_args[0], self.device.monitoring)
+            self.assertEqual(call_args[1], 'unknown')
+            self.device.refresh_from_db()
+            self.assertEqual(self.device.monitoring.status, 'unknown')
+            self.device.monitoring.update_status('ok')
+
+        with self.subTest('Test saving an active critical check'):
+            self.assertEqual(self.device.monitoring.status, 'ok')
+            self.ping_check.is_active = True
+            self.ping_check.save()
+            self.device.refresh_from_db()
+            self.assertEqual(self.device.monitoring.status, 'ok')
+
+        with self.subTest('Test saving a non-critical check'):
+            Check = load_model('check', 'Check')
+            self.assertEqual(self.device.monitoring.status, 'ok')
+            non_critical_check = Check.objects.create(
+                name='Configuration Applied',
+                check_type=CHECK_CLASSES[1][0],
+                content_object=self.device,
+                params={},
+            )
+            non_critical_check.save()
+            self.device.refresh_from_db()
+            self.assertEqual(self.device.monitoring.status, 'ok')
+
+        with self.subTest('Test deleting a critical check'):
+            self.device.monitoring.update_status('ok')
+            self.ping_check.delete()
+            self.device.refresh_from_db()
+            self.assertEqual(self.device.monitoring.status, 'unknown')
 
     def test_status_changed(self):
         dm, ping, load, process_count = self._create_env()
