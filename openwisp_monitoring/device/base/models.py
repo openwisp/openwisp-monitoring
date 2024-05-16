@@ -455,7 +455,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         )
 
     @classmethod
-    def handle_critical_metric(cls, check, **kwargs):
+    def handle_critical_metric(cls, instance, **kwargs):
         """
         Updates the device status to 'unknown' if the given check
         is for a critical metric from the CRITICAL_DEVICE_METRICS setting
@@ -468,9 +468,9 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
             'OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS',
             [{'key': 'ping', 'field_name': 'reachable'}],
         )
-        if check.check_type in [m['key'] for m in critical_metrics]:
+        if instance.check_type in [m['key'] for m in critical_metrics]:
             try:
-                device_monitoring = cls.objects.get(device_id=check.object_id)
+                device_monitoring = cls.objects.get(device_id=instance.object_id)
                 device_monitoring.update_status('unknown')
             except cls.DoesNotExist:
                 pass
