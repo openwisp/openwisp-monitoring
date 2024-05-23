@@ -236,22 +236,35 @@
                     let bounds = event.target.getBounds();
                     if (bounds._southWest.lng < -180 && !netjsonGraph.westWorldFeaturesAppended) {
                         let westWorldFeatures = window.structuredClone(netjsonGraph.data);
+                        // Exclude the features that may be added for the East world map
+                        westWorldFeatures.features = westWorldFeatures.features.filter(
+                            element => element.geometry.coordinates[0] <= 180
+                        );
                         westWorldFeatures.features.forEach(element => {
                             if (element.geometry) {
                                 element.geometry.coordinates[0] -= 360;
                             }
                         });
+                        // netjsonGraph.utils.appendData call the render method which
+                        // super imposes the data on the existing points on the map.
+                        netjsonGraph.leaflet.geoJSON.removeFrom(netjsonGraph.leaflet);
                         netjsonGraph.utils.appendData(westWorldFeatures, netjsonGraph);
                         netjsonGraph.westWorldFeaturesAppended = true;
 
                     }
                     if (bounds._northEast.lng > 180 && !netjsonGraph.eastWorldFeaturesAppended) {
                         let eastWorldFeatures = window.structuredClone(netjsonGraph.data);
+                        // Exclude the features that may be added for the West world map
+                        eastWorldFeatures.features = eastWorldFeatures.features.filter(
+                            element => element.geometry.coordinates[0] >= -180
+                        );
+                        window.console.log(eastWorldFeatures.features);
                         eastWorldFeatures.features.forEach(element => {
                             if (element.geometry) {
                                 element.geometry.coordinates[0] += 360;
                             }
                         });
+                        netjsonGraph.leaflet.geoJSON.removeFrom(netjsonGraph.leaflet);
                         netjsonGraph.utils.appendData(eastWorldFeatures, netjsonGraph);
                         netjsonGraph.eastWorldFeaturesAppended = true;
                     }
