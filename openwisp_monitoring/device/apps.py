@@ -5,7 +5,6 @@ from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Count
 from django.db.models.signals import post_delete, post_save
-from django.dispatch import receiver
 from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
 from swapper import get_model_name, load_model
@@ -58,11 +57,6 @@ class DeviceMonitoringConfig(AppConfig):
 
         Check = load_model('check', 'Check')
         DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
-
-        @receiver(post_save, sender=Check)
-        @receiver(post_delete, sender=Check)
-        def update_device_status(sender, instance, **kwargs):
-            DeviceMonitoring.handle_critical_metric(instance)
 
         post_save.connect(
             DeviceMonitoring.handle_critical_metric,

@@ -1,12 +1,11 @@
 from django.db import migrations
-
-from openwisp_monitoring.device.settings import get_critical_device_metrics
+from swapper import load_model
 
 
 def update_critical_device_metric_status(apps, schema_editor):
     Check = apps.get_model('check', 'Check')
-    DeviceMonitoring = apps.get_model('device_monitoring', 'DeviceMonitoring')
-    critical_metrics_keys = [metric['key'] for metric in get_critical_device_metrics()]
+    DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+    critical_metrics_keys = DeviceMonitoring._get_critical_metric_keys()
 
     for check in Check.objects.filter(
         is_active=False, check_type__in=critical_metrics_keys

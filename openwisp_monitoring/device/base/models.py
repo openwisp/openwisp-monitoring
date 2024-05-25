@@ -456,18 +456,19 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         )
 
     @classmethod
-    def handle_critical_metric(cls, instance, **kwargs):
+    def _get_critical_metric_keys(cls):
         from openwisp_monitoring.device.settings import get_critical_device_metrics
 
-        critical_metrics = [metric['key'] for metric in get_critical_device_metrics()]
+        return [metric['key'] for metric in get_critical_device_metrics()]
+
+    @classmethod
+    def handle_critical_metric(cls, instance, **kwargs):
+        critical_metrics = cls._get_critical_metric_keys()
         if instance.check_type in critical_metrics:
             try:
                 device_monitoring = cls.objects.get(device=instance.content_object)
                 if not instance.is_active or kwargs.get('signal') == post_delete:
                     device_monitoring.update_status('unknown')
-                    health_status_changed.send(
-                        sender=cls, instance=device_monitoring, status='unknown'
-                    )
             except cls.DoesNotExist:
                 pass
 
