@@ -245,9 +245,6 @@
                                 element.geometry.coordinates[0] -= 360;
                             }
                         });
-                        // netjsonGraph.utils.appendData call the render method which
-                        // super imposes the data on the existing points on the map.
-                        netjsonGraph.leaflet.geoJSON.removeFrom(netjsonGraph.leaflet);
                         netjsonGraph.utils.appendData(westWorldFeatures, netjsonGraph);
                         netjsonGraph.westWorldFeaturesAppended = true;
 
@@ -258,13 +255,11 @@
                         eastWorldFeatures.features = eastWorldFeatures.features.filter(
                             element => element.geometry.coordinates[0] >= -180
                         );
-                        window.console.log(eastWorldFeatures.features);
                         eastWorldFeatures.features.forEach(element => {
                             if (element.geometry) {
                                 element.geometry.coordinates[0] += 360;
                             }
                         });
-                        netjsonGraph.leaflet.geoJSON.removeFrom(netjsonGraph.leaflet);
                         netjsonGraph.utils.appendData(eastWorldFeatures, netjsonGraph);
                         netjsonGraph.eastWorldFeaturesAppended = true;
                     }
