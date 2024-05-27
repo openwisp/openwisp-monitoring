@@ -1,10 +1,10 @@
 Installation instructions
--------------------------
+=========================
 
 .. include:: /partials/developers-docs-warning.rst
 
 Deploy it in production
-~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------
 
 See:
 
@@ -14,12 +14,15 @@ See:
 .. _setup-integrate-in-an-existing-django-project:
 
 Install system dependencies
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------
 
 *openwisp-monitoring* uses InfluxDB to store metrics. Follow the
-`installation instructions from InfluxDB's official documentation <https://docs.influxdata.com/influxdb/v1.8/introduction/install/>`_.
+`installation instructions from InfluxDB's official documentation
+<https://docs.influxdata.com/influxdb/v1.8/introduction/install/>`_.
 
-**Note:** Only *InfluxDB 1.8.x* is supported in *openwisp-monitoring*.
+.. important::
+
+    Only *InfluxDB 1.8.x* is supported in *openwisp-monitoring*.
 
 Install system packages:
 
@@ -30,7 +33,7 @@ Install system packages:
                         fping
 
 Install stable version from PyPI
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------
 
 Install from PyPI:
 
@@ -39,7 +42,7 @@ Install from PyPI:
     pip install openwisp-monitoring
 
 Install development version
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------
 
 Install tarball:
 
@@ -53,15 +56,15 @@ Alternatively, you can install via pip using git:
 
     pip install -e git+git://github.com/openwisp/openwisp-monitoring#egg=openwisp_monitoring
 
-If you want to contribute, follow the instructions in
-`"Installing for development" <#installing-for-development>`_ section.
+If you want to contribute, follow the instructions in `"Installing for
+development" <#installing-for-development>`_ section.
 
 Installing for development
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------
 
-Install the system dependencies as mentioned in the
-`"Install system dependencies" <#install-system-dependencies>`_ section.
-Install these additional packages that are required for development:
+Install the system dependencies as mentioned in the `"Install system
+dependencies" <#install-system-dependencies>`_ section. Install these
+additional packages that are required for development:
 
 .. code-block:: shell
 
@@ -87,14 +90,16 @@ Start Redis and InfluxDB using Docker:
 
     docker-compose up -d redis influxdb
 
-Setup and activate a virtual-environment. (we'll be using  `virtualenv <https://pypi.org/project/virtualenv/>`_)
+Setup and activate a virtual-environment. (we'll be using `virtualenv
+<https://pypi.org/project/virtualenv/>`_)
 
 .. code-block:: shell
 
     python -m virtualenv env
     source env/bin/activate
 
-Make sure that you are using pip version 20.2.4 before moving to the next step:
+Make sure that you are using pip version 20.2.4 before moving to the next
+step:
 
 .. code-block:: shell
 
@@ -108,8 +113,9 @@ Install development dependencies:
     pip install -r requirements-test.txt
     npm install -g jshint stylelint
 
-Install WebDriver for Chromium for your browser version from `<https://chromedriver.chromium.org/home>`_
-and extract ``chromedriver`` to one of directories from your ``$PATH`` (example: ``~/.local/bin/``).
+Install WebDriver for Chromium for your browser version from
+https://chromedriver.chromium.org/home and extract ``chromedriver`` to one
+of directories from your ``$PATH`` (example: ``~/.local/bin/``).
 
 Create database:
 
@@ -119,7 +125,8 @@ Create database:
     ./manage.py migrate
     ./manage.py createsuperuser
 
-Run celery and celery-beat with the following commands (separate terminal windows are needed):
+Run celery and celery-beat with the following commands (separate terminal
+windows are needed):
 
 .. code-block:: shell
 
@@ -148,11 +155,13 @@ Run quality assurance tests with:
     ./run-qa-checks
 
 Install and run on docker
-~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------
 
-**Note**: This Docker image is for development purposes only.
-For the official OpenWISP Docker images, see: `docker-openwisp
-<https://github.com/openwisp/docker-openwisp>`_.
+.. note::
+
+    This Docker image is for development purposes only. For the official
+    OpenWISP Docker images, see: `docker-openwisp
+    <https://github.com/openwisp/docker-openwisp>`_.
 
 Build from the Dockerfile:
 
