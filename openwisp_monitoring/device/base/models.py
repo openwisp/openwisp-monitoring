@@ -9,7 +9,7 @@ from dateutil.relativedelta import relativedelta
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models.signals import post_delete
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
@@ -469,6 +469,8 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
                 device_monitoring = cls.objects.get(device=instance.content_object)
                 if not instance.is_active or kwargs.get('signal') == post_delete:
                     device_monitoring.update_status('unknown')
+                elif kwargs.get('signal') == post_save and instance.is_active:
+                    device_monitoring.update_status('ok')
             except cls.DoesNotExist:
                 pass
 
