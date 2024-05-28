@@ -1,35 +1,44 @@
-Rest API
-========
+Rest API Reference
+==================
+
+.. _monitoring_live_documentation:
 
 Live documentation
 ------------------
 
-.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/api-doc.png
+.. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/api-doc.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/api-doc.png
 
 A general live API documentation (following the OpenAPI specification) at
 ``/api/v1/docs/``.
 
+.. _monitoring_browsable_web_interface:
+
 Browsable web interface
 -----------------------
 
-.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/api-ui-1.png
+.. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/api-ui-1.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/api-ui-1.png
 
-.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/api-ui-2.png
+.. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/api-ui-2.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/api-ui-2.png
 
-Additionally, opening any of the endpoints `listed below
-<#list-of-endpoints>`_ directly in the browser will show the `browsable
-API interface of Django-REST-Framework
+Additionally, opening any of the endpoints :ref:`listed below
+<monitoring_rest_endpoints>` directly in the browser will show the
+`browsable API interface of Django-REST-Framework
 <https://www.django-rest-framework.org/topics/browsable-api/>`_, which
 makes it even easier to find out the details of each endpoint.
+
+.. _monitoring_rest_endpoints:
 
 List of endpoints
 -----------------
 
-Since the detailed explanation is contained in the `Live documentation
-<#live-documentation>`_ and in the `Browsable web page
-<#browsable-web-interface>`_ of each point, here we'll provide just a list
-of the available endpoints, for further information please open the URL of
-the endpoint in your browser.
+Since the detailed explanation is contained in the :ref:`Live
+documentation <monitoring_live_documentation>` and in the :ref:`Browsable
+web page <monitoring_browsable_web_interface>` of each point, here we'll
+provide just a list of the available endpoints, for further information
+please open the URL of the endpoint in your browser.
 
 Retrieve general monitoring charts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -77,19 +86,19 @@ Retrieve device charts and device status data
 The format used for Device Status is inspired by `NetJSON DeviceMonitoring
 <http://netjson.org/docs/what.html#devicemonitoring>`_.
 
-**Notes**:
+.. note::
 
-- If the request is made without ``?status=true`` the response will
-  contain only charts data and will not include any device status
-  information (current load average, ARP table, DCHP leases, etc.).
-- When retrieving chart data, the ``time`` parameter allows to specify the
-  time frame, eg:
+    - If the request is made without ``?status=true`` the response will
+      contain only charts data and will not include any device status
+      information (current load average, ARP table, DCHP leases, etc.).
+    - When retrieving chart data, the ``time`` parameter allows to specify
+      the time frame, eg:
 
-  - ``1d``: returns data of the last day
-  - ``3d``: returns data of the last 3 days
-  - ``7d``: returns data of the last 7 days
-  - ``30d``: returns data of the last 30 days
-  - ``365d``: returns data of the last 365 days
+          - ``1d``: returns data of the last day
+          - ``3d``: returns data of the last 3 days
+          - ``7d``: returns data of the last 7 days
+          - ``30d``: returns data of the last 30 days
+          - ``365d``: returns data of the last 365 days
 
 - In alternative to ``time`` it is possible to request chart data for a
   custom date range by using the ``start`` and ``end`` parameters, eg:
@@ -98,7 +107,7 @@ The format used for Device Status is inspired by `NetJSON DeviceMonitoring
   and device status information (only if ``?status=true``).
 - This endpoint can be accessed with session authentication, token
   authentication, or alternatively with the device key passed as query
-  string parameter as shown below (`?key={key}`); note: this method is
+  string parameter as shown below (``?key={key}``); note: this method is
   meant to be used by the devices.
 
 .. code-block:: text
@@ -117,14 +126,14 @@ List device monitoring information
 
     GET /api/v1/monitoring/device/
 
-**Notes**:
+.. note::
 
-- The response contains device information and monitoring status (health
-  status), but it does not include the information and health status of
-  the specific metrics, this information can be retrieved in the detail
-  endpoint of each device.
-- This endpoint can be accessed with session authentication and token
-  authentication.
+    - The response contains device information and monitoring status
+      (health status), but it does not include the information and health
+      status of the specific metrics, this information can be retrieved in
+      the detail endpoint of each device.
+    - This endpoint can be accessed with session authentication and token
+      authentication.
 
 **Available filters**
 
@@ -242,8 +251,8 @@ Here's a few examples:
 
 .. note::
 
-    Both `start_time` and `stop_time` support greater than or equal to, as
-    well as less than or equal to, filter lookups.
+    Both ``start_time`` and ``stop_time`` support greater than or equal
+    to, as well as less than or equal to, filter lookups.
 
 For example:
 

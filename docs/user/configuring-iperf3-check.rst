@@ -1,5 +1,5 @@
-Iperf3 Check Usage Instructions
-===============================
+Configuring Iperf3 Check
+========================
 
 1. Make sure iperf3 is installed on the device
 ----------------------------------------------
@@ -16,17 +16,17 @@ device, eg:
 2. Ensure SSH access from OpenWISP is enabled on your devices
 -------------------------------------------------------------
 
-Follow the steps in `"How to configure push updates" section of the
-OpenWISP documentation
-<https://openwisp.io/docs/user/configure-push-updates.html>`_ to allow SSH
+Follow the steps in :ref:`"Configuring Push Operations"
+<configuring_push_operations>` section of the documentation to allow SSH
 access to you device from OpenWISP.
 
-.. note::
+.. important::
 
     Make sure device connection is enabled & working with right update
     strategy i.e. ``OpenWRT SSH``.
 
-.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/enable-openwrt-ssh.png
+.. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/enable-openwrt-ssh.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/enable-openwrt-ssh.png
     :alt: Enable ssh access from openwisp to device
     :align: center
 
@@ -113,8 +113,11 @@ run this check manually using the :ref:`run_checks <run_checks>` command.
 
 After that, you should see the iperf3 network measurements charts.
 
-.. image:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/iperf3-charts.png
+.. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/iperf3-charts.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/iperf3-charts.png
     :alt: Iperf3 network measurement charts
+
+.. _iperf3_check_parameters:
 
 Iperf3 check parameters
 -----------------------
@@ -203,9 +206,8 @@ Server side
 
 After running the commands mentioned above, the public key will be stored
 in ``public_key.pem`` which will be used in **rsa_public_key** parameter
-in :ref:`OPENWISP_MONITORING_IPERF3_CHECK_CONFIG
-<openwisp_monitoring_iperf3_check_config>` and the private key will be
-contained in the file ``private_key.pem`` which will be used with
+in :ref:`openwisp_monitoring_iperf3_check_config` and the private key will
+be contained in the file ``private_key.pem`` which will be used with
 **--rsa-private-key-path** command option when starting the iperf3 server.
 
 2. Create user credentials
@@ -253,14 +255,13 @@ You may also check your installed **iperf3 openwrt package** features:
     Optional features available: CPU affinity setting, IPv6 flow label, TCP congestion algorithm setting,
     sendfile / zerocopy, socket pacing, authentication # contains 'authentication'
 
-.. _configure-iperf3-check-auth-parameters:
+.. _configure_iperf3_check_auth_parameters:
 
 2. Configure iperf3 check auth parameters
 +++++++++++++++++++++++++++++++++++++++++
 
 Now, add the following iperf3 authentication parameters to
-:ref:`OPENWISP_MONITORING_IPERF3_CHECK_CONFIG
-<openwisp_monitoring_iperf3_check_config>` in the settings:
+:ref:`openwisp_monitoring_iperf3_check_config` in the settings:
 
 .. code-block:: python
 

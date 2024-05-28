@@ -9,10 +9,12 @@ You can filter both currently open sessions and past sessions by their
 *start* or *stop* time or *organization* or *group* of the device clients
 are connected to or even directly by a *device* name or ID.
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/wifi-session-changelist.png
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/wifi-session-changelist.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/wifi-session-changelist.png
     :align: center
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/wifi-session-change.png
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/wifi-session-change.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/wifi-session-change.png
     :align: center
 
 You can disable this feature by configuring
@@ -22,11 +24,21 @@ You can disable this feature by configuring
 You can also view open WiFi sessions of a device directly from the
 device's change admin under the "WiFi Sessions" tab.
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/device-wifi-session-inline.png
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/device-wifi-session-inline.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/device-wifi-session-inline.png
     :align: center
 
 Scheduled deletion of WiFi sessions
 -----------------------------------
+
+.. note::
+
+    If you have deployed OpenWISP using `ansible-openwisp2
+    <https://github.com/openwisp/ansible-openwisp2>`_ or `docker-openwisp
+    <https://github.com/openwisp/docker-openwisp>`_, then this feature has
+    been already configured for you. This section is only for reference
+    for users who wish to customize OpenWISP, or who have deployed
+    OpenWISP in a different way.
 
 OpenWISP Monitoring provides a celery task to automatically delete WiFi
 sessions older than a pre-configured number of days. In order to run this

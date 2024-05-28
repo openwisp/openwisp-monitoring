@@ -1,7 +1,8 @@
 Dashboard Monitoring Charts
 ===========================
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/dashboard-charts.png
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/dashboard-charts.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/dashboard-charts.png
     :align: center
 
 OpenWISP Monitoring adds two timeseries charts to the admin dashboard:

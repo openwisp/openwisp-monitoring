@@ -9,20 +9,21 @@ page**.
 To add a check, you just need to select an available **check type** as
 shown below:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-check.png
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/device-inline-check.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/device-inline-check.png
     :align: center
 
 The following example shows how to use the
-:ref:`OPENWISP_MONITORING_METRICS setting <openwisp_monitoring_metrics>`
-to reconfigure the system for :ref:`iperf3 check <iperf3-1>` to send an
-alert if the measured **TCP bandwidth** has been less than **10 Mbit/s**
-for more than **2 days**.
+:ref:`openwisp_monitoring_metrics` setting to reconfigure the system for
+:ref:`iperf3 check <iperf3_check>` to send an alert if the measured **TCP
+bandwidth** has been less than **10Mbit/s** for more than **2 days**.
 
-1. By default, :ref:`Iperf3 checks <iperf3-1>` come with default alert
+1. By default, :ref:`Iperf3 checks <iperf3_check>` come with default alert
 settings, but it is easy to customize alert settings through the device
 page as shown below:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/device-inline-alertsettings.png
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/device-inline-alertsettings.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/device-inline-alertsettings.png
     :align: center
 
 2. Now, add the following notification configuration to send an alert for
@@ -64,10 +65,12 @@ page as shown below:
         },
     }
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_warn.png
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/alert_field_warn.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/alert_field_warn.png
     :align: center
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/alert_field_info.png
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/alert_field_info.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/alert_field_info.png
     :align: center
 
 .. note::
@@ -77,5 +80,6 @@ page as shown below:
     included by default in the "Administrator" and "Operator" groups and
     are shown in the screenshot below.
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/inline-permissions.png
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/inline-permissions.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/inline-permissions.png
     :align: center

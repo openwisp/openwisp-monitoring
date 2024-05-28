@@ -1,49 +1,28 @@
 Quickstart Guide
 ================
 
-Install OpenWISP Monitoring
----------------------------
-
-Install *OpenWISP Monitoring* using one of the methods mentioned in the
-`"Installation instructions" <#installation-instructions>`_.
-
-Install openwisp-config on the device
--------------------------------------
-
-`Install the openwisp-config agent for OpenWrt
-<https://github.com/openwisp/openwisp-config#install-precompiled-package>`_
-on your device.
-
 Install monitoring packages on the device
 -----------------------------------------
 
 `Install the openwrt-openwisp-monitoring packages
-<https://github.com/openwisp/openwrt-openwisp-monitoring/tree/master#install-pre-compiled-packages>`_
+<https://github.com/openwisp/openwrt-openwisp-monitoring/tree/0.1.0#install-pre-compiled-packages>`_
 on your device.
 
 These packages collect and send the monitoring data from the device to
-OpenWISP Monitoring and are required to collect :ref:`metrics
-<openwisp_monitoring_metrics>` like interface traffic, WiFi clients, CPU
-load, memory usage, etc.
+OpenWISP Monitoring and are required to collect :doc:`metrics <./metrics>`
+like interface traffic, WiFi clients, CPU load, memory usage, etc.
 
-.. note::
-
-    If you are an existing user of *openwisp-monitoring* and are using the
-    legacy *monitoring template* for collecting metrics, we highly
-    recommend `Migrating from monitoring scripts to monitoring packages
-    <#migrating-from-monitoring-scripts-to-monitoring-packages>`_.
+.. _openwisp_reach_devices:
 
 Make sure OpenWISP can reach your devices
 -----------------------------------------
 
-In order to perform `active checks <#available-checks>`_ and other actions
-like `triggering the push of configuration changes
-<https://github.com/openwisp/openwisp-controller#how-to-configure-push-updates>`_,
-`executing shell commands
-<https://github.com/openwisp/openwisp-controller#sending-commands-to-devices>`_
-or `performing firmware upgrades
-<https://github.com/openwisp/openwisp-firmware-upgrader#perform-a-firmware-upgrade-to-a-specific-device>`_,
-**the OpenWISP server needs to be able to reach the network devices**.
+In order to perform :doc:`active checks <./checks>` and other actions like
+:ref:`triggering the push of configuration changes
+<configuring_push_operations>`, :ref:`executing shell commands
+<sending_commands_to_devices>`, or :ref:`performing firmware upgrades
+<Firmware Upgrades>`, **the OpenWISP server needs to be able to reach the
+network devices**.
 
 There are mainly two deployment scenarios for OpenWISP:
 
@@ -61,15 +40,15 @@ This is the most common scenario:
 
 - the OpenWISP server is deployed to the public internet, hence the server
   has a public IPv4 (and IPv6) address and usually a valid SSL certificate
-  provided by Mozilla Letsencrypt or another SSL provider
+  provided by Let's Encrypt or another SSL provider
 - the network devices are geographically distributed across different
   locations (different cities, different regions, different countries)
 
 In this scenario, the OpenWISP application will not be able to reach the
 devices **unless a management tunnel** is used, for that reason having a
-management VPN like OpenVPN, Wireguard or any other tunneling solution is
-paramount, not only to allow OpenWISP to work properly, but also to be
-able to perform debugging and troubleshooting when needed.
+management VPN like OpenVPN, Wireguard, ZeroTier or any other tunneling
+solution is paramount, not only to allow OpenWISP to work properly, but
+also to be able to perform debugging and troubleshooting when needed.
 
 In this scenario, the following requirements are needed:
 
@@ -77,9 +56,8 @@ In this scenario, the following requirements are needed:
   reach the VPN peers, for more information on how to do this via OpenWISP
   please refer to the following sections:
 
-  - `OpenVPN tunnel automation <https://openwisp.io/docs/user/vpn.html>`_
-  - `Wireguard tunnel automation
-    <https://github.com/openwisp/openwisp-controller#how-to-setup-wireguard-tunnels>`_
+  - :ref:`OpenVPN tunnel automation <openvpn_tunnel_automation>`
+  - :ref:`Wireguard tunnel automation <automating_wireguard_tunnels>`
 
   If you prefer to use other tunneling solutions (L2TP, Softether, etc.)
   and know how to configure those solutions on your own, that's totally
@@ -94,8 +72,7 @@ In this scenario, the following requirements are needed:
 
 - The devices must be configured to join the management tunnel
   automatically, either via a pre-existing configuration in the firmware
-  or via an `OpenWISP Template
-  <https://openwisp.io/docs/user/templates.html>`_.
+  or via an :ref:`OpenWISP Template <configuration_templates>`.
 - The `openwisp-config <https://github.com/openwisp/openwisp-config>`_
   agent on the devices must be configured to specify the
   ``management_interface`` option, the agent will communicate the IP of
@@ -122,15 +99,5 @@ LAN address, OpenWISP can then use the **Last IP** field of the devices to
 reach them.
 
 In this scenario it's necessary to set the
-`"OPENWISP_MONITORING_MANAGEMENT_IP_ONLY"
-<#openwisp-monitoring-management-ip-only>`_ setting to ``False``.
-
-Creating checks for a device
-----------------------------
-
-By default, the `active checks <#available-checks>`_ are created
-automatically for all devices, unless the automatic creation of some
-specific checks has been disabled, for more information on how to do this,
-refer to the `active checks <#available-checks>`_ section.
-
-These checks are created and executed in the background by celery workers.
+:ref:`"OPENWISP_MONITORING_MANAGEMENT_IP_ONLY"
+<openwisp_monitoring_management_ip_only>` setting to ``False``.

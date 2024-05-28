@@ -1,6 +1,10 @@
 Settings
 ========
 
+.. include:: /partials/settings-note.rst
+
+.. _timeseries_database:
+
 ``TIMESERIES_DATABASE``
 -----------------------
 
@@ -82,13 +86,15 @@ Timeseries database options
         database = "openwisp2"
         retention-policy = 'short'
 
-If you are using `ansible-openwisp2
-<https://github.com/openwisp/ansible-openwisp2>`_ for deploying OpenWISP,
-you can set the ``influxdb_udp_mode`` ansible variable to ``true`` in your
-playbook, this will make the ansible role automatically configure the
-InfluxDB UDP listeners. You can refer to the `ansible-ow-influxdb's
-<https://github.com/openwisp/ansible-ow-influxdb#role-variables>`_ (a
-dependency of ansible-openwisp2) documentation to learn more.
+    If you are using `ansible-openwisp2
+    <https://github.com/openwisp/ansible-openwisp2>`_ for deploying OpenWISP,
+    you can set the ``influxdb_udp_mode`` ansible variable to ``true`` in your
+    playbook, this will make the ansible role automatically configure the
+    InfluxDB UDP listeners. You can refer to the `ansible-ow-influxdb's
+    <https://github.com/openwisp/ansible-ow-influxdb#role-variables>`_ (a
+    dependency of ansible-openwisp2) documentation to learn more.
+
+.. _openwisp_monitoring_default_retention_policy:
 
 ``OPENWISP_MONITORING_DEFAULT_RETENTION_POLICY``
 ------------------------------------------------
@@ -99,6 +105,8 @@ dependency of ansible-openwisp2) documentation to learn more.
 ============ ========================
 
 The default retention policy that applies to the timeseries data.
+
+.. _openwisp_monitoring_short_retention_policy:
 
 ``OPENWISP_MONITORING_SHORT_RETENTION_POLICY``
 ----------------------------------------------
@@ -182,9 +190,11 @@ following:
 **default**: ``True``
 ============ ========
 
-This setting allows you to choose whether `config_applied
-<#configuration-applied>`_ checks should be created automatically for
+This setting allows you to choose whether :ref:`config_applied
+<config_applied_check>` checks should be created automatically for
 newly registered devices. It's enabled by default.
+
+.. _openwisp_monitoring_config_check_interval:
 
 ``OPENWISP_MONITORING_CONFIG_CHECK_INTERVAL``
 ---------------------------------------------
@@ -195,7 +205,7 @@ newly registered devices. It's enabled by default.
 ============ =======
 
 This setting allows you to configure the config check interval used by
-`config_applied <#configuration-applied>`_. By default it is set to 5
+:ref:`config_applied <config_applied_check>`. By default it is set to 5
 minutes.
 
 .. _openwisp_monitoring_auto_iperf3:
@@ -208,8 +218,8 @@ minutes.
 **default**: ``False``
 ============ =========
 
-This setting allows you to choose whether :ref:`iperf3 <iperf3-1>` checks
-should be created automatically for newly registered devices. It's
+This setting allows you to choose whether :ref:`iperf3 <iperf3_check>`
+checks should be created automatically for newly registered devices. It's
 disabled by default.
 
 .. _openwisp_monitoring_iperf3_check_config:
@@ -226,8 +236,8 @@ This setting allows to override the default iperf3 check configuration
 defined in
 ``openwisp_monitoring.check.classes.iperf3.DEFAULT_IPERF3_CHECK_CONFIG``.
 
-For example, you can change the values of `supported iperf3 check
-parameters <#iperf3-check-parameters>`_.
+For example, you can change the values of :ref:`supported iperf3 check
+parameters <iperf3_check_parameters>`.
 
 .. code-block:: python
 
@@ -271,7 +281,7 @@ parameters <#iperf3-check-parameters>`_.
 ============ ========
 
 This setting allows you to set whether :ref:`iperf3 check RSA public key
-<configure-iperf3-check-auth-parameters>` will be deleted after successful
+<configure_iperf3_check_auth_parameters>` will be deleted after successful
 completion of the check or not.
 
 ``OPENWISP_MONITORING_IPERF3_CHECK_LOCK_EXPIRE``
@@ -287,6 +297,8 @@ check when running on multiple servers. Make sure it is always greater
 than the total iperf3 check time, i.e. greater than the TCP + UDP test
 time. By default, it is set to **600 seconds (10 mins)**.
 
+.. _openwisp_monitoring_auto_charts:
+
 ``OPENWISP_MONITORING_AUTO_CHARTS``
 -----------------------------------
 
@@ -297,6 +309,8 @@ time. By default, it is set to **600 seconds (10 mins)**.
 ============ ======================================================
 
 Automatically created charts.
+
+.. _openwisp_monitoring_critical_device_metrics:
 
 ``OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS``
 -----------------------------------------------
@@ -314,6 +328,8 @@ status of the device related to the metric moves into ``CRITICAL``.
 
 By default, if devices are not reachable by pings they are flagged as
 ``CRITICAL``.
+
+.. _openwisp_monitoring_health_status_labels:
 
 ``OPENWISP_MONITORING_HEALTH_STATUS_LABELS``
 --------------------------------------------
@@ -346,8 +362,9 @@ want to use ``online`` instead of ``ok`` and ``offline`` instead of
 **default**: ``True``
 ============ ========
 
-Setting this to ``False`` will disable `Monitoring Wifi Sessions
-<#monitoring-wifi-sessions>`_ feature.
+Setting this to ``False`` will disable :doc:`wifi-sessions` feature.
+
+.. _openwisp_monitoring_management_ip_only:
 
 ``OPENWISP_MONITORING_MANAGEMENT_IP_ONLY``
 ------------------------------------------
@@ -367,10 +384,12 @@ layer2 network, hence the OpenWSP server can reach the devices using the
 .. note::
 
     If this setting is not configured, it will fallback to the value of
-    `OPENWISP_CONTROLLER_MANAGEMENT_IP_ONLY setting
-    <https://github.com/openwisp/openwisp-controller#openwisp_controller_management_ip_only>`_.
+    :ref:`OPENWISP_CONTROLLER_MANAGEMENT_IP_ONLY setting
+    <openwisp_controller_management_ip_only>`.
     If ``OPENWISP_CONTROLLER_MANAGEMENT_IP_ONLY`` also not configured,
     then it will fallback to ``True``.
+
+.. _openwisp_monitoring_device_recovery_detection:
 
 ``OPENWISP_MONITORING_DEVICE_RECOVERY_DETECTION``
 -------------------------------------------------
@@ -394,6 +413,8 @@ monitoring checks. For more information see: `Network Topology Device
 Integration
 <https://github.com/openwisp/openwisp-network-topology#integration-with-openwisp-controller-and-openwisp-monitoring>`_
 
+.. _openwisp_monitoring_mac_vendor_detection:
+
 ``OPENWISP_MONITORING_MAC_VENDOR_DETECTION``
 --------------------------------------------
 
@@ -407,6 +428,8 @@ information by performing lookups on the OUI (Organization Unique
 Identifier) table.
 
 This feature is enabled by default.
+
+.. _openwisp_monitoring_write_retry_options:
 
 ``OPENWISP_MONITORING_WRITE_RETRY_OPTIONS``
 -------------------------------------------
@@ -447,6 +470,8 @@ documentation regarding automatic retries for known errors
     to the timeseries database. It is due to the nature of ``UDP``
     protocol which does not acknowledge receipt of data packets.
 
+.. _openwisp_monitoring_timeseries_retry_options:
+
 ``OPENWISP_MONITORING_TIMESERIES_RETRY_OPTIONS``
 ------------------------------------------------
 
@@ -476,6 +501,8 @@ fail.
 However these retries are not handled by celery but are simple python
 loops, which will eventually give up if a problem persists.
 
+.. _openwisp_monitoring_timeseries_retry_delay:
+
 ``OPENWISP_MONITORING_TIMESERIES_RETRY_DELAY``
 ----------------------------------------------
 
@@ -491,6 +518,8 @@ This retry setting is used in retry mechanism to make the requests to the
 timeseries database resilient.
 
 This setting is independent of celery retry settings.
+
+.. _openwisp_monitoring_dashboard_map:
 
 ``OPENWISP_MONITORING_DASHBOARD_MAP``
 -------------------------------------
@@ -715,6 +744,8 @@ do it:
         "traffic": {"colors": ["#000000", "#cccccc", "#111111"]}
     }
 
+.. _openwisp_monitoring_default_chart_time:
+
 ``OPENWISP_MONITORING_DEFAULT_CHART_TIME``
 ------------------------------------------
 
@@ -726,6 +757,8 @@ do it:
 
 Allows to set the default time period of the time series charts.
 
+.. _openwisp_monitoring_auto_clear_management_ip:
+
 ``OPENWISP_MONITORING_AUTO_CLEAR_MANAGEMENT_IP``
 ------------------------------------------------
 
@@ -736,6 +769,8 @@ Allows to set the default time period of the time series charts.
 
 This setting allows you to automatically clear management_ip of a device
 when it goes offline. It is enabled by default.
+
+.. _openwisp_monitoring_api_urlconf:
 
 ``OPENWISP_MONITORING_API_URLCONF``
 -----------------------------------
@@ -749,6 +784,8 @@ Changes the urlconf option of django urls to point the monitoring API urls
 to another installed module, example, ``myapp.urls``. (Useful when you
 have a seperate API instance.)
 
+.. _openwisp_monitoring_api_baseurl:
+
 ``OPENWISP_MONITORING_API_BASEURL``
 -----------------------------------
 
@@ -761,6 +798,8 @@ If you have a seperate server for API of openwisp-monitoring on a
 different domain, you can use this option to change the base of the url,
 this will enable you to point all the API urls to your openwisp-monitoring
 API server's domain, example: ``https://mymonitoring.myapp.com``.
+
+.. _openwisp_monitoring_cache_timeout:
 
 ``OPENWISP_MONITORING_CACHE_TIMEOUT``
 -------------------------------------
