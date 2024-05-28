@@ -87,10 +87,11 @@ Timeseries database options
         retention-policy = 'short'
 
     If you are using `ansible-openwisp2
-    <https://github.com/openwisp/ansible-openwisp2>`_ for deploying OpenWISP,
-    you can set the ``influxdb_udp_mode`` ansible variable to ``true`` in your
-    playbook, this will make the ansible role automatically configure the
-    InfluxDB UDP listeners. You can refer to the `ansible-ow-influxdb's
+    <https://github.com/openwisp/ansible-openwisp2>`_ for deploying
+    OpenWISP, you can set the ``influxdb_udp_mode`` ansible variable to
+    ``true`` in your playbook, this will make the ansible role
+    automatically configure the InfluxDB UDP listeners. You can refer to
+    the `ansible-ow-influxdb's
     <https://github.com/openwisp/ansible-ow-influxdb#role-variables>`_ (a
     dependency of ansible-openwisp2) documentation to learn more.
 
@@ -191,8 +192,8 @@ following:
 ============ ========
 
 This setting allows you to choose whether :ref:`config_applied
-<config_applied_check>` checks should be created automatically for
-newly registered devices. It's enabled by default.
+<config_applied_check>` checks should be created automatically for newly
+registered devices. It's enabled by default.
 
 .. _openwisp_monitoring_config_check_interval:
 
@@ -385,9 +386,9 @@ layer2 network, hence the OpenWSP server can reach the devices using the
 
     If this setting is not configured, it will fallback to the value of
     :ref:`OPENWISP_CONTROLLER_MANAGEMENT_IP_ONLY setting
-    <openwisp_controller_management_ip_only>`.
-    If ``OPENWISP_CONTROLLER_MANAGEMENT_IP_ONLY`` also not configured,
-    then it will fallback to ``True``.
+    <openwisp_controller_management_ip_only>`. If
+    ``OPENWISP_CONTROLLER_MANAGEMENT_IP_ONLY`` also not configured, then
+    it will fallback to ``True``.
 
 .. _openwisp_monitoring_device_recovery_detection:
 

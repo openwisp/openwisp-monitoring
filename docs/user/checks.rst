@@ -58,19 +58,3 @@ rsa_publc_key etc) using the
     may need to update the :ref:`metric configuration <Adding Checks and
     Alert settings from the device page>` to enable alerts for the iperf3
     check.
-
-Alerts / Notifications
-----------------------
-
-The following kind of notifications will be sent based on the check
-results:
-
-- ``threshold_crossed``: Fires when a metric crosses the boundary defined
-  in the threshold value of the alert settings.
-- ``threhold_recovery``: Fires when a metric goes back within the expected
-  range.
-- ``connection_is_working``: Fires when the connection to a device is
-  working.
-- ``connection_is_not_working``: Fires when the connection (eg: SSH) to a
-  device stops working (eg: credentials are outdated, management IP
-  address is outdated, or device is not reachable).
