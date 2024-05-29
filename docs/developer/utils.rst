@@ -440,9 +440,7 @@ Management commands
 ~~~~~~~~~~~~~~
 
 This command will execute all the `available checks <checks>`_ for all the
-devices. By default checks are run periodically by *celery beat*. You can
-learn more about this in :ref:`Setup
-<setup-integrate-in-an-existing-django-project>`.
+devices. By default checks are run periodically by *celery beat*.
 
 Example usage:
 

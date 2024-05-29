@@ -1,7 +1,7 @@
-Extending openwisp-monitoring
+Extending OpenWISP Monitoring
 =============================
 
-.. include:: /partials/developers-docs-warning.rst
+.. include:: ../partials/developer-docs.rst
 
 One of the core values of the OpenWISP project is `Software Reusability
 <http://openwisp.io/docs/general/values.html#software-reusability-means-long-term-sustainability>`_,
@@ -69,7 +69,7 @@ removed:
 
 For more information about how to work with django projects and django
 apps, please refer to the `"Tutorial: Writing your first Django app" in
-the django docunmentation
+the django documentation
 <https://docs.djangoproject.com/en/dev/intro/tutorial01/>`_.
 
 2. Install ``openwisp-monitoring``

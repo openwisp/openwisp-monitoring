@@ -56,8 +56,8 @@ In this scenario, the following requirements are needed:
   reach the VPN peers, for more information on how to do this via OpenWISP
   please refer to the following sections:
 
-  - :ref:`OpenVPN tunnel automation <openvpn_tunnel_automation>`
-  - :ref:`Wireguard tunnel automation <automating_wireguard_tunnels>`
+  - :doc:`OpenVPN tunnel automation </user/vpn>`
+  - :doc:`Wireguard tunnel automation </controller/user/wireguard>`
 
   If you prefer to use other tunneling solutions (L2TP, Softether, etc.)
   and know how to configure those solutions on your own, that's totally

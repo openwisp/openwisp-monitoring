@@ -1,76 +1,30 @@
 Installation instructions
 =========================
 
-.. include:: /partials/developers-docs-warning.rst
+.. include:: ../partials/developer-docs.rst
 
-Deploy it in production
------------------------
+Dependencies
+------------
 
-See:
+- Python >= 3.8
+- InfluxDB 1.8
+- fping
+- OpenSSL
 
-- `ansible-openwisp2 <https://github.com/openwisp/ansible-openwisp2>`_
-- `docker-openwisp <https://github.com/openwisp/docker-openwisp>`_
+Installing for development
+--------------------------
 
-.. _setup-integrate-in-an-existing-django-project:
-
-Install system dependencies
----------------------------
-
-*openwisp-monitoring* uses InfluxDB to store metrics. Follow the
-`installation instructions from InfluxDB's official documentation
-<https://docs.influxdata.com/influxdb/v1.8/introduction/install/>`_.
-
-.. important::
-
-    Only *InfluxDB 1.8.x* is supported in *openwisp-monitoring*.
+Install the system dependencies:
 
 Install system packages:
 
 .. code-block:: shell
 
-    sudo apt install -y openssl libssl-dev \
-                        gdal-bin libproj-dev libgeos-dev \
-                        fping
-
-Install stable version from PyPI
---------------------------------
-
-Install from PyPI:
-
-.. code-block:: shell
-
-    pip install openwisp-monitoring
-
-Install development version
----------------------------
-
-Install tarball:
-
-.. code-block:: shell
-
-    pip install https://github.com/openwisp/openwisp-monitoring/tarball/master
-
-Alternatively, you can install via pip using git:
-
-.. code-block:: shell
-
-    pip install -e git+git://github.com/openwisp/openwisp-monitoring#egg=openwisp_monitoring
-
-If you want to contribute, follow the instructions in `"Installing for
-development" <#installing-for-development>`_ section.
-
-Installing for development
---------------------------
-
-Install the system dependencies as mentioned in the `"Install system
-dependencies" <#install-system-dependencies>`_ section. Install these
-additional packages that are required for development:
-
-.. code-block:: shell
-
-    sudo apt install -y sqlite3 libsqlite3-dev \
-                        libspatialite-dev libsqlite3-mod-spatialite \
-                        chromium
+    sudo apt update
+    sudo apt install -y sqlite3 libsqlite3-dev openssl libssl-dev
+    sudo apt install -y gdal-bin libproj-dev libgeos-dev libspatialite-dev libsqlite3-mod-spatialite
+    sudo apt install -y fping
+    sudo apt install -y chromium
 
 Fork and clone the forked repository:
 
@@ -154,13 +108,41 @@ Run quality assurance tests with:
 
     ./run-qa-checks
 
+Alternative sources
+-------------------
+
+Pypi
+~~~~
+
+To install the latest stable version from pypi:
+
+.. code-block:: shell
+
+    pip install openwisp-monitoring
+
+Github
+~~~~~~
+
+To install the latest development version tarball via HTTPs:
+
+.. code-block:: shell
+
+    pip install https://github.com/openwisp/openwisp-monitoring/tarball/master
+
+Alternatively you can use the git protocol:
+
+.. code-block:: shell
+
+    pip install -e git+git://github.com/openwisp/openwisp-monitoring#egg=openwisp_monitoring
+
 Install and run on docker
 -------------------------
 
-.. note::
+.. warning::
 
-    This Docker image is for development purposes only. For the official
-    OpenWISP Docker images, see: `docker-openwisp
+    This Docker image is for development purposes only.
+
+    For the official OpenWISP Docker images, see: `docker-openwisp
     <https://github.com/openwisp/docker-openwisp>`_.
 
 Build from the Dockerfile:
