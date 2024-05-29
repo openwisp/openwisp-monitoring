@@ -16,8 +16,8 @@ device, eg:
 2. Ensure SSH access from OpenWISP is enabled on your devices
 -------------------------------------------------------------
 
-Follow the steps in :ref:`"Configuring Push Operations"
-<configuring_push_operations>` section of the documentation to allow SSH
+Follow the steps in :doc:`"Configuring Push Operations"
+</controller/user/push-operations>` section of the documentation to allow SSH
 access to you device from OpenWISP.
 
 .. important::

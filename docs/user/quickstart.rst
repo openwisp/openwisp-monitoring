@@ -18,10 +18,10 @@ Make sure OpenWISP can reach your devices
 -----------------------------------------
 
 In order to perform :doc:`active checks <./checks>` and other actions like
-:ref:`triggering the push of configuration changes
-<configuring_push_operations>`, :ref:`executing shell commands
-<sending_commands_to_devices>`, or :ref:`performing firmware upgrades
-<Firmware Upgrades>`, **the OpenWISP server needs to be able to reach the
+:doc:`triggering the push of configuration changes
+</controller/user/push-operations>`, :doc:`executing shell commands
+</controller/user/shell-commands>`, or :doc:`performing firmware upgrades
+</user/firmware-upgrades>`, **the OpenWISP server needs to be able to reach the
 network devices**.
 
 There are mainly two deployment scenarios for OpenWISP:
@@ -72,7 +72,7 @@ In this scenario, the following requirements are needed:
 
 - The devices must be configured to join the management tunnel
   automatically, either via a pre-existing configuration in the firmware
-  or via an :ref:`OpenWISP Template <configuration_templates>`.
+  or via an :doc:`OpenWISP Template </controller/user/templates>`.
 - The `openwisp-config <https://github.com/openwisp/openwisp-config>`_
   agent on the devices must be configured to specify the
   ``management_interface`` option, the agent will communicate the IP of
