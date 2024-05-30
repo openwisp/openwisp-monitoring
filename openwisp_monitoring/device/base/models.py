@@ -468,8 +468,6 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
                 device_monitoring = cls.objects.get(device=instance.content_object)
                 if not instance.is_active or kwargs.get('signal') == post_delete:
                     device_monitoring.update_status('unknown')
-                elif kwargs.get('signal') == post_save and instance.is_active:
-                    device_monitoring.update_status('ok')
             except cls.DoesNotExist:
                 pass
 

@@ -598,12 +598,12 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'unknown')
         with self.subTest(
-            "Ensure status doesn't change on saving active critical check"
+            'Ensure status does not change on saving active critical check'
         ):
             ping_check_instance.is_active = True
             ping_check_instance.save()
             dm.refresh_from_db()
-            self.assertEqual(dm.status, 'ok')
+            self.assertEqual(dm.status, 'unknown')
 
     def test_saving_non_critical_check(self):
         Check = load_model('check', 'Check')
@@ -621,7 +621,7 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
             non_critical_check.is_active = False
             non_critical_check.save()
         self.assertEqual(
-            handler.call_count, 0, "Signal should not be fired for non-critical check"
+            handler.call_count, 0, 'Signal should not be fired for non-critical check'
         )
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'ok')
