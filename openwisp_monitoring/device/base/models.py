@@ -9,6 +9,7 @@ from dateutil.relativedelta import relativedelta
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
@@ -21,6 +22,7 @@ from pytz import timezone as tz
 from swapper import load_model
 
 from openwisp_controller.config.validators import mac_address_validator
+from openwisp_monitoring.device.settings import get_critical_device_metrics
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...db import device_data_query, timeseries_db
@@ -453,6 +455,21 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         cls.objects.filter(device__organization_id=organization_id).update(
             status='unknown'
         )
+
+    @classmethod
+    def _get_critical_metric_keys(cls):
+        return [metric['key'] for metric in get_critical_device_metrics()]
+
+    @classmethod
+    def handle_critical_metric(cls, instance, **kwargs):
+        critical_metrics = cls._get_critical_metric_keys()
+        if instance.check_type in critical_metrics:
+            try:
+                device_monitoring = cls.objects.get(device=instance.content_object)
+                if not instance.is_active or kwargs.get('signal') == post_delete:
+                    device_monitoring.update_status('unknown')
+            except cls.DoesNotExist:
+                pass
 
 
 class AbstractWifiClient(TimeStampedEditableModel):

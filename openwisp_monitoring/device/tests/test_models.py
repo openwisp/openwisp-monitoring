@@ -578,6 +578,73 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         )
         return dm, ping, load, process_count
 
+    def test_disabling_critical_check(self):
+        Check = load_model('check', 'Check')
+        dm, ping, load, process_count = self._create_env()
+        ping_check_instance = Check.objects.create(
+            name='Ping Check',
+            check_type='ping',
+            content_object=dm.device,
+            params={},
+        )
+        dm.update_status('ok')
+        with catch_signal(health_status_changed) as handler:
+            ping_check_instance.is_active = False
+            ping_check_instance.save()
+        self.assertEqual(handler.call_count, 1)
+        call_args = handler.call_args[1]
+        self.assertEqual(call_args['instance'], dm)
+        self.assertEqual(call_args['status'], 'unknown')
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'unknown')
+        with self.subTest(
+            'Ensure status does not change on saving active critical check'
+        ):
+            ping_check_instance.is_active = True
+            ping_check_instance.save()
+            dm.refresh_from_db()
+            self.assertEqual(dm.status, 'unknown')
+
+    def test_saving_non_critical_check(self):
+        Check = load_model('check', 'Check')
+        dm, ping, load, process_count = self._create_env()
+        # Ensure initial status is 'ok'
+        dm.update_status('ok')
+        # Created a non-critical check
+        non_critical_check = Check.objects.create(
+            name='Configuration Applied',
+            check_type='non_critical',
+            content_object=dm.device,
+            params={},
+        )
+        with catch_signal(health_status_changed) as handler:
+            non_critical_check.is_active = False
+            non_critical_check.save()
+        self.assertEqual(
+            handler.call_count, 0, 'Signal should not be fired for non-critical check'
+        )
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'ok')
+
+    def test_deleting_critical_check(self):
+        Check = load_model('check', 'Check')
+        dm, ping, load, process_m = self._create_env()
+        ping_check_instance = Check.objects.create(
+            name='Ping Check',
+            check_type='ping',
+            content_object=dm.device,
+            params={},
+        )
+        dm.update_status('ok')
+        with catch_signal(health_status_changed) as handler:
+            ping_check_instance.delete()
+        self.assertEqual(handler.call_count, 1)
+        call_args = handler.call_args[1]
+        self.assertEqual(call_args['instance'], dm)
+        self.assertEqual(call_args['status'], 'unknown')
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'unknown')
+
     def test_status_changed(self):
         dm, ping, load, process_count = self._create_env()
         # check signal
