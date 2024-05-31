@@ -91,7 +91,13 @@ charts = {
                 "SELECT {fields|SUM|/ 1} FROM {key} "
                 "WHERE time >= '{time}' AND content_type = "
                 "'{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'influxdb2': (
+                'from(bucket: "{key}") |> range(start: {time}) '
+                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" and '
+                'r["content_type"] == "{content_type}" and r["object_id"] == "{object_id}") '
+                '|> sum()'
+            ),
         },
     },
     'dummy': {
@@ -108,7 +114,7 @@ charts = {
         'description': 'Bugged chart for testing purposes.',
         'unit': 'bugs',
         'order': 999,
-        'query': {'influxdb': "BAD"},
+        'query': {'influxdb': "BAD", 'influxdb2': "BAD"},
     },
     'default': {
         'type': 'line',
@@ -120,7 +126,12 @@ charts = {
             'influxdb': (
                 "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'influxdb2': (
+                'from(bucket: "{key}") |> range(start: {time}) '
+                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" and '
+                'r["content_type"] == "{content_type}" and r["object_id"] == "{object_id}")'
+            ),
         },
     },
     'multiple_test': {
@@ -133,26 +144,43 @@ charts = {
             'influxdb': (
                 "SELECT {field_name}, value2 FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'influxdb2': (
+                'from(bucket: "{key}") |> range(start: {time}) '
+                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" or '
+                'r["_measurement"] == "value2" and '
+                'r["content_type"] == "{content_type}" and '
+                'r["object_id"] == "{object_id}")'
+            ),
         },
     },
     'group_by_tag': {
         'type': 'stackedbars',
         'title': 'Group by tag',
-        'description': 'Query is groupped by tag along with time',
+        'description': 'Query is grouped by tag along with time',
         'unit': 'n.',
         'order': 999,
         'query': {
             'influxdb': (
                 "SELECT CUMULATIVE_SUM(SUM({field_name})) FROM {key} WHERE time >= '{time}'"
                 " GROUP BY time(1d), metric_num"
-            )
+            ),
+            'influxdb2': (
+                'from(bucket: "{key}") |> range(start: {time}) '
+                '|> filter(fn: (r) => r["_measurement"] == "{field_name}") '
+                '|> group(columns: ["metric_num"]) |> sum() |> cumulativeSum() |> window(every: 1d)'
+            ),
         },
         'summary_query': {
             'influxdb': (
                 "SELECT SUM({field_name}) FROM {key} WHERE time >= '{time}'"
                 " GROUP BY time(30d), metric_num"
-            )
+            ),
+            'influxdb2': (
+                'from(bucket: "{key}") |> range(start: {time}) '
+                '|> filter(fn: (r) => r["_measurement"] == "{field_name}") '
+                '|> group(columns: ["metric_num"]) |> sum() |> window(every: 30d)'
+            ),
         },
     },
     'mean_test': {
@@ -165,7 +193,13 @@ charts = {
             'influxdb': (
                 "SELECT MEAN({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'influxdb2': (
+                'from(bucket: "{key}") |> range(start: {time}) '
+                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" and '
+                'r["content_type"] == "{content_type}" and r["object_id"] == "{object_id}") '
+                '|> mean()'
+            ),
         },
     },
     'sum_test': {
@@ -178,7 +212,13 @@ charts = {
             'influxdb': (
                 "SELECT SUM({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'influxdb2': (
+                'from(bucket: "{key}") |> range(start: {time}) '
+                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" and '
+                'r["content_type"] == "{content_type}" and r["object_id"] == "{object_id}") '
+                '|> sum()'
+            ),
         },
     },
     'top_fields_mean': {
@@ -192,7 +232,13 @@ charts = {
                 "SELECT {fields|MEAN} FROM {key} "
                 "WHERE time >= '{time}' AND content_type = "
                 "'{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'influxdb2': (
+                'from(bucket: "{key}") |> range(start: {time}) '
+                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" and '
+                'r["content_type"] == "{content_type}" and r["object_id"] == "{object_id}") '
+                '|> mean()'
+            ),
         },
     },
 }

@@ -10,6 +10,7 @@ services:
       - "8000:8000"
     depends_on:
       - influxdb
+      - influxdb2
       - redis
 
   influxdb:
@@ -28,6 +29,20 @@ services:
       INFLUXDB_USER: openwisp
       INFLUXDB_USER_PASSWORD: openwisp
 
+  influxdb2:
+    image: influxdb:2.0-alpine
+    volumes:
+      - influxdb2-data:/var/lib/influxdb2
+    ports:
+      - "8087:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: openwisp
+      DOCKER_INFLUXDB_INIT_PASSWORD: openwisp
+      DOCKER_INFLUXDB_INIT_ORG: openwisp
+      DOCKER_INFLUXDB_INIT_BUCKET: openwisp2
+      DOCKER_INFLUXDB_INIT_RETENTION: 1w
+
   redis:
     image: redis:5.0-alpine
     ports:
@@ -36,3 +51,4 @@ services:
 
 volumes:
   influxdb-data: {}
+  influxdb2-data: {}

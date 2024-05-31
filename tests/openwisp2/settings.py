@@ -21,16 +21,30 @@ DATABASES = {
     }
 }
 
-TIMESERIES_DATABASE = {
+INFLUXDB_1x_DATABASE = {
     'BACKEND': 'openwisp_monitoring.db.backends.influxdb',
     'USER': 'openwisp',
     'PASSWORD': 'openwisp',
     'NAME': 'openwisp2',
     'HOST': os.getenv('INFLUXDB_HOST', 'localhost'),
     'PORT': '8086',
-    # UDP writes are disabled by default
     'OPTIONS': {'udp_writes': False, 'udp_port': 8089},
 }
+
+INFLUXDB_2x_DATABASE = {
+    'BACKEND': 'openwisp_monitoring.db.backends.influxdb2',
+    'TOKEN': 'your-influxdb-2.0-token',
+    'ORG': 'your-org',
+    'BUCKET': 'your-bucket',
+    'HOST': os.getenv('INFLUXDB2_HOST', 'localhost'),
+    'PORT': '8087',
+}
+
+if os.environ.get('USE_INFLUXDB2', False):
+    TIMESERIES_DATABASE = INFLUXDB_2x_DATABASE
+else:
+    TIMESERIES_DATABASE = INFLUXDB_1x_DATABASE
+
 if TESTING:
     if os.environ.get('TIMESERIES_UDP', False):
         TIMESERIES_DATABASE['OPTIONS'] = {'udp_writes': True, 'udp_port': 8091}
