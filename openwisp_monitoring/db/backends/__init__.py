@@ -30,6 +30,16 @@ def load_backend_module(backend_name=TIMESERIES_DB['BACKEND'], module=None):
     """
     try:
         assert 'BACKEND' in TIMESERIES_DB, 'BACKEND'
+        if 'BACKEND' in TIMESERIES_DB and '2' in TIMESERIES_DB['BACKEND']:
+            # InfluxDB 2.x specific checks
+            assert 'TOKEN' in TIMESERIES_DB, 'TOKEN'
+            assert 'ORG' in TIMESERIES_DB, 'ORG'
+            assert 'BUCKET' in TIMESERIES_DB, 'BUCKET'
+        else:
+            # InfluxDB 1.x specific checks
+            assert 'USER' in TIMESERIES_DB, 'USER'
+            assert 'PASSWORD' in TIMESERIES_DB, 'PASSWORD'
+            assert 'NAME' in TIMESERIES_DB, 'NAME'
         assert 'USER' in TIMESERIES_DB, 'USER'
         assert 'PASSWORD' in TIMESERIES_DB, 'PASSWORD'
         assert 'NAME' in TIMESERIES_DB, 'NAME'
@@ -48,7 +58,7 @@ def load_backend_module(backend_name=TIMESERIES_DB['BACKEND'], module=None):
     except ImportError as e:
         # The database backend wasn't found. Display a helpful error message
         # listing all built-in database backends.
-        builtin_backends = ['influxdb']
+        builtin_backends = ['influxdb', 'influxdb2']
         if backend_name not in [
             f'openwisp_monitoring.db.backends.{b}' for b in builtin_backends
         ]:
