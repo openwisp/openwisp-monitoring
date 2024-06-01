@@ -420,7 +420,7 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
 
 class TestDatabaseClientUdp(TestMonitoringMixin, TestCase):
     def test_exceed_udp_packet_limit(self):
-        # InfluxDB 2.x does not use UDP for writing data, but this test is kept
+        # InfluxDB 2.x does not use UDP for writing data, but this is kept
         # for backward compatibility reference
         timeseries_db.write(
             'test_udp_write', dict(value='O' * 66000), database=self.TEST_DB
