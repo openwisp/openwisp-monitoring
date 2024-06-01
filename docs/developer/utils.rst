@@ -256,7 +256,7 @@ Adaptive size charts
 
 When configuring charts, it is possible to flag their unit as
 ``adaptive_prefix``, this allows to make the charts more readable because
-the units are shown in either `K`, `M`, `G` and `T` depending on the size
+the units are shown in either `KB`, `MB`, `GB` and `TB` depending on the size
 of each point, the summary values and Y axis are also resized.
 
 Example taken from the default configuration of the traffic chart:
