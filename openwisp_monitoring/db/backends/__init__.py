@@ -40,9 +40,6 @@ def load_backend_module(backend_name=TIMESERIES_DB['BACKEND'], module=None):
             assert 'USER' in TIMESERIES_DB, 'USER'
             assert 'PASSWORD' in TIMESERIES_DB, 'PASSWORD'
             assert 'NAME' in TIMESERIES_DB, 'NAME'
-        assert 'USER' in TIMESERIES_DB, 'USER'
-        assert 'PASSWORD' in TIMESERIES_DB, 'PASSWORD'
-        assert 'NAME' in TIMESERIES_DB, 'NAME'
         assert 'HOST' in TIMESERIES_DB, 'HOST'
         assert 'PORT' in TIMESERIES_DB, 'PORT'
         if module:
@@ -67,7 +64,18 @@ def load_backend_module(backend_name=TIMESERIES_DB['BACKEND'], module=None):
                 "Try using 'openwisp_monitoring.db.backends.XXX', where XXX is one of:\n"
                 f"{builtin_backends}"
             ) from e
+        else:
+            raise e
 
 
-timeseries_db = load_backend_module(module='client').DatabaseClient()
+if '2' in TIMESERIES_DB['BACKEND']:
+    timeseries_db = load_backend_module(module='client').DatabaseClient(
+        bucket=TIMESERIES_DB['BUCKET'],
+        org=TIMESERIES_DB['ORG'],
+        token=TIMESERIES_DB['TOKEN'],
+        url=f"http://{TIMESERIES_DB['HOST']}:{TIMESERIES_DB['PORT']}",
+    )
+else:
+    timeseries_db = load_backend_module(module='client').DatabaseClient()
+
 timeseries_db.queries = load_backend_module(module='queries')

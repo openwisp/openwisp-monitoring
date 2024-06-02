@@ -16,23 +16,15 @@ RUN pip install -r /opt/openwisp/requirements.txt && \
     pip install -r /opt/openwisp/requirements-test.txt && \
     rm -rf /var/lib/apt/lists/* /root/.cache/pip/* /tmp/*
 
-# Copy project files and install the project
 ADD . /opt/openwisp
 RUN pip install -U /opt/openwisp && \
     rm -rf /var/lib/apt/lists/* /root/.cache/pip/* /tmp/*
-
-# Set working directory
 WORKDIR /opt/openwisp/tests/
-
 # Set environment variables
 ENV NAME=openwisp-monitoring \
     PYTHONBUFFERED=1 \
-    INFLUXDB1_HOST=influxdb \
-    INFLUXDB2_HOST=influxdb2 \
+    INFLUXDB_HOST=influxdb \
     REDIS_HOST=redis
-
-# Expose the application port
-EXPOSE 8000
-
-# Command to run the application
 CMD ["sh", "docker-entrypoint.sh"]
+EXPOSE 8000
+# Command to run the application

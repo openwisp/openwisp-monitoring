@@ -32,16 +32,17 @@ INFLUXDB_1x_DATABASE = {
     'OPTIONS': {'udp_writes': False, 'udp_port': 8089},
 }
 
+# For InfluxDB 2.x
 INFLUXDB_2x_DATABASE = {
     'BACKEND': 'openwisp_monitoring.db.backends.influxdb2',
-    'TOKEN': 'your-influxdb-2.0-token',
-    'ORG': 'your-org',
-    'BUCKET': 'your-bucket',
-    'HOST': os.getenv('INFLUXDB2_HOST', 'localhost'),
-    'PORT': '8087',
+    'TOKEN': 't8Q3Y5mTWuqqTRdGyVxZuyVLO-8pl3I8KaNTR3jV7uTDr_GVECP5Z7LsrZwILGw79Xp4O8pAWkdqTREgIk073Q==',
+    'ORG': 'myorg',
+    'BUCKET': 'mybucket',
+    'HOST': os.getenv('INFLUXDB_HOST', 'localhost'),
+    'PORT': '9086',
 }
 
-if os.environ.get('USE_INFLUXDB2', False):
+if os.environ.get('USE_INFLUXDB2', 'False') == 'True':
     TIMESERIES_DATABASE = INFLUXDB_2x_DATABASE
 else:
     TIMESERIES_DATABASE = INFLUXDB_1x_DATABASE
