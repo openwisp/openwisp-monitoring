@@ -79,7 +79,7 @@ see the `OpenWISP Architecture Overview
     :align: center
 
 
-Refer to `Features: Monitoring <https://openwisp.io/docs/__new__/dev/monitoring/user/intro.html>`
+Refer to `Monitoring: Features <https://openwisp.io/docs/__new__/dev/monitoring/user/intro.html>`
 of OpenWISP documentation  for a complete overview of features.
 
 Contributing
