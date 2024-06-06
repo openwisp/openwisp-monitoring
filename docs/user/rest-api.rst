@@ -3,7 +3,7 @@ Rest API Reference
 
 .. _monitoring_live_documentation:
 
-Live documentation
+Live Documentation
 ------------------
 
 .. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/api-doc.png
@@ -14,7 +14,7 @@ A general live API documentation (following the OpenAPI specification) at
 
 .. _monitoring_browsable_web_interface:
 
-Browsable web interface
+Browsable Web Interface
 -----------------------
 
 .. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/api-ui-1.png
@@ -31,7 +31,7 @@ makes it even easier to find out the details of each endpoint.
 
 .. _monitoring_rest_endpoints:
 
-List of endpoints
+List of Endpoints
 -----------------
 
 Since the detailed explanation is contained in the :ref:`Live
@@ -40,7 +40,7 @@ web page <monitoring_browsable_web_interface>` of each point, here we'll
 provide just a list of the available endpoints, for further information
 please open the URL of the endpoint in your browser.
 
-Retrieve general monitoring charts
+Retrieve General Monitoring Charts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: text
@@ -76,7 +76,7 @@ multi-tenancy and allows filtering monitoring data by
     The ``start`` and ``end`` parameters should be in the format
     ``YYYY-MM-DD H:M:S``, otherwise 400 Bad Response will be returned.
 
-Retrieve device charts and device status data
+Retrieve Device Charts and Device Status Data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: text
@@ -119,7 +119,7 @@ The format used for Device Status is inspired by `NetJSON DeviceMonitoring
     The ``start`` and ``end`` parameters must be in the format
     ``YYYY-MM-DD H:M:S``, otherwise 400 Bad Response will be returned.
 
-List device monitoring information
+List Device Monitoring Information
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: text
@@ -160,7 +160,7 @@ slug, you can use the ``organization_slug``.
 
     GET /api/v1/monitoring/device/?organization_slug={organization_slug}
 
-Collect device metrics and status
+Collect Device Metrics and Status
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: text
@@ -191,7 +191,7 @@ sending of data by the OpenWISP Monitoring Agent
 <https://github.com/openwisp/openwrt-openwisp-monitoring#collecting-vs-sending>`_,
 this feature allows sending data collected while the device is offline.
 
-List nearby devices
+List Nearby Devices
 ~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: text
@@ -222,7 +222,7 @@ Here's a few examples:
     GET /api/v1/monitoring/device/{pk}/nearby-devices/?model={model1,model2}
     GET /api/v1/monitoring/device/{pk}/nearby-devices/?distance__lte={distance}
 
-List wifi session
+List WiFi Session
 ~~~~~~~~~~~~~~~~~
 
 .. code-block:: text
@@ -263,7 +263,7 @@ For example:
     GET /api/v1/monitoring/wifi-session/?stop_time__lt={stop_time}
     GET /api/v1/monitoring/wifi-session/?stop_time__lte={stop_time}
 
-Get wifi session
+Get WiFi Session
 ~~~~~~~~~~~~~~~~
 
 .. code-block:: text
@@ -273,7 +273,7 @@ Get wifi session
 Pagination
 ~~~~~~~~~~
 
-Wifi session endpoint support the ``page_size`` parameter that allows
+WiFi session endpoint support the ``page_size`` parameter that allows
 paginating the results in conjunction with the page parameter.
 
 .. code-block:: text

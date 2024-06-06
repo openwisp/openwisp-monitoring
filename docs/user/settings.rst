@@ -48,7 +48,7 @@ The following table describes all keys available in
 
 .. _timeseries_backend_options:
 
-Timeseries database options
+Timeseries Database Options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ============== =====================================================

@@ -26,7 +26,7 @@ code to get a basic derivative of *openwisp-monitoring* working.
 suggest to start with it since the beginning, because migrating your data
 from the default module to your extended version may be time consuming.
 
-1. Initialize your custom module
+1. Initialize your Custom Module
 --------------------------------
 
 The first thing you need to do in order to extend any
@@ -132,7 +132,7 @@ Add ``openwisp_utils.loaders.DependencyLoader`` to ``TEMPLATES`` in your
         }
     ]
 
-6. Inherit the AppConfig class
+6. Inherit the AppConfig Class
 ------------------------------
 
 Please refer to the following files in the sample app of the test project:
@@ -154,7 +154,7 @@ For more information regarding the concept of ``AppConfig`` please refer
 to the `"Applications" section in the django documentation
 <https://docs.djangoproject.com/en/dev/ref/applications/>`_.
 
-7. Create your custom models
+7. Create your Custom Models
 ----------------------------
 
 To extend ``check`` app, refer to `sample_check models.py file
@@ -175,7 +175,7 @@ models.py file
     - For doubts regarding proxy models please refer to `proxy models
       <https://docs.djangoproject.com/en/dev/topics/db/models/#proxy-models>`_.
 
-8. Add swapper configurations
+8. Add Swapper Configurations
 -----------------------------
 
 Add the following to your ``settings.py``:
@@ -200,7 +200,7 @@ Add the following to your ``settings.py``:
 Substitute ``<YOUR_MODULE_NAME>`` with your actual django app name (also
 known as ``app_label``).
 
-9. Create database migrations
+9. Create Database Migrations
 -----------------------------
 
 Create and apply database migrations:
@@ -214,7 +214,7 @@ For more information, refer to the `"Migrations" section in the django
 documentation
 <https://docs.djangoproject.com/en/dev/topics/migrations/>`_.
 
-10. Create your custom admin
+10. Create your Custom Admin
 ----------------------------
 
 To extend ``check`` app, refer to `sample_check admin.py file
@@ -237,7 +237,7 @@ below.
     django documentation
     <https://docs.djangoproject.com/en/dev/ref/contrib/admin/>`_.
 
-1. Monkey patching
+1. Monkey Patching
 ~~~~~~~~~~~~~~~~~~
 
 If the changes you need to add are relatively small, you can resort to
@@ -276,7 +276,7 @@ Similarly for ``monitoring`` app, you can do it as:
     AlertSettingsAdmin.list_display.insert(1, "my_custom_field")
     AlertSettingsAdmin.ordering = ["-my_custom_field"]
 
-2. Inheriting admin classes
+2. Inheriting Admin Classes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If you need to introduce significant changes and/or you don't want to
@@ -363,7 +363,7 @@ For ``monitoring`` app,
         # add your changes here
         pass
 
-11. Create root URL configuration
+11. Create Root URL Configuration
 ---------------------------------
 
 Please refer to the `urls.py
@@ -374,8 +374,8 @@ For more information about URL configuration in django, please refer to
 the `"URL dispatcher" section in the django documentation
 <https://docs.djangoproject.com/en/dev/topics/http/urls/>`_.
 
-12. Create celery.py
---------------------
+12. Create ``celery.py``
+------------------------
 
 Please refer to the `celery.py
 <https://github.com/openwisp/openwisp-monitoring/tree/master/tests/openwisp2/celery.py>`_
@@ -395,7 +395,7 @@ Add the following in your settings.py to import celery tasks from
 
     CELERY_IMPORTS = ("openwisp_monitoring.device.tasks",)
 
-14. Create the custom command ``run_checks``
+14. Create the Custom Command ``run_checks``
 --------------------------------------------
 
 Please refer to the `run_checks.py
@@ -407,7 +407,7 @@ django, please refer to the `"Writing custom django-admin commands"
 section in the django documentation
 <https://docs.djangoproject.com/en/dev/howto/custom-management-commands/>`_.
 
-15. Import the automated tests
+15. Import the Automated Tests
 ------------------------------
 
 When developing a custom application based on this module, it's a good
@@ -431,7 +431,7 @@ For, extending ``monitoring`` app see the `tests of sample_monitoring app
 <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/sample_monitoring/tests.py>`_
 to find out how to do this.
 
-Other base classes that can be inherited and extended
+Other Base Classes that can be Inherited and Extended
 -----------------------------------------------------
 
 **The following steps are not required and are intended for more advanced

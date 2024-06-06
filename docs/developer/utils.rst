@@ -247,7 +247,7 @@ If you don't need to register a new chart but need to change a specific
 key of an existing chart configuration, you can use
 :ref:`OPENWISP_MONITORING_CHARTS <openwisp_monitoring_charts>`.
 
-Adaptive size charts
+Adaptive Size Charts
 ++++++++++++++++++++
 
 .. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/adaptive-chart.png
@@ -256,8 +256,8 @@ Adaptive size charts
 
 When configuring charts, it is possible to flag their unit as
 ``adaptive_prefix``, this allows to make the charts more readable because
-the units are shown in either `KB`, `MB`, `GB` and `TB` depending on the size
-of each point, the summary values and Y axis are also resized.
+the units are shown in either `KB`, `MB`, `GB` and `TB` depending on the
+size of each point, the summary values and Y axis are also resized.
 
 Example taken from the default configuration of the traffic chart:
 
@@ -431,7 +431,7 @@ to the timeseries database.
 This signal is emitted for every metric after the write operation is
 successfully executed in the background.
 
-Management commands
+Management Commands
 -------------------
 
 .. _run_checks:

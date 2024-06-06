@@ -197,7 +197,7 @@ Mobile Signal Quality
 
 .. _mobile_access_technology_in_use:
 
-Mobile Access Technology in use
+Mobile Access Technology in Use
 -------------------------------
 
 ================== ===============

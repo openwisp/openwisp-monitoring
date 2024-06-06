@@ -1,7 +1,7 @@
 Quickstart Guide
 ================
 
-Install monitoring packages on the device
+Install Monitoring Packages on the Device
 -----------------------------------------
 
 `Install the openwrt-openwisp-monitoring packages
@@ -14,15 +14,15 @@ like interface traffic, WiFi clients, CPU load, memory usage, etc.
 
 .. _openwisp_reach_devices:
 
-Make sure OpenWISP can reach your devices
+Make Sure OpenWISP can Reach your Devices
 -----------------------------------------
 
 In order to perform :doc:`active checks <./checks>` and other actions like
 :doc:`triggering the push of configuration changes
 </controller/user/push-operations>`, :doc:`executing shell commands
 </controller/user/shell-commands>`, or :doc:`performing firmware upgrades
-</user/firmware-upgrades>`, **the OpenWISP server needs to be able to reach the
-network devices**.
+</user/firmware-upgrades>`, **the OpenWISP server needs to be able to
+reach the network devices**.
 
 There are mainly two deployment scenarios for OpenWISP:
 
@@ -33,7 +33,7 @@ There are mainly two deployment scenarios for OpenWISP:
    in the same Layer 2 network (that is, in the same LAN) where the
    devices are located. **in this case a management tunnel is NOT needed**
 
-1. Public internet deployment
+1. Public Internet Deployment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This is the most common scenario:
@@ -90,7 +90,7 @@ In this scenario, the following requirements are needed:
         # ... other configuration directives ...
         option management_interface 'tun0'
 
-2. LAN deployment
+2. LAN Deployment
 ~~~~~~~~~~~~~~~~~
 
 When the OpenWISP server and the network devices are deployed in the same

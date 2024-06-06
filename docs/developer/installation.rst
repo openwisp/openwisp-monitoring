@@ -1,5 +1,5 @@
-Installation instructions
-=========================
+Developer Installation Instructions
+===================================
 
 .. include:: ../partials/developer-docs.rst
 
@@ -11,7 +11,7 @@ Dependencies
 - fping
 - OpenSSL
 
-Installing for development
+Installing for Development
 --------------------------
 
 Install the system dependencies:
@@ -108,10 +108,10 @@ Run quality assurance tests with:
 
     ./run-qa-checks
 
-Alternative sources
+Alternative Sources
 -------------------
 
-Pypi
+PyPI
 ~~~~
 
 To install the latest stable version from pypi:
@@ -135,7 +135,7 @@ Alternatively you can use the git protocol:
 
     pip install -e git+git://github.com/openwisp/openwisp-monitoring#egg=openwisp_monitoring
 
-Install and run on docker
+Install and Run on Docker
 -------------------------
 
 .. warning::

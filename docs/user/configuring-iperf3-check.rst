@@ -1,7 +1,7 @@
 Configuring Iperf3 Check
 ========================
 
-1. Make sure iperf3 is installed on the device
+1. Make Sure Iperf3 is Installed on the Device
 ----------------------------------------------
 
 Register your device to OpenWISP and make sure the `iperf3 openwrt package
@@ -13,12 +13,12 @@ device, eg:
     opkg install iperf3  # if using without authentication
     opkg install iperf3-ssl  # if using with authentication (read below for more info)
 
-2. Ensure SSH access from OpenWISP is enabled on your devices
+2. Ensure SSH Access from OpenWISP is Enabled on your Devices
 -------------------------------------------------------------
 
 Follow the steps in :doc:`"Configuring Push Operations"
-</controller/user/push-operations>` section of the documentation to allow SSH
-access to you device from OpenWISP.
+</controller/user/push-operations>` section of the documentation to allow
+SSH access to you device from OpenWISP.
 
 .. important::
 
@@ -30,7 +30,7 @@ access to you device from OpenWISP.
     :alt: Enable ssh access from openwisp to device
     :align: center
 
-3. Set up and configure Iperf3 server settings
+3. Set Up and Configure Iperf3 Server Settings
 ----------------------------------------------
 
 After having deployed your Iperf3 servers, you need to configure the
@@ -104,7 +104,7 @@ Once the changes are saved, you will need to restart all the processes.
     We recommended to configure this check to run in non peak traffic
     times to not interfere with standard traffic.
 
-4. Run the check
+4. Run the Check
 ----------------
 
 This should happen automatically if you have celery-beat correctly
@@ -119,7 +119,7 @@ After that, you should see the iperf3 network measurements charts.
 
 .. _iperf3_check_parameters:
 
-Iperf3 check parameters
+Iperf3 Check Parameters
 -----------------------
 
 Currently, iperf3 check supports the following parameters:
@@ -136,7 +136,7 @@ Currently, iperf3 check supports the following parameters:
 
 .. _iperf3_client_parameters:
 
-Iperf3 client options
+Iperf3 Client Options
 ~~~~~~~~~~~~~~~~~~~~~
 
 =================== ======== ==========================================
@@ -158,7 +158,7 @@ Iperf3 client options
 
 .. _iperf3_client_tcp_options:
 
-Iperf3 client's TCP options
+Iperf3 Client's TCP Options
 +++++++++++++++++++++++++++
 
 ============== ======== =================
@@ -169,7 +169,7 @@ Iperf3 client's TCP options
 
 .. _iperf3_client_udp_options:
 
-Iperf3 client's UDP options
+Iperf3 Client's UDP Options
 +++++++++++++++++++++++++++
 
 ============== ======== =================
@@ -184,7 +184,7 @@ configuration example <openwisp_monitoring_iperf3_check_config>`.
 Visit the `official documentation <https://www.mankier.com/1/iperf3>`_ to
 learn more about the iperf3 parameters.
 
-Iperf3 authentication
+Iperf3 Authentication
 ---------------------
 
 By default iperf3 check runs without any kind of **authentication**, in
@@ -192,10 +192,10 @@ this section we will explain how to configure **RSA authentication**
 between the **client** and the **server** to restrict connections to
 authenticated clients.
 
-Server side
+Server Side
 ~~~~~~~~~~~
 
-1. Generate RSA keypair
+1. Generate RSA Keypair
 +++++++++++++++++++++++
 
 .. code-block:: shell
@@ -210,7 +210,7 @@ in :ref:`openwisp_monitoring_iperf3_check_config` and the private key will
 be contained in the file ``private_key.pem`` which will be used with
 **--rsa-private-key-path** command option when starting the iperf3 server.
 
-2. Create user credentials
+2. Create User Credentials
 ++++++++++++++++++++++++++
 
 .. code-block:: shell
@@ -227,14 +227,14 @@ Add the above hash with username in ``credentials.csv``
     # file format: username,sha256
     iperfuser,ee17a7f98cc87a6424fb52682396b2b6c058e9ab70e946188faa0714905771d7
 
-3. Now start the iperf3 server with auth options
+3. Now Start the Iperf3 Server with Auth Options
 ++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. code-block:: shell
 
     iperf3 -s --rsa-private-key-path ./private_key.pem --authorized-users-path ./credentials.csv
 
-Client side (OpenWrt device)
+Client Side (OpenWrt Device)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1. Install iperf3-ssl
@@ -257,7 +257,7 @@ You may also check your installed **iperf3 openwrt package** features:
 
 .. _configure_iperf3_check_auth_parameters:
 
-2. Configure iperf3 check auth parameters
+2. Configure Iperf3 Check Auth Parameters
 +++++++++++++++++++++++++++++++++++++++++
 
 Now, add the following iperf3 authentication parameters to

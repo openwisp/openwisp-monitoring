@@ -28,7 +28,7 @@ device's change admin under the "WiFi Sessions" tab.
     :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/device-wifi-session-inline.png
     :align: center
 
-Scheduled deletion of WiFi sessions
+Scheduled Deletion of WiFi Sessions
 -----------------------------------
 
 OpenWISP Monitoring provides a celery task to automatically delete WiFi

@@ -1,6 +1,6 @@
 .. _adding_checks_and_alertsettings:
 
-Adding Checks and Alert settings from the device page
+Adding Checks and Alert Settings from the Device Page
 =====================================================
 
 We can add checks and define alert settings directly from the **device

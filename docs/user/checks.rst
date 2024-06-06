@@ -17,7 +17,7 @@ You can change the default values used for ping checks using
 
 .. _config_applied_check:
 
-Configuration applied
+Configuration Applied
 ---------------------
 
 This check ensures that the `openwisp-config agent
