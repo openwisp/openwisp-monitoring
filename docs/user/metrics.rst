@@ -291,8 +291,8 @@ Monitoring can be divided in two categories:
    continuously sends network requests to the devices and store the
    results;
 2. **metrics collected passively by OpenWISP**: these metrics are sent by
-   the `openwrt-openwisp-monitoring agent
-   <#install-monitoring-packages-on-the-device>`_ installed on the network
+   the :ref:`openwrt-openwisp-monitoring agent
+   <install_monitoring_packages_on_device>` installed on the network
    devices and are collected by OpenWISP via its REST API.
 
 The :doc:`checks` section of the documentation lists the currently

@@ -34,9 +34,9 @@ makes it even easier to find out the details of each endpoint.
 List of Endpoints
 -----------------
 
-Since the detailed explanation is contained in the :ref:`Live
-documentation <monitoring_live_documentation>` and in the :ref:`Browsable
-web page <monitoring_browsable_web_interface>` of each point, here we'll
+Since the detailed explanation is contained in the
+:ref:`monitoring_live_documentation` and in the
+:ref:`monitoring_browsable_web_interface` of each point, here we'll
 provide just a list of the available endpoints, for further information
 please open the URL of the endpoint in your browser.
 

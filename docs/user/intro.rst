@@ -3,6 +3,12 @@ Monitoring: Features
 
 OpenWISP provides the following monitoring capabilities:
 
+- An overview of the status of the network is shown in the admin
+  dashboard, a chart shows the percentages of devices which are online,
+  offline or having issues; there are also :doc:`two timeseries charts
+  which show the total unique WiFI clients and the traffic flowing to the
+  network <dashboard_monitoring_charts>`, a geographic map is also
+  available for those who use the geographic features of OpenWISP
 - Collection of monitoring information in a timeseries database (currently
   only influxdb is supported)
 - Allows to browse alerts easily from the user interface with one click
@@ -28,18 +34,14 @@ OpenWISP provides the following monitoring capabilities:
   30 days, and 365 days
 - Configurable alerts
 - CSV Export of monitoring data
-- An overview of the status of the network is shown in the admin
-  dashboard, a chart shows the percentages of devices which are online,
-  offline or having issues; there are also :doc:`two timeseries charts
-  which show the total unique WiFI clients and the traffic flowing to the
-  network <dashboard-monitoring-charts>`, a geographic map is also
-  available for those who use the geographic features of OpenWISP
 - Possibility to configure additional :ref:`Metrics
   <openwisp_monitoring_metrics>` and :ref:`Charts
   <openwisp_monitoring_charts>`
-- Extensible active check system: it's possible to write additional checks
-  that are run periodically using python classes
-- Extensible metrics and charts: it's possible to define new metrics and
+- :ref:`Extensible active check system <adding_checks_and_alertsettings>`:
+  it's possible to write additional checks that are run periodically using
+  python classes
+- Extensible :ref:`metrics <openwisp_monitoring_metrics>` and :ref:`charts
+  <openwisp_monitoring_charts>`: it's possible to define new metrics and
   new charts
 - API to retrieve the chart metrics and status information of each device
   based on `NetJSON DeviceMonitoring

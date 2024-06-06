@@ -247,38 +247,6 @@ If you don't need to register a new chart but need to change a specific
 key of an existing chart configuration, you can use
 :ref:`OPENWISP_MONITORING_CHARTS <openwisp_monitoring_charts>`.
 
-Adaptive Size Charts
-++++++++++++++++++++
-
-.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/adaptive-chart.png
-    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/adaptive-chart.png
-    :align: center
-
-When configuring charts, it is possible to flag their unit as
-``adaptive_prefix``, this allows to make the charts more readable because
-the units are shown in either `KB`, `MB`, `GB` and `TB` depending on the
-size of each point, the summary values and Y axis are also resized.
-
-Example taken from the default configuration of the traffic chart:
-
-.. code-block:: python
-
-    OPENWISP_MONITORING_CHARTS = {
-        "traffic": {
-            # other configurations for this chart
-            # traffic measured in 'B' (bytes)
-            # unit B, KB, MB, GB, TB
-            "unit": "adaptive_prefix+B",
-        },
-        "bandwidth": {
-            # other configurations for this chart
-            # adaptive unit for bandwidth related charts
-            # bandwidth measured in 'bps'(bits/sec)
-            # unit bps, Kbps, Mbps, Gbps, Tbps
-            "unit": "adaptive_prefix+bps",
-        },
-    }
-
 ``unregister_chart``
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -342,7 +310,8 @@ Signals
 ``device_metrics_received``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Path**: ``openwisp_monitoring.device.signals.device_metrics_received``
+**Full Python path**:
+``openwisp_monitoring.device.signals.device_metrics_received``
 
 **Arguments**:
 
@@ -362,7 +331,8 @@ not sent if the response was not successful.
 ``health_status_changed``
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Path**: ``openwisp_monitoring.device.signals.health_status_changed``
+**Full Python path**:
+``openwisp_monitoring.device.signals.health_status_changed``
 
 **Arguments**:
 
@@ -377,7 +347,8 @@ object gets updated.
 ``threshold_crossed``
 ~~~~~~~~~~~~~~~~~~~~~
 
-**Path**: ``openwisp_monitoring.monitoring.signals.threshold_crossed``
+**Full Python path**:
+``openwisp_monitoring.monitoring.signals.threshold_crossed``
 
 **Arguments**:
 
@@ -400,7 +371,8 @@ alert settings is crossed.
 ``pre_metric_write``
 ~~~~~~~~~~~~~~~~~~~~
 
-**Path**: ``openwisp_monitoring.monitoring.signals.pre_metric_write``
+**Full Python path**:
+``openwisp_monitoring.monitoring.signals.pre_metric_write``
 
 **Arguments**:
 
@@ -417,7 +389,8 @@ to the timeseries database.
 ``post_metric_write``
 ~~~~~~~~~~~~~~~~~~~~~
 
-**Path**: ``openwisp_monitoring.monitoring.signals.post_metric_write``
+**Full Python path**:
+``openwisp_monitoring.monitoring.signals.post_metric_write``
 
 **Arguments**:
 
@@ -439,8 +412,8 @@ Management Commands
 ``run_checks``
 ~~~~~~~~~~~~~~
 
-This command will execute all the `available checks <checks>`_ for all the
-devices. By default checks are run periodically by *celery beat*.
+This command will execute all the :ref:`available checks <checks>` for all
+the devices. By default checks are run periodically by *celery beat*.
 
 Example usage:
 
@@ -467,29 +440,30 @@ Exceptions
 ``TimeseriesWriteException``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Path**: ``openwisp_monitoring.db.exceptions.TimeseriesWriteException``
+**Full Python path**:
+``openwisp_monitoring.db.exceptions.TimeseriesWriteException``
 
 If there is any failure due while writing data in timeseries database,
-this exception shall be raised with a helpful error message explaining the
+this exception will be raised with a helpful error message explaining the
 cause of the failure. This exception will normally be caught and the
 failed write task will be retried in the background so that there is no
 loss of data if failures occur due to overload of Timeseries server. You
 can read more about this retry mechanism at
-`OPENWISP_MONITORING_WRITE_RETRY_OPTIONS
-<#openwisp-monitoring-write-retry-options>`_.
+:ref:`OPENWISP_MONITORING_WRITE_RETRY_OPTIONS
+<openwisp_monitoring_write_retry_options>`.
 
 ``InvalidMetricConfigException``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Path**:
+**Full Python path**:
 ``openwisp_monitoring.monitoring.exceptions.InvalidMetricConfigException``
 
-This exception shall be raised if the metric configuration is broken.
+This exception will be raised if the metric configuration is broken.
 
 ``InvalidChartConfigException``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Path**:
+**Full Python path**:
 ``openwisp_monitoring.monitoring.exceptions.InvalidChartConfigException``
 
-This exception shall be raised if the chart configuration is broken.
+This exception will be raised if the chart configuration is broken.

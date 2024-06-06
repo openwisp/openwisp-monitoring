@@ -1,6 +1,8 @@
 Quickstart Guide
 ================
 
+.. _install_monitoring_packages_on_device:
+
 Install Monitoring Packages on the Device
 -----------------------------------------
 

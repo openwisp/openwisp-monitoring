@@ -21,7 +21,6 @@ Refer to :doc:`user/intro` for a complete overview of features.
     ./user/configuring-iperf3-check.rst
     ./user/dashboard-monitoring-charts.rst
     ./user/wifi-sessions.rst
-    ./user/default-alerts-and-notifications.rst
     ./user/rest-api.rst
     ./user/settings.rst
 

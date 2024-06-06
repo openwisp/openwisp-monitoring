@@ -78,60 +78,9 @@ see the `OpenWISP Architecture Overview
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/dashboard.png
     :align: center
 
-Available Features
-------------------
 
-- Collection of monitoring information in a timeseries database (currently
-  only influxdb is supported)
-- Allows to browse alerts easily from the user interface with one click
-- Collects and displays `device status <#device-status>`_ information like
-  uptime, RAM status, CPU load averages, Interface properties and
-  addresses, WiFi interface status and associated clients, Neighbors
-  information, DHCP Leases, Disk/Flash status
-- Monitoring charts for `uptime <#ping>`_, `packet loss <#ping>`_, `round
-  trip time (latency) <#ping>`_, `associated wifi clients
-  <#wifi-clients>`_, `interface traffic <#traffic>`_, `RAM usage
-  <#memory-usage>`_, `CPU load <#cpu-load>`_, `flash/disk usage
-  <#disk-usage>`_, mobile signal (LTE/UMTS/GSM `signal strength
-  <#mobile-signal-strength>`_, `signal quality <#mobile-signal-quality>`_,
-  `access technology in use <#mobile-access-technology-in-use>`_),
-  `bandwidth <#iperf3>`_, `transferred data <#iperf3>`_, `restransmits
-  <#iperf3>`_, `jitter <#iperf3>`_, `datagram <#iperf3>`_, `datagram loss
-  <#iperf3>`_
-- Maintains a record of `WiFi sessions <#monitoring-wifi-sessions>`_ with
-  clients' MAC address and vendor, session start and stop time and
-  connected device along with other information
-- Charts can be viewed at resolutions of the last 1 day, 3 days, 7 days,
-  30 days, and 365 days
-- Configurable alerts
-- CSV Export of monitoring data
-- An overview of the status of the network is shown in the admin
-  dashboard, a chart shows the percentages of devices which are online,
-  offline or having issues; there are also `two timeseries charts which
-  show the total unique WiFI clients and the traffic flowing to the
-  network <dashboard-monitoring-charts>`_, a geographic map is also
-  available for those who use the geographic features of OpenWISP
-- Possibility to configure additional `Metrics
-  <#openwisp_monitoring_metrics>`_ and `Charts
-  <#openwisp_monitoring_charts>`_
-- Extensible active check system: it's possible to write additional checks
-  that are run periodically using python classes
-- Extensible metrics and charts: it's possible to define new metrics and
-  new charts
-- API to retrieve the chart metrics and status information of each device
-  based on `NetJSON DeviceMonitoring
-  <http://netjson.org/docs/what.html#devicemonitoring>`_
-- `Iperf3 check <#iperf3-1>`_ that provides network performance
-  measurements such as maximum achievable bandwidth, jitter, datagram loss
-  etc of the openwrt device using `iperf3 utility <https://iperf.fr/>`_
-
-----
-
-.. contents:: **Table of Contents**:
-    :backlinks: none
-    :depth: 3
-
-----
+Refer to `Features: Monitoring <https://openwisp.io/docs/__new__/dev/monitoring/user/intro.html>`
+of OpenWISP documentation  for a complete overview of features.
 
 Contributing
 ------------
