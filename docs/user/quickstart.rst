@@ -33,7 +33,7 @@ There are mainly two deployment scenarios for OpenWISP:
    case a management tunnel is needed**
 2. the OpenWISP server is deployed on a computer/server which is located
    in the same Layer 2 network (that is, in the same LAN) where the
-   devices are located. **in this case a management tunnel is NOT needed**
+   devices are located. **In this case a management tunnel is NOT needed**
 
 1. Public Internet Deployment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -47,7 +47,7 @@ This is the most common scenario:
   locations (different cities, different regions, different countries)
 
 In this scenario, the OpenWISP application will not be able to reach the
-devices **unless a management tunnel** is used, for that reason having a
+devices unless a management tunnel is used, for that reason having a
 management VPN like OpenVPN, Wireguard, ZeroTier or any other tunneling
 solution is paramount, not only to allow OpenWISP to work properly, but
 also to be able to perform debugging and troubleshooting when needed.
@@ -55,7 +55,7 @@ also to be able to perform debugging and troubleshooting when needed.
 In this scenario, the following requirements are needed:
 
 - a VPN server must be installed in a way that the OpenWISP server can
-  reach the VPN peers, for more information on how to do this via OpenWISP
+  reach the VPN peers. For more information on how to do this via OpenWISP
   please refer to the following sections:
 
   - :doc:`OpenVPN tunnel automation </user/vpn>`
@@ -68,8 +68,8 @@ In this scenario, the following requirements are needed:
   If the OpenWISP server is connected to a network infrastructure which
   allows it to reach the devices via pre-existing tunneling or Intranet
   solutions (eg: MPLS, SD-WAN), then setting up a VPN server is not
-  needed, as long as there's a dedicated interface on OpenWrt which gets
-  an IP address assigned to it and which is reachable from the OpenWISP
+  needed, as long as there's a dedicated interface on OpenWrt which has an
+  IP address assigned to it and which is reachable from the OpenWISP
   server.
 
 - The devices must be configured to join the management tunnel
