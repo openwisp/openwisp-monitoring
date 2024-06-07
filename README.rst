@@ -82,6 +82,12 @@ For a complete overview of features, refer to the `Monitoring: Features
 <https://openwisp.io/docs/__new__/dev/monitoring/user/intro.html>`_
 section of the OpenWISP documentation.
 
+Documentation
+-------------
+
+- `Developer documentation <https://openwisp.io/docs/__new__/dev/monitoring/developer/>`_
+- `User documentation <https://openwisp.io/docs/__new__/dev/monitoring/>`_
+
 Contributing
 ------------
 
