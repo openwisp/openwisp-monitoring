@@ -44,7 +44,7 @@ This check is **disabled by default**. You can enable auto creation of
 this check by setting the :ref:`openwisp_monitoring_auto_iperf3` to
 ``True``.
 
-You can also :ref:`add the iperf3 check <adding_checks_and_alertsettings>`
+You can also :doc:`add the iperf3 check <adding-checks-and-alertsettings>`
 directly from the device page.
 
 It also supports tuning of various parameters. You can change the
@@ -55,6 +55,6 @@ rsa_publc_key etc) using the
 .. note::
 
     When setting :ref:`openwisp_monitoring_auto_iperf3` to ``True``, you
-    may need to update the :ref:`metric configuration <Adding Checks and
-    Alert settings from the device page>` to enable alerts for the iperf3
+    may need to update the :doc:`metric configuration
+    <adding-checks-and-alertsettings>` to enable alerts for the iperf3
     check.

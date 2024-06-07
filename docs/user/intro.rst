@@ -7,7 +7,7 @@ OpenWISP provides the following monitoring capabilities:
   dashboard, a chart shows the percentages of devices which are online,
   offline or having issues; there are also :doc:`two timeseries charts
   which show the total unique WiFI clients and the traffic flowing to the
-  network <dashboard_monitoring_charts>`, a geographic map is also
+  network <dashboard-monitoring-charts>`, a geographic map is also
   available for those who use the geographic features of OpenWISP
 - Collection of monitoring information in a timeseries database (currently
   only influxdb is supported)
@@ -37,7 +37,7 @@ OpenWISP provides the following monitoring capabilities:
 - Possibility to configure additional :ref:`Metrics
   <openwisp_monitoring_metrics>` and :ref:`Charts
   <openwisp_monitoring_charts>`
-- :ref:`Extensible active check system <adding_checks_and_alertsettings>`:
+- :doc:`Extensible active check system <adding-checks-and-alertsettings>`:
   it's possible to write additional checks that are run periodically using
   python classes
 - Extensible :ref:`metrics <openwisp_monitoring_metrics>` and :ref:`charts

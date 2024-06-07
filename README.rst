@@ -78,9 +78,9 @@ see the `OpenWISP Architecture Overview
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/dashboard.png
     :align: center
 
-
-Refer to `Monitoring: Features <https://openwisp.io/docs/__new__/dev/monitoring/user/intro.html>`
-of OpenWISP documentation  for a complete overview of features.
+For a complete overview of features, refer to the `Monitoring: Features
+<https://openwisp.io/docs/__new__/dev/monitoring/user/intro.html>`_
+section of the OpenWISP documentation.
 
 Contributing
 ------------

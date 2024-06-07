@@ -1,5 +1,3 @@
-.. _dashboard_monitoring_charts:
-
 Dashboard Monitoring Charts
 ===========================
 

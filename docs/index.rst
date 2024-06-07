@@ -6,7 +6,8 @@ Django, designed to be **extensible**, **programmable**, **scalable** and
 easy to use by end users: once the system is configured, monitoring
 checks, alerts and metric collection happens automatically.
 
-Refer to :doc:`user/intro` for a complete overview of features.
+For a comprehensive overview of features, please refer to the
+:doc:`user/intro` page.
 
 .. toctree::
     :caption: User Docs
@@ -23,6 +24,7 @@ Refer to :doc:`user/intro` for a complete overview of features.
     ./user/wifi-sessions.rst
     ./user/rest-api.rst
     ./user/settings.rst
+    ./user/management-commands.rst
 
 .. toctree::
     :caption: Developer Docs

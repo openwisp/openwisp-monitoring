@@ -1,5 +1,3 @@
-.. _adding_checks_and_alertsettings:
-
 Adding Checks and Alert Settings from the Device Page
 =====================================================
 
