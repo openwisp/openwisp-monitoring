@@ -23,7 +23,7 @@ In order to perform :doc:`active checks <./checks>` and other actions like
 :doc:`triggering the push of configuration changes
 </controller/user/push-operations>`, :doc:`executing shell commands
 </controller/user/shell-commands>`, or :doc:`performing firmware upgrades
-</user/firmware-upgrades>`, **the OpenWISP server needs to be able to
+</firmware-upgrader/user/quickstart>`, **the OpenWISP server needs to be able to
 reach the network devices**.
 
 There are mainly two deployment scenarios for OpenWISP:
