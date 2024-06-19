@@ -1,10 +1,11 @@
 Monitoring
 ==========
 
-OpenWISP Monitoring is a network monitoring system written in Python and
-Django, designed to be **extensible**, **programmable**, **scalable** and
-easy to use by end users: once the system is configured, monitoring
-checks, alerts and metric collection happens automatically.
+The OpenWISP Monitoring module leverages the capabilities of Python and
+the Django Framework to provide OpenWISP with robust network monitoring
+features. Designed to be extensible, programmable, scalable, and
+user-friendly, this module automates monitoring checks, alerts, and metric
+collection, ensuring efficient and comprehensive network management.
 
 For a comprehensive overview of features, please refer to the
 :doc:`user/intro` page.

@@ -85,7 +85,8 @@ section of the OpenWISP documentation.
 Documentation
 -------------
 
-- `Developer documentation <https://openwisp.io/docs/__new__/dev/monitoring/developer/>`_
+- `Developer documentation
+  <https://openwisp.io/docs/__new__/dev/monitoring/developer/>`_
 - `User documentation <https://openwisp.io/docs/__new__/dev/monitoring/>`_
 
 Contributing

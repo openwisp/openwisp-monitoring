@@ -299,8 +299,8 @@ registering notification types in the Notifications module
 
 Once a new notification type is registered, you have to use the
 :doc:`"notify" signal provided the Notifications module
-</notifications/user/sending-notifications>` to send notifications
-for this type.
+</notifications/user/sending-notifications>` to send notifications for
+this type.
 
 Signals
 -------
