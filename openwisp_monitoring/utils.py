@@ -23,7 +23,7 @@ def retry(method):
             try:
                 return method(*args, **kwargs)
             except Exception as err:
-                logger.info(
+                logger.exception(
                     f'Error while executing method "{method.__name__}":\n{err}\n'
                     f'Attempt {attempt_no} out of {max_retries}.\n'
                 )
