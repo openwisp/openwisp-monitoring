@@ -9,19 +9,36 @@ logger = logging.getLogger(__name__)
 
 TIMESERIES_DB = getattr(settings, 'TIMESERIES_DATABASE', None)
 if not TIMESERIES_DB:
-    TIMESERIES_DB = {
-        'BACKEND': 'openwisp_monitoring.db.backends.influxdb',
-        'USER': getattr(settings, 'INFLUXDB_USER', 'openwisp'),
-        'PASSWORD': getattr(settings, 'INFLUXDB_PASSWORD', 'openwisp'),
-        'NAME': getattr(settings, 'INFLUXDB_DATABASE', 'openwisp2'),
-        'HOST': getattr(settings, 'INFLUXDB_HOST', 'localhost'),
-        'PORT': getattr(settings, 'INFLUXDB_PORT', '8086'),
-    }
-    logger.warning(
-        'The previous method to define Timeseries Database has been deprecated. Please refer to the docs:\n'
-        'https://github.com/openwisp/openwisp-monitoring#setup-integrate-in-an-existing-django-project'
-    )
+    INFLUXDB_BACKEND = getattr(settings, 'INFLUXDB_BACKEND', 'openwisp_monitoring.db.backends.influxdb')
 
+    if INFLUXDB_BACKEND == 'openwisp_monitoring.db.backends.influxdb':
+        # InfluxDB 1.x configuration
+        TIMESERIES_DB = {
+            'BACKEND': INFLUXDB_BACKEND,
+            'USER': getattr(settings, 'INFLUXDB_USER', 'openwisp'),
+            'PASSWORD': getattr(settings, 'INFLUXDB_PASSWORD', 'openwisp'),
+            'NAME': getattr(settings, 'INFLUXDB_DATABASE', 'openwisp2'),
+            'HOST': getattr(settings, 'INFLUXDB_HOST', 'localhost'),
+            'PORT': getattr(settings, 'INFLUXDB_PORT', '8086'),
+        }
+    elif INFLUXDB_BACKEND == 'openwisp_monitoring.db.backends.influxdb2':
+        # InfluxDB 2.x configuration
+        TIMESERIES_DB = {
+            'BACKEND': INFLUXDB_BACKEND,
+            'TOKEN': getattr(settings, 'INFLUXDB_TOKEN', 'dltiEmsmMKU__9SoBE0ingFdMTS3UksrESwIQDNtW_3WOgn8bQGdyYzPcx_aDtvZkqvR8RbMkwVVlzUJxpm62w=='),
+            'ORG': getattr(settings, 'INFLUXDB_ORG', 'myorg'),
+            'BUCKET': getattr(settings, 'INFLUXDB_BUCKET', 'mybucket'),
+            'HOST': getattr(settings, 'INFLUXDB_HOST', 'localhost'),
+            'PORT': getattr(settings, 'INFLUXDB_PORT', '8086'),
+        }
+    else:
+        logger.warning('Invalid INFLUXDB_BACKEND setting. Please check the documentation.')
+
+    if INFLUXDB_BACKEND == 'openwisp_monitoring.db.backends.influxdb':
+        logger.warning(
+            'The previous method to define Timeseries Database has been deprecated. Please refer to the docs:\n'
+            'https://github.com/openwisp/openwisp-monitoring#setup-integrate-in-an-existing-django-project'
+        )
 
 def load_backend_module(backend_name=TIMESERIES_DB['BACKEND'], module=None):
     """
@@ -30,7 +47,8 @@ def load_backend_module(backend_name=TIMESERIES_DB['BACKEND'], module=None):
     """
     try:
         assert 'BACKEND' in TIMESERIES_DB, 'BACKEND'
-        if 'BACKEND' in TIMESERIES_DB and '2' in TIMESERIES_DB['BACKEND']:
+        is_influxdb2 = '2' in TIMESERIES_DB['BACKEND']
+        if is_influxdb2:
             # InfluxDB 2.x specific checks
             assert 'TOKEN' in TIMESERIES_DB, 'TOKEN'
             assert 'ORG' in TIMESERIES_DB, 'ORG'
@@ -75,7 +93,7 @@ if '2' in TIMESERIES_DB['BACKEND']:
         token=TIMESERIES_DB['TOKEN'],
         url=f"http://{TIMESERIES_DB['HOST']}:{TIMESERIES_DB['PORT']}",
     )
+    timeseries_db.queries = load_backend_module(TIMESERIES_DB['BACKEND'], module='queries')
 else:
     timeseries_db = load_backend_module(module='client').DatabaseClient()
-
-timeseries_db.queries = load_backend_module(module='queries')
+    timeseries_db.queries = load_backend_module(module='queries')

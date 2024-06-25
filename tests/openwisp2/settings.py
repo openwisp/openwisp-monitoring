@@ -7,7 +7,8 @@ from celery.schedules import crontab
 TESTING = 'test' in sys.argv
 SHELL = 'shell' in sys.argv or 'shell_plus' in sys.argv
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
+INFLUXDB_BACKEND = 'openwisp_monitoring.db.backends.influxdb2'
+INFLUXDB_BACKEND = 'openwisp_monitoring.db.backends.influxdb'
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
@@ -35,11 +36,11 @@ INFLUXDB_1x_DATABASE = {
 # For InfluxDB 2.x
 INFLUXDB_2x_DATABASE = {
     'BACKEND': 'openwisp_monitoring.db.backends.influxdb2',
-    'TOKEN': 't8Q3Y5mTWuqqTRdGyVxZuyVLO-8pl3I8KaNTR3jV7uTDr_GVECP5Z7LsrZwILGw79Xp4O8pAWkdqTREgIk073Q==',
+    'TOKEN': 'dltiEmsmMKU__9SoBE0ingFdMTS3UksrESwIQDNtW_3WOgn8bQGdyYzPcx_aDtvZkqvR8RbMkwVVlzUJxpm62w==',
     'ORG': 'myorg',
     'BUCKET': 'mybucket',
     'HOST': os.getenv('INFLUXDB_HOST', 'localhost'),
-    'PORT': '9086',
+    'PORT': '8086',
 }
 
 if os.environ.get('USE_INFLUXDB2', 'False') == 'True':

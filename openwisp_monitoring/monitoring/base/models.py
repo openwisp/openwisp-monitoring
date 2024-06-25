@@ -421,9 +421,14 @@ class AbstractMetric(TimeStampedEditableModel):
             current=current,
         )
         pre_metric_write.send(**signal_kwargs)
-        timestamp = time or timezone.now()
-        if isinstance(timestamp, str):
-            timestamp = parse_date(timestamp)
+        if time is None:
+            timestamp = timezone.now()
+        elif isinstance(time, str):
+            timestamp = parse_date(time)
+        else:
+            timestamp = time
+        if timezone.is_naive(timestamp):
+            timestamp = timezone.make_aware(timestamp)
         options = dict(
             tags=self.tags,
             timestamp=timestamp.isoformat(),
@@ -467,6 +472,11 @@ class AbstractMetric(TimeStampedEditableModel):
         for metric, kwargs in raw_data:
             try:
                 write_data.append(metric.write(**kwargs, write=False))
+                if kwargs.get('check', True):
+                    check_value = kwargs['value']
+                    if metric.alert_on_related_field and kwargs.get('extra_values'):
+                        check_value = kwargs['extra_values'][metric.alert_field]
+                    metric.check_threshold(check_value, kwargs.get('time'), kwargs.get('retention_policy'), kwargs.get('send_alert', True))
             except ValueError as error:
                 error_dict[metric.key] = str(error)
         _timeseries_batch_write(write_data)
@@ -476,7 +486,7 @@ class AbstractMetric(TimeStampedEditableModel):
     def read(self, **kwargs):
         """reads timeseries data"""
         return timeseries_db.read(
-            key=self.key, fields=self.field_name, tags=self.tags, **kwargs
+            measurement=self.key, fields=self.field_name, tags=self.tags, **kwargs
         )
 
     def _notify_users(self, notification_type, alert_settings):
@@ -656,6 +666,16 @@ class AbstractChart(TimeStampedEditableModel):
             group = '7d'
         custom_group_map.update({time: group})
         return custom_group_map
+    
+    def _format_date(self, date_str):
+        if date_str is None or date_str == 'now()':
+            return date_str
+        try:
+            date = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+            return date.strftime('%Y-%m-%dT%H:%M:%SZ')
+        except ValueError:
+            # If the date_str is not in the expected format, return it as is
+            return date_str
 
     def get_query(
         self,
@@ -675,8 +695,13 @@ class AbstractChart(TimeStampedEditableModel):
         params = self._get_query_params(time, start_date, end_date)
         params.update(additional_params)
         params.update({'start_date': start_date, 'end_date': end_date})
+        params.update({
+            'start_date': self._format_date(start_date) if start_date else None,
+            'end_date': self._format_date(end_date) if end_date else None
+        })
         if not params.get('organization_id') and self.config_dict.get('__all__', False):
             params['organization_id'] = ['__all__']
+        params['measurement'] = params.get('measurement') or params.get('key')
         return timeseries_db.get_query(
             self.type,
             params,
@@ -707,6 +732,7 @@ class AbstractChart(TimeStampedEditableModel):
     def _get_query_params(self, time, start_date=None, end_date=None):
         m = self.metric
         params = dict(
+            measurement=m.key,
             field_name=m.field_name,
             key=m.key,
             time=self._get_time(time, start_date, end_date),
@@ -754,8 +780,7 @@ class AbstractChart(TimeStampedEditableModel):
     ):
         additional_query_kwargs = additional_query_kwargs or {}
         traces = {}
-        if x_axys:
-            x = []
+        x = []
         try:
             query_kwargs = dict(
                 time=time, timezone=timezone, start_date=start_date, end_date=end_date
@@ -771,37 +796,44 @@ class AbstractChart(TimeStampedEditableModel):
                 data_query = self.get_query(**query_kwargs)
                 summary_query = self.get_query(summary=True, **query_kwargs)
             points = timeseries_db.get_list_query(data_query)
+            logging.debug(f"Data points: {points}")
+            logging.debug(f"Data query: {data_query}")
             summary = timeseries_db.get_list_query(summary_query)
+            logging.debug(f"Summary query: {summary_query}")
         except timeseries_db.client_error as e:
             logging.error(e, exc_info=True)
             raise e
         for point in points:
+            time_value = point.get('time') or point.get('_time')
+            if not time_value:
+                logging.warning(f"Point missing time value: {point}")
+                continue
             for key, value in point.items():
-                if key == 'time':
+                if key in ['time', '_time']:
                     continue
                 traces.setdefault(key, [])
                 if decimal_places and isinstance(value, (int, float)):
                     value = self._round(value, decimal_places)
                 traces[key].append(value)
-            time = datetime.fromtimestamp(point['time'], tz=tz(timezone)).strftime(
-                '%Y-%m-%d %H:%M'
-            )
-            if x_axys:
-                x.append(time)
+            if isinstance(time_value, str):
+                time = datetime.fromisoformat(time_value.rstrip('Z')).replace(tzinfo=utc).astimezone(tz(timezone))
+            else:
+                time = datetime.fromtimestamp(time_value, tz=tz(timezone))
+            formatted_time = time.strftime('%Y-%m-%d %H:%M')
+            x.append(formatted_time)
         # prepare result to be returned
         # (transform chart data so its order is not random)
         result = {'traces': sorted(traces.items())}
-        if x_axys:
-            result['x'] = x
+        result['x'] = x
         # add summary
         if len(summary) > 0:
             result['summary'] = {}
             for key, value in summary[0].items():
-                if key == 'time':
+                if key in ['time', '_time']:
                     continue
                 if not timeseries_db.validate_query(self.query):
                     value = None
-                elif value:
+                elif value is not None:
                     value = self._round(value, decimal_places)
                 result['summary'][key] = value
         return result

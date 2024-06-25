@@ -1,6 +1,7 @@
 import time
 from datetime import timedelta
 
+from django.conf import settings
 from django.core.cache import cache
 from django.utils.timezone import now
 from swapper import load_model
@@ -245,17 +246,47 @@ charts = {
 
 
 class TestMonitoringMixin(TestOrganizationMixin):
-    ORIGINAL_DB = TIMESERIES_DB['NAME']
-    TEST_DB = f'{ORIGINAL_DB}_test'
+    INFLUXDB_BACKEND = TIMESERIES_DB.get('BACKEND')
+    TIMESERIES_DB = getattr(settings, 'TIMESERIES_DATABASE', None)
+    TEST_DB = f"{TIMESERIES_DB['NAME']}" if 'NAME' in TIMESERIES_DB else 'test_db'
+    TEST_BUCKET = f"{TIMESERIES_DB['BUCKET']}" 
+    TEST_ORG = f"{TIMESERIES_DB['ORG']}" 
+    TEST_TOKEN = f"{TIMESERIES_DB['TOKEN']}" 
+
+    if INFLUXDB_BACKEND == 'openwisp_monitoring.db.backends.influxdb':
+        # InfluxDB 1.x configuration
+        ORIGINAL_DB = TIMESERIES_DB['NAME']
+        TEST_DB = f"{ORIGINAL_DB}"
+    elif INFLUXDB_BACKEND == 'openwisp_monitoring.db.backends.influxdb2':
+        # InfluxDB 2.x configuration
+        ORG_BUCKET = f"{TIMESERIES_DB['ORG']}/{TIMESERIES_DB['BUCKET']}"
+        ORIGINAL_DB = ORG_BUCKET
+        TEST_DB = f"{ORG_BUCKET}"
+    else:
+        ORIGINAL_DB = None
+        TEST_DB = None
 
     @classmethod
     def setUpClass(cls):
+        # import pdb; pdb.set_trace()
         # By default timeseries_db.db shall connect to the database
         # defined in settings when apps are loaded. We don't want that while testing
-        timeseries_db.db_name = cls.TEST_DB
-        del timeseries_db.db
-        del timeseries_db.dbs
+        if 'NAME' in cls.TIMESERIES_DB:
+        # InfluxDB 1.8 configuration
+            timeseries_db.db_name = cls.TEST_DB
+            del timeseries_db.db
+            del timeseries_db.dbs
+        else:
+        # InfluxDB 2.0 configuration
+            timeseries_db.bucket = cls.TEST_BUCKET
+            timeseries_db.org = cls.TEST_ORG
+            timeseries_db.token = cls.TEST_TOKEN
+    
+        # Create the test database or bucket
         timeseries_db.create_database()
+    
+        # Rest of the setup code...
+        super().setUpClass()
         for key, value in metrics.items():
             register_metric(key, value)
         for key, value in charts.items():

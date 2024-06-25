@@ -3,6 +3,7 @@ import random
 from collections import OrderedDict
 from datetime import datetime
 
+from django.conf import settings
 import swapper
 from cache_memoize import cache_memoize
 from dateutil.relativedelta import relativedelta
@@ -155,7 +156,18 @@ class AbstractDeviceData(object):
         """
         if self.__data:
             return self.__data
-        q = device_data_query.format(SHORT_RP, self.__key, self.pk)
+    
+        if settings.TIMESERIES_DATABASE['BACKEND'] == 'openwisp_monitoring.db.backends.influxdb2':
+            # InfluxDB 2.x query
+            q = device_data_query.format(
+                bucket=settings.TIMESERIES_DATABASE['BUCKET'],
+                measurement=self.__key,
+                object_id=self.pk
+            )
+        else:
+            # InfluxDB 1.x query (kept for backward compatibility)
+            q = "SELECT data FROM {0}.{1} WHERE pk = '{2}' ORDER BY time DESC LIMIT 1".format(SHORT_RP, self.__key, self.pk)
+
         cache_key = get_device_cache_key(device=self, context='current-data')
         points = cache.get(cache_key)
         if not points:
@@ -379,11 +391,11 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         self.full_clean()
         self.save()
         # clear device management_ip when device is offline
-        if self.status == 'critical' and app_settings.AUTO_CLEAR_MANAGEMENT_IP:
-            self.device.management_ip = None
-            self.device.save(update_fields=['management_ip'])
+        # if self.status == 'critical' and app_settings.AUTO_CLEAR_MANAGEMENT_IP:
+        #     self.device.management_ip = None
+        #     self.device.save(update_fields=['management_ip'])
 
-        health_status_changed.send(sender=self.__class__, instance=self, status=value)
+        # health_status_changed.send(sender=self.__class__, instance=self, status=value)
 
     @property
     def related_metrics(self):
