@@ -1,62 +1,48 @@
-import logging
-import re
-from datetime import datetime
-
+from datetime import datetime, time, timezone
 from django.conf import settings
-from django.core.exceptions import ValidationError
-from django.utils.translation import gettext_lazy as _
-from influxdb_client import InfluxDBClient, Point
+from influxdb_client import InfluxDBClient, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS
+import re
+import pytz
+from django.utils.timezone import now
+import logging
+from .. import TIMESERIES_DB
+from django.core.exceptions import ValidationError
+from influxdb_client.rest import ApiException as InfluxDBClientError
+from django.utils.translation import gettext_lazy as _
+from django.utils.dateparse import parse_datetime
 
-from ...exceptions import TimeseriesWriteException
 
 logger = logging.getLogger(__name__)
 
-
-class DatabaseClient(object):
+class DatabaseClient:
     _AGGREGATE = [
-        'COUNT',
-        'DISTINCT',
-        'INTEGRAL',
-        'MEAN',
-        'MEDIAN',
-        'MODE',
-        'SPREAD',
-        'STDDEV',
-        'SUM',
-        'BOTTOM',
-        'FIRST',
-        'LAST',
-        'MAX',
-        'MIN',
-        'PERCENTILE',
-        'SAMPLE',
-        'TOP',
-        'CEILING',
-        'CUMULATIVE_SUM',
-        'DERIVATIVE',
-        'DIFFERENCE',
-        'ELAPSED',
-        'FLOOR',
-        'HISTOGRAM',
-        'MOVING_AVERAGE',
-        'NON_NEGATIVE_DERIVATIVE',
-        'HOLT_WINTERS',
+        'COUNT', 'DISTINCT', 'INTEGRAL', 'MEAN', 'MEDIAN', 'MODE',
+        'SPREAD', 'STDDEV', 'SUM', 'BOTTOM', 'FIRST', 'LAST',
+        'MAX', 'MIN', 'PERCENTILE', 'SAMPLE', 'TOP', 'CEILING',
+        'CUMULATIVE_SUM', 'DERIVATIVE', 'DIFFERENCE', 'ELAPSED',
+        'FLOOR', 'HISTOGRAM', 'MOVING_AVERAGE', 'NON_NEGATIVE_DERIVATIVE',
+        'HOLT_WINTERS'
     ]
-    _FORBIDDEN = ['drop', 'create', 'delete', 'alter', 'into']
-    backend_name = 'influxdb'
+    _FORBIDDEN = ['drop', 'delete', 'alter', 'into']
+    backend_name = 'influxdb2'
 
-    def __init__(self, bucket, org, token, url):
-        self.bucket = bucket
-        self.org = org
-        self.token = token
-        self.url = url
-        self.client = InfluxDBClient(url=url, token=token, org=org)
+    def __init__(self, bucket=None, org=None, token=None, url=None):
+        self.bucket = bucket or TIMESERIES_DB['BUCKET']
+        self.org = org or TIMESERIES_DB['ORG']
+        self.token = token or TIMESERIES_DB['TOKEN']
+        self.url = url 
+        self.client = InfluxDBClient(url=self.url, token=self.token, org=self.org)
         self.write_api = self.client.write_api(write_options=SYNCHRONOUS)
         self.query_api = self.client.query_api()
+        self.forbidden_pattern = re.compile(
+            r'\b(' + '|'.join(self._FORBIDDEN) + r')\b', re.IGNORECASE
+        )
+        self.client_error = InfluxDBClientError
 
     def create_database(self):
         logger.debug('InfluxDB 2.0 does not require explicit database creation.')
+        # self.create_bucket(self.bucket)
 
     def drop_database(self):
         logger.debug('InfluxDB 2.0 does not support dropping databases via the client.')
@@ -64,65 +50,231 @@ class DatabaseClient(object):
     def create_or_alter_retention_policy(self, name, duration):
         logger.debug('InfluxDB 2.0 handles retention policies via bucket settings.')
 
-    def write(self, name, values, **kwargs):
-        timestamp = kwargs.get('timestamp', datetime.utcnow().isoformat())
-        point = (
-            Point(name)
-            .tag("object_id", kwargs.get('tags').get('object_id'))
-            .field(kwargs.get('field'), values)
-            .time(timestamp)
-        )
+    def create_bucket(self, bucket, retention_rules=None):
+        bucket_api = self.client.buckets_api()
         try:
+            existing_bucket = bucket_api.find_bucket_by_name(bucket)
+            if existing_bucket:
+                logger.info(f'Bucket "{bucket}" already exists.')
+                return
+        except Exception as e:
+            logger.error(f"Error checking for existing bucket: {e}")
+
+        try:
+            bucket_api.create_bucket(bucket_name=bucket, retention_rules=retention_rules, org=self.org)
+            logger.info(f'Created bucket "{bucket}"')
+        except self.client_error as e:
+            if "already exists" in str(e):
+                logger.info(f'Bucket "{bucket}" already exists.')
+            else:
+                logger.error(f"Error creating bucket: {e}")
+                raise
+
+    def drop_bucket(self):
+        bucket_api = self.client.buckets_api()
+        bucket = bucket_api.find_bucket_by_name(self.bucket)
+        if bucket:
+            bucket_api.delete_bucket(bucket.id)
+            logger.debug(f'Dropped InfluxDB bucket "{self.bucket}"')
+
+    def _get_timestamp(self, timestamp=None):
+        timestamp = timestamp or now()
+        if isinstance(timestamp, datetime):
+            return timestamp.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+        return timestamp
+
+    def write(self, name, values, **kwargs):
+        timestamp = self._get_timestamp(timestamp=kwargs.get('timestamp'))
+        try:    
+            tags = kwargs.get('tags', {})
+            if 'content_type' in kwargs:
+                tags['content_type'] = kwargs['content_type']
+            if 'object_id' in kwargs:
+                tags['object_id'] = kwargs['object_id']
+            point = {
+                'measurement': name,
+                'tags': tags,
+                'fields': values,
+                'time': timestamp,
+            }
+            # import pdb; pdb.set_trace()
+            print(f"Writing point to InfluxDB: {point}")
             self.write_api.write(bucket=self.bucket, org=self.org, record=point)
-        except Exception as exception:
-            logger.warning(f'got exception while writing to tsdb: {exception}')
-            raise TimeseriesWriteException
+            print(f"Successfully wrote point to bucket {self.bucket}")
+        except Exception as e:
+            print(f"Error writing to InfluxDB: {e}")
 
     def batch_write(self, metric_data):
+        print(f"Batch writing to InfluxDB - Data: {metric_data}")
         points = []
         for data in metric_data:
-            timestamp = data.get('timestamp', datetime.utcnow().isoformat())
-            point = (
-                Point(data.get('name'))
-                .tag("object_id", data.get('tags').get('object_id'))
-                .field(data.get('field'), data.get('values'))
-                .time(timestamp)
-            )
+            timestamp = self._get_timestamp(timestamp=data.get('timestamp'))
+            point = Point(data.get('name')).tag(**data.get('tags', {})).field(**data.get('values')).time(timestamp, WritePrecision.NS)
             points.append(point)
+        
         try:
             self.write_api.write(bucket=self.bucket, org=self.org, record=points)
-        except Exception as exception:
-            logger.warning(f'got exception while writing to tsdb: {exception}')
-            raise TimeseriesWriteException
+            logger.debug(f'Written batch of {len(points)} points to bucket {self.bucket}')
+        except Exception as e:
+            logger.error(f"Error writing batch to InfluxDB: {e}")
 
-    def read(self, key, fields, tags=None, **kwargs):
-        since = kwargs.get('since')
+    # def query(self, query):
+    #     print(f"Executing query: {query}")
+    #     try:
+    #         tables = self.query_api.query(query)
+    #         print(f"Query result: {tables}")
+    #         result = []
+    #         for table in tables:
+    #             for record in table.records:
+    #                 record_dict = {
+    #                     'time': record.get_time(),
+    #                     'measurement': record.get_measurement(),
+    #                     'field': record.get_field(),
+    #                     'value': record.get_value()
+    #                 }
+    #                 result.append(record_dict)
+    #                 print(f"Record: {record_dict}")
+    #         print(f"Query result: {result}")
+    #         if not result:
+    #             print("Query returned no data")
+    #         return result
+    #     except Exception as e:
+    #         logger.error(f"Error querying InfluxDB: {e}")
+    #         print(f"Error querying InfluxDB: {e}")
+    #         return []
+    def _format_date(self, date_str):
+        if date_str is None or date_str == 'now()':
+            return date_str
+        try:
+            date = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+            return date.strftime('%Y-%m-%dT%H:%M:%SZ')
+        except ValueError:
+            # If the date_str is not in the expected format, return it as is
+            return date_str
+        
+    def get_query(self, chart_type, params, time, group_map, summary=False, fields=None, query=None, timezone=settings.TIME_ZONE):
+        print(f"get_query called with params: {params}")
+        measurement = params.get('measurement') or params.get('key')
+        if not measurement or measurement == 'None':
+            logger.error(f"Invalid or missing measurement in params: {params}")
+            return None
+
+        start_date = self._format_date(params.get('start_date', f'-{time}'))
+        end_date = self._format_date(params.get('end_date', 'now()'))
+        content_type = params.get('content_type')
+        object_id = params.get('object_id')
+
+
+        window = group_map.get(time, '1h')
+
+        flux_query = f'''
+        from(bucket: "{self.bucket}")
+          |> range(start: {start_date}, stop: {end_date})
+          |> filter(fn: (r) => r["_measurement"] == "{measurement}")
+        '''
+
+        if content_type and object_id:
+            flux_query += f'  |> filter(fn: (r) => r.content_type == "{content_type}" and r.object_id == "{object_id}")\n'
+
+        if fields:
+            field_filters = ' or '.join([f'r["_field"] == "{field}"' for field in fields])
+            flux_query += f'  |> filter(fn: (r) => {field_filters})\n'
+
+        flux_query += f'  |> aggregateWindow(every: {window}, fn: mean, createEmpty: false)\n'
+        flux_query += '  |> yield(name: "mean")'
+
+        print(f"Generated Flux query: {flux_query}")
+        return flux_query
+
+    def query(self, query):
+        print(f"Executing query: {query}")
+        try:
+            result = self.query_api.query(query)
+            return result
+        except Exception as e:
+            logger.error(f"Error executing query: {e}")
+            return None
+
+    def read(self, measurement, fields, tags, **kwargs):
+        extra_fields = kwargs.get('extra_fields')
+        since = kwargs.get('since', '-30d')
         order = kwargs.get('order')
         limit = kwargs.get('limit')
-        query = (
-            f'from(bucket: "{self.bucket}")'
-            f' |> range(start: {since if since else "-1h"})'  # Use since or default
-            f' |> filter(fn: (r) => r._measurement == "{key}")'
-        )
-        if tags:
-            tag_query = ' and '.join(
-                [f'r.{tag} == "{value}"' for tag, value in tags.items()]
-            )
-            query += f' |> filter(fn: (r) => {tag_query})'
-        if fields:
-            field_query = ' or '.join([f'r._field == "{field}"' for field in fields])
-            query += f' |> filter(fn: (r) => {field_query})'
-        if order:
-            query += f' |> sort(columns: ["_time"], desc: {order == "-time"})'
-        if limit:
-            query += f' |> limit(n: {limit})'
-        result = self.query_api.query(org=self.org, query=query)
-        return [record.values for table in result for record in table.records]
 
+        flux_query = f'''
+        from(bucket: "{self.bucket}")
+            |> range(start: {since})
+            |> filter(fn: (r) => r._measurement == "{measurement}")
+        '''
+        if fields and fields != '*':
+            field_filters = ' or '.join([f'r._field == "{field}"' for field in fields.split(', ')])
+            flux_query += f' |> filter(fn: (r) => {field_filters})'
+    
+        if tags:
+            tag_filters = ' and '.join([f'r["{tag}"] == "{value}"' for tag, value in tags.items()])
+            flux_query += f' |> filter(fn: (r) => {tag_filters})'
+
+        flux_query += '''
+            |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+            |> map(fn: (r) => ({r with _value: float(v: r._value)}))
+            |> keep(columns: ["_time", "_value", "_field", "content_type", "object_id"])
+            |> rename(columns: {_time: "time"})
+        '''
+
+        if order:
+            if order == 'time':
+                flux_query += ' |> sort(columns: ["time"], desc: false)'
+            elif order == '-time':
+                flux_query += ' |> sort(columns: ["time"], desc: true)'
+            else:
+                raise ValueError(f'Invalid order "{order}" passed.\nYou may pass "time" / "-time" to get result sorted in ascending /descending order respectively.')
+    
+        if limit:
+            flux_query += f' |> limit(n: {limit})'
+
+        return self.query(flux_query)
+
+    def get_list_query(self, query, precision=None):
+        print(f"get_list_query called with query: {query}")
+        result = self.query(query)
+        result_points = []
+    
+        if result is None:
+            print("Query returned None")
+            return result_points
+
+        for table in result:
+            for record in table.records:
+                time = record.get_time()
+                if precision is not None:
+                    # Truncate the time based on the specified precision
+                    time = time.isoformat()[:precision]
+                else:
+                    time = time.isoformat()
+            
+                values = {col: record.values.get(col) for col in record.values if col != '_time'}
+                values['time'] = time
+                values['_value'] = record.get_value()
+                values['_field'] = record.get_field()            
+                result_points.append(values)
+    
+        print(f"get_list_query returned {len(result_points)} points")
+        print(f"Processed result points: {result_points}")
+        return result_points
+    
     def delete_metric_data(self, key=None, tags=None):
-        logger.debug(
-            'InfluxDB 2.0 does not support deleting specific data points via the client.'
-        )
+        start = "1970-01-01T00:00:00Z"
+        stop = "2100-01-01T00:00:00Z"
+        predicate = ""
+        if key:
+            predicate += f'r._measurement == "{key}"'
+        if tags:
+            tag_filters = ' and '.join([f'r["{tag}"] == "{value}"' for tag, value in tags.items()])
+            if predicate:
+                predicate += f' and {tag_filters}'
+            else:
+                predicate = tag_filters
+        self.client.delete_api().delete(start, stop, predicate, bucket=self.bucket, org=self.org)
 
     def validate_query(self, query):
         for word in self._FORBIDDEN:
@@ -137,25 +289,146 @@ class DatabaseClient(object):
             if any(['%s(' % word in q, '|%s}' % word in q, '|%s|' % word in q]):
                 return True
         return False
+    
+    def _clean_params(self, params):
+        if params.get('end_date'):
+            params['end_date'] = f"stop: {params['end_date']}"
+        else:
+            params['end_date'] = ''
+    
+        for key, value in params.items():
+            if isinstance(value, (list, tuple)):
+                params[key] = self._get_filter_query(key, value)
+    
+        return params
 
-    def get_query(
-        self,
-        chart_type,
-        params,
-        time,
-        group_map,
-        summary=False,
-        fields=None,
-        query=None,
-        timezone=settings.TIME_ZONE,
-    ):
-        query = self._fields(fields, query, params['field_name'])
-        params = self._clean_params(params)
-        query = query.format(**params)
-        query = self._group_by(query, time, chart_type, group_map, strip=summary)
+    def _get_filter_query(self, field, items):
+        if not items:
+            return ''
+        filters = []
+        for item in items:
+            filters.append(f'r["{field}"] == "{item}"')
+        return f'|> filter(fn: (r) => {" or ".join(filters)})'
+
+    # def get_query(self, chart_type, params, time, group_map, summary=False, fields=None, query=None, timezone=settings.TIME_ZONE):
+        bucket = self.bucket
+        measurement = params.get('measurement')
+        if not measurement or measurement == 'None':
+            logger.error("Invalid or missing measurement in params")
+            return None
+
+        start_date = params.get('start_date')
+        end_date = params.get('end_date')
+        content_type = params.get('content_type')
+        object_id = params.get('object_id')
+        print(f"get_query called with params: {params}")
+        import pdb; pdb.set_trace()
+        def format_time(time_str):
+            if time_str:
+                try:
+                    if isinstance(time_str, str):
+                        # Try parsing as ISO format first
+                        try:
+                            dt = datetime.fromisoformat(time_str.replace('Z', '+00:00'))
+                        except ValueError:
+                            # If that fails, try parsing as a different format
+                            dt = datetime.strptime(time_str, '%Y-%m-%d %H:%M:%S')
+                    else:
+                        dt = time_str
+                    return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+                except Exception as e:
+                    print(f"Error parsing time: {e}")
+                    return None
+
+        start_date = format_time(start_date) if start_date else f'-{time}'
+        end_date = format_time(end_date) if end_date else 'now()'
+
+        flux_query = f'''
+        from(bucket: "{bucket}")
+            |> range(start: {start_date}, stop: {end_date})
+            |> filter(fn: (r) => r._measurement == "{measurement}")
+            |> filter(fn: (r) => r.content_type == "{content_type}" and r.object_id == "{object_id}")
+        '''
+
+        if not summary:
+            window = group_map.get(time, '1h')
+            flux_query += f'|> aggregateWindow(every: {window}, fn: mean, createEmpty: false)'
+
+        flux_query += '''
+            |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+        '''
+
         if summary:
-            query = f'{query} |> limit(n: 1)'
-        return query
+            flux_query += '|> last()'
+
+        flux_query += '|> yield(name: "result")'
+
+        print(f"Generated Flux query: {flux_query}")
+        return flux_query
+    # def get_query(
+    #     self,
+    #     chart_type,
+    #     params,
+    #     time_range,
+    #     group_map,
+    #     summary=False,
+    #     fields=None,
+    #     query=None,
+    #     timezone=settings.TIME_ZONE,
+    # ):
+    #     flux_query = f'from(bucket: "{self.bucket}")'
+
+    #     def format_date(date):
+    #         if date is None:
+    #             return None
+    #         if isinstance(date, str):
+    #             try:
+    #                 dt = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+    #                 return str(int(dt.timestamp()))
+    #             except ValueError:
+    #                 return date
+    #         if isinstance(date, datetime):
+    #             return str(int(date.timestamp()))
+    #         return str(date)
+
+    #     start_date = format_date(params.get('start_date'))
+    #     end_date = format_date(params.get('end_date'))
+
+    #     if start_date:
+    #         flux_query += f' |> range(start: {start_date}'
+    #     else:
+    #         flux_query += f' |> range(start: -{time_range}'
+
+    #     if end_date:
+    #         flux_query += f', stop: {end_date})'
+    #     else:
+    #         flux_query += ')'
+
+    #     if 'key' in params:
+    #         flux_query += f' |> filter(fn: (r) => r._measurement == "{params["key"]}")'
+
+    #     if fields and fields != '*':
+    #         field_filters = ' or '.join([f'r._field == "{field.strip()}"' for field in fields.split(',')])
+    #         flux_query += f' |> filter(fn: (r) => {field_filters})'
+
+    #     if 'content_type' in params and 'object_id' in params:
+    #         flux_query += f' |> filter(fn: (r) => r.content_type == "{params["content_type"]}" and r.object_id == "{params["object_id"]}")'
+
+    #     window_period = group_map.get(time_range, '1h')
+    #     if chart_type in ['line', 'stackedbar']:
+    #         flux_query += f' |> aggregateWindow(every: {window_period}, fn: mean, createEmpty: false)'
+
+    #     flux_query += ' |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'
+
+    #     if summary:
+    #         flux_query += ' |> last()'
+
+    #     flux_query = f'import "timezone"\n\noption location = timezone.location(name: "{timezone}")\n\n{flux_query}'
+
+    #     flux_query += ' |> yield(name: "result")'
+
+    #     print(f"Generated Flux query: {flux_query}")  # Debug print
+    #     return flux_query
 
     def _fields(self, fields, query, field_name):
         matches = re.search(self._fields_regex, query)
@@ -167,8 +440,8 @@ class DatabaseClient(object):
             fields = [field_name]
         if fields and matches:
             groups = matches.groupdict()
-            function = groups['func']  # required
-            operation = groups.get('op')  # optional
+            function = groups['func']
+            operation = groups.get('op')
             fields = [self.__transform_field(f, function, operation) for f in fields]
             fields_key = groups.get('group')
         else:
@@ -179,43 +452,28 @@ class DatabaseClient(object):
 
     def __transform_field(self, field, function, operation=None):
         if operation:
-            operation = f' {operation}'
+            operation = f' |> {operation}'
         else:
             operation = ''
-        return f'{function}("{field}"){operation} AS {field.replace("-", "_")}'
+        return f'{function}(r.{field}){operation} |> rename(columns: {{_{field}: "{field}"}})'
 
-    def _group_by(self, query, time, chart_type, group_map, strip=False):
-        if not self.validate_query(query):
-            return query
-        if not strip and not chart_type == 'histogram':
-            value = group_map[time]
-            group_by = (
-                f'|> aggregateWindow(every: {value}, fn: mean, createEmpty: false)'
-            )
-        else:
-            group_by = ''
-        if 'aggregateWindow' not in query:
-            query = f'{query} {group_by}'
-        return query
+    def _get_top_fields(self, query, params, chart_type, group_map, number, time, timezone=settings.TIME_ZONE):
+        q = self.get_query(query=query, params=params, chart_type=chart_type, group_map=group_map, summary=True, fields=['SUM(*)'], time=time, timezone=timezone)
+        flux_query = f'''
+            {q}
+            |> aggregateWindow(every: {time}, fn: sum, createEmpty: false)
+            |> group(columns: ["_field"])
+            |> sum()
+            |> sort(columns: ["_value"], desc: true)
+            |> limit(n: {number})
+            |> map(fn: (r) => ({{ r with _field: r._field }}))
+        '''
+        result = list(self.query_api.query(flux_query))
+        top_fields = [record["_field"] for table in result for record in table.records]
+        return top_fields
 
+    def close(self):
+        self.client.close()
 
-# Example usage
-if __name__ == "__main__":
-    bucket = "mybucket"
-    org = "myorg"
-    token = "t8Q3Y5mTWuqqTRdGyVxZuyVLO-8pl3I8KaNTR3jV7uTDr_GVECP5Z7LsrZwILGw79Xp4O8pAWkdqTREgIk073Q=="
-    url = "http://localhost:9086"
-
-    client = DatabaseClient(bucket=bucket, org=org, token=token, url=url)
-    client.create_database()
-
-    # Write example
-    client.write(
-        "example_measurement", 99.5, tags={"object_id": "server_01"}, field="uptime"
-    )
-
-    # Read example
-    result = client.read(
-        "example_measurement", ["uptime"], tags={"object_id": "server_01"}
-    )
-    print(result)
+#todo
+# bucket_api.find_bucket_by_name("openwisp")
