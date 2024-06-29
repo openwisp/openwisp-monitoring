@@ -31,7 +31,7 @@ class DatabaseClient:
         self.bucket = bucket or TIMESERIES_DB['BUCKET']
         self.org = org or TIMESERIES_DB['ORG']
         self.token = token or TIMESERIES_DB['TOKEN']
-        self.url = url 
+        self.url = url or f'http://{TIMESERIES_DB["HOST"]}:{TIMESERIES_DB["PORT"]}'
         self.client = InfluxDBClient(url=self.url, token=self.token, org=self.org)
         self.write_api = self.client.write_api(write_options=SYNCHRONOUS)
         self.query_api = self.client.query_api()
@@ -85,63 +85,28 @@ class DatabaseClient:
 
     def write(self, name, values, **kwargs):
         timestamp = self._get_timestamp(timestamp=kwargs.get('timestamp'))
-        try:    
-            tags = kwargs.get('tags', {})
-            if 'content_type' in kwargs:
-                tags['content_type'] = kwargs['content_type']
-            if 'object_id' in kwargs:
-                tags['object_id'] = kwargs['object_id']
+        try:   
             point = {
                 'measurement': name,
-                'tags': tags,
+                'tags': kwargs.get('tags'),
                 'fields': values,
                 'time': timestamp,
             }
-            # import pdb; pdb.set_trace()
-            print(f"Writing point to InfluxDB: {point}")
             self.write_api.write(bucket=self.bucket, org=self.org, record=point)
-            print(f"Successfully wrote point to bucket {self.bucket}")
         except Exception as e:
             print(f"Error writing to InfluxDB: {e}")
 
     def batch_write(self, metric_data):
-        print(f"Batch writing to InfluxDB - Data: {metric_data}")
         points = []
         for data in metric_data:
             timestamp = self._get_timestamp(timestamp=data.get('timestamp'))
             point = Point(data.get('name')).tag(**data.get('tags', {})).field(**data.get('values')).time(timestamp, WritePrecision.NS)
-            points.append(point)
-        
+            points.append(point)   
         try:
             self.write_api.write(bucket=self.bucket, org=self.org, record=points)
-            logger.debug(f'Written batch of {len(points)} points to bucket {self.bucket}')
         except Exception as e:
             logger.error(f"Error writing batch to InfluxDB: {e}")
 
-    # def query(self, query):
-    #     print(f"Executing query: {query}")
-    #     try:
-    #         tables = self.query_api.query(query)
-    #         print(f"Query result: {tables}")
-    #         result = []
-    #         for table in tables:
-    #             for record in table.records:
-    #                 record_dict = {
-    #                     'time': record.get_time(),
-    #                     'measurement': record.get_measurement(),
-    #                     'field': record.get_field(),
-    #                     'value': record.get_value()
-    #                 }
-    #                 result.append(record_dict)
-    #                 print(f"Record: {record_dict}")
-    #         print(f"Query result: {result}")
-    #         if not result:
-    #             print("Query returned no data")
-    #         return result
-    #     except Exception as e:
-    #         logger.error(f"Error querying InfluxDB: {e}")
-    #         print(f"Error querying InfluxDB: {e}")
-    #         return []
     def _format_date(self, date_str):
         if date_str is None or date_str == 'now()':
             return date_str
@@ -193,7 +158,6 @@ class DatabaseClient:
             return result
         except Exception as e:
             logger.error(f"Error executing query: {e}")
-            return None
 
     def read(self, measurement, fields, tags, **kwargs):
         extra_fields = kwargs.get('extra_fields')

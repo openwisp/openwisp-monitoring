@@ -26,8 +26,7 @@ from swapper import load_model
 from openwisp_controller.config.validators import mac_address_validator
 from openwisp_utils.base import TimeStampedEditableModel
 
-from ...check import settings as check_settings
-from ...db import device_data_query, timeseries_db
+from ...db import timeseries_db
 from ...monitoring.signals import threshold_crossed
 from ...monitoring.tasks import _timeseries_write
 from ...settings import CACHE_TIMEOUT
@@ -153,11 +152,12 @@ class AbstractDeviceData(object):
         """Retrieves last data snapshot from Timeseries Database."""
         if self.__data:
             return self.__data
-        q = device_data_query.format(SHORT_RP, self.__key, self.pk)
-        cache_key = get_device_cache_key(device=self, context="current-data")
+        cache_key = get_device_cache_key(device=self, context='current-data')
         points = cache.get(cache_key)
         if not points:
-            points = timeseries_db.get_list_query(q, precision=None)
+            points = timeseries_db._device_data(
+                rp=SHORT_RP, tags={'pk': self.pk}, key=self.__key, fields='data'
+            )
         if not points:
             return None
         self.data_timestamp = points[0]["time"]
@@ -371,11 +371,11 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         self.full_clean()
         self.save()
         # clear device management_ip when device is offline
-        # if self.status == 'critical' and app_settings.AUTO_CLEAR_MANAGEMENT_IP:
-        #     self.device.management_ip = None
-        #     self.device.save(update_fields=['management_ip'])
+        if self.status == '' and app_settings.AUTO_CLEAR_MANAGEMENT_IP:
+            self.device.management_ip = None
+            self.device.save(update_fields=['management_ip'])
 
-        # health_status_changed.send(sender=self.__class__, instance=self, status=value)
+        health_status_changed.send(sender=self.__class__, instance=self, status=value)
 
     @property
     def related_metrics(self):
