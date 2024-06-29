@@ -1,10 +1,7 @@
-from asyncio.log import logger
-
 import swapper
 from django.contrib.auth.models import Permission
 
 from openwisp_controller.migrations import create_default_permissions, get_swapped_model
-from django.db import transaction
 
 
 def assign_permissions_to_groups(apps, schema_editor):
@@ -75,42 +72,30 @@ def create_general_metrics(apps, schema_editor):
     Chart = swapper.load_model('monitoring', 'Chart')
     Metric = swapper.load_model('monitoring', 'Metric')
 
-    # Temporarily disable the validation rules for the Chart model
-    original_full_clean = Chart.full_clean
+    
+    metric, created = Metric._get_or_create(
+        configuration='general_clients',
+        name='General Clients',
+        key='wifi_clients',
+        object_id=None,
+        content_type_id=None,
+    )
+    if created:
+        chart = Chart(metric=metric, configuration='gen_wifi_clients')
+        logger.debug(f'Creating chart with configuration: {chart.configuration}')
+        chart.save()
 
-    def disabled_full_clean(self):
-        pass
-
-    Chart.full_clean = disabled_full_clean
-
-    try:
-        with transaction.atomic():
-            metric, created = Metric._get_or_create(
-                configuration='general_clients',
-                name='General Clients',
-                key='wifi_clients',
-                object_id=None,
-                content_type_id=None,
-            )
-            if created:
-                chart = Chart(metric=metric, configuration='gen_wifi_clients')
-                logger.debug(f'Creating chart with configuration: {chart.configuration}')
-                chart.save()
-
-            metric, created = Metric._get_or_create(
-                configuration='general_traffic',
-                name='General Traffic',
-                key='traffic',
-                object_id=None,
-                content_type_id=None,
-            )
-            if created:
-                chart = Chart(metric=metric, configuration='general_traffic')
-                logger.debug(f'Creating chart with configuration: {chart.configuration}')
-                chart.save()
-    finally:
-        # Restore the original full_clean method
-        Chart.full_clean = original_full_clean
+    metric, created = Metric._get_or_create(
+        configuration='general_traffic',
+        name='General Traffic',
+        key='traffic',
+        object_id=None,
+        content_type_id=None,
+    )
+    if created:
+        chart = Chart(metric=metric, configuration='general_traffic')
+        logger.debug(f'Creating chart with configuration: {chart.configuration}')
+        chart.save()
 
 def delete_general_metrics(apps, schema_editor):
     Metric = apps.get_model('monitoring', 'Metric')

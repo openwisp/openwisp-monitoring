@@ -24,7 +24,7 @@ from swapper import get_model_name
 from openwisp_monitoring.monitoring.utils import clean_timeseries_data_key
 from openwisp_utils.base import TimeStampedEditableModel
 
-from ...db import default_chart_query, timeseries_db
+from ...db import timeseries_db
 from ...settings import CACHE_TIMEOUT, DEFAULT_CHART_TIME
 from ..configuration import (
     CHART_CONFIGURATION_CHOICES,
@@ -421,14 +421,9 @@ class AbstractMetric(TimeStampedEditableModel):
             current=current,
         )
         pre_metric_write.send(**signal_kwargs)
-        if time is None:
-            timestamp = timezone.now()
-        elif isinstance(time, str):
-            timestamp = parse_date(time)
-        else:
-            timestamp = time
-        if timezone.is_naive(timestamp):
-            timestamp = timezone.make_aware(timestamp)
+        timestamp = time or timezone.now()
+        if isinstance(timestamp, str):
+            timestamp = parse_date(timestamp)
         options = dict(
             tags=self.tags,
             timestamp=timestamp.isoformat(),
@@ -472,11 +467,6 @@ class AbstractMetric(TimeStampedEditableModel):
         for metric, kwargs in raw_data:
             try:
                 write_data.append(metric.write(**kwargs, write=False))
-                if kwargs.get('check', True):
-                    check_value = kwargs['value']
-                    if metric.alert_on_related_field and kwargs.get('extra_values'):
-                        check_value = kwargs['extra_values'][metric.alert_field]
-                    metric.check_threshold(check_value, kwargs.get('time'), kwargs.get('retention_policy'), kwargs.get('send_alert', True))
             except ValueError as error:
                 error_dict[metric.key] = str(error)
         _timeseries_batch_write(write_data)
@@ -486,7 +476,7 @@ class AbstractMetric(TimeStampedEditableModel):
     def read(self, **kwargs):
         """reads timeseries data"""
         return timeseries_db.read(
-            measurement=self.key, fields=self.field_name, tags=self.tags, **kwargs
+            key=self.key, fields=self.field_name, tags=self.tags, **kwargs
         )
 
     def _notify_users(self, notification_type, alert_settings):
@@ -627,10 +617,8 @@ class AbstractChart(TimeStampedEditableModel):
 
     @property
     def _default_query(self):
-        q = default_chart_query[0]
-        if self.metric.object_id:
-            q += default_chart_query[1]
-        return q
+        tags = True if self.metric.object_id else False
+        return timeseries_db.default_chart_query(tags)
 
     @classmethod
     def _get_group_map(cls, time=None):
@@ -666,16 +654,6 @@ class AbstractChart(TimeStampedEditableModel):
             group = '7d'
         custom_group_map.update({time: group})
         return custom_group_map
-    
-    def _format_date(self, date_str):
-        if date_str is None or date_str == 'now()':
-            return date_str
-        try:
-            date = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
-            return date.strftime('%Y-%m-%dT%H:%M:%SZ')
-        except ValueError:
-            # If the date_str is not in the expected format, return it as is
-            return date_str
 
     def get_query(
         self,
@@ -695,13 +673,8 @@ class AbstractChart(TimeStampedEditableModel):
         params = self._get_query_params(time, start_date, end_date)
         params.update(additional_params)
         params.update({'start_date': start_date, 'end_date': end_date})
-        params.update({
-            'start_date': self._format_date(start_date) if start_date else None,
-            'end_date': self._format_date(end_date) if end_date else None
-        })
         if not params.get('organization_id') and self.config_dict.get('__all__', False):
             params['organization_id'] = ['__all__']
-        params['measurement'] = params.get('measurement') or params.get('key')
         return timeseries_db.get_query(
             self.type,
             params,
@@ -718,10 +691,10 @@ class AbstractChart(TimeStampedEditableModel):
         Returns list of top ``number`` of fields (highest sum) of a
         measurement in the specified time range (descending order).
         """
-        q = self._default_query.replace('{field_name}', '{fields}')
         params = self._get_query_params(self.DEFAULT_TIME)
         return timeseries_db._get_top_fields(
-            query=q,
+            default_query=self._default_query,
+            query=self.get_query(),
             chart_type=self.type,
             group_map=self._get_group_map(params['days']),
             number=number,
@@ -732,7 +705,6 @@ class AbstractChart(TimeStampedEditableModel):
     def _get_query_params(self, time, start_date=None, end_date=None):
         m = self.metric
         params = dict(
-            measurement=m.key,
             field_name=m.field_name,
             key=m.key,
             time=self._get_time(time, start_date, end_date),
@@ -780,26 +752,31 @@ class AbstractChart(TimeStampedEditableModel):
     ):
         additional_query_kwargs = additional_query_kwargs or {}
         traces = {}
-        x = []
+        if x_axys:
+           x = []
         try:
             query_kwargs = dict(
                 time=time, timezone=timezone, start_date=start_date, end_date=end_date
             )
             query_kwargs.update(additional_query_kwargs)
             if self.top_fields:
-                fields = self.get_top_fields(self.top_fields)
-                data_query = self.get_query(fields=fields, **query_kwargs)
-                summary_query = self.get_query(
-                    fields=fields, summary=True, **query_kwargs
+                points = summary = timeseries_db._get_top_fields(
+                    default_query=self._default_query,
+                    chart_type=self.type,
+                    group_map=self.GROUP_MAP,
+                    number=self.top_fields,
+                    params=self._get_query_params(self.DEFAULT_TIME),
+                    time=time,
+                    query=self.query,
+                    get_fields=False,
                 )
             else:
                 data_query = self.get_query(**query_kwargs)
                 summary_query = self.get_query(summary=True, **query_kwargs)
-            points = timeseries_db.get_list_query(data_query)
-            logging.debug(f"Data points: {points}")
-            logging.debug(f"Data query: {data_query}")
-            summary = timeseries_db.get_list_query(summary_query)
-            logging.debug(f"Summary query: {summary_query}")
+                points = timeseries_db.get_list_query(data_query, key=self.metric.key)
+                summary = timeseries_db.get_list_query(
+                    summary_query, key=self.metric.key
+                )
         except timeseries_db.client_error as e:
             logging.error(e, exc_info=True)
             raise e
@@ -809,31 +786,31 @@ class AbstractChart(TimeStampedEditableModel):
                 logging.warning(f"Point missing time value: {point}")
                 continue
             for key, value in point.items():
-                if key in ['time', '_time']:
+                if key == 'time':
                     continue
                 traces.setdefault(key, [])
                 if decimal_places and isinstance(value, (int, float)):
                     value = self._round(value, decimal_places)
                 traces[key].append(value)
-            if isinstance(time_value, str):
-                time = datetime.fromisoformat(time_value.rstrip('Z')).replace(tzinfo=utc).astimezone(tz(timezone))
-            else:
-                time = datetime.fromtimestamp(time_value, tz=tz(timezone))
-            formatted_time = time.strftime('%Y-%m-%d %H:%M')
-            x.append(formatted_time)
+            time = datetime.fromtimestamp(point['time'], tz=tz(timezone)).strftime(
+                '%Y-%m-%d %H:%M'
+            )
+            if x_axys:
+                x.append(time)
         # prepare result to be returned
         # (transform chart data so its order is not random)
         result = {'traces': sorted(traces.items())}
-        result['x'] = x
+        if x_axys:
+            result['x'] = x
         # add summary
         if len(summary) > 0:
             result['summary'] = {}
             for key, value in summary[0].items():
-                if key in ['time', '_time']:
+                if key == 'time':
                     continue
                 if not timeseries_db.validate_query(self.query):
                     value = None
-                elif value is not None:
+                elif value:
                     value = self._round(value, decimal_places)
                 result['summary'][key] = value
         return result
