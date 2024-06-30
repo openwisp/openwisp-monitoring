@@ -56,7 +56,6 @@ class DatabaseClient(object):
     backend_name = 'influxdb'
 
     def __init__(self, db_name=None):
-        self._db = None
         self.db_name = db_name or TIMESERIES_DB['NAME']
         self.client_error = InfluxDBClientError
 
@@ -255,7 +254,7 @@ class DatabaseClient(object):
             q = f'{q} LIMIT {limit}'
         return list(self.query(q, precision='s').get_points())
 
-    def get_list_query(self, query, precision='s'):
+    def get_list_query(self, query, precision='s', **kwargs):
         result = self.query(query, precision=precision)
         if not len(result.keys()) or result.keys()[0][1] is None:
             return list(result.get_points())
@@ -426,6 +425,7 @@ class DatabaseClient(object):
 
     def _get_top_fields(
         self,
+        default_query,
         query,
         params,
         chart_type,
@@ -433,9 +433,15 @@ class DatabaseClient(object):
         number,
         time,
         timezone=settings.TIME_ZONE,
+        get_fields=True,
     ):
+        """
+        Returns top fields if ``get_fields`` set to ``True`` (default)
+        else it returns points containing the top fields.
+        """
+        q = default_query.replace('{field_name}', '{fields}')
         q = self.get_query(
-            query=query,
+            query=q,
             params=params,
             chart_type=chart_type,
             group_map=group_map,
@@ -444,7 +450,7 @@ class DatabaseClient(object):
             time=time,
             timezone=timezone,
         )
-        res = list(self.query(q, precision='s').get_points())
+        res = self.get_list_query(q)
         if not res:
             return []
         res = res[0]
@@ -454,4 +460,31 @@ class DatabaseClient(object):
         keys = list(sorted_dict.keys())
         keys.reverse()
         top = keys[0:number]
-        return [item.replace('sum_', '') for item in top]
+        top_fields = [item.replace('sum_', '') for item in top]
+        if get_fields:
+            return top_fields
+        query = self.get_query(
+            query=query,
+            params=params,
+            chart_type=chart_type,
+            group_map=group_map,
+            summary=True,
+            fields=top_fields,
+            time=time,
+            timezone=timezone,
+        )
+        return self.get_list_query(query)
+    
+    def default_chart_query(self, tags):
+        q = "SELECT {field_name} FROM {key} WHERE time >= '{time}'"
+        if tags:
+            q += " AND content_type = '{content_type}' AND object_id = '{object_id}'"
+        return q
+
+    def _device_data(self, key, tags, rp, **kwargs):
+        """ returns last snapshot of ``device_data`` """
+        query = (
+            f"SELECT data FROM {rp}.{key} WHERE pk = '{tags['pk']}' "
+            "ORDER BY time DESC LIMIT 1"
+        )
+        return self.get_list_query(query, precision=None)

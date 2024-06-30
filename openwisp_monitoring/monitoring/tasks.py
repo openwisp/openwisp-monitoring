@@ -1,13 +1,26 @@
+from datetime import timezone
+import os
+
 from celery import shared_task
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from swapper import load_model
 
 from openwisp_utils.tasks import OpenwispCeleryTask
 
+from openwisp_monitoring.db.backends.influxdb.client import DatabaseClient as InfluxDB1Client
+from openwisp_monitoring.db.backends.influxdb2.client import DatabaseClient as InfluxDB2Client
+
 from ..db import timeseries_db
 from ..db.exceptions import TimeseriesWriteException
+from .migrations.influxdb import influxdb_alter_structure_0006 as influxdb_migration
+from .migrations.influxdb2 import influxdb2_alter_structure_0006 as influxdb2_migration
 from .settings import RETRY_OPTIONS
 from .signals import post_metric_write
+from openwisp_monitoring.db.backends.influxdb.client import DatabaseClient as InfluxDB1Client
+from openwisp_monitoring.db.backends.influxdb2.client import DatabaseClient as InfluxDB2Client
+from django.utils.dateparse import parse_date
+
 
 
 def _metric_post_write(name, values, metric, check_threshold_kwargs, **kwargs):
@@ -54,18 +67,19 @@ def _timeseries_write(name, values, metric=None, check_threshold_kwargs=None, **
     If the timeseries database is using UDP to write data,
     then write data synchronously.
     """
-    if timeseries_db.use_udp:
+    if hasattr(timeseries_db, 'use_udp') and timeseries_db.use_udp:
+        # InfluxDB 1.x with UDP support
         func = timeseries_write
+        args = (name, values, metric, check_threshold_kwargs)
+    elif hasattr(timeseries_db, 'write'):
+        # InfluxDB 2.0 or InfluxDB 1.x without UDP support
+        func = timeseries_db.write(name, values, **kwargs)
+        _metric_post_write(name, values, metric, check_threshold_kwargs, **kwargs)
     else:
+        # Fallback to delayed write for other cases
         func = timeseries_write.delay
         metric = metric.pk if metric else None
-    func(
-        name=name,
-        values=values,
-        metric=metric,
-        check_threshold_kwargs=check_threshold_kwargs,
-        **kwargs
-    )
+        args = (name, values, metric, check_threshold_kwargs)
 
 
 @shared_task(
@@ -99,8 +113,18 @@ def _timeseries_batch_write(data):
 
 @shared_task(base=OpenwispCeleryTask)
 def delete_timeseries(key, tags):
-    timeseries_db.delete_series(key=key, tags=tags)
+    backend = settings.TIMESERIES_DATABASE['BACKEND']
 
+    if backend == 'openwisp_monitoring.db.backends.influxdb':
+        # InfluxDB 1.x
+        client = InfluxDB1Client()
+        client.delete_series(key=key, tags=tags)
+    elif backend == 'openwisp_monitoring.db.backends.influxdb2':
+        # InfluxDB 2.x
+        # No need to perform any action for InfluxDB 2.x
+        pass
+    else:
+        raise ValueError(f"Unsupported backend: {backend}")
 
 @shared_task
 def migrate_timeseries_database():
@@ -111,8 +135,7 @@ def migrate_timeseries_database():
 
     To be removed in 1.1.0 release.
     """
-    from .migrations.influxdb.influxdb_alter_structure_0006 import (
-        migrate_influxdb_structure,
-    )
-
-    migrate_influxdb_structure()
+    if os.environ.get('USE_INFLUXDB2', 'False') == 'True':
+        influxdb2_migration.migrate_influxdb_structure()
+    else:
+        influxdb_migration.migrate_influxdb_structure()

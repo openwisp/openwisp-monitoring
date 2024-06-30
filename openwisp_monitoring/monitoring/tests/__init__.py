@@ -1,6 +1,7 @@
 import time
 from datetime import timedelta
 
+from django.conf import settings
 from django.core.cache import cache
 from django.utils.timezone import now
 from swapper import load_model
@@ -91,7 +92,13 @@ charts = {
                 "SELECT {fields|SUM|/ 1} FROM {key} "
                 "WHERE time >= '{time}' AND content_type = "
                 "'{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'influxdb2': (
+                'from(bucket: "{key}") |> range(start: {time}) '
+                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" and '
+                'r["content_type"] == "{content_type}" and r["object_id"] == "{object_id}") '
+                '|> sum()'
+            ),
         },
     },
     'dummy': {
@@ -108,7 +115,7 @@ charts = {
         'description': 'Bugged chart for testing purposes.',
         'unit': 'bugs',
         'order': 999,
-        'query': {'influxdb': "BAD"},
+        'query': {'influxdb': "BAD", 'influxdb2': "BAD"},
     },
     'default': {
         'type': 'line',
@@ -120,7 +127,12 @@ charts = {
             'influxdb': (
                 "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'influxdb2': (
+                'from(bucket: "{key}") |> range(start: {time}) '
+                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" and '
+                'r["content_type"] == "{content_type}" and r["object_id"] == "{object_id}")'
+            ),
         },
     },
     'multiple_test': {
@@ -133,26 +145,43 @@ charts = {
             'influxdb': (
                 "SELECT {field_name}, value2 FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'influxdb2': (
+                'from(bucket: "{key}") |> range(start: {time}) '
+                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" or '
+                'r["_measurement"] == "value2" and '
+                'r["content_type"] == "{content_type}" and '
+                'r["object_id"] == "{object_id}")'
+            ),
         },
     },
     'group_by_tag': {
         'type': 'stackedbars',
         'title': 'Group by tag',
-        'description': 'Query is groupped by tag along with time',
+        'description': 'Query is grouped by tag along with time',
         'unit': 'n.',
         'order': 999,
         'query': {
             'influxdb': (
                 "SELECT CUMULATIVE_SUM(SUM({field_name})) FROM {key} WHERE time >= '{time}'"
                 " GROUP BY time(1d), metric_num"
-            )
+            ),
+            'influxdb2': (
+                'from(bucket: "{key}") |> range(start: {time}) '
+                '|> filter(fn: (r) => r["_measurement"] == "{field_name}") '
+                '|> group(columns: ["metric_num"]) |> sum() |> cumulativeSum() |> window(every: 1d)'
+            ),
         },
         'summary_query': {
             'influxdb': (
                 "SELECT SUM({field_name}) FROM {key} WHERE time >= '{time}'"
                 " GROUP BY time(30d), metric_num"
-            )
+            ),
+            'influxdb2': (
+                'from(bucket: "{key}") |> range(start: {time}) '
+                '|> filter(fn: (r) => r["_measurement"] == "{field_name}") '
+                '|> group(columns: ["metric_num"]) |> sum() |> window(every: 30d)'
+            ),
         },
     },
     'mean_test': {
@@ -165,7 +194,13 @@ charts = {
             'influxdb': (
                 "SELECT MEAN({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'influxdb2': (
+                'from(bucket: "{key}") |> range(start: {time}) '
+                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" and '
+                'r["content_type"] == "{content_type}" and r["object_id"] == "{object_id}") '
+                '|> mean()'
+            ),
         },
     },
     'sum_test': {
@@ -178,7 +213,13 @@ charts = {
             'influxdb': (
                 "SELECT SUM({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'influxdb2': (
+                'from(bucket: "{key}") |> range(start: {time}) '
+                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" and '
+                'r["content_type"] == "{content_type}" and r["object_id"] == "{object_id}") '
+                '|> sum()'
+            ),
         },
     },
     'top_fields_mean': {
@@ -192,24 +233,60 @@ charts = {
                 "SELECT {fields|MEAN} FROM {key} "
                 "WHERE time >= '{time}' AND content_type = "
                 "'{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            'influxdb2': (
+                'from(bucket: "{key}") |> range(start: {time}) '
+                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" and '
+                'r["content_type"] == "{content_type}" and r["object_id"] == "{object_id}") '
+                '|> mean()'
+            ),
         },
     },
 }
 
 
 class TestMonitoringMixin(TestOrganizationMixin):
-    ORIGINAL_DB = TIMESERIES_DB['NAME']
-    TEST_DB = f'{ORIGINAL_DB}_test'
+    INFLUXDB_BACKEND = TIMESERIES_DB.get('BACKEND')
+    TIMESERIES_DB = getattr(settings, 'TIMESERIES_DATABASE', None)
+    TEST_DB = f"{TIMESERIES_DB['NAME']}" if 'NAME' in TIMESERIES_DB else 'test_db'
+    TEST_BUCKET = f"{TIMESERIES_DB['BUCKET']}" 
+    TEST_ORG = f"{TIMESERIES_DB['ORG']}" 
+    TEST_TOKEN = f"{TIMESERIES_DB['TOKEN']}" 
+
+    if INFLUXDB_BACKEND == 'openwisp_monitoring.db.backends.influxdb':
+        # InfluxDB 1.x configuration
+        ORIGINAL_DB = TIMESERIES_DB['NAME']
+        TEST_DB = f"{ORIGINAL_DB}"
+    elif INFLUXDB_BACKEND == 'openwisp_monitoring.db.backends.influxdb2':
+        # InfluxDB 2.x configuration
+        ORG_BUCKET = f"{TIMESERIES_DB['ORG']}/{TIMESERIES_DB['BUCKET']}"
+        ORIGINAL_DB = ORG_BUCKET
+        TEST_DB = f"{ORG_BUCKET}"
+    else:
+        ORIGINAL_DB = None
+        TEST_DB = None
 
     @classmethod
     def setUpClass(cls):
+        # import pdb; pdb.set_trace()
         # By default timeseries_db.db shall connect to the database
         # defined in settings when apps are loaded. We don't want that while testing
-        timeseries_db.db_name = cls.TEST_DB
-        del timeseries_db.db
-        del timeseries_db.dbs
+        if 'NAME' in cls.TIMESERIES_DB:
+        # InfluxDB 1.8 configuration
+            timeseries_db.db_name = cls.TEST_DB
+            del timeseries_db.db
+            del timeseries_db.dbs
+        else:
+        # InfluxDB 2.0 configuration
+            timeseries_db.bucket = cls.TEST_BUCKET
+            timeseries_db.org = cls.TEST_ORG
+            timeseries_db.token = cls.TEST_TOKEN
+    
+        # Create the test database or bucket
         timeseries_db.create_database()
+    
+        # Rest of the setup code...
+        super().setUpClass()
         for key, value in metrics.items():
             register_metric(key, value)
         for key, value in charts.items():

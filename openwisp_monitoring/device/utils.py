@@ -14,7 +14,7 @@ def manage_short_retention_policy():
     creates or updates the "short" retention policy
     """
     duration = app_settings.SHORT_RETENTION_POLICY
-    timeseries_db.create_or_alter_retention_policy(SHORT_RP, duration)
+    _manage_retention_policy(SHORT_RP, duration)
 
 
 def manage_default_retention_policy():
@@ -22,4 +22,9 @@ def manage_default_retention_policy():
     creates or updates the "default" retention policy
     """
     duration = app_settings.DEFAULT_RETENTION_POLICY
-    timeseries_db.create_or_alter_retention_policy(DEFAULT_RP, duration)
+    _manage_retention_policy(DEFAULT_RP, duration)
+
+def _manage_retention_policy(name, duration):
+    # For InfluxDB 2.x, we're not managing retention policies directly
+    # Instead, we ensure the bucket exists
+    timeseries_db.create_bucket(timeseries_db.bucket)

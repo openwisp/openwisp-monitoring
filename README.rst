@@ -326,20 +326,23 @@ Follow the setup instructions of `openwisp-controller
 
     # Make sure you change them in production
     # You can select one of the backends located in openwisp_monitoring.db.backends
-    TIMESERIES_DATABASE = {
+    INFLUXDB_1x_DATABASE = {
         'BACKEND': 'openwisp_monitoring.db.backends.influxdb',
         'USER': 'openwisp',
         'PASSWORD': 'openwisp',
         'NAME': 'openwisp2',
-        'HOST': 'localhost',
+        'HOST': 'influxdb',
         'PORT': '8086',
-        'OPTIONS': {
-            # Specify additional options to be used while initializing
-            # database connection.
-            # Note: These options may differ based on the backend used.
-            'udp_writes': True,
-            'udp_port': 8089,
-        }
+        'OPTIONS': {'udp_writes': False, 'udp_port': 8089},
+    }   
+
+    INFLUXDB_2x_DATABASE = {
+        'BACKEND': 'openwisp_monitoring.db.backends.influxdb2',
+        'TOKEN': 'my-super-secret-auth-token',
+        'ORG': 'openwisp', 
+        'BUCKET': 'openwisp2',
+        'HOST': 'influxdb2',
+        'PORT': '9999',
     }
 
 ``urls.py``:
@@ -1413,56 +1416,109 @@ Settings
 | **default**: | see below |
 +--------------+-----------+
 
+Timeseries Database Configuration
+---------------------------------
+
+The ``TIMESERIES_DATABASE`` setting allows configuring the timeseries 
+database backend used by OpenWISP Monitoring. The configuration supports 
+both InfluxDB 1.x and 2.x versions.
+
+Configuration for InfluxDB 1.x
+------------------------------
+
 .. code-block:: python
 
-    TIMESERIES_DATABASE = {
+    INFLUXDB_1x_DATABASE = {
         'BACKEND': 'openwisp_monitoring.db.backends.influxdb',
         'USER': 'openwisp',
         'PASSWORD': 'openwisp',
         'NAME': 'openwisp2',
-        'HOST': 'localhost',
+        'HOST': 'influxdb',
         'PORT': '8086',
-        'OPTIONS': {
-            'udp_writes': False,
-            'udp_port': 8089,
-        }
+        'OPTIONS': {'udp_writes': False, 'udp_port': 8089},
     }
 
-The following table describes all keys available in ``TIMESERIES_DATABASE``
-setting:
+Configuration for InfluxDB 2.x
+------------------------------
 
-+---------------+--------------------------------------------------------------------------------------+
-| **Key**       | ``Description``                                                                      |
-+---------------+--------------------------------------------------------------------------------------+
-| ``BACKEND``   | The timeseries database backend to use. You can select one of the backends           |
-|               | located in ``openwisp_monitoring.db.backends``                                       |
-+---------------+--------------------------------------------------------------------------------------+
-| ``USER``      | User for logging into the timeseries database                                        |
-+---------------+--------------------------------------------------------------------------------------+
-| ``PASSWORD``  | Password of the timeseries database user                                             |
-+---------------+--------------------------------------------------------------------------------------+
-| ``NAME``      | Name of the timeseries database                                                      |
-+---------------+--------------------------------------------------------------------------------------+
-| ``HOST``      | IP address/hostname of machine where the timeseries database is running              |
-+---------------+--------------------------------------------------------------------------------------+
-| ``PORT``      | Port for connecting to the timeseries database                                       |
-+---------------+--------------------------------------------------------------------------------------+
-| ``OPTIONS``   | These settings depends on the timeseries backend:                                    |
-|               |                                                                                      |
-|               | +-----------------+----------------------------------------------------------------+ |
-|               | | ``udp_writes``  | Whether to use UDP for writing data to the timeseries database | |
-|               | +-----------------+----------------------------------------------------------------+ |
-|               | | ``udp_port``    | Timeseries database port for writing data using UDP            | |
-|               | +-----------------+----------------------------------------------------------------+ |
-+---------------+--------------------------------------------------------------------------------------+
+.. code-block:: python
 
-**Note:** UDP packets can have a maximum size of 64KB. When using UDP for writing timeseries
-data, if the size of the data exceeds 64KB, TCP mode will be used instead.
+    INFLUXDB_2x_DATABASE = {
+        'BACKEND': 'openwisp_monitoring.db.backends.influxdb2',
+        'TOKEN': 'my-super-secret-auth-token',
+        'ORG': 'openwisp',
+        'BUCKET': 'openwisp2',
+        'HOST': 'influxdb2',
+        'PORT': '9999',
+    }
 
-**Note:** If you want to use the ``openwisp_monitoring.db.backends.influxdb`` backend
-with UDP writes enabled, then you need to enable two different ports for UDP
-(each for different retention policy) in your InfluxDB configuration. The UDP configuration
-section of your InfluxDB should look similar to the following:
+Dynamic Configuration Based on Environment
+------------------------------------------
+
+You can dynamically switch between InfluxDB 1.x and 2.x configurations 
+using environment variables:
+
+.. code-block:: python
+
+    import os
+
+    if os.environ.get('USE_INFLUXDB2', 'False') == 'True':
+        TIMESERIES_DATABASE = INFLUXDB_2x_DATABASE
+    else:
+        TIMESERIES_DATABASE = INFLUXDB_1x_DATABASE
+
+    if TESTING:
+        if os.environ.get('TIMESERIES_UDP', False):
+            TIMESERIES_DATABASE['OPTIONS'] = {'udp_writes': True, 'udp_port': 8091}
+
+Explanation of Settings
+-----------------------
+
++---------------+---------------------------------------------------------------+
+| **Key**       | **Description**                                               |
++-------------------------------------------------------------------------------+
+| ``BACKEND``   | The timeseries database backend to use. You can select one    |
+|               | of the backends located in ``openwisp_monitoring.db.backends``|
++---------------+---------------------------------------------------------------+
+| ``USER``      | User for logging into the timeseries database (only for       |
+|               | InfluxDB 1.x)                                                 |
++---------------+---------------------------------------------------------------+
+| ``PASSWORD``  | Password of the timeseries database user (only for InfluxDB   |
+|               | 1.x)                                                          |
++---------------+---------------------------------------------------------------+
+| ``NAME``      | Name of the timeseries database (only for InfluxDB 1.x)       |
++---------------+---------------------------------------------------------------+
+| ``TOKEN``     | Authentication token for InfluxDB 2.x                         |
++---------------+---------------------------------------------------------------+
+| ``ORG``       | Organization name for InfluxDB 2.x                            |
++---------------+---------------------------------------------------------------+
+| ``BUCKET``    | Bucket name for InfluxDB 2.x                                  |
++---------------+---------------------------------------------------------------+
+| ``HOST``      | IP address/hostname of machine where the timeseries           |
+|               | database is running                                           |
++---------------+---------------------------------------------------------------+
+| ``PORT``      | Port for connecting to the timeseries database                |
++---------------+---------------------------------------------------------------+
+| ``OPTIONS``   | Additional options for the timeseries backend                 |
+|               |                                                               |
+|               | +-----------------+-----------------------------------------+ |
+|               | | ``udp_writes``  | Whether to use UDP for writing data     | |
+|               | |                 | to the timeseries database              | |
+|               | +-----------------+-----------------------------------------+ |
+|               | | ``udp_port``    | Timeseries database port for writing    | |
+|               | |                 | data using UDP                          | |
+|               | +-----------------+-----------------------------------------+ |
++---------------+---------------------------------------------------------------+
+
+UDP Configuration for InfluxDB 1.x
+----------------------------------
+
+If you want to use the ``openwisp_monitoring.db.backends.influxdb`` backend 
+with UDP writes enabled, you need to enable two different ports for UDP 
+(each for a different retention policy) in your InfluxDB configuration.
+
+Here is an example of the UDP configuration section in your InfluxDB 
+configuration file:
 
 .. code-block:: text
 
@@ -1478,6 +1534,13 @@ section of your InfluxDB should look similar to the following:
     bind-address = "127.0.0.1:8090"
     database = "openwisp2"
     retention-policy = 'short'
+
+**Note:** UDP packets can have a maximum size of 64KB. When using UDP for 
+writing timeseries data, if the size of the data exceeds 64KB, TCP mode 
+will be used instead.
+
+Deploying with Ansible
+----------------------
 
 If you are using `ansible-openwisp2 <https://github.com/openwisp/ansible-openwisp2>`_
 for deploying OpenWISP, you can set the ``influxdb_udp_mode`` ansible variable to ``true``
