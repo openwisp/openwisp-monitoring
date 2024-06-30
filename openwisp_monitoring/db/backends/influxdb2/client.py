@@ -92,7 +92,9 @@ class DatabaseClient:
                 'fields': values,
                 'time': timestamp,
             }
+            print(f"Writing point to InfluxDB: {point}")
             self.write_api.write(bucket=self.bucket, org=self.org, record=point)
+            print("Successfully wrote point to InfluxDB")
         except Exception as e:
             print(f"Error writing to InfluxDB: {e}")
 
@@ -117,114 +119,135 @@ class DatabaseClient:
             # If the date_str is not in the expected format, return it as is
             return date_str
         
-    def get_query(self, chart_type, params, time, group_map, summary=False, fields=None, query=None, timezone=settings.TIME_ZONE):
-        print(f"get_query called with params: {params}")
-        measurement = params.get('measurement') or params.get('key')
-        if not measurement or measurement == 'None':
-            logger.error(f"Invalid or missing measurement in params: {params}")
-            return None
-
-        start_date = self._format_date(params.get('start_date', f'-{time}'))
-        end_date = self._format_date(params.get('end_date', 'now()'))
-        content_type = params.get('content_type')
-        object_id = params.get('object_id')
-
-
-        window = group_map.get(time, '1h')
-
-        flux_query = f'''
-        from(bucket: "{self.bucket}")
-          |> range(start: {start_date}, stop: {end_date})
-          |> filter(fn: (r) => r["_measurement"] == "{measurement}")
-        '''
-
-        if content_type and object_id:
-            flux_query += f'  |> filter(fn: (r) => r.content_type == "{content_type}" and r.object_id == "{object_id}")\n'
-
-        if fields:
-            field_filters = ' or '.join([f'r["_field"] == "{field}"' for field in fields])
-            flux_query += f'  |> filter(fn: (r) => {field_filters})\n'
-
-        flux_query += f'  |> aggregateWindow(every: {window}, fn: mean, createEmpty: false)\n'
-        flux_query += '  |> yield(name: "mean")'
-
-        print(f"Generated Flux query: {flux_query}")
-        return flux_query
-
     def query(self, query):
         print(f"Executing query: {query}")
         try:
             result = self.query_api.query(query)
+            print(f"Query result: {result}")
             return result
         except Exception as e:
+            print(f"Error executing query: {e}")
             logger.error(f"Error executing query: {e}")
-
-    def read(self, measurement, fields, tags, **kwargs):
-        extra_fields = kwargs.get('extra_fields')
-        since = kwargs.get('since', '-30d')
-        order = kwargs.get('order')
-        limit = kwargs.get('limit')
-
-        flux_query = f'''
-        from(bucket: "{self.bucket}")
-            |> range(start: {since})
-            |> filter(fn: (r) => r._measurement == "{measurement}")
-        '''
-        if fields and fields != '*':
-            field_filters = ' or '.join([f'r._field == "{field}"' for field in fields.split(', ')])
-            flux_query += f' |> filter(fn: (r) => {field_filters})'
-    
-        if tags:
-            tag_filters = ' and '.join([f'r["{tag}"] == "{value}"' for tag, value in tags.items()])
-            flux_query += f' |> filter(fn: (r) => {tag_filters})'
-
-        flux_query += '''
-            |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-            |> map(fn: (r) => ({r with _value: float(v: r._value)}))
-            |> keep(columns: ["_time", "_value", "_field", "content_type", "object_id"])
-            |> rename(columns: {_time: "time"})
-        '''
-
-        if order:
-            if order == 'time':
-                flux_query += ' |> sort(columns: ["time"], desc: false)'
-            elif order == '-time':
-                flux_query += ' |> sort(columns: ["time"], desc: true)'
-            else:
-                raise ValueError(f'Invalid order "{order}" passed.\nYou may pass "time" / "-time" to get result sorted in ascending /descending order respectively.')
-    
-        if limit:
-            flux_query += f' |> limit(n: {limit})'
-
-        return self.query(flux_query)
-
-    def get_list_query(self, query, precision=None):
-        print(f"get_list_query called with query: {query}")
-        result = self.query(query)
-        result_points = []
-    
-        if result is None:
-            print("Query returned None")
-            return result_points
-
+            return []
+        
+    def _parse_query_result(self, result):
+        print("Parsing query result")
+        parsed_result = []
         for table in result:
             for record in table.records:
-                time = record.get_time()
-                if precision is not None:
-                    # Truncate the time based on the specified precision
-                    time = time.isoformat()[:precision]
-                else:
-                    time = time.isoformat()
-            
-                values = {col: record.values.get(col) for col in record.values if col != '_time'}
-                values['time'] = time
-                values['_value'] = record.get_value()
-                values['_field'] = record.get_field()            
-                result_points.append(values)
-    
-        print(f"get_list_query returned {len(result_points)} points")
-        print(f"Processed result points: {result_points}")
-        return result_points
+                parsed_record = {
+                    'time': record.get_time().isoformat(),
+                }
+                for key, value in record.values.items():
+                    if key not in ['_time', '_start', '_stop', '_measurement']:
+                        parsed_record[key] = value
+                parsed_result.append(parsed_record)
+        print(f"Parsed result: {parsed_result}")
+        return parsed_result
+ 
+    def read(self, key, fields, tags, **kwargs):
+        extra_fields = kwargs.get('extra_fields')
+        since = kwargs.get('since', '-30d')  # Default to last 30 days if not specified
+        order = kwargs.get('order')
+        limit = kwargs.get('limit')
+        bucket = self.bucket
+
+        # Start building the Flux query
+        flux_query = f'from(bucket:"{bucket}")'
+
+        # Add time range
+        flux_query += f'\n  |> range(start: {since})'
+
+        # Filter by measurement (key)
+        flux_query += f'\n  |> filter(fn: (r) => r["_measurement"] == "{key}")'
+
+        # Filter by fields
+        if fields != '*':
+            if extra_fields and extra_fields != '*':
+                all_fields = [fields] + extra_fields if isinstance(extra_fields, list) else [fields, extra_fields]
+                field_filter = ' or '.join([f'r["_field"] == "{field}"' for field in all_fields])
+            else:
+                field_filter = f'r["_field"] == "{fields}"'
+            flux_query += f'\n  |> filter(fn: (r) => {field_filter})'
+
+        # Filter by tags
+        if tags:
+            tag_filters = ' and '.join([f'r["{tag}"] == "{value}"' for tag, value in tags.items()])
+            flux_query += f'\n  |> filter(fn: (r) => {tag_filters})'
+
+        # Add ordering
+        if order:
+            if order in ['time', '-time']:
+                desc = 'true' if order == '-time' else 'false'
+                flux_query += f'\n  |> sort(columns: ["_time"], desc: {desc})'
+            else:
+                raise self.client_error(
+                    f'Invalid order "{order}" passed.\nYou may pass "time" / "-time" to get '
+                    'result sorted in ascending /descending order respectively.'
+                )
+
+        # Add limit
+        if limit:
+            flux_query += f'\n  |> limit(n: {limit})'
+
+        # Pivot the result to make it similar to InfluxDB 1.x output
+        flux_query += '\n  |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'
+
+        # Execute the query
+        try:
+            result = self.query_api.query(flux_query)
+            return self._parse_read_result(result)
+        except Exception as e:
+            logger.error(f"Error executing read query: {e}")
+            return []
+
+    def _parse_read_result(self, result):
+        parsed_result = []
+        for table in result:
+            for record in table.records:
+                parsed_record = {
+                    'time': record.get_time().isoformat(),
+                }
+                for key, value in record.values.items():
+                    if key not in ['_time', '_start', '_stop', '_measurement']:
+                        parsed_record[key] = value
+                parsed_result.append(parsed_record)
+        return parsed_result
+
+    def get_ping_data_query(self, bucket, start, stop, device_ids):
+        device_filter = ' or '.join([f'r["object_id"] == "{id}"' for id in device_ids])
+        query = f'''
+        from(bucket: "{bucket}")
+          |> range(start: {start}, stop: {stop})
+          |> filter(fn: (r) => r["_measurement"] == "ping")
+          |> filter(fn: (r) => r["_field"] == "loss" or r["_field"] == "reachable" or r["_field"] == "rtt_avg" or r["_field"] == "rtt_max" or r["_field"] == "rtt_min")
+          |> filter(fn: (r) => r["content_type"] == "config.device")
+          |> filter(fn: (r) => {device_filter})
+          |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+          |> yield(name: "mean")
+        '''
+        return query
+
+    def execute_query(self, query):
+        try:
+            result = self.query_api.query(query)
+            return self._parse_result(result)
+        except Exception as e:
+            logger.error(f"Error executing query: {e}")
+            return []
+
+    def _parse_result(self, result):
+        parsed_result = []
+        for table in result:
+            for record in table.records:
+                parsed_record = {
+                    'time': record.get_time().isoformat(),
+                    'device_id': record.values.get('object_id'),
+                    'field': record.values.get('_field'),
+                    'value': record.values.get('_value')
+                }
+                parsed_result.append(parsed_record)
+        return parsed_result
     
     def delete_metric_data(self, key=None, tags=None):
         start = "1970-01-01T00:00:00Z"
@@ -274,7 +297,17 @@ class DatabaseClient:
             filters.append(f'r["{field}"] == "{item}"')
         return f'|> filter(fn: (r) => {" or ".join(filters)})'
 
-    # def get_query(self, chart_type, params, time, group_map, summary=False, fields=None, query=None, timezone=settings.TIME_ZONE):
+    def get_query(
+        self,
+        chart_type,
+        params,
+        time,
+        group_map,
+        summary=False,
+        fields=None,
+        query=None,
+        timezone=settings.TIME_ZONE
+    ):
         bucket = self.bucket
         measurement = params.get('measurement')
         if not measurement or measurement == 'None':
@@ -283,117 +316,49 @@ class DatabaseClient:
 
         start_date = params.get('start_date')
         end_date = params.get('end_date')
+        
+        # Set default values for start and end dates if they're None
+        if start_date is None:
+            start_date = f'-{time}'
+        if end_date is None:
+            end_date = 'now()'
+
         content_type = params.get('content_type')
         object_id = params.get('object_id')
-        print(f"get_query called with params: {params}")
-        import pdb; pdb.set_trace()
-        def format_time(time_str):
-            if time_str:
-                try:
-                    if isinstance(time_str, str):
-                        # Try parsing as ISO format first
-                        try:
-                            dt = datetime.fromisoformat(time_str.replace('Z', '+00:00'))
-                        except ValueError:
-                            # If that fails, try parsing as a different format
-                            dt = datetime.strptime(time_str, '%Y-%m-%d %H:%M:%S')
-                    else:
-                        dt = time_str
-                    return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-                except Exception as e:
-                    print(f"Error parsing time: {e}")
-                    return None
+        field_name = params.get('field_name') or fields
 
-        start_date = format_time(start_date) if start_date else f'-{time}'
-        end_date = format_time(end_date) if end_date else 'now()'
+        object_id_filter = f' and r.object_id == "{object_id}"' if object_id else ""
 
         flux_query = f'''
         from(bucket: "{bucket}")
             |> range(start: {start_date}, stop: {end_date})
             |> filter(fn: (r) => r._measurement == "{measurement}")
-            |> filter(fn: (r) => r.content_type == "{content_type}" and r.object_id == "{object_id}")
+            |> filter(fn: (r) => r.content_type == "{content_type}"{object_id_filter})
         '''
+
+        if field_name:
+            if isinstance(field_name, (list, tuple)):
+                field_filter = ' or '.join([f'r._field == "{field}"' for field in field_name])
+            else:
+                field_filter = f'r._field == "{field_name}"'
+            flux_query += f'    |> filter(fn: (r) => {field_filter})\n'
+
+        logger.debug(f"Time: {time}")
+        logger.debug(f"Group map: {group_map}")
+        window = group_map.get(time, '1h')
+        logger.debug(f"Window: {window}")
 
         if not summary:
-            window = group_map.get(time, '1h')
-            flux_query += f'|> aggregateWindow(every: {window}, fn: mean, createEmpty: false)'
+            flux_query += f'    |> aggregateWindow(every: {window}, fn: mean, createEmpty: false)\n'
+        else:
+            flux_query += '    |> last()\n'
 
-        flux_query += '''
-            |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
-        '''
+        flux_query += '    |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")\n'
+        flux_query += '    |> yield(name: "result")'
 
-        if summary:
-            flux_query += '|> last()'
-
-        flux_query += '|> yield(name: "result")'
-
-        print(f"Generated Flux query: {flux_query}")
+        logger.debug(f"Generated Flux query: {flux_query}")
         return flux_query
-    # def get_query(
-    #     self,
-    #     chart_type,
-    #     params,
-    #     time_range,
-    #     group_map,
-    #     summary=False,
-    #     fields=None,
-    #     query=None,
-    #     timezone=settings.TIME_ZONE,
-    # ):
-    #     flux_query = f'from(bucket: "{self.bucket}")'
-
-    #     def format_date(date):
-    #         if date is None:
-    #             return None
-    #         if isinstance(date, str):
-    #             try:
-    #                 dt = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-    #                 return str(int(dt.timestamp()))
-    #             except ValueError:
-    #                 return date
-    #         if isinstance(date, datetime):
-    #             return str(int(date.timestamp()))
-    #         return str(date)
-
-    #     start_date = format_date(params.get('start_date'))
-    #     end_date = format_date(params.get('end_date'))
-
-    #     if start_date:
-    #         flux_query += f' |> range(start: {start_date}'
-    #     else:
-    #         flux_query += f' |> range(start: -{time_range}'
-
-    #     if end_date:
-    #         flux_query += f', stop: {end_date})'
-    #     else:
-    #         flux_query += ')'
-
-    #     if 'key' in params:
-    #         flux_query += f' |> filter(fn: (r) => r._measurement == "{params["key"]}")'
-
-    #     if fields and fields != '*':
-    #         field_filters = ' or '.join([f'r._field == "{field.strip()}"' for field in fields.split(',')])
-    #         flux_query += f' |> filter(fn: (r) => {field_filters})'
-
-    #     if 'content_type' in params and 'object_id' in params:
-    #         flux_query += f' |> filter(fn: (r) => r.content_type == "{params["content_type"]}" and r.object_id == "{params["object_id"]}")'
-
-    #     window_period = group_map.get(time_range, '1h')
-    #     if chart_type in ['line', 'stackedbar']:
-    #         flux_query += f' |> aggregateWindow(every: {window_period}, fn: mean, createEmpty: false)'
-
-    #     flux_query += ' |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'
-
-    #     if summary:
-    #         flux_query += ' |> last()'
-
-    #     flux_query = f'import "timezone"\n\noption location = timezone.location(name: "{timezone}")\n\n{flux_query}'
-
-    #     flux_query += ' |> yield(name: "result")'
-
-    #     print(f"Generated Flux query: {flux_query}")  # Debug print
-    #     return flux_query
-
+    
     def _fields(self, fields, query, field_name):
         matches = re.search(self._fields_regex, query)
         if not matches and not fields:
@@ -436,6 +401,60 @@ class DatabaseClient:
         top_fields = [record["_field"] for table in result for record in table.records]
         return top_fields
 
+    def default_chart_query(self, tags):
+        q = f'''
+        from(bucket: "{self.bucket}")
+          |> range(start: {{time}})
+          |> filter(fn: (r) => r._measurement == "{{key}}")
+          |> filter(fn: (r) => r._field == "{{field_name}}")
+        '''
+        if tags:
+            q += '''
+          |> filter(fn: (r) => r.content_type == "{{content_type}}")
+          |> filter(fn: (r) => r.object_id == "{{object_id}}")
+            '''
+        if '{{end_date}}' in tags:
+            q += '  |> range(stop: {{end_date}})'
+        return q
+
+    def _device_data(self, key, tags, rp, **kwargs):
+        """ returns last snapshot of ``device_data`` """
+        query = f'''
+        from(bucket: "{self.bucket}")
+          |> range(start: -30d)
+          |> filter(fn: (r) => r._measurement == "ping")
+          |> filter(fn: (r) => r.pk == "{tags['pk']}")
+          |> last()
+          |> yield(name: "last")
+        '''
+        print(f"Modified _device_data query: {query}")
+        return self.get_list_query(query, precision=None)
+
+    def get_list_query(self, query, precision='s', **kwargs):
+        print(f"get_list_query called with query: {query}")
+        result = self.query(query)
+        parsed_result = self._parse_query_result(result) if result else []
+        print(f"get_list_query result: {parsed_result}")
+        return parsed_result
+    
+    def get_device_data_structure(self, device_pk):
+        query = f'''
+        from(bucket: "{self.bucket}")
+        |> range(start: -30d)
+        |> filter(fn: (r) => r._measurement == "ping")
+        |> filter(fn: (r) => r.pk == "{device_pk}")
+        |> limit(n: 1)
+        '''
+        print(f"Checking device data structure: {query}")
+        result = self.query(query)
+        if result:
+            for table in result:
+                for record in table.records:
+                    print(f"Sample record: {record}")
+                    print(f"Available fields: {record.values.keys()}")
+        else:
+            print("No data found for this device")
+        
     def close(self):
         self.client.close()
 

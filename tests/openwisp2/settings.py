@@ -7,8 +7,6 @@ from celery.schedules import crontab
 TESTING = 'test' in sys.argv
 SHELL = 'shell' in sys.argv or 'shell_plus' in sys.argv
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-INFLUXDB_BACKEND = 'openwisp_monitoring.db.backends.influxdb2'
-INFLUXDB_BACKEND = 'openwisp_monitoring.db.backends.influxdb'
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
