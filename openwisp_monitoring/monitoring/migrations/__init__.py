@@ -1,3 +1,4 @@
+from asyncio.log import logger
 import swapper
 from django.contrib.auth.models import Permission
 
