@@ -678,8 +678,8 @@ class AbstractChart(TimeStampedEditableModel):
         params.update({
             'start_date': start_date, 
             'end_date': end_date,
-            'measurement': self.config_dict.get('measurement', self.metric.key),
-            'field_name': fields or self.config_dict.get('field_name'),
+            # 'measurement': self.config_dict.get('measurement', self.metric.key),
+            # 'field_name': fields or self.config_dict.get('field_name'),
         })
         if not params.get('organization_id') and self.config_dict.get('__all__', False):
             params['organization_id'] = ['__all__']
@@ -769,33 +769,22 @@ class AbstractChart(TimeStampedEditableModel):
             )
             query_kwargs.update(additional_query_kwargs)
             if self.top_fields:
-                points = summary = timeseries_db._get_top_fields(
-                    default_query=self._default_query,
-                    chart_type=self.type,
-                    group_map=self.GROUP_MAP,
-                    number=self.top_fields,
-                    params=self._get_query_params(self.DEFAULT_TIME),
-                    time=time,
-                    query=self.query,
-                    get_fields=False,
+                fields = self.get_top_fields(self.top_fields)
+                data_query = self.get_query(fields=fields, **query_kwargs)
+                summary_query = self.get_query(
+                    fields=fields, summary=True, **query_kwargs
                 )
             else:
                 data_query = self.get_query(**query_kwargs)
                 summary_query = self.get_query(summary=True, **query_kwargs)
-                points = timeseries_db.get_list_query(data_query, key=self.metric.key)
-                summary = timeseries_db.get_list_query(
-                    summary_query, key=self.metric.key
-                )
+            points = timeseries_db.get_list_query(data_query)
+            summary = timeseries_db.get_list_query(summary_query)
         except timeseries_db.client_error as e:
             logger.error(f"Error fetching data: {e}", exc_info=True)
-            raise
+            raise e
 
         for point in points:
-            time_value = point.get('time') or point.get('_time')
-            if not time_value:
-                logger.warning(f"Point missing time value: {point}")
-                continue
-
+            time_value = point.get('time')
             try:
                 formatted_time = self._parse_and_format_time(time_value, timezone)
             except ValueError as e:
@@ -803,10 +792,10 @@ class AbstractChart(TimeStampedEditableModel):
                 continue
 
             for key, value in point.items():
-                if key in ('time', '_time', 'result', 'table', 'content_type', 'object_id'):
+                if key in ('time', 'result', 'table', 'content_type', 'object_id'):
                     continue
                 traces.setdefault(key, [])
-                if decimal_places is not None and value is not None:
+                if decimal_places and isinstance(value, (int, float)):
                     value = self._round(value, decimal_places)
                 traces[key].append(value)
 
@@ -821,7 +810,7 @@ class AbstractChart(TimeStampedEditableModel):
         # Handle summary calculation
         if summary:
             for key, value in summary[0].items():
-                if key in ('time', '_time', 'result', 'table', 'content_type', 'object_id'):
+                if key in ('time', 'result', 'table', 'content_type', 'object_id'):
                     continue
                 if not timeseries_db.validate_query(self.query):
                     value = None

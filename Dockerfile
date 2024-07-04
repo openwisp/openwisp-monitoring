@@ -27,4 +27,3 @@ ENV NAME=openwisp-monitoring \
     REDIS_HOST=redis
 CMD ["sh", "docker-entrypoint.sh"]
 EXPOSE 8000
-# Command to run the application

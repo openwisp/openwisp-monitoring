@@ -384,6 +384,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         if self.status == '' and app_settings.AUTO_CLEAR_MANAGEMENT_IP:
             self.device.management_ip = None
             self.device.save(update_fields=['management_ip'])
+
         health_status_changed.send(sender=self.__class__, instance=self, status=value)
 
     @property

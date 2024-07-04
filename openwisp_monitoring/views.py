@@ -135,11 +135,6 @@ class MonitoringApiViewMixin:
                     chart_dict['connect_points'] = chart.connect_points
                 if chart.trace_labels:
                     chart_dict['trace_labels'] = chart.trace_labels
-                # Handle None values in summary
-                if 'summary' in chart_dict:
-                    for key, value in chart_dict['summary'].items():
-                        if value is None:
-                            chart_dict['summary'][key] = 'N/A'
             except InvalidChartConfigException:
                 logger.exception(f'Skipped chart for metric {chart.metric}')
                 continue

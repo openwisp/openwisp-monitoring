@@ -214,20 +214,6 @@ class DatabaseClient:
                 parsed_result.append(parsed_record)
         return parsed_result
 
-    def get_ping_data_query(self, bucket, start, stop, device_ids):
-        device_filter = ' or '.join([f'r["object_id"] == "{id}"' for id in device_ids])
-        query = f'''
-        from(bucket: "{bucket}")
-          |> range(start: {start}, stop: {stop})
-          |> filter(fn: (r) => r["_measurement"] == "ping")
-          |> filter(fn: (r) => r["_field"] == "loss" or r["_field"] == "reachable" or r["_field"] == "rtt_avg" or r["_field"] == "rtt_max" or r["_field"] == "rtt_min")
-          |> filter(fn: (r) => r["content_type"] == "config.device")
-          |> filter(fn: (r) => {device_filter})
-          |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
-          |> yield(name: "mean")
-        '''
-        return query
-
     def execute_query(self, query):
         try:
             result = self.query_api.query(query)
@@ -309,7 +295,7 @@ class DatabaseClient:
         timezone=settings.TIME_ZONE
     ):
         bucket = self.bucket
-        measurement = params.get('measurement')
+        measurement = params.get('key')
         if not measurement or measurement == 'None':
             logger.error("Invalid or missing measurement in params")
             return None

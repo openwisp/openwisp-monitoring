@@ -94,10 +94,14 @@ charts = {
                 "'{content_type}' AND object_id = '{object_id}'"
             ),
             'influxdb2': (
-                'from(bucket: "{key}") |> range(start: {time}) '
-                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" and '
-                'r["content_type"] == "{content_type}" and r["object_id"] == "{object_id}") '
-                '|> sum()'
+                'from(bucket: "mybucket")'
+                '  |> range(start: {time}, stop: {end_date})'
+                '  |> filter(fn: (r) => r._measurement == "{measurement}")'
+                '  |> filter(fn: (r) => r._field == "{field_name}")'
+                '  |> filter(fn: (r) => r.content_type == "{content_type}")'
+                '  |> filter(fn: (r) => r.object_id == "{object_id}")'
+                '  |> sum()'
+                '  |> yield(name: "histogram")'
             ),
         },
     },
@@ -129,9 +133,13 @@ charts = {
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
             ),
             'influxdb2': (
-                'from(bucket: "{key}") |> range(start: {time}) '
-                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" and '
-                'r["content_type"] == "{content_type}" and r["object_id"] == "{object_id}")'
+                'from(bucket: "mybucket")'
+                '  |> range(start: {time}, stop: {end_date})'
+                '  |> filter(fn: (r) => r._measurement == "{measurement}")'
+                '  |> filter(fn: (r) => r._field == "{field_name}")'
+                '  |> filter(fn: (r) => r.content_type == "{content_type}")'
+                '  |> filter(fn: (r) => r.object_id == "{object_id}")'
+                '  |> yield(name: "default")'
             ),
         },
     },
@@ -147,11 +155,13 @@ charts = {
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
             ),
             'influxdb2': (
-                'from(bucket: "{key}") |> range(start: {time}) '
-                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" or '
-                'r["_measurement"] == "value2" and '
-                'r["content_type"] == "{content_type}" and '
-                'r["object_id"] == "{object_id}")'
+                'from(bucket: "mybucket")'
+                '  |> range(start: {time}, stop: {end_date})'
+                '  |> filter(fn: (r) => r._measurement == "{measurement}")'
+                '  |> filter(fn: (r) => r._field == "{field_name}" or r._field == "value2")'
+                '  |> filter(fn: (r) => r.content_type == "{content_type}")'
+                '  |> filter(fn: (r) => r.object_id == "{object_id}")'
+                '  |> yield(name: "multiple_test")'
             ),
         },
     },
@@ -167,9 +177,15 @@ charts = {
                 " GROUP BY time(1d), metric_num"
             ),
             'influxdb2': (
-                'from(bucket: "{key}") |> range(start: {time}) '
-                '|> filter(fn: (r) => r["_measurement"] == "{field_name}") '
-                '|> group(columns: ["metric_num"]) |> sum() |> cumulativeSum() |> window(every: 1d)'
+                'from(bucket: "mybucket")'
+                '  |> range(start: {time}, stop: {end_date})'
+                '  |> filter(fn: (r) => r._measurement == "{measurement}")'
+                '  |> filter(fn: (r) => r._field == "{field_name}")'
+                '  |> group(columns: ["metric_num"])'
+                '  |> sum()'
+                '  |> cumulativeSum()'
+                '  |> window(every: 1d)'
+                '  |> yield(name: "group_by_tag")'
             ),
         },
         'summary_query': {
@@ -178,9 +194,14 @@ charts = {
                 " GROUP BY time(30d), metric_num"
             ),
             'influxdb2': (
-                'from(bucket: "{key}") |> range(start: {time}) '
-                '|> filter(fn: (r) => r["_measurement"] == "{field_name}") '
-                '|> group(columns: ["metric_num"]) |> sum() |> window(every: 30d)'
+                'from(bucket: "mybucket")'
+                '  |> range(start: {time}, stop: {end_date})'
+                '  |> filter(fn: (r) => r._measurement == "ping")'
+                '  |> filter(fn: (r) => r._field == "loss")'
+                '  |> filter(fn: (r) => r.content_type == "{content_type}")'
+                '  |> filter(fn: (r) => r.object_id == "{object_id}")'
+                '  |> mean()'
+                '  |> yield(name: "summary")'
             ),
         },
     },
@@ -196,10 +217,14 @@ charts = {
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
             ),
             'influxdb2': (
-                'from(bucket: "{key}") |> range(start: {time}) '
-                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" and '
-                'r["content_type"] == "{content_type}" and r["object_id"] == "{object_id}") '
-                '|> mean()'
+                'from(bucket: "mybucket")'
+                '  |> range(start: {time}, stop: {end_date})'
+                '  |> filter(fn: (r) => r._measurement == "{measurement}")'
+                '  |> filter(fn: (r) => r._field == "{field_name}")'
+                '  |> filter(fn: (r) => r.content_type == "{content_type}")'
+                '  |> filter(fn: (r) => r.object_id == "{object_id}")'
+                '  |> mean()'
+                '  |> yield(name: "mean_test")'
             ),
         },
     },
@@ -215,10 +240,14 @@ charts = {
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
             ),
             'influxdb2': (
-                'from(bucket: "{key}") |> range(start: {time}) '
-                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" and '
-                'r["content_type"] == "{content_type}" and r["object_id"] == "{object_id}") '
-                '|> sum()'
+                'from(bucket: "mybucket")'
+                '  |> range(start: {time}, stop: {end_date})'
+                '  |> filter(fn: (r) => r._measurement == "{measurement}")'
+                '  |> filter(fn: (r) => r._field == "{field_name}")'
+                '  |> filter(fn: (r) => r.content_type == "{content_type}")'
+                '  |> filter(fn: (r) => r.object_id == "{object_id}")'
+                '  |> sum()'
+                '  |> yield(name: "sum_test")'
             ),
         },
     },
@@ -235,10 +264,14 @@ charts = {
                 "'{content_type}' AND object_id = '{object_id}'"
             ),
             'influxdb2': (
-                'from(bucket: "{key}") |> range(start: {time}) '
-                '|> filter(fn: (r) => r["_measurement"] == "{field_name}" and '
-                'r["content_type"] == "{content_type}" and r["object_id"] == "{object_id}") '
-                '|> mean()'
+                'from(bucket: "mybucket")'
+                '  |> range(start: {time}, stop: {end_date})'
+                '  |> filter(fn: (r) => r._measurement == "{measurement}")'
+                '  |> filter(fn: (r) => r._field == "{field_name}")'
+                '  |> filter(fn: (r) => r.content_type == "{content_type}")'
+                '  |> filter(fn: (r) => r.object_id == "{object_id}")'
+                '  |> mean()'
+                '  |> yield(name: "top_fields_mean")'
             ),
         },
     },

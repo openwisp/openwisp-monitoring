@@ -231,12 +231,12 @@ class TestDatabaseClient(TestMonitoringMixin, unittest.TestCase):
         # Test ascending read order
         m.read(limit=2, order='time')
         query = mock_query_api.query.call_args[0][0]
-        self.assertIn('|> sort(columns: ["_time"], desc: false)', query)
+        self.assertIn('|> sort(columns: ["time"], desc: false)', query)
 
         # Test descending read order
         m.read(limit=2, order='-time')
         query = mock_query_api.query.call_args[0][0]
-        self.assertIn('|> sort(columns: ["_time"], desc: true)', query)
+        self.assertIn('|> sort(columns: ["time"], desc: true)', query)
 
         # Test invalid read order
         with self.assertRaises(ValueError):
