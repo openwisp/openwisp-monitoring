@@ -34,7 +34,8 @@ chart_query = {
             '  |> filter(fn: (r) => r.content_type == "{content_type}")'
             '  |> filter(fn: (r) => r.object_id == "{object_id}")'
             '  |> aggregateWindow(every: 1d, fn: mean, createEmpty: false)'
-            '  |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'
+            '  |> rename(columns: {_time: "time"})'
+            '  |> pivot(rowKey:["time"], columnKey: ["_field"], valueColumn: "_value")'
             '  |> yield(name: "rtt")'
         )
     },
@@ -82,7 +83,8 @@ chart_query = {
             '  |> sum()'
             '  |> map(fn: (r) => ({ r with _value: r._value / 1000000000.0 }))'
             '  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false)'
-            '  |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'
+            '  |> rename(columns: {_time: "time"})'
+            '  |> pivot(rowKey:["time"], columnKey: ["_field"], valueColumn: "_value")'
             '  |> rename(columns: {tx_bytes: "upload", rx_bytes: "download"})'
             '  |> yield(name: "traffic")'
         )
@@ -100,7 +102,8 @@ chart_query = {
             '  |> sum()'
             '  |> map(fn: (r) => ({ r with _value: r._value / 1000000000.0 }))'
             '  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false)'
-            '  |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'
+            '  |> rename(columns: {_time: "time"})'
+            '  |> pivot(rowKey:["time"], columnKey: ["_field"], valueColumn: "_value")'
             '  |> rename(columns: {tx_bytes: "upload", rx_bytes: "download"})'
             '  |> yield(name: "general_traffic")'
         )
@@ -151,7 +154,8 @@ chart_query = {
             '  |> filter(fn: (r) => r.object_id == "{object_id}")'
             '  |> aggregateWindow(every: 1d, fn: mean, createEmpty: false)'
             '  |> map(fn: (r) => ({ r with _value: float(v: int(v: r._value)) }))'
-            '  |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'
+            '  |> rename(columns: {_time: "time"})'
+            '  |> pivot(rowKey:["time"], columnKey: ["_field"], valueColumn: "_value")'
             '  |> yield(name: "signal_strength")'
         )
     },
@@ -165,7 +169,8 @@ chart_query = {
             '  |> filter(fn: (r) => r.object_id == "{object_id}")'
             '  |> aggregateWindow(every: 1d, fn: mean, createEmpty: false)'
             '  |> map(fn: (r) => ({ r with _value: float(v: int(v: r._value)) }))'
-            '  |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'
+            '  |> rename(columns: {_time: "time"})'
+            '  |> pivot(rowKey:["time"], columnKey: ["_field"], valueColumn: "_value")'
             '  |> yield(name: "signal_quality")'
         )
     },
@@ -191,7 +196,8 @@ chart_query = {
             '  |> filter(fn: (r) => r.object_id == "{object_id}")'
             '  |> aggregateWindow(every: 1d, fn: mean, createEmpty: false)'
             '  |> map(fn: (r) => ({ r with _value: r._value / 1000000000.0 }))'
-            '  |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'
+            '  |> rename(columns: {_time: "time"})'
+            '  |> pivot(rowKey:["time"], columnKey: ["_field"], valueColumn: "_value")'
             '  |> rename(columns: {sent_bps_tcp: "TCP", sent_bps_udp: "UDP"})'
             '  |> yield(name: "bandwidth")'
         )
@@ -206,7 +212,8 @@ chart_query = {
             '  |> filter(fn: (r) => r.object_id == "{object_id}")'
             '  |> sum()'
             '  |> map(fn: (r) => ({ r with _value: r._value / 1000000000.0 }))'
-            '  |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'
+            '  |> rename(columns: {_time: "time"})'
+            '  |> pivot(rowKey:["time"], columnKey: ["_field"], valueColumn: "_value")'
             '  |> rename(columns: {sent_bytes_tcp: "TCP", sent_bytes_udp: "UDP"})'
             '  |> yield(name: "transfer")'
         )
@@ -244,7 +251,8 @@ chart_query = {
             '  |> filter(fn: (r) => r.content_type == "{content_type}")'
             '  |> filter(fn: (r) => r.object_id == "{object_id}")'
             '  |> aggregateWindow(every: 1d, fn: mean, createEmpty: false)'
-            '  |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'
+            '  |> rename(columns: {_time: "time"})'
+            '  |> pivot(rowKey:["time"], columnKey: ["_field"], valueColumn: "_value")'
             '  |> rename(columns: {lost_packets: "lost_datagram", total_packets: "total_datagram"})'
             '  |> yield(name: "datagram")'
         )

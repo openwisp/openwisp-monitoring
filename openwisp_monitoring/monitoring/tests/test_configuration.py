@@ -35,10 +35,15 @@ class TestConfiguration(TestMonitoringMixin, TestCase):
                             "WHERE time >= '{time}' AND content_type = "
                             "'{content_type}' AND object_id = '{object_id}'"
                         ),
-                        'influxdb2': (
-                            'from(bucket: "{key}") |> range(start: {time}) '
-                            '|> filter(fn: (r) => r["_measurement"] == "{field_name}" and '
-                            'r["content_type"] == "{content_type}" and r["object_id"] == "{object_id}")'
+                          'influxdb2': (
+                            'from(bucket: "mybucket")'
+                            '  |> range(start: {time}, stop: {end_date})'
+                            '  |> filter(fn: (r) => r._measurement == "{measurement}")'
+                            '  |> filter(fn: (r) => r._field == "{field_name}")'
+                            '  |> filter(fn: (r) => r.content_type == "{content_type}")'
+                            '  |> filter(fn: (r) => r.object_id == "{object_id}")'
+                            '  |> sum()'
+                            '  |> yield(name: "histogram")'
                         ),
                     },
                 }
