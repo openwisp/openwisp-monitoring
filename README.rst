@@ -43,8 +43,6 @@ Django, designed to be **extensible**, **programmable**, **scalable** and
 easy to use by end users: once the system is configured, monitoring
 checks, alerts and metric collection happens automatically.
 
-See the `available features <#available-features>`_.
-
 `OpenWISP <http://openwisp.org>`_ is not only an application designed for
 end users, but can also be used as a framework on which custom network
 automation solutions can be built on top of its building blocks.
