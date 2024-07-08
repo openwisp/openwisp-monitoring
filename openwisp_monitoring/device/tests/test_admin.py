@@ -1125,7 +1125,7 @@ class TestWifiSessionAdmin(
             response,
             (
                 '<label>Stop time:</label>\n\n'
-                '<div class="readonly">Aug. 24, 2023, 5:46 p.m.</div>'
+                '<div class="readonly">Aug. 24, 2023, 7:46 p.m.</div>'
             ),
             html=True,
         )
