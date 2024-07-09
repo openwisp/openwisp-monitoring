@@ -8,6 +8,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.forms import ModelForm
 from django.templatetags.static import static
 from django.urls import resolve, reverse
+from django.utils import timezone
 from django.utils.formats import localize
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -378,7 +379,7 @@ class WifiSessionAdminHelperMixin:
     def get_stop_time(self, obj):
         if obj.stop_time is None:
             return mark_safe('<strong style="color:green;">online</strong>')
-        return localize(obj.stop_time)
+        return localize(timezone.localtime(obj.stop_time))
 
     get_stop_time.short_description = _('stop time')
 
