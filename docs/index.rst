@@ -1,6 +1,9 @@
 Monitoring
 ==========
 
+**Source code**: `github.com/openwisp/openwisp-monitoring
+<https://github.com/openwisp/openwisp-monitoring>`_.
+
 The OpenWISP Monitoring module leverages the capabilities of Python and
 the Django Framework to provide OpenWISP with robust network monitoring
 features. Designed to be extensible, programmable, scalable, and
