@@ -641,12 +641,12 @@ Ping
 +--------------------+----------------------------------------------------------------+
 | **configuration**: | ``ping``                                                       |
 +--------------------+----------------------------------------------------------------+
-| **charts**:        | ``uptime``, ``packet_loss``, ``rtt``                           |
+| **charts**:        | ``uptime`` (Ping Success Rate), ``packet_loss``, ``rtt``       |
 +--------------------+----------------------------------------------------------------+
 
 **Ping Success Rate**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/uptime.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/ping-success-rate.png
   :align: center
 
 **Packet loss**:
