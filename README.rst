@@ -83,7 +83,7 @@ Available Features
   uptime, RAM status, CPU load averages,
   Interface properties and addresses, WiFi interface status and associated clients,
   Neighbors information, DHCP Leases, Disk/Flash status
-* Monitoring charts for `uptime <#ping>`_, `packet loss <#ping>`_,
+* Monitoring charts for `ping success rate <#ping>`_, `packet loss <#ping>`_,
   `round trip time (latency) <#ping>`_,
   `associated wifi clients <#wifi-clients>`_, `interface traffic <#traffic>`_,
   `RAM usage <#memory-usage>`_, `CPU load <#cpu-load>`_, `flash/disk usage <#disk-usage>`_,
@@ -641,12 +641,12 @@ Ping
 +--------------------+----------------------------------------------------------------+
 | **configuration**: | ``ping``                                                       |
 +--------------------+----------------------------------------------------------------+
-| **charts**:        | ``uptime``, ``packet_loss``, ``rtt``                           |
+| **charts**:        | ``uptime`` (Ping Success Rate), ``packet_loss``, ``rtt``       |
 +--------------------+----------------------------------------------------------------+
 
-**Uptime**:
+**Ping Success Rate**:
 
-.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/uptime.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/ping-success-rate.png
   :align: center
 
 **Packet loss**:
@@ -1001,9 +1001,9 @@ Available Checks
 Ping
 ~~~~
 
-This check returns information on device ``uptime`` and ``RTT (Round trip time)``.
-The Charts ``uptime``, ``packet loss`` and ``rtt`` are created. The ``fping``
-command is used to collect these metrics.
+This check returns information on Ping Success Rate and RTT (Round trip time).
+It creates charts like Ping Success Rate, Packet Loss and RTT.
+These metrics are collected using the ``fping`` Linux program.
 You may choose to disable auto creation of this check by setting
 `OPENWISP_MONITORING_AUTO_PING <#OPENWISP_MONITORING_AUTO_PING>`_ to ``False``.
 
@@ -2188,19 +2188,19 @@ An example usage has been shown below.
         'charts': {
             'uptime': {
                 'type': 'bar',
-                'title': _('Uptime'),
+                'title': _('Ping Success Rate'),
                 'description': _(
                     'A value of 100% means reachable, 0% means unreachable, values in '
                     'between 0% and 100% indicate the average reachability in the '
                     'period observed. Obtained with the fping linux program.'
                 ),
-                'summary_labels': [_('Average uptime')],
+                'summary_labels': [_('Average Ping Success Rate')],
                 'unit': '%',
                 'order': 200,
                 'colorscale': {
                     'max': 100,
                     'min': 0,
-                    'label': _('Reachable'),
+                    'label': _('Rate'),
                     'scale': [
                         [[0, '#c13000'],
                         [0.1,'cb7222'],
@@ -2209,7 +2209,7 @@ An example usage has been shown below.
                         [1, '#498b26']],
                     ],
                     'map': [
-                       [100, '#498b26', _('Reachable')],
+                       [100, '#498b26', _('Flawless')],
                        [90, '#7db201', _('Mostly Reachable')],
                        [50, '#deed0e', _('Partly Reachable')],
                        [10, '#cb7222', _('Mostly Unreachable')],
