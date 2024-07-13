@@ -23,7 +23,7 @@ SSH access to you device from OpenWISP.
 .. important::
 
     Make sure device connection is enabled & working with right update
-    strategy i.e. ``OpenWRT SSH``.
+    strategy i.e. ``OpenWrt SSH``.
 
 .. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/enable-openwrt-ssh.png
     :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/enable-openwrt-ssh.png
