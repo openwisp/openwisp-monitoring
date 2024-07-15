@@ -6,9 +6,8 @@ Quickstart Guide
 Install Monitoring Packages on the Device
 -----------------------------------------
 
-`Install the openwrt-openwisp-monitoring packages
-<https://github.com/openwisp/openwrt-openwisp-monitoring/tree/0.1.0#install-pre-compiled-packages>`_
-on your device.
+:doc:`Install the openwrt-openwisp-monitoring packages
+</openwrt-monitoring-agent/user/quickstart>` on your device.
 
 These packages collect and send the monitoring data from the device to
 OpenWISP Monitoring and are required to collect :doc:`metrics <./metrics>`
@@ -75,11 +74,11 @@ In this scenario, the following requirements are needed:
 - The devices must be configured to join the management tunnel
   automatically, either via a pre-existing configuration in the firmware
   or via an :doc:`OpenWISP Template </controller/user/templates>`.
-- The `openwisp-config <https://github.com/openwisp/openwisp-config>`_
-  agent on the devices must be configured to specify the
-  ``management_interface`` option, the agent will communicate the IP of
-  the management interface to the OpenWISP Server and OpenWISP will use
-  the management IP for reaching the device.
+- The :doc:`openwisp-config </openwrt-config-agent/index>` agent on the
+  devices must be configured to specify the ``management_interface``
+  option, the agent will communicate the IP of the management interface to
+  the OpenWISP Server and OpenWISP will use the management IP for reaching
+  the device.
 
   For example, if the *management interface* is named ``tun0``, the
   openwisp-config configuration should look like the following example:

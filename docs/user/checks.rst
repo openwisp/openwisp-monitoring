@@ -20,10 +20,10 @@ You can change the default values used for ping checks using
 Configuration Applied
 ---------------------
 
-This check ensures that the `openwisp-config agent
-<https://github.com/openwisp/openwisp-config/>`_ is running and applying
-configuration changes in a timely manner. You may choose to disable auto
-creation of this check by using the setting
+This check ensures that the :doc:`openwisp-config agent
+</openwrt-config-agent/index>` is running and applying configuration
+changes in a timely manner. You may choose to disable auto creation of
+this check by using the setting
 :ref:`openwisp_monitoring_auto_device_config_check`.
 
 This check runs periodically, but it is also triggered whenever the

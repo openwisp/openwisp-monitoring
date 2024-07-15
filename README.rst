@@ -50,23 +50,23 @@ automation solutions can be built on top of its building blocks.
 Other popular building blocks that are part of the OpenWISP ecosystem are:
 
 - `openwisp-controller
-  <https://github.com/openwisp/openwisp-controller>`_: network and WiFi
+  <https://openwisp.io/docs/__new__/dev/controller/>`_: network and WiFi
   controller: provisioning, configuration management, x509 PKI management
   and more; works on OpenWrt, but designed to work also on other systems.
 - `openwisp-network-topology
-  <https://github.com/openwisp/openwisp-network-topology>`_: provides way
+  <https://openwisp.io/docs/__new__/dev/network-topology/>`_: provides way
   to collect and visualize network topology data from dynamic mesh routing
   daemons or other network software (eg: OpenVPN); it can be used in
   conjunction with openwisp-monitoring to get a better idea of the state
   of the network
 - `openwisp-firmware-upgrader
-  <https://github.com/openwisp/openwisp-firmware-upgrader>`_: automated
+  <https://openwisp.io/docs/__new__/dev/firmware-upgrader/>`_: automated
   firmware upgrades (single device or mass network upgrades)
-- `openwisp-radius <https://github.com/openwisp/openwisp-radius>`_: based
+- `openwisp-radius <https://openwisp.io/docs/__new__/dev/user/radius.html>`_: based
   on FreeRADIUS, allows to implement network access authentication systems
   like 802.1x WPA2 Enterprise, captive portal authentication, Hotspot 2.0
   (802.11u)
-- `openwisp-ipam <https://github.com/openwisp/openwisp-ipam>`_: it allows
+- `openwisp-ipam <https://openwisp.io/docs/__new__/dev/ipam/>`_: it allows
   to manage the IP address space of networks
 
 **For a more complete overview of the OpenWISP modules and architecture**,

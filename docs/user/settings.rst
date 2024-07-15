@@ -86,10 +86,9 @@ Timeseries Database Options
         database = "openwisp2"
         retention-policy = 'short'
 
-    If you are using `ansible-openwisp2
-    <https://github.com/openwisp/ansible-openwisp2>`_ for deploying
-    OpenWISP, you can set the ``influxdb_udp_mode`` ansible variable to
-    ``true`` in your playbook, this will make the ansible role
+    If you are using :doc:`ansible-openwisp2 </ansible/index>` for
+    deploying OpenWISP, you can set the ``influxdb_udp_mode`` ansible
+    variable to ``true`` in your playbook, this will make the ansible role
     automatically configure the InfluxDB UDP listeners. You can refer to
     the `ansible-ow-influxdb's
     <https://github.com/openwisp/ansible-ow-influxdb#role-variables>`_ (a
@@ -410,9 +409,8 @@ If you use OpenVPN as the management VPN, you may want to check out a
 similar integration built in **openwisp-network-topology**: when the
 status of an OpenVPN link changes (detected by monitoring the status
 information of OpenVPN), the network topology module will trigger the
-monitoring checks. For more information see: `Network Topology Device
-Integration
-<https://github.com/openwisp/openwisp-network-topology#integration-with-openwisp-controller-and-openwisp-monitoring>`_
+monitoring checks. For more information see: :doc:`Network Topology Device
+Integration </network-topology/user/integrations>`.
 
 .. _openwisp_monitoring_mac_vendor_detection:
 
@@ -537,9 +535,9 @@ monitoring status of the devices, this allows to get an overview of the
 network at glance.
 
 This feature is enabled by default and depends on the setting
-``OPENWISP_ADMIN_DASHBOARD_ENABLED`` from `openwisp-utils
-<https://github.com/openwisp/openwisp-utils>`__ being set to ``True``
-(which is the default).
+``OPENWISP_ADMIN_DASHBOARD_ENABLED`` from :ref:`openwisp-utils
+<utils_admin_dashboard_enabled>` being set to ``True`` (which is the
+default).
 
 You can turn this off if you do not use the geographic features of
 OpenWISP.

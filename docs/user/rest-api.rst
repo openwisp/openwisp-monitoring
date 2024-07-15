@@ -1,4 +1,4 @@
-Rest API Reference
+REST API Reference
 ==================
 
 .. _monitoring_live_documentation:
@@ -186,9 +186,9 @@ The format used for Device Status is inspired by `NetJSON DeviceMonitoring
 If the request is made without passing the ``time`` argument, the server
 local time will be used.
 
-The ``time`` parameter was added to support `resilient collection and
+The ``time`` parameter was added to support :ref:`resilient collection and
 sending of data by the OpenWISP Monitoring Agent
-<https://github.com/openwisp/openwrt-openwisp-monitoring#collecting-vs-sending>`_,
+<monitoring_agent_collecting_vs_sending>`,
 this feature allows sending data collected while the device is offline.
 
 List Nearby Devices

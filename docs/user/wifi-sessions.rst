@@ -36,9 +36,9 @@ sessions older than a pre-configured number of days.
 
 .. note::
 
-    If you have deployed OpenWISP using `ansible-openwisp2
-    <https://github.com/openwisp/ansible-openwisp2>`_ or `docker-openwisp
-    <https://github.com/openwisp/docker-openwisp>`_, then this feature has
+    If you have deployed OpenWISP using :doc:`ansible-openwisp2
+    </ansible/index>` or :doc:`docker-openwisp
+    </docker/index>`, then this feature has
     been already configured for you. Refer to the documentation of your
     deployment method to know the default value. This section is only for
     reference for users who wish to customize OpenWISP, or who have
