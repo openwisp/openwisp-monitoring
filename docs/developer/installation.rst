@@ -143,7 +143,7 @@ Install and Run on Docker
     This Docker image is for development purposes only.
 
     For the official OpenWISP Docker images, see: `docker-openwisp
-    <https://openwisp.io/docs/__new__/dev/docker/index.html>`_.
+    <https://openwisp.io/docs/dev/docker/index.html>`_.
 
 Build from the Dockerfile:
 
