@@ -39,100 +39,98 @@ An example usage has been shown below.
 
     # Define configuration of your metric
     metric_config = {
-        "label": _("Ping"),
-        "name": "Ping",
-        "key": "ping",
-        "field_name": "reachable",
-        "related_fields": ["loss", "rtt_min", "rtt_max", "rtt_avg"],
-        "charts": {
-            "uptime": {
-                "type": "bar",
-                "title": _("Uptime"),
-                "description": _(
-                    "A value of 100% means reachable, 0% means unreachable, values in "
-                    "between 0% and 100% indicate the average reachability in the "
-                    "period observed. Obtained with the fping linux program."
+        'label': _('Ping'),
+        'name': 'Ping',
+        'key': 'ping',
+        'field_name': 'reachable',
+        'related_fields': ['loss', 'rtt_min', 'rtt_max', 'rtt_avg'],
+        'charts': {
+            'uptime': {
+                'type': 'bar',
+                'title': _('Ping Success Rate'),
+                'description': _(
+                    'A value of 100% means reachable, 0% means unreachable, values in '
+                    'between 0% and 100% indicate the average reachability in the '
+                    'period observed. Obtained with the fping linux program.'
                 ),
-                "summary_labels": [_("Average uptime")],
-                "unit": "%",
-                "order": 200,
-                "colorscale": {
-                    "max": 100,
-                    "min": 0,
-                    "label": _("Reachable"),
-                    "scale": [
-                        [
-                            [0, "#c13000"],
-                            [0.1, "cb7222"],
-                            [0.5, "#deed0e"],
-                            [0.9, "#7db201"],
-                            [1, "#498b26"],
-                        ],
+                'summary_labels': [_('Average Ping Success Rate')],
+                'unit': '%',
+                'order': 200,
+                'colorscale': {
+                    'max': 100,
+                    'min': 0,
+                    'label': _('Rate'),
+                    'scale': [
+                        [[0, '#c13000'],
+                        [0.1,'cb7222'],
+                        [0.5,'#deed0e'],
+                        [0.9, '#7db201'],
+                        [1, '#498b26']],
                     ],
-                    "map": [
-                        [100, "#498b26", _("Reachable")],
-                        [90, "#7db201", _("Mostly Reachable")],
-                        [50, "#deed0e", _("Partly Reachable")],
-                        [10, "#cb7222", _("Mostly Unreachable")],
-                        [None, "#c13000", _("Unreachable")],
+                    'map': [
+                       [100, '#498b26', _('Flawless')],
+                       [90, '#7db201', _('Mostly Reachable')],
+                       [50, '#deed0e', _('Partly Reachable')],
+                       [10, '#cb7222', _('Mostly Unreachable')],
+                       [None, '#c13000', _('Unreachable')],
                     ],
-                    "fixed_value": 100,
+                    'fixed_value': 100,
                 },
-                "query": chart_query["uptime"],
+                'query': chart_query['uptime'],
             },
-            "packet_loss": {
-                "type": "bar",
-                "title": _("Packet loss"),
-                "description": _(
-                    "Indicates the percentage of lost packets observed in ICMP probes. "
-                    "Obtained with the fping linux program."
+            'packet_loss': {
+                'type': 'bar',
+                'title': _('Packet loss'),
+                'description': _(
+                    'Indicates the percentage of lost packets observed in ICMP probes. '
+                    'Obtained with the fping linux program.'
                 ),
-                "summary_labels": [_("Average packet loss")],
-                "unit": "%",
-                "colors": "#d62728",
-                "order": 210,
-                "query": chart_query["packet_loss"],
+                'summary_labels': [_('Average packet loss')],
+                'unit': '%',
+                'colors': '#d62728',
+                'order': 210,
+                'query': chart_query['packet_loss'],
             },
-            "rtt": {
-                "type": "scatter",
-                "title": _("Round Trip Time"),
-                "description": _(
-                    "Round trip time observed in ICMP probes, measuered in milliseconds."
+            'rtt': {
+                'type': 'scatter',
+                'title': _('Round Trip Time'),
+                'description': _(
+                    'Round trip time observed in ICMP probes, measuered in milliseconds.'
                 ),
-                "summary_labels": [
-                    _("Average RTT"),
-                    _("Average Max RTT"),
-                    _("Average Min RTT"),
+                'summary_labels': [
+                    _('Average RTT'),
+                    _('Average Max RTT'),
+                    _('Average Min RTT'),
                 ],
-                "unit": _(" ms"),
-                "order": 220,
-                "query": chart_query["rtt"],
+                'unit': _(' ms'),
+                'order': 220,
+                'query': chart_query['rtt'],
             },
         },
-        "alert_settings": {"operator": "<", "threshold": 1, "tolerance": 0},
-        "notification": {
-            "problem": {
-                "verbose_name": "Ping PROBLEM",
-                "verb": "cannot be reached anymore",
-                "level": "warning",
-                "email_subject": _(
-                    "[{site.name}] {notification.target} is not reachable"
+        'alert_settings': {'operator': '<', 'threshold': 1, 'tolerance': 0},
+        'notification': {
+            'problem': {
+                'verbose_name': 'Ping PROBLEM',
+                'verb': 'cannot be reached anymore',
+                'level': 'warning',
+                'email_subject': _(
+                    '[{site.name}] {notification.target} is not reachable'
                 ),
-                "message": _(
-                    "The device [{notification.target}] {notification.verb} anymore by our ping "
-                    "messages."
+                'message': _(
+                    'The device [{notification.target}] {notification.verb} anymore by our ping '
+                    'messages.'
                 ),
             },
-            "recovery": {
-                "verbose_name": "Ping RECOVERY",
-                "verb": "has become reachable",
-                "level": "info",
-                "email_subject": _(
-                    "[{site.name}] {notification.target} is reachable again"
+            'recovery': {
+                'verbose_name': 'Ping RECOVERY',
+                'verb': 'has become reachable',
+                'level': 'info',
+                'email_subject': _(
+                    '[{site.name}] {notification.target} is reachable again'
                 ),
-                "message": _(
-                    "The device [{notification.target}] {notification.verb} again by our ping "
-                    "messages."
+                'message': _(
+                    'The device [{notification.target}] {notification.verb} again by our ping '
+                    'messages.'
                 ),
             },
         },

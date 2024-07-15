@@ -35,13 +35,13 @@ Ping
 **fields**:        ``reachable``, ``loss``, ``rtt_min``, ``rtt_max``,
                    ``rtt_avg``
 **configuration**: ``ping``
-**charts**:        ``uptime``, ``packet_loss``, ``rtt``
+**charts**:        ``uptime`` (Ping Success Rate), ``packet_loss``, ``rtt``
 ================== ==================================================
 
-**Uptime**:
+**Ping Success Rate**:
 
-.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/uptime.png
-    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/uptime.png
+.. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/ping-success-rate.png
+    :target: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/ping-success-rate.png
     :align: center
 
 **Packet loss**:

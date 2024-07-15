@@ -16,7 +16,7 @@ OpenWISP provides the following monitoring capabilities:
   like uptime, RAM status, CPU load averages, Interface properties and
   addresses, WiFi interface status and associated clients, Neighbors
   information, DHCP Leases, Disk/Flash status
-- Monitoring charts for :ref:`uptime <ping_check>`, :ref:`packet loss
+- Monitoring charts for :ref:`ping success rate <ping_check>`, :ref:`packet loss
   <ping_check>`, :ref:`round trip time (latency) <ping_check>`,
   :ref:`associated wifi clients <wifi_clients>`, :ref:`interface traffic
   <traffic>`, :ref:`RAM usage <memory_usage>`, :ref:`CPU load <cpu_load>`,
