@@ -1,6 +1,10 @@
 Configuring Iperf3 Check
 ========================
 
+.. contents:: **Table of contents**:
+    :depth: 2
+    :local:
+
 1. Make Sure Iperf3 is Installed on the Device
 ----------------------------------------------
 

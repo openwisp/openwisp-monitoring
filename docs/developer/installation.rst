@@ -3,6 +3,10 @@ Developer Installation Instructions
 
 .. include:: ../partials/developer-docs.rst
 
+.. contents:: **Table of contents**:
+    :depth: 2
+    :local:
+
 Dependencies
 ------------
 
@@ -94,7 +98,7 @@ Launch development server:
 
     ./manage.py runserver 0.0.0.0:8000
 
-You can access the admin interface at http://127.0.0.1:8000/admin/.
+You can access the admin interface at ``http://127.0.0.1:8000/admin/``.
 
 Run tests with:
 
@@ -142,8 +146,7 @@ Install and Run on Docker
 
     This Docker image is for development purposes only.
 
-    For the official OpenWISP Docker images, see: `docker-openwisp
-    <https://openwisp.io/docs/dev/docker/index.html>`_.
+    For the official OpenWISP Docker images, see: :doc:`/docker/index`.
 
 Build from the Dockerfile:
 

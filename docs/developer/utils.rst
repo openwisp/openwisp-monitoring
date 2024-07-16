@@ -3,8 +3,8 @@ Code Utilities
 
 .. include:: ../partials/developer-docs.rst
 
-.. contents::
-    :depth: 2
+.. contents:: **Table of contents**:
+    :depth: 1
     :local:
 
 Registering / Unregistering Metric Configuration

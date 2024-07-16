@@ -1,6 +1,10 @@
 Checks
 ======
 
+.. contents:: **Table of contents**:
+    :depth: 2
+    :local:
+
 .. _ping_check:
 
 Ping

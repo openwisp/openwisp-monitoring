@@ -22,7 +22,7 @@ For a comprehensive overview of features, please refer to the
     ./user/device-health-status.rst
     ./user/metrics.rst
     ./user/checks.rst
-    ./user/adding-checks-and-alertsettings.rst
+    ./user/device-checks-and-alert-settings
     ./user/configuring-iperf3-check.rst
     ./user/dashboard-monitoring-charts.rst
     ./user/wifi-sessions.rst

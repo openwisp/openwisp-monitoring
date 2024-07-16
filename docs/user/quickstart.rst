@@ -1,6 +1,10 @@
 Quickstart Guide
 ================
 
+.. contents:: **Table of contents**:
+    :depth: 2
+    :local:
+
 .. _install_monitoring_packages_on_device:
 
 Install Monitoring Packages on the Device

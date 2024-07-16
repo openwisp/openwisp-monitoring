@@ -1,6 +1,10 @@
 Metrics
 =======
 
+.. contents:: **Table of contents**:
+    :depth: 2
+    :local:
+
 .. _device_status:
 
 Device Status

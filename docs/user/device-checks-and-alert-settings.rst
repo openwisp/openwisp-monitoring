@@ -1,5 +1,5 @@
-Adding Checks and Alert Settings from the Device Page
-=====================================================
+Managing Device Checks & Alert Settings
+=======================================
 
 We can add checks and define alert settings directly from the **device
 page**.
