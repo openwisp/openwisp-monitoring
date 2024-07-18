@@ -192,8 +192,8 @@ local time will be used.
 
 The ``time`` parameter was added to support :ref:`resilient collection and
 sending of data by the OpenWISP Monitoring Agent
-<monitoring_agent_collecting_vs_sending>`,
-this feature allows sending data collected while the device is offline.
+<monitoring_agent_collecting_vs_sending>`, this feature allows sending
+data collected while the device is offline.
 
 List Nearby Devices
 ~~~~~~~~~~~~~~~~~~~

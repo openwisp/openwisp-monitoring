@@ -39,7 +39,8 @@ Ping
 **fields**:        ``reachable``, ``loss``, ``rtt_min``, ``rtt_max``,
                    ``rtt_avg``
 **configuration**: ``ping``
-**charts**:        ``uptime`` (Ping Success Rate), ``packet_loss``, ``rtt``
+**charts**:        ``uptime`` (Ping Success Rate), ``packet_loss``,
+                   ``rtt``
 ================== ==================================================
 
 **Ping Success Rate**:

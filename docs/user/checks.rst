@@ -10,10 +10,10 @@ Checks
 Ping
 ----
 
-This check returns information on Ping Success Rate and RTT (Round trip time).
-It creates charts like Ping Success Rate, Packet Loss and RTT.
-These metrics are collected using the ``fping`` Linux program.
-You may choose to disable auto creation of this check by setting
+This check returns information on Ping Success Rate and RTT (Round trip
+time). It creates charts like Ping Success Rate, Packet Loss and RTT.
+These metrics are collected using the ``fping`` Linux program. You may
+choose to disable auto creation of this check by setting
 :ref:`openwisp_monitoring_auto_ping` to ``False``.
 
 You can change the default values used for ping checks using
