@@ -1,20 +1,35 @@
 Monitoring
 ==========
 
-**Source code**: `github.com/openwisp/openwisp-monitoring
-<https://github.com/openwisp/openwisp-monitoring>`_.
+.. seealso::
 
-The OpenWISP Monitoring module leverages the capabilities of Python and
-the Django Framework to provide OpenWISP with robust network monitoring
-features. Designed to be extensible, programmable, scalable, and
-user-friendly, this module automates monitoring checks, alerts, and metric
-collection, ensuring efficient and comprehensive network management.
+    **Source code**: `github.com/openwisp/openwisp-monitoring
+    <https://github.com/openwisp/openwisp-monitoring>`_.
 
-For a comprehensive overview of features, please refer to the
-:doc:`user/intro` page.
+The OpenWISP Monitoring module leverages the capabilities of Python and the Django
+Framework to provide OpenWISP with robust network monitoring features. Designed to be
+extensible, programmable, scalable, and user-friendly, this module automates monitoring
+checks, alerts, and metric collection, ensuring efficient and comprehensive network
+management.
+
+For a comprehensive overview of its features, please refer to the :doc:`user/intro`
+page.
+
+.. figure:: images/architecture-v2-openwisp-monitoring.png
+    :target: ../_images/architecture-v2-openwisp-monitoring.png
+    :align: center
+    :alt: OpenWISP Architecture: Monitoring module
+
+    **OpenWISP Architecture: highlighted monitoring module**
+
+.. important::
+
+    For an enhanced viewing experience, open the image above in a new browser tab.
+
+    Refer to :doc:`/general/architecture` for more information.
 
 .. toctree::
-    :caption: User Docs
+    :caption: Monitoring Module Usage Docs
     :maxdepth: 1
 
     ./user/intro.rst
@@ -31,7 +46,7 @@ For a comprehensive overview of features, please refer to the
     ./user/management-commands.rst
 
 .. toctree::
-    :caption: Developer Docs
+    :caption: Monitoring Module Developer Docs
     :maxdepth: 2
 
     Developer Docs Index <developer/index.rst>
