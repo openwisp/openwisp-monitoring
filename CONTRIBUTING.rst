@@ -1,1 +1,1 @@
-Please refer to the `Contribution Guidelines <https://github.com/openwisp/openwisp-monitoring#contributing>`_.
+Please refer to the `OpenWISP Contributing Guidelines <http://openwisp.io/docs/developer/contributing.html>`_.
