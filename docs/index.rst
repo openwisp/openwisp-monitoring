@@ -6,17 +6,17 @@ Monitoring
     **Source code**: `github.com/openwisp/openwisp-monitoring
     <https://github.com/openwisp/openwisp-monitoring>`_.
 
-The OpenWISP Monitoring module leverages the capabilities of Python and the Django
-Framework to provide OpenWISP with robust network monitoring features. Designed to be
-extensible, programmable, scalable, and user-friendly, this module automates monitoring
-checks, alerts, and metric collection, ensuring efficient and comprehensive network
-management.
+The OpenWISP Monitoring module leverages the capabilities of Python and
+the Django Framework to provide OpenWISP with robust network monitoring
+features. Designed to be extensible, programmable, scalable, and
+user-friendly, this module automates monitoring checks, alerts, and metric
+collection, ensuring efficient and comprehensive network management.
 
-For a comprehensive overview of its features, please refer to the :doc:`user/intro`
-page.
+For a comprehensive overview of its features, please refer to the
+:doc:`user/intro` page.
 
-The following diagram illustrates the role of the Monitoring module within the OpenWISP
-architecture.
+The following diagram illustrates the role of the Monitoring module within
+the OpenWISP architecture.
 
 .. figure:: images/architecture-v2-openwisp-monitoring.png
     :target: ../_images/architecture-v2-openwisp-monitoring.png
@@ -27,7 +27,8 @@ architecture.
 
 .. important::
 
-    For an enhanced viewing experience, open the image above in a new browser tab.
+    For an enhanced viewing experience, open the image above in a new
+    browser tab.
 
     Refer to :doc:`/general/architecture` for more information.
 
