@@ -15,6 +15,9 @@ management.
 For a comprehensive overview of its features, please refer to the :doc:`user/intro`
 page.
 
+The following diagram illustrates the role of the Monitoring module within the OpenWISP
+architecture.
+
 .. figure:: images/architecture-v2-openwisp-monitoring.png
     :target: ../_images/architecture-v2-openwisp-monitoring.png
     :align: center
