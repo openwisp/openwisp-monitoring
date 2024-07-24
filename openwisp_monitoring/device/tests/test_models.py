@@ -280,7 +280,7 @@ class TestDeviceData(BaseTestCase):
             dd.validate_data()
         except ValidationError as e:
             self.assertIn('Invalid data in', e.message)
-            self.assertIn("is not a 'ipv4'", e.message)
+            self.assertIn("is not valid under any of the given schemas", e.message)
         else:
             self.fail('ValidationError not raised')
 
@@ -397,7 +397,7 @@ class TestDeviceData(BaseTestCase):
             dd.validate_data()
         except ValidationError as e:
             self.assertIn('Invalid data in', e.message)
-            self.assertIn("'123\' is not a \'ipv4\'", e.message)
+            self.assertIn("is not valid under any of the given schemas", e.message)
         else:
             self.fail('ValidationError not raised')
 
@@ -410,7 +410,7 @@ class TestDeviceData(BaseTestCase):
             dd.validate_data()
         except ValidationError as e:
             self.assertIn('Invalid data in', e.message)
-            self.assertIn("'123\' is not a \'ipv4\'", e.message)
+            self.assertIn("is not valid under any of the given schemas", e.message)
         else:
             self.fail('ValidationError not raised')
 
