@@ -48,7 +48,7 @@ jobs:
           spatialite-bin \
           libsqlite3-mod-spatialite
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
