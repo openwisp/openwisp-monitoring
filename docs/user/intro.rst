@@ -37,7 +37,7 @@ OpenWISP provides the following monitoring capabilities:
 - Possibility to configure additional :ref:`Metrics
   <openwisp_monitoring_metrics>` and :ref:`Charts
   <openwisp_monitoring_charts>`
-- :doc:`Extensible active check system <adding-checks-and-alertsettings>`:
+- :doc:`Extensible active check system <device-checks-and-alert-settings>`:
   it's possible to write additional checks that are run periodically using
   python classes
 - Extensible :ref:`metrics <openwisp_monitoring_metrics>` and :ref:`charts
