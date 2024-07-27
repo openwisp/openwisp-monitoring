@@ -34,7 +34,17 @@ class TestConfiguration(TestMonitoringMixin, TestCase):
                             "SELECT {fields|SUM|/ 1} FROM {key} "
                             "WHERE time >= '{time}' AND content_type = "
                             "'{content_type}' AND object_id = '{object_id}'"
-                        )
+                        ),
+                          'influxdb2': (
+                            'from(bucket: "mybucket")'
+                            '  |> range(start: {time}, stop: {end_date})'
+                            '  |> filter(fn: (r) => r._measurement == "{measurement}")'
+                            '  |> filter(fn: (r) => r._field == "{field_name}")'
+                            '  |> filter(fn: (r) => r.content_type == "{content_type}")'
+                            '  |> filter(fn: (r) => r.object_id == "{object_id}")'
+                            '  |> sum()'
+                            '  |> yield(name: "histogram")'
+                        ),
                     },
                 }
             },

@@ -46,7 +46,7 @@ SHORT_RETENTION_POLICY = get_settings_value('SHORT_RETENTION_POLICY', '24h0m0s')
 DEFAULT_RETENTION_POLICY = get_settings_value('DEFAULT_RETENTION_POLICY', '26280h0m0s')
 CRITICAL_DEVICE_METRICS = get_critical_device_metrics()
 HEALTH_STATUS_LABELS = get_health_status_labels()
-AUTO_CLEAR_MANAGEMENT_IP = get_settings_value('AUTO_CLEAR_MANAGEMENT_IP', True)
+AUTO_CLEAR_MANAGEMENT_IP = get_settings_value('AUTO_CLEAR_MANAGEMENT_IP', False)
 # Triggers spontaneous recovery of device based on corresponding signals
 DEVICE_RECOVERY_DETECTION = get_settings_value('DEVICE_RECOVERY_DETECTION', True)
 MAC_VENDOR_DETECTION = get_settings_value('MAC_VENDOR_DETECTION', True)

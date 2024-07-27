@@ -4,6 +4,9 @@ from collections import OrderedDict
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 
+from dateutil.parser import parse
+from django.utils.timezone import make_aware, is_aware
+
 from cache_memoize import cache_memoize
 from dateutil.parser import parse as parse_date
 from django.conf import settings
@@ -24,7 +27,7 @@ from swapper import get_model_name
 from openwisp_monitoring.monitoring.utils import clean_timeseries_data_key
 from openwisp_utils.base import TimeStampedEditableModel
 
-from ...db import default_chart_query, timeseries_db
+from ...db import timeseries_db
 from ...settings import CACHE_TIMEOUT, DEFAULT_CHART_TIME
 from ..configuration import (
     CHART_CONFIGURATION_CHOICES,
@@ -617,10 +620,8 @@ class AbstractChart(TimeStampedEditableModel):
 
     @property
     def _default_query(self):
-        q = default_chart_query[0]
-        if self.metric.object_id:
-            q += default_chart_query[1]
-        return q
+        tags = True if self.metric.object_id else False
+        return timeseries_db.default_chart_query(tags)
 
     @classmethod
     def _get_group_map(cls, time=None):
@@ -674,29 +675,34 @@ class AbstractChart(TimeStampedEditableModel):
         additional_params = additional_params or {}
         params = self._get_query_params(time, start_date, end_date)
         params.update(additional_params)
-        params.update({'start_date': start_date, 'end_date': end_date})
+        params.update({
+            'start_date': start_date, 
+            'end_date': end_date,
+            # 'measurement': self.config_dict.get('measurement', self.metric.key),
+            # 'field_name': fields or self.config_dict.get('field_name'),
+        })
         if not params.get('organization_id') and self.config_dict.get('__all__', False):
             params['organization_id'] = ['__all__']
         return timeseries_db.get_query(
-            self.type,
-            params,
-            time,
-            self._get_group_map(time),
-            summary,
-            fields,
-            query,
-            timezone,
+            chart_type=self.type,
+            params=params,
+            time=time,
+            group_map=self._get_group_map(time),
+            summary=summary,
+            fields=fields,
+            query=query,
+            timezone=timezone,
         )
-
+    
     def get_top_fields(self, number):
         """
         Returns list of top ``number`` of fields (highest sum) of a
         measurement in the specified time range (descending order).
         """
-        q = self._default_query.replace('{field_name}', '{fields}')
         params = self._get_query_params(self.DEFAULT_TIME)
         return timeseries_db._get_top_fields(
-            query=q,
+            default_query=self._default_query,
+            query=self.get_query(),
             chart_type=self.type,
             group_map=self._get_group_map(params['days']),
             number=number,
@@ -754,8 +760,9 @@ class AbstractChart(TimeStampedEditableModel):
     ):
         additional_query_kwargs = additional_query_kwargs or {}
         traces = {}
-        if x_axys:
-            x = []
+        x = []
+        result = {'traces': [], 'summary': {}}  # Initialize result dictionary
+
         try:
             query_kwargs = dict(
                 time=time, timezone=timezone, start_date=start_date, end_date=end_date
@@ -773,38 +780,77 @@ class AbstractChart(TimeStampedEditableModel):
             points = timeseries_db.get_list_query(data_query)
             summary = timeseries_db.get_list_query(summary_query)
         except timeseries_db.client_error as e:
-            logging.error(e, exc_info=True)
+            logger.error(f"Error fetching data: {e}", exc_info=True)
             raise e
+
         for point in points:
+            time_value = point.get('time')
+            try:
+                formatted_time = self._parse_and_format_time(time_value, timezone)
+            except ValueError as e:
+                logger.warning(f"Error parsing time value: {time_value}. Error: {e}")
+                continue
+
             for key, value in point.items():
-                if key == 'time':
+                if key in ('time', 'result', 'table', 'content_type', 'object_id'):
                     continue
                 traces.setdefault(key, [])
                 if decimal_places and isinstance(value, (int, float)):
                     value = self._round(value, decimal_places)
                 traces[key].append(value)
-            time = datetime.fromtimestamp(point['time'], tz=tz(timezone)).strftime(
-                '%Y-%m-%d %H:%M'
-            )
+
             if x_axys:
-                x.append(time)
-        # prepare result to be returned
-        # (transform chart data so its order is not random)
-        result = {'traces': sorted(traces.items())}
+                x.append(formatted_time)
+
+        # Prepare result
+        result['traces'] = sorted(traces.items())
         if x_axys:
             result['x'] = x
-        # add summary
-        if len(summary) > 0:
-            result['summary'] = {}
+
+        # Handle summary calculation
+        if summary:
             for key, value in summary[0].items():
-                if key == 'time':
+                if key in ('time', 'result', 'table', 'content_type', 'object_id'):
                     continue
                 if not timeseries_db.validate_query(self.query):
                     value = None
-                elif value:
+                elif value is not None:
                     value = self._round(value, decimal_places)
-                result['summary'][key] = value
+                result['summary'][key] = 'N/A' if value is None else value
+
         return result
+    
+    def _round(self, value, decimal_places):
+        logger.debug(f"Rounding value: {value}, type: {type(value)}")
+        if value is None:
+            logger.debug("Value is None, returning None")
+            return None
+        try:
+            float_value = float(value)
+            rounded = round(float_value, decimal_places)
+            logger.debug(f"Rounded value: {rounded}")
+            return rounded
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Could not round value: {value}. Error: {e}")
+            return value
+    
+    def _parse_and_format_time(self, time_str, timezone):
+        time_obj = parse(time_str)
+        if not is_aware(time_obj):
+            time_obj = make_aware(time_obj, timezone=tz(timezone))
+        return time_obj.strftime('%Y-%m-%d %H:%M')
+
+    def _safe_round(self, value, decimal_places):
+        if isinstance(value, (int, float)):
+            return self._round(value, decimal_places)
+        return value
+
+    def _round(self, value, decimal_places):
+        try:
+            control = 10 ** decimal_places
+            return round(float(value) * control) / control
+        except (ValueError, TypeError):
+            return value
 
     def json(self, time=DEFAULT_TIME, **kwargs):
         try:
