@@ -7,7 +7,6 @@ from openwisp_monitoring.monitoring.migrations import (
 
 
 class Migration(migrations.Migration):
-
     dependencies = [('sample_monitoring', '0001_initial')]
 
     operations = [

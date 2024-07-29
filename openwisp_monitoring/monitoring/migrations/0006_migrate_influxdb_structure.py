@@ -9,7 +9,6 @@ def forward_migration(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [('monitoring', '0005_migrate_metrics')]
 
     operations = [

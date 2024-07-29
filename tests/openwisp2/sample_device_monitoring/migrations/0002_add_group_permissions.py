@@ -6,7 +6,6 @@ from openwisp_monitoring.device.migrations import assign_permissions_to_groups
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('sample_device_monitoring', '0001_initial'),
     ]

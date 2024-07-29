@@ -13,7 +13,6 @@ import openwisp_monitoring.device.base.models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [('config', '0027_add_indexes_on_ip_fields')]

@@ -849,7 +849,6 @@ class TestWifiSessionAdmin(
     TestWifiClientSessionMixin,
     TestCase,
 ):
-
     wifi_session_app_label = WifiSession._meta.app_label
     wifi_session_model_name = WifiSession._meta.model_name
 

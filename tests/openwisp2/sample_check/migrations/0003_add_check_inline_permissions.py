@@ -8,7 +8,6 @@ from openwisp_monitoring.check.migrations import (
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('sample_check', '0002_check_last_called'),
     ]

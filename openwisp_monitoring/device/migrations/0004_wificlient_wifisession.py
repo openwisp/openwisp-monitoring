@@ -13,7 +13,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         swapper.dependency(
             *swapper.split(settings.AUTH_USER_MODEL), version='0004_default_groups'

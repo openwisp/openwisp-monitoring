@@ -18,7 +18,6 @@ from openwisp_monitoring.monitoring.configuration import (
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [('contenttypes', '0002_remove_content_type_name')]

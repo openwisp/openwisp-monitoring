@@ -6,7 +6,6 @@ from . import assign_check_inline_permissions_to_groups
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('check', '0008_alter_check_options'),
     ]
