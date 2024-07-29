@@ -59,7 +59,8 @@ jobs:
 
       - name: Install python system packages
         run: |
-          pip install -U pip wheel setuptools
+          # TODO: See https://github.com/pypa/setuptools/issues/4519
+          pip install -U pip wheel "setuptools~=71.0"
 
       - name: Install npm dependencies
         run: sudo npm install -g jshint stylelint
