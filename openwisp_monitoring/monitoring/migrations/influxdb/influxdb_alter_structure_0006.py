@@ -2,6 +2,7 @@ import logging
 import time
 
 import requests
+from django.core.exceptions import ObjectDoesNotExist
 from influxdb.exceptions import InfluxDBServerError
 from swapper import load_model
 
@@ -166,8 +167,34 @@ def migrate_wifi_clients():
 
 
 def migrate_traffic_data():
-    migrate_influxdb_data(new_measurement='traffic', configuration='traffic')
+    migrate_influxdb_data(
+        new_measurement='traffic',
+        configuration='traffic',
+        delete_query=f"{DELETE_QUERY} AND access_tech != ''",
+    )
     logger.info('"traffic" measurements successfully migrated.')
+
+
+def migrate_signal_strength_data():
+    migrate_influxdb_data(
+        new_measurement='signal', configuration='signal_strength', delete_query=None
+    )
+    logger.info('"signal_strength" measurements successfully migrated.')
+
+
+def migrate_signal_quality_data():
+    migrate_influxdb_data(
+        new_measurement='signal', configuration='signal_quality', delete_query=None
+    )
+    logger.info('"signal_quality" measurements successfully migrated.')
+
+
+def migrate_access_tech_data():
+    migrate_influxdb_data(
+        new_measurement='signal',
+        configuration='access_tech',
+    )
+    logger.info('"access_tech" measurements successfully migrated.')
 
 
 def requires_migration():
@@ -192,4 +219,77 @@ def migrate_influxdb_structure():
         return
     migrate_wifi_clients()
     migrate_traffic_data()
+    migrate_signal_strength_data()
+    migrate_signal_quality_data()
+    migrate_access_tech_data()
     logger.info('Timeseries data migration completed.')
+
+
+def _forward_migrate_metric(metric_model, configuration, new_key, add_org_tag=True):
+    metric_qs = metric_model.objects.filter(configuration=configuration).exclude(
+        key__in=EXCLUDED_MEASUREMENTS
+    )
+    updated_metrics = []
+    for metric in metric_qs.iterator(chunk_size=CHUNK_SIZE):
+        try:
+            assert add_org_tag is True
+            extra_tags = {'organization_id': str(metric.content_object.organization_id)}
+        except (AssertionError, ObjectDoesNotExist):
+            extra_tags = {}
+        metric.main_tags = {
+            'ifname': metric.key,
+        }
+        metric.extra_tags.update(extra_tags)
+        metric.key = new_key
+        updated_metrics.append(metric)
+        if len(updated_metrics) > CHUNK_SIZE:
+            metric_model.objects.bulk_update(
+                updated_metrics, fields=['main_tags', 'extra_tags', 'key']
+            )
+            updated_metrics = []
+    if updated_metrics:
+        metric_model.objects.bulk_update(
+            updated_metrics, fields=['main_tags', 'extra_tags', 'key']
+        )
+
+
+def update_metric_timeseries_structure_forward_migration(apps, schema_editor):
+    """
+    Updates metric objects to use static value for key and set
+    interface name in the main tags
+    """
+    Metric = load_model('monitoring', 'Metric')
+    _forward_migrate_metric(Metric, configuration='clients', new_key='wifi_clients')
+    _forward_migrate_metric(Metric, configuration='traffic', new_key='traffic')
+    _forward_migrate_metric(
+        Metric, configuration='signal_strength', new_key='signal', add_org_tag=False
+    )
+    _forward_migrate_metric(
+        Metric, configuration='signal_quality', new_key='signal', add_org_tag=False
+    )
+    _forward_migrate_metric(
+        Metric, configuration='access_tech', new_key='signal', add_org_tag=False
+    )
+
+
+def update_metric_timeseries_structure_reverse_migration(
+    apps, schema_editor, metric_keys=None
+):
+    """
+    Reverse migration is required because of the
+    the unique together condition implemented in
+    Metric model.
+    """
+    Metric = load_model('monitoring', 'Metric')
+    metric_keys = metric_keys or ['traffic', 'wifi_clients', 'signal']
+    updated_metrics = []
+    for metric in Metric.objects.filter(
+        key__in=metric_keys,
+    ).iterator(chunk_size=CHUNK_SIZE):
+        metric.key = metric.main_tags['ifname']
+        updated_metrics.append(metric)
+        if len(updated_metrics) > CHUNK_SIZE:
+            Metric.objects.bulk_update(updated_metrics, fields=['key'])
+            updated_metrics = []
+    if updated_metrics:
+        Metric.objects.bulk_update(updated_metrics, fields=['key'])
