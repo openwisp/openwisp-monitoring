@@ -16,7 +16,6 @@ from ..configuration import CHART_CONFIGURATION_CHOICES, METRIC_CONFIGURATION_CH
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [

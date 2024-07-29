@@ -14,7 +14,6 @@ from ..settings import CHECK_CLASSES
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('contenttypes', '0002_remove_content_type_name'),
         swapper.dependency('config', 'Device', '0004_add_device_model'),

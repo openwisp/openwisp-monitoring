@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('monitoring', '0010_add_alertsettings_inline_permissions'),
     ]

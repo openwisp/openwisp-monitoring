@@ -47,7 +47,6 @@ def migrate_data(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('device_monitoring', '0002_create_template'),
     ]

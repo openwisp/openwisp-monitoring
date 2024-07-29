@@ -46,7 +46,6 @@ def remove_config_applied_checks(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('check', '0006_rename_check_check_check_type'),
         swapper.dependency('monitoring', 'Metric'),
