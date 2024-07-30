@@ -19,9 +19,7 @@ FloorPlan = load_model('geo', 'FloorPlan')
 
 
 class DashboardTimeseriesView(ProtectedAPIMixin, MonitoringApiViewMixin, APIView):
-    """
-    Multi-tenant view that returns general monitoring
-    charts for the admin dashboard.
+    """Multi-tenant view that returns general monitoring charts for the admin dashboard.
 
     Allows filtering with organization slugs.
     """
@@ -167,10 +165,7 @@ class DashboardTimeseriesView(ProtectedAPIMixin, MonitoringApiViewMixin, APIView
         cls._get_charts.invalidate()
 
     def _get_user_managed_orgs(self, request):
-        """
-        Return list of dictionary containing organization name and slug
-        in select2 compatible format.
-        """
+        """Return list of dictionary containing organization name and slug in select2 compatible format."""
         orgs = []
         qs = Organization.objects.only('slug', 'name')
         if not request.user.is_superuser:

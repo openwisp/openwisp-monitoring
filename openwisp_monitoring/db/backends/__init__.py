@@ -24,9 +24,11 @@ if not TIMESERIES_DB:
 
 
 def load_backend_module(backend_name=TIMESERIES_DB['BACKEND'], module=None):
-    """
-    Returns database backend module given a fully qualified database backend name,
-    or raise an error if it doesn't exist or backend is not well defined.
+    """Loads backend module.
+
+    Returns database backend module given a fully qualified database
+    backend name, or raise an error if it doesn't exist or backend is not
+    well defined.
     """
     try:
         assert 'BACKEND' in TIMESERIES_DB, 'BACKEND'

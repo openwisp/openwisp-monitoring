@@ -15,9 +15,7 @@ from ..models import DeviceMonitoring
 
 
 def create_device_monitoring(apps, schema_editor):
-    """
-    Data migration
-    """
+    """Data migration"""
     Device = apps.get_model('config', 'Device')
     DeviceMonitoring = apps.get_model('device_monitoring', 'DeviceMonitoring')
     for device in Device.objects.all():

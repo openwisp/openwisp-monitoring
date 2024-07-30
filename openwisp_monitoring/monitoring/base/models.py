@@ -161,9 +161,10 @@ class AbstractMetric(TimeStampedEditableModel):
         cls,
         **kwargs,
     ):
-        """
-        like ``get_or_create`` method of django model managers
-        but with validation before creation
+        """Gets or creates a metric.
+
+        Like ``get_or_create`` method of django model managers but with
+        validation before creation.
         """
         if 'key' in kwargs:
             kwargs['key'] = cls._makekey(kwargs['key'])
@@ -215,7 +216,7 @@ class AbstractMetric(TimeStampedEditableModel):
 
     @property
     def codename(self):
-        """identifier stored in timeseries db"""
+        """Identifier stored in timeseries db."""
         return self._makekey(self.name)
 
     @property
@@ -234,7 +235,10 @@ class AbstractMetric(TimeStampedEditableModel):
     # TODO: This method needs to be refactored when adding the other db
     @staticmethod
     def _makekey(value):
-        """makes value suited for InfluxDB key"""
+        """Produces a valid InfluxDB key from ``value``.
+
+        Takes ``value`` as input argument and returs a valid InfluxDB key.
+        """
         return clean_timeseries_data_key(value)
 
     @property
@@ -255,9 +259,7 @@ class AbstractMetric(TimeStampedEditableModel):
 
     @staticmethod
     def _sort_dict(dict_):
-        """
-        ensures the order of the keys in the dict not random
-        """
+        """Ensures the order of the keys in the dict is predictable."""
         if not isinstance(dict_, OrderedDict):
             return OrderedDict(sorted(dict_.items()))
         return dict_
@@ -281,23 +283,20 @@ class AbstractMetric(TimeStampedEditableModel):
         return self.alert_field in self.related_fields
 
     def _get_time(self, time):
-        """
-        If time is a string, convert it to a datetime
-        """
+        """If time is a string, it converts it to a datetime."""
         if isinstance(time, str):
             return parse_date(time)
         return time
 
     def _set_is_healthy(self, alert_settings, value):
-        """
-        Sets the value of "is_healthy" field if "value"
-        crosses threshold defined in "alert_settings".
-        Returns "True" if "is_healthy" field is changed.
+        """Sets the value of "is_healthy" field when necessary.
+
+        Executes only if "value" crosses the threshold defined in
+        "alert_settings". Returns "True" if "is_healthy" field is changed.
         Otherwise, returns "None".
 
-        This method does not take into account the alert
-        settings tolerance, which is done by
-        "_set_is_healthy_tolerant" method.
+        This method does not take into account the alert settings
+        tolerance, which is done by "_set_is_healthy_tolerant" method.
         """
         crossed = alert_settings._value_crossed(value)
         if (not crossed and self.is_healthy) or (crossed and self.is_healthy is False):
@@ -313,14 +312,14 @@ class AbstractMetric(TimeStampedEditableModel):
     def _set_is_healthy_tolerant(
         self, alert_settings, value, time, retention_policy, send_alert
     ):
-        """
-        Sets the value of "is_tolerance_healthy" if "value"
-        crosses the threshold for more than the amount of seconds
-        defined in the alert_settings "tolerance" field.
-        It also sends the notification if required.
-        Returns "None" if value of "is_healthy_tolerant" is unchanged.
-        Returns "True" if it is the first metric write within threshold.
-        Returns "False" in other cases.
+        """Sets the value of "is_tolerance_healthy" if necessary.
+
+        Executes only if "value" crosses the threshold for more than the
+        amount of seconds defined in the alert_settings "tolerance" field.
+        It also sends the notification if required. Returns "None" if
+        value of "is_healthy_tolerant" is unchanged. Returns "True" if it
+        is the first metric write within threshold. Returns "False" in
+        other cases.
 
         This method is similar to "_set_is_healthy" but it takes into
         account the alert settings tolerance so it's slightly different
@@ -364,9 +363,7 @@ class AbstractMetric(TimeStampedEditableModel):
         return first_time
 
     def check_threshold(self, value, time=None, retention_policy=None, send_alert=True):
-        """
-        Checks if the threshold is crossed and notifies users accordingly
-        """
+        """Checks if the threshold is crossed and notifies users accordingly"""
         try:
             alert_settings = self.alertsettings
         except ObjectDoesNotExist:
@@ -624,9 +621,10 @@ class AbstractChart(TimeStampedEditableModel):
 
     @classmethod
     def _get_group_map(cls, time=None):
-        """
-        Returns the chart group map for the specified days,
-        otherwise the default Chart.GROUP_MAP is returned
+        """Returns group map.
+
+        Returns the chart group map for the specified days, otherwise the
+        default Chart.GROUP_MAP is returned.
         """
         if (
             not time
@@ -689,7 +687,8 @@ class AbstractChart(TimeStampedEditableModel):
         )
 
     def get_top_fields(self, number):
-        """
+        """Returns the top fields.
+
         Returns list of top ``number`` of fields (highest sum) of a
         measurement in the specified time range (descending order).
         """
@@ -826,9 +825,7 @@ class AbstractChart(TimeStampedEditableModel):
 
     @staticmethod
     def _round(value, decimal_places):
-        """
-        rounds value if it makes sense
-        """
+        """Rounds value when necessary."""
         control = 1.0 / 10**decimal_places
         if value < control:
             decimal_places += 2
@@ -933,10 +930,10 @@ class AbstractAlertSettings(TimeStampedEditableModel):
 
     @property
     def _tolerance_search_range(self):
-        """
-        Allow sufficient room for checking
-        if the tolerance has been trepassed.
-        Minimum 15 minutes, maximum self._MINUTES_MAX * 1.05
+        """Returns an amount of minutes to search.
+
+        Allows sufficient room for checking if the tolerance has been
+        trepassed. Minimum 15 minutes, maximum self._MINUTES_MAX * 1.05.
         """
         minutes = self.tolerance * 2
         minutes = minutes if minutes > 15 else 15
@@ -944,8 +941,10 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         return int(minutes)
 
     def _is_crossed_by(self, current_value, time=None, retention_policy=None):
-        """
-        do current_value and time cross the threshold and trepass the tolerance?
+        """Answers the following question:
+
+        do current_value and time cross the threshold and trepass the
+        tolerance?
         """
         value_crossed = self._value_crossed(current_value)
         if value_crossed is NotImplemented:

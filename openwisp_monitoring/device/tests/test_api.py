@@ -39,9 +39,7 @@ Group = load_model('openwisp_users', 'Group')
 
 
 class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase):
-    """
-    Tests API (device metric collection)
-    """
+    """Tests API (device metric collection)."""
 
     location_model = Location
     object_location_model = DeviceLocation

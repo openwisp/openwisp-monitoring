@@ -247,9 +247,7 @@ class BaseTestCase(DeviceMonitoringTestCase):
 
 
 class TestDeviceData(BaseTestCase):
-    """
-    Test openwisp_monitoring.device.models.DeviceData
-    """
+    """Test openwisp_monitoring.device.models.DeviceData"""
 
     def test_clean_data_ok(self):
         dd = self._create_device_data()
@@ -548,9 +546,7 @@ class TestDeviceData(BaseTestCase):
 
 
 class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
-    """
-    Test openwisp_monitoring.device.models.DeviceMonitoring
-    """
+    """Test openwisp_monitoring.device.models.DeviceMonitoring"""
 
     def _create_env(self):
         d = self._create_device()

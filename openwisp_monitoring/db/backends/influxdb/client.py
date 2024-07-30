@@ -62,21 +62,21 @@ class DatabaseClient(object):
 
     @retry
     def create_database(self):
-        """creates database if necessary"""
+        """Creates database if necessary."""
         # InfluxDB does not create a new database, neither raise an error if database exists
         self.db.create_database(self.db_name)
         logger.debug(f'Created InfluxDB database "{self.db_name}"')
 
     @retry
     def drop_database(self):
-        """drops database if it exists"""
+        """Drops database if it exists."""
         # InfluxDB does not raise an error if database does not exist
         self.db.drop_database(self.db_name)
         logger.debug(f'Dropped InfluxDB database "{self.db_name}"')
 
     @cached_property
     def db(self):
-        """Returns an ``InfluxDBClient`` instance"""
+        """Returns an ``InfluxDBClient`` instance."""
         return self.dbs['default']
 
     @cached_property
@@ -123,7 +123,7 @@ class DatabaseClient(object):
 
     @retry
     def create_or_alter_retention_policy(self, name, duration):
-        """creates or alters existing retention policy if necessary"""
+        """Creates or alters existing retention policy if necessary."""
         retention_policies = self.db.get_list_retention_policies()
         exists = False
         duration_changed = False
@@ -280,9 +280,10 @@ class DatabaseClient(object):
         return self.db.get_list_retention_policies()
 
     def delete_metric_data(self, key=None, tags=None):
-        """
-        deletes a specific metric based on the key and tags
-        provided, you may also choose to delete all metrics
+        """Deletes a specific metric.
+
+        Deletes a metric based on the key and tags provided, you may also
+        choose to delete all metrics.
         """
         if not key and not tags:
             self.query('DROP SERIES FROM /.*/')
@@ -393,10 +394,11 @@ class DatabaseClient(object):
     )
 
     def _fields(self, fields, query, field_name):
-        """
-        support substitution of {fields|<FUNCTION_NAME>|<OPERATION>}
-        with <FUNCTION_NAME>(field1) AS field1 <OPERATION>,
-             <FUNCTION_NAME>(field2) AS field2 <OPERATION>
+        """Support substitution:
+
+        of {fields|<FUNCTION_NAME>|<OPERATION>} with
+        <FUNCTION_NAME>(field1) AS field1 <OPERATION>,
+        <FUNCTION_NAME>(field2) AS field2 <OPERATION>
         """
         matches = re.search(self._fields_regex, query)
         if not matches and not fields:

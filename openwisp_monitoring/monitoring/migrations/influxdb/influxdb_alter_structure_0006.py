@@ -40,9 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_writable_data(read_data, tags, old_measurement, new_measurement):
-    """
-    Prepares data that can be written by "timeseries_db.db.write_points"
-    """
+    """Prepares data that can be written by "timeseries_db.db.write_points"."""
     write_data = []
     for data_point in read_data.get_points(measurement=old_measurement):
         data = {
@@ -171,11 +169,11 @@ def migrate_traffic_data():
 
 
 def requires_migration():
-    """
-    Returns "False" if all measurements presents in InfluxDB
-    are present in EXCLUDED_MEASUREMENTS. This means that there
-    are no interface specific measurements.
-    Otherwise, returns "True".
+    """Indicates whether influxdb data migration is necessary.
+
+    Returns "False" if all measurements presents in InfluxDB are present
+    in EXCLUDED_MEASUREMENTS. This means that there are no interface
+    specific measurements. Otherwise, returns "True".
     """
     tsdb_measurements = timeseries_db.db.get_list_measurements()
     for measurement in tsdb_measurements:

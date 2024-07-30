@@ -42,18 +42,13 @@ def _metric_post_write(name, values, metric, check_threshold_kwargs, **kwargs):
 def timeseries_write(
     self, name, values, metric=None, check_threshold_kwargs=None, **kwargs
 ):
-    """
-    write with exponential backoff on a failure
-    """
+    """Writes and retries with exponential backoff on failures."""
     timeseries_db.write(name, values, **kwargs)
     _metric_post_write(name, values, metric, check_threshold_kwargs, **kwargs)
 
 
 def _timeseries_write(name, values, metric=None, check_threshold_kwargs=None, **kwargs):
-    """
-    If the timeseries database is using UDP to write data,
-    then write data synchronously.
-    """
+    """Handles writes synchronously when using UDP mode."""
     if timeseries_db.use_udp:
         func = timeseries_write
     else:
@@ -75,9 +70,10 @@ def _timeseries_write(name, values, metric=None, check_threshold_kwargs=None, **
     **RETRY_OPTIONS
 )
 def timeseries_batch_write(self, data):
-    """
-    Similar to timeseries_write function above, but operates on
-    list of metric data (batch operation)
+    """Writes data in batches.
+
+    Similar to timeseries_write function above, but operates on list of
+    metric data (batch operation)
     """
     timeseries_db.batch_write(data)
     for metric_data in data:
@@ -85,10 +81,7 @@ def timeseries_batch_write(self, data):
 
 
 def _timeseries_batch_write(data):
-    """
-    If the timeseries database is using UDP to write data,
-    then write data synchronously.
-    """
+    """If the timeseries database is using UDP to write data, then write data synchronously."""
     if timeseries_db.use_udp:
         timeseries_batch_write(data=data)
     else:
@@ -104,12 +97,12 @@ def delete_timeseries(key, tags):
 
 @shared_task
 def migrate_timeseries_database():
-    """
-    Perform migrations on timeseries database
-    asynchronously for changes introduced in
+    """Performs migrations of timeseries datab.
+
+    Performed asynchronously, due to changes introduced in
     https://github.com/openwisp/openwisp-monitoring/pull/368
 
-    To be removed in 1.1.0 release.
+    To be removed in a future release.
     """
     from .migrations.influxdb.influxdb_alter_structure_0006 import (
         migrate_influxdb_structure,

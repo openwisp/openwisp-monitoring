@@ -81,23 +81,17 @@ class AbstractCheck(TimeStampedEditableModel):
 
     @cached_property
     def check_class(self):
-        """
-        returns check class
-        """
+        """Returns the check class."""
         return import_string(self.check_type)
 
     @cached_property
     def check_instance(self):
-        """
-        returns check class instance
-        """
+        """Returns the check class instance."""
         check_class = self.check_class
         return check_class(check=self, params=self.params)
 
     def perform_check(self, store=True):
-        """
-        initiates check instance and calls its check method
-        """
+        """Initializes check instance and calls the check method."""
         if (
             hasattr(self.content_object, 'organization_id')
             and self.content_object.organization.is_active is False
@@ -112,9 +106,9 @@ class AbstractCheck(TimeStampedEditableModel):
 
 
 def auto_ping_receiver(sender, instance, created, **kwargs):
-    """
-    Implements OPENWISP_MONITORING_AUTO_PING
-    The creation step is executed in the background
+    """Implements OPENWISP_MONITORING_AUTO_PING.
+
+    The creation step is executed in the background.
     """
     # we need to skip this otherwise this task will be executed
     # every time the configuration is requested via checksum
@@ -130,9 +124,9 @@ def auto_ping_receiver(sender, instance, created, **kwargs):
 
 
 def auto_config_check_receiver(sender, instance, created, **kwargs):
-    """
-    Implements OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK
-    The creation step is executed in the background
+    """Implements OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK.
+
+    The creation step is executed in the background.
     """
     # we need to skip this otherwise this task will be executed
     # every time the configuration is requested via checksum
@@ -148,9 +142,9 @@ def auto_config_check_receiver(sender, instance, created, **kwargs):
 
 
 def auto_iperf3_check_receiver(sender, instance, created, **kwargs):
-    """
-    Implements OPENWISP_MONITORING_AUTO_IPERF3
-    The creation step is executed in the background
+    """Implements OPENWISP_MONITORING_AUTO_IPERF3.
+
+    The creation step is executed in the background.
     """
     # we need to skip this otherwise this task will be executed
     # every time the configuration is requested via checksum

@@ -15,9 +15,7 @@ Device = load_model('config', 'Device')
 
 
 class TestRecovery(DeviceMonitoringTestCase):
-    """
-    Tests ``Device Recovery Detection`` functionality
-    """
+    """Tests ``Device Recovery Detection`` functionality"""
 
     def test_device_recovery_cache_key_not_set(self):
         device_monitoring_app = DeviceMonitoring._meta.app_config
@@ -56,9 +54,7 @@ class TestRecovery(DeviceMonitoringTestCase):
         self.assertEqual(cache.get(cache_key), None)
 
     def test_status_set_ok(self):
-        """
-        Tests device status is set to ok if no related checks present
-        """
+        """Tests device status is set to ok if no related checks present"""
         dm = self._create_device_monitoring()
         dm.update_status('critical')
         trigger_device_checks.delay(dm.device.pk)
@@ -66,10 +62,7 @@ class TestRecovery(DeviceMonitoringTestCase):
         self.assertEqual(dm.status, 'ok')
 
     def test_status_set_critical(self):
-        """
-        Tests device status is set to critical if no related checks present
-        and recovery=False is passed
-        """
+        """Tests device status is set to critical if no related checks present and recovery=False is passed"""
         dm = self._create_device_monitoring()
         dm.update_status('critical')
         trigger_device_checks.delay(dm.device.pk, recovery=False)

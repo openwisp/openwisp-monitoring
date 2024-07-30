@@ -78,10 +78,10 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
         return data
 
     def assertDataDict(self, dd_data, data):
-        """
-        This method is necessary as the wireless interface data
-        is modified by the `AbstractDeviceData._transform_data`
-        method.
+        """Compares monitoring data.
+
+        This method is necessary because the wireless interface data is
+        modified by the `AbstractDeviceData._transform_data` method.
         """
         data = self._transform_wireless_interface_test_data(data)
         self.assertDictEqual(dd_data, data)

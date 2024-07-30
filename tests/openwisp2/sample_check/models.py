@@ -12,9 +12,10 @@ class Check(AbstractCheck):
         abstract = False
 
     def perform_check(self, store=True):
-        """
-        This method has been added for testing `last_called` field.
-        It need not be added to retain original behaviour.
+        """Performs check.
+
+        This method has been added for testing `last_called` field. It
+        need not be added to retain original behaviour.
         """
         self.last_called = now()
         self.full_clean()

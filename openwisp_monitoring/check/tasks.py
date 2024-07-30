@@ -20,12 +20,13 @@ def get_check_model():
 
 @shared_task(time_limit=2 * 60 * 60)
 def run_checks(checks=None):
-    """
-    Retrieves the id of all active checks in chunks of 2000 items
-    and calls the ``perform_check`` task (defined below) for each of them.
+    """Runs all the checks.
 
-    This allows to enqueue all the checks that need to be performed
-    and execute them in parallel with multiple workers if needed.
+    Retrieves the id of all active checks in chunks of 2000 items and
+    calls the ``perform_check`` task (defined below) for each of them.
+
+    This allows to enqueue all the checks that need to be performed and
+    execute them in parallel with multiple workers if needed.
     """
     # If checks is None, We should execute all the checks
     if checks is None:
@@ -53,9 +54,10 @@ def run_checks(checks=None):
 
 @shared_task(time_limit=30 * 60)
 def perform_check(uuid):
-    """
-    Retrieves check according to the passed UUID
-    and calls ``check.perform_check()``
+    """Performs check with specified uuid.
+
+    Retrieves check according to the passed UUID and calls the
+    ``perform_check()`` method.
     """
     try:
         check = get_check_model().objects.get(pk=uuid)
@@ -71,9 +73,10 @@ def perform_check(uuid):
 def auto_create_ping(
     model, app_label, object_id, check_model=None, content_type_model=None
 ):
-    """
-    Called by django signal (dispatch_uid: auto_ping)
-    registered in check app's apps.py file.
+    """Implements the auto creation of the ping check.
+
+    Called by django signal (dispatch_uid: auto_ping) registered in check
+    app's apps.py file.
     """
     Check = check_model or get_check_model()
     ping_path = 'openwisp_monitoring.check.classes.Ping'
@@ -96,8 +99,9 @@ def auto_create_ping(
 def auto_create_config_check(
     model, app_label, object_id, check_model=None, content_type_model=None
 ):
-    """
-    Called by openwisp_monitoring.check.models.auto_config_check_receiver
+    """Implements the auto creation of the config modified check.
+
+    Called by openwisp_monitoring.check.models.auto_config_check_receiver.
     """
     Check = check_model or get_check_model()
     config_check_path = 'openwisp_monitoring.check.classes.ConfigApplied'
@@ -123,8 +127,10 @@ def auto_create_config_check(
 def auto_create_iperf3_check(
     model, app_label, object_id, check_model=None, content_type_model=None
 ):
-    """
-    Called by openwisp_monitoring.check.models.auto_iperf3_check_receiver
+    """Implements the auto creation of the iperf3 check.
+
+    Called by the
+    openwisp_monitoring.check.models.auto_iperf3_check_receiver.
     """
     Check = check_model or get_check_model()
     iperf3_check_path = 'openwisp_monitoring.check.classes.Iperf3'

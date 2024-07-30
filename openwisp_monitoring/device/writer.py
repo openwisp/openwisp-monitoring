@@ -19,21 +19,18 @@ logger = logging.getLogger(__name__)
 
 
 class DeviceDataWriter(object):
-    """
-    This class is in charge of writing the device metric data.
-    Before these methods were shipped in the REST API view
-    but later have been moved here to allow writing this data in
-    the background processes of OpenWISP.
+    """This class is in charge of writing the device metric data.
+
+    Before these methods were shipped in the REST API view but later have
+    been moved here to allow writing this data in the background processes
+    of OpenWISP.
     """
 
     def __init__(self, device_data):
         self.device_data = device_data
 
     def _init_previous_data(self):
-        """
-        makes NetJSON interfaces of previous
-        snapshots more easy to access
-        """
+        """makes NetJSON interfaces of previous snapshots more easy to access"""
         data = self.device_data.data or {}
         if data:
             data = deepcopy(data)
@@ -45,9 +42,10 @@ class DeviceDataWriter(object):
     def _append_metric_data(
         self, metric, value, current=False, time=None, extra_values=None
     ):
-        """
-        Appends to the data structure which holds metric data
-        and which will be sent to the timeseries DB.
+        """Appends data for writing.
+
+        Appends to the data structure which holds metric data and which
+        will be sent to the timeseries DB.
         """
         self.write_device_metrics.append(
             (
@@ -340,10 +338,7 @@ class DeviceDataWriter(object):
         )
 
     def _calculate_increment(self, ifname, stat, value):
-        """
-        compares value with previously stored counter and
-        calculates the increment of the value (which is returned)
-        """
+        """Returns how much a counter has incremented since its last saved value."""
         # get previous counters
         data = self._previous_data
         try:
@@ -364,9 +359,7 @@ class DeviceDataWriter(object):
             return int(value)
 
     def _create_traffic_chart(self, metric):
-        """
-        create "traffic (GB)" chart
-        """
+        """Creates "traffic (GB)" chart."""
         if 'traffic' not in monitoring_settings.AUTO_CHARTS:
             return
         chart = Chart(metric=metric, configuration='traffic')
@@ -374,9 +367,7 @@ class DeviceDataWriter(object):
         chart.save()
 
     def _create_clients_chart(self, metric):
-        """
-        creates "WiFi associations" chart
-        """
+        """Creates "WiFi associations" chart."""
         if 'wifi_clients' not in monitoring_settings.AUTO_CHARTS:
             return
         chart = Chart(metric=metric, configuration='wifi_clients')
