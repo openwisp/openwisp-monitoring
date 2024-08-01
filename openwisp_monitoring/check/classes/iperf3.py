@@ -165,7 +165,6 @@ def get_iperf3_schema():
 
 
 class Iperf3(BaseCheck):
-
     schema = get_iperf3_schema()
 
     def validate_params(self, params=None):

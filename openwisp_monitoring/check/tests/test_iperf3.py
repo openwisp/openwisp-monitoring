@@ -35,7 +35,6 @@ AlertSettings = load_model('monitoring', 'AlertSettings')
 class TestIperf3(
     CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTestCase
 ):
-
     _IPERF3 = app_settings.CHECK_CLASSES[2][0]
     _RESULT_KEYS = [
         'iperf3_result',

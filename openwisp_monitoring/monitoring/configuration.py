@@ -58,19 +58,19 @@ DEFAULT_METRICS = {
         'charts': {
             'uptime': {
                 'type': 'bar',
-                'title': _('Uptime'),
+                'title': _('Ping Success Rate'),
                 'description': _(
                     'A value of 100% means reachable, 0% means unreachable, values in '
                     'between 0% and 100% indicate the average reachability in the '
                     'period observed. Obtained with the fping linux program.'
                 ),
-                'summary_labels': [_('Average uptime')],
+                'summary_labels': [_('Average Ping Success Rate')],
                 'unit': '%',
                 'order': 200,
                 'colorscale': {
                     'max': 100,
                     'min': 0,
-                    'label': _('Reachable'),
+                    'label': _('Rate'),
                     'scale': [
                         [0, '#c13000'],
                         [0.1, '#ec7204'],
@@ -79,7 +79,7 @@ DEFAULT_METRICS = {
                         [1, '#7db201'],
                     ],
                     'map': [
-                        [100, '#7db201', _('Reachable')],
+                        [100, '#7db201', _('Flawless')],
                         [90, '#90d000', _('Mostly Reachable')],
                         [50, '#deed0e', _('Partly Reachable')],
                         [10, '#ec7204', _('Mostly Unreachable')],

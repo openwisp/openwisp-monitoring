@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('device_monitoring', '0007_add_wificlient_field_he'),
     ]

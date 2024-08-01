@@ -44,11 +44,30 @@ class DeviceMonitoringConfig(AppConfig):
         self.connect_config_status_changed()
         self.connect_wifi_client_signals()
         self.connect_offline_device_close_wifisession()
+        self.connect_check_signals()
         self.device_recovery_detection()
         self.set_update_config_model()
         self.register_dashboard_items()
         self.register_menu_groups()
         self.add_connection_ignore_notification_reasons()
+
+    def connect_check_signals(self):
+        from django.db.models.signals import post_delete, post_save
+        from swapper import load_model
+
+        Check = load_model('check', 'Check')
+        DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+
+        post_save.connect(
+            DeviceMonitoring.handle_critical_metric,
+            sender=Check,
+            dispatch_uid='check_post_save_receiver',
+        )
+        post_delete.connect(
+            DeviceMonitoring.handle_critical_metric,
+            sender=Check,
+            dispatch_uid='check_post_delete_receiver',
+        )
 
     def connect_device_signals(self):
         from .api.views import DeviceMetricView
@@ -323,12 +342,12 @@ class DeviceMonitoringConfig(AppConfig):
 
         if app_settings.DASHBOARD_MAP:
             loc_geojson_url = reverse_lazy(
-                "monitoring:api_location_geojson", urlconf=MONITORING_API_URLCONF
+                'monitoring:api_location_geojson', urlconf=MONITORING_API_URLCONF
             )
             device_list_url = reverse_lazy(
-                "monitoring:api_location_device_list",
+                'monitoring:api_location_device_list',
                 urlconf=MONITORING_API_URLCONF,
-                args=["000"],
+                args=['000'],
             )
             if MONITORING_API_BASEURL:
                 device_list_url = urljoin(MONITORING_API_BASEURL, str(device_list_url))

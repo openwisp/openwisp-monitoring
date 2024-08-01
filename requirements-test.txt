@@ -1,5 +1,5 @@
 openwisp-utils[qa,selenium] @ https://github.com/openwisp/openwisp-utils/tarball/master
-django-redis~=5.2.0
-mock-ssh-server~=0.9.0
-channels_redis~=4.1.0
-freezegun~=1.1.0
+django-redis~=5.4.0
+mock-ssh-server~=0.9.1
+channels_redis~=4.2.0
+freezegun~=1.5.1

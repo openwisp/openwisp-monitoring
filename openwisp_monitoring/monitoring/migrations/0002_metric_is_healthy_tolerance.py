@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('monitoring', '0001_squashed_0023_alert_settings_tolerance_remove_default'),
     ]

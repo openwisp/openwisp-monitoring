@@ -65,7 +65,6 @@ def reverse_migration(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [('monitoring', '0004_metric_main_and_extra_tags')]
 
     operations = [

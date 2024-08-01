@@ -23,7 +23,6 @@ def create_device_monitoring(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [

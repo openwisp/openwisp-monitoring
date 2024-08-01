@@ -14,6 +14,7 @@ on:
 jobs:
   build:
     name: Python==${{ matrix.python-version }} | ${{ matrix.django-version }}
+    # Updated this only when support for Django 3.2 is removed
     runs-on: ubuntu-20.04
 
     services:
@@ -35,68 +36,63 @@ jobs:
           - django~=4.2.0
 
     steps:
-      - name: Install system packages
-        run: |
-          sudo apt update &&
-          sudo apt -qq install \
-          sqlite3 \
-          fping \
-          gdal-bin \
-          libproj-dev \
-          libgeos-dev \
-          libspatialite-dev \
-          spatialite-bin \
-          libsqlite3-mod-spatialite
-
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install python system packages
+      - name: Install Dependencies & Start InfluxDB Container
+        id: deps
         run: |
+          sudo apt update -qq
+          sudo apt -qq install \
+            sqlite3 \
+            fping \
+            gdal-bin \
+            libproj-dev \
+            libgeos-dev \
+            libspatialite-dev \
+            spatialite-bin \
+            libsqlite3-mod-spatialite
           pip install -U pip wheel setuptools
-
-      - name: Install npm dependencies
-        run: sudo npm install -g install jshint stylelint
-
-      - name: Start InfluxDB container
-        run: docker-compose up -d influxdb
-
-      - name: Install test dependencies
-        run: |
           pip install -r requirements-test.txt
-
-      - name: Install openwisp-monitoring
-        run: |
           pip install -U -I -e .
           pip uninstall -y django
           pip install ${{ matrix.django-version }}
+          sudo npm install -g jshint stylelint
+
+          # start influxdb
+          docker compose up -d influxdb
 
       - name: QA checks
         run: |
           ./run-qa-checks
 
       - name: Tests
+        if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
         run: |
-          SAMPLE_APP=1 coverage run --source=openwisp_monitoring runtests.py
-          coverage run -a --source=openwisp_monitoring runtests.py
-          TIMESERIES_UDP=1 coverage run -a --source=openwisp_monitoring runtests.py
+          coverage run runtests.py
+          SAMPLE_APP=1 coverage run runtests.py
+          TIMESERIES_UDP=1 coverage run runtests.py
+          coverage combine
+          coverage xml
 
       - name: Upload Coverage
+        if: ${{ success() }}
         uses: coverallsapp/github-action@v2
         with:
           parallel: true
+          format: cobertura
           flag-name: python-${{ matrix.python-version }}-${{ matrix.django-version }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
     name: Deploy Docker Image
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs:
       - build
 
@@ -104,9 +100,16 @@ jobs:
     steps:
       - uses: actions/checkout@master
 
+      # the following action is equivalent to
+      # echo "$DOCKER_HUB_SECRET" | docker login --username "$DOCKER_HUB_USERNAME" --password-stdin
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_SECRET }}
+
       - name: Push to Docker
         run: |
-          echo "${{ secrets.DOCKER_TOKEN }}" | docker login --username ${{ secrets.DOCKER_USERNAME }} --password-stdin
           docker build . -t openwisp/openwisp-monitoring:develop
           docker push openwisp/openwisp-monitoring:develop
 
