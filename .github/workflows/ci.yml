@@ -65,6 +65,8 @@ jobs:
           pip install -r requirements-test.txt
           pip install -U -I -e .
           pip uninstall -y django
+          pip install -U --force-reinstall --no-deps https://github.com/openwisp/openwisp-utils/tarball/extendable-submit-line
+          pip install -U --force-reinstall --no-deps https://github.com/openwisp/openwisp-controller/tarball/issues/625-device-deactivation
           pip install ${{ matrix.django-version }}
           sudo npm install -g jshint stylelint
 

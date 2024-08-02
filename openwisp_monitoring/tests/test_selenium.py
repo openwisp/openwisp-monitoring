@@ -101,6 +101,8 @@ class TestDeviceConnectionInlineAdmin(
             self.fail('Failed saving device')
 
         # Delete the device
+        device.deactivate()
+        device.config.set_status_deactivated()
         self.open(
             reverse(f'admin:{self.config_app_label}_device_delete', args=[device.id])
         )
