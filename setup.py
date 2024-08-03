@@ -8,9 +8,7 @@ from openwisp_monitoring import get_version
 
 
 def get_install_requires():
-    """
-    parse requirements.txt, ignore links, exclude comments
-    """
+    """parse requirements.txt, ignore links, exclude comments"""
     requirements = []
     for line in open('requirements.txt').readlines():
         # skip to next iteration if comment or empty line

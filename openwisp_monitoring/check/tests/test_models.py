@@ -176,9 +176,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(Notification.objects.count(), 1)
 
     def test_config_error(self):
-        """
-        Test that ConfigApplied checks are skipped when device config status is errored
-        """
+        """Test that ConfigApplied checks are skipped when device config status is errored."""
         self._create_admin()
         self.assertEqual(Check.objects.count(), 0)
         with freeze_time(

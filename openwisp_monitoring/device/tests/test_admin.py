@@ -41,9 +41,7 @@ metric_model_name = get_model_name('monitoring', 'Metric').lower().replace('.', 
 class TestAdmin(
     TestWifiClientSessionMixin, TestImportExportMixin, DeviceMonitoringTestCase
 ):
-    """
-    Test the additions of openwisp-monitoring to DeviceAdmin
-    """
+    """Test the additions of openwisp-monitoring to DeviceAdmin"""
 
     resources_fields = TestImportExportMixin.resource_fields
     resources_fields.append('monitoring_status')
@@ -1092,9 +1090,11 @@ class TestWifiSessionAdmin(
                     </div>
                 """.format(
                     # TODO: Remove this when dropping support for Django 3.2 and 4.0
-                    start_div='<div class="flex-container">'
-                    if django.VERSION >= (4, 2)
-                    else '',
+                    start_div=(
+                        '<div class="flex-container">'
+                        if django.VERSION >= (4, 2)
+                        else ''
+                    ),
                     end_div='</div>' if django.VERSION >= (4, 2) else '',
                 ),
                 html=True,

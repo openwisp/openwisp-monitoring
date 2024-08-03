@@ -69,9 +69,7 @@ class ListViewPagination(pagination.PageNumberPagination):
 
 
 def get_device_args_rewrite(view, pk):
-    """
-    Use only the PK parameter for calculating the cache key
-    """
+    """Use only the PK parameter for calculating the cache key"""
     try:
         pk = uuid.UUID(pk)
     except ValueError:
@@ -100,14 +98,15 @@ class DeviceKeyAuthenticationMixin(object):
 class DeviceMetricView(
     DeviceKeyAuthenticationMixin, MonitoringApiViewMixin, GenericAPIView
 ):
-    """
-    Retrieve device information, monitoring status (health status),
-    a list of metrics, chart data and
-    optionally device status information (if ``?status=true``).
+    """Device Monitoring View.
 
-    Suports session authentication, token authentication,
-    or alternatively device key authentication passed as query
-    string parameter (this method is meant to be used by network devices).
+    Retrieve device information, monitoring status (health status), a list
+    of metrics, chart data and optionally device status information (if
+    ``?status=true``).
+
+    Suports session authentication, token authentication, or alternatively
+    device key authentication passed as query string parameter (this
+    method is meant to be used by network devices).
     """
 
     model = DeviceData
@@ -125,9 +124,7 @@ class DeviceMetricView(
 
     @classmethod
     def invalidate_get_device_cache(cls, instance, **kwargs):
-        """
-        Called from signal receiver which performs cache invalidation
-        """
+        """Called from signal receiver which performs cache invalidation"""
         view = cls()
         view.get_object.invalidate(view, str(instance.pk))
         logger.debug(f'invalidated view cache for device ID {instance.pk}')
@@ -286,14 +283,13 @@ monitoring_nearby_device_list = MonitoringNearbyDeviceList.as_view()
 
 
 class MonitoringDeviceList(DeviceListCreateView):
-    """
-    Lists devices and their monitoring status (health status).
+    """Lists devices and their monitoring status (health status).
 
     Supports session authentication and token authentication.
 
-    `NOTE:` The response does not include the information and
-    health status of the specific metrics, this information
-    can be retrieved in the detail endpoint of each device.
+    `NOTE:` The response does not include the information and health
+    status of the specific metrics, this information can be retrieved in
+    the detail endpoint of each device.
     """
 
     serializer_class = MonitoringDeviceListSerializer

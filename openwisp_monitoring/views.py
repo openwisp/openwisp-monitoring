@@ -22,16 +22,11 @@ Chart = load_model('monitoring', 'Chart')
 
 class MonitoringApiViewMixin:
     def _get_charts(self, request, *args, **kwargs):
-        """
-        Hook to return Chart query.
-        """
+        """Hook to return Chart query."""
         raise NotImplementedError
 
     def _get_additional_data(request, *args, **kwargs):
-        """
-        Hook to return any additonal data that should be
-        included in the response.
-        """
+        """Hook to return any additonal data that should be included in the response."""
         return {}
 
     def _validate_custom_date(self, start, end, tmz):
@@ -88,9 +83,7 @@ class MonitoringApiViewMixin:
         return Response(data)
 
     def _get_chart_additional_query_kwargs(self, chart):
-        """
-        Hook to provide additional kwargs to Chart.read.
-        """
+        """Hook to provide additional kwargs to Chart.read."""
         return None
 
     def _get_charts_data(self, charts, time, timezone, start_date, end_date):

@@ -291,9 +291,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         return obj
 
     def get_form(self, request, obj=None, **kwargs):
-        """
-        Adds the help_text of DeviceMonitoring.status field
-        """
+        """Adds the help_text of DeviceMonitoring.status field"""
         health_status = DeviceMonitoring._meta.get_field('status').help_text
         kwargs.update(
             {'help_texts': {'health_status': health_status.replace('\n', '<br>')}}

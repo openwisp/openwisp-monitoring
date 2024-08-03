@@ -37,9 +37,9 @@ from ..utils import SHORT_RP, get_device_cache_key
 
 
 def mac_lookup_cache_timeout():
-    """
-    returns a random number of hours between 48 and 96
-    this avoids timing out most of the cache at the same time
+    """Returns a random number of hours between 48 and 96.
+
+    This avoids timing out the entire cache at the same time.
     """
     return 60 * 60 * random.randint(48, 96)
 
@@ -83,9 +83,7 @@ class AbstractDeviceData(object):
         cls.get_devicedata.invalidate(cls, str(pk))
 
     def can_be_updated(self):
-        """
-        Do not attempt at pushing the conf if the device is not reachable
-        """
+        """Do not attempt to push the conf if the device is not reachable."""
         can_be_updated = super().can_be_updated()
         return can_be_updated and self.monitoring.status not in ['critical', 'unknown']
 
@@ -150,9 +148,7 @@ class AbstractDeviceData(object):
 
     @property
     def data(self):
-        """
-        retrieves last data snapshot from Timeseries Database
-        """
+        """Retrieves last data snapshot from Timeseries Database."""
         if self.__data:
             return self.__data
         q = device_data_query.format(SHORT_RP, self.__key, self.pk)
@@ -167,29 +163,21 @@ class AbstractDeviceData(object):
 
     @data.setter
     def data(self, data):
-        """
-        sets data
-        """
+        """Sets data."""
         self.__data = data
 
     @property
     def data_timestamp(self):
-        """
-        retrieves timestamp at which the data was recorded
-        """
+        """Retrieves timestamp at which the data was recorded."""
         return self.__data_timestamp
 
     @data_timestamp.setter
     def data_timestamp(self, value):
-        """
-        sets the timestamp related to the data
-        """
+        """Sets the timestamp related to the data."""
         self.__data_timestamp = value
 
     def validate_data(self):
-        """
-        validate data according to NetJSON DeviceMonitoring schema
-        """
+        """Validates data according to NetJSON DeviceMonitoring schema."""
         try:
             validate(self.data, self.schema, format_checker=draft7_format_checker)
         except SchemaError as e:
@@ -201,9 +189,7 @@ class AbstractDeviceData(object):
             raise ValidationError(message)
 
     def _transform_data(self):
-        """
-        performs corrections or additions to the device data
-        """
+        """Performs corrections or additions to the device data."""
         mac_detection = app_settings.MAC_VENDOR_DETECTION
         for interface in self.data.get('interfaces', []):
             # loop over mobile signal values to convert them to float
@@ -270,9 +256,7 @@ class AbstractDeviceData(object):
             return ''
 
     def save_data(self, time=None):
-        """
-        validates and saves data to Timeseries Database
-        """
+        """Validates and saves data to Timeseries Database."""
         self.validate_data()
         self._transform_data()
         time = time or now()
@@ -400,9 +384,10 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
     @staticmethod
     @receiver(threshold_crossed, dispatch_uid='threshold_crossed_receiver')
     def threshold_crossed(sender, metric, alert_settings, target, first_time, **kwargs):
-        """
-        Changes the health status of a devicewhen a threshold defined in the
-        alert settings related to the metric is crossed.
+        """Executed when a threshold is crossed.
+
+        Changes the health status of a devicewhen a threshold defined in
+        the alert settings related to the metric is crossed.
         """
         DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
         if not isinstance(target, DeviceMonitoring.device.field.related_model):
@@ -442,15 +427,15 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
 
     @classmethod
     def handle_disabled_organization(cls, organization_id):
-        """
-        Clears the management IP of all devices belonging to a
-        disabled organization and set their monitoring status to 'unknown'.
+        """Handles the disabling of an organization.
 
-        Parameters:
-            organization_id (int): The ID of the disabled organization.
+        Clears the management IP of all devices belonging to a disabled
+        organization and set their monitoring status to 'unknown'.
 
-        Returns:
-            None
+        Parameters: - organization_id (int): The ID of the disabled
+        organization.
+
+        Returns: - None
         """
         load_model('config', 'Device').objects.filter(
             organization_id=organization_id

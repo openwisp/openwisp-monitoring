@@ -191,9 +191,11 @@ class DeviceMonitoringConfig(AppConfig):
 
     @classmethod
     def manage_device_recovery_cache_key(cls, instance, status, **kwargs):
-        """
-        It sets the ``cache_key`` as 1 when device ``health_status`` goes to ``critical``
-        and deletes the ``cache_key`` when device recovers from ``critical`` state
+        """Returns a cache key string.
+
+        It sets the ``cache_key`` as 1 when device ``health_status`` goes
+        to ``critical`` and deletes the ``cache_key`` when device recovers
+        from ``critical`` state
         """
         cache_key = get_device_cache_key(device=instance.device)
         if status == 'critical':
