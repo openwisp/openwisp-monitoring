@@ -83,9 +83,9 @@ OpenWISP documentation.
 Documentation
 -------------
 
+- `Usage documentation <https://openwisp.io/docs/dev/monitoring/>`_
 - `Developer documentation
   <https://openwisp.io/docs/dev/monitoring/developer/>`_
-- `User documentation <https://openwisp.io/docs/dev/monitoring/>`_
 
 Contributing
 ------------
