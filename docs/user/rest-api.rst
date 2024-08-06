@@ -60,7 +60,7 @@ multi-tenancy and allows filtering monitoring data by
     GET /api/v1/monitoring/dashboard/?organization_slug=<org1-slug>,<org2-slug>&location_id=<location1-id>,<location2-id>&floorplan_id=<floorplan1-id>,<floorplan2-id>
 
 - When retrieving chart data, the ``time`` parameter allows to specify the
-  time frame, eg:
+  time frame, e.g.:
 
   - ``1d``: returns data of the last day
   - ``3d``: returns data of the last 3 days
@@ -69,7 +69,7 @@ multi-tenancy and allows filtering monitoring data by
   - ``365d``: returns data of the last 365 days
 
 - In alternative to ``time`` it is possible to request chart data for a
-  custom date range by using the ``start`` and ``end`` parameters, eg:
+  custom date range by using the ``start`` and ``end`` parameters, e.g.:
 
 .. code-block:: text
 
@@ -96,7 +96,7 @@ The format used for Device Status is inspired by `NetJSON DeviceMonitoring
       contain only charts data and will not include any device status
       information (current load average, ARP table, DCHP leases, etc.).
     - When retrieving chart data, the ``time`` parameter allows to specify
-      the time frame, eg:
+      the time frame, e.g.:
 
           - ``1d``: returns data of the last day
           - ``3d``: returns data of the last 3 days
@@ -105,7 +105,7 @@ The format used for Device Status is inspired by `NetJSON DeviceMonitoring
           - ``365d``: returns data of the last 365 days
 
 - In alternative to ``time`` it is possible to request chart data for a
-  custom date range by using the ``start`` and ``end`` parameters, eg:
+  custom date range by using the ``start`` and ``end`` parameters, e.g.:
 - The response contains device information, monitoring status (health
   status), a list of metrics with their respective statuses, chart data
   and device status information (only if ``?status=true``).
@@ -141,10 +141,10 @@ List Device Monitoring Information
 
 **Available filters**
 
-Data can be filtered by health status (e.g. critical, ok, problem, and
-unknown) to obtain the list of devices in the corresponding status, for
-example, to retrieve the list of devices which are in critical conditions
-(eg: unreachable), the following will work:
+Data can be filtered by health status (e.g. *critical*, *ok*, *problem*,
+and *unknown*) to obtain the list of devices in the corresponding status,
+for example, to retrieve the list of devices which are in critical
+conditions (e.g.: unreachable), the following will work:
 
 .. code-block:: text
 

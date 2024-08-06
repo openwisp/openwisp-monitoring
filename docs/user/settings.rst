@@ -400,7 +400,7 @@ layer2 network, hence the OpenWSP server can reach the devices using the
 ============ ========
 
 When device recovery detection is enabled, recoveries are discovered as
-soon as a device contacts the openwisp system again (eg: to get the
+soon as a device contacts the openwisp system again (e.g.: to get the
 configuration checksum or to send monitoring metrics).
 
 This feature is enabled by default.
@@ -451,7 +451,7 @@ This feature is enabled by default.
 
 Retry settings for recoverable failures during metric writes.
 
-By default if a metric write fails (eg: due to excessive load on
+By default if a metric write fails (e.g.: due to excessive load on
 timeseries database at that moment) then the operation will be retried
 indefinitely with an exponential random backoff and a maximum delay of 10
 minutes.
@@ -664,7 +664,7 @@ For example, if you want to change only the notification of
     }
 
 Or if you want to define a new metric configuration, which you can then
-call in your custom code (eg: a custom check class), you can do so as
+call in your custom code (e.g.: a custom check class), you can do so as
 follows:
 
 .. code-block:: python
@@ -709,7 +709,7 @@ In the following example, we modify the description of the traffic chart:
     }
 
 Or if you want to define a new chart configuration, which you can then
-call in your custom code (eg: a custom check class), you can do so as
+call in your custom code (e.g.: a custom check class), you can do so as
 follows:
 
 .. code-block:: python
@@ -811,9 +811,9 @@ when it goes offline. It is enabled by default.
 **default**: ``None``
 ============ ==========
 
-Changes the urlconf option of django urls to point the monitoring API urls
-to another installed module, example, ``myapp.urls``. (Useful when you
-have a seperate API instance.)
+Changes the ``urlconf`` option of django URLs to point the monitoring API
+URLs to another installed module, example, ``myapp.urls``. (Useful when
+you have a separate API instance.)
 
 .. _openwisp_monitoring_api_baseurl:
 
@@ -825,10 +825,10 @@ have a seperate API instance.)
 **default**: ``None``
 ============ ==========
 
-If you have a seperate server for API of openwisp-monitoring on a
-different domain, you can use this option to change the base of the url,
-this will enable you to point all the API urls to your openwisp-monitoring
-API server's domain, example: ``https://mymonitoring.myapp.com``.
+If you have a separate instance of the OpenWISP Monitoring API on a
+different domain, you can use this option to change the base of the URL,
+this will enable you to point all the API URLs to your API server's
+domain, example: ``https://api.myservice.com``.
 
 .. _openwisp_monitoring_cache_timeout:
 

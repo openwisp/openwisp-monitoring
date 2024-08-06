@@ -53,7 +53,7 @@ You can also :doc:`add the iperf3 check
 
 It also supports tuning of various parameters. You can change the
 parameters used for iperf3 checks (e.g. timing, port, username, password,
-rsa_publc_key etc) using the
+``rsa_publc_key``, etc.) using the
 :ref:`openwisp_monitoring_iperf3_check_config` setting.
 
 .. note::

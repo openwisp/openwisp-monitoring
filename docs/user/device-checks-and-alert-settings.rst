@@ -74,7 +74,7 @@ page as shown below:
 .. note::
 
     To access the features described above, the user must have permissions
-    for ``Check`` and ``AlertSetting`` inlines, these permissions are
+    for ``Check`` and ``AlertSetting`` *inlines*, these permissions are
     included by default in the "Administrator" and "Operator" groups and
     are shown in the screenshot below.
 

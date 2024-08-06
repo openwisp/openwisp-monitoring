@@ -10,7 +10,7 @@ Configuring Iperf3 Check
 
 Register your device to OpenWISP and make sure the `iperf3 openwrt package
 <https://openwrt.org/packages/pkgdata/iperf3>`_ is installed on the
-device, eg:
+device, e.g.:
 
 .. code-block:: shell
 
@@ -199,8 +199,8 @@ authenticated clients.
 Server Side
 ~~~~~~~~~~~
 
-1. Generate RSA Keypair
-+++++++++++++++++++++++
+1. Generate RSA Key Pair
+++++++++++++++++++++++++
 
 .. code-block:: shell
 
@@ -209,10 +209,11 @@ Server Side
     openssl rsa -in private.pem -out private_key.pem -outform PEM
 
 After running the commands mentioned above, the public key will be stored
-in ``public_key.pem`` which will be used in **rsa_public_key** parameter
-in :ref:`openwisp_monitoring_iperf3_check_config` and the private key will
-be contained in the file ``private_key.pem`` which will be used with
-**--rsa-private-key-path** command option when starting the iperf3 server.
+in ``public_key.pem`` which will be used in the ``rsa_public_key``
+parameter of :ref:`openwisp_monitoring_iperf3_check_config` and the
+private key will be contained in the file ``private_key.pem`` which will
+be used with the ``--rsa-private-key-path`` command option when starting
+the iperf3 server.
 
 2. Create User Credentials
 ++++++++++++++++++++++++++
@@ -231,8 +232,8 @@ Add the above hash with username in ``credentials.csv``
     # file format: username,sha256
     iperfuser,ee17a7f98cc87a6424fb52682396b2b6c058e9ab70e946188faa0714905771d7
 
-3. Now Start the Iperf3 Server with Auth Options
-++++++++++++++++++++++++++++++++++++++++++++++++
+3. Start the Iperf3 Server with Authentication Options
+++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. code-block:: shell
 
@@ -261,8 +262,8 @@ You may also check your installed **iperf3 openwrt package** features:
 
 .. _configure_iperf3_check_auth_parameters:
 
-2. Configure Iperf3 Check Auth Parameters
-+++++++++++++++++++++++++++++++++++++++++
+2. Configure Iperf3 Authentication
+++++++++++++++++++++++++++++++++++
 
 Now, add the following iperf3 authentication parameters to
 :ref:`openwisp_monitoring_iperf3_check_config` in the settings:

@@ -283,8 +283,8 @@ OpenWISP Monitoring registers and uses the following notification types:
   range.
 - ``connection_is_working``: Fires when the connection to a device is
   working.
-- ``connection_is_not_working``: Fires when the connection (eg: SSH) to a
-  device stops working (eg: credentials are outdated, management IP
+- ``connection_is_not_working``: Fires when the connection (e.g.: SSH) to
+  a device stops working (e.g.: credentials are outdated, management IP
   address is outdated, or device is not reachable).
 
 Registering Notification Types

@@ -394,7 +394,7 @@ the `"First steps with Django" section in the celery documentation
 13. Import Celery Tasks
 -----------------------
 
-Add the following in your settings.py to import celery tasks from
+Add the following in your ``settings.py`` to import celery tasks from
 ``device_monitoring`` app.
 
 .. code-block:: python

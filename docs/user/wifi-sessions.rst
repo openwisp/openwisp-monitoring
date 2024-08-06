@@ -32,7 +32,7 @@ Scheduled Deletion of WiFi Sessions
 -----------------------------------
 
 OpenWISP Monitoring provides a celery task to automatically delete WiFi
-sessions older than a pre-configured number of days.
+sessions older than a preconfigured number of days.
 
 .. note::
 
