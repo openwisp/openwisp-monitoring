@@ -10,7 +10,7 @@ OpenWISP provides the following monitoring capabilities:
   network <dashboard-monitoring-charts>`, a geographic map is also
   available for those who use the geographic features of OpenWISP
 - Collection of monitoring information in a timeseries database (currently
-  only influxdb is supported)
+  only **InfluxDB** is supported)
 - Allows to browse alerts easily from the user interface with one click
 - Collects and displays :ref:`device status <device_status>` information
   like uptime, RAM status, CPU load averages, Interface properties and
