@@ -31,10 +31,7 @@ device's change admin under the "WiFi Sessions" tab.
 Scheduled Deletion of WiFi Sessions
 -----------------------------------
 
-OpenWISP Monitoring provides a celery task to automatically delete WiFi
-sessions older than a preconfigured number of days.
-
-.. note::
+.. important::
 
     If you have deployed OpenWISP using :doc:`ansible-openwisp2
     </ansible/index>` or :doc:`docker-openwisp </docker/index>`, then this
@@ -42,6 +39,9 @@ sessions older than a preconfigured number of days.
     documentation of your deployment method to know the default value.
     This section is only for reference for users who wish to customize
     OpenWISP, or who have deployed OpenWISP in a different way.
+
+OpenWISP Monitoring provides a celery task to automatically delete WiFi
+sessions older than a preconfigured number of days.
 
 The celery task takes only one argument, i.e. number of days. You can
 provide any number of days in `args` key while configuring
