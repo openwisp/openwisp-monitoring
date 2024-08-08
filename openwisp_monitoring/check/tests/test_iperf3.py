@@ -621,7 +621,7 @@ class TestIperf3(
             with patch.object(
                 app_settings,
                 'IPERF3_CHECK_CONFIG',
-                iperf3_config
+                iperf3_config,
                 # It is required to mock "Iperf3.schema" here so that it
                 # uses the updated configuration from "IPERF3_CHECK_CONFIG" setting.
             ), patch.object(Iperf3, 'schema', get_iperf3_schema()):

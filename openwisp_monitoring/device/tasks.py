@@ -14,11 +14,13 @@ logger = logging.getLogger(__name__)
 
 @shared_task(base=OpenwispCeleryTask)
 def trigger_device_checks(pk, recovery=True):
-    """
-    Retrieves all related checks to the passed ``device``
-    and calls the ``perform_check`` task from each of them.
-    If no check exists changes the status according to the
-    ``recovery`` argument.
+    """Triggers the monitoring checks for the specified device pk.
+
+    Retrieves all related checks to the passed ``device`` and calls the
+    ``perform_check`` task from each of them.
+
+    If no check exists changes the status according to the ``recovery``
+    argument.
     """
     DeviceData = load_model('device_monitoring', 'DeviceData')
     try:

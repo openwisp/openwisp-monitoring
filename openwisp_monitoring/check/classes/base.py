@@ -31,9 +31,7 @@ class BaseCheck(object):
         raise NotImplementedError
 
     def _get_or_create_metric(self, configuration=None):
-        """
-        Gets or creates metric
-        """
+        """Gets or creates metric."""
         check = self.check_instance
         if check.object_id and check.content_type_id:
             obj_id = check.object_id

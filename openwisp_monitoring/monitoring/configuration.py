@@ -743,9 +743,7 @@ def get_metric_configuration_choices():
 
 
 def register_metric(metric_name, metric_config):
-    """
-    Registers a new metric configuration.
-    """
+    """Registers a new metric configuration."""
     if not isinstance(metric_name, str):
         raise ImproperlyConfigured('Metric configuration name should be type "str".')
     if not isinstance(metric_config, dict):
@@ -817,9 +815,7 @@ def get_chart_configuration_choices():
 
 
 def register_chart(chart_name, chart_config):
-    """
-    Registers a new chart configuration.
-    """
+    """Registers a new chart configuration."""
     if not isinstance(chart_name, str):
         raise ImproperlyConfigured('Chart name should be type "str".')
     if not isinstance(chart_config, dict):

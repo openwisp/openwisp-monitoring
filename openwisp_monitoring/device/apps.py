@@ -191,9 +191,11 @@ class DeviceMonitoringConfig(AppConfig):
 
     @classmethod
     def manage_device_recovery_cache_key(cls, instance, status, **kwargs):
-        """
-        It sets the ``cache_key`` as 1 when device ``health_status`` goes to ``critical``
-        and deletes the ``cache_key`` when device recovers from ``critical`` state
+        """Returns a cache key string.
+
+        It sets the ``cache_key`` as 1 when device ``health_status`` goes
+        to ``critical`` and deletes the ``cache_key`` when device recovers
+        from ``critical`` state
         """
         cache_key = get_device_cache_key(device=instance.device)
         if status == 'critical':
@@ -340,12 +342,12 @@ class DeviceMonitoringConfig(AppConfig):
 
         if app_settings.DASHBOARD_MAP:
             loc_geojson_url = reverse_lazy(
-                "monitoring:api_location_geojson", urlconf=MONITORING_API_URLCONF
+                'monitoring:api_location_geojson', urlconf=MONITORING_API_URLCONF
             )
             device_list_url = reverse_lazy(
-                "monitoring:api_location_device_list",
+                'monitoring:api_location_device_list',
                 urlconf=MONITORING_API_URLCONF,
-                args=["000"],
+                args=['000'],
             )
             if MONITORING_API_BASEURL:
                 device_list_url = urljoin(MONITORING_API_BASEURL, str(device_list_url))

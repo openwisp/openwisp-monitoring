@@ -8,9 +8,7 @@ from openwisp_monitoring import get_version
 
 
 def get_install_requires():
-    """
-    parse requirements.txt, ignore links, exclude comments
-    """
+    """parse requirements.txt, ignore links, exclude comments"""
     requirements = []
     for line in open('requirements.txt').readlines():
         # skip to next iteration if comment or empty line
@@ -43,9 +41,9 @@ setup(
     name='openwisp-monitoring',
     version=get_version(),
     license='GPL3',
-    author='Federico Capoano',
-    author_email='federico.capoano@gmail.com',
-    description='OpenWISP 2 Monitoring',
+    author='OpenWISP',
+    author_email='support@openwisp.io',
+    description='OpenWISP Monitoring',
     long_description=open('README.rst').read(),
     url='http://openwisp.org',
     download_url='https://github.com/openwisp/openwisp-monitoring/releases',
@@ -56,7 +54,7 @@ setup(
     zip_safe=False,
     install_requires=get_install_requires(),
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 5 - Production/Stable',
         'Environment :: Web Environment',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: System :: Networking',

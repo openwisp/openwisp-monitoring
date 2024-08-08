@@ -24,9 +24,7 @@ Chart = load_model('monitoring', 'Chart')
 
 
 class TestCharts(TestMonitoringMixin, TestCase):
-    """
-    Tests for functionalities related to charts
-    """
+    """Tests for functionalities related to charts"""
 
     def test_read(self):
         c = self._create_chart()

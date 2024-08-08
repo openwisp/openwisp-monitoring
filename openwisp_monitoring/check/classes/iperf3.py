@@ -284,9 +284,7 @@ class Iperf3(BaseCheck):
         return result
 
     def _get_check_commands(self, server):
-        """
-        Returns tcp & udp commands for iperf3 check
-        """
+        """Returns tcp & udp commands for iperf3 check."""
         username = self._get_param('username', 'username.default')
         port = self._get_param(
             'client_options.port', 'client_options.properties.port.default'
@@ -356,9 +354,7 @@ class Iperf3(BaseCheck):
         return command_tcp, command_udp
 
     def _get_iperf3_test_conditions(self):
-        """
-        Returns iperf3 check test conditions (rev_or_bidir, end_condition)
-        """
+        """Returns iperf3 check test conditions (rev_or_bidir, end_condition)."""
         time = self._get_param(
             'client_options.time', 'client_options.properties.time.default'
         )
@@ -396,19 +392,17 @@ class Iperf3(BaseCheck):
         return rev_or_bidir, test_end_condition
 
     def _get_compelete_rsa_key(self, key):
-        """
-        Returns RSA key with proper format
-        """
+        """Returns RSA key with proper format."""
         pem_prefix = '-----BEGIN PUBLIC KEY-----\n'
         pem_suffix = '\n-----END PUBLIC KEY-----'
         key = key.strip()
         return f'{pem_prefix}{key}{pem_suffix}'
 
     def _deep_get(self, dictionary, keys, default=None):
-        """
-        Returns dict key value using dict &
-        it's dot_key string ie. key1.key2_nested.key3_nested
-        if found otherwise returns default
+        """Returns dict key value using dict and it's dot_key string,
+
+        ie: key1.key2_nested.key3_nested, if found, otherwise returns
+        default.
         """
         return reduce(
             lambda d, key: d.get(key, default) if isinstance(d, dict) else default,
@@ -417,9 +411,7 @@ class Iperf3(BaseCheck):
         )
 
     def _get_param(self, conf_key, default_conf_key):
-        """
-        Returns specified param or its default value according to the schema
-        """
+        """Returns specified param or its default value according to the schema."""
         org_id = str(self.related_object.organization.id)
         iperf3_config = app_settings.IPERF3_CHECK_CONFIG
 
@@ -437,9 +429,7 @@ class Iperf3(BaseCheck):
         return self._deep_get(DEFAULT_IPERF3_CHECK_CONFIG, default_conf_key)
 
     def _get_iperf3_result(self, result, exit_code, mode):
-        """
-        Returns iperf3 test result
-        """
+        """Returns iperf3 test result."""
         try:
             result = loads(result)
         except JSONDecodeError:
@@ -500,18 +490,14 @@ class Iperf3(BaseCheck):
                 }
 
     def store_result(self, result):
-        """
-        Store result in the DB
-        """
+        """Store result in the DB."""
         metric = self._get_metric()
         copied = result.copy()
         iperf3_result = copied.pop('iperf3_result')
         metric.write(iperf3_result, extra_values=copied)
 
     def _get_metric(self):
-        """
-        Gets or creates metric
-        """
+        """Gets or creates metric."""
         metric, created = self._get_or_create_metric()
         if created:
             self._create_alert_settings(metric)
@@ -519,17 +505,13 @@ class Iperf3(BaseCheck):
         return metric
 
     def _create_alert_settings(self, metric):
-        """
-        Creates default iperf3 alert settings with is_active=False
-        """
+        """Creates default iperf3 alert settings with is_active=False."""
         alert_settings = AlertSettings(metric=metric, is_active=False)
         alert_settings.full_clean()
         alert_settings.save()
 
     def _create_charts(self, metric):
-        """
-        Creates iperf3 related charts
-        """
+        """Creates iperf3 related charts."""
         charts = [
             'bandwidth',
             'transfer',

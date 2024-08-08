@@ -108,12 +108,12 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(Notification.objects.count(), 0)
 
     def test_general_check_threshold_crossed_for_long_time(self):
-        """
-        this is going to be the most realistic scenario:
-        incoming metrics will always be stored with the current
-        timestamp, which means the system must be able to look
-        back in previous measurements to see if the AlertSettings
-        has been crossed for long enough
+        """Test threshold remains crossed for a long time.
+
+        This is the most common scenario: incoming metrics will always be
+        stored with the current timestamp, which means the system must be
+        able to look back in previous measurements to see if the
+        AlertSettings has been crossed for long enough.
         """
         admin = self._create_admin()
         m = self._create_general_metric(name='load')

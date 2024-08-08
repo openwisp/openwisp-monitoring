@@ -120,24 +120,18 @@ class Ping(BaseCheck):
         return result
 
     def store_result(self, result):
-        """
-        store result in the DB
-        """
+        """Stores result in the DB."""
         metric = self._get_metric()
         copied = result.copy()
         reachable = copied.pop('reachable')
         metric.write(reachable, extra_values=copied)
 
     def _get_param(self, param):
-        """
-        Gets specified param or its default value according to the schema
-        """
+        """Gets specified param or its default value according to the schema."""
         return self.params.get(param, self.schema['properties'][param]['default'])
 
     def _get_ip(self):
-        """
-        Figures out ip to use or fails raising OperationalError
-        """
+        """Figures out ip to use or fails raising OperationalError."""
         device = self.related_object
         ip = device.management_ip
         if not ip and not app_settings.MANAGEMENT_IP_ONLY:
@@ -145,16 +139,12 @@ class Ping(BaseCheck):
         return ip
 
     def _command(self, command):
-        """
-        Executes command (easier to mock)
-        """
+        """Executes command (easier to mock)."""
         p = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return p.stdout, p.stderr
 
     def _get_metric(self):
-        """
-        Gets or creates metric
-        """
+        """Gets or creates metric."""
         metric, created = self._get_or_create_metric()
         if created:
             self._create_alert_settings(metric)
@@ -167,9 +157,7 @@ class Ping(BaseCheck):
         alert_settings.save()
 
     def _create_charts(self, metric):
-        """
-        Creates device charts if necessary
-        """
+        """Creates device charts if necessary."""
         charts = ['uptime', 'packet_loss', 'rtt']
         for chart in charts:
             if chart not in monitoring_settings.AUTO_CHARTS:
