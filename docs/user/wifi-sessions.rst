@@ -47,18 +47,24 @@ The celery task takes only one argument, i.e. number of days. You can
 provide any number of days in `args` key while configuring
 ``CELERY_BEAT_SCHEDULE`` setting.
 
+.. include:: /partials/settings-note.rst
+
 E.g., if you want WiFi Sessions older than 30 days to get deleted
 automatically, then configure ``CELERY_BEAT_SCHEDULE`` as follows:
 
 .. code-block:: python
 
-    CELERY_BEAT_SCHEDULE = {
-        "delete_wifi_clients_and_sessions": {
-            "task": "openwisp_monitoring.monitoring.tasks.delete_wifi_clients_and_sessions",
-            "schedule": timedelta(days=1),
-            "args": (30,),  # Here we have defined 30 days
-        },
-    }
+    from datetime import timedelta
+
+    CELERY_BEAT_SCHEDULE.update(
+        {
+            "delete_wifi_clients_and_sessions": {
+                "task": "openwisp_monitoring.monitoring.tasks.delete_wifi_clients_and_sessions",
+                "schedule": timedelta(days=1),
+                "args": (30,),  # Here we have defined 30 days
+            },
+        }
+    )
 
 Please refer to `"Periodic Tasks" section of Celery's documentation
 <https://docs.celeryproject.org/en/stable/userguide/periodic-tasks.html>`_

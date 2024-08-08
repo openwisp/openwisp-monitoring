@@ -37,8 +37,10 @@ SSH access to you device from OpenWISP.
 3. Set Up and Configure Iperf3 Server Settings
 ----------------------------------------------
 
+.. include:: /partials/settings-note.rst
+
 After having deployed your Iperf3 servers, you need to configure the
-iperf3 settings on the django side of OpenWISP, see the `test project
+iperf3 settings on the Django side of OpenWISP, see the `test project
 settings for reference
 <https://github.com/openwisp/openwisp-monitoring/blob/master/tests/openwisp2/settings.py>`_.
 
@@ -84,22 +86,24 @@ The celery-beat configuration for the iperf3 check needs to be added too:
 
     from celery.schedules import crontab
 
-    # Celery TIME_ZONE should be equal to django TIME_ZONE
+    # Celery TIME_ZONE should be equal to Django TIME_ZONE
     # In order to schedule run_iperf3_checks on the correct time intervals
     CELERY_TIMEZONE = TIME_ZONE
-    CELERY_BEAT_SCHEDULE = {
-        # Other celery beat configurations
-        # Celery beat configuration for iperf3 check
-        "run_iperf3_checks": {
-            "task": "openwisp_monitoring.check.tasks.run_checks",
-            # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
-            # Executes check every 5 mins from 00:00 AM to 6:00 AM (night)
-            "schedule": crontab(minute="*/5", hour="0-6"),
-            # Iperf3 check path
-            "args": (["openwisp_monitoring.check.classes.Iperf3"],),
-            "relative": True,
+    CELERY_BEAT_SCHEDULE.update(
+        {
+            # Other celery beat configurations
+            # Celery beat configuration for iperf3 check
+            "run_iperf3_checks": {
+                "task": "openwisp_monitoring.check.tasks.run_checks",
+                # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
+                # Executes check every 5 mins from 00:00 AM to 6:00 AM (night)
+                "schedule": crontab(minute="*/5", hour="0-6"),
+                # Iperf3 check path
+                "args": (["openwisp_monitoring.check.classes.Iperf3"],),
+                "relative": True,
+            }
         }
-    }
+    )
 
 Once the changes are saved, you will need to restart all the processes.
 
@@ -209,11 +213,10 @@ Server Side
     openssl rsa -in private.pem -out private_key.pem -outform PEM
 
 After running the commands mentioned above, the public key will be stored
-in ``public_key.pem`` which will be used in the ``rsa_public_key``
-parameter of :ref:`openwisp_monitoring_iperf3_check_config` and the
-private key will be contained in the file ``private_key.pem`` which will
-be used with the ``--rsa-private-key-path`` command option when starting
-the iperf3 server.
+in ``public_key.pem`` which will be used in **rsa_public_key** parameter
+in :ref:`openwisp_monitoring_iperf3_check_config` and the private key will
+be contained in the file ``private_key.pem`` which will be used with
+**--rsa-private-key-path** command option when starting the iperf3 server.
 
 2. Create User Credentials
 ++++++++++++++++++++++++++
@@ -232,8 +235,8 @@ Add the above hash with username in ``credentials.csv``
     # file format: username,sha256
     iperfuser,ee17a7f98cc87a6424fb52682396b2b6c058e9ab70e946188faa0714905771d7
 
-3. Start the Iperf3 Server with Authentication Options
-++++++++++++++++++++++++++++++++++++++++++++++++++++++
+3. Now Start the Iperf3 Server with Authentication Options
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 .. code-block:: shell
 
@@ -262,11 +265,11 @@ You may also check your installed **iperf3 openwrt package** features:
 
 .. _configure_iperf3_check_auth_parameters:
 
-2. Configure Iperf3 Authentication
-++++++++++++++++++++++++++++++++++
+2. Configure Iperf3 Check Authentication Parameters
++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Now, add the following iperf3 authentication parameters to
-:ref:`openwisp_monitoring_iperf3_check_config` in the settings:
+:ref:`openwisp_monitoring_iperf3_check_config` in the Django settings:
 
 .. code-block:: python
 
