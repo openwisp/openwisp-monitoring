@@ -1,4 +1,5 @@
-.health-unknown {
+.health-unknown,
+.health-deactivated {
   color: grey;
 }
 .health-ok {
