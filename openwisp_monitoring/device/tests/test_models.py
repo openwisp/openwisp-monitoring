@@ -316,7 +316,7 @@ class TestDeviceData(BaseTestCase):
         metric = self._create_object_metric(name='test', content_object=d)
         metric.full_clean()
         metric.save()
-        d.delete()
+        d.delete(check_deactivated=False)
         try:
             metric.refresh_from_db()
         except ObjectDoesNotExist:
@@ -777,7 +777,7 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         ping2.write(0)
         self.assertNotEqual(self._read_metric(ping1), [])
         self.assertNotEqual(self._read_metric(ping2), [])
-        dm1.device.delete()
+        dm1.device.delete(check_deactivated=False)
         # Only the metric related to the deleted device
         # is deleted
         self.assertEqual(self._read_metric(ping1), [])

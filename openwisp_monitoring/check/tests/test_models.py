@@ -142,7 +142,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(Check.objects.count(), 0)
         d = self._create_device(organization=self._create_org())
         self.assertEqual(Check.objects.count(), 3)
-        d.delete()
+        d.delete(check_deactivated=False)
         self.assertEqual(Check.objects.count(), 0)
 
     def test_config_modified_device_problem(self):
