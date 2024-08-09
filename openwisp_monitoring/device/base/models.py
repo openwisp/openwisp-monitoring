@@ -445,6 +445,19 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         )
 
     @classmethod
+    def handle_deactivated_device(cls, instance, **kwargs):
+        """Handles the deactivation of a device
+
+        Sets the device's monitoring status to 'deactivated'
+
+        Parameters: - instance (Device): The device object
+        which is deactivated
+
+        Returns: - None
+        """
+        cls.objects.filter(device_id=instance.id).update(status='deactivated')
+
+    @classmethod
     def _get_critical_metric_keys(cls):
         return [metric['key'] for metric in get_critical_device_metrics()]
 
