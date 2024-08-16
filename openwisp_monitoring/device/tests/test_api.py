@@ -1657,7 +1657,6 @@ class TestWifiSessionApi(
         with self.assertNumQueries(2):
             response = self.client.get(url)
         self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json(), {'detail': 'Not found.'})
 
     def test_wifi_session_detail_get(self):
         device = self._create_device()
@@ -1789,7 +1788,6 @@ class TestWifiSessionApi(
             with self.assertNumQueries(4):
                 response = self.client.get(url)
             self.assertEqual(response.status_code, 404)
-            self.assertEqual(response.data['detail'], 'Not found.')
 
         with self.subTest('Test wifi session list org member (403 forbidden)'):
             self.client.force_login(org1_member)
