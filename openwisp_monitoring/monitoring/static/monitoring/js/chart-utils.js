@@ -236,6 +236,9 @@ django.jQuery(function ($) {
       loadCharts = function (time, showLoading) {
         $.ajax(getChartFetchUrl(time), {
           dataType: 'json',
+          xhrFields: {
+            withCredentials: true
+          },
           beforeSend: function () {
             chartContents.hide();
             chartContents.empty();
