@@ -1,10 +1,81 @@
 Changelog
 =========
 
-Version 1.1.0 [unreleased]
+Version 1.1.0 [2024-11-22]
 --------------------------
 
-WIP
+Features
+~~~~~~~~
+
+- Added support for `monitoring WiFi clients and sessions
+  <https://openwisp.io/docs/dev/monitoring/user/wifi-sessions.html>`_.
+- Enabled importing and exporting of devices.
+- Introduced `dashboard monitoring charts
+  <https://openwisp.io/docs/dev/monitoring/user/dashboard-monitoring-charts.html>`_.
+- Added support for the `Iperf3 check
+  <https://openwisp.io/docs/dev/monitoring/user/checks.html#iperf3>`_.
+- Introduced the `OPENWISP_MONITORING_DEFAULT_RETENTION_POLICY
+  <https://openwisp.io/docs/dev/monitoring/user/settings.html#openwisp-monitoring-default-retention-policy>`_
+  setting to configure the default retention policy.
+- Added support for `InfluxDB UDP mode
+  <https://openwisp.io/docs/dev/monitoring/user/settings.html#timeseries-backend-options>`_.
+- Enabled filtering by custom date ranges for timeseries charts.
+- Added zoom functionality to timeseries charts for detailed views.
+- Introduced device deactivation: checks and monitoring data are not
+  collected for deactivated devices.
+- Disabled organization: checks and monitoring data are not collected for
+  devices in disabled organization.
+- Added WiFi version capability to the WiFi interface status.
+- Added support for WiFi 6 client capability.
+- Expanded REST API with device list and detailed monitoring information.
+- Introduced an API endpoint to return nearby devices.
+- Added an organization filter to timeseries charts.
+
+Changes
+~~~~~~~
+
+- Display total values in traffic charts.
+- Automatically delete timeseries data when a device is deleted.
+- Removed squashed migrations for improved manageability.
+- Fallback to `OPENWISP_CONTROLLER_MANAGEMENT_IP_ONLY
+  <https://openwisp.io/docs/dev/controller/user/settings.html#openwisp-controller-management-ip-only>`_
+  if `OPENWISP_MONITORING_MANAGEMENT_IP_ONLY
+  <https://openwisp.io/docs/dev/monitoring/user/settings.html#openwisp-monitoring-management-ip-only>`_
+  is not configured.
+- Enhanced the efficiency of ``DeviceMetricView`` by batching write
+  operations.
+- Delegated timeseries data writing to a Celery worker in
+  ``DeviceMetricView``.
+- Introduced default timeouts for Celery tasks.
+- Renamed the "Uptime" chart to "Ping Success Rate."
+- Improved the UX of the device "Status" tab by making bridge members
+  clickable.
+
+Dependencies
+++++++++++++
+
+- Bumped ``openwisp-controller~=1.1.0``
+- Bumped ``influxdb~=5.3.2``
+- Bumped ``django-nested-admin~=4.0.2``
+- Bumped ``python-dateutil>=2.7.0,<3.0.0``
+- Added support for Django ``4.1.x`` and ``4.2.x``.
+- Added support for Python ``3.10``.
+- Dropped support for Python ``3.7``.
+- Dropped support for Django ``3.0.x`` and ``3.1.x``.
+
+Bugfixes
+~~~~~~~~
+
+- Fixed visibility of the "Recover deleted devices" button.
+- Prevented chart loading failure when timezone JS fails.
+- Corrected ping command from "-i" to "-p".
+- Added error handling for ``IntegrityError`` in
+  ``Metric._get_or_create``.
+- Fixed unrecognized access technology exception.
+- Displayed error messages from the timeseries chart API in an alert box.
+- Fixed timeseries structure for storing signal metrics.
+- Resolved data collection issues when tx/rx stats are missing.
+- Used the "time" argument for calculating time in ``Chart._get_time``.
 
 Version 1.0.3 [2022-12-29]
 --------------------------
