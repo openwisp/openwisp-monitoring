@@ -93,6 +93,9 @@ class AbstractCheck(TimeStampedEditableModel):
     def perform_check(self, store=True):
         """Initializes check instance and calls the check method."""
         if (
+            hasattr(self.content_object, 'is_deactivated')
+            and self.content_object.is_deactivated()
+        ) or (
             hasattr(self.content_object, 'organization_id')
             and self.content_object.organization.is_active is False
         ):

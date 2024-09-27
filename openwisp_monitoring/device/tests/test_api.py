@@ -170,7 +170,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         # Add 1 for general metric and chart
         self.assertEqual(self.metric_queryset.count(), 0)
         self.assertEqual(self.chart_queryset.count(), 0)
-        d.delete()
+        d.delete(check_deactivated=False)
         r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 404)
 
@@ -342,6 +342,15 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     def test_404_disabled_organization(self):
         org = self._create_org(is_active=False)
         device = self._create_device(organization=org)
+        with self.assertNumQueries(2):
+            response = self._post_data(device.id, device.key, self._data())
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(self.metric_queryset.count(), 0)
+        self.assertEqual(self.chart_queryset.count(), 0)
+
+    def test_404_deactivated_device(self):
+        device = self._create_device()
+        device.deactivate()
         with self.assertNumQueries(2):
             response = self._post_data(device.id, device.key, self._data())
         self.assertEqual(response.status_code, 404)
