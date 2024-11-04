@@ -427,6 +427,14 @@ class DeviceMonitoringConfig(AppConfig):
                 }
             }
 
+        dashboard_chart_url = reverse_lazy(
+            'monitoring_general:api_dashboard_timeseries',
+            urlconf=MONITORING_API_URLCONF,
+        )
+        if MONITORING_API_BASEURL:
+            dashboard_chart_url = urljoin(
+                MONITORING_API_BASEURL, str(dashboard_chart_url)
+            )
         register_dashboard_template(
             position=55,
             config={
@@ -450,7 +458,7 @@ class DeviceMonitoringConfig(AppConfig):
                 ),
             },
             extra_config={
-                'api_url': reverse_lazy('monitoring_general:api_dashboard_timeseries'),
+                'api_url': dashboard_chart_url,
                 'default_time': Chart.DEFAULT_TIME,
                 'chart_quick_links': general_wifi_client_quick_links,
             },
