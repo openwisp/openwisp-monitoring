@@ -729,7 +729,7 @@ class AbstractChart(TimeStampedEditableModel):
             return start_date
         if not isinstance(time, str):
             return str(time)
-        if time in cls._get_group_map().keys():
+        if time in cls._get_group_map(time).keys():
             days = int(time.strip('d'))
             now = timezone.now()
             if days > 3:
