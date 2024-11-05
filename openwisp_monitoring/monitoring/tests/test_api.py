@@ -670,6 +670,11 @@ class TestDashboardTimeseriesView(
             self.assertEqual(response.status_code, 200)
             self.assertIsInstance(response.data['charts'], list)
 
+        with self.subTest('Test with custom valid group time'):
+            response = self.client.get(path, {'time': '5d'})
+            self.assertEqual(response.status_code, 200)
+            self.assertIsInstance(response.data['charts'], list)
+
         with self.subTest('Test with invalid group time'):
             response = self.client.get(path, {'time': '3w'})
             self.assertEqual(response.status_code, 400)
