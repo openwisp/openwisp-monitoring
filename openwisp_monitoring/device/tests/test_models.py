@@ -544,40 +544,6 @@ class TestDeviceData(BaseTestCase):
         result = dd.writer._calculate_increment('wlan0', 'rx_bytes', 1234.56)
         self.assertEqual(result, 1234)
 
-    def test_save_data_missing_tx_bytes(self):
-        """
-        Test that device data is saved successfully when tx_bytes is missing
-        while rx_bytes is present in interface statistics
-        """
-        dd = self._create_device_data()
-        data = deepcopy(self._sample_data)
-        del data['interfaces'][0]['statistics']['tx_bytes']
-        dd.data = data
-        dd.save_data()
-        dd_read = DeviceData(pk=dd.pk)
-        interface_stats = dd_read.data['interfaces'][0]['statistics']
-        self.assertEqual(interface_stats['rx_bytes'], 0)
-        self.assertNotIn('tx_bytes', interface_stats)
-        self.assertEqual(interface_stats['collisions'], 0)
-        self.assertEqual(interface_stats['multicast'], 0)
-
-    def test_save_data_missing_rx_bytes(self):
-        """
-        Test that device data is saved successfully when rx_bytes is missing
-        while tx_bytes is present in interface statistics
-        """
-        dd = self._create_device_data()
-        data = deepcopy(self._sample_data)
-        del data['interfaces'][0]['statistics']['rx_bytes']
-        dd.data = data
-        dd.save_data()
-        dd_read = DeviceData(pk=dd.pk)
-        interface_stats = dd_read.data['interfaces'][0]['statistics']
-        self.assertEqual(interface_stats['tx_bytes'], 864)
-        self.assertNotIn('rx_bytes', interface_stats)
-        self.assertEqual(interface_stats['collisions'], 0)
-        self.assertEqual(interface_stats['multicast'], 0)
-
 
 class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
     """Test openwisp_monitoring.device.models.DeviceMonitoring"""

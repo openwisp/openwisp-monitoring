@@ -80,14 +80,14 @@ class DeviceDataWriter(object):
             # Explicitly stated None to avoid skipping in case the stats are zero
             if (
                 ifstats.get('rx_bytes') is not None
-                and ifstats.get('tx_bytes') is not None
+                or ifstats.get('tx_bytes') is not None
             ):
                 field_value = self._calculate_increment(
-                    ifname, 'rx_bytes', ifstats['rx_bytes']
+                    ifname, 'rx_bytes', ifstats.get('rx_bytes', 0)
                 )
                 extra_values = {
                     'tx_bytes': self._calculate_increment(
-                        ifname, 'tx_bytes', ifstats['tx_bytes']
+                        ifname, 'tx_bytes', ifstats.get('tx_bytes', 0)
                     )
                 }
                 name = f'{ifname} traffic'
