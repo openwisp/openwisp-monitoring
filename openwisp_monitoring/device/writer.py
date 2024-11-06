@@ -71,7 +71,6 @@ class DeviceDataWriter(object):
         self.write_device_metrics = []
         for interface in data.get('interfaces', []):
             ifname = interface['name']
-            extra_tags = Metric._sort_dict(device_extra_tags)
             if 'mobile' in interface:
                 self._write_mobile_signal(
                     interface, ifname, ct, self.device_data.pk, current, time=time
@@ -98,7 +97,7 @@ class DeviceDataWriter(object):
                     name=name,
                     key='traffic',
                     main_tags={'ifname': Metric._makekey(ifname)},
-                    extra_tags=extra_tags,
+                    extra_tags=device_extra_tags,
                 )
                 self._append_metric_data(
                     metric, field_value, current, time=time, extra_values=extra_values
@@ -119,7 +118,7 @@ class DeviceDataWriter(object):
                 name=name,
                 key='wifi_clients',
                 main_tags={'ifname': Metric._makekey(ifname)},
-                extra_tags=extra_tags,
+                extra_tags=device_extra_tags,
             )
             # avoid tsdb overwrite clients
             client_time = time
@@ -172,7 +171,7 @@ class DeviceDataWriter(object):
             tags['location_id'] = str(device_location.location_id)
             if device_location.floorplan_id:
                 tags['floorplan_id'] = str(device_location.floorplan_id)
-        return tags
+        return Metric._sort_dict(tags)
 
     def _get_mobile_signal_type(self, signal):
         if not signal:
@@ -212,7 +211,8 @@ class DeviceDataWriter(object):
                 content_type_id=ct.id,
                 configuration='signal_strength',
                 name='signal strength',
-                key=ifname,
+                key='signal',
+                main_tags={'ifname': Metric._makekey(ifname)},
             )
             self._append_metric_data(
                 metric, signal_strength, current, time=time, extra_values=extra_values
@@ -240,7 +240,8 @@ class DeviceDataWriter(object):
                 content_type_id=ct.id,
                 configuration='signal_quality',
                 name='signal quality',
-                key=ifname,
+                key='signal',
+                main_tags={'ifname': Metric._makekey(ifname)},
             )
             self._append_metric_data(
                 metric, signal_quality, current, time=time, extra_values=extra_values
@@ -253,7 +254,8 @@ class DeviceDataWriter(object):
             content_type_id=ct.id,
             configuration='access_tech',
             name='access technology',
-            key=ifname,
+            key='signal',
+            main_tags={'ifname': Metric._makekey(ifname)},
         )
         self._append_metric_data(
             metric,
