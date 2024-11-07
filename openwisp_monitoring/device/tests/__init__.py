@@ -86,10 +86,11 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
         data = self._transform_wireless_interface_test_data(data)
         self.assertDictEqual(dd_data, data)
 
-    def create_test_data(self, no_resources=False):
+    def create_test_data(self, no_resources=False, data=None, assertions=True):
         o = self._create_org()
         d = self._create_device(organization=o)
-        data = self._data()
+        if not data:
+            data = self._data()
         # creation of resources metrics can be avoided in tests not involving them
         # this speeds up those tests by reducing requests made
         if no_resources:
@@ -97,6 +98,8 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
         r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 200)
         dd = DeviceData(pk=d.pk)
+        if not assertions:
+            return dd
         self.assertDataDict(dd.data, data)
         if no_resources:
             metric_count, chart_count = 4, 4

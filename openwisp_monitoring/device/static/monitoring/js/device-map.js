@@ -54,65 +54,74 @@
 
         loadingOverlay.show();
 
-        $.getJSON(url, function (data) {
-            let html = '',
-                device;
-            for (let i = 0; i < data.results.length; i++) {
-                device = data.results[i];
-                html += `
-                <tr>
-                    <td><a href="${device.admin_edit_url}">${device.name}</a></td>
-                    <td>
-                        <span class="health-status health-${device.monitoring.status}">
-                            ${device.monitoring.status_label}
-                        </span>
-                    </td>
-                </tr>`;
-            }
-            let pagination = '',
-                parts = [];
-            if (data.previous || data.next) {
-                if (data.previous) {
-                    parts.push(`<a class="prev" href="#prev" data-url="${data.previous}">&#8249; ${gettext('previous')}</a>`);
-                }
-                if (data.next) {
-                    parts.push(`<a class="next" href="#next" data-url="${data.next}">${gettext('next')} &#8250;</a>`);
-                }
-                pagination = `<p class="paginator">${parts.join(' ')}</div>`;
-            }
-            layer.bindPopup(`
-                <div class="map-detail">
-                    <h2>${layer.feature.properties.name} (${data.count})</h2>
-                    <table>
-                        <thead>
+        $.ajax({
+            dataType: "json",
+            url: url,
+            xhrFields: {
+                withCredentials: true
+            },
+            success: function (data) {
+                let html = '',
+                    device;
+                for (let i = 0; i < data.results.length; i++) {
+                    device = data.results[i];
+                    html += `
                             <tr>
-                                <th>${gettext('name')}</th>
-                                <th>${gettext('status')}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${html}
-                        </tbody>
-                    </table>
-                    ${pagination}
-                </div>`);
-            layer.openPopup();
+                                <td><a href="${device.admin_edit_url}">${device.name}</a></td>
+                                <td>
+                                    <span class="health-status health-${device.monitoring.status}">
+                                        ${device.monitoring.status_label}
+                                    </span>
+                                </td>
+                            </tr>`;
+                }
+                let pagination = '',
+                    parts = [];
+                if (data.previous || data.next) {
+                    if (data.previous) {
+                        parts.push(`<a class="prev" href="#prev" data-url="${data.previous}">&#8249; ${gettext('previous')}</a>`);
+                    }
+                    if (data.next) {
+                        parts.push(`<a class="next" href="#next" data-url="${data.next}">${gettext('next')} &#8250;</a>`);
+                    }
+                    pagination = `<p class="paginator">${parts.join(' ')}</div>`;
+                }
+                layer.bindPopup(`
+                            <div class="map-detail">
+                                <h2>${layer.feature.properties.name} (${data.count})</h2>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>${gettext('name')}</th>
+                                            <th>${gettext('status')}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${html}
+                                    </tbody>
+                                </table>
+                                ${pagination}
+                            </div>`);
+                layer.openPopup();
 
-            // bind next/prev buttons
-            let el = $(layer.getPopup().getElement());
-            el.find('.next').click(function () {
-                loadPopUpContent(layer, $(this).data('url'));
-            });
-            el.find('.prev').click(function () {
-                loadPopUpContent(layer, $(this).data('url'));
-            });
+                // bind next/prev buttons
+                let el = $(layer.getPopup().getElement());
+                el.find('.next').click(function () {
+                    loadPopUpContent(layer, $(this).data('url'));
+                });
+                el.find('.prev').click(function () {
+                    loadPopUpContent(layer, $(this).data('url'));
+                });
 
-            loadingOverlay.hide();
+                loadingOverlay.hide();
 
-        }).fail(function () {
-            loadingOverlay.hide();
-            alert(gettext('Error while retrieving data'));
+            },
+            error: function () {
+                loadingOverlay.hide();
+                alert(gettext('Error while retrieving data'));
+            }
         });
+
     };
     const leafletConfig = JSON.parse($('#leaflet-config').text());
     const tiles = leafletConfig.TILES.map((tile) => {

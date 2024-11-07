@@ -16,6 +16,7 @@ from openwisp_monitoring.device.tests import (
 )
 from openwisp_monitoring.monitoring.configuration import DEFAULT_DASHBOARD_TRAFFIC_CHART
 from openwisp_monitoring.monitoring.migrations import create_general_metrics
+from openwisp_utils.admin_theme.dashboard import DASHBOARD_TEMPLATES
 from openwisp_utils.test_selenium_mixins import (
     SeleniumTestMixin as BaseSeleniumTestMixin,
 )
@@ -30,6 +31,43 @@ Check = load_model('check', 'Check')
 
 
 class SeleniumTestMixin(BaseSeleniumTestMixin):
+    @classmethod
+    def setUpClass(cls):
+        """
+        Sets up the necessary configurations for the test environment, ensuring
+        that the dashboard templates render correctly during Selenium tests.
+
+        During testing, the `OPENWISP_MONITORING_API_BASEURL` is set to
+        `http://testserver`, a dummy value for the test environment. The dashboard
+        templates are registered in the `AppConfig.ready` method, and these
+        templates depend on specific URLs being correctly configured.
+
+        Since mocking the `OPENWISP_MONITORING_API_BASEURL` does not update the
+        URLs in the already registered dashboard templates, this method manually
+        adjusts the template contexts to ensure they contain the correct URLs.
+        """
+        super().setUpClass()
+        cls._dashboard_map_context = DASHBOARD_TEMPLATES[0][1].copy()
+        cls._dashboard_timeseries_context = DASHBOARD_TEMPLATES[55][1].copy()
+        DASHBOARD_TEMPLATES[0][1] = {
+            'monitoring_device_list_url': reverse(
+                'monitoring:api_location_device_list',
+                args=['000'],
+            ),
+            'monitoring_location_geojson_url': reverse(
+                'monitoring:api_location_geojson'
+            ),
+        }
+        DASHBOARD_TEMPLATES[55][1]['api_url'] = reverse(
+            'monitoring_general:api_dashboard_timeseries'
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        DASHBOARD_TEMPLATES[0][1] = cls._dashboard_map_context
+        DASHBOARD_TEMPLATES[55][1] = cls._dashboard_timeseries_context
+
     def setUp(self):
         self.admin = self._create_admin(
             username=self.admin_username, password=self.admin_password
