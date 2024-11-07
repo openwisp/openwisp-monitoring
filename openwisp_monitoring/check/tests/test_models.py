@@ -142,7 +142,7 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
         self.assertEqual(Check.objects.count(), 0)
         d = self._create_device(organization=self._create_org())
         self.assertEqual(Check.objects.count(), 3)
-        d.delete()
+        d.delete(check_deactivated=False)
         self.assertEqual(Check.objects.count(), 0)
 
     def test_config_modified_device_problem(self):
@@ -285,6 +285,16 @@ class TestModels(TestDeviceMonitoringMixin, TransactionTestCase):
             status='modified', organization=self._create_org(is_active=False)
         )
         self.assertEqual(Check.objects.count(), 3)
+        check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
+        with patch(f'{self._CONFIG_APPLIED}.check') as mocked_check:
+            check.perform_check()
+        mocked_check.assert_not_called()
+
+    def test_deactivated_device_check_not_performed(self):
+        config = self._create_config(status='modified', organization=self._create_org())
+        self.assertEqual(Check.objects.filter(is_active=True).count(), 3)
+        config.device.deactivate()
+        config.set_status_deactivated()
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         with patch(f'{self._CONFIG_APPLIED}.check') as mocked_check:
             check.perform_check()
