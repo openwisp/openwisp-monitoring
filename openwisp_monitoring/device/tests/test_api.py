@@ -1378,6 +1378,36 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             self.assertEqual(rows[-2].strip().split(','), ['ssh', '100.0'])
             self.assertEqual(rows[-1].strip().split(','), ['http2', '90.0'])
 
+    def test_missing_rx_bytes(self):
+        """
+        Regression test for:
+        https://github.com/openwisp/openwisp-monitoring/issues/595
+        """
+        data = self._data()
+        del data['interfaces'][0]['statistics']['rx_bytes']
+        dd = self.create_test_data(no_resources=True, data=data, assertions=False)
+        qs = Metric.objects.filter(
+            object_id=dd.pk, key='traffic', main_tags={'ifname': 'wlan0'}
+        )
+        self.assertEqual(qs.count(), 1)
+        m = qs.first()
+        points = self._read_metric(m, limit=1, extra_fields=['tx_bytes'])
+        self.assertEqual(points[0].get('tx_bytes'), 145)
+        self.assertEqual(points[0].get('rx_bytes'), 0)
+
+    def test_missing_tx_bytes(self):
+        data = self._data()
+        del data['interfaces'][0]['statistics']['tx_bytes']
+        dd = self.create_test_data(no_resources=True, data=data, assertions=False)
+        qs = Metric.objects.filter(
+            object_id=dd.pk, key='traffic', main_tags={'ifname': 'wlan0'}
+        )
+        self.assertEqual(qs.count(), 1)
+        m = qs.first()
+        points = self._read_metric(m, limit=1, extra_fields=['tx_bytes'])
+        self.assertEqual(points[0].get('rx_bytes'), 324)
+        self.assertEqual(points[0].get('tx_bytes'), 0)
+
 
 class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
     location_model = Location
