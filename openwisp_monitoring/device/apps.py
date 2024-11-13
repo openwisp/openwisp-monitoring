@@ -155,6 +155,16 @@ class DeviceMonitoringConfig(AppConfig):
             sender=Device,
             dispatch_uid='device_deactivated_update_devicemonitoring',
         )
+        device_deactivated.connect(
+            DeviceMetricView.invalidate_get_device_cache,
+            sender=Device,
+            dispatch_uid=('deactivate_device_invalidate_view_device_cache'),
+        )
+        device_deactivated.connect(
+            DeviceMetricView.invalidate_get_charts_cache,
+            sender=Device,
+            dispatch_uid=('deactivate_device_invalidate_view_charts_cache'),
+        )
 
     @classmethod
     def device_post_save_receiver(cls, instance, created, **kwargs):
@@ -340,6 +350,7 @@ class DeviceMonitoringConfig(AppConfig):
                     'problem': '#ffb442',
                     'critical': '#a72d1d',
                     'unknown': '#353c44',
+                    'deactivated': '#000',
                 },
                 'labels': {
                     'ok': app_settings.HEALTH_STATUS_LABELS['ok'],

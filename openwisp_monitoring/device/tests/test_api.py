@@ -177,6 +177,17 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     def test_200_create(self):
         self.create_test_data(no_resources=True)
 
+    def test_device_deactivate_cache_invalidation(self):
+        device = self._create_device()
+        # Ensure device ID is cached by the view
+        data = {'type': 'DeviceMonitoring'}
+        response = self._post_data(device.id, device.key, data)
+        self.assertEqual(response.status_code, 200)
+        device.deactivate()
+
+        response = self._post_data(device.id, device.key, data)
+        self.assertEqual(response.status_code, 404)
+
     @patch('openwisp_monitoring.device.tasks.write_device_metrics.delay')
     def test_background_write(self, mocked_task):
         device = self._create_device(organization=self._create_org())

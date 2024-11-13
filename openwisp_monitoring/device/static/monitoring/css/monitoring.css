@@ -38,8 +38,10 @@ td.field-health_status,
   font-weight: bold;
   text-transform: uppercase;
 }
-.health-unknown,
 .health-deactivated {
+  color: #000;
+}
+.health-unknown {
   color: grey;
 }
 .health-ok {

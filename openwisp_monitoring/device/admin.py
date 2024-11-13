@@ -343,7 +343,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         fields = list(super().get_fields(request, obj))
         if obj and not obj._state.adding:
             fields.insert(fields.index('last_ip'), 'health_status')
-        if not obj or obj.monitoring.status in ['ok', 'unknown']:
+        if not obj or obj.monitoring.status in ['ok', 'unknown', 'deactivated']:
             return fields
         fields.insert(fields.index('health_status') + 1, 'health_checks')
         return fields
