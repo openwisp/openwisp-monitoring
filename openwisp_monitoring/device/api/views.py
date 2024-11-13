@@ -8,6 +8,7 @@ from django.contrib.gis.db.models.functions import Distance
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
 from django.db.models.functions import Round
+from django.http import Http404
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
@@ -111,7 +112,7 @@ class DeviceMetricView(
 
     model = DeviceData
     queryset = (
-        DeviceData.objects.filter(organization__is_active=True, _is_deactivated=False)
+        DeviceData.objects.filter(organization__is_active=True)
         .only(
             'id',
             'key',
@@ -173,6 +174,11 @@ class DeviceMetricView(
 
     def post(self, request, pk):
         self.instance = self.get_object(pk)
+        if self.instance._is_deactivated:
+            # If the device is deactivated, do not accept data.
+            # We don't use "Device.is_deactivated()" to avoid
+            # generating query for the related config.
+            raise Http404
         self.instance.data = request.data
         # validate incoming data
         try:
