@@ -155,6 +155,11 @@ class DeviceMonitoringConfig(AppConfig):
             sender=Device,
             dispatch_uid='device_deactivated_update_devicemonitoring',
         )
+        device_deactivated.connect(
+            DeviceMetricView.invalidate_get_device_cache,
+            sender=Device,
+            dispatch_uid=('device_deactivated_invalidate_view_device_cache'),
+        )
 
     @classmethod
     def device_post_save_receiver(cls, instance, created, **kwargs):

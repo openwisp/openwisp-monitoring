@@ -114,6 +114,7 @@ class DeviceMetricView(
     queryset = (
         DeviceData.objects.filter(organization__is_active=True)
         .only(
+            '_is_deactivated',
             'id',
             'key',
         )
