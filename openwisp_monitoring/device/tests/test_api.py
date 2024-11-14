@@ -177,16 +177,6 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     def test_200_create(self):
         self.create_test_data(no_resources=True)
 
-    def test_deactivated_device_read_only(self):
-        self.create_test_data(no_resources=True)
-        device = self.device_model.objects.first()
-        device.deactivate()
-        response = self._post_data(device.id, device.key, {'type': 'DeviceMonitoring'})
-        self.assertEqual(response.status_code, 404)
-        # Read requests should continue to work
-        response = self.client.get(self._url(device.pk, device.key))
-        self.assertEqual(response.status_code, 200)
-
     @patch('openwisp_monitoring.device.tasks.write_device_metrics.delay')
     def test_background_write(self, mocked_task):
         device = self._create_device(organization=self._create_org())
@@ -358,14 +348,30 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(self.metric_queryset.count(), 0)
         self.assertEqual(self.chart_queryset.count(), 0)
 
-    def test_404_deactivated_device(self):
-        device = self._create_device()
-        device.deactivate()
+    def test_device_activate_deactivate(self):
+        # "self.create_test_data" creates a device and makes
+        # a POST request to DeviceMetricView ensuring that
+        # the device is cached.
+        self.create_test_data(no_resources=True)
+        device = self.device_model.objects.first()
+        data = {'type': 'DeviceMonitoring'}
         with self.assertNumQueries(2):
-            response = self._post_data(device.id, device.key, self._data())
+            response = self._post_data(device.id, device.key, data)
+
+        # Deactivating the device will invalidate the cache.
+        # The view will only allow readonly requests (GET).
+        device.deactivate()
+        response = self.client.get(self._url(device.pk, device.key))
+        self.assertEqual(response.status_code, 200)
+        with self.assertNumQueries(1):
+            response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 404)
-        self.assertEqual(self.metric_queryset.count(), 0)
-        self.assertEqual(self.chart_queryset.count(), 0)
+
+        # Re-activating the device will allow POST requests again.
+        device.activate()
+        with self.assertNumQueries(4):
+            response = self._post_data(device.id, device.key, data)
+        self.assertEqual(response.status_code, 200)
 
     def test_garbage_wireless_clients(self):
         o = self._create_org()

@@ -12,6 +12,7 @@ from swapper import get_model_name, load_model
 from openwisp_controller.config.signals import (
     checksum_requested,
     config_status_changed,
+    device_activated,
     device_deactivated,
 )
 from openwisp_controller.connection import settings as connection_settings
@@ -159,6 +160,11 @@ class DeviceMonitoringConfig(AppConfig):
             DeviceMetricView.invalidate_get_device_cache,
             sender=Device,
             dispatch_uid=('device_deactivated_invalidate_view_device_cache'),
+        )
+        device_activated.connect(
+            DeviceMetricView.invalidate_get_device_cache,
+            sender=Device,
+            dispatch_uid=('device_activated_invalidate_view_device_cache'),
         )
 
     @classmethod
