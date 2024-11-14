@@ -797,14 +797,22 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         self.assertEqual(device_monitoring.status, 'unknown')
         self.assertEqual(device.management_ip, None)
 
-    def test_handle_deactivated_device(self):
+    def test_handle_deactivate_activate_device(self):
         device_monitoring, _, _, _ = self._create_env()
         device = device_monitoring.device
         self.assertEqual(device_monitoring.status, 'ok')
-        device.deactivate()
-        device_monitoring.refresh_from_db()
-        device.refresh_from_db()
-        self.assertEqual(device_monitoring.status, 'deactivated')
+
+        with self.subTest('Test deactivation of device'):
+            device.deactivate()
+            device_monitoring.refresh_from_db()
+            device.refresh_from_db()
+            self.assertEqual(device_monitoring.status, 'deactivated')
+
+        with self.subTest('Test activation of a deactivated device'):
+            device.activate()
+            device_monitoring.refresh_from_db()
+            device.refresh_from_db()
+            self.assertEqual(device_monitoring.status, 'unknown')
 
 
 class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):

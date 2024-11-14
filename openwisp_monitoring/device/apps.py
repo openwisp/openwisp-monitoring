@@ -162,6 +162,11 @@ class DeviceMonitoringConfig(AppConfig):
             dispatch_uid=('device_deactivated_invalidate_view_device_cache'),
         )
         device_activated.connect(
+            DeviceMonitoring.handle_activated_device,
+            sender=Device,
+            dispatch_uid='device_activated_update_devicemonitoring',
+        )
+        device_activated.connect(
             DeviceMetricView.invalidate_get_device_cache,
             sender=Device,
             dispatch_uid=('device_activated_invalidate_view_device_cache'),
