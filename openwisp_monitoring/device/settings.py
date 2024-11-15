@@ -27,6 +27,7 @@ def get_health_status_labels():
             'ok': 'ok',
             'problem': 'problem',
             'critical': 'critical',
+            'deactivated': 'deactivated',
         },
     )
     try:
@@ -34,6 +35,7 @@ def get_health_status_labels():
         assert 'ok' in labels
         assert 'problem' in labels
         assert 'critical' in labels
+        assert 'deactivated' in labels
     except AssertionError as e:  # pragma: no cover
         raise ImproperlyConfigured(
             'OPENWISP_MONITORING_HEALTH_STATUS_LABELS must contain the following '

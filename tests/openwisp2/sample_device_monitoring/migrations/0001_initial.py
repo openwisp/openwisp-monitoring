@@ -63,13 +63,15 @@ class Migration(migrations.Migration):
                             ('ok', 'ok'),
                             ('problem', 'problem'),
                             ('critical', 'critical'),
+                            ('deactivated', 'deactivated'),
                         ],
                         db_index=True,
                         default='unknown',
                         help_text='"unknown" means the device has been recently added; \n'
                         '"ok" means the device is operating normally; \n'
                         '"problem" means the device is having issues but it\'s still reachable; \n'
-                        '"critical" means the device is not reachable or in critical conditions;',
+                        '"critical" means the device is not reachable or in critical conditions;\n'
+                        '"deactivated" means the device is deactivated;',
                         max_length=100,
                         no_check_for_status=True,
                         verbose_name='health status',

@@ -363,6 +363,7 @@ class DeviceMonitoringConfig(AppConfig):
                     'problem': app_settings.HEALTH_STATUS_LABELS['problem'],
                     'critical': app_settings.HEALTH_STATUS_LABELS['critical'],
                     'unknown': app_settings.HEALTH_STATUS_LABELS['unknown'],
+                    'deactivated': app_settings.HEALTH_STATUS_LABELS['deactivated'],
                 },
             },
         )

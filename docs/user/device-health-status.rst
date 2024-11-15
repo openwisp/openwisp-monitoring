@@ -36,3 +36,8 @@ been crossed).
 
 Example: ping is by default a critical metric which is expected to be
 always 1 (reachable).
+
+``DEACTIVATED``
+---------------
+
+The device is deactivated. All active and passive checks are disabled.

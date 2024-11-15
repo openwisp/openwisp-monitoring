@@ -337,7 +337,7 @@ By default, if devices are not reachable by pings they are flagged as
 ============ ==========================================================
 **type**:    ``dict``
 **default**: ``{'unknown': 'unknown', 'ok': 'ok', 'problem': 'problem',
-             'critical': 'critical'}``
+             'critical': 'critical', 'deactivated': 'deactivated'}``
 ============ ==========================================================
 
 This setting allows to change the health status labels, for example, if we
