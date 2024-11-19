@@ -338,6 +338,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         ('ok', _(app_settings.HEALTH_STATUS_LABELS['ok'])),
         ('problem', _(app_settings.HEALTH_STATUS_LABELS['problem'])),
         ('critical', _(app_settings.HEALTH_STATUS_LABELS['critical'])),
+        ('deactivated', _(app_settings.HEALTH_STATUS_LABELS['deactivated'])),
     )
     status = StatusField(
         _('health status'),
@@ -346,12 +347,14 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
             '"{0}" means the device has been recently added; \n'
             '"{1}" means the device is operating normally; \n'
             '"{2}" means the device is having issues but it\'s still reachable; \n'
-            '"{3}" means the device is not reachable or in critical conditions;'
+            '"{3}" means the device is not reachable or in critical conditions;\n'
+            '"{4}" means the device is deactivated;'
         ).format(
             app_settings.HEALTH_STATUS_LABELS['unknown'],
             app_settings.HEALTH_STATUS_LABELS['ok'],
             app_settings.HEALTH_STATUS_LABELS['problem'],
             app_settings.HEALTH_STATUS_LABELS['critical'],
+            app_settings.HEALTH_STATUS_LABELS['deactivated'],
         ),
     )
 
@@ -443,6 +446,32 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         cls.objects.filter(device__organization_id=organization_id).update(
             status='unknown'
         )
+
+    @classmethod
+    def handle_deactivated_device(cls, instance, **kwargs):
+        """Handles the deactivation of a device
+
+        Sets the device's monitoring status to 'deactivated'
+
+        Parameters: - instance (Device): The device object
+        which is deactivated
+
+        Returns: - None
+        """
+        cls.objects.filter(device_id=instance.id).update(status='deactivated')
+
+    @classmethod
+    def handle_activated_device(cls, instance, **kwargs):
+        """Handles the activation of a deactivated device
+
+        Sets the device's monitoring status to 'unknown'
+
+        Parameters: - instance (Device): The device object
+        which is deactivated
+
+        Returns: - None
+        """
+        cls.objects.filter(device_id=instance.id).update(status='unknown')
 
     @classmethod
     def _get_critical_metric_keys(cls):

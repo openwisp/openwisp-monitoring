@@ -21,6 +21,7 @@ from nested_admin.nested import (
 )
 from swapper import load_model
 
+from openwisp_controller.config.admin import DeactivatedDeviceReadOnlyMixin
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
 from openwisp_users.multitenancy import MultitenantAdminMixin
 from openwisp_utils.admin import ReadOnlyAdmin
@@ -58,30 +59,68 @@ class CheckInlineFormSet(BaseGenericInlineFormSet):
 
 
 class InlinePermissionMixin:
+    """
+    Manages permissions for the inline objects.
+
+    This mixin class handles the permissions for the inline objects.
+    It checks if the user has permission to modify the main object
+    (e.g., view_model, add_model, change_model, or delete_model),
+    and if not, it checks if the user has permission to modify the
+    inline object (e.g., view_model_inline, add_model_inline,
+    change_model_inline, or delete_model_inline).
+    """
+
     def has_add_permission(self, request, obj=None):
-        # User will be able to add objects from inline even
-        # if it only has permission to add a model object
-        return super().has_add_permission(request, obj) or request.user.has_perm(
+        return super(admin.options.InlineModelAdmin, self).has_add_permission(
+            request
+        ) or request.user.has_perm(
             f'{self.model._meta.app_label}.add_{self.inline_permission_suffix}'
         )
 
     def has_change_permission(self, request, obj=None):
-        return super().has_change_permission(request, obj) or request.user.has_perm(
+        return super(admin.options.InlineModelAdmin, self).has_change_permission(
+            request, obj
+        ) or request.user.has_perm(
             f'{self.model._meta.app_label}.change_{self.inline_permission_suffix}'
         )
 
     def has_view_permission(self, request, obj=None):
-        return super().has_view_permission(request, obj) or request.user.has_perm(
+        return super(admin.options.InlineModelAdmin, self).has_view_permission(
+            request, obj
+        ) or request.user.has_perm(
             f'{self.model._meta.app_label}.view_{self.inline_permission_suffix}'
         )
 
     def has_delete_permission(self, request, obj=None):
-        return super().has_delete_permission(request, obj) or request.user.has_perm(
+        return super(admin.options.InlineModelAdmin, self).has_delete_permission(
+            request, obj
+        ) or request.user.has_perm(
             f'{self.model._meta.app_label}.delete_{self.inline_permission_suffix}'
         )
 
 
-class CheckInline(InlinePermissionMixin, GenericStackedInline):
+class DeactivatedDeviceReadOnlyInlinePermissionMixin(
+    DeactivatedDeviceReadOnlyMixin,
+    InlinePermissionMixin,
+):
+    def has_add_permission(self, request, obj=None):
+        perm = super().has_add_permission(request, obj)
+        return self._has_permission(request, obj, perm)
+
+    def has_change_permission(self, request, obj=None):
+        perm = super().has_change_permission(request, obj)
+        return self._has_permission(request, obj, perm)
+
+    def has_view_permission(self, request, obj=None):
+        perm = super().has_view_permission(request, obj)
+        return self._has_permission(request, obj, perm)
+
+    def has_delete_permission(self, request, obj=None):
+        perm = super().has_delete_permission(request, obj)
+        return self._has_permission(request, obj, perm)
+
+
+class CheckInline(DeactivatedDeviceReadOnlyInlinePermissionMixin, GenericStackedInline):
     model = Check
     extra = 0
     formset = CheckInlineFormSet
@@ -152,7 +191,9 @@ class AlertSettingsInline(InlinePermissionMixin, NestedStackedInline):
         return super().get_queryset(request).order_by('created')
 
 
-class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
+class MetricInline(
+    DeactivatedDeviceReadOnlyInlinePermissionMixin, NestedGenericStackedInline
+):
     model = Metric
     extra = 0
     inlines = [AlertSettingsInline]
@@ -205,7 +246,7 @@ class MetricInline(InlinePermissionMixin, NestedGenericStackedInline):
 
 
 class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
-    change_form_template = 'admin/config/device/change_form.html'
+    change_form_template = 'admin/monitoring/device/change_form.html'
     list_filter = ['monitoring__status'] + BaseDeviceAdmin.list_filter
     list_select_related = ['monitoring'] + list(BaseDeviceAdmin.list_select_related)
     list_display = list(BaseDeviceAdmin.list_display)
@@ -302,7 +343,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         fields = list(super().get_fields(request, obj))
         if obj and not obj._state.adding:
             fields.insert(fields.index('last_ip'), 'health_status')
-        if not obj or obj.monitoring.status in ['ok', 'unknown']:
+        if not obj or obj.monitoring.status in ['ok', 'unknown', 'deactivated']:
             return fields
         fields.insert(fields.index('health_status') + 1, 'health_checks')
         return fields
@@ -415,7 +456,7 @@ class WiFiSessionInline(WifiSessionAdminHelperMixin, admin.TabularInline):
     readonly_fields = fields
     can_delete = False
     extra = 0
-    template = 'admin/config/device/wifisession_tabular.html'
+    template = 'admin/monitoring/device/wifisession_tabular.html'
 
     class Media:
         css = {'all': ('monitoring/css/wifi-sessions.css',)}

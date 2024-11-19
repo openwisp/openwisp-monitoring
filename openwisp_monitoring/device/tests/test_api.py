@@ -170,7 +170,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         # Add 1 for general metric and chart
         self.assertEqual(self.metric_queryset.count(), 0)
         self.assertEqual(self.chart_queryset.count(), 0)
-        d.delete()
+        d.delete(check_deactivated=False)
         r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 404)
 
@@ -347,6 +347,31 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(self.metric_queryset.count(), 0)
         self.assertEqual(self.chart_queryset.count(), 0)
+
+    def test_device_activate_deactivate(self):
+        # "self.create_test_data" creates a device and makes
+        # a POST request to DeviceMetricView ensuring that
+        # the device is cached.
+        self.create_test_data(no_resources=True)
+        device = self.device_model.objects.first()
+        data = {'type': 'DeviceMonitoring'}
+        with self.assertNumQueries(2):
+            response = self._post_data(device.id, device.key, data)
+
+        # Deactivating the device will invalidate the cache.
+        # The view will only allow readonly requests (GET).
+        device.deactivate()
+        response = self.client.get(self._url(device.pk, device.key))
+        self.assertEqual(response.status_code, 200)
+        with self.assertNumQueries(1):
+            response = self._post_data(device.id, device.key, data)
+        self.assertEqual(response.status_code, 404)
+
+        # Re-activating the device will allow POST requests again.
+        device.activate()
+        with self.assertNumQueries(4):
+            response = self._post_data(device.id, device.key, data)
+        self.assertEqual(response.status_code, 200)
 
     def test_garbage_wireless_clients(self):
         o = self._create_org()

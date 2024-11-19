@@ -316,7 +316,7 @@ class TestDeviceData(BaseTestCase):
         metric = self._create_object_metric(name='test', content_object=d)
         metric.full_clean()
         metric.save()
-        d.delete()
+        d.delete(check_deactivated=False)
         try:
             metric.refresh_from_db()
         except ObjectDoesNotExist:
@@ -777,7 +777,7 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         ping2.write(0)
         self.assertNotEqual(self._read_metric(ping1), [])
         self.assertNotEqual(self._read_metric(ping2), [])
-        dm1.device.delete()
+        dm1.device.delete(check_deactivated=False)
         # Only the metric related to the deleted device
         # is deleted
         self.assertEqual(self._read_metric(ping1), [])
@@ -796,6 +796,23 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         device.refresh_from_db()
         self.assertEqual(device_monitoring.status, 'unknown')
         self.assertEqual(device.management_ip, None)
+
+    def test_handle_deactivate_activate_device(self):
+        device_monitoring, _, _, _ = self._create_env()
+        device = device_monitoring.device
+        self.assertEqual(device_monitoring.status, 'ok')
+
+        with self.subTest('Test deactivation of device'):
+            device.deactivate()
+            device_monitoring.refresh_from_db()
+            device.refresh_from_db()
+            self.assertEqual(device_monitoring.status, 'deactivated')
+
+        with self.subTest('Test activation of a deactivated device'):
+            device.activate()
+            device_monitoring.refresh_from_db()
+            device.refresh_from_db()
+            self.assertEqual(device_monitoring.status, 'unknown')
 
 
 class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):

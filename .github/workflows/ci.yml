@@ -65,7 +65,7 @@ jobs:
           pip install -r requirements-test.txt
           pip install -U -I -e .
           pip uninstall -y django
-          pip install ${{ matrix.django-version }}
+          pip install -U ${{ matrix.django-version }}
           sudo npm install -g jshint stylelint
 
           # start influxdb

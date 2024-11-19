@@ -5,12 +5,13 @@
     const loadingOverlay = $('#device-map-container .ow-loading-spinner');
     const localStorageKey = 'ow-map-shown';
     const mapContainer = $('#device-map-container');
-    const statuses = ['critical', 'problem', 'ok', 'unknown'];
+    const statuses = ['critical', 'problem', 'ok', 'unknown', 'deactivated'];
     const colors = {
         ok: '#267126',
         problem: '#ffb442',
         critical: '#a72d1d',
         unknown: '#353c44',
+        deactivated: '#0000',
     };
     const getLocationDeviceUrl = function (pk) {
         return window._owGeoMapConfig.locationDeviceUrl.replace('000', pk);

@@ -572,11 +572,11 @@ class TestAdmin(
         self.client.force_login(test_user)
 
         def _add_device_permissions(user):
-            test_user.user_permissions.clear()
+            user.user_permissions.clear()
             self.assertEqual(user.user_permissions.count(), 0)
             device_permissions = Permission.objects.filter(codename__endswith='device')
             # Permissions required to access device page
-            test_user.user_permissions.add(*device_permissions),
+            user.user_permissions.add(*device_permissions),
             self.assertEqual(user.user_permissions.count(), 4)
 
         def _add_user_permissions(user, permission_query, expected_perm_count):
@@ -989,6 +989,8 @@ class TestWifiSessionAdmin(
 
     def test_deleting_device_with_wifisessions(self):
         device_data = self._save_device_data()
+        device = Device.objects.first()
+        device.deactivate()
         path = reverse('admin:config_device_delete', args=[device_data.pk])
         response = self.client.post(path, {'post': 'yes'}, follow=True)
         self.assertEqual(response.status_code, 200)

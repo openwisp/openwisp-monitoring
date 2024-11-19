@@ -9,7 +9,12 @@ from django.urls import reverse_lazy
 from django.utils.translation import gettext_lazy as _
 from swapper import get_model_name, load_model
 
-from openwisp_controller.config.signals import checksum_requested, config_status_changed
+from openwisp_controller.config.signals import (
+    checksum_requested,
+    config_status_changed,
+    device_activated,
+    device_deactivated,
+)
 from openwisp_controller.connection import settings as connection_settings
 from openwisp_controller.connection.signals import is_working_changed
 from openwisp_utils.admin_theme import (
@@ -74,6 +79,7 @@ class DeviceMonitoringConfig(AppConfig):
 
         Device = load_model('config', 'Device')
         DeviceData = load_model('device_monitoring', 'DeviceData')
+        DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
         DeviceLocation = load_model('geo', 'DeviceLocation')
         Metric = load_model('monitoring', 'Metric')
         Chart = load_model('monitoring', 'Chart')
@@ -144,6 +150,26 @@ class DeviceMonitoringConfig(AppConfig):
             self.organization_post_save_receiver,
             sender=Organization,
             dispatch_uid='post_save_organization_disabled_monitoring',
+        )
+        device_deactivated.connect(
+            DeviceMonitoring.handle_deactivated_device,
+            sender=Device,
+            dispatch_uid='device_deactivated_update_devicemonitoring',
+        )
+        device_deactivated.connect(
+            DeviceMetricView.invalidate_get_device_cache,
+            sender=Device,
+            dispatch_uid=('device_deactivated_invalidate_view_device_cache'),
+        )
+        device_activated.connect(
+            DeviceMonitoring.handle_activated_device,
+            sender=Device,
+            dispatch_uid='device_activated_update_devicemonitoring',
+        )
+        device_activated.connect(
+            DeviceMetricView.invalidate_get_device_cache,
+            sender=Device,
+            dispatch_uid=('device_activated_invalidate_view_device_cache'),
         )
 
     @classmethod
@@ -330,12 +356,14 @@ class DeviceMonitoringConfig(AppConfig):
                     'problem': '#ffb442',
                     'critical': '#a72d1d',
                     'unknown': '#353c44',
+                    'deactivated': '#000',
                 },
                 'labels': {
                     'ok': app_settings.HEALTH_STATUS_LABELS['ok'],
                     'problem': app_settings.HEALTH_STATUS_LABELS['problem'],
                     'critical': app_settings.HEALTH_STATUS_LABELS['critical'],
                     'unknown': app_settings.HEALTH_STATUS_LABELS['unknown'],
+                    'deactivated': app_settings.HEALTH_STATUS_LABELS['deactivated'],
                 },
             },
         )

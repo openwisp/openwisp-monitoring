@@ -88,6 +88,10 @@ class Migration(migrations.Migration):
                                 'critical',
                                 _(app_settings.HEALTH_STATUS_LABELS['critical']),
                             ),
+                            (
+                                'deactivated',
+                                _(app_settings.HEALTH_STATUS_LABELS['deactivated']),
+                            ),
                         ],
                         default='unknown',
                         db_index=True,
