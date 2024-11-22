@@ -1,5 +1,4 @@
-openwisp-controller @ https://github.com/openwisp/openwisp-controller/tarball/master
+openwisp-controller~=1.1.0
 influxdb~=5.3.2
 django-nested-admin~=4.0.2
 python-dateutil>=2.7.0,<3.0.0
-openwisp-utils[rest] @ https://github.com/openwisp/openwisp-utils/tarball/master
