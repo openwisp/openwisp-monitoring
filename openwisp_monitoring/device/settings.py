@@ -20,27 +20,19 @@ def get_critical_device_metrics():
 
 
 def get_health_status_labels():
-    labels = get_settings_value(
+    default_labels = {
+        'unknown': 'unknown',
+        'ok': 'ok',
+        'problem': 'problem',
+        'critical': 'critical',
+        'deactivated': 'deactivated',
+    }
+    labels = default_labels.copy()
+    configured_labels = get_settings_value(
         'HEALTH_STATUS_LABELS',
-        {
-            'unknown': 'unknown',
-            'ok': 'ok',
-            'problem': 'problem',
-            'critical': 'critical',
-            'deactivated': 'deactivated',
-        },
+        default_labels,
     )
-    try:
-        assert 'unknown' in labels
-        assert 'ok' in labels
-        assert 'problem' in labels
-        assert 'critical' in labels
-        assert 'deactivated' in labels
-    except AssertionError as e:  # pragma: no cover
-        raise ImproperlyConfigured(
-            'OPENWISP_MONITORING_HEALTH_STATUS_LABELS must contain the following '
-            'keys: unknown, ok, problem, critical'
-        ) from e
+    labels.update(configured_labels)
     return labels
 
 
