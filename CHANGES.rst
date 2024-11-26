@@ -1,6 +1,20 @@
 Changelog
 =========
 
+Version 1.1.1 [2024-11-26]
+--------------------------
+
+Bugfixes
+~~~~~~~~
+
+- Fixed a backward compatibility issue with custom health status labels:
+  previously, if customized health status labels
+  (``OPENWISP_MONITORING_HEALTH_STATUS_LABELS``) were used and the new
+  "deactivated" status label was missing after an upgrade, the application
+  would crash during startup. In this version, a default set of valid
+  labels is always available, which is then overridden by custom labels as
+  needed.
+
 Version 1.1.0 [2024-11-22]
 --------------------------
 
