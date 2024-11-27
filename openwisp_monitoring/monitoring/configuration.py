@@ -471,12 +471,12 @@ DEFAULT_METRICS = {
                 'type': 'scatter',
                 'fill': 'none',
                 'yaxis': {'zeroline': False},
-                'title': _('Signal Strength'),
+                'title': _('Signal Strength (RSSI)'),
                 'colors': (DEFAULT_COLORS[3], DEFAULT_COLORS[0]),
-                'description': _('Signal Strength and Signal Power, measured in dBm.'),
+                'description': _('Signal Strength (RSSI) and Signal Power (RSRP), measured in dBm.'),
                 'summary_labels': [
-                    _('Average Signal Power'),
-                    _('Average Signal Strength'),
+                    _('Average Signal Power (RSRP)'),
+                    _('Average Signal Strength (RSSI)'),
                 ],
                 'unit': _(' dBm'),
                 'order': 205,
@@ -495,14 +495,14 @@ DEFAULT_METRICS = {
                 'type': 'scatter',
                 'fill': 'none',
                 'yaxis': {'zeroline': False},
-                'title': _('Signal Quality'),
+                'title': _('Signal Quality (RSRQ)'),
                 'colors': (DEFAULT_COLORS[3], DEFAULT_COLORS[0]),
                 'description': _(
-                    _('Signal Quality and Signal to Noise Ratio (SNR), measured in dB.')
+                    _('Signal Quality (RSRQ) and Signal to Noise Ratio (SNR), measured in dB.')
                 ),
                 'summary_labels': [
-                    _('Average Signal Quality'),
-                    _('Average Signal to Noise Ratio'),
+                    _('Average Signal Quality (RSRQ)'),
+                    _('Average Signal to Noise Ratio (SNR)'),
                 ],
                 'unit': _(' dB'),
                 'order': 206,
