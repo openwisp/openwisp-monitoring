@@ -22,17 +22,17 @@ Features
 ~~~~~~~~
 
 - Added support for `monitoring WiFi clients and sessions
-  <https://openwisp.io/docs/dev/monitoring/user/wifi-sessions.html>`_.
+  <https://openwisp.io/docs/stable/monitoring/user/wifi-sessions.html>`_.
 - Enabled importing and exporting of devices.
 - Introduced `dashboard monitoring charts
-  <https://openwisp.io/docs/dev/monitoring/user/dashboard-monitoring-charts.html>`_.
+  <https://openwisp.io/docs/stable/monitoring/user/dashboard-monitoring-charts.html>`_.
 - Added support for the `Iperf3 check
-  <https://openwisp.io/docs/dev/monitoring/user/checks.html#iperf3>`_.
+  <https://openwisp.io/docs/stable/monitoring/user/checks.html#iperf3>`_.
 - Introduced the `OPENWISP_MONITORING_DEFAULT_RETENTION_POLICY
-  <https://openwisp.io/docs/dev/monitoring/user/settings.html#openwisp-monitoring-default-retention-policy>`_
+  <https://openwisp.io/docs/stable/monitoring/user/settings.html#openwisp-monitoring-default-retention-policy>`_
   setting to configure the default retention policy.
 - Added support for `InfluxDB UDP mode
-  <https://openwisp.io/docs/dev/monitoring/user/settings.html#timeseries-backend-options>`_.
+  <https://openwisp.io/docs/stable/monitoring/user/settings.html#timeseries-backend-options>`_.
 - Enabled filtering by custom date ranges for timeseries charts.
 - Added zoom functionality to timeseries charts for detailed views.
 - Introduced device deactivation: checks and monitoring data are not
@@ -52,9 +52,9 @@ Changes
 - Automatically delete timeseries data when a device is deleted.
 - Removed squashed migrations for improved manageability.
 - Fallback to `OPENWISP_CONTROLLER_MANAGEMENT_IP_ONLY
-  <https://openwisp.io/docs/dev/controller/user/settings.html#openwisp-controller-management-ip-only>`_
+  <https://openwisp.io/docs/stable/controller/user/settings.html#openwisp-controller-management-ip-only>`_
   if `OPENWISP_MONITORING_MANAGEMENT_IP_ONLY
-  <https://openwisp.io/docs/dev/monitoring/user/settings.html#openwisp-monitoring-management-ip-only>`_
+  <https://openwisp.io/docs/stable/monitoring/user/settings.html#openwisp-monitoring-management-ip-only>`_
   is not configured.
 - Enhanced the efficiency of ``DeviceMetricView`` by batching write
   operations.

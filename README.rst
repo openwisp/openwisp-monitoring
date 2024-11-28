@@ -49,24 +49,24 @@ automation solutions can be built on top of its building blocks.
 
 Other popular building blocks that are part of the OpenWISP ecosystem are:
 
-- `openwisp-controller <https://openwisp.io/docs/dev/controller/>`_:
+- `openwisp-controller <https://openwisp.io/docs/stable/controller/>`_:
   network and WiFi controller: provisioning, configuration management,
   x509 PKI management and more; works on OpenWrt, but designed to work
   also on other systems.
 - `openwisp-network-topology
-  <https://openwisp.io/docs/dev/network-topology/>`_: provides way to
+  <https://openwisp.io/docs/stable/network-topology/>`_: provides way to
   collect and visualize network topology data from dynamic mesh routing
   daemons or other network software (e.g.: OpenVPN); it can be used in
   conjunction with openwisp-monitoring to get a better idea of the state
   of the network
 - `openwisp-firmware-upgrader
-  <https://openwisp.io/docs/dev/firmware-upgrader/>`_: automated firmware
+  <https://openwisp.io/docs/stable/firmware-upgrader/>`_: automated firmware
   upgrades (single device or mass network upgrades)
-- `openwisp-radius <https://openwisp.io/docs/dev/user/radius.html>`_:
+- `openwisp-radius <https://openwisp.io/docs/stable/user/radius.html>`_:
   based on FreeRADIUS, allows to implement network access authentication
   systems like 802.1x WPA2 Enterprise, captive portal authentication,
   Hotspot 2.0 (802.11u)
-- `openwisp-ipam <https://openwisp.io/docs/dev/ipam/>`_: it allows to
+- `openwisp-ipam <https://openwisp.io/docs/stable/ipam/>`_: it allows to
   manage the IP address space of networks
 
 **For a more complete overview of the OpenWISP modules and architecture**,
@@ -77,15 +77,15 @@ see the `OpenWISP Architecture Overview
     :align: center
 
 For a complete overview of features, refer to the `Monitoring: Features
-<https://openwisp.io/docs/dev/monitoring/user/intro.html>`_ section of the
+<https://openwisp.io/docs/stable/monitoring/user/intro.html>`_ section of the
 OpenWISP documentation.
 
 Documentation
 -------------
 
-- `Usage documentation <https://openwisp.io/docs/dev/monitoring/>`_
+- `Usage documentation <https://openwisp.io/docs/stable/monitoring/>`_
 - `Developer documentation
-  <https://openwisp.io/docs/dev/monitoring/developer/>`_
+  <https://openwisp.io/docs/stable/monitoring/developer/>`_
 
 Contributing
 ------------
