@@ -60,8 +60,8 @@ Other popular building blocks that are part of the OpenWISP ecosystem are:
   conjunction with openwisp-monitoring to get a better idea of the state
   of the network
 - `openwisp-firmware-upgrader
-  <https://openwisp.io/docs/stable/firmware-upgrader/>`_: automated firmware
-  upgrades (single device or mass network upgrades)
+  <https://openwisp.io/docs/stable/firmware-upgrader/>`_: automated
+  firmware upgrades (single device or mass network upgrades)
 - `openwisp-radius <https://openwisp.io/docs/stable/user/radius.html>`_:
   based on FreeRADIUS, allows to implement network access authentication
   systems like 802.1x WPA2 Enterprise, captive portal authentication,
@@ -77,8 +77,8 @@ see the `OpenWISP Architecture Overview
     :align: center
 
 For a complete overview of features, refer to the `Monitoring: Features
-<https://openwisp.io/docs/stable/monitoring/user/intro.html>`_ section of the
-OpenWISP documentation.
+<https://openwisp.io/docs/stable/monitoring/user/intro.html>`_ section of
+the OpenWISP documentation.
 
 Documentation
 -------------
