@@ -190,6 +190,11 @@ CELERY_BEAT_SCHEDULE = {
         ),
         'relative': True,
     },
+    'run_wifi_client_checks': {
+        'task': 'openwisp_monitoring.check.tasks.run_wifi_client_checks',
+        'schedule': timedelta(minutes=5),
+        'relative': True,
+    },
     'run_iperf3_checks': {
         'task': 'openwisp_monitoring.check.tasks.run_checks',
         # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules
@@ -222,6 +227,8 @@ if TESTING:
     OPENWISP_MONITORING_API_BASEURL = 'http://testserver'
     # for testing AUTO_IPERF3
     OPENWISP_MONITORING_AUTO_IPERF3 = True
+    # for testing AUTO_WIFI_CLIENT_CHECK
+    # OPENWISP_MONITORING_AUTO_WIFI_CLIENT_CHECK = True
 
 # Temporarily added to identify slow tests
 TEST_RUNNER = 'openwisp_utils.tests.TimeLoggingTestRunner'
