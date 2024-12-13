@@ -311,6 +311,8 @@ This setting allows you to choose whether :ref:`WiFi Client
 <wifi_client_check>` checks should be created automatically for newly
 registered devices. It's disabled by default.
 
+.. _openwisp_monitoring_wifi_client_check_snooze_schedule:
+
 ``OPENWISP_MONITORING_WIFI_CLIENT_CHECK_SNOOZE_SCHEDULE``
 ---------------------------------------------------------
 
