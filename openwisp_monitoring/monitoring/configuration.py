@@ -283,6 +283,74 @@ DEFAULT_METRICS = {
             }
         },
     },
+    'max_wifi_clients': {
+        'label': _('Max WiFi Clients'),
+        'name': '{name}',
+        'key': 'max_wifi_clients',
+        'field_name': 'clients',
+        'alert_settings': {'operator': '>', 'threshold': 40, 'tolerance': 60},
+        'notification': {
+            'problem': {
+                'verbose_name': 'Max WiFi clients PROBLEM',
+                'verb': _('has more than'),
+                'level': 'warning',
+                'email_subject': _(
+                    '[{site.name}] PROBLEM: Max WiFi Clients exceeded on {notification.target}'
+                ),
+                'message': _(
+                    'The device [{notification.target}]({notification.target_link}) '
+                    '{notification.verb} {notification.actor.alertsettings.threshold} '
+                    'WiFi clients connected.'
+                ),
+            },
+            'recovery': {
+                'verbose_name': 'Max WiFi clients RECOVERY',
+                'verb': _('has returned to normal levels'),
+                'level': 'info',
+                'email_subject': _(
+                    '[{site.name}] RECOVERY: {notification.target} WiFi clients {notification.verb}'
+                ),
+                'message': (
+                    'The device [{notification.target}]({notification.target_link}) '
+                    'WiFi clients {notification.verb}.'
+                ),
+            },
+        },
+    },
+    'min_wifi_clients': {
+        'label': _('Min WiFi Clients'),
+        'name': '{name}',
+        'key': 'min_wifi_clients',
+        'field_name': 'clients',
+        'alert_settings': {'operator': '<', 'threshold': 0, 'tolerance': 240},
+        'notification': {
+            'problem': {
+                'verbose_name': 'Min WiFi clients PROBLEM',
+                'verb': _('has less than'),
+                'level': 'warning',
+                'email_subject': _(
+                    '[{site.name}] PROBLEM: {notification.target} {notification.verb} minimum WiFi clients'
+                ),
+                'message': _(
+                    'The device [{notification.target}]({notification.target_link}) '
+                    '{notification.verb} {notification.actor.alertsettings.threshold} '
+                    'WiFi clients connected.'
+                ),
+            },
+            'recovery': {
+                'verbose_name': 'Min WiFi clients RECOVERY',
+                'verb': _('has returned to normal levels'),
+                'level': 'info',
+                'email_subject': _(
+                    '[{site.name}] RECOVERY: {notification.target} minimum WiFi clients {notification.verb}'
+                ),
+                'message': (
+                    'The device [{notification.target}]({notification.target_link}) '
+                    'WiFi client {notification.verb}.'
+                ),
+            },
+        },
+    },
     'general_clients': {
         'label': _('General WiFi Clients'),
         'name': _('General WiFi Clients'),
