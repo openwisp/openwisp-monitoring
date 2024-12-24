@@ -89,7 +89,7 @@ def migrate_influxdb_data(
     configuration,
     new_measurement,
     read_query=READ_QUERY,
-    delete_query=DELETE_QUERY,
+    delete_query=None,
 ):
     Metric = load_model('monitoring', 'Metric')
     metric_qs = Metric.objects.filter(configuration=configuration, key=new_measurement)
@@ -151,39 +151,26 @@ def migrate_influxdb_data(
 
 def migrate_wifi_clients():
     read_query = f"{READ_QUERY} AND clients != ''"
-    # Lookup using fields not supported in WHERE clause during deletion.
-    # Hence, we cannot perform delete operation only for rows that
-    # contains clients.
-    delete_query = None
     migrate_influxdb_data(
         new_measurement='wifi_clients',
         configuration='clients',
         read_query=read_query,
-        delete_query=delete_query,
     )
     logger.info('"wifi_clients" measurements successfully migrated.')
 
 
 def migrate_traffic_data():
-    migrate_influxdb_data(
-        new_measurement='traffic',
-        configuration='traffic',
-        delete_query=f"{DELETE_QUERY} AND access_tech != ''",
-    )
+    migrate_influxdb_data(new_measurement='traffic', configuration='traffic')
     logger.info('"traffic" measurements successfully migrated.')
 
 
 def migrate_signal_strength_data():
-    migrate_influxdb_data(
-        new_measurement='signal', configuration='signal_strength', delete_query=None
-    )
+    migrate_influxdb_data(new_measurement='signal', configuration='signal_strength')
     logger.info('"signal_strength" measurements successfully migrated.')
 
 
 def migrate_signal_quality_data():
-    migrate_influxdb_data(
-        new_measurement='signal', configuration='signal_quality', delete_query=None
-    )
+    migrate_influxdb_data(new_measurement='signal', configuration='signal_quality')
     logger.info('"signal_quality" measurements successfully migrated.')
 
 
@@ -191,6 +178,7 @@ def migrate_access_tech_data():
     migrate_influxdb_data(
         new_measurement='signal',
         configuration='access_tech',
+        delete_query=DELETE_QUERY,
     )
     logger.info('"access_tech" measurements successfully migrated.')
 
@@ -215,6 +203,9 @@ def migrate_influxdb_structure():
             'Timeseries data migration is already migrated. Skipping migration!'
         )
         return
+    # IMPORTANT: Do not change order of below functions.
+    # Lookup using fields not supported in WHERE clause during deletion.
+    # "migrate_access_tech_data" at the end because it is deletes the metrics.
     migrate_wifi_clients()
     migrate_traffic_data()
     migrate_signal_strength_data()
