@@ -148,15 +148,33 @@ class DatabaseClient(object):
             database=database,
         )
 
-    def _write(self, points, database, retention_policy):
+    def store(self, points, database, retention_policy):
+        """
+        Store data points in the specified database.
+
+        This method writes data points to the specified database. If the size of the data exceeds
+        the limit of a UDP packet, it falls back to using a TCP connection for writing data.
+
+        Args:
+            points (list): The data points to be stored.
+            database (str): The name of the database where the data points will be stored.
+            retention_policy (str): The retention policy to be used for storing the data points.
+
+        Returns:
+            bool: True if the data points were successfully written, False otherwise.
+
+        Raises:
+            TimeseriesWriteException: If there is an error while writing the data points.
+        """
         db = self.dbs['short'] if retention_policy else self.dbs['default']
         # If the size of data exceeds the limit of the UDP packet, then
         # fallback to use TCP connection for writing data.
         lines = make_lines({'points': points})
         if sys.getsizeof(lines) > 65000:
+            # Size exceeds UDP limit, write using TCP.
             db = self.dbs['__all__']
         try:
-            db.write_points(
+            return db.write_points(
                 points=lines.split('\n')[:-1],
                 database=database,
                 retention_policy=retention_policy,
@@ -185,7 +203,7 @@ class DatabaseClient(object):
             'fields': values,
             'time': timestamp,
         }
-        self._write(
+        self.store(
             points=[point],
             database=kwargs.get('database') or self.db_name,
             retention_policy=kwargs.get('retention_policy'),
@@ -211,7 +229,7 @@ class DatabaseClient(object):
             )
         for database in data_points.keys():
             for rp in data_points[database].keys():
-                self._write(
+                self.store(
                     points=data_points[database][rp],
                     database=database,
                     retention_policy=rp,

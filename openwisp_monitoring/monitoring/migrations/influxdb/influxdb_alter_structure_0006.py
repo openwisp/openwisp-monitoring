@@ -114,10 +114,10 @@ def migrate_influxdb_data(
             start = offset
             end = offset + min(write_data_count, SELECT_QUERY_LIMIT)
             response = retry_until_success(
-                timeseries_db.db.write_points,
+                timeseries_db.store,
                 write_data,
-                tags=metric.tags,
-                batch_size=WRITE_BATCH_SIZE,
+                timeseries_db.db_name,
+                retention_policy=None,
             )
             if response is True:
                 logger.info(
