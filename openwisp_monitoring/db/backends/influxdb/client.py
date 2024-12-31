@@ -148,9 +148,9 @@ class DatabaseClient(object):
             database=database,
         )
 
-    def store(self, points, database, retention_policy):
+    def _write(self, points, database, retention_policy):
         """
-        Store data points in the specified database.
+        Write data points in the specified database.
 
         This method writes data points to the specified database. If the size of the data exceeds
         the limit of a UDP packet, it falls back to using a TCP connection for writing data.
@@ -203,7 +203,7 @@ class DatabaseClient(object):
             'fields': values,
             'time': timestamp,
         }
-        self.store(
+        self._write(
             points=[point],
             database=kwargs.get('database') or self.db_name,
             retention_policy=kwargs.get('retention_policy'),
@@ -229,7 +229,7 @@ class DatabaseClient(object):
             )
         for database in data_points.keys():
             for rp in data_points[database].keys():
-                self.store(
+                self._write(
                     points=data_points[database][rp],
                     database=database,
                     retention_policy=rp,
