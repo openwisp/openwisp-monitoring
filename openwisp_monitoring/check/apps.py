@@ -40,3 +40,12 @@ class CheckConfig(AppConfig):
                 sender=load_model('config', 'Device'),
                 dispatch_uid='auto_iperf3_check',
             )
+
+        if app_settings.AUTO_WIFI_CLIENT_CHECK:
+            from .base.models import auto_wifi_client_check_receiver
+
+            post_save.connect(
+                auto_wifi_client_check_receiver,
+                sender=load_model('config', 'Device'),
+                dispatch_uid='auto_wifi_clients_check',
+            )
