@@ -8,7 +8,7 @@ from .base import BaseCheck
 AlertSettings = load_model('monitoring', 'AlertSettings')
 
 
-class WifiClient(BaseCheck):
+class WifiClients(BaseCheck):
     def check(self, store=True):
         values = timeseries_db.read(
             key='wifi_clients',
@@ -21,7 +21,7 @@ class WifiClient(BaseCheck):
                 (
                     timezone.localtime()
                     - timezone.timedelta(
-                        minutes=app_settings.WIFI_CLIENT_CHECK_INTERVAL
+                        minutes=app_settings.WIFI_CLIENTS_CHECK_INTERVAL
                     )
                 ).timestamp()
             ),
@@ -35,9 +35,9 @@ class WifiClient(BaseCheck):
         return result
 
     def store_result(self, result):
-        max_metric = self._get_metric('max_wifi_clients')
+        max_metric = self._get_metric('wifi_clients_max')
         max_metric.write(result)
-        min_metric = self._get_metric('min_wifi_clients')
+        min_metric = self._get_metric('wifi_clients_min')
         min_metric.write(result)
 
     def _get_metric(self, configuration):

@@ -297,59 +297,59 @@ check when running on multiple servers. Make sure it is always greater
 than the total iperf3 check time, i.e. greater than the TCP + UDP test
 time. By default, it is set to **600 seconds (10 mins)**.
 
-.. _openwisp_monitoring_auto_wifi_client_check:
+.. _openwisp_monitoring_auto_wifi_clients_check:
 
-``OPENWISP_MONITORING_AUTO_WIFI_CLIENT_CHECK``
-----------------------------------------------
+``OPENWISP_MONITORING_AUTO_WIFI_CLIENTS_CHECK``
+-----------------------------------------------
 
 ============ =========
 **type**:    ``bool``
 **default**: ``False``
 ============ =========
 
-This setting allows you to choose whether :ref:`WiFi Client
-<wifi_client_check>` checks should be created automatically for newly
+This setting allows you to choose whether :ref:`WiFi Clients
+<wifi_clients_check>` checks should be created automatically for newly
 registered devices. It's disabled by default.
 
-.. _openwisp_monitoring_wifi_client_check_snooze_schedule:
+.. _openwisp_monitoring_wifi_clients_check_snooze_schedule:
 
-``OPENWISP_MONITORING_WIFI_CLIENT_CHECK_SNOOZE_SCHEDULE``
----------------------------------------------------------
+``OPENWISP_MONITORING_WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE``
+----------------------------------------------------------
 
 ============ ========
 **type**:    ``list``
 **default**: ``[]``
 ============ ========
 
-This setting allows you to configure date ranges when the WiFi Client
-check should not be executed. The date ranges should be in the format
-``(start_date, end_date)`` where both dates are in the format ``MM-DD``.
-Both start date and end date are inclusive.
+This setting allows you to configure date ranges when the :ref:`WiFi
+Clients <wifi_clients_check>` check should not be executed. The date
+ranges should be in the format ``(start_date, end_date)`` where both dates
+are in the format ``MM-DD``. Both start date and end date are inclusive.
 
 E.g.:
 
 .. code-block:: python
 
-    OPENWISP_MONITORING_WIFI_CLIENT_CHECK_SNOOZE_SCHEDULE = [
+    OPENWISP_MONITORING_WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE = [
         # Date ranges can expand over months
         ("12-24", "01-05"),
         # Date ranges can be single day
         ("01-26", "01-26"),
     ]
 
-.. _openwisp_monitoring_wifi_client_check_interval:
+.. _openwisp_monitoring_wifi_clients_check_interval:
 
-``OPENWISP_MONITORING_WIFI_CLIENT_CHECK_INTERVAL``
---------------------------------------------------
+``OPENWISP_MONITORING_WIFI_CLIENTS_CHECK_INTERVAL``
+---------------------------------------------------
 
 ============ =======
 **type**:    ``int``
 **default**: ``5``
 ============ =======
 
-This setting allows you to configure the WiFi Client check interval used
-by :ref:`WiFi Client checks <wifi_client_check>`. By default it is set to
-5 minutes.
+This setting allows you to configure the WiFi Clients check interval used
+by :ref:`WiFi Clients checks <wifi_clients_check>`. By default it is set
+to 5 minutes.
 
 .. _openwisp_monitoring_auto_charts:
 

@@ -9,12 +9,12 @@ from swapper import load_model
 
 from ...device.tests import TestDeviceMonitoringMixin
 from .. import settings as app_settings
-from ..classes import ConfigApplied, Iperf3, Ping, WifiClient
+from ..classes import ConfigApplied, Iperf3, Ping, WifiClients
 from ..tasks import (
     auto_create_config_check,
     auto_create_iperf3_check,
     auto_create_ping,
-    auto_create_wifi_client_check,
+    auto_create_wifi_clients_check,
 )
 from . import AutoWifiClientCheck
 
@@ -29,7 +29,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
     _PING = app_settings.CHECK_CLASSES[0][0]
     _CONFIG_APPLIED = app_settings.CHECK_CLASSES[1][0]
     _IPERF3 = app_settings.CHECK_CLASSES[2][0]
-    _WIFI_CLIENT = app_settings.CHECK_CLASSES[3][0]
+    _WIFI_CLIENTS = app_settings.CHECK_CLASSES[3][0]
 
     def test_check_str(self):
         c = Check(name='Test check')
@@ -64,10 +64,10 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
             self.assertEqual(c.check_class, Iperf3)
         with self.subTest('Test WiFi Client check Class'):
             c = Check(
-                name='WiFi Client class check',
-                check_type=self._WIFI_CLIENT,
+                name='WiFi Clients class check',
+                check_type=self._WIFI_CLIENTS,
             )
-            self.assertEqual(c.check_class, WifiClient)
+            self.assertEqual(c.check_class, WifiClients)
 
     def test_base_check_class(self):
         path = 'openwisp_monitoring.check.classes.base.BaseCheck'
@@ -116,13 +116,13 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
 
         with self.subTest('Test WiFi Client check instance'):
             c = Check(
-                name='WiFi Client class check',
-                check_type=self._WIFI_CLIENT,
+                name='WiFi Clients class check',
+                check_type=self._WIFI_CLIENTS,
                 content_object=obj,
                 params={},
             )
             i = c.check_instance
-            self.assertIsInstance(i, WifiClient)
+            self.assertIsInstance(i, WifiClients)
             self.assertEqual(i.related_object, obj)
             self.assertEqual(i.params, c.params)
 
@@ -162,10 +162,10 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
             c3 = Check.objects.filter(check_type=self._IPERF3).first()
             self.assertEqual(c3.content_object, d)
             self.assertEqual(self._IPERF3, c3.check_type)
-        with self.subTest('Test AUTO_WIFI_CLIENT_CHECK'):
-            c1 = Check.objects.filter(check_type=self._WIFI_CLIENT).first()
+        with self.subTest('Test AUTO_WIFI_CLIENTS_CHECK'):
+            c1 = Check.objects.filter(check_type=self._WIFI_CLIENTS).first()
             self.assertEqual(c1.content_object, d)
-            self.assertEqual(self._WIFI_CLIENT, c1.check_type)
+            self.assertEqual(self._WIFI_CLIENTS, c1.check_type)
 
     def test_device_deleted(self):
         self.assertEqual(Check.objects.count(), 0)
@@ -285,7 +285,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
             app_label=Device._meta.app_label,
             object_id=str(d.pk),
         )
-        auto_create_wifi_client_check.delay(
+        auto_create_wifi_clients_check.delay(
             model=Device.__name__.lower(),
             app_label=Device._meta.app_label,
             object_id=str(d.pk),

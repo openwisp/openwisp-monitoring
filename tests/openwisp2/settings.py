@@ -190,8 +190,8 @@ CELERY_BEAT_SCHEDULE = {
         ),
         'relative': True,
     },
-    'run_wifi_client_checks': {
-        'task': 'openwisp_monitoring.check.tasks.run_wifi_client_checks',
+    'run_wifi_clients_checks': {
+        'task': 'openwisp_monitoring.check.tasks.run_wifi_clients_checks',
         'schedule': timedelta(minutes=5),
         'relative': True,
     },
@@ -227,8 +227,6 @@ if TESTING:
     OPENWISP_MONITORING_API_BASEURL = 'http://testserver'
     # for testing AUTO_IPERF3
     OPENWISP_MONITORING_AUTO_IPERF3 = True
-    # for testing AUTO_WIFI_CLIENT_CHECK
-    # OPENWISP_MONITORING_AUTO_WIFI_CLIENT_CHECK = True
 
 # Temporarily added to identify slow tests
 TEST_RUNNER = 'openwisp_utils.tests.TimeLoggingTestRunner'

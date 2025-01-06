@@ -283,12 +283,12 @@ DEFAULT_METRICS = {
             }
         },
     },
-    'max_wifi_clients': {
-        'label': _('Max WiFi Clients'),
+    'wifi_clients_max': {
+        'label': _('WiFi Clients (Maximum)'),
         'name': '{name}',
-        'key': 'max_wifi_clients',
+        'key': 'wifi_clients_max',
         'field_name': 'clients',
-        'alert_settings': {'operator': '>', 'threshold': 40, 'tolerance': 60},
+        'alert_settings': {'operator': '>', 'threshold': 50, 'tolerance': 120},
         'notification': {
             'problem': {
                 'verbose_name': 'Max WiFi clients PROBLEM',
@@ -317,12 +317,12 @@ DEFAULT_METRICS = {
             },
         },
     },
-    'min_wifi_clients': {
-        'label': _('Min WiFi Clients'),
+    'wifi_clients_min': {
+        'label': _('WiFi Clients (Minimum)'),
         'name': '{name}',
-        'key': 'min_wifi_clients',
+        'key': 'wifi_clients_min',
         'field_name': 'clients',
-        'alert_settings': {'operator': '<', 'threshold': 0, 'tolerance': 240},
+        'alert_settings': {'operator': '<', 'threshold': 1, 'tolerance': 1440},
         'notification': {
             'problem': {
                 'verbose_name': 'Min WiFi clients PROBLEM',

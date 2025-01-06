@@ -1,7 +1,7 @@
 from django.db.models.signals import post_save
 from swapper import load_model
 
-from ..base.models import auto_wifi_client_check_receiver
+from ..base.models import auto_wifi_clients_check_receiver
 
 Device = load_model('config', 'Device')
 
@@ -24,7 +24,7 @@ class AutoWifiClientCheck(object):
     def setUpClass(cls):
         super().setUpClass()
         post_save.connect(
-            auto_wifi_client_check_receiver,
+            auto_wifi_clients_check_receiver,
             sender=Device,
             dispatch_uid='auto_wifi_clients_check',
         )
@@ -33,7 +33,7 @@ class AutoWifiClientCheck(object):
     def tearDownClass(cls):
         super().tearDownClass()
         post_save.disconnect(
-            auto_wifi_client_check_receiver,
+            auto_wifi_clients_check_receiver,
             sender=Device,
             dispatch_uid='auto_wifi_clients_check',
         )

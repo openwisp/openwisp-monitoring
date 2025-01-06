@@ -10,7 +10,7 @@ from swapper import load_model
 
 from openwisp_utils.tasks import OpenwispCeleryTask
 
-from .settings import CHECKS_LIST, WIFI_CLIENT_CHECK_SNOOZE_SCHEDULE
+from .settings import CHECKS_LIST, WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE
 
 logger = logging.getLogger(__name__)
 
@@ -54,12 +54,12 @@ def run_checks(checks=None):
 
 
 @shared_task(time_limit=2 * 60 * 60)
-def run_wifi_client_checks():
-    if WIFI_CLIENT_CHECK_SNOOZE_SCHEDULE:
+def run_wifi_clients_checks():
+    if WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE:
         today = timezone.localdate()
         # Format as MM-DD
         today_month_day = today.strftime("%m-%d")
-        for start_date, end_date in WIFI_CLIENT_CHECK_SNOOZE_SCHEDULE:
+        for start_date, end_date in WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE:
             # Check if the date range wraps around the new year
             if start_date <= end_date:
                 # Normal range within the same year
@@ -70,7 +70,7 @@ def run_wifi_client_checks():
                 if today_month_day >= start_date or today_month_day <= end_date:
                     return
 
-    run_checks(checks=['openwisp_monitoring.check.classes.WifiClient'])
+    run_checks(checks=['openwisp_monitoring.check.classes.WifiClients'])
 
 
 @shared_task(time_limit=30 * 60)
@@ -174,16 +174,16 @@ def auto_create_iperf3_check(
 
 
 @shared_task(base=OpenwispCeleryTask)
-def auto_create_wifi_client_check(
+def auto_create_wifi_clients_check(
     model, app_label, object_id, check_model=None, content_type_model=None
 ):
     """Implements the auto creation of the wifi_clients check.
 
     Called by the
-    openwisp_monitoring.check.models.auto_wifi_client_check_receiver.
+    openwisp_monitoring.check.models.auto_wifi_clients_check_receiver.
     """
     Check = check_model or get_check_model()
-    check_path = 'openwisp_monitoring.check.classes.WifiClient'
+    check_path = 'openwisp_monitoring.check.classes.WifiClients'
     has_check = Check.objects.filter(
         object_id=object_id, content_type__model='device', check_type=check_path
     ).exists()
@@ -193,7 +193,7 @@ def auto_create_wifi_client_check(
     content_type_model = content_type_model or ContentType
     ct = content_type_model.objects.get_by_natural_key(app_label=app_label, model=model)
     check = Check(
-        name='Wifi Client',
+        name='WiFi Clients',
         check_type=check_path,
         content_type=ct,
         object_id=object_id,
