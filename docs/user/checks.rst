@@ -93,11 +93,11 @@ and configure the task scheduling in your Django project:
     OPENWISP_MONITORING_AUTO_WIFI_CLIENTS_CHECK = True
     CELERY_BEAT_SCHEDULE.update(
         {
-            "run_wifi_clients_checks": {
-                "task": "openwisp_monitoring.check.tasks.run_wifi_clients_checks",
+            'run_wifi_clients_checks': {
+                'task': 'openwisp_monitoring.check.tasks.run_wifi_clients_checks',
                 # Run check every 5 minutes
-                "schedule": timedelta(minutes=5),
-                "relative": True,
+                'schedule': timedelta(minutes=5),
+                'relative': True,
             },
         }
     )

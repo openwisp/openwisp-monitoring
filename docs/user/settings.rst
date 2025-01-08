@@ -332,9 +332,9 @@ E.g.:
 
     OPENWISP_MONITORING_WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE = [
         # Date ranges can expand over months
-        ("12-24", "01-05"),
+        ('12-24', '01-05'),
         # Date ranges can be single day
-        ("01-26", "01-26"),
+        ('01-26', '01-26'),
     ]
 
 .. _openwisp_monitoring_wifi_clients_check_interval:
