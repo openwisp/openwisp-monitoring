@@ -17,13 +17,13 @@ class WifiClients(BaseCheck):
                 'content_type': self.related_object._meta.label_lower,
                 'object_id': str(self.related_object.pk),
             },
-            since=int(
+            since="'{}'".format(
                 (
                     timezone.localtime()
                     - timezone.timedelta(
                         minutes=app_settings.WIFI_CLIENTS_CHECK_INTERVAL
                     )
-                ).timestamp()
+                ).isoformat()
             ),
         )
         if not values:
