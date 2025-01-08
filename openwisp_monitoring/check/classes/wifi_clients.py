@@ -12,18 +12,16 @@ class WifiClients(BaseCheck):
     def check(self, store=True):
         values = timeseries_db.read(
             key='wifi_clients',
-            fields='COUNT(DISTINCT(clients))',
+            fields=['clients'],
+            distinct_fields=['clients'],
+            count_fields=['clients'],
             tags={
                 'content_type': self.related_object._meta.label_lower,
                 'object_id': str(self.related_object.pk),
             },
-            since="'{}'".format(
-                (
-                    timezone.localtime()
-                    - timezone.timedelta(
-                        minutes=app_settings.WIFI_CLIENTS_CHECK_INTERVAL
-                    )
-                ).isoformat()
+            since=(
+                timezone.localtime()
+                - timezone.timedelta(minutes=app_settings.WIFI_CLIENTS_CHECK_INTERVAL)
             ),
         )
         if not values:
