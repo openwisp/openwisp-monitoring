@@ -322,7 +322,7 @@ DEFAULT_METRICS = {
         'name': '{name}',
         'key': 'wifi_clients_min',
         'field_name': 'clients',
-        'alert_settings': {'operator': '<', 'threshold': 1, 'tolerance': 1440},
+        'alert_settings': {'operator': '<', 'threshold': 1, 'tolerance': 4320},
         'notification': {
             'problem': {
                 'verbose_name': 'Min WiFi clients PROBLEM',
