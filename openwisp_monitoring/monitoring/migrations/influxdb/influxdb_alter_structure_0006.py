@@ -12,12 +12,12 @@ from openwisp_monitoring.db.exceptions import TimeseriesWriteException
 SELECT_QUERY_LIMIT = 1000
 WRITE_BATCH_SIZE = 1000
 READ_QUERY = (
-    "SELECT {fields} FROM {measurement}"
+    "SELECT {fields} FROM \"{measurement}\""
     " WHERE content_type='{content_type_key}'"
     " AND object_id='{object_id}'"
 )
 DELETE_QUERY = (
-    "DROP SERIES FROM {old_measurement}"
+    "DROP SERIES FROM \"{old_measurement}\""
     " WHERE content_type='{content_type_key}'"
     " AND object_id='{object_id}'"
 )
