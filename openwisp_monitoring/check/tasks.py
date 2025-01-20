@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime
 
 from celery import shared_task
 from django.conf import settings
@@ -55,20 +56,61 @@ def run_checks(checks=None):
 
 @shared_task(time_limit=2 * 60 * 60)
 def run_wifi_clients_checks():
-    if WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE:
-        today = timezone.localdate()
-        # Format as MM-DD
-        today_month_day = today.strftime("%m-%d")
-        for start_date, end_date in WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE:
-            # Check if the date range wraps around the new year
-            if start_date <= end_date:
-                # Normal range within the same year
-                if start_date <= today_month_day <= end_date:
-                    return
+    DATE_FORMAT = '%m-%d'
+    TIME_FORMAT = '%H:%M'
+
+    def get_start_end_datetime(start, end):
+        # Ensure time is included
+        start = f"{start} 00:00" if ":" not in start else start
+        end = f"{end} 23:59" if ":" not in end else end
+
+        # Add date if missing
+        if "-" not in start:
+            start = f"{today.strftime(DATE_FORMAT)} {start}"
+        if "-" not in end:
+            end = f"{today.strftime(DATE_FORMAT)} {end}"
+
+        # Split into date and time
+        start_date, start_time = start.split()
+        end_date, end_time = end.split()
+
+        # Initialize years
+        start_year, end_year = today.year, today.year
+
+        # Adjust for time wrap-around (e.g., 23:00 to 02:00)
+        if start_time > end_time:
+            if today.strftime(TIME_FORMAT) >= start_time:
+                end_date = (today + timezone.timedelta(days=1)).strftime(DATE_FORMAT)
             else:
-                # Wrap-around range spanning across years
-                if today_month_day >= start_date or today_month_day <= end_date:
-                    return
+                start_date = (today - timezone.timedelta(days=1)).strftime(DATE_FORMAT)
+
+        # Adjust for date wrap-around (e.g., Dec 30 to Jan 01)
+        if start_date > end_date:
+            if today.strftime(DATE_FORMAT) >= start_date:
+                end_year += 1
+            else:
+                start_year -= 1
+
+        # Construct datetime objects
+        start_dt = timezone.make_aware(
+            datetime.strptime(
+                f'{start_year}-{start_date} {start_time}', '%Y-%m-%d %H:%M'
+            )
+        )
+        end_dt = timezone.make_aware(
+            datetime.strptime(f'{end_year}-{end_date} {end_time}', '%Y-%m-%d %H:%M')
+        )
+
+        return start_dt, end_dt
+
+    if WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE:
+        today = timezone.localtime()
+        for start_datetime, end_datetime in WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE:
+            start_datetime, end_datetime = get_start_end_datetime(
+                start_datetime, end_datetime
+            )
+            if start_datetime <= today <= end_datetime:
+                return
 
     run_checks(checks=['openwisp_monitoring.check.classes.WifiClients'])
 

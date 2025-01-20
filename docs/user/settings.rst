@@ -321,21 +321,36 @@ registered devices. It's disabled by default.
 **default**: ``[]``
 ============ ========
 
-This setting allows you to configure date ranges when the :ref:`WiFi
-Clients <wifi_clients_check>` check should not be executed. The date
-ranges should be in the format ``(start_date, end_date)`` where both dates
-are in the format ``MM-DD``. Both start date and end date are inclusive.
+This setting allows you to configure date-time ranges when the :ref:`WiFi
+Clients <wifi_clients_check>` check should not be executed. The date-time
+ranges should be in the format ``(start_datetime, end_datetime)`` where
+both date-time are in the format ``MM-DD HH:MM`` (24 hours). Both start
+date and end date are inclusive. You can omit the date or time part as
+needed.
 
 E.g.:
 
 .. code-block:: python
 
     OPENWISP_MONITORING_WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE = [
-        # Date ranges can expand over months
+        # Date ranges spanning across months
         ("12-24", "01-05"),
-        # Date ranges can be single day
+        # Single-day exclusion
         ("01-26", "01-26"),
+        # Daily exclusion between specific times
+        ("22:00", "06:00"),
+        # Specific date and time range exclusion
+        ("08-15 12:00", "08-15 14:00"),
     ]
+
+.. note::
+
+    **Date or Time Omission**:
+
+        - If you omit the date, the time range will be considered for
+          **every day**.
+        - If you omit the time, the exclusion will apply to the **entire
+          day**.
 
 .. _openwisp_monitoring_wifi_clients_check_interval:
 
