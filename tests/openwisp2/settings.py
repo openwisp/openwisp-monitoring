@@ -190,11 +190,6 @@ CELERY_BEAT_SCHEDULE = {
         ),
         'relative': True,
     },
-    'run_wifi_clients_checks': {
-        'task': 'openwisp_monitoring.check.tasks.run_wifi_clients_checks',
-        'schedule': timedelta(minutes=5),
-        'relative': True,
-    },
     'run_iperf3_checks': {
         'task': 'openwisp_monitoring.check.tasks.run_checks',
         # https://docs.celeryq.dev/en/latest/userguide/periodic-tasks.html#crontab-schedules

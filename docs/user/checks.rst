@@ -91,16 +91,6 @@ and configure the task scheduling in your Django project:
     from datetime import timedelta
 
     OPENWISP_MONITORING_AUTO_WIFI_CLIENTS_CHECK = True
-    CELERY_BEAT_SCHEDULE.update(
-        {
-            "run_wifi_clients_checks": {
-                "task": "openwisp_monitoring.check.tasks.run_wifi_clients_checks",
-                # Run check every 5 minutes
-                "schedule": timedelta(minutes=5),
-                "relative": True,
-            },
-        }
-    )
 
 You can also :doc:`add the WiFi Clients check
 <device-checks-and-alert-settings>` directly from the device page.

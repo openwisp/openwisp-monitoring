@@ -1,8 +1,17 @@
+from datetime import datetime
+from unittest.mock import patch
+
+from django.contrib.contenttypes.models import ContentType
 from django.test import TransactionTestCase
+from django.utils import timezone
+from freezegun import freeze_time
 from swapper import load_model
 
 from ...device.tests import TestDeviceMonitoringMixin
 from .. import settings
+from .. import settings as app_settings
+from .. import tasks
+from ..classes import WifiClients
 from . import AutoWifiClientCheck
 
 Chart = load_model('monitoring', 'Chart')
@@ -18,6 +27,9 @@ class TestWifiClient(
     TransactionTestCase,
 ):
     _WIFI_CLIENTS = settings.CHECK_CLASSES[3][0]
+
+    def _run_wifi_clients_checks(self):
+        tasks.run_checks(checks=[self._WIFI_CLIENTS])
 
     def test_store_result(self):
         def _assert_wifi_clients_metric(key):
@@ -68,3 +80,82 @@ class TestWifiClient(
         points = self._read_metric(wifi_clients_min, limit=None)
         self.assertEqual(len(points), 1)
         self.assertEqual(points[0]['clients'], 0)
+
+    @patch.object(
+        app_settings,
+        'WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE',
+        [],
+    )
+    @patch.object(WifiClients, 'check')
+    def test_wifi_clients_check_snooze_schedule_empty(self, mocked_check, *args):
+        self._create_device()
+        self._run_wifi_clients_checks()
+        mocked_check.assert_called()
+
+    @patch.object(
+        app_settings,
+        'WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE',
+        [
+            ('01-26', '01-26'),
+            ('06-15', '08-31'),
+            ('12-25', '01-10'),
+            ('22:00', '06:00'),
+            ('12-13 18:00', '12-13 19:00'),
+        ],
+    )
+    @patch.object(WifiClients, 'check')
+    def test_wifi_clients_check_snooze_schedule(self, mocked_check, *args):
+        Check.objects.create(
+            name='WiFi Clients',
+            check_type=self._WIFI_CLIENTS,
+            content_type=ContentType.objects.get_for_model(Device),
+            object_id='e82e7924-ca3d-4f77-97ab-62bc1de2b919',
+        )
+        tz = timezone.get_current_timezone()
+        with freeze_time(datetime(2025, 1, 26, tzinfo=tz)):
+            self._run_wifi_clients_checks()
+            mocked_check.assert_not_called()
+
+        with freeze_time(datetime(2025, 6, 15, 8, tzinfo=tz)):
+            self._run_wifi_clients_checks()
+            mocked_check.assert_not_called()
+
+        with freeze_time(datetime(2025, 7, 10, 2, tzinfo=tz)):
+            self._run_wifi_clients_checks()
+            mocked_check.assert_not_called()
+
+        with freeze_time(datetime(2025, 8, 31, tzinfo=tz)):
+            self._run_wifi_clients_checks()
+            mocked_check.assert_not_called()
+
+        with freeze_time(datetime(2024, 12, 30, tzinfo=tz)):
+            self._run_wifi_clients_checks()
+            mocked_check.assert_not_called()
+
+        with freeze_time(datetime(2024, 12, 30, 18, tzinfo=tz)):
+            self._run_wifi_clients_checks()
+            mocked_check.assert_not_called()
+
+        with freeze_time(datetime(2025, 1, 3, tzinfo=tz)):
+            self._run_wifi_clients_checks()
+            mocked_check.assert_not_called()
+
+        with freeze_time(datetime(2024, 12, 12, 22, 0, tzinfo=tz)):
+            self._run_wifi_clients_checks()
+            mocked_check.assert_not_called()
+
+        with freeze_time(datetime(2024, 12, 12, 0, 0, tzinfo=tz)):
+            self._run_wifi_clients_checks()
+            mocked_check.assert_not_called()
+
+        with freeze_time(datetime(2024, 12, 12, 5, 0, tzinfo=tz)):
+            self._run_wifi_clients_checks()
+            mocked_check.assert_not_called()
+
+        with freeze_time(datetime(2024, 12, 13, 18, 30, tzinfo=tz)):
+            self._run_wifi_clients_checks()
+            mocked_check.assert_not_called()
+
+        with freeze_time(datetime(2024, 12, 14, 18, tzinfo=tz)):
+            self._run_wifi_clients_checks()
+            mocked_check.assert_called()
