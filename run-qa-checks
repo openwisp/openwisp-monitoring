@@ -1,17 +1,13 @@
 #!/bin/bash
 set -e
 
-jshint openwisp_monitoring/device/static/monitoring/js/*.js
-jshint openwisp_monitoring/monitoring/static/monitoring/js/*.js
-stylelint openwisp_monitoring/device/static/monitoring/css/*.css
-stylelint openwisp_monitoring/monitoring/static/monitoring/css/*.css
-
-
 openwisp-qa-check \
   --migration-path "./openwisp_monitoring/check/migrations \
                     ./openwisp_monitoring/device/migrations \
                     ./openwisp_monitoring/monitoring/migrations" \
-  --migration-module "check device_monitoring monitoring"
+  --migration-module "check device_monitoring monitoring" \
+  --csslinter \
+  --jslinter
 
 echo ''
 echo 'Running checks for SAMPLE_APP'
