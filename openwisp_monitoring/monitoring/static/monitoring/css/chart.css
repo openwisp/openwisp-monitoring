@@ -22,7 +22,7 @@
   top: 0;
   height: 27px;
 }
-#ow-chart-utils>span {
+#ow-chart-utils > span {
   display: flex;
   justify-content: space-between;
   width: 100%;

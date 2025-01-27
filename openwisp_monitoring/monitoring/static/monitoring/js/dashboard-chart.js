@@ -1,7 +1,8 @@
-'use strict';
-django.jQuery(function ($) {
+"use strict";
+django.jQuery(
+  (function ($) {
     $(document).ready(function () {
-        triggerChartLoading();
+      triggerChartLoading();
     });
-}(django.jQuery));
-
+  })(django.jQuery),
+);
