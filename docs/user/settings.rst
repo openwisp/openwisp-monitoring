@@ -352,19 +352,37 @@ E.g.:
         - If you omit the time, the exclusion will apply to the **entire
           day**.
 
-.. _openwisp_monitoring_wifi_clients_check_interval:
+.. _openwisp_monitoring_wifi_clients_max_check_interval:
 
-``OPENWISP_MONITORING_WIFI_CLIENTS_CHECK_INTERVAL``
----------------------------------------------------
+``OPENWISP_MONITORING_WIFI_CLIENTS_MAX_CHECK_INTERVAL``
+-------------------------------------------------------
 
-============ =======
+============ ==================
 **type**:    ``int``
-**default**: ``5``
-============ =======
+**default**: ``5`` (in minutes)
+============ ==================
 
-This setting allows you to configure the WiFi Clients check interval used
-by :ref:`WiFi Clients checks <wifi_clients_check>`. By default it is set
-to 5 minutes.
+Time period in minutes used by :ref:`WiFi Clients checks
+<wifi_clients_check>` to monitor the maximum number of connected clients.
+
+This determines how far back the check looks when evaluating the maximum
+client threshold.
+
+.. _openwisp_monitoring_wifi_clients_min_check_interval:
+
+``OPENWISP_MONITORING_WIFI_CLIENTS_MIN_CHECK_INTERVAL``
+-------------------------------------------------------
+
+============ ============================
+**type**:    ``int``
+**default**: ``4320`` (3 days in minutes)
+============ ============================
+
+Time period in minutes used by :ref:`WiFi Clients checks
+<wifi_clients_check>` to monitor the minimum number of connected clients.
+
+This determines how far back the check looks when evaluating the minimum
+clients threshold.
 
 .. _openwisp_monitoring_auto_charts:
 

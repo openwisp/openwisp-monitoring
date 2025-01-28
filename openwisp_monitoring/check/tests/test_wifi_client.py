@@ -31,6 +31,12 @@ class TestWifiClient(
     def _run_wifi_clients_checks(self):
         tasks.run_checks(checks=[self._WIFI_CLIENTS])
 
+    def _create_device(self, monitoring_status='ok', *args, **kwargs):
+        device = super()._create_device(*args, **kwargs)
+        device.monitoring.status = monitoring_status
+        device.monitoring.save()
+        return device
+
     def test_store_result(self):
         def _assert_wifi_clients_metric(key):
             metric = metric_qs.get(key=key)
@@ -54,7 +60,7 @@ class TestWifiClient(
         self.assertEqual(alert_settings_qs.count(), 0)
         check = Check.objects.filter(check_type=self._WIFI_CLIENTS).first()
         result = check.perform_check()
-        self.assertEqual(result, 3)
+        self.assertEqual(result, {'wifi_clients_min': 3, 'wifi_clients_max': 3})
         self.assertEqual(metric_qs.count(), 2)
         self.assertEqual(alert_settings_qs.count(), 2)
 
@@ -67,7 +73,7 @@ class TestWifiClient(
         device = self._create_device()
         check = Check.objects.filter(check_type=self._WIFI_CLIENTS).first()
         result = check.perform_check()
-        self.assertEqual(result, 0)
+        self.assertEqual(result, {'wifi_clients_min': 0, 'wifi_clients_max': 0})
         wifi_clients_max = Metric.objects.filter(
             key='wifi_clients_max', object_id=device.id
         ).first()
@@ -80,6 +86,32 @@ class TestWifiClient(
         points = self._read_metric(wifi_clients_min, limit=None)
         self.assertEqual(len(points), 1)
         self.assertEqual(points[0]['clients'], 0)
+
+    @patch.object(WifiClients, '_check_wifi_clients_min')
+    @patch.object(WifiClients, '_check_wifi_clients_max')
+    def test_check_skipped_unknown_status(self, max_mocked, min_mocked):
+        self._create_device(monitoring_status='unknown')
+        check = Check.objects.filter(check_type=self._WIFI_CLIENTS).first()
+        result = check.perform_check()
+        self.assertEqual(result, None)
+        max_mocked.assert_not_called()
+        min_mocked.assert_not_called()
+
+    @patch.object(Metric, 'write')
+    def test_sending_alert(self, mocked_write):
+        device = self._create_device(monitoring_status='critical')
+        check = Check.objects.filter(check_type=self._WIFI_CLIENTS).first()
+
+        with self.subTest('Test skip alert when device is critical'):
+            for calls in mocked_write.call_args_list:
+                self.assertEqual(calls[1]['send_alert'], False)
+
+        with self.subTest('Test alert when device has PROBLEM status'):
+            device.monitoring.status = 'problem'
+            device.monitoring.save()
+            check.perform_check()
+            for calls in mocked_write.call_args_list:
+                self.assertEqual(calls[1]['send_alert'], True)
 
     @patch.object(
         app_settings,

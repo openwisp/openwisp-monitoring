@@ -24,8 +24,11 @@ AUTO_WIFI_CLIENTS_CHECK = get_settings_value('AUTO_WIFI_CLIENTS_CHECK', False)
 WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE = get_settings_value(
     'WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE', []
 )
-WIFI_CLIENTS_CHECK_INTERVAL = int(
-    get_settings_value('WIFI_CLIENTS_CHECK_INTERVAL', 5)
+WIFI_CLIENTS_MAX_CHECK_INTERVAL = int(
+    get_settings_value('WIFI_CLIENTS_MAX_CHECK_INTERVAL', 5)
+)  # in minutes
+WIFI_CLIENTS_MIN_CHECK_INTERVAL = int(
+    get_settings_value('WIFI_CLIENTS_MIN_CHECK_INTERVAL', 4320)
 )  # in minutes
 AUTO_IPERF3 = get_settings_value('AUTO_IPERF3', False)
 IPERF3_CHECK_CONFIG = get_settings_value('IPERF3_CHECK_CONFIG', {})
