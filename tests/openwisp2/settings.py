@@ -186,6 +186,7 @@ CELERY_BEAT_SCHEDULE = {
             [  # Checks path
                 'openwisp_monitoring.check.classes.Ping',
                 'openwisp_monitoring.check.classes.ConfigApplied',
+                'openwisp_monitoring.check.classes.WifiClients',
             ],
         ),
         'relative': True,
