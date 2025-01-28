@@ -118,6 +118,7 @@ class WifiClients(BaseCheck):
         # then do not run the check.
         if self.related_object.monitoring.status in [
             'unknown',
+            'critical',
         ]:
             return
         # If the device monitoring status is critical,
