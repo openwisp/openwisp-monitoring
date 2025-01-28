@@ -96,36 +96,33 @@ class WifiClients(BaseCheck):
             result = values[0]['count']
         return result
 
-    def _check_wifi_clients(self, check_type, interval, store=True, send_alert=True):
+    def _check_wifi_clients(self, check_type, interval, store=True):
         result = self._get_wifi_clients_count(interval)
         if store:
             metric = self._get_metric(f'wifi_clients_{check_type}')
-            metric.write(result, send_alert=send_alert)
+            metric.write(result)
         return result
 
-    def _check_wifi_clients_min(self, store=True, send_alert=True):
+    def _check_wifi_clients_min(self, store=True):
         return self._check_wifi_clients(
-            'min', app_settings.WIFI_CLIENTS_MIN_CHECK_INTERVAL, store, send_alert
+            'min', app_settings.WIFI_CLIENTS_MIN_CHECK_INTERVAL, store
         )
 
-    def _check_wifi_clients_max(self, store=True, send_alert=True):
+    def _check_wifi_clients_max(self, store=True):
         return self._check_wifi_clients(
-            'max', app_settings.WIFI_CLIENTS_MAX_CHECK_INTERVAL, store, send_alert
+            'max', app_settings.WIFI_CLIENTS_MAX_CHECK_INTERVAL, store
         )
 
     def check(self, store=True):
-        # If the device health status is unknown,
+        # If the device health status is unknown or critical,
         # then do not run the check.
         if self.related_object.monitoring.status in [
             'unknown',
             'critical',
         ]:
             return
-        # If the device monitoring status is critical,
-        # then don't send alerts.
-        send_alert = self.related_object.monitoring.status != 'critical'
-        min = self._check_wifi_clients_min(store, send_alert)
-        max = self._check_wifi_clients_max(store, send_alert)
+        min = self._check_wifi_clients_min(store)
+        max = self._check_wifi_clients_max(store)
         return {'wifi_clients_min': min, 'wifi_clients_max': max}
 
     def _get_metric(self, configuration):

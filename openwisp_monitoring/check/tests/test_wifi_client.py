@@ -90,28 +90,22 @@ class TestWifiClient(
     @patch.object(WifiClients, '_check_wifi_clients_min')
     @patch.object(WifiClients, '_check_wifi_clients_max')
     def test_check_skipped_unknown_status(self, max_mocked, min_mocked):
-        self._create_device(monitoring_status='unknown')
-        check = Check.objects.filter(check_type=self._WIFI_CLIENTS).first()
-        result = check.perform_check()
-        self.assertEqual(result, None)
-        max_mocked.assert_not_called()
-        min_mocked.assert_not_called()
-
-    @patch.object(Metric, 'write')
-    def test_sending_alert(self, mocked_write):
-        device = self._create_device(monitoring_status='critical')
+        device = self._create_device(monitoring_status='unknown')
         check = Check.objects.filter(check_type=self._WIFI_CLIENTS).first()
 
-        with self.subTest('Test skip alert when device is critical'):
-            for calls in mocked_write.call_args_list:
-                self.assertEqual(calls[1]['send_alert'], False)
+        with self.subTest('Test check skipped when device status is unknown'):
+            result = check.perform_check()
+            self.assertEqual(result, None)
+            max_mocked.assert_not_called()
+            min_mocked.assert_not_called()
 
-        with self.subTest('Test alert when device has PROBLEM status'):
-            device.monitoring.status = 'problem'
+        with self.subTest('Test check skipped when device status is critical'):
+            device.monitoring.status = 'critical'
             device.monitoring.save()
-            check.perform_check()
-            for calls in mocked_write.call_args_list:
-                self.assertEqual(calls[1]['send_alert'], True)
+            result = check.perform_check()
+            self.assertEqual(result, None)
+            max_mocked.assert_not_called()
+            min_mocked.assert_not_called()
 
     @patch.object(
         app_settings,
