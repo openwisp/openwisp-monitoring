@@ -365,8 +365,10 @@ E.g.:
 Time period in minutes used by :ref:`WiFi Clients checks
 <wifi_clients_check>` to monitor the maximum number of connected clients.
 
-This determines how far back the check looks when evaluating the maximum
-client threshold.
+It checks for clients that have connected at least once between the
+current time and the specified interval. For example, if the interval is
+set to *5 minutes*, OpenWISP will look for clients that connected within
+the last 5 minutes.
 
 .. _openwisp_monitoring_wifi_clients_min_check_interval:
 
@@ -381,8 +383,16 @@ client threshold.
 Time period in minutes used by :ref:`WiFi Clients checks
 <wifi_clients_check>` to monitor the minimum number of connected clients.
 
-This determines how far back the check looks when evaluating the minimum
-clients threshold.
+It checks for clients that have connected at least once between the
+current time and the specified interval. For example, if the interval is
+set to *4320 minutes (3 days)*, OpenWISP will look for clients that
+connected within the last 3 days.
+
+.. note::
+
+    The default value of this setting is intentionally set higher to avoid
+    false alerts that could occur when no devices are connected over
+    holidays (e.g., weekends).
 
 .. _openwisp_monitoring_auto_charts:
 
