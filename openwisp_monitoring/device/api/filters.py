@@ -19,7 +19,7 @@ class WifiSessionFilter(FilterDjangoByOrgManaged):
             'device': ['exact'],
             'device__group': ['exact'],
             'start_time': ['exact', 'gt', 'gte', 'lt', 'lte'],
-            'stop_time': ['exact', 'gt', 'gte', 'lt', 'lte'],
+            'stop_time': ['exact', 'gt', 'gte', 'lt', 'lte', 'isnull'],
         }
 
 
