@@ -145,7 +145,7 @@ class TestDeviceConnectionInlineAdmin(
             reverse(f'admin:{self.config_app_label}_device_delete', args=[device.id])
         )
         self.web_driver.find_element(
-            By.XPATH, '//*[@id="content"]/form/div/input[2]'
+            by=By.CSS_SELECTOR, value='#content form input[type="submit"]'
         ).click()
         self.assertEqual(Device.objects.count(), 0)
         self.assertEqual(DeviceConnection.objects.count(), 0)
