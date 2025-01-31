@@ -1,6 +1,20 @@
 Changelog
 =========
 
+Version 1.1.2 [2025-01-31]
+--------------------------
+
+Bugfixes
+~~~~~~~~
+
+- Fixed `WiFi Session list API endpoint by adding the missing "isnull"
+  filter. <https://github.com/openwisp/openwisp-monitoring/pull/632>`_
+- Fixed `"migrate_timeseries" command to handle writing data when using
+  UDP. <https://github.com/openwisp/openwisp-monitoring/issues/626>`_
+- Fixed `read and delete queries in the "migrate_timeseries" command,
+  which were failing if the measurement name started with an integer.
+  <https://github.com/openwisp/openwisp-monitoring/pull/628>`_
+
 Version 1.1.1 [2024-11-26]
 --------------------------
 
