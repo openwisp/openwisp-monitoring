@@ -3,6 +3,7 @@ from django.db.models.signals import post_save
 from django.utils.translation import gettext_lazy as _
 from swapper import load_model
 
+from openwisp_monitoring.check import checks  # noqa
 from openwisp_monitoring.check import settings as app_settings
 
 
@@ -39,4 +40,13 @@ class CheckConfig(AppConfig):
                 auto_iperf3_check_receiver,
                 sender=load_model('config', 'Device'),
                 dispatch_uid='auto_iperf3_check',
+            )
+
+        if app_settings.AUTO_WIFI_CLIENTS_CHECK:
+            from .base.models import auto_wifi_clients_check_receiver
+
+            post_save.connect(
+                auto_wifi_clients_check_receiver,
+                sender=load_model('config', 'Device'),
+                dispatch_uid='auto_wifi_clients_check',
             )

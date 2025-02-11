@@ -297,6 +297,103 @@ check when running on multiple servers. Make sure it is always greater
 than the total iperf3 check time, i.e. greater than the TCP + UDP test
 time. By default, it is set to **600 seconds (10 mins)**.
 
+.. _openwisp_monitoring_auto_wifi_clients_check:
+
+``OPENWISP_MONITORING_AUTO_WIFI_CLIENTS_CHECK``
+-----------------------------------------------
+
+============ =========
+**type**:    ``bool``
+**default**: ``False``
+============ =========
+
+This setting allows you to choose whether :ref:`WiFi Clients
+<wifi_clients_check>` checks should be created automatically for newly
+registered devices. It's disabled by default.
+
+.. _openwisp_monitoring_wifi_clients_check_snooze_schedule:
+
+``OPENWISP_MONITORING_WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE``
+----------------------------------------------------------
+
+============ ========
+**type**:    ``list``
+**default**: ``[]``
+============ ========
+
+This setting allows you to configure date-time ranges when the :ref:`WiFi
+Clients <wifi_clients_check>` check should not be executed. The date-time
+ranges should be in the format ``(start_datetime, end_datetime)`` where
+both date-time are in the format ``MM-DD HH:MM`` (24 hours). Both start
+date and end date are inclusive. You can omit the date or time part as
+needed.
+
+E.g.:
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE = [
+        # Date ranges spanning across months
+        ("12-24", "01-05"),
+        # Single-day exclusion
+        ("01-26", "01-26"),
+        # Daily exclusion between specific times
+        ("22:00", "06:00"),
+        # Specific date and time range exclusion
+        ("08-15 12:00", "08-15 14:00"),
+    ]
+
+.. note::
+
+    **Date or Time Omission**:
+
+        - If you omit the date, the time range will be considered for
+          **every day**.
+        - If you omit the time, the exclusion will apply to the **entire
+          day**.
+
+.. _openwisp_monitoring_wifi_clients_max_check_interval:
+
+``OPENWISP_MONITORING_WIFI_CLIENTS_MAX_CHECK_INTERVAL``
+-------------------------------------------------------
+
+============ ==================
+**type**:    ``int``
+**default**: ``5`` (in minutes)
+============ ==================
+
+Time period in minutes used by :ref:`WiFi Clients checks
+<wifi_clients_check>` to monitor the maximum number of connected clients.
+
+It checks for clients that have connected at least once between the
+current time and the specified interval. For example, if the interval is
+set to *5 minutes*, OpenWISP will look for clients that connected within
+the last 5 minutes.
+
+.. _openwisp_monitoring_wifi_clients_min_check_interval:
+
+``OPENWISP_MONITORING_WIFI_CLIENTS_MIN_CHECK_INTERVAL``
+-------------------------------------------------------
+
+============ ============================
+**type**:    ``int``
+**default**: ``4320`` (3 days in minutes)
+============ ============================
+
+Time period in minutes used by :ref:`WiFi Clients checks
+<wifi_clients_check>` to monitor the minimum number of connected clients.
+
+It checks for clients that have connected at least once between the
+current time and the specified interval. For example, if the interval is
+set to *4320 minutes (3 days)*, OpenWISP will look for clients that
+connected within the last 3 days.
+
+.. note::
+
+    The default value of this setting is intentionally set higher to avoid
+    false alerts that could occur when no devices are connected over
+    holidays (e.g., weekends).
+
 .. _openwisp_monitoring_auto_charts:
 
 ``OPENWISP_MONITORING_AUTO_CHARTS``

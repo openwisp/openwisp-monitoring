@@ -5,6 +5,7 @@ from celery import shared_task
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
+from django.utils.module_loading import import_string
 from swapper import load_model
 
 from openwisp_utils.tasks import OpenwispCeleryTask
@@ -41,9 +42,14 @@ def run_checks(checks=None):
             f'Check path {checks} should be in {CHECKS_LIST}'
         )  # pragma: no cover
 
+    runnable_checks = []
+    for check in checks:
+        if import_string(check).may_execute():
+            runnable_checks.append(check)
+
     iterator = (
         get_check_model()
-        .objects.filter(is_active=True, check_type__in=checks)
+        .objects.filter(is_active=True, check_type__in=runnable_checks)
         .only('id')
         .values('id')
         .iterator()
@@ -145,6 +151,35 @@ def auto_create_iperf3_check(
     check = Check(
         name='Iperf3',
         check_type=iperf3_check_path,
+        content_type=ct,
+        object_id=object_id,
+    )
+    check.full_clean()
+    check.save()
+
+
+@shared_task(base=OpenwispCeleryTask)
+def auto_create_wifi_clients_check(
+    model, app_label, object_id, check_model=None, content_type_model=None
+):
+    """Implements the auto creation of the wifi_clients check.
+
+    Called by the
+    openwisp_monitoring.check.models.auto_wifi_clients_check_receiver.
+    """
+    Check = check_model or get_check_model()
+    check_path = 'openwisp_monitoring.check.classes.WifiClients'
+    has_check = Check.objects.filter(
+        object_id=object_id, content_type__model='device', check_type=check_path
+    ).exists()
+    # create new check only if necessary
+    if has_check:
+        return
+    content_type_model = content_type_model or ContentType
+    ct = content_type_model.objects.get_by_natural_key(app_label=app_label, model=model)
+    check = Check(
+        name='WiFi Clients',
+        check_type=check_path,
         content_type=ct,
         object_id=object_id,
     )
