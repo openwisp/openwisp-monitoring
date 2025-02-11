@@ -122,345 +122,6 @@ This data is only used to assess the recent status of devices, keeping it
 for a long time would not add much benefit and would cost a lot more in
 terms of disk space.
 
-.. _openwisp_monitoring_auto_ping:
-
-``OPENWISP_MONITORING_AUTO_PING``
----------------------------------
-
-============ ========
-**type**:    ``bool``
-**default**: ``True``
-============ ========
-
-Whether ping checks are created automatically for devices.
-
-.. _openwisp_monitoring_ping_check_config:
-
-``OPENWISP_MONITORING_PING_CHECK_CONFIG``
------------------------------------------
-
-============ ========
-**type**:    ``dict``
-**default**: ``{}``
-============ ========
-
-This setting allows to override the default ping check configuration
-defined in
-``openwisp_monitoring.check.classes.ping.DEFAULT_PING_CHECK_CONFIG``.
-
-For example, if you want to change only the **timeout** of ``ping`` you
-can use:
-
-.. code-block:: python
-
-    OPENWISP_MONITORING_PING_CHECK_CONFIG = {
-        "timeout": {
-            "default": 1000,
-        },
-    }
-
-If you are overriding the default value for any parameter beyond the
-maximum or minimum value defined in
-``openwisp_monitoring.check.classes.ping.DEFAULT_PING_CHECK_CONFIG``, you
-will also need to override the ``maximum`` or ``minimum`` fields as
-following:
-
-.. code-block:: python
-
-    OPENWISP_MONITORING_PING_CHECK_CONFIG = {
-        "timeout": {
-            "default": 2000,
-            "minimum": 1500,
-            "maximum": 2500,
-        },
-    }
-
-.. note::
-
-    Above ``maximum`` and ``minimum`` values are only used for validating
-    custom parameters of a ``Check`` object.
-
-.. _openwisp_monitoring_auto_device_config_check:
-
-``OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK``
-------------------------------------------------
-
-============ ========
-**type**:    ``bool``
-**default**: ``True``
-============ ========
-
-This setting allows you to choose whether :ref:`config_applied
-<config_applied_check>` checks should be created automatically for newly
-registered devices. It's enabled by default.
-
-.. _openwisp_monitoring_config_check_interval:
-
-``OPENWISP_MONITORING_CONFIG_CHECK_INTERVAL``
----------------------------------------------
-
-============ =======
-**type**:    ``int``
-**default**: ``5``
-============ =======
-
-This setting allows you to configure the config check interval used by
-:ref:`config_applied <config_applied_check>`. By default it is set to 5
-minutes.
-
-.. _openwisp_monitoring_auto_iperf3:
-
-``OPENWISP_MONITORING_AUTO_IPERF3``
------------------------------------
-
-============ =========
-**type**:    ``bool``
-**default**: ``False``
-============ =========
-
-This setting allows you to choose whether :ref:`iperf3 <iperf3_check>`
-checks should be created automatically for newly registered devices. It's
-disabled by default.
-
-.. _openwisp_monitoring_iperf3_check_config:
-
-``OPENWISP_MONITORING_IPERF3_CHECK_CONFIG``
--------------------------------------------
-
-============ ========
-**type**:    ``dict``
-**default**: ``{}``
-============ ========
-
-This setting allows to override the default iperf3 check configuration
-defined in
-``openwisp_monitoring.check.classes.iperf3.DEFAULT_IPERF3_CHECK_CONFIG``.
-
-For example, you can change the values of :ref:`supported iperf3 check
-parameters <iperf3_check_parameters>`.
-
-.. code-block:: python
-
-    OPENWISP_MONITORING_IPERF3_CHECK_CONFIG = {
-        # 'org_pk' : {'host' : [], 'client_options' : {}}
-        "a9734710-db30-46b0-a2fc-01f01046fe4f": {
-            # Some public iperf3 servers
-            # https://iperf.fr/iperf-servers.php#public-servers
-            "host": ["iperf3.openwisp.io", "2001:db8::1", "192.168.5.2"],
-            "client_options": {
-                "port": 6209,
-                # Number of parallel client streams to run
-                # note that iperf3 is single threaded
-                # so if you are CPU bound this will not
-                # yield higher throughput
-                "parallel": 5,
-                # Set the connect_timeout (in milliseconds) for establishing
-                # the initial control connection to the server, the lower the value
-                # the faster the down iperf3 server will be detected (ex. 1000 ms (1 sec))
-                "connect_timeout": 1000,
-                # Window size / socket buffer size
-                "window": "300K",
-                # Only one reverse condition can be chosen,
-                # reverse or bidirectional
-                "reverse": True,
-                # Only one test end condition can be chosen,
-                # time, bytes or blockcount
-                "blockcount": "1K",
-                "udp": {"bitrate": "50M", "length": "1460K"},
-                "tcp": {"bitrate": "20M", "length": "256K"},
-            },
-        }
-    }
-
-``OPENWISP_MONITORING_IPERF3_CHECK_DELETE_RSA_KEY``
----------------------------------------------------
-
-============ ========
-**type**:    ``bool``
-**default**: ``True``
-============ ========
-
-This setting allows you to set whether :ref:`iperf3 check RSA public key
-<configure_iperf3_check_auth_parameters>` will be deleted after successful
-completion of the check or not.
-
-``OPENWISP_MONITORING_IPERF3_CHECK_LOCK_EXPIRE``
-------------------------------------------------
-
-============ =======
-**type**:    ``int``
-**default**: ``600``
-============ =======
-
-This setting allows you to set a cache lock expiration time for the iperf3
-check when running on multiple servers. Make sure it is always greater
-than the total iperf3 check time, i.e. greater than the TCP + UDP test
-time. By default, it is set to **600 seconds (10 mins)**.
-
-.. _openwisp_monitoring_auto_wifi_clients_check:
-
-``OPENWISP_MONITORING_AUTO_WIFI_CLIENTS_CHECK``
------------------------------------------------
-
-============ =========
-**type**:    ``bool``
-**default**: ``False``
-============ =========
-
-This setting allows you to choose whether :ref:`WiFi Clients
-<wifi_clients_check>` checks should be created automatically for newly
-registered devices. It's disabled by default.
-
-.. _openwisp_monitoring_wifi_clients_check_snooze_schedule:
-
-``OPENWISP_MONITORING_WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE``
-----------------------------------------------------------
-
-============ ========
-**type**:    ``list``
-**default**: ``[]``
-============ ========
-
-This setting allows you to configure date-time ranges when the :ref:`WiFi
-Clients <wifi_clients_check>` check should not be executed. The date-time
-ranges should be in the format ``(start_datetime, end_datetime)`` where
-both date-time are in the format ``MM-DD HH:MM`` (24 hours). Both start
-date and end date are inclusive. You can omit the date or time part as
-needed.
-
-E.g.:
-
-.. code-block:: python
-
-    OPENWISP_MONITORING_WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE = [
-        # Date ranges spanning across months
-        ("12-24", "01-05"),
-        # Single-day exclusion
-        ("01-26", "01-26"),
-        # Daily exclusion between specific times
-        ("22:00", "06:00"),
-        # Specific date and time range exclusion
-        ("08-15 12:00", "08-15 14:00"),
-    ]
-
-.. note::
-
-    **Date or Time Omission**:
-
-        - If you omit the date, the time range will be considered for
-          **every day**.
-        - If you omit the time, the exclusion will apply to the **entire
-          day**.
-
-.. _openwisp_monitoring_wifi_clients_max_check_interval:
-
-``OPENWISP_MONITORING_WIFI_CLIENTS_MAX_CHECK_INTERVAL``
--------------------------------------------------------
-
-============ ==================
-**type**:    ``int``
-**default**: ``5`` (in minutes)
-============ ==================
-
-Time period in minutes used by :ref:`WiFi Clients checks
-<wifi_clients_check>` to monitor the maximum number of connected clients.
-
-It checks for clients that have connected at least once between the
-current time and the specified interval. For example, if the interval is
-set to *5 minutes*, OpenWISP will look for clients that connected within
-the last 5 minutes.
-
-.. _openwisp_monitoring_wifi_clients_min_check_interval:
-
-``OPENWISP_MONITORING_WIFI_CLIENTS_MIN_CHECK_INTERVAL``
--------------------------------------------------------
-
-============ ============================
-**type**:    ``int``
-**default**: ``4320`` (3 days in minutes)
-============ ============================
-
-Time period in minutes used by :ref:`WiFi Clients checks
-<wifi_clients_check>` to monitor the minimum number of connected clients.
-
-It checks for clients that have connected at least once between the
-current time and the specified interval. For example, if the interval is
-set to *4320 minutes (3 days)*, OpenWISP will look for clients that
-connected within the last 3 days.
-
-.. note::
-
-    The default value of this setting is intentionally set higher to avoid
-    false alerts that could occur when no devices are connected over
-    holidays (e.g., weekends).
-
-.. _openwisp_monitoring_auto_charts:
-
-``OPENWISP_MONITORING_AUTO_CHARTS``
------------------------------------
-
-============ ======================================================
-**type**:    ``list``
-**default**: ``('traffic', 'wifi_clients', 'uptime', 'packet_loss',
-             'rtt')``
-============ ======================================================
-
-Automatically created charts.
-
-.. _openwisp_monitoring_critical_device_metrics:
-
-``OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS``
------------------------------------------------
-
-============ ================================================
-**type**:    ``list`` of ``dict`` objects
-**default**: ``[{'key': 'ping', 'field_name': 'reachable'}]``
-============ ================================================
-
-Device metrics that are considered critical:
-
-when a value crosses the boundary defined in the "threshold value" field
-of the alert settings related to one of these metric types, the health
-status of the device related to the metric moves into ``CRITICAL``.
-
-By default, if devices are not reachable by pings they are flagged as
-``CRITICAL``.
-
-.. _openwisp_monitoring_health_status_labels:
-
-``OPENWISP_MONITORING_HEALTH_STATUS_LABELS``
---------------------------------------------
-
-============ ==========================================================
-**type**:    ``dict``
-**default**: ``{'unknown': 'unknown', 'ok': 'ok', 'problem': 'problem',
-             'critical': 'critical', 'deactivated': 'deactivated'}``
-============ ==========================================================
-
-This setting allows to change the health status labels, for example, if we
-want to use ``online`` instead of ``ok`` and ``offline`` instead of
-``critical``, you can use the following configuration:
-
-.. code-block:: python
-
-    OPENWISP_MONITORING_HEALTH_STATUS_LABELS = {
-        "ok": "online",
-        "problem": "problem",
-        "critical": "offline",
-    }
-
-.. _openwisp_monitoring_wifi_sessions_enabled:
-
-``OPENWISP_MONITORING_WIFI_SESSIONS_ENABLED``
----------------------------------------------
-
-============ ========
-**type**:    ``bool``
-**default**: ``True``
-============ ========
-
-Setting this to ``False`` will disable :doc:`wifi-sessions` feature.
-
 .. _openwisp_monitoring_management_ip_only:
 
 ``OPENWISP_MONITORING_MANAGEMENT_IP_ONLY``
@@ -939,3 +600,342 @@ domain, example: ``https://api.myservice.com``.
 
 This setting allows to configure timeout (in seconds) for monitoring data
 cache.
+
+.. _openwisp_monitoring_auto_charts:
+
+``OPENWISP_MONITORING_AUTO_CHARTS``
+-----------------------------------
+
+============ ======================================================
+**type**:    ``list``
+**default**: ``('traffic', 'wifi_clients', 'uptime', 'packet_loss',
+             'rtt')``
+============ ======================================================
+
+Automatically created charts.
+
+.. _openwisp_monitoring_critical_device_metrics:
+
+``OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS``
+-----------------------------------------------
+
+============ ================================================
+**type**:    ``list`` of ``dict`` objects
+**default**: ``[{'key': 'ping', 'field_name': 'reachable'}]``
+============ ================================================
+
+Device metrics that are considered critical:
+
+when a value crosses the boundary defined in the "threshold value" field
+of the alert settings related to one of these metric types, the health
+status of the device related to the metric moves into ``CRITICAL``.
+
+By default, if devices are not reachable by pings they are flagged as
+``CRITICAL``.
+
+.. _openwisp_monitoring_health_status_labels:
+
+``OPENWISP_MONITORING_HEALTH_STATUS_LABELS``
+--------------------------------------------
+
+============ ==========================================================
+**type**:    ``dict``
+**default**: ``{'unknown': 'unknown', 'ok': 'ok', 'problem': 'problem',
+             'critical': 'critical', 'deactivated': 'deactivated'}``
+============ ==========================================================
+
+This setting allows to change the health status labels, for example, if we
+want to use ``online`` instead of ``ok`` and ``offline`` instead of
+``critical``, you can use the following configuration:
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_HEALTH_STATUS_LABELS = {
+        "ok": "online",
+        "problem": "problem",
+        "critical": "offline",
+    }
+
+.. _openwisp_monitoring_wifi_sessions_enabled:
+
+``OPENWISP_MONITORING_WIFI_SESSIONS_ENABLED``
+---------------------------------------------
+
+============ ========
+**type**:    ``bool``
+**default**: ``True``
+============ ========
+
+Setting this to ``False`` will disable :doc:`wifi-sessions` feature.
+
+.. _openwisp_monitoring_auto_ping:
+
+``OPENWISP_MONITORING_AUTO_PING``
+---------------------------------
+
+============ ========
+**type**:    ``bool``
+**default**: ``True``
+============ ========
+
+Whether ping checks are created automatically for devices.
+
+.. _openwisp_monitoring_ping_check_config:
+
+``OPENWISP_MONITORING_PING_CHECK_CONFIG``
+-----------------------------------------
+
+============ ========
+**type**:    ``dict``
+**default**: ``{}``
+============ ========
+
+This setting allows to override the default ping check configuration
+defined in
+``openwisp_monitoring.check.classes.ping.DEFAULT_PING_CHECK_CONFIG``.
+
+For example, if you want to change only the **timeout** of ``ping`` you
+can use:
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_PING_CHECK_CONFIG = {
+        "timeout": {
+            "default": 1000,
+        },
+    }
+
+If you are overriding the default value for any parameter beyond the
+maximum or minimum value defined in
+``openwisp_monitoring.check.classes.ping.DEFAULT_PING_CHECK_CONFIG``, you
+will also need to override the ``maximum`` or ``minimum`` fields as
+following:
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_PING_CHECK_CONFIG = {
+        "timeout": {
+            "default": 2000,
+            "minimum": 1500,
+            "maximum": 2500,
+        },
+    }
+
+.. note::
+
+    Above ``maximum`` and ``minimum`` values are only used for validating
+    custom parameters of a ``Check`` object.
+
+.. _openwisp_monitoring_auto_device_config_check:
+
+``OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK``
+------------------------------------------------
+
+============ ========
+**type**:    ``bool``
+**default**: ``True``
+============ ========
+
+This setting allows you to choose whether :ref:`config_applied
+<config_applied_check>` checks should be created automatically for newly
+registered devices. It's enabled by default.
+
+.. _openwisp_monitoring_config_check_interval:
+
+``OPENWISP_MONITORING_CONFIG_CHECK_INTERVAL``
+---------------------------------------------
+
+============ =======
+**type**:    ``int``
+**default**: ``5``
+============ =======
+
+This setting allows you to configure the config check interval used by
+:ref:`config_applied <config_applied_check>`. By default it is set to 5
+minutes.
+
+.. _openwisp_monitoring_auto_wifi_clients_check:
+
+``OPENWISP_MONITORING_AUTO_WIFI_CLIENTS_CHECK``
+-----------------------------------------------
+
+============ =========
+**type**:    ``bool``
+**default**: ``False``
+============ =========
+
+This setting allows you to choose whether :ref:`WiFi Clients
+<wifi_clients_check>` checks should be created automatically for newly
+registered devices. It's disabled by default.
+
+.. _openwisp_monitoring_wifi_clients_check_snooze_schedule:
+
+``OPENWISP_MONITORING_WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE``
+----------------------------------------------------------
+
+============ ========
+**type**:    ``list``
+**default**: ``[]``
+============ ========
+
+This setting allows you to configure date-time ranges when the :ref:`WiFi
+Clients <wifi_clients_check>` check should not be executed. The date-time
+ranges should be in the format ``(start_datetime, end_datetime)`` where
+both date-time are in the format ``MM-DD HH:MM`` (24 hours). Both start
+date and end date are inclusive. You can omit the date or time part as
+needed.
+
+E.g.:
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_WIFI_CLIENTS_CHECK_SNOOZE_SCHEDULE = [
+        # Date ranges spanning across months
+        ("12-24", "01-05"),
+        # Single-day exclusion
+        ("01-26", "01-26"),
+        # Daily exclusion between specific times
+        ("22:00", "06:00"),
+        # Specific date and time range exclusion
+        ("08-15 12:00", "08-15 14:00"),
+    ]
+
+.. note::
+
+    **Date or Time Omission**:
+
+        - If you omit the date, the time range will be considered for
+          **every day**.
+        - If you omit the time, the exclusion will apply to the **entire
+          day**.
+
+.. _openwisp_monitoring_wifi_clients_max_check_interval:
+
+``OPENWISP_MONITORING_WIFI_CLIENTS_MAX_CHECK_INTERVAL``
+-------------------------------------------------------
+
+============ ==================
+**type**:    ``int``
+**default**: ``5`` (in minutes)
+============ ==================
+
+Time period in minutes used by :ref:`WiFi Clients checks
+<wifi_clients_check>` to monitor the maximum number of connected clients.
+
+It checks for clients that have connected at least once between the
+current time and the specified interval. For example, if the interval is
+set to *5 minutes*, OpenWISP will look for clients that connected within
+the last 5 minutes.
+
+.. _openwisp_monitoring_wifi_clients_min_check_interval:
+
+``OPENWISP_MONITORING_WIFI_CLIENTS_MIN_CHECK_INTERVAL``
+-------------------------------------------------------
+
+============ ============================
+**type**:    ``int``
+**default**: ``4320`` (3 days in minutes)
+============ ============================
+
+Time period in minutes used by :ref:`WiFi Clients checks
+<wifi_clients_check>` to monitor the minimum number of connected clients.
+
+It checks for clients that have connected at least once between the
+current time and the specified interval. For example, if the interval is
+set to *4320 minutes (3 days)*, OpenWISP will look for clients that
+connected within the last 3 days.
+
+.. note::
+
+    The default value of this setting is intentionally set higher to avoid
+    false alerts that could occur when no devices are connected over
+    holidays (e.g., weekends).
+
+.. _openwisp_monitoring_auto_iperf3:
+
+``OPENWISP_MONITORING_AUTO_IPERF3``
+-----------------------------------
+
+============ =========
+**type**:    ``bool``
+**default**: ``False``
+============ =========
+
+This setting allows you to choose whether :ref:`iperf3 <iperf3_check>`
+checks should be created automatically for newly registered devices. It's
+disabled by default.
+
+.. _openwisp_monitoring_iperf3_check_config:
+
+``OPENWISP_MONITORING_IPERF3_CHECK_CONFIG``
+-------------------------------------------
+
+============ ========
+**type**:    ``dict``
+**default**: ``{}``
+============ ========
+
+This setting allows to override the default iperf3 check configuration
+defined in
+``openwisp_monitoring.check.classes.iperf3.DEFAULT_IPERF3_CHECK_CONFIG``.
+
+For example, you can change the values of :ref:`supported iperf3 check
+parameters <iperf3_check_parameters>`.
+
+.. code-block:: python
+
+    OPENWISP_MONITORING_IPERF3_CHECK_CONFIG = {
+        # 'org_pk' : {'host' : [], 'client_options' : {}}
+        "a9734710-db30-46b0-a2fc-01f01046fe4f": {
+            # Some public iperf3 servers
+            # https://iperf.fr/iperf-servers.php#public-servers
+            "host": ["iperf3.openwisp.io", "2001:db8::1", "192.168.5.2"],
+            "client_options": {
+                "port": 6209,
+                # Number of parallel client streams to run
+                # note that iperf3 is single threaded
+                # so if you are CPU bound this will not
+                # yield higher throughput
+                "parallel": 5,
+                # Set the connect_timeout (in milliseconds) for establishing
+                # the initial control connection to the server, the lower the value
+                # the faster the down iperf3 server will be detected (ex. 1000 ms (1 sec))
+                "connect_timeout": 1000,
+                # Window size / socket buffer size
+                "window": "300K",
+                # Only one reverse condition can be chosen,
+                # reverse or bidirectional
+                "reverse": True,
+                # Only one test end condition can be chosen,
+                # time, bytes or blockcount
+                "blockcount": "1K",
+                "udp": {"bitrate": "50M", "length": "1460K"},
+                "tcp": {"bitrate": "20M", "length": "256K"},
+            },
+        }
+    }
+
+``OPENWISP_MONITORING_IPERF3_CHECK_DELETE_RSA_KEY``
+---------------------------------------------------
+
+============ ========
+**type**:    ``bool``
+**default**: ``True``
+============ ========
+
+This setting allows you to set whether :ref:`iperf3 check RSA public key
+<configure_iperf3_check_auth_parameters>` will be deleted after successful
+completion of the check or not.
+
+``OPENWISP_MONITORING_IPERF3_CHECK_LOCK_EXPIRE``
+------------------------------------------------
+
+============ =======
+**type**:    ``int``
+**default**: ``600``
+============ =======
+
+This setting allows you to set a cache lock expiration time for the iperf3
+check when running on multiple servers. Make sure it is always greater
+than the total iperf3 check time, i.e. greater than the TCP + UDP test
+time. By default, it is set to **600 seconds (10 mins)**.
