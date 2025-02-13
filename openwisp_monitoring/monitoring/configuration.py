@@ -292,27 +292,26 @@ DEFAULT_METRICS = {
         'notification': {
             'problem': {
                 'verbose_name': 'Max WiFi clients PROBLEM',
-                'verb': _('has more than'),
+                'verb': _('exceeds the expected threshold'),
                 'level': 'warning',
                 'email_subject': _(
-                    '[{site.name}] PROBLEM: Max WiFi Clients exceeded on {notification.target}'
+                    '[{site.name}] PROBLEM: {notification.target} has too many WiFi clients'
                 ),
                 'message': _(
-                    'The device [{notification.target}]({notification.target_link}) '
-                    '{notification.verb} {notification.actor.alertsettings.threshold} '
-                    'WiFi clients connected.'
+                    'The WiFi client count on [{notification.target}]({notification.target_link})'
+                    ' {notification.verb}.'
                 ),
             },
             'recovery': {
                 'verbose_name': 'Max WiFi clients RECOVERY',
-                'verb': _('has returned to normal levels'),
+                'verb': _('has decreased'),
                 'level': 'info',
                 'email_subject': _(
-                    '[{site.name}] RECOVERY: {notification.target} WiFi clients {notification.verb}'
+                    '[{site.name}] RECOVERY: {notification.target} WiFi client count has returned to normal'
                 ),
                 'message': (
-                    'The device [{notification.target}]({notification.target_link}) '
-                    'WiFi clients {notification.verb}.'
+                    'The WiFi client count on  [{notification.target}]({notification.target_link})'
+                    ' {notification.verb} and is now within the expected range.'
                 ),
             },
         },
@@ -326,27 +325,26 @@ DEFAULT_METRICS = {
         'notification': {
             'problem': {
                 'verbose_name': 'Min WiFi clients PROBLEM',
-                'verb': _('has less than'),
+                'verb': _('is below the expected threshold'),
                 'level': 'warning',
                 'email_subject': _(
-                    '[{site.name}] PROBLEM: {notification.target} {notification.verb} minimum WiFi clients'
+                    '[{site.name}] PROBLEM: {notification.target} has too few WiFi clients'
                 ),
                 'message': _(
-                    'The device [{notification.target}]({notification.target_link}) '
-                    '{notification.verb} {notification.actor.alertsettings.threshold} '
-                    'WiFi clients connected.'
+                    'The WiFi client count on [{notification.target}]({notification.target_link})'
+                    ' {notification.verb}.'
                 ),
             },
             'recovery': {
                 'verbose_name': 'Min WiFi clients RECOVERY',
-                'verb': _('has returned to normal levels'),
+                'verb': _('has increased'),
                 'level': 'info',
                 'email_subject': _(
-                    '[{site.name}] RECOVERY: {notification.target} minimum WiFi clients {notification.verb}'
+                    '[{site.name}] RECOVERY: {notification.target} has WiFi clients connecting again'
                 ),
                 'message': (
-                    'The device [{notification.target}]({notification.target_link}) '
-                    'WiFi client {notification.verb}.'
+                    'The WiFi client count on [{notification.target}]({notification.target_link})'
+                    ' {notification.verb} and is now within the expected range.'
                 ),
             },
         },
