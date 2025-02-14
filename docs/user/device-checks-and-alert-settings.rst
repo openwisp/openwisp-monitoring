@@ -4,22 +4,11 @@ Managing Device Checks & Alert Settings
 We can add checks and define alert settings directly from the **device
 page**.
 
-To add a check, you just need to select an available **check type** as
-shown below:
-
-.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/device-inline-check.png
-    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/device-inline-check.png
-    :align: center
-
-The following example shows how to use the
-:ref:`openwisp_monitoring_metrics` setting to reconfigure the system for
-:ref:`iperf3 check <iperf3_check>` to send an alert if the measured **TCP
-bandwidth** has been less than **10Mbit/s** for more than **2 days**.
-
 Default Alert Settings
 ----------------------
 
-By default, OpenWISP Monitoring provides predefined alert settings for common checks. These alerts ensure that system performance and availability issues are detected early. 
+By default, OpenWISP Monitoring provides predefined alert settings for common checks. 
+These alerts ensure that system performance and availability issues are detected early.
 
 The default alerts include:
 
@@ -30,6 +19,24 @@ The default alerts include:
 - **Iperf3 Bandwidth Drop**: Triggered if **TCP bandwidth** is less than **10Mbit/s** for more than **2 days**.
 
 These settings can be customized through the device page.
+
+Adding Custom Checks
+-------------------
+
+To add a check, you just need to select an available **check type** as
+shown below:
+
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/device-inline-check.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/device-inline-check.png
+    :align: center
+
+Customizing Iperf3 Check Settings
+--------------------------------
+
+The following example shows how to use the :ref:`openwisp_monitoring_metrics` 
+setting to reconfigure the system for :ref:`iperf3 check <iperf3_check>` 
+to send an alert if the measured **TCP bandwidth** has been less than 
+**10Mbit/s** for more than **2 days**.
 
 1. By default, :ref:`Iperf3 checks <iperf3_check>` come with default alert
 settings, but it is easy to customize alert settings through the device
