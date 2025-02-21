@@ -346,7 +346,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         help_text=_(
             '"{0}" means the device has been recently added; \n'
             '"{1}" means the device is operating normally; \n'
-            '"{2}" means the device is having issues but it\'s still reachable; \n'
+            '"{2}" means the device is having issues but it\'s still communicating with the server; \n'
             '"{3}" means the device is not reachable or in critical conditions;\n'
             '"{4}" means the device is deactivated;'
         ).format(
@@ -384,12 +384,49 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
             content_type__app_label='config',
         )
 
+    @classmethod
+    def _get_last_write_time(cls, metric, limit=1):
+        points = metric.read(limit=limit, order='-time')
+        if not points:
+            return 0
+        return points[-1]['time']
+
+    @classmethod
+    def _has_recent_data(cls, metrics, reference_time):
+        for m in metrics:
+            if cls._get_last_write_time(m) >= reference_time:
+                return True
+        return False
+
+    def get_monitoring_status(self):
+        """
+        Returns status after evaluating all the related metrics.
+        """
+        status = 'ok'
+        for metric in self.related_metrics.filter(is_healthy=False):
+            if self.is_metric_critical(metric):
+                # Check if the device is sending monitoring metrics
+                # Get the timestamp of the second last write of the critical metric.
+                critical_last_write = self._get_last_write_time(metric, limit=2)
+                remaining_metrics = self.related_metrics.exclude(
+                    models.Q(id=metric.id) | models.Q(is_healthy=None)
+                )
+                if critical_last_write and self._has_recent_data(
+                    remaining_metrics, critical_last_write
+                ):
+                    status = 'problem'
+                else:
+                    status = 'critical'
+                break
+            status = 'problem'
+        return status
+
     @staticmethod
     @receiver(threshold_crossed, dispatch_uid='threshold_crossed_receiver')
     def threshold_crossed(sender, metric, alert_settings, target, first_time, **kwargs):
         """Executed when a threshold is crossed.
 
-        Changes the health status of a devicewhen a threshold defined in
+        Changes the health status of a device when a threshold defined in
         the alert settings related to the metric is crossed.
         """
         DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
@@ -399,21 +436,8 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
             monitoring = target.monitoring
         except DeviceMonitoring.DoesNotExist:
             monitoring = DeviceMonitoring.objects.create(device=target)
-        status = 'ok' if metric.is_healthy else 'problem'
-        related_status = 'ok'
-        for related_metric in monitoring.related_metrics.filter(is_healthy=False):
-            if monitoring.is_metric_critical(related_metric):
-                related_status = 'critical'
-                break
-            related_status = 'problem'
-        if metric.is_healthy and related_status == 'problem':
-            status = 'problem'
-        elif metric.is_healthy and related_status == 'critical':
-            status = 'critical'
-        elif not metric.is_healthy and any(
-            [monitoring.is_metric_critical(metric), related_status == 'critical']
-        ):
-            status = 'critical'
+
+        status = monitoring.get_monitoring_status()
         monitoring.update_status(status)
 
     @staticmethod

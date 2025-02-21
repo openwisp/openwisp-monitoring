@@ -685,14 +685,19 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
 
     def test_ok_critical_critical_critical_ok(self):
         dm, ping, load, process_count = self._create_env()
+        ping.write(1)
         self.assertEqual(dm.status, 'ok')
-        ping.check_threshold(0)
+        ping.write(0)
+        dm.refresh_from_db()
         self.assertEqual(dm.status, 'critical')
-        load.check_threshold(100)
-        self.assertEqual(dm.status, 'critical')
-        load.check_threshold(80)
-        self.assertEqual(dm.status, 'critical')
-        ping.check_threshold(1)
+        load.write(100)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'problem')
+        load.write(80)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'problem')
+        ping.write(1)
+        dm.refresh_from_db()
         self.assertEqual(dm.status, 'ok')
 
     def test_ok_problem_problem_problem_ok(self):
@@ -759,6 +764,28 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         ping.write(0)
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'critical')
+
+    def test_critical_metric_set_status_problem(self):
+        """
+        Tests scenario where critical metric sets status to 'problem'
+
+        If threshold of critical metrics is crossed, but the device is
+        receiving data for other metrics, then the device status
+        will change to 'problem' instead of 'critical'.
+        """
+        time_now = now()
+        dm, ping, load, process_count = self._create_env()
+        self._set_env_unknown(load, process_count, ping, dm)
+        with freeze_time(time_now - timedelta(minutes=5)):
+            ping.write(1)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'ok')
+        load.write(60)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'ok')
+        ping.write(0)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'problem')
 
     def test_deleting_device_deletes_tsdb(self):
         dm1, ping1, _, _ = self._create_env()

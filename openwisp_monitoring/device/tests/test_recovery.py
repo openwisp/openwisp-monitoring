@@ -86,7 +86,17 @@ class TestRecoveryTransaction(DeviceMonitoringTransactionTestcase):
             mocked_task.assert_not_called()
 
         mocked_task.reset_mock()
+        with self.subTest(
+            'Test checks are not triggered if device status is "problem"'
+        ):
+            device_monitoring.update_status('problem')
+            response = self.client.get(
+                reverse('controller:device_checksum', args=[device.pk]),
+                data={'key': device.key},
+            )
+            self.assertEqual(response.status_code, 200)
 
+        mocked_task.assert_not_called()
         with self.subTest('Test checks are triggered if device is "critical"'):
             device_monitoring.update_status('critical')
             response = self.client.get(
@@ -115,7 +125,17 @@ class TestRecoveryTransaction(DeviceMonitoringTransactionTestcase):
             mocked_task.assert_not_called()
 
         mocked_task.reset_mock()
+        with self.subTest('Test checks are triggered if device status is "problem"'):
+            device_monitoring.update_status('problem')
+            response = self.client.post(
+                url,
+                data=netjson,
+                content_type='application/json',
+            )
+            self.assertEqual(response.status_code, 200)
+            mocked_task.assert_not_called()
 
+        mocked_task.reset_mock()
         with self.subTest('Test checks are triggered if device is "critical"'):
             device_monitoring.update_status('critical')
             response = self.client.post(
