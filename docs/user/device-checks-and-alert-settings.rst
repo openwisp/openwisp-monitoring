@@ -54,16 +54,6 @@ Minimum:
 * **Sets status**: Problem
 * **Meaning**: High CPU load persists
 
-7. Iperf3 Check
---------------
-.. note::
-  This check is disabled by default
-
-* **Triggers when**: Value is less than 1
-* **Wait time**: 0 minutes (immediate)
-* **Sets status**: Problem
-* **Meaning**: Network performance test failed
-
 We can add checks and define alert settings directly from the **device
 page**.
 
