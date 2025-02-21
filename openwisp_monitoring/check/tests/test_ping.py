@@ -156,7 +156,9 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
             expected_metrics_count = 1
         device.monitoring.refresh_from_db()
         self.assertEqual(device.monitoring.status, expected_status)
-        self.assertEqual(Metric.objects.count(), expected_metrics_count)
+        self.assertEqual(
+            device.monitoring.related_metrics.count(), expected_metrics_count
+        )
 
     @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
     @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', True)

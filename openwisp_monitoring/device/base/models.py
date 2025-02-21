@@ -389,7 +389,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
     def threshold_crossed(sender, metric, alert_settings, target, first_time, **kwargs):
         """Executed when a threshold is crossed.
 
-        Changes the health status of a devicewhen a threshold defined in
+        Changes the health status of a device when a threshold defined in
         the alert settings related to the metric is crossed.
         """
         DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
@@ -399,21 +399,41 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
             monitoring = target.monitoring
         except DeviceMonitoring.DoesNotExist:
             monitoring = DeviceMonitoring.objects.create(device=target)
+
+        def get_last_write_time(metric, limit=1):
+            points = metric.read(limit=limit, order='-time')
+            if not points:
+                return 0
+            return points[-1]['time']
+
+        def has_recent_data(metrics, reference_time):
+            for m in metrics:
+                if get_last_write_time(m) >= reference_time:
+                    return True
+            return False
+
         status = 'ok' if metric.is_healthy else 'problem'
         related_status = 'ok'
         for related_metric in monitoring.related_metrics.filter(is_healthy=False):
             if monitoring.is_metric_critical(related_metric):
-                related_status = 'critical'
+                # Check if the device is sending monitoring metrics
+                # Get the timestamp of the second last write of the critical metric.
+                critical_last_write = get_last_write_time(related_metric, limit=2)
+                other_metrics = monitoring.related_metrics.exclude(
+                    models.Q(id=related_metric.id) | models.Q(is_healthy=None)
+                )
+                if critical_last_write and has_recent_data(
+                    other_metrics, critical_last_write
+                ):
+                    related_status = 'problem'
+                else:
+                    related_status = 'critical'
                 break
             related_status = 'problem'
-        if metric.is_healthy and related_status == 'problem':
-            status = 'problem'
-        elif metric.is_healthy and related_status == 'critical':
-            status = 'critical'
-        elif not metric.is_healthy and any(
-            [monitoring.is_metric_critical(metric), related_status == 'critical']
-        ):
-            status = 'critical'
+        severity_order = ['ok', 'problem', 'critical']
+        status = severity_order[
+            max(severity_order.index(status), severity_order.index(related_status))
+        ]
         monitoring.update_status(status)
 
     @staticmethod
