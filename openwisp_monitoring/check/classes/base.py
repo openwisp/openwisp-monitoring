@@ -27,6 +27,18 @@ class BaseCheck(object):
     def validate_params(self):
         pass
 
+    @classmethod
+    def may_execute(cls):
+        """
+        Class method that determines whether the check can be executed.
+
+        Returns:
+            bool: Always returns True by default.
+                Subclasses may override this method to implement
+                specific execution conditions.
+        """
+        return True
+
     def check(self, store=True):
         raise NotImplementedError
 

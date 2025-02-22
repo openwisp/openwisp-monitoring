@@ -240,16 +240,58 @@ class DatabaseClient(object):
         since = kwargs.get('since')
         order = kwargs.get('order')
         limit = kwargs.get('limit')
+        distinct_fields = kwargs.get('distinct_fields', [])
+        count_fields = kwargs.get('count_fields', [])
         rp = kwargs.get('retention_policy')
+
+        # Ensure fields is a list (in case it's passed as a string)
+        if isinstance(fields, str):
+            fields = [fields]
+
+        # Apply DISTINCT to fields
+        if distinct_fields:
+            for field in distinct_fields:
+                try:
+                    field_index = fields.index(field)
+                    fields[field_index] = f'DISTINCT({field})'
+                except ValueError:
+                    raise self.client_error(
+                        f'Cannot perform DISTINCT on "{field}" as it is not present in the fields list.'
+                    )
+
+                # Ensure COUNT(DISTINCT) if both DISTINCT and COUNT are applied
+                if field in count_fields:
+                    count_fields[count_fields.index(field)] = f'DISTINCT({field})'
+
+        # Apply COUNT to fields
+        if count_fields:
+            for field in count_fields:
+                try:
+                    field_index = fields.index(field)
+                    fields[field_index] = f'COUNT({field})'
+                except ValueError:
+                    raise self.client_error(
+                        f'Cannot perform COUNT on "{field}" as it is not present in the fields list.'
+                    )
+
+        # Handle extra fields and ensure proper formatting
         if extra_fields and extra_fields != '*':
-            fields = ', '.join([fields] + extra_fields)
+            fields = fields + extra_fields
         elif extra_fields == '*':
-            fields = '*'
+            fields = ['*']
+
+        # Construct SELECT clause
+        fields_clause = ', '.join(fields)
+
+        # Construct the FROM clause with retention policy if provided
         from_clause = f'{rp}.{key}' if rp else key
-        q = f'SELECT {fields} FROM {from_clause}'
+        q = f'SELECT {fields_clause} FROM {from_clause}'
+
+        # Add conditions (time and tags)
         conditions = []
         if since:
-            conditions.append(f'time >= {since}')
+            timestamp = self._get_timestamp(since)
+            conditions.append(f"time >= '{timestamp}'")
         if tags:
             conditions.append(
                 ' AND '.join(["{0} = '{1}'".format(*tag) for tag in tags.items()])

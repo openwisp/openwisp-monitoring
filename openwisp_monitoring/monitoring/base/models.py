@@ -962,7 +962,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         if time is None:
             # retrieves latest measurements, ordered by most recent first
             points = self.metric.read(
-                since=f'{self._tolerance_search_range}m',
+                since=timezone.now() - timedelta(minutes=self._tolerance_search_range),
                 limit=None,
                 order='-time',
                 retention_policy=retention_policy,

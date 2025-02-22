@@ -13,6 +13,7 @@ from openwisp_monitoring.check.tasks import (
     auto_create_config_check,
     auto_create_iperf3_check,
     auto_create_ping,
+    auto_create_wifi_clients_check,
 )
 from openwisp_utils.base import TimeStampedEditableModel
 
@@ -155,6 +156,24 @@ def auto_iperf3_check_receiver(sender, instance, created, **kwargs):
         return
     transaction_on_commit(
         lambda: auto_create_iperf3_check.delay(
+            model=sender.__name__.lower(),
+            app_label=sender._meta.app_label,
+            object_id=str(instance.pk),
+        )
+    )
+
+
+def auto_wifi_clients_check_receiver(sender, instance, created, **kwargs):
+    """Implements OPENWISP_MONITORING_AUTO_WIFI_CLIENTS_CHECK.
+
+    The creation step is executed in the background.
+    """
+    # we need to skip this otherwise this task will be executed
+    # every time the configuration is requested via checksum
+    if not created:
+        return
+    transaction_on_commit(
+        lambda: auto_create_wifi_clients_check.delay(
             model=sender.__name__.lower(),
             app_label=sender._meta.app_label,
             object_id=str(instance.pk),

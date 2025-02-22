@@ -283,6 +283,72 @@ DEFAULT_METRICS = {
             }
         },
     },
+    'wifi_clients_max': {
+        'label': _('WiFi Clients (Maximum)'),
+        'name': '{name}',
+        'key': 'wifi_clients_max',
+        'field_name': 'clients',
+        'alert_settings': {'operator': '>', 'threshold': 50, 'tolerance': 120},
+        'notification': {
+            'problem': {
+                'verbose_name': 'Max WiFi clients PROBLEM',
+                'verb': _('exceeds the expected threshold'),
+                'level': 'warning',
+                'email_subject': _(
+                    '[{site.name}] PROBLEM: {notification.target} has too many WiFi clients'
+                ),
+                'message': _(
+                    'The WiFi client count on [{notification.target}]({notification.target_link})'
+                    ' {notification.verb}.'
+                ),
+            },
+            'recovery': {
+                'verbose_name': 'Max WiFi clients RECOVERY',
+                'verb': _('has decreased'),
+                'level': 'info',
+                'email_subject': _(
+                    '[{site.name}] RECOVERY: {notification.target} WiFi client count has returned to normal'
+                ),
+                'message': (
+                    'The WiFi client count on  [{notification.target}]({notification.target_link})'
+                    ' {notification.verb} and is now within the expected range.'
+                ),
+            },
+        },
+    },
+    'wifi_clients_min': {
+        'label': _('WiFi Clients (Minimum)'),
+        'name': '{name}',
+        'key': 'wifi_clients_min',
+        'field_name': 'clients',
+        'alert_settings': {'operator': '<', 'threshold': 1, 'tolerance': 0},
+        'notification': {
+            'problem': {
+                'verbose_name': 'Min WiFi clients PROBLEM',
+                'verb': _('is below the expected threshold'),
+                'level': 'warning',
+                'email_subject': _(
+                    '[{site.name}] PROBLEM: {notification.target} has too few WiFi clients'
+                ),
+                'message': _(
+                    'The WiFi client count on [{notification.target}]({notification.target_link})'
+                    ' {notification.verb}.'
+                ),
+            },
+            'recovery': {
+                'verbose_name': 'Min WiFi clients RECOVERY',
+                'verb': _('has increased'),
+                'level': 'info',
+                'email_subject': _(
+                    '[{site.name}] RECOVERY: {notification.target} has WiFi clients connecting again'
+                ),
+                'message': (
+                    'The WiFi client count on [{notification.target}]({notification.target_link})'
+                    ' {notification.verb} and is now within the expected range.'
+                ),
+            },
+        },
+    },
     'general_clients': {
         'label': _('General WiFi Clients'),
         'name': _('General WiFi Clients'),
