@@ -4,21 +4,21 @@ Managing Device Checks & Alert Settings
 **Overview of default checks**
 
 1. Ping Check
-------------
+-------------
 * **Triggers when**: Value is less than 1
 * **Wait time**: 0 minutes (immediate)
 * **Sets status**: Critical
 * **Meaning**: Device is unreachable
 
 2. Config Applied Check
----------------------
+-----------------------
 * **Triggers when**: Value is less than 1
 * **Wait time**: 5 minutes
 * **Sets status**: Problem
 * **Meaning**: Configuration hasn't been updated for over 5 minutes
 
 3. WiFi Clients Check
--------------------
+---------------------
 Maximum:
 ^^^^^^^^
 * **Triggers when**: More than 50 clients
@@ -34,21 +34,21 @@ Minimum:
 * **Meaning**: No clients connected
 
 4. Disk Usage Check
------------------
+-------------------
 * **Triggers when**: Usage exceeds 90%
 * **Wait time**: 0 minutes (immediate)
 * **Sets status**: Problem
 * **Meaning**: Disk space is nearly full
 
 5. Memory Usage Check
--------------------
+---------------------
 * **Triggers when**: Usage exceeds 95%
 * **Wait time**: 5 minutes
 * **Sets status**: Problem
 * **Meaning**: High memory consumption persists
 
 6. CPU Usage Check
-----------------
+------------------
 * **Triggers when**: Usage exceeds 90%
 * **Wait time**: 5 minutes
 * **Sets status**: Problem

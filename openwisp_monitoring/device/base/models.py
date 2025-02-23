@@ -319,10 +319,7 @@ class AbstractDeviceData(object):
                 active_sessions.append(session_obj.pk)
 
         # Close open WifiSession
-        WifiSession.objects.filter(
-            device_id=self.id,
-            stop_time=None,
-        ).exclude(
+        WifiSession.objects.filter(device_id=self.id, stop_time=None,).exclude(
             pk__in=active_sessions
         ).update(stop_time=now())
 
