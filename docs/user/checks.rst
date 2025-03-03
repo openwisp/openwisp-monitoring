@@ -35,6 +35,16 @@ configuration status of a device changes, this ensures the check reacts
 quickly to events happening in the network and informs the user promptly
 if there's anything that is not working as intended.
 
+.. _data_collected_check:
+
+Data Collected
+--------------
+
+This check ensures that the :doc:`openwisp-monitoring agent
+</openwrt-monitoring-agent/index>` is running and sending passive metrics
+in a timely manner. You may choose to disable auto creation of this check
+by using the setting :ref:`openwisp_monitoring_auto_data_collected_check`.
+
 .. _iperf3_check:
 
 Iperf3

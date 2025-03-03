@@ -13,6 +13,19 @@ class BaseCheck(object):
         self.related_object = check.content_object
         self.params = params
 
+    @classmethod
+    def get_related_metrics(cls):
+        """
+        Returns a tuple of metric names related to this check class.
+
+        The default implementation returns a tuple containing the lowercase
+        name of the class.
+
+        Returns:
+            tuple: A tuple of strings representing metric identifiers
+        """
+        return (cls.__name__.lower(),)
+
     def validate_instance(self):
         # check instance is of type device
         obj = self.related_object

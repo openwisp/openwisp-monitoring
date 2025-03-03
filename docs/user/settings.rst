@@ -754,6 +754,34 @@ This setting allows you to configure the config check interval used by
 :ref:`config_applied <config_applied_check>`. By default it is set to 5
 minutes.
 
+.. _openwisp_monitoring_auto_data_collected_check:
+
+``OPENWISP_MONITORING_AUTO_DATA_COLLECTED_CHECK``
+-------------------------------------------------
+
+============ ========
+**type**:    ``bool``
+**default**: ``True``
+============ ========
+
+This setting allows you to choose whether :ref:`data collected
+<data_collected_check>` checks should be created automatically for newly
+registered devices. It's enabled by default.
+
+.. _openwisp_monitoring_data_collected_check_interval:
+
+``OPENWISP_MONITORING_DATA_COLLECTED_CHECK_INTERVAL``
+-----------------------------------------------------
+
+============ =======
+**type**:    ``int``
+**default**: ``60``
+============ =======
+
+This setting allows you to configure the data collected check interval
+used by :ref:`data collected <date_collected_check>`. By default it is set
+to 60 minutes.
+
 .. _openwisp_monitoring_auto_wifi_clients_check:
 
 ``OPENWISP_MONITORING_AUTO_WIFI_CLIENTS_CHECK``

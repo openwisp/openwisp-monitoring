@@ -76,18 +76,22 @@ def perform_check(uuid):
 
 
 @shared_task(base=OpenwispCeleryTask)
-def auto_create_ping(
-    model, app_label, object_id, check_model=None, content_type_model=None
+def auto_create_check(
+    model,
+    app_label,
+    object_id,
+    check_type,
+    check_name,
+    check_model=None,
+    content_type_model=None,
 ):
-    """Implements the auto creation of the ping check.
+    """Implements the auto creation of a check.
 
-    Called by django signal (dispatch_uid: auto_ping) registered in check
-    app's apps.py file.
+    Called by django signal registered in check app's apps.py file.
     """
     Check = check_model or get_check_model()
-    ping_path = 'openwisp_monitoring.check.classes.Ping'
     has_check = Check.objects.filter(
-        object_id=object_id, content_type__model='device', check_type=ping_path
+        object_id=object_id, content_type__model=model, check_type=check_type
     ).exists()
     # create new check only if necessary
     if has_check:
@@ -95,91 +99,8 @@ def auto_create_ping(
     content_type_model = content_type_model or ContentType
     ct = content_type_model.objects.get_by_natural_key(app_label=app_label, model=model)
     check = Check(
-        name='Ping', check_type=ping_path, content_type=ct, object_id=object_id
-    )
-    check.full_clean()
-    check.save()
-
-
-@shared_task(base=OpenwispCeleryTask)
-def auto_create_config_check(
-    model, app_label, object_id, check_model=None, content_type_model=None
-):
-    """Implements the auto creation of the config modified check.
-
-    Called by openwisp_monitoring.check.models.auto_config_check_receiver.
-    """
-    Check = check_model or get_check_model()
-    config_check_path = 'openwisp_monitoring.check.classes.ConfigApplied'
-    has_check = Check.objects.filter(
-        object_id=object_id, content_type__model='device', check_type=config_check_path
-    ).exists()
-    # create new check only if necessary
-    if has_check:
-        return
-    content_type_model = content_type_model or ContentType
-    ct = content_type_model.objects.get_by_natural_key(app_label=app_label, model=model)
-    check = Check(
-        name='Configuration Applied',
-        check_type=config_check_path,
-        content_type=ct,
-        object_id=object_id,
-    )
-    check.full_clean()
-    check.save()
-
-
-@shared_task(base=OpenwispCeleryTask)
-def auto_create_iperf3_check(
-    model, app_label, object_id, check_model=None, content_type_model=None
-):
-    """Implements the auto creation of the iperf3 check.
-
-    Called by the
-    openwisp_monitoring.check.models.auto_iperf3_check_receiver.
-    """
-    Check = check_model or get_check_model()
-    iperf3_check_path = 'openwisp_monitoring.check.classes.Iperf3'
-    has_check = Check.objects.filter(
-        object_id=object_id, content_type__model='device', check_type=iperf3_check_path
-    ).exists()
-    # create new check only if necessary
-    if has_check:
-        return
-    content_type_model = content_type_model or ContentType
-    ct = content_type_model.objects.get_by_natural_key(app_label=app_label, model=model)
-    check = Check(
-        name='Iperf3',
-        check_type=iperf3_check_path,
-        content_type=ct,
-        object_id=object_id,
-    )
-    check.full_clean()
-    check.save()
-
-
-@shared_task(base=OpenwispCeleryTask)
-def auto_create_wifi_clients_check(
-    model, app_label, object_id, check_model=None, content_type_model=None
-):
-    """Implements the auto creation of the wifi_clients check.
-
-    Called by the
-    openwisp_monitoring.check.models.auto_wifi_clients_check_receiver.
-    """
-    Check = check_model or get_check_model()
-    check_path = 'openwisp_monitoring.check.classes.WifiClients'
-    has_check = Check.objects.filter(
-        object_id=object_id, content_type__model='device', check_type=check_path
-    ).exists()
-    # create new check only if necessary
-    if has_check:
-        return
-    content_type_model = content_type_model or ContentType
-    ct = content_type_model.objects.get_by_natural_key(app_label=app_label, model=model)
-    check = Check(
-        name='WiFi Clients',
-        check_type=check_path,
+        name=check_name,
+        check_type=check_type,
         content_type=ct,
         object_id=object_id,
     )

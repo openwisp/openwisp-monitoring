@@ -349,6 +349,41 @@ DEFAULT_METRICS = {
             },
         },
     },
+    'data_collected': {
+        'label': _('Data Collected'),
+        'name': 'Data Collection',
+        'key': 'data_collected',
+        'field_name': 'data_collected',
+        'alert_settings': {'operator': '<', 'threshold': 1, 'tolerance': 30},
+        'notification': {
+            'problem': {
+                'verbose_name': 'Data Collection PROBLEM',
+                'verb': _('has not been sending'),
+                'level': 'warning',
+                'email_subject': _(
+                    '[{site.name}] PROBLEM: {notification.target} {notification.verb}'
+                    ' monitoring data'
+                ),
+                'message': _(
+                    'The [{notification.target}]({notification.target_link})'
+                    ' device {notification.verb} monitoring data.'
+                ),
+            },
+            'recovery': {
+                'verbose_name': 'Data Collection RECOVERY',
+                'verb': _('has resumed sending'),
+                'level': 'info',
+                'email_subject': _(
+                    '[{site.name}] RECOVERY: {notification.target} {notification.verb}'
+                    ' monitoring data'
+                ),
+                'message': _(
+                    'The [{notification.target}]({notification.target_link})'
+                    ' device {notification.verb} monitoring data.'
+                ),
+            },
+        },
+    },
     'general_clients': {
         'label': _('General WiFi Clients'),
         'name': _('General WiFi Clients'),

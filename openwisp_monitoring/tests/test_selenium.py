@@ -117,9 +117,9 @@ class TestDeviceConnectionInlineAdmin(
         device_alert_setting_ids = AlertSettings.objects.filter(
             metric_id__in=device_metric_ids
         ).values_list('id', flat=True)
-        self.assertEqual(len(device_alert_setting_ids), 2)
-        self.assertEqual(len(device_metric_ids), 2)
-        self.assertEqual(len(device_checks), 3)
+        self.assertEqual(len(device_alert_setting_ids), 3)
+        self.assertEqual(len(device_metric_ids), 3)
+        self.assertEqual(len(device_checks), 4)
         self.assertEqual(len(device_chart_ids), 3)
 
         self.login()
@@ -174,9 +174,9 @@ class TestDeviceConnectionInlineAdmin(
         self.assertEqual(DeviceConnection.objects.count(), 1)
         # Ensure that existing Metric, AlertSetting and Chart objects
         # was restored
-        self.assertEqual(Metric.objects.filter(id__in=device_metric_ids).count(), 2)
+        self.assertEqual(Metric.objects.filter(id__in=device_metric_ids).count(), 3)
         self.assertEqual(
-            AlertSettings.objects.filter(id__in=device_alert_setting_ids).count(), 2
+            AlertSettings.objects.filter(id__in=device_alert_setting_ids).count(), 3
         )
         self.assertEqual(Chart.objects.filter(id__in=device_chart_ids).count(), 3)
 

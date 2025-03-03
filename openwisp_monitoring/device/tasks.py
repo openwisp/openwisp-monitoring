@@ -24,18 +24,19 @@ def trigger_device_checks(pk, recovery=True):
     """
     DeviceData = load_model('device_monitoring', 'DeviceData')
     try:
-        device = DeviceData.objects.get(pk=pk)
+        device = DeviceData.objects.select_related('monitoring').get(pk=pk)
     except ObjectDoesNotExist:
         logger.warning(f'The device with uuid {pk} has been deleted')
         return
-    checks = device.checks.filter(is_active=True).only('id').values('id')
-    has_checks = False
-    for check in checks:
-        perform_check.delay(check['id'])
-        has_checks = True
-    if not has_checks:
+    check_ids = list(device.checks.filter(is_active=True).values_list('id', flat=True))
+    if not check_ids:
         status = 'ok' if recovery else 'critical'
         device.monitoring.update_status(status)
+        return
+    if recovery and device.monitoring.status == 'critical':
+        device.monitoring.update_status('problem')
+    for check_id in check_ids:
+        perform_check.delay(check_id)
 
 
 @shared_task(base=OpenwispCeleryTask)

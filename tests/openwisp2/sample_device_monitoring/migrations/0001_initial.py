@@ -11,6 +11,8 @@ from django.db import migrations, models
 
 import openwisp_monitoring.device.base.models
 
+from ..models import DeviceMonitoring
+
 
 class Migration(migrations.Migration):
     initial = True
@@ -67,11 +69,7 @@ class Migration(migrations.Migration):
                         ],
                         db_index=True,
                         default='unknown',
-                        help_text='"unknown" means the device has been recently added; \n'
-                        '"ok" means the device is operating normally; \n'
-                        '"problem" means the device is having issues but it\'s still reachable; \n'
-                        '"critical" means the device is not reachable or in critical conditions;\n'
-                        '"deactivated" means the device is deactivated;',
+                        help_text=DeviceMonitoring._meta.get_field('status').help_text,
                         max_length=100,
                         no_check_for_status=True,
                         verbose_name='health status',

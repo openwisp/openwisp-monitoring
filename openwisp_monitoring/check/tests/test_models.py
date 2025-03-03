@@ -10,12 +10,7 @@ from swapper import load_model
 from ...device.tests import TestDeviceMonitoringMixin
 from .. import settings as app_settings
 from ..classes import ConfigApplied, Iperf3, Ping, WifiClients
-from ..tasks import (
-    auto_create_config_check,
-    auto_create_iperf3_check,
-    auto_create_ping,
-    auto_create_wifi_clients_check,
-)
+from ..tasks import auto_create_check
 from . import AutoWifiClientCheck
 
 Check = load_model('check', 'Check')
@@ -30,6 +25,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
     _CONFIG_APPLIED = app_settings.CHECK_CLASSES[1][0]
     _IPERF3 = app_settings.CHECK_CLASSES[2][0]
     _WIFI_CLIENTS = app_settings.CHECK_CLASSES[3][0]
+    _DATA_COLLECTED = app_settings.CHECK_CLASSES[4][0]
 
     def test_check_str(self):
         c = Check(name='Test check')
@@ -149,7 +145,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
     def test_auto_check_creation(self):
         self.assertEqual(Check.objects.count(), 0)
         d = self._create_device(organization=self._create_org())
-        self.assertEqual(Check.objects.count(), 4)
+        self.assertEqual(Check.objects.count(), 5)
         with self.subTest('Test AUTO_PING'):
             c1 = Check.objects.filter(check_type=self._PING).first()
             self.assertEqual(c1.content_object, d)
@@ -166,11 +162,15 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
             c1 = Check.objects.filter(check_type=self._WIFI_CLIENTS).first()
             self.assertEqual(c1.content_object, d)
             self.assertEqual(self._WIFI_CLIENTS, c1.check_type)
+        with self.subTest('Test AUTO_DATA_COLLECTED_CHECK'):
+            c1 = Check.objects.filter(check_type=self._DATA_COLLECTED).first()
+            self.assertEqual(c1.content_object, d)
+            self.assertEqual(self._DATA_COLLECTED, c1.check_type)
 
     def test_device_deleted(self):
         self.assertEqual(Check.objects.count(), 0)
         d = self._create_device(organization=self._create_org())
-        self.assertEqual(Check.objects.count(), 4)
+        self.assertEqual(Check.objects.count(), 5)
         d.delete(check_deactivated=False)
         self.assertEqual(Check.objects.count(), 0)
 
@@ -183,7 +183,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
             self._create_config(status='modified', organization=self._create_org())
         d = Device.objects.first()
         d.monitoring.update_status('ok')
-        self.assertEqual(Check.objects.count(), 4)
+        self.assertEqual(Check.objects.count(), 5)
         self.assertEqual(Metric.objects.filter(object_id=d.id).count(), 0)
         self.assertEqual(AlertSettings.objects.count(), 0)
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
@@ -214,7 +214,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
             self._create_config(status='error', organization=self._create_org())
         dm = Device.objects.first().monitoring
         dm.update_status('ok')
-        self.assertEqual(Check.objects.count(), 4)
+        self.assertEqual(Check.objects.count(), 5)
         self.assertEqual(Metric.objects.filter(object_id=dm.id).count(), 0)
         self.assertEqual(AlertSettings.objects.count(), 0)
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
@@ -249,7 +249,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
             now() - timedelta(minutes=app_settings.CONFIG_CHECK_INTERVAL + 6)
         ):
             self._create_config(status='modified', organization=self._create_org())
-        self.assertEqual(Check.objects.count(), 4)
+        self.assertEqual(Check.objects.count(), 5)
         d = Device.objects.first()
         dm = d.monitoring
         dm.update_status('ok')
@@ -268,35 +268,57 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
 
     def test_no_duplicate_check_created(self):
         self._create_config(organization=self._create_org())
-        self.assertEqual(Check.objects.count(), 4)
+        self.assertEqual(Check.objects.count(), 5)
         d = Device.objects.first()
-        auto_create_config_check.delay(
+        auto_create_check.delay(
             model=Device.__name__.lower(),
             app_label=Device._meta.app_label,
             object_id=str(d.pk),
+            check_type=self._PING,
+            check_name='Ping',
         )
-        auto_create_ping.delay(
+        auto_create_check.delay(
             model=Device.__name__.lower(),
             app_label=Device._meta.app_label,
             object_id=str(d.pk),
+            check_type=self._CONFIG_APPLIED,
+            check_name='Configuration Applied',
         )
-        auto_create_iperf3_check.delay(
+        auto_create_check.delay(
             model=Device.__name__.lower(),
             app_label=Device._meta.app_label,
             object_id=str(d.pk),
+            check_type=self._IPERF3,
+            check_name='Iperf3',
         )
-        auto_create_wifi_clients_check.delay(
+        auto_create_check.delay(
             model=Device.__name__.lower(),
             app_label=Device._meta.app_label,
             object_id=str(d.pk),
+            check_type=self._WIFI_CLIENTS,
+            check_name='Wifi Clients',
         )
-        self.assertEqual(Check.objects.count(), 4)
+        auto_create_check.delay(
+            model=Device.__name__.lower(),
+            app_label=Device._meta.app_label,
+            object_id=str(d.pk),
+            check_type=self._WIFI_CLIENTS,
+            check_name='Wifi Clients',
+        )
+        auto_create_check.delay(
+            model=Device.__name__.lower(),
+            app_label=Device._meta.app_label,
+            object_id=str(d.pk),
+            check_type=self._DATA_COLLECTED,
+            check_name='Data Collected',
+        )
+        self.assertEqual(Check.objects.count(), 5)
 
     def test_device_unreachable_no_config_check(self):
         self._create_config(status='modified', organization=self._create_org())
         d = self.device_model.objects.first()
         d.monitoring.update_status('critical')
-        self.assertEqual(Check.objects.count(), 4)
+        self.assertEqual(Check.objects.count(), 5)
         c2 = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         c2.perform_check()
         self.assertEqual(Metric.objects.count(), 0)
@@ -307,7 +329,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
         self._create_config(status='modified', organization=self._create_org())
         d = self.device_model.objects.first()
         d.monitoring.update_status('unknown')
-        self.assertEqual(Check.objects.count(), 4)
+        self.assertEqual(Check.objects.count(), 5)
         c2 = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         c2.perform_check()
         self.assertEqual(Metric.objects.count(), 0)
@@ -318,7 +340,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
         self._create_config(
             status='modified', organization=self._create_org(is_active=False)
         )
-        self.assertEqual(Check.objects.count(), 4)
+        self.assertEqual(Check.objects.count(), 5)
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         with patch(f'{self._CONFIG_APPLIED}.check') as mocked_check:
             check.perform_check()
@@ -326,7 +348,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
 
     def test_deactivated_device_check_not_performed(self):
         config = self._create_config(status='modified', organization=self._create_org())
-        self.assertEqual(Check.objects.filter(is_active=True).count(), 4)
+        self.assertEqual(Check.objects.filter(is_active=True).count(), 5)
         config.device.deactivate()
         config.set_status_deactivated()
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
@@ -339,7 +361,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
         d = self._create_device(organization=self._create_org())
         self._create_config(device=d)
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
-        self.assertEqual(Check.objects.count(), 4)
+        self.assertEqual(Check.objects.count(), 5)
         self.assertEqual(AlertSettings.objects.count(), 0)
         self.assertFalse(Metric.objects.filter(configuration='config_applied').exists())
         d.monitoring.update_status('ok')

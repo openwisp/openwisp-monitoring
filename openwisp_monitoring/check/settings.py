@@ -9,6 +9,7 @@ CHECK_CLASSES = get_settings_value(
         ('openwisp_monitoring.check.classes.ConfigApplied', 'Configuration Applied'),
         ('openwisp_monitoring.check.classes.Iperf3', 'Iperf3'),
         ('openwisp_monitoring.check.classes.WifiClients', 'WiFi Clients'),
+        ('openwisp_monitoring.check.classes.DataCollected', 'Data Collected'),
     ),
 )
 AUTO_PING = get_settings_value('AUTO_PING', True)
@@ -29,6 +30,10 @@ WIFI_CLIENTS_MAX_CHECK_INTERVAL = int(
 )  # in minutes
 WIFI_CLIENTS_MIN_CHECK_INTERVAL = int(
     get_settings_value('WIFI_CLIENTS_MIN_CHECK_INTERVAL', 4320)
+)  # in minutes
+AUTO_DATA_COLLECTED_CHECK = get_settings_value('AUTO_DATA_COLLECTED_CHECK', True)
+DATA_COLLECTED_CHECK_INTERVAL = int(
+    get_settings_value('DATA_COLLECTED_CHECK_INTERVAL', 60)
 )  # in minutes
 AUTO_IPERF3 = get_settings_value('AUTO_IPERF3', False)
 IPERF3_CHECK_CONFIG = get_settings_value('IPERF3_CHECK_CONFIG', {})
