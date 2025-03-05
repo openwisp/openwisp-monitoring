@@ -23,7 +23,6 @@ from pytz import timezone as tz
 from swapper import load_model
 
 from openwisp_controller.config.validators import mac_address_validator
-from openwisp_monitoring.device.settings import get_critical_device_metrics
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...check.settings import CHECKS_LIST
@@ -387,20 +386,6 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         )
 
     @classmethod
-    def _get_last_write_time(cls, metric, limit=1):
-        points = metric.read(limit=limit, order='-time')
-        if not points:
-            return 0
-        return points[-1]['time']
-
-    @classmethod
-    def _has_recent_data(cls, metrics, reference_time):
-        for metric in metrics:
-            if cls._get_last_write_time(metric) >= reference_time:
-                return True
-        return False
-
-    @classmethod
     def get_active_metrics(cls):
         if not hasattr(cls, '_active_metrics'):
             active_metrics = []
@@ -409,44 +394,6 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
                 active_metrics.extend(Check.get_related_metrics())
             cls._active_metrics = active_metrics
         return cls._active_metrics
-
-    def get_monitoring_status(self):
-        """
-        Returns status after evaluating all the related metrics.
-        """
-        status = 'ok'
-        recent_data_metric_exists = False
-        unhealthy_critical_metrics = 0
-        for metric in self.related_metrics.filter(is_healthy=False):
-            status = 'problem'
-            if self.is_metric_critical(metric):
-                unhealthy_critical_metrics += 1
-                # Check if the device is sending monitoring metrics
-                # Get the timestamp of the second last write of the critical metric.
-                critical_last_write = self._get_last_write_time(metric, limit=2)
-                remaining_metrics = self.related_metrics.exclude(
-                    models.Q(id=metric.id)
-                    | models.Q(is_healthy=None)
-                    | models.Q(configuration__in=self.get_active_metrics())
-                )
-                if critical_last_write and self._has_recent_data(
-                    remaining_metrics, critical_last_write
-                ):
-                    recent_data_metric_exists = True
-
-        if (
-            recent_data_metric_exists is False
-            and unhealthy_critical_metrics > 0
-            and (
-                unhealthy_critical_metrics
-                == self.related_metrics.filter(
-                    key__in=self._get_critical_metric_keys(),
-                ).count()
-            )
-        ):
-            # All critical metrics are unhealthy
-            status = 'critical'
-        return status
 
     @staticmethod
     @receiver(threshold_crossed, dispatch_uid='threshold_crossed_receiver')
@@ -464,7 +411,14 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         except DeviceMonitoring.DoesNotExist:
             monitoring = DeviceMonitoring.objects.create(device=target)
 
-        status = monitoring.get_monitoring_status()
+        status = 'ok' if metric.is_healthy else 'problem'
+        unhealthy_critical_metrics = 0
+        for related_metric in monitoring.related_metrics.filter(is_healthy=False):
+            status = 'problem'
+            if monitoring.is_metric_critical(related_metric):
+                unhealthy_critical_metrics += 1
+        if unhealthy_critical_metrics == len(app_settings.CRITICAL_DEVICE_METRICS):
+            status = 'critical'
         monitoring.update_status(status)
 
     @staticmethod

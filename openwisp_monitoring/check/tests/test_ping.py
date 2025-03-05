@@ -5,6 +5,7 @@ from django.test import TransactionTestCase
 from swapper import load_model
 
 from ... import settings as monitoring_settings
+from ...device import settings as device_settings
 from ...device.tests import TestDeviceMonitoringMixin
 from .. import settings
 from ..classes import Ping
@@ -166,16 +167,31 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         self._check_no_ip_case('unknown')
 
     @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
+    @patch.object(
+        device_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
     @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', True)
-    def test_device_without_ip_ok_status(self, mocked_method):
+    def test_device_without_ip_ok_status(self, mocked_method, *args):
         self._check_no_ip_case('ok')
 
     @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
+    @patch.object(
+        device_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
     @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', True)
-    def test_device_without_ip_problem_status(self, mocked_method):
+    def test_device_without_ip_problem_status(self, mocked_method, *args):
         self._check_no_ip_case('problem')
 
     @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
+    @patch.object(
+        device_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
     @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', True)
     def test_device_without_ip_critical_status(self, mocked_method):
         self._check_no_ip_case('critical')

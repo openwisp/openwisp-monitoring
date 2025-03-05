@@ -660,7 +660,12 @@ class TestDeviceMonitoring(
             signal=health_status_changed,
         )
 
-    def test_ok_critical_ok(self):
+    @patch.object(
+        app_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
+    def test_ok_critical_ok(self, *args):
         dm, ping, load, process_count = self._create_env()
         self.assertEqual(dm.status, 'ok')
         ping.check_threshold(0)
@@ -676,7 +681,12 @@ class TestDeviceMonitoring(
         load.check_threshold(20)
         self.assertEqual(dm.status, 'ok')
 
-    def test_ok_problem_critical_problem_ok(self):
+    @patch.object(
+        app_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
+    def test_ok_problem_critical_problem_ok(self, *args):
         dm, ping, load, process_count = self._create_env()
         self.assertEqual(dm.status, 'ok')
         load.check_threshold(100)
@@ -688,17 +698,24 @@ class TestDeviceMonitoring(
         load.check_threshold(80)
         self.assertEqual(dm.status, 'ok')
 
-    def test_ok_critical_problem_problem_ok(self):
+    def test_ok_critical_problem_problem_ok(self, *args):
         dm, ping, load, process_count = self._create_env()
+        data_collected = self._create_object_metric(
+            configuration='data_collected', content_object=dm.device
+        )
+        self._create_alert_settings(
+            metric=data_collected,
+            custom_operator='<',
+            custom_threshold=1,
+            custom_tolerance=0,
+        )
         ping.write(1)
         self.assertEqual(dm.status, 'ok')
+        data_collected.write(0)
         ping.write(0)
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'critical')
-        load.write(100)
-        dm.refresh_from_db()
-        self.assertEqual(dm.status, 'problem')
-        load.write(80)
+        data_collected.write(1)
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'problem')
         ping.write(1)
@@ -717,7 +734,12 @@ class TestDeviceMonitoring(
         load.check_threshold(80)
         self.assertEqual(dm.status, 'ok')
 
-    def test_management_ip_clear_device_offline(self):
+    @patch.object(
+        app_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
+    def test_management_ip_clear_device_offline(self, *args):
         dm, ping, load, process_count = self._create_env()
         dm.device.management_ip = '10.10.0.5'
         dm.device.save()
@@ -728,7 +750,12 @@ class TestDeviceMonitoring(
         self.assertIsNone(dm.device.management_ip)
 
     @patch('openwisp_monitoring.device.settings.AUTO_CLEAR_MANAGEMENT_IP', False)
-    def test_management_ip_not_clear_device_online(self):
+    @patch.object(
+        app_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
+    def test_management_ip_not_clear_device_online(self, *args):
         dm, ping, load, process_count = self._create_env()
         dm.device.management_ip = '10.10.0.5'
         dm.device.save()
@@ -759,7 +786,12 @@ class TestDeviceMonitoring(
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'ok')
 
-    def test_unknown_critical(self):
+    @patch.object(
+        app_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
+    def test_unknown_critical(self, *args):
         dm, ping, load, process_count = self._create_env()
         self._set_env_unknown(load, process_count, ping, dm)
         load.delete()
@@ -894,10 +926,20 @@ class TestTransactionDeviceMonitoring(
             custom_threshold=1,
             custom_tolerance=0,
         )
+        data_collected = self._create_object_metric(
+            configuration='data_collected', content_object=dm.device
+        )
+        self._create_alert_settings(
+            metric=data_collected,
+            custom_operator='<',
+            custom_threshold=1,
+            custom_tolerance=0,
+        )
         self.assertEqual(dm.status, 'ok')
 
-        # Device status changes to 'critical' due to critical metric
+        # Device status changes to 'critical' due to critical metrics
         ping.write(0)
+        data_collected.write(0)
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'critical')
 
@@ -916,6 +958,7 @@ class TestTransactionDeviceMonitoring(
         # Status will change to 'ok' when the critical metric
         # is recovered
         ping.write(1)
+        data_collected.write(1)
         config_applied.write(1)
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'ok')
