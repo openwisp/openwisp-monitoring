@@ -107,12 +107,10 @@ class AbstractCheck(TimeStampedEditableModel):
     def auto_create_check_receiver(cls, created, **kwargs):
         if not created:
             return
-        transaction_on_commit(
-            lambda: _auto_config_check_receiver(created=created, **kwargs)
-        )
+        transaction_on_commit(lambda: _auto_check_receiver(created=created, **kwargs))
 
 
-def _auto_config_check_receiver(sender, instance, **kwargs):
+def _auto_check_receiver(sender, instance, **kwargs):
     model = sender.__name__.lower()
     app_label = sender._meta.app_label
     object_id = str(instance.pk)
