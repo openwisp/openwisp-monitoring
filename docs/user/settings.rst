@@ -764,7 +764,7 @@ minutes.
 **default**: ``True``
 ============ ========
 
-This setting allows you to choose whether :ref:`data collected
+This setting allows you to choose whether :ref:`monitoring data collected
 <monitoring_data_collected_check>` checks should be created automatically
 for newly registered devices. It's enabled by default.
 
