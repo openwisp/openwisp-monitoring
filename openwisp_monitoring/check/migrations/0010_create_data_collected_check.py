@@ -16,7 +16,7 @@ def create_data_collected_check(apps, schema_editor):
                 app_label=Device._meta.app_label,
                 object_id=str(device.pk),
                 check_type='openwisp_monitoring.check.classes.DataCollected',
-                check_name='Data Collected',
+                check_name='Monitoring Data Collected',
                 check_model=Check,
                 content_type_model=ContentType,
             )

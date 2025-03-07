@@ -152,5 +152,5 @@ def _auto_check_receiver(sender, instance, **kwargs):
             app_label=app_label,
             object_id=object_id,
             check_type='openwisp_monitoring.check.classes.DataCollected',
-            check_name='Data Collected',
+            check_name='Monitoring Data Collected',
         )

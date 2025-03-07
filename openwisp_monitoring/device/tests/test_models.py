@@ -698,28 +698,23 @@ class TestDeviceMonitoring(
         load.check_threshold(80)
         self.assertEqual(dm.status, 'ok')
 
-    def test_ok_critical_problem_problem_ok(self, *args):
+    @patch.object(
+        app_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
+    def test_ok_critical_critical_critical_ok(
+        self,
+    ):
         dm, ping, load, process_count = self._create_env()
-        data_collected = self._create_object_metric(
-            configuration='data_collected', content_object=dm.device
-        )
-        self._create_alert_settings(
-            metric=data_collected,
-            custom_operator='<',
-            custom_threshold=1,
-            custom_tolerance=0,
-        )
-        ping.write(1)
         self.assertEqual(dm.status, 'ok')
-        data_collected.write(0)
-        ping.write(0)
-        dm.refresh_from_db()
+        ping.check_threshold(0)
         self.assertEqual(dm.status, 'critical')
-        data_collected.write(1)
-        dm.refresh_from_db()
-        self.assertEqual(dm.status, 'problem')
-        ping.write(1)
-        dm.refresh_from_db()
+        load.check_threshold(100)
+        self.assertEqual(dm.status, 'critical')
+        load.check_threshold(80)
+        self.assertEqual(dm.status, 'critical')
+        ping.check_threshold(1)
         self.assertEqual(dm.status, 'ok')
 
     def test_ok_problem_problem_problem_ok(self):
@@ -835,9 +830,9 @@ class TestDeviceMonitoring(
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'critical')
 
-    def test_critical_metric_set_status_problem(self):
+    def test_unhealthy_critical_metric_set_status_problem(self):
         """
-        Tests scenario where critical metric sets status to 'problem'
+        Tests scenario where unhealthy critical metric sets status to 'problem'
 
         If threshold of critical metrics is crossed, but the device is
         receiving data for other metrics, then the device status

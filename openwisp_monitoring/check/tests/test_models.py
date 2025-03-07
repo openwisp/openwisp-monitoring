@@ -310,7 +310,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
             app_label=Device._meta.app_label,
             object_id=str(d.pk),
             check_type=self._DATA_COLLECTED,
-            check_name='Data Collected',
+            check_name='Monitoring Data Collected',
         )
         self.assertEqual(Check.objects.count(), 5)
 

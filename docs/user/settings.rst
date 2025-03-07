@@ -624,14 +624,25 @@ Automatically created charts.
 **default**: ``[{'key': 'ping', 'field_name': 'reachable'}]``
 ============ ================================================
 
-Device metrics that are considered critical:
+Device metrics that are considered critical.
 
-when a value crosses the boundary defined in the "threshold value" field
-of the alert settings related to one of these metric types, the health
-status of the device related to the metric moves into ``CRITICAL``.
+When all crical metrics exceed their corresponding "threshold value"
+(defined in the related alert settings), the device's health status
+changes to ``CRITICAL``.
 
-By default, if devices are not reachable by pings they are flagged as
-``CRITICAL``.
+.. note::
+
+    If :ref:`openwisp_monitoring_auto_data_collected_check` is enabled,
+    then :ref:`monitoring data collected
+    <monitoring_data_collected_check>` metric is automatically added to
+    this list. Thus, the default value of the setting becomes
+
+    .. code-block:: python
+
+        [
+            {"key": "ping", "field_name": "reachable"},
+            {"key": "data_collected", "field_name": "data_collected"},
+        ]
 
 .. _openwisp_monitoring_health_status_labels:
 

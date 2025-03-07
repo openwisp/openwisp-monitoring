@@ -350,14 +350,14 @@ DEFAULT_METRICS = {
         },
     },
     'data_collected': {
-        'label': _('Data Collected'),
-        'name': 'Data Collection',
+        'label': _('Monitoring Data Collected'),
+        'name': 'Monitoring Data Collected',
         'key': 'data_collected',
         'field_name': 'data_collected',
         'alert_settings': {'operator': '<', 'threshold': 1, 'tolerance': 30},
         'notification': {
             'problem': {
-                'verbose_name': 'Data Collection PROBLEM',
+                'verbose_name': 'Monitoring Data Collected PROBLEM',
                 'verb': _('has not been sending'),
                 'level': 'warning',
                 'email_subject': _(
@@ -370,7 +370,7 @@ DEFAULT_METRICS = {
                 ),
             },
             'recovery': {
-                'verbose_name': 'Data Collection RECOVERY',
+                'verbose_name': 'Monitoring Data Collected RECOVERY',
                 'verb': _('has resumed sending'),
                 'level': 'info',
                 'email_subject': _(

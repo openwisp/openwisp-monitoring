@@ -348,7 +348,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
             '"{0}" means the device has been recently added; \n'
             '"{1}" means the device is operating normally; \n'
             '"{2}" means the device is having issues but it\'s still communicating with the server; \n'
-            '"{3}" means the device is not reachable or in critical conditions;\n'
+            '"{3}" means the device is not communicating with the server;\n'
             '"{4}" means the device is deactivated;'
         ).format(
             app_settings.HEALTH_STATUS_LABELS['unknown'],

@@ -90,7 +90,9 @@ class TestRecoveryTransaction(DeviceMonitoringTransactionTestcase):
             mocked_task.assert_not_called()
 
         mocked_task.reset_mock()
-        with self.subTest('Test checks are triggered if device status is "problem"'):
+        with self.subTest(
+            'Test checks are not triggered if device status is "problem"'
+        ):
             device_monitoring.update_status('problem')
             response = self.client.post(
                 url,

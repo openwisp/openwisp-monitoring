@@ -9,7 +9,10 @@ CHECK_CLASSES = get_settings_value(
         ('openwisp_monitoring.check.classes.ConfigApplied', 'Configuration Applied'),
         ('openwisp_monitoring.check.classes.Iperf3', 'Iperf3'),
         ('openwisp_monitoring.check.classes.WifiClients', 'WiFi Clients'),
-        ('openwisp_monitoring.check.classes.DataCollected', 'Data Collected'),
+        (
+            'openwisp_monitoring.check.classes.DataCollected',
+            'Monitoring Data Collected',
+        ),
     ),
 )
 AUTO_PING = get_settings_value('AUTO_PING', True)
