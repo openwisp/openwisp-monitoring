@@ -832,10 +832,10 @@ class TestDeviceMonitoring(
 
     def test_single_unhealthy_critical_metric_set_status_problem(self):
         """
-        Tests that a single unhealthy critical metric sets the device status to 'problem'.
+        1 out of 2 unhealthy critical metrics sets the status to 'problem'
 
         If the threshold of a critical metric (ping) is exceeded, but the device is
-        still sending data for monitoring metrics, it's status should change to 'problem'
+        still sending data for monitoring metrics, its status should change to 'problem'
         instead of 'critical'.
         """
         time_now = now()

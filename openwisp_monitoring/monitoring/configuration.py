@@ -357,7 +357,7 @@ DEFAULT_METRICS = {
         'alert_settings': {'operator': '<', 'threshold': 1, 'tolerance': 30},
         'notification': {
             'problem': {
-                'verbose_name': 'Monitoring Data Collected PROBLEM',
+                'verbose_name': _('Monitoring Data Collected PROBLEM'),
                 'verb': _('has not been sending'),
                 'level': 'warning',
                 'email_subject': _(
@@ -370,7 +370,7 @@ DEFAULT_METRICS = {
                 ),
             },
             'recovery': {
-                'verbose_name': 'Monitoring Data Collected RECOVERY',
+                'verbose_name': _('Monitoring Data Collected RECOVERY'),
                 'verb': _('has resumed sending'),
                 'level': 'info',
                 'email_subject': _(
