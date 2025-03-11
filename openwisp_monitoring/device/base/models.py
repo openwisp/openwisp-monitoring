@@ -25,7 +25,7 @@ from swapper import load_model
 from openwisp_controller.config.validators import mac_address_validator
 from openwisp_utils.base import TimeStampedEditableModel
 
-from ...check.settings import CHECKS_LIST
+from ...check import settings as check_settings
 from ...db import device_data_query, timeseries_db
 from ...monitoring.signals import threshold_crossed
 from ...monitoring.tasks import _timeseries_write
@@ -392,7 +392,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         """
         if not hasattr(cls, '_active_metrics'):
             active_metrics = []
-            for check in CHECKS_LIST:
+            for check in check_settings.CHECK_LIST:
                 Check = import_string(check)
                 active_metrics.extend(Check.get_related_metrics())
             cls._active_metrics = active_metrics

@@ -7,7 +7,7 @@ from swapper import load_model
 from ... import settings as monitoring_settings
 from ...device import settings as device_settings
 from ...device.tests import TestDeviceMonitoringMixin
-from .. import settings
+from .. import settings as app_settings
 from ..classes import Ping
 from ..classes.ping import get_ping_schema
 from ..exceptions import OperationalError
@@ -20,7 +20,7 @@ Check = load_model('check', 'Check')
 
 
 class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
-    _PING = settings.CHECK_CLASSES[0][0]
+    _PING = app_settings.CHECK_CLASSES[0][0]
     _RESULT_KEYS = ['reachable', 'loss', 'rtt_min', 'rtt_avg', 'rtt_max']
     _RTT_KEYS = _RESULT_KEYS[-3:]
     _UNRECOGNIZED_OUTPUT = (
@@ -63,7 +63,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
             self.assertTrue(result[key] < 1)
 
     @patch.object(
-        settings,
+        app_settings,
         'PING_CHECK_CONFIG',
         {
             'timeout': {'default': '10000'},

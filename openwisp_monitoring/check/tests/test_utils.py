@@ -9,7 +9,6 @@ from ...device.tests import TestDeviceMonitoringMixin
 from .. import settings as app_settings
 from ..checks import check_wifi_clients_snooze_schedule
 from ..classes import Ping
-from ..settings import CHECK_CLASSES
 from ..tasks import perform_check
 from ..utils import run_checks_async
 from . import _FPING_REACHABLE
@@ -18,7 +17,7 @@ Check = load_model('check', 'Check')
 
 
 class TestUtils(TestDeviceMonitoringMixin, TransactionTestCase):
-    _PING = CHECK_CLASSES[0][0]
+    _PING = app_settings.CHECK_CLASSES[0][0]
 
     def _create_check(self):
         device = self._create_device(organization=self._create_org())

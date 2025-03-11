@@ -9,7 +9,7 @@ import jsonfield.fields
 import model_utils.fields
 from django.db import migrations, models
 
-from openwisp_monitoring.check.settings import CHECK_CLASSES
+from openwisp_monitoring.check.settings import CHECK_CHOICES
 
 
 class Migration(migrations.Migration):
@@ -66,7 +66,7 @@ class Migration(migrations.Migration):
                 (
                     'check_type',
                     models.CharField(
-                        choices=CHECK_CLASSES,
+                        choices=CHECK_CHOICES,
                         db_index=True,
                         max_length=128,
                         verbose_name='check type',

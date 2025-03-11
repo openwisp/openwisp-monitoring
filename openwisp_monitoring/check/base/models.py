@@ -8,11 +8,11 @@ from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from jsonfield import JSONField
 
-from openwisp_monitoring.check import settings as app_settings
-from openwisp_monitoring.check.tasks import auto_create_check
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...utils import transaction_on_commit
+from .. import settings as app_settings
+from ..tasks import auto_create_check
 
 
 class AbstractCheck(TimeStampedEditableModel):
@@ -33,7 +33,7 @@ class AbstractCheck(TimeStampedEditableModel):
     content_object = GenericForeignKey('content_type', 'object_id')
     check_type = models.CharField(
         _('check type'),
-        choices=app_settings.CHECK_CLASSES,
+        choices=app_settings.CHECK_CHOICES,
         db_index=True,
         max_length=128,
     )
@@ -114,43 +114,14 @@ def _auto_check_receiver(sender, instance, **kwargs):
     model = sender.__name__.lower()
     app_label = sender._meta.app_label
     object_id = str(instance.pk)
-    if app_settings.AUTO_PING:
+
+    for class_string, name, auto_create_setting in app_settings.CHECK_CLASSES:
+        if not getattr(app_settings, auto_create_setting):
+            continue
         auto_create_check.delay(
             model=model,
             app_label=app_label,
             object_id=object_id,
-            check_type='openwisp_monitoring.check.classes.Ping',
-            check_name='Ping',
-        )
-    if app_settings.AUTO_CONFIG_CHECK:
-        auto_create_check.delay(
-            model=model,
-            app_label=app_label,
-            object_id=object_id,
-            check_type='openwisp_monitoring.check.classes.ConfigApplied',
-            check_name='Configuration Applied',
-        )
-    if app_settings.AUTO_IPERF3:
-        auto_create_check.delay(
-            model=model,
-            app_label=app_label,
-            object_id=object_id,
-            check_type='openwisp_monitoring.check.classes.Iperf3',
-            check_name='Iperf3',
-        )
-    if app_settings.AUTO_WIFI_CLIENTS_CHECK:
-        auto_create_check.delay(
-            model=model,
-            app_label=app_label,
-            object_id=object_id,
-            check_type='openwisp_monitoring.check.classes.WifiClients',
-            check_name='WiFi Clients',
-        )
-    if app_settings.AUTO_DATA_COLLECTED_CHECK:
-        auto_create_check.delay(
-            model=model,
-            app_label=app_label,
-            object_id=object_id,
-            check_type='openwisp_monitoring.check.classes.DataCollected',
-            check_name='Monitoring Data Collected',
+            check_type=class_string,
+            check_name=name,
         )

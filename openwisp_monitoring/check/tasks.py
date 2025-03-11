@@ -10,7 +10,7 @@ from swapper import load_model
 
 from openwisp_utils.tasks import OpenwispCeleryTask
 
-from .settings import CHECKS_LIST
+from . import settings as app_settings
 
 logger = logging.getLogger(__name__)
 
@@ -31,15 +31,15 @@ def run_checks(checks=None):
     """
     # If checks is None, We should execute all the checks
     if checks is None:
-        checks = CHECKS_LIST
+        checks = app_settings.CHECK_LIST
 
     if not isinstance(checks, list):
         raise ImproperlyConfigured(
             f'Check path {checks} should be of type "list"'
         )  # pragma: no cover
-    if not all(check_path in CHECKS_LIST for check_path in checks):
+    if not all(check_path in app_settings.CHECK_LIST for check_path in checks):
         raise ImproperlyConfigured(
-            f'Check path {checks} should be in {CHECKS_LIST}'
+            f'Check path {checks} should be listed in CHECK_CLASSES'
         )  # pragma: no cover
 
     runnable_checks = []
