@@ -830,13 +830,13 @@ class TestDeviceMonitoring(
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'critical')
 
-    def test_unhealthy_critical_metric_set_status_problem(self):
+    def test_single_unhealthy_critical_metric_set_status_problem(self):
         """
-        Tests scenario where unhealthy critical metric sets status to 'problem'
+        Tests that a single unhealthy critical metric sets the device status to 'problem'.
 
-        If threshold of critical metrics is crossed, but the device is
-        receiving data for other metrics, then the device status
-        will change to 'problem' instead of 'critical'.
+        If the threshold of a critical metric (ping) is exceeded, but the device is
+        still sending data for monitoring metrics, it's status should change to 'problem'
+        instead of 'critical'.
         """
         time_now = now()
         dm, ping, load, process_count = self._create_env()

@@ -626,9 +626,8 @@ Automatically created charts.
 
 Device metrics that are considered critical.
 
-When all crical metrics exceed their corresponding "threshold value"
-(defined in the related alert settings), the device's health status
-changes to ``CRITICAL``.
+When all critical metrics have values outside their expected range, the
+device's health status changes to ``CRITICAL``.
 
 .. note::
 

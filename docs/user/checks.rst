@@ -40,9 +40,10 @@ if there's anything that is not working as intended.
 Monitoring Data Collected
 -------------------------
 
-This check ensures that the server is receiving passive metrics in a
-timely manner. You may choose to disable auto creation of this check by
-using the setting :ref:`openwisp_monitoring_auto_data_collected_check`.
+This check ensures that the server is receiving metrics from network
+devices in a timely manner. You may choose to disable auto creation of
+this check by using the setting
+:ref:`openwisp_monitoring_auto_data_collected_check`.
 
 .. _iperf3_check:
 

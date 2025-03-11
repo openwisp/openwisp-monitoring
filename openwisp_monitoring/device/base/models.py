@@ -387,6 +387,9 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
 
     @classmethod
     def get_active_metrics(cls):
+        """
+        Returns a list of active metrics (Metric.key)
+        """
         if not hasattr(cls, '_active_metrics'):
             active_metrics = []
             for check in CHECKS_LIST:
