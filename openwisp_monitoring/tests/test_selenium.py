@@ -128,9 +128,23 @@ class TestDeviceConnectionInlineAdmin(
         self.open(
             reverse(f'admin:{self.config_app_label}_device_change', args=[device.id])
         )
-        self.web_driver.find_element(
-            By.XPATH, '//*[@id="device_form"]/div/div[1]/input[1]'
-        ).click()
+        try:
+            WebDriverWait(self.web_driver, 5).until(
+                EC.visibility_of_element_located(
+                    (By.XPATH, '//*[@id="device_form"]/div/div[1]/input[1]')
+                )
+            )
+            WebDriverWait(self.web_driver, 5).until(
+                EC.invisibility_of_element_located(
+                    (By.CSS_SELECTOR, '#loading-overlay')
+                )
+            )
+        except TimeoutException:
+            self.fail('Save button unexpectedly not visible')
+        else:
+            self.web_driver.find_element(
+                By.XPATH, '//*[@id="device_form"]/div/div[1]/input[1]'
+            ).click()
         try:
             WebDriverWait(self.web_driver, 5).until(
                 EC.url_to_be(f'{self.live_server_url}/admin/config/device/')
@@ -144,9 +158,18 @@ class TestDeviceConnectionInlineAdmin(
         self.open(
             reverse(f'admin:{self.config_app_label}_device_delete', args=[device.id])
         )
-        self.web_driver.find_element(
-            by=By.CSS_SELECTOR, value='#content form input[type="submit"]'
-        ).click()
+        try:
+            WebDriverWait(self.web_driver, 5).until(
+                EC.visibility_of_element_located(
+                    (By.CSS_SELECTOR, '#content form input[type="submit"]')
+                )
+            )
+        except TimeoutException:
+            self.fail('Confirm delete button unexpectedly not visible')
+        else:
+            self.web_driver.find_element(
+                by=By.CSS_SELECTOR, value='#content form input[type="submit"]'
+            ).click()
         self.assertEqual(Device.objects.count(), 0)
         self.assertEqual(DeviceConnection.objects.count(), 0)
         self.assertEqual(Check.objects.count(), 0)
@@ -160,9 +183,19 @@ class TestDeviceConnectionInlineAdmin(
                 f'admin:{self.config_app_label}_device_recover', args=[version_obj.id]
             )
         )
-        self.web_driver.find_element(
-            By.XPATH, '//*[@id="device_form"]/div/div[1]/input[1]'
-        ).click()
+
+        try:
+            WebDriverWait(self.web_driver, 5).until(
+                EC.visibility_of_element_located(
+                    (By.XPATH, '//*[@id="device_form"]/div/div[1]/input[1]')
+                )
+            )
+        except TimeoutException:
+            self.fail('Save button unexpectedly not visible')
+        else:
+            self.web_driver.find_element(
+                By.XPATH, '//*[@id="device_form"]/div/div[1]/input[1]'
+            ).click()
         try:
             WebDriverWait(self.web_driver, 5).until(
                 EC.url_to_be(f'{self.live_server_url}/admin/config/device/')
@@ -276,11 +309,14 @@ class TestWifiSessionInlineAdmin(
         path = f'admin:{self.config_app_label}_device_change'
         self.open(reverse(path, args=[device.pk]))
         # Make sure the wifi session inline doesn't exist
-        WebDriverWait(self.web_driver, 2).until(
-            EC.invisibility_of_element_located(
-                (By.CSS_SELECTOR, '#wifisession_set-group')
+        try:
+            WebDriverWait(self.web_driver, 2).until(
+                EC.invisibility_of_element_located(
+                    (By.CSS_SELECTOR, '#wifisession_set-group')
+                )
             )
-        )
+        except TimeoutException:
+            self.fail('#wifisession_set-group unexpectedly visible')
         # We are still on the device change page,
         # and now we will create new wifi sessions
         ws1 = self._create_wifi_session(device=device)
@@ -289,11 +325,38 @@ class TestWifiSessionInlineAdmin(
             device=device, wifi_client=wc2, ssid='Test Wifi Session'
         )
         # Now press the 'Save' button on the device change page
-        self.web_driver.find_element(
-            By.XPATH, '//*[@id="device_form"]/div/div[1]/input[3]'
-        ).click()
+        try:
+            WebDriverWait(self.web_driver, 5).until(
+                EC.invisibility_of_element_located(
+                    (By.CSS_SELECTOR, '#loading-overlay')
+                )
+            )
+            WebDriverWait(self.web_driver, 2).until(
+                EC.visibility_of_element_located(
+                    (By.XPATH, '//*[@id="device_form"]/div/div[1]/input[3]')
+                )
+            )
+        except TimeoutException:
+            self.fail('save button unexpectedly not visible')
+        else:
+            self.web_driver.find_element(
+                By.XPATH, '//*[@id="device_form"]/div/div[1]/input[3]'
+            ).click()
         # Make sure the wifi session tab now
         # exists with the correct wifi sessions
+        try:
+            WebDriverWait(self.web_driver, 5).until(
+                EC.invisibility_of_element_located(
+                    (By.CSS_SELECTOR, '#loading-overlay')
+                )
+            )
+            WebDriverWait(self.web_driver, 2).until(
+                EC.visibility_of_element_located(
+                    (By.XPATH, '//*[@id="tabs-container"]/ul/li[7]/a')
+                )
+            )
+        except TimeoutException:
+            self.fail('WiFi session tab unexpectedly not visible')
         wifi_session_inline = self.web_driver.find_element(
             By.XPATH, '//*[@id="tabs-container"]/ul/li[7]/a'
         )
