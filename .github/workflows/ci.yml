@@ -77,6 +77,7 @@ jobs:
           pip install -U pip wheel setuptools
           pip install -r requirements-test.txt
           pip install -U -I -e .
+          pip install -UI --no-deps https://github.com/openwisp/openwisp-utils/tarball/browser-logs
           pip uninstall -y django
           pip install -U ${{ matrix.django-version }}
           sudo npm install -g prettier
@@ -101,7 +102,7 @@ jobs:
           SELENIUM_HEADLESS: 1
           GECKO_LOG: 1
 
-      - name: Show gecko web driver log on failures 
+      - name: Show gecko web driver log on failures
         if: ${{ failure() }}
         run: cat geckodriver.log
 

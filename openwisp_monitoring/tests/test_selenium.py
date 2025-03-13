@@ -4,7 +4,7 @@ from unittest.mock import patch
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.urls.base import reverse
 from reversion.models import Version
-from selenium.common.exceptions import TimeoutException, UnexpectedAlertPresentException
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -69,29 +69,21 @@ class SeleniumTestMixin(BaseSeleniumTestMixin):
         DASHBOARD_TEMPLATES[0][1] = cls._dashboard_map_context
         DASHBOARD_TEMPLATES[55][1] = cls._dashboard_timeseries_context
 
-    def setUp(self):
-        self.admin = self._create_admin(
-            username=self.admin_username, password=self.admin_password
-        )
-        super().setUp()
-
-    def open_and_ignore_chart_error(self, url):
-        try:
-            self.open(url)
-        except UnexpectedAlertPresentException as e:
-            if e.alert_text == 'Something went wrong while loading the charts':
-                # false positive happening randomly during automated tests
-                pass
-            else:
-                raise e
-        else:
-            self._wait_for_loading_overlay(add_sleep=2)
+    def login(self, username=None, password=None, driver=None):
+        super().login(username, password, driver)
+        # Workaround for JS logic in chart-utils.js
+        # which fails to perform a XHR request
+        # during automated tests, it seems that the
+        # lack of pause causes the request to fail randomly
+        sleep(0.5)
 
     def _wait_for_loading_overlay(self, timeout=10, add_sleep=0):
+        # The web driver can't figure out the loading overlay
+        # is still fading out, so let's just hide it
+        self.web_driver.execute_script(
+            'document.getElementById("loading-overlay").style.display="none";'
+        )
         self.wait_for_invisibility(By.CSS_SELECTOR, '#loading-overlay', timeout)
-        # extreme remedy against flaky automated tests
-        if add_sleep:
-            sleep(add_sleep)
 
 
 class TestDeviceConnectionInlineAdmin(
@@ -101,23 +93,6 @@ class TestDeviceConnectionInlineAdmin(
     StaticLiveServerTestCase,
 ):
     config_app_label = 'config'
-
-    def tearDown(self):
-        # Accept unsaved changes alert to allow other tests to run
-        try:
-            self.web_driver.refresh()
-        except UnexpectedAlertPresentException:
-            self.web_driver.switch_to_alert.accept()
-        else:
-            try:
-                WebDriverWait(self.web_driver, 1).until(EC.alert_is_present())
-            except TimeoutException:
-                pass
-            else:
-                self.web_driver.switch_to_alert.accept()
-        self.web_driver.refresh()
-        self.wait_for_visibility(By.XPATH, '//*[@id="site-name"]')
-        super().tearDown()
 
     def test_restoring_deleted_device(self):
         org = self._get_org()
@@ -140,14 +115,16 @@ class TestDeviceConnectionInlineAdmin(
         self.assertEqual(len(device_chart_ids), 3)
 
         self.login()
-        self._wait_for_loading_overlay()
 
         # Save device to create revision.
-        self.open_and_ignore_chart_error(
+        self.open(
             reverse(f'admin:{self.config_app_label}_device_change', args=[device.id])
         )
-        self.find_element(
-            By.XPATH, '//*[@id="device_form"]/div/div[1]/input[1]'
+        self._wait_for_loading_overlay()
+        self.wait_for(
+            'element_to_be_clickable',
+            By.XPATH,
+            '//*[@id="device_form"]/div/div[1]/input[1]',
         ).click()
         try:
             WebDriverWait(self.web_driver, 5).until(
@@ -212,7 +189,6 @@ class TestDashboardCharts(
     @patch.dict(DEFAULT_DASHBOARD_TRAFFIC_CHART, {'__all__': ['wlan0', 'wlan1']})
     def test_dashboard_timeseries_charts(self):
         self.login()
-        self._wait_for_loading_overlay()
         self.wait_for_visibility(
             By.CSS_SELECTOR, '#ow-chart-inner-container', timeout=5
         )
@@ -226,7 +202,6 @@ class TestDashboardCharts(
         )
         self.create_test_data()
         self.web_driver.refresh()
-        self._wait_for_loading_overlay()
         self.wait_for_visibility(By.CSS_SELECTOR, '#ow-chart-contents', timeout=10)
         self.wait_for_visibility(By.CSS_SELECTOR, '#chart-0', timeout=10)
         self.wait_for_visibility(By.CSS_SELECTOR, '#chart-1', timeout=10)
@@ -261,9 +236,9 @@ class TestWifiSessionInlineAdmin(
         dm = self._create_device_monitoring()
         device = dm.device
         self.login()
-        self._wait_for_loading_overlay()
         path = f'admin:{self.config_app_label}_device_change'
-        self.open_and_ignore_chart_error(reverse(path, args=[device.pk]))
+        self.open(reverse(path, args=[device.pk]))
+        self._wait_for_loading_overlay()
         # Make sure the wifi session inline doesn't exist
         self.wait_for_invisibility(By.CSS_SELECTOR, '#wifisession_set-group')
         # We are still on the device change page,
@@ -280,7 +255,9 @@ class TestWifiSessionInlineAdmin(
         # Make sure the wifi session tab now
         # exists with the correct wifi sessions
         self._wait_for_loading_overlay()
-        self.find_element(By.XPATH, '//*[@id="tabs-container"]/ul/li[7]/a').click()
+        self.wait_for(
+            'element_to_be_clickable', By.XPATH, '//*[@id="tabs-container"]/ul/li[7]/a'
+        ).click()
         wifi_session_inline_form_error = (
             'ManagementForm data is missing '
             'or has been tampered with. Missing fields: '
