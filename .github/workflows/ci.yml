@@ -73,8 +73,9 @@ jobs:
           pip install -U ${{ matrix.django-version }}
           sudo npm install -g prettier
 
-          # start influxdb
-          docker compose up -d influxdb
+      - name: Start InfluxDB
+        if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
+        run: docker compose up -d influxdb
 
       - name: QA checks
         run: |
