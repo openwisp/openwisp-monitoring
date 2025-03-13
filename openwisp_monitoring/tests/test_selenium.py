@@ -2,6 +2,7 @@ from time import sleep
 from unittest.mock import patch
 
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+from django.test import tag
 from django.urls.base import reverse
 from reversion.models import Version
 from selenium.common.exceptions import TimeoutException
@@ -86,6 +87,7 @@ class SeleniumTestMixin(BaseSeleniumTestMixin):
         self.wait_for_invisibility(By.CSS_SELECTOR, '#loading-overlay', timeout)
 
 
+@tag('selenium_tests')
 class TestDeviceConnectionInlineAdmin(
     SeleniumTestMixin,
     TestDeviceMonitoringMixin,
@@ -175,6 +177,7 @@ class TestDeviceConnectionInlineAdmin(
         self.assertEqual(Chart.objects.filter(id__in=device_chart_ids).count(), 3)
 
 
+@tag('selenium_tests')
 class TestDashboardCharts(
     SeleniumTestMixin, TestDeviceMonitoringMixin, StaticLiveServerTestCase
 ):
@@ -225,6 +228,7 @@ class TestDashboardCharts(
         )
 
 
+@tag('selenium_tests')
 class TestWifiSessionInlineAdmin(
     SeleniumTestMixin,
     TestWifiClientSessionMixin,
