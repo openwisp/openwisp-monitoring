@@ -93,10 +93,19 @@ jobs:
         if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
         run: |
           coverage run runtests.py
-          SAMPLE_APP=1 coverage run runtests.py
-          TIMESERIES_UDP=1 coverage run runtests.py
+          # the next test runs focus on specific backend features, therefore
+          # we can skip selenium tests to improve speed and test consistency
+          SAMPLE_APP=1 coverage run runtests.py --exclude-tag=selenium_tests
+          TIMESERIES_UDP=1 coverage run runtests.py --exclude-tag=selenium_tests
           coverage combine
           coverage xml
+        env:
+          SELENIUM_HEADLESS: 1
+          GECKO_LOG: 1
+
+      - name: Show gecko web driver log on failures
+        if: ${{ failure() }}
+        run: cat geckodriver.log
 
       - name: Upload Coverage
         if: ${{ success() }}
