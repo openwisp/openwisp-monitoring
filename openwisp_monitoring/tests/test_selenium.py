@@ -19,9 +19,7 @@ from openwisp_monitoring.device.tests import (
 from openwisp_monitoring.monitoring.configuration import DEFAULT_DASHBOARD_TRAFFIC_CHART
 from openwisp_monitoring.monitoring.migrations import create_general_metrics
 from openwisp_utils.admin_theme.dashboard import DASHBOARD_TEMPLATES
-from openwisp_utils.test_selenium_mixins import (
-    SeleniumTestMixin as BaseSeleniumTestMixin,
-)
+from openwisp_utils.tests import SeleniumTestMixin as BaseSeleniumTestMixin
 
 Device = load_model('config', 'Device')
 DeviceConnection = load_model('connection', 'DeviceConnection')
@@ -78,14 +76,6 @@ class SeleniumTestMixin(BaseSeleniumTestMixin):
         # lack of pause causes the request to fail randomly
         sleep(0.5)
 
-    def _wait_for_loading_overlay(self, timeout=10, add_sleep=0):
-        # The web driver can't figure out the loading overlay
-        # is still fading out, so let's just hide it
-        self.web_driver.execute_script(
-            'document.getElementById("loading-overlay").style.display="none";'
-        )
-        self.wait_for_invisibility(By.CSS_SELECTOR, '#loading-overlay', timeout)
-
 
 @tag('selenium_tests')
 class TestDeviceConnectionInlineAdmin(
@@ -122,7 +112,7 @@ class TestDeviceConnectionInlineAdmin(
         self.open(
             reverse(f'admin:{self.config_app_label}_device_change', args=[device.id])
         )
-        self._wait_for_loading_overlay()
+        self.hide_loading_overlay()
         self.wait_for(
             'element_to_be_clickable',
             By.XPATH,
@@ -242,7 +232,7 @@ class TestWifiSessionInlineAdmin(
         self.login()
         path = f'admin:{self.config_app_label}_device_change'
         self.open(reverse(path, args=[device.pk]))
-        self._wait_for_loading_overlay()
+        self.hide_loading_overlay()
         # Make sure the wifi session inline doesn't exist
         self.wait_for_invisibility(By.CSS_SELECTOR, '#wifisession_set-group')
         # We are still on the device change page,
@@ -258,7 +248,7 @@ class TestWifiSessionInlineAdmin(
         ).click()
         # Make sure the wifi session tab now
         # exists with the correct wifi sessions
-        self._wait_for_loading_overlay()
+        self.hide_loading_overlay()
         self.wait_for(
             'element_to_be_clickable', By.XPATH, '//*[@id="tabs-container"]/ul/li[7]/a'
         ).click()
