@@ -9,12 +9,7 @@ from django.utils.translation import gettext_lazy as _
 from jsonfield import JSONField
 
 from openwisp_monitoring.check import settings as app_settings
-from openwisp_monitoring.check.tasks import (
-    auto_create_config_check,
-    auto_create_iperf3_check,
-    auto_create_ping,
-    auto_create_wifi_clients_check,
-)
+from openwisp_monitoring.check.tasks import auto_create_check
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...utils import transaction_on_commit
@@ -108,74 +103,54 @@ class AbstractCheck(TimeStampedEditableModel):
 
         perform_check.apply_async(args=[self.id], countdown=duration)
 
+    @classmethod
+    def auto_create_check_receiver(cls, created, **kwargs):
+        if not created:
+            return
+        transaction_on_commit(lambda: _auto_check_receiver(created=created, **kwargs))
 
-def auto_ping_receiver(sender, instance, created, **kwargs):
-    """Implements OPENWISP_MONITORING_AUTO_PING.
 
-    The creation step is executed in the background.
-    """
-    # we need to skip this otherwise this task will be executed
-    # every time the configuration is requested via checksum
-    if not created:
-        return
-    transaction_on_commit(
-        lambda: auto_create_ping.delay(
-            model=sender.__name__.lower(),
-            app_label=sender._meta.app_label,
-            object_id=str(instance.pk),
+def _auto_check_receiver(sender, instance, **kwargs):
+    model = sender.__name__.lower()
+    app_label = sender._meta.app_label
+    object_id = str(instance.pk)
+    if app_settings.AUTO_PING:
+        auto_create_check.delay(
+            model=model,
+            app_label=app_label,
+            object_id=object_id,
+            check_type='openwisp_monitoring.check.classes.Ping',
+            check_name='Ping',
         )
-    )
-
-
-def auto_config_check_receiver(sender, instance, created, **kwargs):
-    """Implements OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK.
-
-    The creation step is executed in the background.
-    """
-    # we need to skip this otherwise this task will be executed
-    # every time the configuration is requested via checksum
-    if not created:
-        return
-    transaction_on_commit(
-        lambda: auto_create_config_check.delay(
-            model=sender.__name__.lower(),
-            app_label=sender._meta.app_label,
-            object_id=str(instance.pk),
+    if app_settings.AUTO_CONFIG_CHECK:
+        auto_create_check.delay(
+            model=model,
+            app_label=app_label,
+            object_id=object_id,
+            check_type='openwisp_monitoring.check.classes.ConfigApplied',
+            check_name='Configuration Applied',
         )
-    )
-
-
-def auto_iperf3_check_receiver(sender, instance, created, **kwargs):
-    """Implements OPENWISP_MONITORING_AUTO_IPERF3.
-
-    The creation step is executed in the background.
-    """
-    # we need to skip this otherwise this task will be executed
-    # every time the configuration is requested via checksum
-    if not created:
-        return
-    transaction_on_commit(
-        lambda: auto_create_iperf3_check.delay(
-            model=sender.__name__.lower(),
-            app_label=sender._meta.app_label,
-            object_id=str(instance.pk),
+    if app_settings.AUTO_IPERF3:
+        auto_create_check.delay(
+            model=model,
+            app_label=app_label,
+            object_id=object_id,
+            check_type='openwisp_monitoring.check.classes.Iperf3',
+            check_name='Iperf3',
         )
-    )
-
-
-def auto_wifi_clients_check_receiver(sender, instance, created, **kwargs):
-    """Implements OPENWISP_MONITORING_AUTO_WIFI_CLIENTS_CHECK.
-
-    The creation step is executed in the background.
-    """
-    # we need to skip this otherwise this task will be executed
-    # every time the configuration is requested via checksum
-    if not created:
-        return
-    transaction_on_commit(
-        lambda: auto_create_wifi_clients_check.delay(
-            model=sender.__name__.lower(),
-            app_label=sender._meta.app_label,
-            object_id=str(instance.pk),
+    if app_settings.AUTO_WIFI_CLIENTS_CHECK:
+        auto_create_check.delay(
+            model=model,
+            app_label=app_label,
+            object_id=object_id,
+            check_type='openwisp_monitoring.check.classes.WifiClients',
+            check_name='WiFi Clients',
         )
-    )
+    if app_settings.AUTO_DATA_COLLECTED_CHECK:
+        auto_create_check.delay(
+            model=model,
+            app_label=app_label,
+            object_id=object_id,
+            check_type='openwisp_monitoring.check.classes.DataCollected',
+            check_name='Monitoring Data Collected',
+        )

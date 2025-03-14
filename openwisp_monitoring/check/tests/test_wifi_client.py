@@ -55,7 +55,7 @@ class TestWifiClient(
             metric__key__in=['wifi_clients_max', 'wifi_clients_min']
         )
         # check created automatically by AUTO_WIFI_CLIENTS_CHECK
-        self.assertEqual(Check.objects.count(), 4)
+        self.assertEqual(Check.objects.count(), 5)
         self.assertEqual(metric_qs.count(), 0)
         self.assertEqual(alert_settings_qs.count(), 0)
         check = Check.objects.filter(check_type=self._WIFI_CLIENTS).first()

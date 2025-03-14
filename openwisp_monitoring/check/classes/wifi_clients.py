@@ -15,6 +15,10 @@ class WifiClients(BaseCheck):
     TIME_FORMAT = '%H:%M'
 
     @classmethod
+    def get_related_metrics(cls):
+        return ('wifi_clients_min', 'wifi_clients_max')
+
+    @classmethod
     def _get_start_end_datetime(cls, start, end, today):
         # Ensure time is included
         start = f"{start} 00:00" if ":" not in start else start

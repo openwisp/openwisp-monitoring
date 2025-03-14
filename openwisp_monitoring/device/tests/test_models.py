@@ -18,15 +18,20 @@ from .. import settings as app_settings
 from ..signals import health_status_changed
 from ..tasks import delete_wifi_clients_and_sessions, trigger_device_checks
 from ..utils import get_device_cache_key
-from . import DeviceMonitoringTestCase, TestWifiClientSessionMixin
+from . import (
+    DeviceMonitoringTestCase,
+    DeviceMonitoringTransactionTestcase,
+    TestWifiClientSessionMixin,
+)
 
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 DeviceData = load_model('device_monitoring', 'DeviceData')
 WifiClient = load_model('device_monitoring', 'WifiClient')
 WifiSession = load_model('device_monitoring', 'WifiSession')
+Metric = load_model('monitoring', 'Metric')
 
 
-class BaseTestCase(DeviceMonitoringTestCase):
+class MonitoringTestMixin(object):
     _sample_data = {
         "type": "DeviceMonitoring",
         "general": {
@@ -245,8 +250,32 @@ class BaseTestCase(DeviceMonitoringTestCase):
         d = self._create_device(**kwargs)
         return DeviceData(pk=d.pk)
 
+    def _create_env(self):
+        d = self._create_device()
+        dm = d.monitoring
+        dm.status = 'ok'
+        dm.save()
+        ping = self._create_object_metric(configuration='ping', content_object=d)
+        self._create_alert_settings(
+            metric=ping, custom_operator='<', custom_threshold=1, custom_tolerance=0
+        )
+        load = self._create_object_metric(name='load', content_object=d)
+        self._create_alert_settings(
+            metric=load, custom_operator='>', custom_threshold=90, custom_tolerance=0
+        )
+        process_count = self._create_object_metric(
+            name='process_count', content_object=d
+        )
+        self._create_alert_settings(
+            metric=process_count,
+            custom_operator='>',
+            custom_threshold=20,
+            custom_tolerance=0,
+        )
+        return dm, ping, load, process_count
 
-class TestDeviceData(BaseTestCase):
+
+class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
     """Test openwisp_monitoring.device.models.DeviceData"""
 
     def test_clean_data_ok(self):
@@ -545,34 +574,10 @@ class TestDeviceData(BaseTestCase):
         self.assertEqual(result, 1234)
 
 
-class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
+class TestDeviceMonitoring(
+    CreateConnectionsMixin, MonitoringTestMixin, DeviceMonitoringTestCase
+):
     """Test openwisp_monitoring.device.models.DeviceMonitoring"""
-
-    def _create_env(self):
-        d = self._create_device()
-        dm = d.monitoring
-        dm.status = 'ok'
-        dm.save()
-        ping = self._create_object_metric(
-            name='ping', key='ping', field_name='reachable', content_object=d
-        )
-        self._create_alert_settings(
-            metric=ping, custom_operator='<', custom_threshold=1, custom_tolerance=0
-        )
-        load = self._create_object_metric(name='load', content_object=d)
-        self._create_alert_settings(
-            metric=load, custom_operator='>', custom_threshold=90, custom_tolerance=0
-        )
-        process_count = self._create_object_metric(
-            name='process_count', content_object=d
-        )
-        self._create_alert_settings(
-            metric=process_count,
-            custom_operator='>',
-            custom_threshold=20,
-            custom_tolerance=0,
-        )
-        return dm, ping, load, process_count
 
     def test_disabling_critical_check(self):
         Check = load_model('check', 'Check')
@@ -655,7 +660,12 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
             signal=health_status_changed,
         )
 
-    def test_ok_critical_ok(self):
+    @patch.object(
+        app_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
+    def test_ok_critical_ok(self, *args):
         dm, ping, load, process_count = self._create_env()
         self.assertEqual(dm.status, 'ok')
         ping.check_threshold(0)
@@ -671,7 +681,12 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         load.check_threshold(20)
         self.assertEqual(dm.status, 'ok')
 
-    def test_ok_problem_critical_problem_ok(self):
+    @patch.object(
+        app_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
+    def test_ok_problem_critical_problem_ok(self, *args):
         dm, ping, load, process_count = self._create_env()
         self.assertEqual(dm.status, 'ok')
         load.check_threshold(100)
@@ -683,7 +698,14 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         load.check_threshold(80)
         self.assertEqual(dm.status, 'ok')
 
-    def test_ok_critical_critical_critical_ok(self):
+    @patch.object(
+        app_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
+    def test_ok_critical_critical_critical_ok(
+        self,
+    ):
         dm, ping, load, process_count = self._create_env()
         self.assertEqual(dm.status, 'ok')
         ping.check_threshold(0)
@@ -707,7 +729,12 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         load.check_threshold(80)
         self.assertEqual(dm.status, 'ok')
 
-    def test_management_ip_clear_device_offline(self):
+    @patch.object(
+        app_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
+    def test_management_ip_clear_device_offline(self, *args):
         dm, ping, load, process_count = self._create_env()
         dm.device.management_ip = '10.10.0.5'
         dm.device.save()
@@ -718,7 +745,12 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         self.assertIsNone(dm.device.management_ip)
 
     @patch('openwisp_monitoring.device.settings.AUTO_CLEAR_MANAGEMENT_IP', False)
-    def test_management_ip_not_clear_device_online(self):
+    @patch.object(
+        app_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
+    def test_management_ip_not_clear_device_online(self, *args):
         dm, ping, load, process_count = self._create_env()
         dm.device.management_ip = '10.10.0.5'
         dm.device.save()
@@ -749,7 +781,12 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'ok')
 
-    def test_unknown_critical(self):
+    @patch.object(
+        app_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
+    def test_unknown_critical(self, *args):
         dm, ping, load, process_count = self._create_env()
         self._set_env_unknown(load, process_count, ping, dm)
         load.delete()
@@ -759,6 +796,61 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
         ping.write(0)
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'critical')
+
+    def test_status_critical_all_critical_metrics_unhealthy(self):
+        dm, ping, load, process_count = self._create_env()
+        data_collected = self._create_object_metric(
+            configuration='data_collected', content_object=dm.device
+        )
+        self._create_alert_settings(
+            metric=data_collected,
+            custom_operator='<',
+            custom_threshold=1,
+            custom_tolerance=0,
+        )
+        with freeze_time(now() - timedelta(minutes=5)):
+            ping.write(1)
+            data_collected.write(1)
+            load.write(10)
+
+        with freeze_time(now() - timedelta(minutes=1)):
+            ping.write(1)
+            data_collected.write(1)
+
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'ok')
+
+        # Only one critical metric is unhealthy
+        data_collected.write(0)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'problem')
+
+        # Both critical metrics are unhealthy
+        ping.write(0)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'critical')
+
+    def test_single_unhealthy_critical_metric_set_status_problem(self):
+        """
+        1 out of 2 unhealthy critical metrics sets the status to 'problem'
+
+        If the threshold of a critical metric (ping) is exceeded, but the device is
+        still sending data for monitoring metrics, its status should change to 'problem'
+        instead of 'critical'.
+        """
+        time_now = now()
+        dm, ping, load, process_count = self._create_env()
+        self._set_env_unknown(load, process_count, ping, dm)
+        with freeze_time(time_now - timedelta(minutes=5)):
+            ping.write(1)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'ok')
+        load.write(60)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'ok')
+        ping.write(0)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'problem')
 
     def test_deleting_device_deletes_tsdb(self):
         dm1, ping1, _, _ = self._create_env()
@@ -813,6 +905,58 @@ class TestDeviceMonitoring(CreateConnectionsMixin, BaseTestCase):
             device_monitoring.refresh_from_db()
             device.refresh_from_db()
             self.assertEqual(device_monitoring.status, 'unknown')
+
+
+class TestTransactionDeviceMonitoring(
+    CreateConnectionsMixin, MonitoringTestMixin, DeviceMonitoringTransactionTestcase
+):
+    def test_critical_status_recovered_by_monitoring_metrics(self):
+        dm, ping, load, process_count = self._create_env()
+        config_applied = self._create_object_metric(
+            configuration='config_applied', content_object=dm.device
+        )
+        self._create_alert_settings(
+            metric=config_applied,
+            custom_operator='<',
+            custom_threshold=1,
+            custom_tolerance=0,
+        )
+        data_collected = self._create_object_metric(
+            configuration='data_collected', content_object=dm.device
+        )
+        self._create_alert_settings(
+            metric=data_collected,
+            custom_operator='<',
+            custom_threshold=1,
+            custom_tolerance=0,
+        )
+        self.assertEqual(dm.status, 'ok')
+
+        # Device status changes to 'critical' due to critical metrics
+        ping.write(0)
+        data_collected.write(0)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'critical')
+
+        # Active metrics cannot change status to 'problem'
+        config_applied.write(0)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'critical')
+
+        # Status will only change to 'problem' when the device
+        # receives monitoring data
+        response = self._post_data(dm.device.id, dm.device.key, self._data())
+        self.assertEqual(response.status_code, 200)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'problem')
+
+        # Status will change to 'ok' when the critical metric
+        # is recovered
+        ping.write(1)
+        data_collected.write(1)
+        config_applied.write(1)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, 'ok')
 
 
 class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):

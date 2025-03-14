@@ -619,19 +619,20 @@ Automatically created charts.
 ``OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS``
 -----------------------------------------------
 
-============ ================================================
+============ ==================================================================
 **type**:    ``list`` of ``dict`` objects
-**default**: ``[{'key': 'ping', 'field_name': 'reachable'}]``
-============ ================================================
+**default**: .. code-block::
 
-Device metrics that are considered critical:
+                 [
+                     {"key": "ping", "field_name": "reachable"},
+                     {"key": "data_collected", "field_name": "data_collected"},
+                 ]
+============ ==================================================================
 
-when a value crosses the boundary defined in the "threshold value" field
-of the alert settings related to one of these metric types, the health
-status of the device related to the metric moves into ``CRITICAL``.
+Device metrics that are considered critical.
 
-By default, if devices are not reachable by pings they are flagged as
-``CRITICAL``.
+When all critical metrics have values outside their expected range, the
+device's health status changes to ``CRITICAL``.
 
 .. _openwisp_monitoring_health_status_labels:
 
@@ -753,6 +754,34 @@ registered devices. It's enabled by default.
 This setting allows you to configure the config check interval used by
 :ref:`config_applied <config_applied_check>`. By default it is set to 5
 minutes.
+
+.. _openwisp_monitoring_auto_data_collected_check:
+
+``OPENWISP_MONITORING_AUTO_DATA_COLLECTED_CHECK``
+-------------------------------------------------
+
+============ ========
+**type**:    ``bool``
+**default**: ``True``
+============ ========
+
+This setting allows you to choose whether :ref:`monitoring data collected
+<monitoring_data_collected_check>` checks should be created automatically
+for newly registered devices. It's enabled by default.
+
+.. _openwisp_monitoring_data_collected_check_interval:
+
+``OPENWISP_MONITORING_DATA_COLLECTED_CHECK_INTERVAL``
+-----------------------------------------------------
+
+============ =======
+**type**:    ``int``
+**default**: ``60``
+============ =======
+
+This setting allows you to configure the data collected check interval
+used by :ref:`data collected <monitoring_data_collected_check>`. By
+default it is set to 60 minutes.
 
 .. _openwisp_monitoring_auto_wifi_clients_check:
 

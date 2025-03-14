@@ -10,7 +10,6 @@ from django.utils.translation import gettext_lazy as _
 from swapper import get_model_name, load_model
 
 from openwisp_controller.config.signals import (
-    checksum_requested,
     config_status_changed,
     device_activated,
     device_deactivated,
@@ -196,18 +195,12 @@ class DeviceMonitoringConfig(AppConfig):
         if not app_settings.DEVICE_RECOVERY_DETECTION:
             return
 
-        Device = load_model('config', 'Device')
         DeviceData = load_model('device_monitoring', 'DeviceData')
         DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
         health_status_changed.connect(
             self.manage_device_recovery_cache_key,
             sender=DeviceMonitoring,
             dispatch_uid='recovery_health_status_changed',
-        )
-        checksum_requested.connect(
-            self.trigger_device_recovery_checks,
-            sender=Device,
-            dispatch_uid='recovery_checksum_requested',
         )
         device_metrics_received.connect(
             self.trigger_device_recovery_checks,

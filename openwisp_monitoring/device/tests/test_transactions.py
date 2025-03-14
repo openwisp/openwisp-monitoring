@@ -64,9 +64,9 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
         dm.device.save()
         trigger_device_checks.delay(dm.device.pk)
         self.assertTrue(Check.objects.exists())
-        # we expect update_status() to be called once (by the check)
-        # and not a second time directly by our code
-        mocked_update_status.assert_called_once()
+        # we expect update_status() to be called twice (by the check)
+        # and not a third time directly by our code
+        self.assertEqual(mocked_update_status.call_count, 2)
 
     @patch.object(Check, 'perform_check')
     def test_is_working_false_true(self, perform_check):

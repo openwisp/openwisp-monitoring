@@ -11,6 +11,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
+from django.utils.module_loading import import_string
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from jsonschema import draft7_format_checker, validate
@@ -22,9 +23,9 @@ from pytz import timezone as tz
 from swapper import load_model
 
 from openwisp_controller.config.validators import mac_address_validator
-from openwisp_monitoring.device.settings import get_critical_device_metrics
 from openwisp_utils.base import TimeStampedEditableModel
 
+from ...check.settings import CHECKS_LIST
 from ...db import device_data_query, timeseries_db
 from ...monitoring.signals import threshold_crossed
 from ...monitoring.tasks import _timeseries_write
@@ -346,8 +347,8 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         help_text=_(
             '"{0}" means the device has been recently added; \n'
             '"{1}" means the device is operating normally; \n'
-            '"{2}" means the device is having issues but it\'s still reachable; \n'
-            '"{3}" means the device is not reachable or in critical conditions;\n'
+            '"{2}" means the device is having issues but it\'s still communicating with the server; \n'
+            '"{3}" means the device is not communicating with the server;\n'
             '"{4}" means the device is deactivated;'
         ).format(
             app_settings.HEALTH_STATUS_LABELS['unknown'],
@@ -384,12 +385,25 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
             content_type__app_label='config',
         )
 
+    @classmethod
+    def get_active_metrics(cls):
+        """
+        Returns a list of active metrics (Metric.key)
+        """
+        if not hasattr(cls, '_active_metrics'):
+            active_metrics = []
+            for check in CHECKS_LIST:
+                Check = import_string(check)
+                active_metrics.extend(Check.get_related_metrics())
+            cls._active_metrics = active_metrics
+        return cls._active_metrics
+
     @staticmethod
     @receiver(threshold_crossed, dispatch_uid='threshold_crossed_receiver')
     def threshold_crossed(sender, metric, alert_settings, target, first_time, **kwargs):
         """Executed when a threshold is crossed.
 
-        Changes the health status of a devicewhen a threshold defined in
+        Changes the health status of a device when a threshold defined in
         the alert settings related to the metric is crossed.
         """
         DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
@@ -399,20 +413,14 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
             monitoring = target.monitoring
         except DeviceMonitoring.DoesNotExist:
             monitoring = DeviceMonitoring.objects.create(device=target)
+
         status = 'ok' if metric.is_healthy else 'problem'
-        related_status = 'ok'
+        unhealthy_critical_metrics = 0
         for related_metric in monitoring.related_metrics.filter(is_healthy=False):
-            if monitoring.is_metric_critical(related_metric):
-                related_status = 'critical'
-                break
-            related_status = 'problem'
-        if metric.is_healthy and related_status == 'problem':
             status = 'problem'
-        elif metric.is_healthy and related_status == 'critical':
-            status = 'critical'
-        elif not metric.is_healthy and any(
-            [monitoring.is_metric_critical(metric), related_status == 'critical']
-        ):
+            if monitoring.is_metric_critical(related_metric):
+                unhealthy_critical_metrics += 1
+        if unhealthy_critical_metrics == len(app_settings.CRITICAL_DEVICE_METRICS):
             status = 'critical'
         monitoring.update_status(status)
 
@@ -475,7 +483,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
 
     @classmethod
     def _get_critical_metric_keys(cls):
-        return [metric['key'] for metric in get_critical_device_metrics()]
+        return [metric['key'] for metric in app_settings.CRITICAL_DEVICE_METRICS]
 
     @classmethod
     def handle_critical_metric(cls, instance, **kwargs):
