@@ -1,9 +1,11 @@
+from time import sleep
 from unittest.mock import patch
 
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+from django.test import tag
 from django.urls.base import reverse
 from reversion.models import Version
-from selenium.common.exceptions import TimeoutException, UnexpectedAlertPresentException
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -17,9 +19,7 @@ from openwisp_monitoring.device.tests import (
 from openwisp_monitoring.monitoring.configuration import DEFAULT_DASHBOARD_TRAFFIC_CHART
 from openwisp_monitoring.monitoring.migrations import create_general_metrics
 from openwisp_utils.admin_theme.dashboard import DASHBOARD_TEMPLATES
-from openwisp_utils.test_selenium_mixins import (
-    SeleniumTestMixin as BaseSeleniumTestMixin,
-)
+from openwisp_utils.tests import SeleniumTestMixin as BaseSeleniumTestMixin
 
 Device = load_model('config', 'Device')
 DeviceConnection = load_model('connection', 'DeviceConnection')
@@ -68,13 +68,16 @@ class SeleniumTestMixin(BaseSeleniumTestMixin):
         DASHBOARD_TEMPLATES[0][1] = cls._dashboard_map_context
         DASHBOARD_TEMPLATES[55][1] = cls._dashboard_timeseries_context
 
-    def setUp(self):
-        self.admin = self._create_admin(
-            username=self.admin_username, password=self.admin_password
-        )
-        super().setUp()
+    def login(self, username=None, password=None, driver=None):
+        super().login(username, password, driver)
+        # Workaround for JS logic in chart-utils.js
+        # which fails to perform a XHR request
+        # during automated tests, it seems that the
+        # lack of pause causes the request to fail randomly
+        sleep(0.5)
 
 
+@tag('selenium_tests')
 class TestDeviceConnectionInlineAdmin(
     SeleniumTestMixin,
     TestDeviceMonitoringMixin,
@@ -82,25 +85,6 @@ class TestDeviceConnectionInlineAdmin(
     StaticLiveServerTestCase,
 ):
     config_app_label = 'config'
-
-    def tearDown(self):
-        # Accept unsaved changes alert to allow other tests to run
-        try:
-            self.web_driver.refresh()
-        except UnexpectedAlertPresentException:
-            self.web_driver.switch_to_alert().accept()
-        else:
-            try:
-                WebDriverWait(self.web_driver, 1).until(EC.alert_is_present())
-            except TimeoutException:
-                pass
-            else:
-                self.web_driver.switch_to_alert().accept()
-        self.web_driver.refresh()
-        WebDriverWait(self.web_driver, 2).until(
-            EC.visibility_of_element_located((By.XPATH, '//*[@id="site-name"]'))
-        )
-        super().tearDown()
 
     def test_restoring_deleted_device(self):
         org = self._get_org()
@@ -128,8 +112,11 @@ class TestDeviceConnectionInlineAdmin(
         self.open(
             reverse(f'admin:{self.config_app_label}_device_change', args=[device.id])
         )
-        self.web_driver.find_element(
-            By.XPATH, '//*[@id="device_form"]/div/div[1]/input[1]'
+        self.hide_loading_overlay()
+        self.wait_for(
+            'element_to_be_clickable',
+            By.XPATH,
+            '//*[@id="device_form"]/div/div[1]/input[1]',
         ).click()
         try:
             WebDriverWait(self.web_driver, 5).until(
@@ -137,15 +124,14 @@ class TestDeviceConnectionInlineAdmin(
             )
         except TimeoutException:
             self.fail('Failed saving device')
-
         # Delete the device
         device.deactivate()
         device.config.set_status_deactivated()
         self.open(
             reverse(f'admin:{self.config_app_label}_device_delete', args=[device.id])
         )
-        self.web_driver.find_element(
-            by=By.CSS_SELECTOR, value='#content form input[type="submit"]'
+        self.find_element(
+            By.CSS_SELECTOR, '#content form input[type="submit"]', timeout=5
         ).click()
         self.assertEqual(Device.objects.count(), 0)
         self.assertEqual(DeviceConnection.objects.count(), 0)
@@ -160,7 +146,7 @@ class TestDeviceConnectionInlineAdmin(
                 f'admin:{self.config_app_label}_device_recover', args=[version_obj.id]
             )
         )
-        self.web_driver.find_element(
+        self.find_element(
             By.XPATH, '//*[@id="device_form"]/div/div[1]/input[1]'
         ).click()
         try:
@@ -181,6 +167,7 @@ class TestDeviceConnectionInlineAdmin(
         self.assertEqual(Chart.objects.filter(id__in=device_chart_ids).count(), 3)
 
 
+@tag('selenium_tests')
 class TestDashboardCharts(
     SeleniumTestMixin, TestDeviceMonitoringMixin, StaticLiveServerTestCase
 ):
@@ -195,73 +182,43 @@ class TestDashboardCharts(
     @patch.dict(DEFAULT_DASHBOARD_TRAFFIC_CHART, {'__all__': ['wlan0', 'wlan1']})
     def test_dashboard_timeseries_charts(self):
         self.login()
-        try:
-            WebDriverWait(self.web_driver, 5).until(
-                EC.visibility_of_element_located(
-                    (By.CSS_SELECTOR, '#ow-chart-inner-container')
-                )
-            )
-        except TimeoutException:
-            self.fail('Timeseries chart container not found on dashboard')
-        try:
-            WebDriverWait(self.web_driver, 5).until(
-                EC.visibility_of_element_located((By.CSS_SELECTOR, '#ow-chart-utils'))
-            )
-        except TimeoutException:
-            self.fail('Timeseries chart time filter not found on dashboard')
-
-        try:
-            WebDriverWait(self.web_driver, 5).until(
-                EC.visibility_of_element_located(
-                    (By.CSS_SELECTOR, '#ow-chart-fallback')
-                )
-            )
-        except TimeoutException:
-            self.fail('Fallback message for charts did not render')
-        else:
-            self.assertIn(
-                'Insufficient data for selected time period.',
-                self.web_driver.find_element(
-                    By.CSS_SELECTOR, '#ow-chart-fallback'
-                ).get_attribute('innerHTML'),
-            )
+        self.wait_for_visibility(
+            By.CSS_SELECTOR, '#ow-chart-inner-container', timeout=5
+        )
+        self.wait_for_visibility(By.CSS_SELECTOR, '#ow-chart-utils', timeout=5)
+        self.wait_for_visibility(By.CSS_SELECTOR, '#ow-chart-fallback', timeout=5)
+        self.assertIn(
+            'Insufficient data for selected time period.',
+            self.find_element(By.CSS_SELECTOR, '#ow-chart-fallback').get_attribute(
+                'innerHTML'
+            ),
+        )
         self.create_test_data()
         self.web_driver.refresh()
-        try:
-            WebDriverWait(self.web_driver, 20).until(
-                EC.visibility_of_element_located(
-                    (By.CSS_SELECTOR, '#ow-chart-contents')
-                )
-            )
-            WebDriverWait(self.web_driver, 20).until(
-                EC.visibility_of_element_located((By.CSS_SELECTOR, '#chart-0'))
-            )
-            WebDriverWait(self.web_driver, 60).until(
-                EC.visibility_of_element_located((By.CSS_SELECTOR, '#chart-1'))
-            )
-        except TimeoutException:
-            self.fail('Timeseries charts did not render')
-
+        self.wait_for_visibility(By.CSS_SELECTOR, '#ow-chart-contents', timeout=10)
+        self.wait_for_visibility(By.CSS_SELECTOR, '#chart-0', timeout=10)
+        self.wait_for_visibility(By.CSS_SELECTOR, '#chart-1', timeout=10)
         self.assertIn(
             'General WiFi Clients',
-            self.web_driver.find_element(
-                By.CSS_SELECTOR, '#chart-0 > h3'
-            ).get_attribute('innerHTML'),
+            self.find_element(By.CSS_SELECTOR, '#chart-0 > h3').get_attribute(
+                'innerHTML'
+            ),
         )
         self.assertIn(
             'General Traffic',
-            self.web_driver.find_element(
-                By.CSS_SELECTOR, '#chart-1 > h3'
-            ).get_attribute('innerHTML'),
+            self.find_element(By.CSS_SELECTOR, '#chart-1 > h3').get_attribute(
+                'innerHTML'
+            ),
         )
         self.assertIn(
             'Open WiFi session list',
-            self.web_driver.find_element(
+            self.find_element(
                 By.CSS_SELECTOR, '#chart-0-quick-link-container'
             ).get_attribute('innerHTML'),
         )
 
 
+@tag('selenium_tests')
 class TestWifiSessionInlineAdmin(
     SeleniumTestMixin,
     TestWifiClientSessionMixin,
@@ -275,12 +232,9 @@ class TestWifiSessionInlineAdmin(
         self.login()
         path = f'admin:{self.config_app_label}_device_change'
         self.open(reverse(path, args=[device.pk]))
+        self.hide_loading_overlay()
         # Make sure the wifi session inline doesn't exist
-        WebDriverWait(self.web_driver, 2).until(
-            EC.invisibility_of_element_located(
-                (By.CSS_SELECTOR, '#wifisession_set-group')
-            )
-        )
+        self.wait_for_invisibility(By.CSS_SELECTOR, '#wifisession_set-group')
         # We are still on the device change page,
         # and now we will create new wifi sessions
         ws1 = self._create_wifi_session(device=device)
@@ -289,15 +243,15 @@ class TestWifiSessionInlineAdmin(
             device=device, wifi_client=wc2, ssid='Test Wifi Session'
         )
         # Now press the 'Save' button on the device change page
-        self.web_driver.find_element(
+        self.find_element(
             By.XPATH, '//*[@id="device_form"]/div/div[1]/input[3]'
         ).click()
         # Make sure the wifi session tab now
         # exists with the correct wifi sessions
-        wifi_session_inline = self.web_driver.find_element(
-            By.XPATH, '//*[@id="tabs-container"]/ul/li[7]/a'
-        )
-        wifi_session_inline.click()
+        self.hide_loading_overlay()
+        self.wait_for(
+            'element_to_be_clickable', By.XPATH, '//*[@id="tabs-container"]/ul/li[7]/a'
+        ).click()
         wifi_session_inline_form_error = (
             'ManagementForm data is missing '
             'or has been tampered with. Missing fields: '
@@ -307,26 +261,26 @@ class TestWifiSessionInlineAdmin(
         # were encountered after saving
         self.assertNotIn(
             wifi_session_inline_form_error,
-            self.web_driver.find_element(
-                By.CSS_SELECTOR, '#wifisession_set-group'
-            ).get_attribute('innerHTML'),
+            self.find_element(By.CSS_SELECTOR, '#wifisession_set-group').get_attribute(
+                'innerHTML'
+            ),
         )
         # Make sure all wifi sessions are present
         self.assertIn(
             f'{ws1.ssid}',
-            self.web_driver.find_element(
-                By.CSS_SELECTOR, '#wifisession_set-group'
-            ).get_attribute('innerHTML'),
+            self.find_element(By.CSS_SELECTOR, '#wifisession_set-group').get_attribute(
+                'innerHTML'
+            ),
         )
         self.assertIn(
             f'{ws2.ssid}',
-            self.web_driver.find_element(
-                By.CSS_SELECTOR, '#wifisession_set-group'
-            ).get_attribute('innerHTML'),
+            self.find_element(By.CSS_SELECTOR, '#wifisession_set-group').get_attribute(
+                'innerHTML'
+            ),
         )
         self.assertIn(
             'View Full History of WiFi Sessions',
-            self.web_driver.find_element(
-                By.CSS_SELECTOR, '#wifisession_set-group'
-            ).get_attribute('innerHTML'),
+            self.find_element(By.CSS_SELECTOR, '#wifisession_set-group').get_attribute(
+                'innerHTML'
+            ),
         )
