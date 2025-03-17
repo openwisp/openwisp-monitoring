@@ -10,7 +10,7 @@ def create_ping_checks(apps, schema_editor):
         ContentType = apps.get_model('contenttypes', 'ContentType')
         Check = apps.get_model('check', 'Check')
         Device = apps.get_model('config', 'Device')
-        for device in Device.objects.all():
+        for device in Device.objects.iterator():
             auto_create_check(
                 model=Device.__name__.lower(),
                 app_label=Device._meta.app_label,
@@ -28,7 +28,7 @@ def create_config_applied_checks(apps, schema_editor):
     ContentType = apps.get_model('contenttypes', 'ContentType')
     Check = apps.get_model('check', 'Check')
     Device = apps.get_model('config', 'Device')
-    for device in Device.objects.all():
+    for device in Device.objects.iterator():
         auto_create_check(
             model=Device.__name__.lower(),
             app_label=Device._meta.app_label,
