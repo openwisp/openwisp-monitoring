@@ -11,6 +11,10 @@ AlertSettings = load_model('monitoring', 'AlertSettings')
 
 
 class ConfigApplied(BaseCheck):
+    @classmethod
+    def get_related_metrics(cls):
+        return ('config_applied',)
+
     def check(self, store=True):
         # If the device is down or does not have a config
         # do not run config applied check

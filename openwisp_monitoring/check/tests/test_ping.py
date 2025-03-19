@@ -5,8 +5,9 @@ from django.test import TransactionTestCase
 from swapper import load_model
 
 from ... import settings as monitoring_settings
+from ...device import settings as device_settings
 from ...device.tests import TestDeviceMonitoringMixin
-from .. import settings
+from .. import settings as app_settings
 from ..classes import Ping
 from ..classes.ping import get_ping_schema
 from ..exceptions import OperationalError
@@ -19,7 +20,7 @@ Check = load_model('check', 'Check')
 
 
 class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
-    _PING = settings.CHECK_CLASSES[0][0]
+    _PING = app_settings.CHECK_CLASSES[0][0]
     _RESULT_KEYS = ['reachable', 'loss', 'rtt_min', 'rtt_avg', 'rtt_max']
     _RTT_KEYS = _RESULT_KEYS[-3:]
     _UNRECOGNIZED_OUTPUT = (
@@ -62,7 +63,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
             self.assertTrue(result[key] < 1)
 
     @patch.object(
-        settings,
+        app_settings,
         'PING_CHECK_CONFIG',
         {
             'timeout': {'default': '10000'},
@@ -156,7 +157,9 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
             expected_metrics_count = 1
         device.monitoring.refresh_from_db()
         self.assertEqual(device.monitoring.status, expected_status)
-        self.assertEqual(Metric.objects.count(), expected_metrics_count)
+        self.assertEqual(
+            device.monitoring.related_metrics.count(), expected_metrics_count
+        )
 
     @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
     @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', True)
@@ -164,16 +167,31 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         self._check_no_ip_case('unknown')
 
     @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
+    @patch.object(
+        device_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
     @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', True)
-    def test_device_without_ip_ok_status(self, mocked_method):
+    def test_device_without_ip_ok_status(self, mocked_method, *args):
         self._check_no_ip_case('ok')
 
     @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
+    @patch.object(
+        device_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
     @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', True)
-    def test_device_without_ip_problem_status(self, mocked_method):
+    def test_device_without_ip_problem_status(self, mocked_method, *args):
         self._check_no_ip_case('problem')
 
     @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
+    @patch.object(
+        device_settings,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
+    )
     @patch('openwisp_monitoring.check.settings.MANAGEMENT_IP_ONLY', True)
     def test_device_without_ip_critical_status(self, mocked_method):
         self._check_no_ip_case('critical')
@@ -239,7 +257,7 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         device.management_ip = '10.40.0.1'
         device.save()
         # check created automatically by autoping
-        self.assertEqual(Check.objects.count(), 3)
+        self.assertEqual(Check.objects.count(), 4)
         self.assertEqual(Metric.objects.count(), 0)
         self.assertEqual(Chart.objects.count(), 0)
         self.assertEqual(AlertSettings.objects.count(), 0)

@@ -25,17 +25,18 @@ One of the metrics has a value which is not in the expected range (the
 threshold value set in the alert settings has been crossed).
 
 Example: CPU usage should be less than 90% but current value is at 95%.
+Or, the device is not reachable by ping check (ping is a critical metric),
+but the device is sending monitoring metrics.
 
 ``CRITICAL``
 ------------
 
-One of the metrics defined in
-``OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS`` has a value which is not
-in the expected range (the threshold value set in the alert settings has
-been crossed).
+All of the metrics defined in
+:ref:`openwisp_monitoring_critical_device_metrics` have values outside the
+expected range.
 
-Example: ping is by default a critical metric which is expected to be
-always 1 (reachable).
+Example: Both :ref:`ping_check` and :ref:`monitoring_data_collected_check`
+are failing for the device.
 
 ``DEACTIVATED``
 ---------------

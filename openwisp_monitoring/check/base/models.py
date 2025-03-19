@@ -8,16 +8,11 @@ from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
 from jsonfield import JSONField
 
-from openwisp_monitoring.check import settings as app_settings
-from openwisp_monitoring.check.tasks import (
-    auto_create_config_check,
-    auto_create_iperf3_check,
-    auto_create_ping,
-    auto_create_wifi_clients_check,
-)
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...utils import transaction_on_commit
+from .. import settings as app_settings
+from ..tasks import auto_create_check
 
 
 class AbstractCheck(TimeStampedEditableModel):
@@ -38,7 +33,7 @@ class AbstractCheck(TimeStampedEditableModel):
     content_object = GenericForeignKey('content_type', 'object_id')
     check_type = models.CharField(
         _('check type'),
-        choices=app_settings.CHECK_CLASSES,
+        choices=app_settings.CHECK_CHOICES,
         db_index=True,
         max_length=128,
     )
@@ -108,74 +103,25 @@ class AbstractCheck(TimeStampedEditableModel):
 
         perform_check.apply_async(args=[self.id], countdown=duration)
 
+    @classmethod
+    def auto_create_check_receiver(cls, created, **kwargs):
+        if not created:
+            return
+        transaction_on_commit(lambda: _auto_check_receiver(created=created, **kwargs))
 
-def auto_ping_receiver(sender, instance, created, **kwargs):
-    """Implements OPENWISP_MONITORING_AUTO_PING.
 
-    The creation step is executed in the background.
-    """
-    # we need to skip this otherwise this task will be executed
-    # every time the configuration is requested via checksum
-    if not created:
-        return
-    transaction_on_commit(
-        lambda: auto_create_ping.delay(
-            model=sender.__name__.lower(),
-            app_label=sender._meta.app_label,
-            object_id=str(instance.pk),
+def _auto_check_receiver(sender, instance, **kwargs):
+    model = sender.__name__.lower()
+    app_label = sender._meta.app_label
+    object_id = str(instance.pk)
+
+    for class_string, name, auto_create_setting in app_settings.CHECK_CLASSES:
+        if not getattr(app_settings, auto_create_setting):
+            continue
+        auto_create_check.delay(
+            model=model,
+            app_label=app_label,
+            object_id=object_id,
+            check_type=class_string,
+            check_name=name,
         )
-    )
-
-
-def auto_config_check_receiver(sender, instance, created, **kwargs):
-    """Implements OPENWISP_MONITORING_AUTO_DEVICE_CONFIG_CHECK.
-
-    The creation step is executed in the background.
-    """
-    # we need to skip this otherwise this task will be executed
-    # every time the configuration is requested via checksum
-    if not created:
-        return
-    transaction_on_commit(
-        lambda: auto_create_config_check.delay(
-            model=sender.__name__.lower(),
-            app_label=sender._meta.app_label,
-            object_id=str(instance.pk),
-        )
-    )
-
-
-def auto_iperf3_check_receiver(sender, instance, created, **kwargs):
-    """Implements OPENWISP_MONITORING_AUTO_IPERF3.
-
-    The creation step is executed in the background.
-    """
-    # we need to skip this otherwise this task will be executed
-    # every time the configuration is requested via checksum
-    if not created:
-        return
-    transaction_on_commit(
-        lambda: auto_create_iperf3_check.delay(
-            model=sender.__name__.lower(),
-            app_label=sender._meta.app_label,
-            object_id=str(instance.pk),
-        )
-    )
-
-
-def auto_wifi_clients_check_receiver(sender, instance, created, **kwargs):
-    """Implements OPENWISP_MONITORING_AUTO_WIFI_CLIENTS_CHECK.
-
-    The creation step is executed in the background.
-    """
-    # we need to skip this otherwise this task will be executed
-    # every time the configuration is requested via checksum
-    if not created:
-        return
-    transaction_on_commit(
-        lambda: auto_create_wifi_clients_check.delay(
-            model=sender.__name__.lower(),
-            app_label=sender._meta.app_label,
-            object_id=str(instance.pk),
-        )
-    )
