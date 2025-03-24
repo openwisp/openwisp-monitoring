@@ -224,11 +224,13 @@ class DeviceMonitoringConfig(AppConfig):
 
     @classmethod
     def trigger_device_recovery_checks(cls, instance, **kwargs):
-        from .tasks import trigger_device_checks
+        from .tasks import trigger_device_critical_checks
 
         # Cache is managed by "manage_device_recovery_cache_key".
         if cache.get(get_device_cache_key(device=instance), False):
-            transaction_on_commit(lambda: trigger_device_checks.delay(pk=instance.pk))
+            transaction_on_commit(
+                lambda: trigger_device_critical_checks.delay(pk=instance.pk)
+            )
 
     @classmethod
     def connect_is_working_changed(cls):
@@ -242,7 +244,7 @@ class DeviceMonitoringConfig(AppConfig):
     def is_working_changed_receiver(
         cls, instance, is_working, old_is_working, failure_reason, **kwargs
     ):
-        from .tasks import trigger_device_checks
+        from .tasks import trigger_device_critical_checks
 
         Check = load_model('check', 'Check')
         device = instance.device
@@ -266,11 +268,15 @@ class DeviceMonitoringConfig(AppConfig):
             return
         if not is_working:
             if initial_status == 'ok':
-                transaction_on_commit(lambda: trigger_device_checks.delay(pk=device.pk))
+                transaction_on_commit(
+                    lambda: trigger_device_critical_checks.delay(pk=device.pk)
+                )
         else:
             # if checks exist trigger them else, set status as 'ok'
             if Check.objects.filter(object_id=instance.device.pk).exists():
-                transaction_on_commit(lambda: trigger_device_checks.delay(pk=device.pk))
+                transaction_on_commit(
+                    lambda: trigger_device_critical_checks.delay(pk=device.pk)
+                )
             else:
                 device_monitoring.update_status(status)
 

@@ -1,4 +1,5 @@
 import logging
+import warnings
 
 from celery import shared_task
 from django.core.exceptions import ObjectDoesNotExist
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(base=OpenwispCeleryTask)
-def trigger_device_checks(pk, recovery=True):
+def trigger_device_critical_checks(pk, recovery=True):
     """Triggers the monitoring checks for the specified device pk.
 
     Retrieves all related checks to the passed ``device`` and calls the
@@ -28,7 +29,11 @@ def trigger_device_checks(pk, recovery=True):
     except ObjectDoesNotExist:
         logger.warning(f'The device with uuid {pk} has been deleted')
         return
-    check_ids = list(device.checks.filter(is_active=True).values_list('id', flat=True))
+    check_ids = list(
+        device.checks.filter(
+            is_active=True, check_type__in=device.monitoring.get_critical_checks()
+        ).values_list('id', flat=True)
+    )
     if not check_ids:
         status = 'ok' if recovery else 'critical'
         device.monitoring.update_status(status)
@@ -37,6 +42,19 @@ def trigger_device_checks(pk, recovery=True):
         device.monitoring.update_status('problem')
     for check_id in check_ids:
         perform_check.delay(check_id)
+
+
+@shared_task(base=OpenwispCeleryTask)
+def trigger_device_checks(pk, recovery=True):
+    """
+    Deprecated, use trigger_device_critical_checks instead.
+    """
+    warnings.warn(
+        'trigger_device_checks is deprecated, use trigger_device_critical_checks instead.',
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    trigger_device_critical_checks(pk, recovery)
 
 
 @shared_task(base=OpenwispCeleryTask)

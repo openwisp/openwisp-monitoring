@@ -619,20 +619,31 @@ Automatically created charts.
 ``OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS``
 -----------------------------------------------
 
-============ ==================================================================
+============ ===================================================================================
 **type**:    ``list`` of ``dict`` objects
-**default**: .. code-block::
+**default**: .. code-block:: python
 
                  [
-                     {"key": "ping", "field_name": "reachable"},
-                     {"key": "data_collected", "field_name": "data_collected"},
+                     {
+                         "key": "ping",
+                         "field_name": "reachable",
+                         "check": "openwisp_monitoring.check.classes.Ping",  # optional
+                     },
+                     {
+                         "key": "data_collected",
+                         "field_name": "data_collected",
+                         "check": "openwisp_monitoring.check.classes.DataCollected",  # optional
+                     },
                  ]
-============ ==================================================================
+============ ===================================================================================
 
 Device metrics that are considered critical.
 
 When all critical metrics have values outside their expected range, the
 device's health status changes to ``CRITICAL``.
+
+The ``check`` field is optional for each metric. These checks are executed
+when attempting to detect the recovery of a device.
 
 .. _openwisp_monitoring_health_status_labels:
 

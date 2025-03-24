@@ -398,6 +398,19 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
             cls._active_metrics = active_metrics
         return cls._active_metrics
 
+    @classmethod
+    def get_critical_checks(cls):
+        """
+        Returns list of critical checks.
+        """
+        if not hasattr(cls, '_critical_checks'):
+            critical_checks = []
+            for metric in app_settings.CRITICAL_DEVICE_METRICS:
+                if metric.get('check'):
+                    critical_checks.append(metric['check'])
+            cls._critical_checks = critical_checks
+        return cls._critical_checks
+
     @staticmethod
     @receiver(threshold_crossed, dispatch_uid='threshold_crossed_receiver')
     def threshold_crossed(sender, metric, alert_settings, target, first_time, **kwargs):

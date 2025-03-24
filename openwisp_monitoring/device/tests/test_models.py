@@ -16,7 +16,7 @@ from openwisp_utils.tests import catch_signal
 from ...db import timeseries_db
 from .. import settings as app_settings
 from ..signals import health_status_changed
-from ..tasks import delete_wifi_clients_and_sessions, trigger_device_checks
+from ..tasks import delete_wifi_clients_and_sessions, trigger_device_critical_checks
 from ..utils import get_device_cache_key
 from . import (
     DeviceMonitoringTestCase,
@@ -537,9 +537,9 @@ class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
             dd.validate_data()
 
     @patch('logging.Logger.warning')
-    def test_trigger_device_checks_task_resiliency(self, mock):
+    def test_trigger_device_critical_checks_task_resiliency(self, mock):
         dd = DeviceData(name='Test Device')
-        trigger_device_checks.delay(dd.pk)
+        trigger_device_critical_checks.delay(dd.pk)
         mock.assert_called_with(f'The device with uuid {dd.pk} has been deleted')
 
     def test_device_data_cache_set(self):

@@ -5,13 +5,14 @@ from django.core.cache import cache
 from swapper import load_model
 
 from ..signals import health_status_changed
-from ..tasks import trigger_device_checks
+from ..tasks import trigger_device_checks, trigger_device_critical_checks
 from ..utils import get_device_cache_key
 from . import DeviceMonitoringTestCase, DeviceMonitoringTransactionTestcase
 
 DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 DeviceData = load_model('device_monitoring', 'DeviceData')
 Device = load_model('config', 'Device')
+Check = load_model('check', 'Check')
 
 
 class TestRecovery(DeviceMonitoringTestCase):
@@ -57,7 +58,7 @@ class TestRecovery(DeviceMonitoringTestCase):
         """Tests device status is set to ok if no related checks present"""
         dm = self._create_device_monitoring()
         dm.update_status('critical')
-        trigger_device_checks.delay(dm.device.pk)
+        trigger_device_critical_checks.delay(dm.device.pk)
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'ok')
 
@@ -65,9 +66,15 @@ class TestRecovery(DeviceMonitoringTestCase):
         """Tests device status is set to critical if no related checks present and recovery=False is passed"""
         dm = self._create_device_monitoring()
         dm.update_status('critical')
-        trigger_device_checks.delay(dm.device.pk, recovery=False)
+        trigger_device_critical_checks.delay(dm.device.pk, recovery=False)
         dm.refresh_from_db()
         self.assertEqual(dm.status, 'critical')
+
+    @patch('openwisp_monitoring.device.tasks.trigger_device_critical_checks')
+    def test_trigger_device_checks(self, mocked_task):
+        dm = self._create_device_monitoring()
+        trigger_device_checks.delay(dm.device.pk)
+        mocked_task.assert_called_once_with(dm.device.pk, True)
 
 
 class TestRecoveryTransaction(DeviceMonitoringTransactionTestcase):
@@ -111,6 +118,15 @@ class TestRecoveryTransaction(DeviceMonitoringTransactionTestcase):
                 content_type='application/json',
             )
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(mocked_task.call_count, 4)
+            critical_checks = device_monitoring.get_critical_checks()
+            self.assertEqual(mocked_task.call_count, len(critical_checks))
+            # Verify that only critical checks are triggered
+            # Get the check types from the mocked task calls
+            triggered_check_types = list(
+                Check.objects.filter(
+                    id__in=[call[0][0] for call in mocked_task.call_args_list]
+                ).values_list('check_type', flat=True)
+            )
+            self.assertListEqual(sorted(triggered_check_types), sorted(critical_checks))
             device_monitoring.refresh_from_db()
             self.assertEqual(device_monitoring.status, 'problem')
