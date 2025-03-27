@@ -49,6 +49,12 @@ class AbstractCheck(TimeStampedEditableModel):
     class Meta:
         abstract = True
         unique_together = ('name', 'object_id', 'content_type')
+        indexes = [
+            models.Index(
+                fields=['content_type', 'object_id', 'is_active'],
+                name='active_object_checks_idx',
+            )
+        ]
 
         permissions = (
             ('add_check_inline', 'Can add check inline'),
