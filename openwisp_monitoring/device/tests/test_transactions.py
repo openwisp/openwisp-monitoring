@@ -10,7 +10,7 @@ from openwisp_utils.tests import catch_signal
 
 from ...check.classes import Ping
 from ...check.tests import _FPING_REACHABLE, _FPING_UNREACHABLE
-from ..tasks import trigger_device_checks
+from ..tasks import trigger_device_critical_checks
 from . import DeviceMonitoringTransactionTestcase
 
 Check = load_model('check', 'Check')
@@ -62,11 +62,11 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
         dm = self._create_device_monitoring()
         dm.device.management_ip = None
         dm.device.save()
-        trigger_device_checks.delay(dm.device.pk)
+        trigger_device_critical_checks.delay(dm.device.pk)
         self.assertTrue(Check.objects.exists())
-        # we expect update_status() to be called once (by the check)
-        # and not a second time directly by our code
-        mocked_update_status.assert_called_once()
+        # we expect update_status() to be called twice (by the check)
+        # and not a third time directly by our code
+        self.assertEqual(mocked_update_status.call_count, 2)
 
     @patch.object(Check, 'perform_check')
     def test_is_working_false_true(self, perform_check):

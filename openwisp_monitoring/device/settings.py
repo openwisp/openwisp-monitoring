@@ -1,12 +1,28 @@
 from django.core.exceptions import ImproperlyConfigured
 
+from ..check.settings import AUTO_DATA_COLLECTED_CHECK
 from ..settings import get_settings_value
 
 
 def get_critical_device_metrics():
+    default = [
+        {
+            'key': 'ping',
+            'field_name': 'reachable',
+            'check': 'openwisp_monitoring.check.classes.Ping',
+        }
+    ]
+    if AUTO_DATA_COLLECTED_CHECK:
+        default.append(
+            {
+                'key': 'data_collected',
+                'field_name': 'data_collected',
+                'check': 'openwisp_monitoring.check.classes.DataCollected',
+            }
+        )
     critical_metrics = get_settings_value(
         'CRITICAL_DEVICE_METRICS',
-        [{'key': 'ping', 'field_name': 'reachable'}],
+        default,
     )
     for item in critical_metrics:  # pragma: no cover
         try:

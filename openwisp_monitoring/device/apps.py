@@ -10,7 +10,6 @@ from django.utils.translation import gettext_lazy as _
 from swapper import get_model_name, load_model
 
 from openwisp_controller.config.signals import (
-    checksum_requested,
     config_status_changed,
     device_activated,
     device_deactivated,
@@ -196,18 +195,12 @@ class DeviceMonitoringConfig(AppConfig):
         if not app_settings.DEVICE_RECOVERY_DETECTION:
             return
 
-        Device = load_model('config', 'Device')
         DeviceData = load_model('device_monitoring', 'DeviceData')
         DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
         health_status_changed.connect(
             self.manage_device_recovery_cache_key,
             sender=DeviceMonitoring,
             dispatch_uid='recovery_health_status_changed',
-        )
-        checksum_requested.connect(
-            self.trigger_device_recovery_checks,
-            sender=Device,
-            dispatch_uid='recovery_checksum_requested',
         )
         device_metrics_received.connect(
             self.trigger_device_recovery_checks,
@@ -231,11 +224,13 @@ class DeviceMonitoringConfig(AppConfig):
 
     @classmethod
     def trigger_device_recovery_checks(cls, instance, **kwargs):
-        from .tasks import trigger_device_checks
+        from .tasks import trigger_device_critical_checks
 
         # Cache is managed by "manage_device_recovery_cache_key".
         if cache.get(get_device_cache_key(device=instance), False):
-            transaction_on_commit(lambda: trigger_device_checks.delay(pk=instance.pk))
+            transaction_on_commit(
+                lambda: trigger_device_critical_checks.delay(pk=instance.pk)
+            )
 
     @classmethod
     def connect_is_working_changed(cls):
@@ -249,7 +244,7 @@ class DeviceMonitoringConfig(AppConfig):
     def is_working_changed_receiver(
         cls, instance, is_working, old_is_working, failure_reason, **kwargs
     ):
-        from .tasks import trigger_device_checks
+        from .tasks import trigger_device_critical_checks
 
         Check = load_model('check', 'Check')
         device = instance.device
@@ -273,11 +268,15 @@ class DeviceMonitoringConfig(AppConfig):
             return
         if not is_working:
             if initial_status == 'ok':
-                transaction_on_commit(lambda: trigger_device_checks.delay(pk=device.pk))
+                transaction_on_commit(
+                    lambda: trigger_device_critical_checks.delay(pk=device.pk)
+                )
         else:
             # if checks exist trigger them else, set status as 'ok'
             if Check.objects.filter(object_id=instance.device.pk).exists():
-                transaction_on_commit(lambda: trigger_device_checks.delay(pk=device.pk))
+                transaction_on_commit(
+                    lambda: trigger_device_critical_checks.delay(pk=device.pk)
+                )
             else:
                 device_monitoring.update_status(status)
 

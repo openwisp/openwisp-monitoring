@@ -4,7 +4,6 @@ from django.utils.translation import gettext_lazy as _
 from swapper import load_model
 
 from openwisp_monitoring.check import checks  # noqa
-from openwisp_monitoring.check import settings as app_settings
 
 
 class CheckConfig(AppConfig):
@@ -16,37 +15,10 @@ class CheckConfig(AppConfig):
         self._connect_signals()
 
     def _connect_signals(self):
-        if app_settings.AUTO_PING:
-            from .base.models import auto_ping_receiver
+        Check = load_model('check', 'Check')
 
-            post_save.connect(
-                auto_ping_receiver,
-                sender=load_model('config', 'Device'),
-                dispatch_uid='auto_ping',
-            )
-
-        if app_settings.AUTO_CONFIG_CHECK:
-            from .base.models import auto_config_check_receiver
-
-            post_save.connect(
-                auto_config_check_receiver,
-                sender=load_model('config', 'Device'),
-                dispatch_uid='auto_config_check',
-            )
-        if app_settings.AUTO_IPERF3:
-            from .base.models import auto_iperf3_check_receiver
-
-            post_save.connect(
-                auto_iperf3_check_receiver,
-                sender=load_model('config', 'Device'),
-                dispatch_uid='auto_iperf3_check',
-            )
-
-        if app_settings.AUTO_WIFI_CLIENTS_CHECK:
-            from .base.models import auto_wifi_clients_check_receiver
-
-            post_save.connect(
-                auto_wifi_clients_check_receiver,
-                sender=load_model('config', 'Device'),
-                dispatch_uid='auto_wifi_clients_check',
-            )
+        post_save.connect(
+            Check.auto_create_check_receiver,
+            sender=load_model('config', 'Device'),
+            dispatch_uid='auto_create_check',
+        )

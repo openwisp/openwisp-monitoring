@@ -46,7 +46,7 @@ Start Redis and InfluxDB using Docker:
 
 .. code-block:: shell
 
-    docker-compose up -d redis influxdb
+    docker compose up -d redis influxdb
 
 Setup and activate a virtual-environment. (we'll be using `virtualenv
 <https://pypi.org/project/virtualenv/>`_)
@@ -100,7 +100,8 @@ Launch development server:
 
 You can access the admin interface at ``http://127.0.0.1:8000/admin/``.
 
-Run tests with:
+Run tests with (make sure you have the :ref:`selenium dependencies
+<selenium_dependencies>` installed locally first):
 
 .. code-block:: shell
 
@@ -152,10 +153,10 @@ Build from the Dockerfile:
 
 .. code-block:: shell
 
-    docker-compose build
+    docker compose build
 
 Run the docker container:
 
 .. code-block:: shell
 
-    docker-compose up
+    docker compose up

@@ -8,7 +8,6 @@ from freezegun import freeze_time
 from swapper import load_model
 
 from ...device.tests import TestDeviceMonitoringMixin
-from .. import settings
 from .. import settings as app_settings
 from .. import tasks
 from ..classes import WifiClients
@@ -26,7 +25,7 @@ class TestWifiClient(
     TestDeviceMonitoringMixin,
     TransactionTestCase,
 ):
-    _WIFI_CLIENTS = settings.CHECK_CLASSES[3][0]
+    _WIFI_CLIENTS = app_settings.CHECK_CLASSES[3][0]
 
     def _run_wifi_clients_checks(self):
         tasks.run_checks(checks=[self._WIFI_CLIENTS])
@@ -55,7 +54,7 @@ class TestWifiClient(
             metric__key__in=['wifi_clients_max', 'wifi_clients_min']
         )
         # check created automatically by AUTO_WIFI_CLIENTS_CHECK
-        self.assertEqual(Check.objects.count(), 4)
+        self.assertEqual(Check.objects.count(), 5)
         self.assertEqual(metric_qs.count(), 0)
         self.assertEqual(alert_settings_qs.count(), 0)
         check = Check.objects.filter(check_type=self._WIFI_CLIENTS).first()

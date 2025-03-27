@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 
-from ..settings import CHECK_CLASSES
+from ..settings import CHECK_CHOICES
 
 
 class Migration(migrations.Migration):
@@ -26,7 +26,7 @@ class Migration(migrations.Migration):
             model_name='check',
             name='check',
             field=models.CharField(
-                choices=CHECK_CLASSES,
+                choices=CHECK_CHOICES,
                 db_index=True,
                 max_length=128,
                 verbose_name='check type',

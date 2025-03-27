@@ -55,6 +55,10 @@ class TestIperf3(
         'iperf3.openwisptestserver1.com',
         'iperf3.openwisptestserver2.com',
     ]
+    charts_qs = Chart.objects.exclude(
+        configuration__in=['general_clients', 'general_traffic']
+    )
+    metrics_qs = Metric.objects.exclude(key__in=['general_clients', 'general_traffic'])
 
     @classmethod
     def setUpClass(cls):
@@ -460,8 +464,8 @@ class TestIperf3(
 
         with self.subTest('Test iperf3 check passes in both TCP & UDP'):
             mock_exec_command.side_effect = [(RESULT_TCP, 0), (RESULT_UDP, 0)]
-            self.assertEqual(Chart.objects.count(), 2)
-            self.assertEqual(Metric.objects.count(), 2)
+            self.assertEqual(self.charts_qs.count(), 0)
+            self.assertEqual(self.metrics_qs.count(), 0)
             result = self._perform_iperf3_check()
             for key in self._RESULT_KEYS:
                 self.assertIn(key, result)
@@ -485,10 +489,10 @@ class TestIperf3(
             self.assertEqual(result['jitter'], udp_result['jitter_ms'])
             self.assertEqual(result['total_packets'], udp_result['packets'])
             self.assertEqual(result['lost_percent'], udp_result['lost_percent'])
-            self.assertEqual(Chart.objects.count(), 8)
-            self.assertEqual(Check.objects.count(), 3)
+            self.assertEqual(self.charts_qs.count(), 6)
+            self.assertEqual(Check.objects.count(), 4)
             iperf3_metric = Metric.objects.get(key='iperf3')
-            self.assertEqual(Metric.objects.count(), 3)
+            self.assertEqual(self.metrics_qs.count(), 1)
             self.assertEqual(iperf3_metric.content_object, self.device)
             points = self._read_metric(
                 iperf3_metric, limit=None, extra_fields=list(result.keys())
@@ -516,8 +520,8 @@ class TestIperf3(
             mock_exec_command.side_effect = [(RESULT_FAIL, 1), (RESULT_FAIL, 1)]
             result = self._perform_iperf3_check()
             self._assert_iperf3_fail_result(result)
-            self.assertEqual(Chart.objects.count(), 8)
-            self.assertEqual(Metric.objects.count(), 3)
+            self.assertEqual(Chart.objects.count(), 6)
+            self.assertEqual(self.metrics_qs.count(), 1)
             self.assertEqual(mock_warn.call_count, 2)
             self.assertEqual(mock_exec_command.call_count, 2)
             mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS)
@@ -550,8 +554,8 @@ class TestIperf3(
             self.assertEqual(result['jitter'], 0.0)
             self.assertEqual(result['total_packets'], 0)
             self.assertEqual(result['lost_percent'], 0.0)
-            self.assertEqual(Chart.objects.count(), 8)
-            self.assertEqual(Metric.objects.count(), 3)
+            self.assertEqual(self.charts_qs.count(), 6)
+            self.assertEqual(self.metrics_qs.count(), 1)
             self.assertEqual(mock_warn.call_count, 1)
             self.assertEqual(mock_exec_command.call_count, 2)
             mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS[1:])
@@ -575,8 +579,8 @@ class TestIperf3(
             self.assertEqual(result['jitter'], udp_result['jitter_ms'])
             self.assertEqual(result['total_packets'], udp_result['packets'])
             self.assertEqual(result['lost_percent'], udp_result['lost_percent'])
-            self.assertEqual(Chart.objects.count(), 8)
-            self.assertEqual(Metric.objects.count(), 3)
+            self.assertEqual(self.charts_qs.count(), 6)
+            self.assertEqual(self.metrics_qs.count(), 1)
             self.assertEqual(mock_warn.call_count, 1)
             self.assertEqual(mock_exec_command.call_count, 2)
             mock_warn.assert_has_calls(self._EXPECTED_WARN_CALLS[1:])

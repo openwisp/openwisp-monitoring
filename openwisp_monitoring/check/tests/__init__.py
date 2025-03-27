@@ -1,7 +1,6 @@
-from django.db.models.signals import post_save
 from swapper import load_model
 
-from ..base.models import auto_wifi_clients_check_receiver
+from .. import settings as app_settings
 
 Device = load_model('config', 'Device')
 
@@ -23,17 +22,23 @@ class AutoWifiClientCheck(object):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        post_save.connect(
-            auto_wifi_clients_check_receiver,
-            sender=Device,
-            dispatch_uid='auto_wifi_clients_check',
-        )
+        cls._auto_wifi_clients_check = app_settings.AUTO_WIFI_CLIENTS_CHECK
+        app_settings.AUTO_WIFI_CLIENTS_CHECK = True
 
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
-        post_save.disconnect(
-            auto_wifi_clients_check_receiver,
-            sender=Device,
-            dispatch_uid='auto_wifi_clients_check',
-        )
+        app_settings.AUTO_WIFI_CLIENTS_CHECK = cls._auto_wifi_clients_check
+
+
+class AutoDataCollectedCheck(object):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._auto_data_collected_check = app_settings.AUTO_DATA_COLLECTED_CHECK
+        app_settings.AUTO_DATA_COLLECTED_CHECK = True
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        app_settings.AUTO_DATA_COLLECTED_CHECK = cls._auto_data_collected_check

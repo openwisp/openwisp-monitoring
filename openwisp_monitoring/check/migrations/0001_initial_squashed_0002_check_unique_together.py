@@ -10,7 +10,7 @@ import model_utils.fields
 import swapper
 from django.db import migrations, models
 
-from ..settings import CHECK_CLASSES
+from ..settings import CHECK_CHOICES
 
 
 class Migration(migrations.Migration):
@@ -58,7 +58,7 @@ class Migration(migrations.Migration):
                 (
                     'check',
                     models.CharField(
-                        choices=CHECK_CLASSES,
+                        choices=CHECK_CHOICES,
                         db_index=True,
                         help_text='Select check type',
                         max_length=128,

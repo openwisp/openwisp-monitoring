@@ -18,7 +18,7 @@ def create_device_monitoring(apps, schema_editor):
     """Data migration"""
     Device = apps.get_model('config', 'Device')
     DeviceMonitoring = apps.get_model('device_monitoring', 'DeviceMonitoring')
-    for device in Device.objects.all():
+    for device in Device.objects.iterator():
         DeviceMonitoring.objects.create(device=device)
 
 
