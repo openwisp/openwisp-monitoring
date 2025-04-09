@@ -38,6 +38,7 @@ if TESTING:
 SECRET_KEY = 'fn)t*+$)ugeyip6-#txyy$5wf2ervc0d2n#h)qb)y5@ly$t*@w'
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -115,7 +116,6 @@ TIME_ZONE = 'Europe/Rome'
 LANGUAGE_CODE = 'en-gb'
 USE_TZ = True
 USE_I18N = False
-USE_L10N = False
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = '{0}/media/'.format(BASE_DIR)

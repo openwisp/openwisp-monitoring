@@ -4,6 +4,7 @@ from collections import OrderedDict
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 
+import django
 from cache_memoize import cache_memoize
 from dateutil.parser import parse as parse_date
 from django.conf import settings
@@ -31,7 +32,9 @@ from ..configuration import (
     DEFAULT_COLORS,
     METRIC_CONFIGURATION_CHOICES,
     get_chart_configuration,
+    get_chart_configuration_choices,
     get_metric_configuration,
+    get_metric_configuration_choices,
 )
 from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
 from ..signals import pre_metric_write, threshold_crossed
@@ -69,7 +72,18 @@ class AbstractMetric(TimeStampedEditableModel):
         help_text=_('leave blank to determine automatically'),
     )
     configuration = models.CharField(
-        max_length=16, null=True, choices=METRIC_CONFIGURATION_CHOICES
+        max_length=16,
+        null=True,
+        choices=(
+            METRIC_CONFIGURATION_CHOICES
+            if django.VERSION < (5, 0)
+            # TODO: Remove when dropping support for Django 4.2
+            # In Django 5.0+, choices are normalized at model definition,
+            # creating a static list of tuples that doesn't update when metrics
+            # are dynamically registered or unregistered. Using a callable
+            # ensures we always get the current choices from the registry.
+            else get_metric_configuration_choices
+        ),
     )
     content_type = models.ForeignKey(
         ContentType, on_delete=models.CASCADE, null=True, blank=True
@@ -489,7 +503,18 @@ class AbstractChart(TimeStampedEditableModel):
         get_model_name('monitoring', 'Metric'), on_delete=models.CASCADE
     )
     configuration = models.CharField(
-        max_length=16, null=True, choices=CHART_CONFIGURATION_CHOICES
+        max_length=16,
+        null=True,
+        choices=(
+            CHART_CONFIGURATION_CHOICES
+            if django.VERSION < (5, 0)
+            # TODO: Remove when dropping support for Django 4.2
+            # In Django 5.0+, choices are normalized at model definition,
+            # creating a static list of tuples that doesn't update when charts
+            # are dynamically registered or unregistered. Using a callable
+            # ensures we always get the current choices from the registry.
+            else get_chart_configuration_choices
+        ),
     )
     GROUP_MAP = {'1d': '10m', '3d': '20m', '7d': '1h', '30d': '24h', '365d': '7d'}
     DEFAULT_TIME = DEFAULT_CHART_TIME
