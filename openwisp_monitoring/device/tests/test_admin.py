@@ -6,7 +6,7 @@ from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.forms import generic_inlineformset_factory
 from django.core.cache import cache
 from django.db import connection
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.timezone import datetime, now, timedelta
 from freezegun import freeze_time
@@ -89,6 +89,28 @@ class TestAdmin(
         u = User.objects.create_superuser('admin', 'admin', 'test@test.com')
         self.client.force_login(u)
 
+    def _get_inline_admin_heading(self, heading):
+        """
+        TODO: Remove this when dropping support for Django 4.2
+
+        Django 5.1 introduced a new way to render inline headings with IDs and classes.
+        For versions before 5.1, we use the old-style heading format except for "Alert Settings"
+        which is already handled differently by django-nested-admin==4.1.0.
+        This method helps us generate the appropriate HTML heading format
+        based on the Django version being used.
+        """
+        if django.VERSION < (5, 1) and heading != 'Alert Settings':
+            return f'<h2>{heading}</h2>'
+        heading_map = {
+            'Checks': f'{Check._meta.app_label}-check-content_type-object_id-heading',
+            'Alert Settings': f'{Metric._meta.app_label}-metric-content_type-object_id-heading',
+            'WiFi Sessions': 'wifisession_set-heading',
+            'Configuration': 'config-heading',
+            'Map': 'devicelocation-heading',
+            'Credentials': 'deviceconnection_set-heading',
+        }
+        return f'<h2 id="{heading_map[heading]}" class="inline-heading">\n\n{heading}\n\n</h2>'
+
     def test_device_admin(self):
         dd = self.create_test_data()
         check = Check.objects.create(
@@ -101,7 +123,9 @@ class TestAdmin(
         response = self.client.get(url)
         self.assertContains(response, '<h2>Status</h2>')
         self.assertContains(response, '<h2>Charts</h2>')
-        self.assertContains(response, '<h2>Checks</h2>')
+        self.assertContains(
+            response, self._get_inline_admin_heading('Checks'), html=True
+        )
         self.assertContains(response, 'Storage')
         self.assertContains(response, 'CPU')
         self.assertContains(response, 'RAM status')
@@ -315,9 +339,11 @@ class TestAdmin(
         url = reverse('admin:config_device_add')
         r = self.client.get(url)
         self.assertNotContains(r, 'AlertSettings')
-        self.assertContains(r, '<h2>Configuration</h2>')
-        self.assertContains(r, '<h2>Map</h2>')
-        self.assertContains(r, '<h2>Credentials</h2>')
+        self.assertContains(
+            r, self._get_inline_admin_heading('Configuration'), html=True
+        )
+        self.assertContains(r, self._get_inline_admin_heading('Map'), html=True)
+        self.assertContains(r, self._get_inline_admin_heading('Credentials'), html=True)
 
     def test_device_disabled_organization_admin(self):
         self.create_test_data()
@@ -335,8 +361,12 @@ class TestAdmin(
         response = self.client.get(url)
         self.assertContains(response, '<h2>Status</h2>')
         self.assertContains(response, '<h2>Charts</h2>')
-        self.assertNotContains(response, '<h2>Checks</h2>')
-        self.assertNotContains(response, '<h2>AlertSettings</h2>')
+        self.assertNotContains(
+            response, self._get_inline_admin_heading('Checks'), html=True
+        )
+        self.assertNotContains(
+            response, self._get_inline_admin_heading('Alert Settings'), html=True
+        )
 
     def test_remove_invalid_interface(self):
         d = self._create_device(organization=self._create_org())
@@ -535,14 +565,22 @@ class TestAdmin(
 
         with self.subTest('Test inline absent when no WiFiSession is present'):
             response = self.client.get(path)
-            self.assertNotContains(response, '<h2>WiFi Sessions</h2>')
+            self.assertNotContains(
+                response,
+                self._get_inline_admin_heading('WiFi Sessions'),
+                html=True,
+            )
             self.assertNotContains(response, 'monitoring-wifisession-changelist-url')
 
         wifi_session = self._create_wifi_session(device=device)
 
         with self.subTest('Test inline present when WiFiSession is open'):
             response = self.client.get(path)
-            self.assertContains(response, '<h2>WiFi Sessions</h2>')
+            self.assertContains(
+                response,
+                self._get_inline_admin_heading('WiFi Sessions'),
+                html=True,
+            )
             self.assertContains(response, 'monitoring-wifisession-changelist-url')
 
         wifi_session.stop_time = now()
@@ -550,7 +588,11 @@ class TestAdmin(
 
         with self.subTest('Test inline absent when WiFiSession is closed'):
             response = self.client.get(path)
-            self.assertNotContains(response, '<h2>WiFi Sessions</h2>')
+            self.assertNotContains(
+                response,
+                self._get_inline_admin_heading('WiFi Sessions'),
+                html=True,
+            )
             self.assertNotContains(response, 'monitoring-wifisession-changelist-url')
 
     def test_check_alertsetting_inline(self):
@@ -584,13 +626,17 @@ class TestAdmin(
             self.assertEqual(user.user_permissions.count(), expected_perm_count)
 
         def _assert_check_inline_in_response(response):
-            self.assertContains(response, '<h2>Checks</h2>', html=True)
+            self.assertContains(
+                response, self._get_inline_admin_heading('Checks'), html=True
+            )
             self.assertContains(response, 'check-content_type-object_id-0-is_active')
             self.assertContains(response, 'check-content_type-object_id-0-check_type')
             self.assertContains(response, 'check-content_type-object_id-0-DELETE')
 
         def _assert_alertsettings_inline_in_response(response):
-            self.assertContains(response, '<h2>Alert Settings</h2>', html=True)
+            self.assertContains(
+                response, self._get_inline_admin_heading('Alert Settings'), html=True
+            )
             self.assertContains(response, 'form-row field-name')
             self.assertContains(
                 response,
@@ -620,8 +666,12 @@ class TestAdmin(
             _add_device_permissions(test_user)
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200)
-            self.assertNotContains(response, '<h2>Checks</h2>', html=True)
-            self.assertNotContains(response, '<h2>Alert Settings</h2>', html=True)
+            self.assertNotContains(
+                response, self._get_inline_admin_heading('Checks'), html=True
+            )
+            self.assertNotContains(
+                response, self._get_inline_admin_heading('Alert Settings'), html=True
+            )
 
         with self.subTest('Test check & alert settings with model permissions'):
             _add_device_permissions(test_user)
@@ -659,10 +709,14 @@ class TestAdmin(
             )
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200)
-            self.assertContains(response, '<h2>Checks</h2>', html=True)
+            self.assertContains(
+                response, self._get_inline_admin_heading('Checks'), html=True
+            )
             self.assertContains(response, 'form-row field-check_type')
             self.assertContains(response, 'form-row field-is_active')
-            self.assertContains(response, '<h2>Alert Settings</h2>', html=True)
+            self.assertContains(
+                response, self._get_inline_admin_heading('Alert Settings'), html=True
+            )
             self.assertContains(response, 'form-row field-is_healthy djn-form-row-last')
             self.assertContains(
                 response,
@@ -1064,44 +1118,43 @@ class TestWifiSessionAdmin(
                 """
                     <div class="form-row field-he">
                         <div>
-                            {start_div}
+                            <div class="flex-container">
                                 <label>WiFi 6 (802.11ax):</label>
                                     <div class="readonly">
                                         <img src="/static/admin/img/icon-unknown.svg">
                                     </div>
-                            {end_div}
+                            </div>
                         </div>
                     </div>
                     <div class="form-row field-vht">
                         <div>
-                            {start_div}<label>WiFi 5 (802.11ac):</label>
+                            <div class="flex-container">
+                                <label>WiFi 5 (802.11ac):</label>
                                 <div class="readonly">
                                     <img src="/static/admin/img/icon-unknown.svg">
                                 </div>
-                            {end_div}
+                            </div>
                         </div>
                     </div>
                     <div class="form-row field-ht">
                         <div>
-                            {start_div}<label>WiFi 4 (802.11n):</label>
+                            <div class="flex-container">
+                                <label>WiFi 4 (802.11n):</label>
                                 <div class="readonly">
                                     <img src="/static/admin/img/icon-unknown.svg">
                                 </div>
-                            {end_div}
+                            </div>
                         </div>
                     </div>
-                """.format(
-                    # TODO: Remove this when dropping support for Django 3.2 and 4.0
-                    start_div=(
-                        '<div class="flex-container">'
-                        if django.VERSION >= (4, 2)
-                        else ''
-                    ),
-                    end_div='</div>' if django.VERSION >= (4, 2) else '',
-                ),
+                """,
                 html=True,
             )
 
+    # TODO: Remove override_setting when dropping support for Django 4.2
+    # The DATETIME_FORMAT for en-gb locale changed for Django 5.1+,
+    # thus we override the project setting here to have consistent
+    # result with tests.
+    @override_settings(LANGUAGE_CODE='en')
     def test_wifi_session_stop_time_formatting(self):
         start_time = datetime.strptime('2023-8-24 17:08:00', '%Y-%m-%d %H:%M:%S')
         stop_time = datetime.strptime('2023-8-24 19:46:00', '%Y-%m-%d %H:%M:%S')
