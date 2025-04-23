@@ -17,7 +17,7 @@ jobs:
   build:
     name: Python==${{ matrix.python-version }} | ${{ matrix.django-version }}
     # Update this only when support for Django 3.2 is removed
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     services:
       redis:
