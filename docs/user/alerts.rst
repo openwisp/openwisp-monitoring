@@ -21,7 +21,7 @@ setting includes:
 - **Tolerance**: the duration (in minutes) for which the threshold must be
   breached before an alert is triggered.
 
-OpenWISP Monitoring provides the following alerts by default:
+OpenWISP Monitoring provides built-in alerts for the following metrics:
 
 .. note::
 
@@ -32,7 +32,8 @@ OpenWISP Monitoring provides the following alerts by default:
 Ping
 ----
 
-Triggers when the device becomes unreachable via ping.
+Triggers when the device becomes unreachable via ping. This alert is
+enabled by default.
 
 **Default Alert Settings:**
 
@@ -51,7 +52,7 @@ Config Applied
 --------------
 
 Triggers when the device fails to apply configuration changes within the
-specified time.
+specified time. This alert is enabled by default.
 
 **Default Alert Settings:**
 
@@ -69,7 +70,8 @@ Tolerance ``5`` minutes
 Data Collected
 --------------
 
-Triggers when no metric data has been collected from the device.
+Triggers when no metric data has been collected from the device. This
+alert is enabled by default.
 
 **Default Alert Settings:**
 
@@ -84,10 +86,53 @@ Tolerance ``30`` minutes
     The :ref:`monitoring_data_collected_check` check should be enabled for
     the device to receive this alert.
 
+CPU Usage
+---------
+
+Triggers when CPU usage exceeds the threshold. This alert is enabled by
+default.
+
+**Default Alert Settings:**
+
+========= ====================
+Operator  ``> (greater than)``
+Threshold ``90`` (percent)
+Tolerance ``5`` minutes
+========= ====================
+
+Memory Usage
+------------
+
+Triggers when memory usage exceeds the threshold. This alert is enabled by
+default.
+
+**Default Alert Settings:**
+
+========= ====================
+Operator  ``> (greater than)``
+Threshold ``95`` (percent)
+Tolerance ``5`` minutes
+========= ====================
+
+Disk Usage
+----------
+
+Triggers when disk usage exceeds the threshold. This alert is enabled by
+default.
+
+**Default Alert Settings:**
+
+========= ====================
+Operator  ``> (greater than)``
+Threshold ``90`` (percent)
+Tolerance ``0`` minutes
+========= ====================
+
 WiFi Clients (Max)
 ------------------
 
 Triggers when the number of connected WiFi clients exceeds the threshold.
+This alert is disabled by default.
 
 **Default Alert Settings:**
 
@@ -106,7 +151,7 @@ WiFi Clients (Min)
 ------------------
 
 Triggers when the number of connected WiFi clients falls below the
-threshold.
+threshold. This alert is disabled by default.
 
 **Default Alert Settings:**
 
@@ -120,42 +165,3 @@ Tolerance ``0`` minutes
 
     The :ref:`wifi_clients_check` check should be enabled for the device
     to receive this alert.
-
-CPU Usage
----------
-
-Triggers when CPU usage exceeds the threshold.
-
-**Default Alert Settings:**
-
-========= ====================
-Operator  ``> (greater than)``
-Threshold ``90`` (percent)
-Tolerance ``5`` minutes
-========= ====================
-
-Memory Usage
-------------
-
-Triggers when memory usage exceeds the threshold.
-
-**Default Alert Settings:**
-
-========= ====================
-Operator  ``> (greater than)``
-Threshold ``95`` (percent)
-Tolerance ``5`` minutes
-========= ====================
-
-Disk Usage
-----------
-
-Triggers when disk usage exceeds the threshold.
-
-**Default Alert Settings:**
-
-========= ====================
-Operator  ``> (greater than)``
-Threshold ``90`` (percent)
-Tolerance ``0`` minutes
-========= ====================
