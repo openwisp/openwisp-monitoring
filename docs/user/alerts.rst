@@ -29,6 +29,8 @@ OpenWISP Monitoring provides built-in alerts for the following metrics:
     :ref:`openwisp_monitoring_metrics` setting, or on a per-device basis
     as explained in the :doc:`device-checks-and-alert-settings` section.
 
+.. _ping_alert:
+
 Ping
 ----
 
@@ -48,6 +50,8 @@ Tolerance ``0`` minutes
     The :ref:`ping_check` check should be enabled for the device to
     receive this alert.
 
+.. _configuration_applied_alert:
+
 Config Applied
 --------------
 
@@ -66,6 +70,8 @@ Tolerance ``5`` minutes
 
     The :ref:`config_applied_check` check should be enabled for the device
     to receive this alert.
+
+.. _monitoring_data_collected_alert:
 
 Data Collected
 --------------
@@ -127,6 +133,8 @@ Operator  ``> (greater than)``
 Threshold ``90`` (percent)
 Tolerance ``0`` minutes
 ========= ====================
+
+.. _wifi_clients_alert:
 
 WiFi Clients (Max)
 ------------------
