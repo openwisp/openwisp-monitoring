@@ -19,6 +19,9 @@ choose to disable auto creation of this check by setting
 You can change the default values used for ping checks using
 :ref:`openwisp_monitoring_ping_check_config` setting.
 
+This check also :ref:`sends an alert when the device becomes unreachable
+<ping_alert>`.
+
 .. _config_applied_check:
 
 Configuration Applied
@@ -35,6 +38,9 @@ configuration status of a device changes, this ensures the check reacts
 quickly to events happening in the network and informs the user promptly
 if there's anything that is not working as intended.
 
+This check also :ref:`sends an alert if configuration is not being applied
+<configuration_applied_alert>`.
+
 .. _monitoring_data_collected_check:
 
 Monitoring Data Collected
@@ -44,6 +50,9 @@ This check ensures that the server is receiving metrics from network
 devices in a timely manner. You may choose to disable auto creation of
 this check by using the setting
 :ref:`openwisp_monitoring_auto_data_collected_check`.
+
+This check also :ref:`sends an alert when no data is received from a
+device <monitoring_data_collected_alert>`.
 
 .. _iperf3_check:
 
@@ -109,3 +118,6 @@ You can use the
 :ref:`openwisp_monitoring_wifi_clients_check_snooze_schedule` setting to
 disable this check on specific dates, such as during scheduled
 maintenance, to avoid generating unnecessary alerts.
+
+This check also :ref:`sends alerts based on WiFi client thresholds
+<wifi_clients_alert>`.

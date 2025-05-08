@@ -41,6 +41,7 @@ the OpenWISP architecture.
     ./user/device-health-status.rst
     ./user/metrics.rst
     ./user/checks.rst
+    ./user/alerts.rst
     ./user/device-checks-and-alert-settings
     ./user/configuring-iperf3-check.rst
     ./user/dashboard-monitoring-charts.rst
