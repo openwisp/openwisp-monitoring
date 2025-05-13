@@ -71,7 +71,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
         i = c.check_instance
         i.validate_params()
         with self.assertRaises(NotImplementedError):
-            i.check()
+            i.perform_check()
 
     def test_check_instance(self):
         obj = self._create_device(organization=self._create_org())

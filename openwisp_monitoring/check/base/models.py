@@ -102,7 +102,7 @@ class AbstractCheck(TimeStampedEditableModel):
             and self.content_object.organization.is_active is False
         ):
             return
-        return self.check_instance.check(store=True)
+        return self.check_instance.timed_check(store=True)
 
     def perform_check_delayed(self, duration=0):
         from ..tasks import perform_check

@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 
 from celery import shared_task
 from django.conf import settings
@@ -65,6 +66,8 @@ def perform_check(uuid):
     Retrieves check according to the passed UUID and calls the
     ``perform_check()`` method.
     """
+    start_time = time.time()
+
     try:
         check = get_check_model().objects.get(pk=uuid)
     except ObjectDoesNotExist:
@@ -73,6 +76,9 @@ def perform_check(uuid):
     result = check.perform_check()
     if settings.DEBUG:  # pragma: nocover
         print(json.dumps(result, indent=4, sort_keys=True))
+
+    elapsed_time = time.time() - start_time
+    logger.info(f'Check "{check}" took {elapsed_time:.2f}s to complete.')
 
 
 @shared_task(base=OpenwispCeleryTask)

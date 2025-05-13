@@ -279,7 +279,7 @@ class Iperf3(BaseCheck):
             # Store iperf3_result field 1 if any mode passes, store 0 when both fails
             iperf3_result = result_tcp['iperf3_result'] | result_udp['iperf3_result']
             result.update({**result_tcp, **result_udp, 'iperf3_result': iperf3_result})
-            self.store_result(result)
+            self.timed_store(result)
         device_connection.disconnect()
         return result
 
@@ -489,7 +489,7 @@ class Iperf3(BaseCheck):
                     'lost_percent': float(result['end']['sum']['lost_percent']),
                 }
 
-    def store_result(self, result):
+    def store(self, result, *args, **kwargs):
         """Store result in the DB."""
         metric = self._get_metric()
         copied = result.copy()

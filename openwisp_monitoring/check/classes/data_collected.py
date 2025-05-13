@@ -47,10 +47,13 @@ class DataCollected(BaseCheck):
             result = 0
         send_alert = device_monitoring.status != 'critical'
         if store:
-            self._get_metric().write(
-                result, retention_policy=SHORT_RP, send_alert=send_alert
-            )
+            self.timed_store(result, send_alert)
         return {'data_collected': result}
+
+    def store(self, result, send_alert, *args, **kwargs):
+        self._get_metric().write(
+            result, retention_policy=SHORT_RP, send_alert=send_alert
+        )
 
     def _get_metric(self):
         metric, created = self._get_or_create_metric(configuration='data_collected')

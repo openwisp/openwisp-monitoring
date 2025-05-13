@@ -33,10 +33,13 @@ class ConfigApplied(BaseCheck):
         # but we need to ensure health status will be changed
         send_alert = self.related_object.config.status != 'error'
         if store:
-            self._get_metric().write(
-                result, retention_policy=SHORT_RP, send_alert=send_alert
-            )
+            self.timed_store(result, send_alert)
         return result
+
+    def store(self, result, send_alert, **kwargs):
+        self._get_metric().write(
+            result, retention_policy=SHORT_RP, send_alert=send_alert
+        )
 
     def _get_metric(self):
         metric, created = self._get_or_create_metric(configuration='config_applied')
