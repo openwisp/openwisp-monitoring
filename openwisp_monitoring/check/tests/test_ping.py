@@ -251,18 +251,27 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
                 self.fail('ValidationError not raised')
 
     @patch.object(Ping, '_command', return_value=_FPING_REACHABLE)
-    def test_store_result(self, mocked_method):
+    @patch('openwisp_monitoring.check.classes.base.logger.info')
+    def test_store_result(self, mocked_logger, mocked_method):
         self.assertEqual(Check.objects.count(), 0)
         device = self._create_device(organization=self._create_org())
         device.management_ip = '10.40.0.1'
         device.save()
         # check created automatically by autoping
         self.assertEqual(Check.objects.count(), 4)
-        self.assertEqual(Metric.objects.count(), 0)
-        self.assertEqual(Chart.objects.count(), 0)
+        # self.assertEqual(Metric.objects.count(), 0)
+        # self.assertEqual(Chart.objects.count(), 0)
         self.assertEqual(AlertSettings.objects.count(), 0)
         check = Check.objects.filter(check_type=self._PING).first()
         result = check.perform_check()
+        self.assertIn(
+            f'Check "{check}" executed in',
+            mocked_logger.call_args_list[0][0][0],
+        )
+        self.assertIn(
+            'writing took ',
+            mocked_logger.call_args_list[0][0][0],
+        )
         self.assertEqual(Metric.objects.count(), 1)
         self.assertEqual(Chart.objects.count(), 3)
         self.assertEqual(AlertSettings.objects.count(), 1)

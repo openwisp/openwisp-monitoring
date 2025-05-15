@@ -83,7 +83,7 @@ class Ping(BaseCheck):
             # device is known, simulate down
             result = {'reachable': 0, 'loss': 100.0}
             if store:
-                self.store_result(result)
+                self.timed_store(result)
             return result
         command = [
             'fping',
@@ -116,10 +116,10 @@ class Ping(BaseCheck):
                 {'rtt_min': float(min), 'rtt_avg': float(avg), 'rtt_max': float(max)}
             )
         if store:
-            self.store_result(result)
+            self.timed_store(result)
         return result
 
-    def store_result(self, result):
+    def store(self, result):
         """Stores result in the DB."""
         metric = self._get_metric()
         copied = result.copy()
