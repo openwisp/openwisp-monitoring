@@ -98,11 +98,11 @@ The format used for Device Status is inspired by `NetJSON DeviceMonitoring
     - When retrieving chart data, the ``time`` parameter allows to specify
       the time frame, e.g.:
 
-          - ``1d``: returns data of the last day
-          - ``3d``: returns data of the last 3 days
-          - ``7d``: returns data of the last 7 days
-          - ``30d``: returns data of the last 30 days
-          - ``365d``: returns data of the last 365 days
+      - ``1d``: returns data of the last day
+      - ``3d``: returns data of the last 3 days
+      - ``7d``: returns data of the last 7 days
+      - ``30d``: returns data of the last 30 days
+      - ``365d``: returns data of the last 365 days
 
 - In alternative to ``time`` it is possible to request chart data for a
   custom date range by using the ``start`` and ``end`` parameters, e.g.:
