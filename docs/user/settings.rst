@@ -315,23 +315,21 @@ in the **General Traffic** chart in the admin dashboard.
 
 This setting should be defined in the following format:
 
-..
-    code-block::python
+.. code-block:: python
 
     OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART = {
-        '<organization-uuid>': ['<list-of-interfaces>']
+        "<organization-uuid>": ["<list-of-interfaces>"]
     }
 
 E.g., if you want the **General Traffic** chart to show data from two
 interfaces for an organization, you need to configure this setting as
 follows:
 
-..
-    code-block::python
+.. code-block:: python
 
     OPENWISP_MONITORING_DASHBOARD_TRAFFIC_CHART = {
         # organization uuid
-        'f9601bbd-b6d5-4704-85e3-5851894437bf': ['eth1', 'eth2']
+        "f9601bbd-b6d5-4704-85e3-5851894437bf": ["eth1", "eth2"]
     }
 
 .. note::
@@ -344,7 +342,7 @@ follows:
 
     If a user can manage more than one organization (e.g. superusers),
     then the **General Traffic** chart will always show data from
-    interfaces of ``__all__`` configuration.
+    interfaces defined in the ``__all__`` dictionary key.
 
 .. _openwisp_monitoring_metrics:
 
