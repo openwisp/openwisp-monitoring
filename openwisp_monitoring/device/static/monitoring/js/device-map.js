@@ -162,7 +162,7 @@
     /* Workaround for https://github.com/openwisp/openwisp-monitoring/issues/462
         Leaflet does not support looping (wrapping) the map. Therefore, to work around
         abrupt automatic map panning due to bounds, we plot markers on three worlds.
-        This allow users to view devices around the International Date Line without
+        This allows users to view devices around the International Date Line without
         any weird affects.
         */
 
