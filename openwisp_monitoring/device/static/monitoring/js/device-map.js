@@ -170,7 +170,11 @@
     const map = new NetJSONGraph(data, {
       el: "#device-map-container",
       render: "map",
-      clustering: false,
+      clustering: true,
+      clusteringAttribute: "status",
+      clusteringThreshold: 2,
+      clusterRadius: 80,
+      clusterOverlapPrevention: true,
       // set map initial state.
       mapOptions: {
         center: leafletConfig.DEFAULT_CENTER,
