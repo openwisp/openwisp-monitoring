@@ -319,6 +319,40 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(om.is_healthy_tolerant, True)
         self.assertEqual(Notification.objects.count(), 2)
 
+    def test_object_check_threshold_crossed_historical_data(self):
+        """
+        Do not evaluate threshold crossed for historical data
+        """
+        self._create_admin()
+        om = self._create_object_metric(name='load')
+        self._create_alert_settings(
+            metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=10
+        )
+
+        self._write_metric(om, 99, time=start_time - timedelta(minutes=120))
+        om.refresh_from_db()
+        self.assertEqual(om.is_healthy, True)
+        self.assertEqual(om.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
+
+        self._write_metric(om, 99, time=start_time - timedelta(minutes=61))
+        om.refresh_from_db()
+        self.assertEqual(om.is_healthy, True)
+        self.assertEqual(om.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
+
+        self._write_metric(om, 99, time=start_time - timedelta(minutes=60))
+        om.refresh_from_db()
+        self.assertEqual(om.is_healthy, True)
+        self.assertEqual(om.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
+
+        self._write_metric(om, 99, time=start_time - timedelta(minutes=10))
+        om.refresh_from_db()
+        self.assertEqual(om.is_healthy, False)
+        self.assertEqual(om.is_healthy_tolerant, False)
+        self.assertEqual(Notification.objects.count(), 1)
+
     def test_flapping_metric_with_tolerance(self):
         self._create_admin()
         om = self._create_object_metric(name="ping")
