@@ -382,7 +382,7 @@ class AbstractMetric(TimeStampedEditableModel):
             alert_settings = self.alertsettings
         except ObjectDoesNotExist:
             return
-        if time and alert_settings.is_historical_data(time):
+        if time and alert_settings._is_historical_data(time):
             # Device is uploading historical data (could be due to a network outage).
             # We don't want to send alerts in this scenario.
             return
@@ -946,13 +946,11 @@ class AbstractAlertSettings(TimeStampedEditableModel):
             return self.config_dict["operator"]
         return self.custom_operator
 
-    def is_historical_data(self, time):
+    def _is_historical_data(self, time):
         """
-        Data older than 1 hour is considered historical data.
+        Data older than 5 minutes is considered historical data.
         """
-        if not time or not isinstance(time, datetime):
-            raise ValueError('Invalid time value')
-        recent_time = timezone.now() - timedelta(minutes=60)
+        recent_time = timezone.now() - timedelta(minutes=5)
         return time < recent_time
 
     def _value_crossed(self, current_value):
