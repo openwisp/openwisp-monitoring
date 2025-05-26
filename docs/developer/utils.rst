@@ -115,9 +115,7 @@ An example usage has been shown below.
                 "verbose_name": "Ping PROBLEM",
                 "verb": "cannot be reached anymore",
                 "level": "warning",
-                "email_subject": _(
-                    "[{site.name}] {notification.target} is not reachable"
-                ),
+                "email_subject": _("[{site.name}] {notification.target} is not reachable"),
                 "message": _(
                     "The device [{notification.target}] {notification.verb} anymore by our ping "
                     "messages."

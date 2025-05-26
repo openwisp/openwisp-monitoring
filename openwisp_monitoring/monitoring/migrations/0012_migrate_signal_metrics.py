@@ -23,12 +23,12 @@ def forward_migration(apps, schema_editor):
 
 def reverse_migration(apps, schema_editor):
     update_metric_timeseries_structure_reverse_migration(
-        apps, schema_editor, metric_keys=['signal']
+        apps, schema_editor, metric_keys=["signal"]
     )
 
 
 class Migration(migrations.Migration):
-    dependencies = [('monitoring', '0011_alter_metric_field_name')]
+    dependencies = [("monitoring", "0011_alter_metric_field_name")]
 
     operations = [
         migrations.RunPython(

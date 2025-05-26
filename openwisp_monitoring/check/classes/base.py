@@ -7,9 +7,9 @@ from swapper import load_model
 
 logger = logging.getLogger(__name__)
 
-Check = load_model('check', 'Check')
-Metric = load_model('monitoring', 'Metric')
-Device = load_model('config', 'Device')
+Check = load_model("check", "Check")
+Metric = load_model("monitoring", "Metric")
+Device = load_model("config", "Device")
 
 
 class BaseCheck(object):
@@ -35,8 +35,8 @@ class BaseCheck(object):
         # check instance is of type device
         obj = self.related_object
         if not obj or not isinstance(obj, Device):
-            message = 'A related device is required to perform this operation'
-            raise ValidationError({'content_type': message, 'object_id': message})
+            message = "A related device is required to perform this operation"
+            raise ValidationError({"content_type": message, "object_id": message})
 
     def validate(self):
         self.validate_instance()
@@ -82,14 +82,14 @@ class BaseCheck(object):
         start_time = time.time()
         result = self.check(store=store)
         elapsed_time = time.time() - start_time
-        if hasattr(self, '_store_result_elapsed_time'):
+        if hasattr(self, "_store_result_elapsed_time"):
             elapsed_time -= self._store_result_elapsed_time
         logger.info(
             'Check "%s" executed in %.2fs, writing took %.2fs'
             % (
                 self.check_instance,
                 elapsed_time,
-                getattr(self, '_store_result_elapsed_time', 0.0),
+                getattr(self, "_store_result_elapsed_time", 0.0),
             ),
         )
         return result

@@ -24,11 +24,11 @@ from . import (
     TestWifiClientSessionMixin,
 )
 
-DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
-DeviceData = load_model('device_monitoring', 'DeviceData')
-WifiClient = load_model('device_monitoring', 'WifiClient')
-WifiSession = load_model('device_monitoring', 'WifiSession')
-Metric = load_model('monitoring', 'Metric')
+DeviceMonitoring = load_model("device_monitoring", "DeviceMonitoring")
+DeviceData = load_model("device_monitoring", "DeviceData")
+WifiClient = load_model("device_monitoring", "WifiClient")
+WifiSession = load_model("device_monitoring", "WifiSession")
+Metric = load_model("monitoring", "Metric")
 
 
 class MonitoringTestMixin(object):
@@ -43,19 +43,19 @@ class MonitoringTestMixin(object):
             "load": [10144, 15456, 6624],
             "memory": {
                 "buffered": 3334144,
-                'cached': 6774784,
+                "cached": 6774784,
                 "free": 79429632,
                 "shared": 102400,
                 "total": 128430080,
             },
-            'disk': [
+            "disk": [
                 {
-                    'used_bytes': 18792,
-                    'available_bytes': 233984,
-                    'filesystem': '/dev/root',
-                    'mount_point': '/',
-                    'used_percent': 7,
-                    'size_bytes': 258016,
+                    "used_bytes": 18792,
+                    "available_bytes": 233984,
+                    "filesystem": "/dev/root",
+                    "mount_point": "/",
+                    "used_percent": 7,
+                    "size_bytes": 258016,
                 }
             ],
             "swap": {"free": 0, "total": 0},
@@ -242,8 +242,8 @@ class MonitoringTestMixin(object):
     }
 
     def _create_device(self, **kwargs):
-        if 'organization' not in kwargs:
-            kwargs['organization'] = self._create_org()
+        if "organization" not in kwargs:
+            kwargs["organization"] = self._create_org()
         return super()._create_device(**kwargs)
 
     def _create_device_data(self, **kwargs):
@@ -253,22 +253,22 @@ class MonitoringTestMixin(object):
     def _create_env(self):
         d = self._create_device()
         dm = d.monitoring
-        dm.status = 'ok'
+        dm.status = "ok"
         dm.save()
-        ping = self._create_object_metric(configuration='ping', content_object=d)
+        ping = self._create_object_metric(configuration="ping", content_object=d)
         self._create_alert_settings(
-            metric=ping, custom_operator='<', custom_threshold=1, custom_tolerance=0
+            metric=ping, custom_operator="<", custom_threshold=1, custom_tolerance=0
         )
-        load = self._create_object_metric(name='load', content_object=d)
+        load = self._create_object_metric(name="load", content_object=d)
         self._create_alert_settings(
-            metric=load, custom_operator='>', custom_threshold=90, custom_tolerance=0
+            metric=load, custom_operator=">", custom_threshold=90, custom_tolerance=0
         )
         process_count = self._create_object_metric(
-            name='process_count', content_object=d
+            name="process_count", content_object=d
         )
         self._create_alert_settings(
             metric=process_count,
-            custom_operator='>',
+            custom_operator=">",
             custom_threshold=20,
             custom_tolerance=0,
         )
@@ -280,7 +280,7 @@ class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
 
     def test_clean_data_ok(self):
         dd = self._create_device_data()
-        dd.data = {'type': 'DeviceMonitoring', 'interfaces': []}
+        dd.data = {"type": "DeviceMonitoring", "interfaces": []}
         dd.validate_data()
 
     def test_clean_sample_data_ok(self):
@@ -291,13 +291,13 @@ class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
     def test_clean_data_fail(self):
         dd = self._create_device_data()
         try:
-            dd.data = {'type': 'DeviceMonitoring', 'interfaces': [{}]}
+            dd.data = {"type": "DeviceMonitoring", "interfaces": [{}]}
             dd.validate_data()
         except ValidationError as e:
-            self.assertIn('Invalid data in', e.message)
+            self.assertIn("Invalid data in", e.message)
             self.assertIn('"#/interfaces/0"', e.message)
         else:
-            self.fail('ValidationError not raised')
+            self.fail("ValidationError not raised")
 
     def test_validate_neighbors_data(self):
         dd = self._create_device_data()
@@ -306,10 +306,10 @@ class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
             dd.data["neighbors"][0]["ip"] = "invalid"
             dd.validate_data()
         except ValidationError as e:
-            self.assertIn('Invalid data in', e.message)
+            self.assertIn("Invalid data in", e.message)
             self.assertIn("is not valid under any of the given schemas", e.message)
         else:
-            self.fail('ValidationError not raised')
+            self.fail("ValidationError not raised")
 
     def test_save_data(self):
         dd = self._create_device_data()
@@ -332,7 +332,7 @@ class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
         try:
             json.loads(dd.json(indent=True))
         except Exception:
-            self.fail('json method did not return valid JSON')
+            self.fail("json method did not return valid JSON")
 
     def test_init(self):
         dd = DeviceData()
@@ -342,7 +342,7 @@ class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
 
     def test_device_deleted(self):
         d = self._create_device()
-        metric = self._create_object_metric(name='test', content_object=d)
+        metric = self._create_object_metric(name="test", content_object=d)
         metric.full_clean()
         metric.save()
         d.delete(check_deactivated=False)
@@ -351,7 +351,7 @@ class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
         except ObjectDoesNotExist:
             pass
         else:
-            self.fail('metric was not deleted')
+            self.fail("metric was not deleted")
 
     def test_device_data_time_stamp(self):
         dd = self.test_save_data()
@@ -364,7 +364,7 @@ class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
         dd = DeviceData(pk=dd.pk)
         data = dd.data_user_friendly
         self.assertNotEqual(
-            data['general']['local_time'], self._sample_data['general']['local_time']
+            data["general"]["local_time"], self._sample_data["general"]["local_time"]
         )
 
     def test_uptime_update(self):
@@ -372,7 +372,7 @@ class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
         dd = DeviceData(pk=dd.pk)
         data = dd.data_user_friendly
         self.assertNotEqual(
-            data['general']['uptime'], self._sample_data['general']['uptime']
+            data["general"]["uptime"], self._sample_data["general"]["uptime"]
         )
 
     def test_wireless_interface_htmode(self):
@@ -380,189 +380,189 @@ class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
         dd = DeviceData(pk=dd.pk)
         data = dd.data_user_friendly
 
-        with self.subTest('Test wireless interfaces with HT & VHT htmode'):
+        with self.subTest("Test wireless interfaces with HT & VHT htmode"):
             self.assertEqual(
-                data['interfaces'][0]['wireless']['htmode'], 'WiFi 4 (802.11n): HT20'
+                data["interfaces"][0]["wireless"]["htmode"], "WiFi 4 (802.11n): HT20"
             )
             self.assertEqual(
-                data['interfaces'][1]['wireless']['htmode'], 'WiFi 5 (802.11ac): VHT80'
+                data["interfaces"][1]["wireless"]["htmode"], "WiFi 5 (802.11ac): VHT80"
             )
 
-        with self.subTest('Test wireless interfaces with HE & VHT htmode'):
+        with self.subTest("Test wireless interfaces with HE & VHT htmode"):
             test_data = deepcopy(self._sample_data)
-            test_data['interfaces'][0]['wireless'].update({'htmode': 'HE40'})
+            test_data["interfaces"][0]["wireless"].update({"htmode": "HE40"})
             dd.data = test_data
             dd.save_data()
             data = dd.data_user_friendly
             self.assertEqual(
-                data['interfaces'][0]['wireless']['htmode'], 'WiFi 6 (802.11ax): HE40'
+                data["interfaces"][0]["wireless"]["htmode"], "WiFi 6 (802.11ax): HE40"
             )
             self.assertEqual(
-                data['interfaces'][1]['wireless']['htmode'], 'WiFi 5 (802.11ac): VHT80'
+                data["interfaces"][1]["wireless"]["htmode"], "WiFi 5 (802.11ac): VHT80"
             )
 
-        with self.subTest('Test wireless interfaces with NOHT & OTHER htmode'):
+        with self.subTest("Test wireless interfaces with NOHT & OTHER htmode"):
             test_data = deepcopy(self._sample_data)
-            test_data['interfaces'][0]['wireless'].update({'htmode': 'NOHT'})
-            test_data['interfaces'][1]['wireless'].update({'htmode': 'NEW_MODE'})
+            test_data["interfaces"][0]["wireless"].update({"htmode": "NOHT"})
+            test_data["interfaces"][1]["wireless"].update({"htmode": "NEW_MODE"})
             dd.data = test_data
             dd.save_data()
             data = dd.data_user_friendly
             self.assertEqual(
-                data['interfaces'][0]['wireless']['htmode'], 'Legacy Mode: NOHT'
+                data["interfaces"][0]["wireless"]["htmode"], "Legacy Mode: NOHT"
             )
             self.assertEqual(
-                data['interfaces'][1]['wireless']['htmode'], 'Other: NEW_MODE'
+                data["interfaces"][1]["wireless"]["htmode"], "Other: NEW_MODE"
             )
 
     def test_bad_address_fail(self):
         dd = self._create_device_data()
         data = deepcopy(self._sample_data)
-        data['interfaces'][1]['addresses'][0]['address'] = '123'
+        data["interfaces"][1]["addresses"][0]["address"] = "123"
         try:
             dd.data = data
             dd.validate_data()
         except ValidationError as e:
-            self.assertIn('Invalid data in', e.message)
+            self.assertIn("Invalid data in", e.message)
             self.assertIn("is not valid under any of the given schemas", e.message)
         else:
-            self.fail('ValidationError not raised')
+            self.fail("ValidationError not raised")
 
     def test_bad_dhcp_lease_fail(self):
         dd = self._create_device_data()
         data = deepcopy(self._sample_data)
-        data['dhcp_leases'][0]['ip'] = '123'
+        data["dhcp_leases"][0]["ip"] = "123"
         try:
             dd.data = data
             dd.validate_data()
         except ValidationError as e:
-            self.assertIn('Invalid data in', e.message)
+            self.assertIn("Invalid data in", e.message)
             self.assertIn("is not valid under any of the given schemas", e.message)
         else:
-            self.fail('ValidationError not raised')
+            self.fail("ValidationError not raised")
 
     def test_cached_memory_optional(self):
         dd = self._create_device_data()
         data = deepcopy(self._sample_data)
-        del data['resources']['memory']['cached']
+        del data["resources"]["memory"]["cached"]
         dd.data = data
         dd.validate_data()
 
-    @patch('openwisp_monitoring.device.settings.MAC_VENDOR_DETECTION', True)
+    @patch("openwisp_monitoring.device.settings.MAC_VENDOR_DETECTION", True)
     def test_mac_vendor_info(self):
         dd = self.test_save_data()
         dd = DeviceData(pk=dd.pk)
-        vendor = 'Shenzhen Yunlink Technology Co., Ltd'
-        assert dd.data['interfaces']
-        assert dd.data['neighbors']
-        assert dd.data['dhcp_leases']
-        for interface in dd.data['interfaces']:
-            if 'wireless' not in interface and 'clients' not in interface['wireless']:
+        vendor = "Shenzhen Yunlink Technology Co., Ltd"
+        assert dd.data["interfaces"]
+        assert dd.data["neighbors"]
+        assert dd.data["dhcp_leases"]
+        for interface in dd.data["interfaces"]:
+            if "wireless" not in interface and "clients" not in interface["wireless"]:
                 continue
-            for client in interface['wireless']['clients']:
-                self.assertIn('vendor', client)
-                self.assertEqual(client['vendor'], vendor)
-        for neighbor in dd.data['neighbors']:
-            self.assertIn('vendor', neighbor)
-            self.assertEqual(neighbor['vendor'], vendor)
-        for lease in dd.data['dhcp_leases']:
-            self.assertIn('vendor', lease)
+            for client in interface["wireless"]["clients"]:
+                self.assertIn("vendor", client)
+                self.assertEqual(client["vendor"], vendor)
+        for neighbor in dd.data["neighbors"]:
+            self.assertIn("vendor", neighbor)
+            self.assertEqual(neighbor["vendor"], vendor)
+        for lease in dd.data["dhcp_leases"]:
+            self.assertIn("vendor", lease)
 
-    @patch('openwisp_monitoring.device.settings.MAC_VENDOR_DETECTION', True)
+    @patch("openwisp_monitoring.device.settings.MAC_VENDOR_DETECTION", True)
     def test_mac_vendor_info_empty(self):
         dd = self._create_device_data()
         dd.data = deepcopy(self._sample_data)
-        dd.data['neighbors'] = [
-            {'ip': '2001:db80::1', 'interface': 'eth2.1', 'state': 'FAILED'}
+        dd.data["neighbors"] = [
+            {"ip": "2001:db80::1", "interface": "eth2.1", "state": "FAILED"}
         ]
         dd.save_data()
-        self.assertEqual(dd.data['neighbors'][0]['vendor'], '')
+        self.assertEqual(dd.data["neighbors"][0]["vendor"], "")
 
     def test_bad_disk_fail(self):
         dd = self._create_device_data()
         data = deepcopy(self._sample_data)
-        with self.subTest('Incorrect type'):
-            data['resources']['disk'] = dict()
+        with self.subTest("Incorrect type"):
+            data["resources"]["disk"] = dict()
             try:
                 dd.data = data
                 dd.validate_data()
             except ValidationError as e:
-                self.assertIn('Invalid data in', e.message)
-                self.assertIn("{} is not of type \'array\'", e.message)
+                self.assertIn("Invalid data in", e.message)
+                self.assertIn("{} is not of type 'array'", e.message)
             else:
-                self.fail('ValidationError not raised')
-        with self.subTest('Missing required fields'):
-            data['resources']['disk'] = [{'used_bytes': 18792}]
+                self.fail("ValidationError not raised")
+        with self.subTest("Missing required fields"):
+            data["resources"]["disk"] = [{"used_bytes": 18792}]
             try:
                 dd.data = data
                 dd.validate_data()
             except ValidationError as e:
-                self.assertIn('Invalid data in', e.message)
-                self.assertIn("'mount_point\' is a required property", e.message)
+                self.assertIn("Invalid data in", e.message)
+                self.assertIn("'mount_point' is a required property", e.message)
             else:
-                self.fail('ValidationError not raised')
-        with self.subTest('Incorrect field type'):
+                self.fail("ValidationError not raised")
+        with self.subTest("Incorrect field type"):
             data = deepcopy(self._sample_data)
-            data['resources']['disk'][0]['used_bytes'] = 18792.12
+            data["resources"]["disk"][0]["used_bytes"] = 18792.12
             try:
                 dd.data = data
                 dd.validate_data()
             except ValidationError as e:
-                self.assertIn('Invalid data in', e.message)
-                self.assertIn("18792.12 is not of type \'integer\'", e.message)
+                self.assertIn("Invalid data in", e.message)
+                self.assertIn("18792.12 is not of type 'integer'", e.message)
             else:
-                self.fail('ValidationError not raised')
+                self.fail("ValidationError not raised")
 
     def test_resources_no_key(self):
         dd = self._create_device_data()
-        with self.subTest('Test No Resources'):
+        with self.subTest("Test No Resources"):
             data = deepcopy(self._sample_data)
-            del data['resources']
+            del data["resources"]
             dd.data = data
             dd.validate_data()
-        with self.subTest('Test No Load'):
+        with self.subTest("Test No Load"):
             data = deepcopy(self._sample_data)
-            del data['resources']['load']
+            del data["resources"]["load"]
             dd.data = data
             dd.validate_data()
-        with self.subTest('Test No Memory'):
+        with self.subTest("Test No Memory"):
             data = deepcopy(self._sample_data)
-            del data['resources']['memory']
+            del data["resources"]["memory"]
             dd.data = data
             dd.validate_data()
-        with self.subTest('Test No Disk'):
+        with self.subTest("Test No Disk"):
             data = deepcopy(self._sample_data)
-            del data['resources']['disk']
+            del data["resources"]["disk"]
             dd.data = data
             dd.validate_data()
 
-    @patch('logging.Logger.warning')
+    @patch("logging.Logger.warning")
     def test_trigger_device_critical_checks_task_resiliency(self, mock):
-        dd = DeviceData(name='Test Device')
+        dd = DeviceData(name="Test Device")
         trigger_device_critical_checks.delay(dd.pk)
-        mock.assert_called_with(f'The device with uuid {dd.pk} has been deleted')
+        mock.assert_called_with(f"The device with uuid {dd.pk} has been deleted")
 
     def test_device_data_cache_set(self):
         dd = self.create_test_data(no_resources=True)
-        cache_key = get_device_cache_key(dd, context='current-data')
-        cache_data = cache.get(cache_key)[0]['data']
+        cache_key = get_device_cache_key(dd, context="current-data")
+        cache_data = cache.get(cache_key)[0]["data"]
         self.assertEqual(json.loads(cache_data), dd.data)
-        with patch.object(timeseries_db, 'query', side_effect=Exception):
+        with patch.object(timeseries_db, "query", side_effect=Exception):
             dd.refresh_from_db()
             self.assertEqual(json.loads(cache_data), dd.data)
 
-    @patch('openwisp_controller.connection.tasks.logger.info')
+    @patch("openwisp_controller.connection.tasks.logger.info")
     def test_can_be_updated(self, mocked_logger_info):
         device = self._create_device_config()
-        device.monitoring.status = 'critical'
+        device.monitoring.status = "critical"
         device.monitoring.save()
         update_config.delay(device.pk)
         mocked_logger_info.assert_called_once()
 
-    @patch('openwisp_controller.connection.tasks.logger.info')
+    @patch("openwisp_controller.connection.tasks.logger.info")
     def test_can_be_updated_unknown(self, mocked_logger_info):
         device = self._create_device_config()
-        device.monitoring.status = 'unknown'
+        device.monitoring.status = "unknown"
         device.monitoring.save()
         update_config.delay(device.pk)
         mocked_logger_info.assert_called_once()
@@ -570,7 +570,7 @@ class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
     def test_calculate_increment(self):
         dd = self._create_device_data()
         dd.writer._init_previous_data()
-        result = dd.writer._calculate_increment('wlan0', 'rx_bytes', 1234.56)
+        result = dd.writer._calculate_increment("wlan0", "rx_bytes", 1234.56)
         self.assertEqual(result, 1234)
 
 
@@ -580,41 +580,41 @@ class TestDeviceMonitoring(
     """Test openwisp_monitoring.device.models.DeviceMonitoring"""
 
     def test_disabling_critical_check(self):
-        Check = load_model('check', 'Check')
+        Check = load_model("check", "Check")
         dm, ping, load, process_count = self._create_env()
         ping_check_instance = Check.objects.create(
-            name='Ping Check',
-            check_type='ping',
+            name="Ping Check",
+            check_type="ping",
             content_object=dm.device,
             params={},
         )
-        dm.update_status('ok')
+        dm.update_status("ok")
         with catch_signal(health_status_changed) as handler:
             ping_check_instance.is_active = False
             ping_check_instance.save()
         self.assertEqual(handler.call_count, 1)
         call_args = handler.call_args[1]
-        self.assertEqual(call_args['instance'], dm)
-        self.assertEqual(call_args['status'], 'unknown')
+        self.assertEqual(call_args["instance"], dm)
+        self.assertEqual(call_args["status"], "unknown")
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'unknown')
+        self.assertEqual(dm.status, "unknown")
         with self.subTest(
-            'Ensure status does not change on saving active critical check'
+            "Ensure status does not change on saving active critical check"
         ):
             ping_check_instance.is_active = True
             ping_check_instance.save()
             dm.refresh_from_db()
-            self.assertEqual(dm.status, 'unknown')
+            self.assertEqual(dm.status, "unknown")
 
     def test_saving_non_critical_check(self):
-        Check = load_model('check', 'Check')
+        Check = load_model("check", "Check")
         dm, ping, load, process_count = self._create_env()
         # Ensure initial status is 'ok'
-        dm.update_status('ok')
+        dm.update_status("ok")
         # Created a non-critical check
         non_critical_check = Check.objects.create(
-            name='Configuration Applied',
-            check_type='non_critical',
+            name="Configuration Applied",
+            check_type="non_critical",
             content_object=dm.device,
             params={},
         )
@@ -622,146 +622,146 @@ class TestDeviceMonitoring(
             non_critical_check.is_active = False
             non_critical_check.save()
         self.assertEqual(
-            handler.call_count, 0, 'Signal should not be fired for non-critical check'
+            handler.call_count, 0, "Signal should not be fired for non-critical check"
         )
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
 
     def test_deleting_critical_check(self):
-        Check = load_model('check', 'Check')
+        Check = load_model("check", "Check")
         dm, ping, load, process_m = self._create_env()
         ping_check_instance = Check.objects.create(
-            name='Ping Check',
-            check_type='ping',
+            name="Ping Check",
+            check_type="ping",
             content_object=dm.device,
             params={},
         )
-        dm.update_status('ok')
+        dm.update_status("ok")
         with catch_signal(health_status_changed) as handler:
             ping_check_instance.delete()
         self.assertEqual(handler.call_count, 1)
         call_args = handler.call_args[1]
-        self.assertEqual(call_args['instance'], dm)
-        self.assertEqual(call_args['status'], 'unknown')
+        self.assertEqual(call_args["instance"], dm)
+        self.assertEqual(call_args["status"], "unknown")
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'unknown')
+        self.assertEqual(dm.status, "unknown")
 
     def test_status_changed(self):
         dm, ping, load, process_count = self._create_env()
         # check signal
         with catch_signal(health_status_changed) as handler:
-            dm.update_status('problem')
+            dm.update_status("problem")
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'problem')
+        self.assertEqual(dm.status, "problem")
         handler.assert_called_once_with(
             instance=dm,
-            status='problem',
+            status="problem",
             sender=DeviceMonitoring,
             signal=health_status_changed,
         )
 
     @patch.object(
         app_settings,
-        'CRITICAL_DEVICE_METRICS',
-        [{'key': 'ping', 'field_name': 'reachable'}],
+        "CRITICAL_DEVICE_METRICS",
+        [{"key": "ping", "field_name": "reachable"}],
     )
     def test_ok_critical_ok(self, *args):
         dm, ping, load, process_count = self._create_env()
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
         ping.check_threshold(0)
-        self.assertEqual(dm.status, 'critical')
+        self.assertEqual(dm.status, "critical")
         ping.check_threshold(1)
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
 
     def test_ok_problem_ok(self):
         dm, ping, load, process_count = self._create_env()
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
         load.check_threshold(100)
-        self.assertEqual(dm.status, 'problem')
+        self.assertEqual(dm.status, "problem")
         load.check_threshold(20)
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
 
     @patch.object(
         app_settings,
-        'CRITICAL_DEVICE_METRICS',
-        [{'key': 'ping', 'field_name': 'reachable'}],
+        "CRITICAL_DEVICE_METRICS",
+        [{"key": "ping", "field_name": "reachable"}],
     )
     def test_ok_problem_critical_problem_ok(self, *args):
         dm, ping, load, process_count = self._create_env()
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
         load.check_threshold(100)
-        self.assertEqual(dm.status, 'problem')
+        self.assertEqual(dm.status, "problem")
         ping.check_threshold(0)
-        self.assertEqual(dm.status, 'critical')
+        self.assertEqual(dm.status, "critical")
         ping.check_threshold(1)
-        self.assertEqual(dm.status, 'problem')
+        self.assertEqual(dm.status, "problem")
         load.check_threshold(80)
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
 
     @patch.object(
         app_settings,
-        'CRITICAL_DEVICE_METRICS',
-        [{'key': 'ping', 'field_name': 'reachable'}],
+        "CRITICAL_DEVICE_METRICS",
+        [{"key": "ping", "field_name": "reachable"}],
     )
     def test_ok_critical_critical_critical_ok(
         self,
     ):
         dm, ping, load, process_count = self._create_env()
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
         ping.check_threshold(0)
-        self.assertEqual(dm.status, 'critical')
+        self.assertEqual(dm.status, "critical")
         load.check_threshold(100)
-        self.assertEqual(dm.status, 'critical')
+        self.assertEqual(dm.status, "critical")
         load.check_threshold(80)
-        self.assertEqual(dm.status, 'critical')
+        self.assertEqual(dm.status, "critical")
         ping.check_threshold(1)
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
 
     def test_ok_problem_problem_problem_ok(self):
         dm, ping, load, process_count = self._create_env()
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
         load.check_threshold(100)
-        self.assertEqual(dm.status, 'problem')
+        self.assertEqual(dm.status, "problem")
         process_count.check_threshold(40)
-        self.assertEqual(dm.status, 'problem')
+        self.assertEqual(dm.status, "problem")
         process_count.check_threshold(10)
-        self.assertEqual(dm.status, 'problem')
+        self.assertEqual(dm.status, "problem")
         load.check_threshold(80)
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
 
     @patch.object(
         app_settings,
-        'CRITICAL_DEVICE_METRICS',
-        [{'key': 'ping', 'field_name': 'reachable'}],
+        "CRITICAL_DEVICE_METRICS",
+        [{"key": "ping", "field_name": "reachable"}],
     )
     def test_management_ip_clear_device_offline(self, *args):
         dm, ping, load, process_count = self._create_env()
-        dm.device.management_ip = '10.10.0.5'
+        dm.device.management_ip = "10.10.0.5"
         dm.device.save()
-        self.assertEqual(dm.status, 'ok')
-        self.assertEqual(dm.device.management_ip, '10.10.0.5')
+        self.assertEqual(dm.status, "ok")
+        self.assertEqual(dm.device.management_ip, "10.10.0.5")
         ping.check_threshold(0)
-        self.assertEqual(dm.status, 'critical')
+        self.assertEqual(dm.status, "critical")
         self.assertIsNone(dm.device.management_ip)
 
-    @patch('openwisp_monitoring.device.settings.AUTO_CLEAR_MANAGEMENT_IP', False)
+    @patch("openwisp_monitoring.device.settings.AUTO_CLEAR_MANAGEMENT_IP", False)
     @patch.object(
         app_settings,
-        'CRITICAL_DEVICE_METRICS',
-        [{'key': 'ping', 'field_name': 'reachable'}],
+        "CRITICAL_DEVICE_METRICS",
+        [{"key": "ping", "field_name": "reachable"}],
     )
     def test_management_ip_not_clear_device_online(self, *args):
         dm, ping, load, process_count = self._create_env()
-        dm.device.management_ip = '10.10.0.5'
+        dm.device.management_ip = "10.10.0.5"
         dm.device.save()
-        self.assertEqual(dm.status, 'ok')
-        self.assertEqual(dm.device.management_ip, '10.10.0.5')
+        self.assertEqual(dm.status, "ok")
+        self.assertEqual(dm.device.management_ip, "10.10.0.5")
         ping.check_threshold(0)
-        self.assertEqual(dm.status, 'critical')
+        self.assertEqual(dm.status, "critical")
         self.assertIsNotNone(dm.device.management_ip)
 
     def _set_env_unknown(self, load, process_count, ping, dm):
-        dm.status = 'unknown'
+        dm.status = "unknown"
         dm.save()
         ping.is_healthy = None
         load.save()
@@ -776,15 +776,15 @@ class TestDeviceMonitoring(
         load.delete()
         process_count.delete()
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'unknown')
+        self.assertEqual(dm.status, "unknown")
         ping.write(1)
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
 
     @patch.object(
         app_settings,
-        'CRITICAL_DEVICE_METRICS',
-        [{'key': 'ping', 'field_name': 'reachable'}],
+        "CRITICAL_DEVICE_METRICS",
+        [{"key": "ping", "field_name": "reachable"}],
     )
     def test_unknown_critical(self, *args):
         dm, ping, load, process_count = self._create_env()
@@ -792,19 +792,19 @@ class TestDeviceMonitoring(
         load.delete()
         process_count.delete()
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'unknown')
+        self.assertEqual(dm.status, "unknown")
         ping.write(0)
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'critical')
+        self.assertEqual(dm.status, "critical")
 
     def test_status_critical_all_critical_metrics_unhealthy(self):
         dm, ping, load, process_count = self._create_env()
         data_collected = self._create_object_metric(
-            configuration='data_collected', content_object=dm.device
+            configuration="data_collected", content_object=dm.device
         )
         self._create_alert_settings(
             metric=data_collected,
-            custom_operator='<',
+            custom_operator="<",
             custom_threshold=1,
             custom_tolerance=0,
         )
@@ -818,17 +818,17 @@ class TestDeviceMonitoring(
             data_collected.write(1)
 
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
 
         # Only one critical metric is unhealthy
         data_collected.write(0)
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'problem')
+        self.assertEqual(dm.status, "problem")
 
         # Both critical metrics are unhealthy
         ping.write(0)
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'critical')
+        self.assertEqual(dm.status, "critical")
 
     def test_single_unhealthy_critical_metric_set_status_problem(self):
         """
@@ -844,26 +844,26 @@ class TestDeviceMonitoring(
         with freeze_time(time_now - timedelta(minutes=5)):
             ping.write(1)
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
         load.write(60)
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
         ping.write(0)
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'problem')
+        self.assertEqual(dm.status, "problem")
 
     def test_deleting_device_deletes_tsdb(self):
         dm1, ping1, _, _ = self._create_env()
         device2 = self._create_device(
-            name='default.test.device2',
-            mac_address='22:33:44:55:66:77',
+            name="default.test.device2",
+            mac_address="22:33:44:55:66:77",
             organization=dm1.device.organization,
         )
         dm2 = device2.monitoring
-        dm2.status = 'ok'
+        dm2.status = "ok"
         dm2.save()
         ping2 = self._create_object_metric(
-            name='ping', key='ping', field_name='reachable', content_object=device2
+            name="ping", key="ping", field_name="reachable", content_object=device2
         )
         ping1.write(0)
         ping2.write(0)
@@ -878,33 +878,33 @@ class TestDeviceMonitoring(
     def test_handle_disabled_organization(self):
         device_monitoring, _, _, _ = self._create_env()
         device = device_monitoring.device
-        device.management_ip = '10.10.0.5'
+        device.management_ip = "10.10.0.5"
         device.save()
-        self.assertEqual(device_monitoring.status, 'ok')
+        self.assertEqual(device_monitoring.status, "ok")
         org = device.organization
         org.is_active = False
-        org.save(update_fields=['is_active'])
+        org.save(update_fields=["is_active"])
         device_monitoring.refresh_from_db()
         device.refresh_from_db()
-        self.assertEqual(device_monitoring.status, 'unknown')
+        self.assertEqual(device_monitoring.status, "unknown")
         self.assertEqual(device.management_ip, None)
 
     def test_handle_deactivate_activate_device(self):
         device_monitoring, _, _, _ = self._create_env()
         device = device_monitoring.device
-        self.assertEqual(device_monitoring.status, 'ok')
+        self.assertEqual(device_monitoring.status, "ok")
 
-        with self.subTest('Test deactivation of device'):
+        with self.subTest("Test deactivation of device"):
             device.deactivate()
             device_monitoring.refresh_from_db()
             device.refresh_from_db()
-            self.assertEqual(device_monitoring.status, 'deactivated')
+            self.assertEqual(device_monitoring.status, "deactivated")
 
-        with self.subTest('Test activation of a deactivated device'):
+        with self.subTest("Test activation of a deactivated device"):
             device.activate()
             device_monitoring.refresh_from_db()
             device.refresh_from_db()
-            self.assertEqual(device_monitoring.status, 'unknown')
+            self.assertEqual(device_monitoring.status, "unknown")
 
 
 class TestTransactionDeviceMonitoring(
@@ -913,42 +913,42 @@ class TestTransactionDeviceMonitoring(
     def test_critical_status_recovered_by_monitoring_metrics(self):
         dm, ping, load, process_count = self._create_env()
         config_applied = self._create_object_metric(
-            configuration='config_applied', content_object=dm.device
+            configuration="config_applied", content_object=dm.device
         )
         self._create_alert_settings(
             metric=config_applied,
-            custom_operator='<',
+            custom_operator="<",
             custom_threshold=1,
             custom_tolerance=0,
         )
         data_collected = self._create_object_metric(
-            configuration='data_collected', content_object=dm.device
+            configuration="data_collected", content_object=dm.device
         )
         self._create_alert_settings(
             metric=data_collected,
-            custom_operator='<',
+            custom_operator="<",
             custom_threshold=1,
             custom_tolerance=0,
         )
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
 
         # Device status changes to 'critical' due to critical metrics
         ping.write(0)
         data_collected.write(0)
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'critical')
+        self.assertEqual(dm.status, "critical")
 
         # Active metrics cannot change status to 'problem'
         config_applied.write(0)
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'critical')
+        self.assertEqual(dm.status, "critical")
 
         # Status will only change to 'problem' when the device
         # receives monitoring data
         response = self._post_data(dm.device.id, dm.device.key, self._data())
         self.assertEqual(response.status_code, 200)
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'problem')
+        self.assertEqual(dm.status, "problem")
 
         # Status will change to 'ok' when the critical metric
         # is recovered
@@ -956,7 +956,7 @@ class TestTransactionDeviceMonitoring(
         data_collected.write(1)
         config_applied.write(1)
         dm.refresh_from_db()
-        self.assertEqual(dm.status, 'ok')
+        self.assertEqual(dm.status, "ok")
 
 
 class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
@@ -970,11 +970,11 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
 
     def test_wifi_client_session_created(self):
         data = self._sample_data
-        data['interfaces'].append(self.mesh_interface)
+        data["interfaces"].append(self.mesh_interface)
         device_data = self._save_device_data(data=data)
         self.assertEqual(WifiClient.objects.count(), 3)
         self.assertEqual(WifiSession.objects.count(), 3)
-        wifi_client1 = WifiClient.objects.get(mac_address='00:ee:ad:34:f5:3b')
+        wifi_client1 = WifiClient.objects.get(mac_address="00:ee:ad:34:f5:3b")
         self.assertEqual(wifi_client1.vendor, None)
         self.assertEqual(wifi_client1.he, None)
         self.assertEqual(wifi_client1.vht, None)
@@ -983,7 +983,7 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         self.assertEqual(wifi_client1.wds, False)
         self.assertEqual(wifi_client1.wps, False)
 
-        wifi_client2 = WifiClient.objects.get(mac_address='b0:e1:7e:30:16:44')
+        wifi_client2 = WifiClient.objects.get(mac_address="b0:e1:7e:30:16:44")
         self.assertEqual(wifi_client2.vendor, None)
         self.assertEqual(wifi_client2.he, None)
         self.assertEqual(wifi_client2.vht, False)
@@ -992,7 +992,7 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         self.assertEqual(wifi_client2.wds, False)
         self.assertEqual(wifi_client2.wps, False)
 
-        wifi_client3 = WifiClient.objects.get(mac_address='c0:ee:fb:34:f5:4b')
+        wifi_client3 = WifiClient.objects.get(mac_address="c0:ee:fb:34:f5:4b")
         self.assertEqual(wifi_client3.vendor, None)
         self.assertEqual(wifi_client3.he, None)
         self.assertEqual(wifi_client3.vht, False)
@@ -1003,22 +1003,22 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
 
         wifi_client1_session = WifiSession.objects.get(wifi_client=wifi_client1)
         self.assertEqual(wifi_client1_session.device, device_data)
-        self.assertEqual(wifi_client1_session.ssid, 'testnet')
-        self.assertEqual(wifi_client1_session.interface_name, 'wlan0')
+        self.assertEqual(wifi_client1_session.ssid, "testnet")
+        self.assertEqual(wifi_client1_session.interface_name, "wlan0")
         self.assertNotEqual(wifi_client1_session.start_time, None)
         self.assertEqual(wifi_client1_session.stop_time, None)
 
         wifi_client2_session = WifiSession.objects.get(wifi_client=wifi_client2)
         self.assertEqual(wifi_client2_session.device, device_data)
-        self.assertEqual(wifi_client2_session.ssid, 'testnet')
-        self.assertEqual(wifi_client2_session.interface_name, 'wlan1')
+        self.assertEqual(wifi_client2_session.ssid, "testnet")
+        self.assertEqual(wifi_client2_session.interface_name, "wlan1")
         self.assertNotEqual(wifi_client2_session.start_time, None)
         self.assertEqual(wifi_client2_session.stop_time, None)
 
         wifi_client3_session = WifiSession.objects.get(wifi_client=wifi_client3)
         self.assertEqual(wifi_client3_session.device, device_data)
-        self.assertEqual(wifi_client3_session.ssid, 'testnet')
-        self.assertEqual(wifi_client3_session.interface_name, 'wlan1')
+        self.assertEqual(wifi_client3_session.ssid, "testnet")
+        self.assertEqual(wifi_client3_session.interface_name, "wlan1")
         self.assertNotEqual(wifi_client3_session.start_time, None)
         self.assertEqual(wifi_client3_session.stop_time, None)
 
@@ -1040,15 +1040,15 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         self.assertEqual(WifiSession.objects.count(), 3)
         self.assertEqual(WifiClient.objects.count(), 3)
 
-        with self.subTest('Test closing session'):
+        with self.subTest("Test closing session"):
             self._save_device_data(
-                device_data, data={'type': 'DeviceMonitoring', 'interfaces': []}
+                device_data, data={"type": "DeviceMonitoring", "interfaces": []}
             )
             self.assertEqual(WifiSession.objects.filter(stop_time=None).count(), 0)
             self.assertEqual(WifiSession.objects.count(), 3)
             self.assertEqual(WifiClient.objects.count(), 3)
 
-        with self.subTest('Test re-opening session for exising clients'):
+        with self.subTest("Test re-opening session for exising clients"):
             data = deepcopy(self._sample_data)
             self._save_device_data(device_data, data)
             self.assertEqual(WifiSession.objects.filter(stop_time=None).count(), 3)
@@ -1065,29 +1065,29 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
     def test_database_queries(self):
         device_data = self._create_device_data()
 
-        with self.subTest('Test creating new clients and sessions'):
+        with self.subTest("Test creating new clients and sessions"):
             data = deepcopy(self._sample_data)
             with self.assertNumQueries(28):
                 self._save_device_data(device_data, data)
 
-        with self.subTest('Test updating existing clients and sessions'):
+        with self.subTest("Test updating existing clients and sessions"):
             data = deepcopy(self._sample_data)
             with self.assertNumQueries(7):
                 self._save_device_data(device_data, data)
 
-        with self.subTest('Test closing existing sessions'):
+        with self.subTest("Test closing existing sessions"):
             data = deepcopy(self._sample_data)
             with self.assertNumQueries(1):
                 self._save_device_data(
-                    device_data, data={'type': 'DeviceMonitoring', 'interface': []}
+                    device_data, data={"type": "DeviceMonitoring", "interface": []}
                 )
 
-        with self.subTest('Test new sessions for existing clients'):
+        with self.subTest("Test new sessions for existing clients"):
             data = deepcopy(self._sample_data)
             with self.assertNumQueries(13):
                 self._save_device_data(device_data, data)
 
-    @patch.object(app_settings, 'WIFI_SESSIONS_ENABLED', False)
+    @patch.object(app_settings, "WIFI_SESSIONS_ENABLED", False)
     def test_disabling_wifi_sessions(self):
         device_data = self._create_device_data()
         with self.assertNumQueries(0):
@@ -1099,19 +1099,19 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         start_time = now()
         device_monitoring = self._create_device_monitoring()
         ping = self._create_object_metric(
-            name='ping',
-            key='ping',
-            field_name='reachable',
+            name="ping",
+            key="ping",
+            field_name="reachable",
             content_object=device_monitoring.device,
         )
         ping_alerts = self._create_alert_settings(
-            metric=ping, custom_operator='<', custom_threshold=1, custom_tolerance=1
+            metric=ping, custom_operator="<", custom_threshold=1, custom_tolerance=1
         )
         load = self._create_object_metric(
-            name='load', content_object=device_monitoring.device
+            name="load", content_object=device_monitoring.device
         )
         self._create_alert_settings(
-            metric=load, custom_operator='>', custom_threshold=90, custom_tolerance=0
+            metric=load, custom_operator=">", custom_threshold=90, custom_tolerance=0
         )
         ping.write(1)
         load.write(50)

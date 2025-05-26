@@ -7,7 +7,7 @@ from . import assign_permissions_to_groups
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('device_monitoring', '0004_wificlient_wifisession'),
+        ("device_monitoring", "0004_wificlient_wifisession"),
     ]
 
     operations = [

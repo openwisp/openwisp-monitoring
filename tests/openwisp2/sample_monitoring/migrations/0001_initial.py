@@ -23,14 +23,14 @@ from openwisp_monitoring.monitoring.configuration import (
 class Migration(migrations.Migration):
     initial = True
 
-    dependencies = [('contenttypes', '0002_remove_content_type_name')]
+    dependencies = [("contenttypes", "0002_remove_content_type_name")]
 
     operations = [
         migrations.CreateModel(
-            name='Metric',
+            name="Metric",
             fields=[
                 (
-                    'id',
+                    "id",
                     models.UUIDField(
                         default=uuid.uuid4,
                         editable=False,
@@ -39,24 +39,24 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    'created',
+                    "created",
                     model_utils.fields.AutoCreatedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='created',
+                        verbose_name="created",
                     ),
                 ),
                 (
-                    'modified',
+                    "modified",
                     model_utils.fields.AutoLastModifiedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='modified',
+                        verbose_name="modified",
                     ),
                 ),
-                ('name', models.CharField(max_length=64)),
+                ("name", models.CharField(max_length=64)),
                 (
-                    'configuration',
+                    "configuration",
                     models.CharField(
                         choices=(
                             METRIC_CONFIGURATION_CHOICES
@@ -68,74 +68,74 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    'key',
+                    "key",
                     models.SlugField(
                         blank=True,
-                        help_text='leave blank to determine automatically',
+                        help_text="leave blank to determine automatically",
                         max_length=64,
                     ),
                 ),
-                ('field_name', models.CharField(default='value', max_length=16)),
+                ("field_name", models.CharField(default="value", max_length=16)),
                 (
-                    'object_id',
+                    "object_id",
                     models.CharField(
                         blank=True, null=True, db_index=True, max_length=36
                     ),
                 ),
                 (
-                    'is_healthy',
+                    "is_healthy",
                     models.BooleanField(
                         blank=True, db_index=True, default=None, null=True
                     ),
                 ),
                 (
-                    'is_healthy_tolerant',
+                    "is_healthy_tolerant",
                     models.BooleanField(blank=True, default=None, null=True),
                 ),
-                ('details', models.CharField(blank=True, max_length=64, null=True)),
+                ("details", models.CharField(blank=True, max_length=64, null=True)),
                 (
-                    'content_type',
+                    "content_type",
                     models.ForeignKey(
                         blank=True,
                         null=True,
                         on_delete=django.db.models.deletion.CASCADE,
-                        to='contenttypes.ContentType',
+                        to="contenttypes.ContentType",
                     ),
                 ),
                 (
-                    'main_tags',
+                    "main_tags",
                     jsonfield.fields.JSONField(
                         blank=True,
                         db_index=True,
                         default=dict,
-                        dump_kwargs={'indent': 4},
-                        load_kwargs={'object_pairs_hook': collections.OrderedDict},
-                        verbose_name='main tags',
+                        dump_kwargs={"indent": 4},
+                        load_kwargs={"object_pairs_hook": collections.OrderedDict},
+                        verbose_name="main tags",
                     ),
                 ),
                 (
-                    'extra_tags',
+                    "extra_tags",
                     jsonfield.fields.JSONField(
                         blank=True,
                         default=dict,
-                        dump_kwargs={'indent': 4},
-                        load_kwargs={'object_pairs_hook': collections.OrderedDict},
-                        verbose_name='extra tags',
+                        dump_kwargs={"indent": 4},
+                        load_kwargs={"object_pairs_hook": collections.OrderedDict},
+                        verbose_name="extra tags",
                     ),
                 ),
             ],
             options={
-                'abstract': False,
-                'unique_together': {
-                    ('key', 'field_name', 'content_type', 'object_id', 'main_tags')
+                "abstract": False,
+                "unique_together": {
+                    ("key", "field_name", "content_type", "object_id", "main_tags")
                 },
             },
         ),
         migrations.CreateModel(
-            name='Chart',
+            name="Chart",
             fields=[
                 (
-                    'id',
+                    "id",
                     models.UUIDField(
                         default=uuid.uuid4,
                         editable=False,
@@ -144,23 +144,23 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    'created',
+                    "created",
                     model_utils.fields.AutoCreatedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='created',
+                        verbose_name="created",
                     ),
                 ),
                 (
-                    'modified',
+                    "modified",
                     model_utils.fields.AutoLastModifiedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='modified',
+                        verbose_name="modified",
                     ),
                 ),
                 (
-                    'configuration',
+                    "configuration",
                     models.CharField(
                         choices=(
                             CHART_CONFIGURATION_CHOICES
@@ -171,22 +171,22 @@ class Migration(migrations.Migration):
                         null=True,
                     ),
                 ),
-                ('details', models.CharField(blank=True, max_length=64, null=True)),
+                ("details", models.CharField(blank=True, max_length=64, null=True)),
                 (
-                    'metric',
+                    "metric",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to=swapper.get_model_name('monitoring', 'Metric'),
+                        to=swapper.get_model_name("monitoring", "Metric"),
                     ),
                 ),
             ],
-            options={'abstract': False},
+            options={"abstract": False},
         ),
         migrations.CreateModel(
-            name='AlertSettings',
+            name="AlertSettings",
             fields=[
                 (
-                    'id',
+                    "id",
                     models.UUIDField(
                         default=uuid.uuid4,
                         editable=False,
@@ -195,80 +195,80 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    'created',
+                    "created",
                     model_utils.fields.AutoCreatedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='created',
+                        verbose_name="created",
                     ),
                 ),
                 (
-                    'modified',
+                    "modified",
                     model_utils.fields.AutoLastModifiedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='modified',
+                        verbose_name="modified",
                     ),
                 ),
                 (
-                    'custom_operator',
+                    "custom_operator",
                     models.CharField(
                         blank=True,
-                        choices=[('<', 'less than'), ('>', 'greater than')],
+                        choices=[("<", "less than"), (">", "greater than")],
                         max_length=1,
                         null=True,
-                        verbose_name='operator',
+                        verbose_name="operator",
                     ),
                 ),
                 (
-                    'custom_threshold',
+                    "custom_threshold",
                     models.FloatField(
                         blank=True,
-                        help_text='threshold value',
+                        help_text="threshold value",
                         null=True,
-                        verbose_name='threshold value',
+                        verbose_name="threshold value",
                     ),
                 ),
                 (
-                    'custom_tolerance',
+                    "custom_tolerance",
                     models.PositiveIntegerField(
                         blank=True,
-                        help_text='for how many minutes should the threshold value be crossed before '
-                        'an alert is sent? A value of zero means the alert is sent immediately',
+                        help_text="for how many minutes should the threshold value be crossed before "
+                        "an alert is sent? A value of zero means the alert is sent immediately",
                         null=True,
                         validators=[django.core.validators.MaxValueValidator(10080)],
-                        verbose_name='threshold tolerance',
+                        verbose_name="threshold tolerance",
                     ),
                 ),
-                ('details', models.CharField(blank=True, max_length=64, null=True)),
+                ("details", models.CharField(blank=True, max_length=64, null=True)),
                 (
-                    'metric',
+                    "metric",
                     models.OneToOneField(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to=swapper.get_model_name('monitoring', 'Metric'),
+                        to=swapper.get_model_name("monitoring", "Metric"),
                     ),
                 ),
                 (
-                    'is_active',
+                    "is_active",
                     models.BooleanField(
                         default=True,
                         help_text=(
-                            'whether alerts are enabled for this metric, uncheck to '
-                            'disable this alert for this object and all users'
+                            "whether alerts are enabled for this metric, uncheck to "
+                            "disable this alert for this object and all users"
                         ),
-                        verbose_name='Alerts enabled',
+                        verbose_name="Alerts enabled",
                     ),
                 ),
             ],
             options={
-                'verbose_name': 'Alert settings',
-                'verbose_name_plural': 'Alert settings',
-                'abstract': False,
-                'permissions': (
-                    ('add_alertsettings_inline', 'Can add Alert settings inline'),
-                    ('change_alertsettings_inline', 'Can change Alert settings inline'),
-                    ('delete_alertsettings_inline', 'Can delete Alert settings inline'),
-                    ('view_alertsettings_inline', 'Can view Alert settings inline'),
+                "verbose_name": "Alert settings",
+                "verbose_name_plural": "Alert settings",
+                "abstract": False,
+                "permissions": (
+                    ("add_alertsettings_inline", "Can add Alert settings inline"),
+                    ("change_alertsettings_inline", "Can change Alert settings inline"),
+                    ("delete_alertsettings_inline", "Can delete Alert settings inline"),
+                    ("view_alertsettings_inline", "Can view Alert settings inline"),
                 ),
             },
         ),

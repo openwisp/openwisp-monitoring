@@ -11,11 +11,11 @@ from ...settings import CACHE_TIMEOUT
 from ...views import MonitoringApiViewMixin
 from ..configuration import DEFAULT_DASHBOARD_TRAFFIC_CHART
 
-Chart = load_model('monitoring', 'Chart')
-Metric = load_model('monitoring', 'Metric')
-Organization = load_model('openwisp_users', 'Organization')
-Location = load_model('geo', 'Location')
-FloorPlan = load_model('geo', 'FloorPlan')
+Chart = load_model("monitoring", "Chart")
+Metric = load_model("monitoring", "Metric")
+Organization = load_model("openwisp_users", "Organization")
+Location = load_model("geo", "Location")
+FloorPlan = load_model("geo", "FloorPlan")
 
 
 class DashboardTimeseriesView(ProtectedAPIMixin, MonitoringApiViewMixin, APIView):
@@ -27,12 +27,12 @@ class DashboardTimeseriesView(ProtectedAPIMixin, MonitoringApiViewMixin, APIView
     permission_classes = [IsAuthenticated]
 
     def _get_organizations(self):
-        query_orgs = self.request.query_params.get('organization_slug', '')
+        query_orgs = self.request.query_params.get("organization_slug", "")
         if query_orgs:
-            query_orgs = query_orgs.split(',')
+            query_orgs = query_orgs.split(",")
             org_ids = list(
                 Organization.objects.filter(slug__in=query_orgs).values_list(
-                    'id', flat=True
+                    "id", flat=True
                 )
             )
             if len(org_ids) != len(query_orgs):
@@ -60,18 +60,18 @@ class DashboardTimeseriesView(ProtectedAPIMixin, MonitoringApiViewMixin, APIView
         if len(orgs) == 1:
             interfaces = DEFAULT_DASHBOARD_TRAFFIC_CHART.get(str(orgs[0]), [])
         if not interfaces:
-            interfaces = DEFAULT_DASHBOARD_TRAFFIC_CHART.get('__all__')
+            interfaces = DEFAULT_DASHBOARD_TRAFFIC_CHART.get("__all__")
         return interfaces
 
     def _get_location_ids(self):
-        location_ids = self.request.query_params.get('location_id', '')
+        location_ids = self.request.query_params.get("location_id", "")
         if location_ids:
-            location_ids = location_ids.split(',')
+            location_ids = location_ids.split(",")
             location_query = Q(id__in=location_ids)
             if not self.request.user.is_superuser:
                 location_query &= Q(organization__in=self._get_organizations())
             location_orgs = Location.objects.filter(location_query).values_list(
-                'organization_id', flat=True
+                "organization_id", flat=True
             )
             if len(location_ids) != len(location_orgs):
                 # Request query_params contains slugs of non-existing organization
@@ -98,9 +98,9 @@ class DashboardTimeseriesView(ProtectedAPIMixin, MonitoringApiViewMixin, APIView
                 raise PermissionDenied
 
     def _get_floorplan_ids(self):
-        floorplan_ids = self.request.query_params.get('floorplan_id', '')
+        floorplan_ids = self.request.query_params.get("floorplan_id", "")
         if floorplan_ids:
-            floorplan_ids = floorplan_ids.split(',')
+            floorplan_ids = floorplan_ids.split(",")
             floorplan_query = Q(id__in=floorplan_ids)
             if not self.request.user.is_superuser:
                 locations = self._get_location_ids()
@@ -134,22 +134,22 @@ class DashboardTimeseriesView(ProtectedAPIMixin, MonitoringApiViewMixin, APIView
 
     def _get_chart_additional_query_kwargs(self, chart):
         additional_params = {
-            'organization_id': self._get_organizations(),
-            'location_id': self._get_location_ids(),
-            'floorplan_id': self._get_floorplan_ids(),
+            "organization_id": self._get_organizations(),
+            "location_id": self._get_location_ids(),
+            "floorplan_id": self._get_floorplan_ids(),
         }
-        if chart.configuration == 'general_traffic':
-            additional_params['ifname'] = self._get_interface()
-        return {'additional_params': additional_params}
+        if chart.configuration == "general_traffic":
+            additional_params["ifname"] = self._get_interface()
+        return {"additional_params": additional_params}
 
     @cache_memoize(
         CACHE_TIMEOUT,
-        key_generator_callable=lambda *args, **kwargs: 'ow-monitoring-dashboard-charts',
+        key_generator_callable=lambda *args, **kwargs: "ow-monitoring-dashboard-charts",
     )
     def _get_charts(self, request, *args, **kwargs):
         return Chart.objects.filter(
             metric__object_id=None, metric__content_type=None
-        ).select_related('metric')
+        ).select_related("metric")
 
     @classmethod
     def invalidate_cache(cls, instance, *args, **kwargs):
@@ -167,14 +167,14 @@ class DashboardTimeseriesView(ProtectedAPIMixin, MonitoringApiViewMixin, APIView
     def _get_user_managed_orgs(self, request):
         """Return list of dictionary containing organization name and slug in select2 compatible format."""
         orgs = []
-        qs = Organization.objects.only('slug', 'name')
+        qs = Organization.objects.only("slug", "name")
         if not request.user.is_superuser:
             if len(request.user.organizations_managed) > 1:
                 qs = qs.filter(pk__in=request.user.organizations_managed)
             else:
                 return orgs
         for org in qs.iterator():
-            orgs.append({'id': org.slug, 'text': org.name})
+            orgs.append({"id": org.slug, "text": org.name})
         if len(orgs) < 2:
             # Handles scenarios for superuser when the project has only
             # one organization.
@@ -183,10 +183,10 @@ class DashboardTimeseriesView(ProtectedAPIMixin, MonitoringApiViewMixin, APIView
 
     def get(self, request, *args, **kwargs):
         response = super().get(request, *args, **kwargs)
-        if not request.GET.get('csv'):
+        if not request.GET.get("csv"):
             user_managed_orgs = self._get_user_managed_orgs(request)
             if user_managed_orgs:
-                response.data['organizations'] = user_managed_orgs
+                response.data["organizations"] = user_managed_orgs
         return response
 
 

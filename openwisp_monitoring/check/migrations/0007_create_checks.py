@@ -7,16 +7,16 @@ from openwisp_monitoring.check.tasks import auto_create_check
 
 def create_ping_checks(apps, schema_editor):
     if AUTO_PING:
-        ContentType = apps.get_model('contenttypes', 'ContentType')
-        Check = apps.get_model('check', 'Check')
-        Device = apps.get_model('config', 'Device')
+        ContentType = apps.get_model("contenttypes", "ContentType")
+        Check = apps.get_model("check", "Check")
+        Device = apps.get_model("config", "Device")
         for device in Device.objects.iterator():
             auto_create_check(
                 model=Device.__name__.lower(),
                 app_label=Device._meta.app_label,
                 object_id=str(device.pk),
-                check_type='openwisp_monitoring.check.classes.Ping',
-                check_name='Ping',
+                check_type="openwisp_monitoring.check.classes.Ping",
+                check_name="Ping",
                 check_model=Check,
                 content_type_model=ContentType,
             )
@@ -25,34 +25,34 @@ def create_ping_checks(apps, schema_editor):
 def create_config_applied_checks(apps, schema_editor):
     if not AUTO_CONFIG_CHECK:
         return
-    ContentType = apps.get_model('contenttypes', 'ContentType')
-    Check = apps.get_model('check', 'Check')
-    Device = apps.get_model('config', 'Device')
+    ContentType = apps.get_model("contenttypes", "ContentType")
+    Check = apps.get_model("check", "Check")
+    Device = apps.get_model("config", "Device")
     for device in Device.objects.iterator():
         auto_create_check(
             model=Device.__name__.lower(),
             app_label=Device._meta.app_label,
             object_id=str(device.pk),
-            check_type='openwisp_monitoring.check.classes.ConfigApplied',
-            check_name='Configuration Applied',
+            check_type="openwisp_monitoring.check.classes.ConfigApplied",
+            check_name="Configuration Applied",
             check_model=Check,
             content_type_model=ContentType,
         )
 
 
 def remove_config_applied_checks(apps, schema_editor):
-    Check = apps.get_model('check', 'Check')
-    Metric = apps.get_model('monitoring', 'Metric')
+    Check = apps.get_model("check", "Check")
+    Metric = apps.get_model("monitoring", "Metric")
     Check.objects.filter(
-        check='openwisp_monitoring.check.classes.ConfigApplied'
+        check="openwisp_monitoring.check.classes.ConfigApplied"
     ).delete()
-    Metric.objects.filter(configuration='config_applied').delete()
+    Metric.objects.filter(configuration="config_applied").delete()
 
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('check', '0006_rename_check_check_check_type'),
-        swapper.dependency('monitoring', 'Metric'),
+        ("check", "0006_rename_check_check_check_type"),
+        swapper.dependency("monitoring", "Metric"),
     ]
 
     operations = [

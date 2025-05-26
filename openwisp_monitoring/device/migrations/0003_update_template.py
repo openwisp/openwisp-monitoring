@@ -16,12 +16,12 @@ from . import (
 
 
 def migrate_data(apps, schema_editor):
-    Template = apps.get_model('config', 'Template')
+    Template = apps.get_model("config", "Template")
     try:
         template = Template.objects.get(pk=TEMPLATE_MONITORING_UUID)
         template.config = OrderedDict(
             {
-                'files': [
+                "files": [
                     TEMPLATE_OPENWISP_MONITORING_02,
                     TEMPLATE_NETJSON_MONITORING_02,
                     TEMPLATE_CRONTAB_MONITORING_02,
@@ -29,12 +29,12 @@ def migrate_data(apps, schema_editor):
                     TEMPLATE_UPDATE_OPENWISP_PACKAGES_02,
                     TEMPLATE_POST_RELOAD_HOOK_02,
                 ],
-                'openwisp': [
+                "openwisp": [
                     OrderedDict(
                         {
-                            'config_name': 'monitoring',
-                            'config_value': 'monitoring',
-                            'included_interfaces': '*',
+                            "config_name": "monitoring",
+                            "config_value": "monitoring",
+                            "included_interfaces": "*",
                         }
                     )
                 ],
@@ -48,7 +48,7 @@ def migrate_data(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('device_monitoring', '0002_create_template'),
+        ("device_monitoring", "0002_create_template"),
     ]
 
     operations = [

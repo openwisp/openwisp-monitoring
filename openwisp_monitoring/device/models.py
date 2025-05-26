@@ -8,31 +8,31 @@ from .base.models import (
     AbstractWifiSession,
 )
 
-BaseDevice = load_model('config', 'Device', require_ready=False)
+BaseDevice = load_model("config", "Device", require_ready=False)
 
 
 class DeviceData(AbstractDeviceData, BaseDevice):
-    checks = GenericRelation(get_model_name('check', 'Check'))
-    metrics = GenericRelation(get_model_name('monitoring', 'Metric'))
+    checks = GenericRelation(get_model_name("check", "Check"))
+    metrics = GenericRelation(get_model_name("monitoring", "Metric"))
 
     class Meta:
         proxy = True
-        swappable = swappable_setting('device_monitoring', 'DeviceData')
+        swappable = swappable_setting("device_monitoring", "DeviceData")
 
 
 class DeviceMonitoring(AbstractDeviceMonitoring):
     class Meta(AbstractDeviceMonitoring.Meta):
         abstract = False
-        swappable = swappable_setting('device_monitoring', 'DeviceMonitoring')
+        swappable = swappable_setting("device_monitoring", "DeviceMonitoring")
 
 
 class WifiClient(AbstractWifiClient):
     class Meta(AbstractWifiClient.Meta):
         abstract = False
-        swappable = swappable_setting('device_monitoring', 'WifiClient')
+        swappable = swappable_setting("device_monitoring", "WifiClient")
 
 
 class WifiSession(AbstractWifiSession):
     class Meta(AbstractWifiSession.Meta):
         abstract = False
-        swappable = swappable_setting('device_monitoring', 'WifiSession')
+        swappable = swappable_setting("device_monitoring", "WifiSession")

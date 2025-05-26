@@ -16,22 +16,22 @@ from openwisp_monitoring.monitoring.tests.test_monitoring_notifications import (
 
 
 class TestDatabase(BaseTestDatabase):
-    app = 'sample_monitoring'
+    app = "sample_monitoring"
 
 
 class TestModels(BaseTestModels):
     def test_details_field(self):
-        details = 'This metric has one related alert setting'
-        m = self._create_object_metric(name='br-lan', details=details)
+        details = "This metric has one related alert setting"
+        m = self._create_object_metric(name="br-lan", details=details)
         self.assertEqual(m.details, details)
         alert_s = self._create_alert_settings(
             metric=m,
-            custom_operator='>',
+            custom_operator=">",
             custom_threshold=90,
             custom_tolerance=0,
-            details=f'Related metric name is {m.name}',
+            details=f"Related metric name is {m.name}",
         )
-        self.assertEqual(alert_s.details, f'Related metric name is {m.name}')
+        self.assertEqual(alert_s.details, f"Related metric name is {m.name}")
         c = self._create_chart(metric=m)
         self.assertEqual(c.details, None)
 

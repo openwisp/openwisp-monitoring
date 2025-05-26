@@ -6,30 +6,30 @@ from ..settings import CHECK_CHOICES
 
 
 class Migration(migrations.Migration):
-    dependencies = [('check', '0003_create_ping')]
+    dependencies = [("check", "0003_create_ping")]
 
     operations = [
         migrations.RenameField(
-            model_name='check', old_name='active', new_name='is_active'
+            model_name="check", old_name="active", new_name="is_active"
         ),
         migrations.AlterField(
-            model_name='check',
-            name='is_active',
+            model_name="check",
+            name="is_active",
             field=models.BooleanField(
                 db_index=True,
                 default=True,
-                help_text='whether the check should be run, related metrics collected and alerts sent',
-                verbose_name='active',
+                help_text="whether the check should be run, related metrics collected and alerts sent",
+                verbose_name="active",
             ),
         ),
         migrations.AlterField(
-            model_name='check',
-            name='check',
+            model_name="check",
+            name="check",
             field=models.CharField(
                 choices=CHECK_CHOICES,
                 db_index=True,
                 max_length=128,
-                verbose_name='check type',
+                verbose_name="check type",
             ),
         ),
     ]

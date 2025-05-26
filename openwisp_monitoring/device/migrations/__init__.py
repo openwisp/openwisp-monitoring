@@ -5,19 +5,19 @@ from django.contrib.auth.models import Permission
 from openwisp_controller.migrations import create_default_permissions, get_swapped_model
 
 # Use a pre-defined UUID so the template can be upgraded via migration scripts if needed
-TEMPLATE_MONITORING_UUID = '00000000-defa-defa-defa-000000000000'
+TEMPLATE_MONITORING_UUID = "00000000-defa-defa-defa-000000000000"
 TEMPLATE_OPENWISP_MONITORING_01 = OrderedDict(
     {
         "path": "/usr/sbin/openwisp-monitoring",
         "mode": "0744",
-        "contents": "uuid=$(uci get openwisp.http.uuid)\nkey=$(uci get openwisp.http.key)\nbase_url=$(uci get openwisp.http.url)\nverify_ssl=$(uci get openwisp.http.verify_ssl)\nincluded_interfaces=$(uci get openwisp.monitoring.included_interfaces)\nurl=\"$base_url/api/v1/monitoring/device/$uuid/?key=$key\"\ndata=$(/usr/sbin/netjson-monitoring \"$included_interfaces\")\nif [ \"$verify_ssl\" = 0 ]; then\n    curl_command='curl -k'\nelse\n    curl_command='curl'\nfi\n# send data via POST\n$curl_command -H \"Content-Type: application/json\" \\\n              -X POST \\\n              -d \"$data\" \\\n              -v $url\n",  # noqa
+        "contents": 'uuid=$(uci get openwisp.http.uuid)\nkey=$(uci get openwisp.http.key)\nbase_url=$(uci get openwisp.http.url)\nverify_ssl=$(uci get openwisp.http.verify_ssl)\nincluded_interfaces=$(uci get openwisp.monitoring.included_interfaces)\nurl="$base_url/api/v1/monitoring/device/$uuid/?key=$key"\ndata=$(/usr/sbin/netjson-monitoring "$included_interfaces")\nif [ "$verify_ssl" = 0 ]; then\n    curl_command=\'curl -k\'\nelse\n    curl_command=\'curl\'\nfi\n# send data via POST\n$curl_command -H "Content-Type: application/json" \\\n              -X POST \\\n              -d "$data" \\\n              -v $url\n',  # noqa
     }
 )
 TEMPLATE_OPENWISP_MONITORING_02 = OrderedDict(
     {
         "path": "/usr/sbin/legacy-openwisp-monitoring",
         "mode": "0744",
-        "contents": "#!/bin/sh\n\n# Exit if openwisp-monitoring package is installed\nopenwisp_monitoring_installed=$(opkg list-installed | grep openwisp-monitoring -c)\nif [ \"$openwisp_monitoring_installed\" == \"1\" ]; then\n    exit 0\nfi\nuuid=$(uci get openwisp.http.uuid)\nkey=$(uci get openwisp.http.key)\nbase_url=$(uci get openwisp.http.url)\nverify_ssl=$(uci get openwisp.http.verify_ssl)\nincluded_interfaces=$(uci get openwisp.monitoring.included_interfaces)\nurl=\"$base_url/api/v1/monitoring/device/$uuid/?key=$key\"\ndata=$(/usr/sbin/legacy-netjson-monitoring \"$included_interfaces\")\nif [ \"$verify_ssl\" = 0 ]; then\n    curl_command='curl -k'\nelse\n    curl_command='curl'\nfi\n# send data via POST\n$curl_command -H \"Content-Type: application/json\" \\\n              -v -d \"$data\" $url\n",  # noqa
+        "contents": '#!/bin/sh\n\n# Exit if openwisp-monitoring package is installed\nopenwisp_monitoring_installed=$(opkg list-installed | grep openwisp-monitoring -c)\nif [ "$openwisp_monitoring_installed" == "1" ]; then\n    exit 0\nfi\nuuid=$(uci get openwisp.http.uuid)\nkey=$(uci get openwisp.http.key)\nbase_url=$(uci get openwisp.http.url)\nverify_ssl=$(uci get openwisp.http.verify_ssl)\nincluded_interfaces=$(uci get openwisp.monitoring.included_interfaces)\nurl="$base_url/api/v1/monitoring/device/$uuid/?key=$key"\ndata=$(/usr/sbin/legacy-netjson-monitoring "$included_interfaces")\nif [ "$verify_ssl" = 0 ]; then\n    curl_command=\'curl -k\'\nelse\n    curl_command=\'curl\'\nfi\n# send data via POST\n$curl_command -H "Content-Type: application/json" \\\n              -v -d "$data" $url\n',  # noqa
     }
 )
 TEMPLATE_NETJSON_MONITORING_01 = OrderedDict(
@@ -66,14 +66,14 @@ TEMPLATE_UPDATE_OPENWISP_PACKAGES_01 = OrderedDict(
     {
         "path": "/usr/sbin/update-openwisp-packages",
         "mode": "0744",
-        "contents": "#!/bin/sh\nreboot=false\n\n# updates opkg lists only if necessary\nopkg_update(){\n    (\n        test -d /tmp/opkg-lists/ && \\\n        test -f /tmp/opkg-lists/openwrt_base && \\\n        test -f /tmp/opkg-lists/openwrt_packages && \\\n        test -f /tmp/opkg-lists/openwrt_core\n    ) || opkg update;\n}\n\n# installs libubus-lua if necessary\nlibubus_lua_installed=$(opkg list-installed | grep libubus-lua -c)\nif [ \"$libubus_lua_installed\" == \"0\" ]; then\n    opkg_update\n    opkg install libubus-lua\nfi\n\n# installs lua-cjson if necessary\nluacjson_installed=$(opkg list-installed | grep lua-cjson -c)\nif [ \"$luacjson_installed\" == \"0\" ]; then\n    opkg_update\n    opkg install lua-cjson\nfi\n\n# installs rpcd-mod-iwinfo if necessary\nrpcd_mod_iwinfo_installed=$(opkg list-installed | grep rpcd-mod-iwinfo -c)\nif [ \"$rpcd_mod_iwinfo_installed\" == \"0\" ]; then\n    opkg_update\n    opkg install rpcd-mod-iwinfo\n    reboot=true \nfi\n\n# upgrades openwisp-config if necessary\nopenwisp_config_version=$(openwisp_config --version)\nif [ \"$openwisp_config_version\" != \"openwisp-config 0.5.0\" ]; then\n    # backup config just in case...\n    cp /etc/config/openwisp /etc/config/openwisp-backup\n    opkg_update\n    opkg install http://downloads.openwisp.io/openwisp-config/2021-01-07-162007/openwisp-config-mbedtls_0.5.0-1_all.ipk\n    # restore backup\n    mv /etc/config/openwisp-backup /etc/config/openwisp\n    # remove default conf\n    rm /etc/config/openwisp-opkg\n    /etc/init.d/openwisp_config restart\nfi\n\n# reboots if rpcd-mod-iwinfo has been installed\nif [ \"$reboot\" == \"true\" ]; then\n    sleep 5\n    reboot && exit\nfi\n",  # noqa
+        "contents": '#!/bin/sh\nreboot=false\n\n# updates opkg lists only if necessary\nopkg_update(){\n    (\n        test -d /tmp/opkg-lists/ && \\\n        test -f /tmp/opkg-lists/openwrt_base && \\\n        test -f /tmp/opkg-lists/openwrt_packages && \\\n        test -f /tmp/opkg-lists/openwrt_core\n    ) || opkg update;\n}\n\n# installs libubus-lua if necessary\nlibubus_lua_installed=$(opkg list-installed | grep libubus-lua -c)\nif [ "$libubus_lua_installed" == "0" ]; then\n    opkg_update\n    opkg install libubus-lua\nfi\n\n# installs lua-cjson if necessary\nluacjson_installed=$(opkg list-installed | grep lua-cjson -c)\nif [ "$luacjson_installed" == "0" ]; then\n    opkg_update\n    opkg install lua-cjson\nfi\n\n# installs rpcd-mod-iwinfo if necessary\nrpcd_mod_iwinfo_installed=$(opkg list-installed | grep rpcd-mod-iwinfo -c)\nif [ "$rpcd_mod_iwinfo_installed" == "0" ]; then\n    opkg_update\n    opkg install rpcd-mod-iwinfo\n    reboot=true \nfi\n\n# upgrades openwisp-config if necessary\nopenwisp_config_version=$(openwisp_config --version)\nif [ "$openwisp_config_version" != "openwisp-config 0.5.0" ]; then\n    # backup config just in case...\n    cp /etc/config/openwisp /etc/config/openwisp-backup\n    opkg_update\n    opkg install http://downloads.openwisp.io/openwisp-config/2021-01-07-162007/openwisp-config-mbedtls_0.5.0-1_all.ipk\n    # restore backup\n    mv /etc/config/openwisp-backup /etc/config/openwisp\n    # remove default conf\n    rm /etc/config/openwisp-opkg\n    /etc/init.d/openwisp_config restart\nfi\n\n# reboots if rpcd-mod-iwinfo has been installed\nif [ "$reboot" == "true" ]; then\n    sleep 5\n    reboot && exit\nfi\n',  # noqa
     }
 )
 TEMPLATE_UPDATE_OPENWISP_PACKAGES_02 = OrderedDict(
     {
         "path": "/usr/sbin/legacy-update-openwisp-package",
         "mode": "0744",
-        "contents": "#!/bin/sh\nreboot=false\n\n# updates opkg lists only if necessary\nopkg_update(){\n    (\n        test -d /tmp/opkg-lists/ && \\\n        test -f /tmp/opkg-lists/openwrt_base && \\\n        test -f /tmp/opkg-lists/openwrt_packages && \\\n        test -f /tmp/opkg-lists/openwrt_core\n    ) || opkg update;\n}\n\n# installs libubus-lua if necessary\nlibubus_lua_installed=$(opkg list-installed | grep libubus-lua -c)\nif [ \"$libubus_lua_installed\" == \"0\" ]; then\n    opkg_update\n    opkg install libubus-lua\nfi\n\n# installs lua-cjson if necessary\nluacjson_installed=$(opkg list-installed | grep lua-cjson -c)\nif [ \"$luacjson_installed\" == \"0\" ]; then\n    opkg_update\n    opkg install lua-cjson\nfi\n\n# installs rpcd-mod-iwinfo if necessary\nrpcd_mod_iwinfo_installed=$(opkg list-installed | grep rpcd-mod-iwinfo -c)\nif [ \"$rpcd_mod_iwinfo_installed\" == \"0\" ]; then\n    opkg_update\n    opkg install rpcd-mod-iwinfo\n    reboot=true \nfi\n\n# reboots if rpcd-mod-iwinfo has been installed\nif [ \"$reboot\" == \"true\" ]; then\n    sleep 5\n    reboot && exit\nfi\n",  # noqa
+        "contents": '#!/bin/sh\nreboot=false\n\n# updates opkg lists only if necessary\nopkg_update(){\n    (\n        test -d /tmp/opkg-lists/ && \\\n        test -f /tmp/opkg-lists/openwrt_base && \\\n        test -f /tmp/opkg-lists/openwrt_packages && \\\n        test -f /tmp/opkg-lists/openwrt_core\n    ) || opkg update;\n}\n\n# installs libubus-lua if necessary\nlibubus_lua_installed=$(opkg list-installed | grep libubus-lua -c)\nif [ "$libubus_lua_installed" == "0" ]; then\n    opkg_update\n    opkg install libubus-lua\nfi\n\n# installs lua-cjson if necessary\nluacjson_installed=$(opkg list-installed | grep lua-cjson -c)\nif [ "$luacjson_installed" == "0" ]; then\n    opkg_update\n    opkg install lua-cjson\nfi\n\n# installs rpcd-mod-iwinfo if necessary\nrpcd_mod_iwinfo_installed=$(opkg list-installed | grep rpcd-mod-iwinfo -c)\nif [ "$rpcd_mod_iwinfo_installed" == "0" ]; then\n    opkg_update\n    opkg install rpcd-mod-iwinfo\n    reboot=true \nfi\n\n# reboots if rpcd-mod-iwinfo has been installed\nif [ "$reboot" == "true" ]; then\n    sleep 5\n    reboot && exit\nfi\n',  # noqa
     }
 )
 TEMPLATE_POST_RELOAD_HOOK_01 = OrderedDict(
@@ -95,17 +95,17 @@ TEMPLATE_POST_RELOAD_HOOK_02 = OrderedDict(
 def assign_permissions_to_groups(apps, schema_editor):
     create_default_permissions(apps, schema_editor)
     operators_read_only_admins_manage = [
-        'devicedata',
-        'devicemonitoring',
-        'wificlient',
-        'wifisession',
+        "devicedata",
+        "devicemonitoring",
+        "wificlient",
+        "wifisession",
     ]
-    manage_operations = ['add', 'change', 'delete']
-    Group = get_swapped_model(apps, 'openwisp_users', 'Group')
+    manage_operations = ["add", "change", "delete"]
+    Group = get_swapped_model(apps, "openwisp_users", "Group")
 
     try:
-        admin = Group.objects.get(name='Administrator')
-        operator = Group.objects.get(name='Operator')
+        admin = Group.objects.get(name="Administrator")
+        operator = Group.objects.get(name="Operator")
     # consider failures custom cases
     # that do not have to be dealt with
     except Group.DoesNotExist:
@@ -113,13 +113,13 @@ def assign_permissions_to_groups(apps, schema_editor):
 
     for model_name in operators_read_only_admins_manage:
         try:
-            permission = Permission.objects.get(codename='view_{}'.format(model_name))
+            permission = Permission.objects.get(codename="view_{}".format(model_name))
             operator.permissions.add(permission.pk)
         except Permission.DoesNotExist:
             pass
         for operation in manage_operations:
             admin.permissions.add(
                 Permission.objects.get(
-                    codename='{}_{}'.format(operation, model_name)
+                    codename="{}_{}".format(operation, model_name)
                 ).pk
             )

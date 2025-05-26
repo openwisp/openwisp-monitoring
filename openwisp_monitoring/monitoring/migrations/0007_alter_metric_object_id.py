@@ -5,13 +5,13 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('monitoring', '0006_migrate_influxdb_structure'),
+        ("monitoring", "0006_migrate_influxdb_structure"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='metric',
-            name='object_id',
+            model_name="metric",
+            name="object_id",
             field=models.CharField(blank=True, db_index=True, max_length=36, null=True),
         ),
     ]

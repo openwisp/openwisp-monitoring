@@ -9,7 +9,7 @@ class TestSettings(DeviceMonitoringTestCase):
     """Tests ``OpenWISP Device settings`` functionality"""
 
     @patch(
-        'django.conf.settings.OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS',
+        "django.conf.settings.OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS",
         [{}],
         create=True,
     )

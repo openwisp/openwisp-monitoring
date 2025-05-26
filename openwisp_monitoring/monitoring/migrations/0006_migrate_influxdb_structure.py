@@ -9,7 +9,7 @@ def forward_migration(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [('monitoring', '0005_migrate_metrics')]
+    dependencies = [("monitoring", "0005_migrate_metrics")]
 
     operations = [
         migrations.RunPython(forward_migration, reverse_code=migrations.RunPython.noop)

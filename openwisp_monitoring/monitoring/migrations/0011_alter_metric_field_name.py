@@ -5,17 +5,17 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('monitoring', '0010_add_alertsettings_inline_permissions'),
+        ("monitoring", "0010_add_alertsettings_inline_permissions"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='metric',
-            name='field_name',
+            model_name="metric",
+            name="field_name",
             field=models.CharField(
                 blank=True,
-                default='value',
-                help_text='leave blank to determine automatically',
+                default="value",
+                help_text="leave blank to determine automatically",
                 max_length=16,
             ),
         ),

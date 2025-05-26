@@ -5,13 +5,13 @@ from openwisp_controller.geo.exportable import GeoDeviceResource as BaseDeviceRe
 
 class DeviceMonitoringResource(BaseDeviceResource):
     monitoring_status = Field(
-        attribute='monitoring__status', column_name='monitoring_status', readonly=True
+        attribute="monitoring__status", column_name="monitoring_status", readonly=True
     )
 
     class Meta(BaseDeviceResource.Meta):
         fields = BaseDeviceResource.Meta.fields[:]  # copy
         # add monitoring status to the exportable fields of DeviceAdmin
-        fields.insert(fields.index('config_status'), 'monitoring_status')
+        fields.insert(fields.index("config_status"), "monitoring_status")
         export_order = fields
 
 

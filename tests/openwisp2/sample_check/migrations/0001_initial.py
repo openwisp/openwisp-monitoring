@@ -15,14 +15,14 @@ from openwisp_monitoring.check.settings import CHECK_CHOICES
 class Migration(migrations.Migration):
     initial = True
 
-    dependencies = [('contenttypes', '0002_remove_content_type_name')]
+    dependencies = [("contenttypes", "0002_remove_content_type_name")]
 
     operations = [
         migrations.CreateModel(
-            name='Check',
+            name="Check",
             fields=[
                 (
-                    'id',
+                    "id",
                     models.UUIDField(
                         default=uuid.uuid4,
                         editable=False,
@@ -31,82 +31,82 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    'created',
+                    "created",
                     model_utils.fields.AutoCreatedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='created',
+                        verbose_name="created",
                     ),
                 ),
                 (
-                    'modified',
+                    "modified",
                     model_utils.fields.AutoLastModifiedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='modified',
+                        verbose_name="modified",
                     ),
                 ),
-                ('name', models.CharField(db_index=True, max_length=64)),
+                ("name", models.CharField(db_index=True, max_length=64)),
                 (
-                    'is_active',
+                    "is_active",
                     models.BooleanField(
-                        'active',
+                        "active",
                         db_index=True,
                         default=True,
                         help_text=(
-                            'whether the check should be run, related metrics collected and alerts sent'
+                            "whether the check should be run, related metrics collected and alerts sent"
                         ),
                     ),
                 ),
-                ('description', models.TextField(blank=True, help_text='Notes')),
+                ("description", models.TextField(blank=True, help_text="Notes")),
                 (
-                    'object_id',
+                    "object_id",
                     models.CharField(blank=True, db_index=True, max_length=36),
                 ),
                 (
-                    'check_type',
+                    "check_type",
                     models.CharField(
                         choices=CHECK_CHOICES,
                         db_index=True,
                         max_length=128,
-                        verbose_name='check type',
+                        verbose_name="check type",
                     ),
                 ),
                 (
-                    'params',
+                    "params",
                     jsonfield.fields.JSONField(
                         blank=True,
                         default=dict,
-                        dump_kwargs={'indent': 4},
-                        help_text='parameters needed to perform the check',
-                        load_kwargs={'object_pairs_hook': collections.OrderedDict},
-                        verbose_name='parameters',
+                        dump_kwargs={"indent": 4},
+                        help_text="parameters needed to perform the check",
+                        load_kwargs={"object_pairs_hook": collections.OrderedDict},
+                        verbose_name="parameters",
                     ),
                 ),
                 (
-                    'content_type',
+                    "content_type",
                     models.ForeignKey(
                         blank=True,
                         null=True,
                         on_delete=django.db.models.deletion.CASCADE,
-                        to='contenttypes.ContentType',
+                        to="contenttypes.ContentType",
                     ),
                 ),
             ],
             options={
-                'abstract': False,
-                'unique_together': {('name', 'object_id', 'content_type')},
-                'indexes': [
+                "abstract": False,
+                "unique_together": {("name", "object_id", "content_type")},
+                "indexes": [
                     models.Index(
-                        fields=['content_type', 'object_id', 'is_active'],
-                        name='active_object_checks_idx',
+                        fields=["content_type", "object_id", "is_active"],
+                        name="active_object_checks_idx",
                     )
                 ],
-                'permissions': (
-                    ('add_check_inline', 'Can add check inline'),
-                    ('change_check_inline', 'Can change check inline'),
-                    ('delete_check_inline', 'Can delete check inline'),
-                    ('view_check_inline', 'Can view check inline'),
+                "permissions": (
+                    ("add_check_inline", "Can add check inline"),
+                    ("change_check_inline", "Can change check inline"),
+                    ("delete_check_inline", "Can delete check inline"),
+                    ("view_check_inline", "Can view check inline"),
                 ),
             },
         )

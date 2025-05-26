@@ -5,7 +5,7 @@ from . import create_general_metrics, delete_general_metrics
 
 
 class Migration(migrations.Migration):
-    dependencies = [('monitoring', '0007_alter_metric_object_id')]
+    dependencies = [("monitoring", "0007_alter_metric_object_id")]
 
     operations = [
         migrations.RunPython(

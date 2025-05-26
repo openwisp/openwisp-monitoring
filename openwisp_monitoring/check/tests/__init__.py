@@ -2,19 +2,19 @@ from swapper import load_model
 
 from .. import settings as app_settings
 
-Device = load_model('config', 'Device')
+Device = load_model("config", "Device")
 
 _FPING_REACHABLE = (
-    '',
+    "",
     bytes(
-        '10.40.0.1 : xmt/rcv/%loss = 5/5/0%, min/avg/max = 0.04/0.08/0.15',
-        encoding='utf8',
+        "10.40.0.1 : xmt/rcv/%loss = 5/5/0%, min/avg/max = 0.04/0.08/0.15",
+        encoding="utf8",
     ),
 )
 
 _FPING_UNREACHABLE = (
-    '',
-    bytes('192.168.255.255 : xmt/rcv/%loss = 3/0/100%', encoding='utf8'),
+    "",
+    bytes("192.168.255.255 : xmt/rcv/%loss = 3/0/100%", encoding="utf8"),
 )
 
 

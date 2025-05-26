@@ -4,12 +4,12 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-    dependencies = [('sample_check', '0001_initial')]
+    dependencies = [("sample_check", "0001_initial")]
 
     operations = [
         migrations.AddField(
-            model_name='check',
-            name='last_called',
+            model_name="check",
+            name="last_called",
             field=models.DateTimeField(blank=True, null=True),
         )
     ]

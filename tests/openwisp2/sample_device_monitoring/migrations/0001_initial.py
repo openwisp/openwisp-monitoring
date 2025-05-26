@@ -17,23 +17,23 @@ from ..models import DeviceMonitoring
 class Migration(migrations.Migration):
     initial = True
 
-    dependencies = [('config', '0027_add_indexes_on_ip_fields')]
+    dependencies = [("config", "0027_add_indexes_on_ip_fields")]
 
     operations = [
         migrations.CreateModel(
-            name='DeviceData',
+            name="DeviceData",
             fields=[],
-            options={'proxy': True, 'indexes': [], 'constraints': []},
+            options={"proxy": True, "indexes": [], "constraints": []},
             bases=(
                 openwisp_monitoring.device.base.models.AbstractDeviceData,
-                swapper.get_model_name('config', 'Device'),
+                swapper.get_model_name("config", "Device"),
             ),
         ),
         migrations.CreateModel(
-            name='DeviceMonitoring',
+            name="DeviceMonitoring",
             fields=[
                 (
-                    'id',
+                    "id",
                     models.UUIDField(
                         default=uuid.uuid4,
                         editable=False,
@@ -42,129 +42,129 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    'created',
+                    "created",
                     model_utils.fields.AutoCreatedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='created',
+                        verbose_name="created",
                     ),
                 ),
                 (
-                    'modified',
+                    "modified",
                     model_utils.fields.AutoLastModifiedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='modified',
+                        verbose_name="modified",
                     ),
                 ),
                 (
-                    'status',
+                    "status",
                     model_utils.fields.StatusField(
                         choices=[
-                            ('unknown', 'unknown'),
-                            ('ok', 'ok'),
-                            ('problem', 'problem'),
-                            ('critical', 'critical'),
-                            ('deactivated', 'deactivated'),
+                            ("unknown", "unknown"),
+                            ("ok", "ok"),
+                            ("problem", "problem"),
+                            ("critical", "critical"),
+                            ("deactivated", "deactivated"),
                         ],
                         db_index=True,
-                        default='unknown',
-                        help_text=DeviceMonitoring._meta.get_field('status').help_text,
+                        default="unknown",
+                        help_text=DeviceMonitoring._meta.get_field("status").help_text,
                         max_length=100,
                         no_check_for_status=True,
-                        verbose_name='health status',
+                        verbose_name="health status",
                     ),
                 ),
                 (
-                    'device',
+                    "device",
                     models.OneToOneField(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name='monitoring',
-                        to=swapper.get_model_name('config', 'Device'),
+                        related_name="monitoring",
+                        to=swapper.get_model_name("config", "Device"),
                     ),
                 ),
                 (
-                    'details',
-                    models.CharField(default='devicemonitoring', max_length=64),
+                    "details",
+                    models.CharField(default="devicemonitoring", max_length=64),
                 ),
             ],
-            options={'abstract': False},
+            options={"abstract": False},
         ),
         migrations.CreateModel(
-            name='WifiClient',
+            name="WifiClient",
             fields=[
                 (
-                    'created',
+                    "created",
                     model_utils.fields.AutoCreatedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='created',
+                        verbose_name="created",
                     ),
                 ),
                 (
-                    'modified',
+                    "modified",
                     model_utils.fields.AutoLastModifiedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='modified',
+                        verbose_name="modified",
                     ),
                 ),
                 (
-                    'mac_address',
+                    "mac_address",
                     models.CharField(
                         db_index=True,
-                        help_text='MAC address',
+                        help_text="MAC address",
                         max_length=17,
                         primary_key=True,
                         serialize=False,
                         validators=[
                             django.core.validators.RegexValidator(
-                                re.compile('^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$'),
-                                code='invalid',
-                                message='Must be a valid mac address.',
+                                re.compile("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"),
+                                code="invalid",
+                                message="Must be a valid mac address.",
                             )
                         ],
                     ),
                 ),
-                ('vendor', models.CharField(blank=True, max_length=200, null=True)),
+                ("vendor", models.CharField(blank=True, max_length=200, null=True)),
                 (
-                    'ht',
+                    "ht",
                     models.BooleanField(
-                        blank=True, default=None, null=True, verbose_name='HT'
+                        blank=True, default=None, null=True, verbose_name="HT"
                     ),
                 ),
                 (
-                    'vht',
+                    "vht",
                     models.BooleanField(
-                        blank=True, default=None, null=True, verbose_name='VHT'
+                        blank=True, default=None, null=True, verbose_name="VHT"
                     ),
                 ),
                 (
-                    'he',
+                    "he",
                     models.BooleanField(
-                        blank=True, default=None, null=True, verbose_name='HE'
+                        blank=True, default=None, null=True, verbose_name="HE"
                     ),
                 ),
-                ('wmm', models.BooleanField(default=False, verbose_name='WMM')),
-                ('wds', models.BooleanField(default=False, verbose_name='WDS')),
-                ('wps', models.BooleanField(default=False, verbose_name='WPS')),
+                ("wmm", models.BooleanField(default=False, verbose_name="WMM")),
+                ("wds", models.BooleanField(default=False, verbose_name="WDS")),
+                ("wps", models.BooleanField(default=False, verbose_name="WPS")),
                 (
-                    'details',
-                    models.CharField(default='devicemonitoring', max_length=64),
+                    "details",
+                    models.CharField(default="devicemonitoring", max_length=64),
                 ),
             ],
             options={
-                'verbose_name': 'WiFi Client',
-                'abstract': False,
+                "verbose_name": "WiFi Client",
+                "abstract": False,
                 # To prevent DRF UnorderedObjectListWarning in pagination
-                'ordering': ('-created',),
+                "ordering": ("-created",),
             },
         ),
         migrations.CreateModel(
-            name='WifiSession',
+            name="WifiSession",
             fields=[
                 (
-                    'id',
+                    "id",
                     models.UUIDField(
                         default=uuid.uuid4,
                         editable=False,
@@ -173,55 +173,55 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    'modified',
+                    "modified",
                     model_utils.fields.AutoLastModifiedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='modified',
+                        verbose_name="modified",
                     ),
                 ),
                 (
-                    'ssid',
+                    "ssid",
                     models.CharField(
-                        blank=True, max_length=32, null=True, verbose_name='SSID'
+                        blank=True, max_length=32, null=True, verbose_name="SSID"
                     ),
                 ),
-                ('interface_name', models.CharField(max_length=15)),
+                ("interface_name", models.CharField(max_length=15)),
                 (
-                    'start_time',
+                    "start_time",
                     models.DateTimeField(
-                        auto_now=True, db_index=True, verbose_name='start time'
+                        auto_now=True, db_index=True, verbose_name="start time"
                     ),
                 ),
                 (
-                    'stop_time',
+                    "stop_time",
                     models.DateTimeField(
-                        blank=True, db_index=True, null=True, verbose_name='stop time'
+                        blank=True, db_index=True, null=True, verbose_name="stop time"
                     ),
                 ),
                 (
-                    'details',
-                    models.CharField(default='devicemonitoring', max_length=64),
+                    "details",
+                    models.CharField(default="devicemonitoring", max_length=64),
                 ),
                 (
-                    'device',
+                    "device",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to=swapper.get_model_name('config', 'Device'),
+                        to=swapper.get_model_name("config", "Device"),
                     ),
                 ),
                 (
-                    'wifi_client',
+                    "wifi_client",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to='sample_device_monitoring.wificlient',
+                        to="sample_device_monitoring.wificlient",
                     ),
                 ),
             ],
             options={
-                'verbose_name': 'WiFi Session',
-                'abstract': False,
-                'ordering': ('-start_time',),
+                "verbose_name": "WiFi Session",
+                "abstract": False,
+                "ordering": ("-start_time",),
             },
         ),
     ]
