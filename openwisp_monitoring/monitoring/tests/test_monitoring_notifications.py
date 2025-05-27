@@ -324,9 +324,9 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         Do not evaluate threshold crossed for historical data
         """
         self._create_admin()
-        om = self._create_object_metric(name='load')
+        om = self._create_object_metric(name="load")
         self._create_alert_settings(
-            metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=10
+            metric=om, custom_operator=">", custom_threshold=90, custom_tolerance=10
         )
 
         self._write_metric(om, 99, time=start_time - timedelta(minutes=120))
