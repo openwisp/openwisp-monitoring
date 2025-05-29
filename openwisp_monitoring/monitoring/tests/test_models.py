@@ -356,7 +356,8 @@ class TestModels(TestMonitoringMixin, TestCase):
         self._create_alert_settings(
             metric=m, custom_operator=">", custom_threshold=90, custom_tolerance=5
         )
-        m.write(99)
+        with freeze_time(start_time):
+            m.write(99)
         with self.subTest("within tolerance, no alerts expected"):
             with freeze_time(start_time + timedelta(minutes=2)):
                 m.write(99)

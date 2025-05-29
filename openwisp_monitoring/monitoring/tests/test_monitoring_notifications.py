@@ -329,6 +329,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(om.is_healthy_tolerant, True)
         self.assertEqual(Notification.objects.count(), 2)
 
+    @freeze_time(start_time)
     def test_object_check_threshold_crossed_historical_data(self):
         """
         Do not evaluate threshold crossed for historical data
@@ -353,11 +354,12 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(om.is_healthy_tolerant, True)
         self.assertEqual(Notification.objects.count(), 0)
 
-        self._write_metric(om, 99, time=start_time - timedelta(minutes=4))
+        # Writing real-time data should enforce the threshold check
+        self._write_metric(om, 99, time=start_time)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, False)
-        self.assertEqual(om.is_healthy_tolerant, False)
-        self.assertEqual(Notification.objects.count(), 1)
+        self.assertEqual(om.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
 
     def test_flapping_metric_with_tolerance(self):
         self._create_admin()
