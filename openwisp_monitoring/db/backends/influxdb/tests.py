@@ -4,7 +4,7 @@ from unittest.mock import patch
 from celery.exceptions import Retry
 from django.core.exceptions import ValidationError
 from django.test import TestCase, tag
-from django.utils.timezone import now
+from django.utils.timezone import make_aware, now
 from freezegun import freeze_time
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError, InfluxDBServerError
@@ -309,8 +309,14 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         m = self._create_object_metric(
             name='wlan0', key='wlan0', configuration='clients'
         )
-        m.write('00:14:5c:00:00:00', time=datetime(2020, 7, 31, 22, 5, 47, 235142))
-        m.write('00:23:4a:00:00:00', time=datetime(2020, 7, 31, 22, 5, 47, 235152))
+        m.write(
+            "00:14:5c:00:00:00",
+            time=make_aware(datetime(2020, 7, 31, 22, 5, 47, 235142)),
+        )
+        m.write(
+            "00:23:4a:00:00:00",
+            time=make_aware(datetime(2020, 7, 31, 22, 5, 47, 235152)),
+        )
         self.assertEqual(len(m.read()), 2)
 
     @patch.object(
