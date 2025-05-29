@@ -82,19 +82,21 @@ page as shown below:
     :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/inline-permissions.png
     :align: center
 
-Handling Historical Data
-------------------------
+How is Historical Data Handled?
+-------------------------------
 
 The :doc:`OpenWrt Monitoring Agent </openwrt-monitoring-agent/index>`
 collects and :ref:`temporarily stores monitoring data locally on the
-device <monitoring_agent_send_mode>` when it is unable to reach
-OpenWISP—for example, during network outages or connectivity issues.
+device <monitoring_agent_send_mode>` when it cannot reach OpenWISP, for
+example, during network or server outages.
 
-As a result, the system supports writing historical data once connectivity
-is restored. This feature is particularly useful in scenarios where
-real-time transmission is temporarily unavailable.
+OpenWISP Monitoring supports the submission of historical data, meaning
+monitoring information that could not be delivered in real time and is
+sent at a later stage. This capability makes both the agent and the server
+resilient to occasional disruptions.
 
 However, it's important to note that **historical data does not trigger
-alerts** or change the **health status** of a device. Threshold checks and
-health status updates are only applied to **real-time** data. This ensures
-the current state of the system reflects the most up-to-date information.
+alerts** or affect the **health status** of a device. Threshold checks and
+health evaluations are only applied to fresh data. This approach prevents
+conflicts between outdated information and the device's current state,
+which may have changed significantly.
