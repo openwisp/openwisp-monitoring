@@ -376,16 +376,20 @@ class AbstractMetric(TimeStampedEditableModel):
             self._notify_users(notification_type, alert_settings)
         return first_time
 
+    def _is_historical_data(self, time):
+        """
+        Data older than 5 minutes is considered historical data.
+        """
+        recent_time = timezone.now() - timedelta(minutes=5)
+        return time < recent_time
+
     def check_threshold(self, value, time=None, retention_policy=None, send_alert=True):
         """Checks if the threshold is crossed and notifies users accordingly"""
         try:
             alert_settings = self.alertsettings
         except ObjectDoesNotExist:
             return
-        if time and alert_settings._is_historical_data(time):
-            # Device is uploading historical data (could be due to a network outage).
-            # We don't want to send alerts in this scenario.
-            return
+
         is_healthy_changed = self._set_is_healthy(alert_settings, value)
         tolerance_healthy_changed_first_time = self._set_is_healthy_tolerant(
             alert_settings, value, time, retention_policy, send_alert
@@ -448,7 +452,7 @@ class AbstractMetric(TimeStampedEditableModel):
         )
         # check can be disabled,
         # mostly for automated testing and debugging purposes
-        if check:
+        if check and not self._is_historical_data(timestamp):
             options["check_threshold_kwargs"] = {
                 "value": value,
                 "time": time,
@@ -945,13 +949,6 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         if self.custom_operator is None:
             return self.config_dict["operator"]
         return self.custom_operator
-
-    def _is_historical_data(self, time):
-        """
-        Data older than 5 minutes is considered historical data.
-        """
-        recent_time = timezone.now() - timedelta(minutes=5)
-        return time < recent_time
 
     def _value_crossed(self, current_value):
         threshold_value = self.threshold
