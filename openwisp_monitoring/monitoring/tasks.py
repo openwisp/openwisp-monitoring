@@ -10,7 +10,7 @@ from .settings import RETRY_OPTIONS
 from .signals import post_metric_write
 
 
-def _metric_post_write(name, values, metric, check_threshold_kwargs, **kwargs):
+def _metric_post_write(name, values, metric, check_threshold_kwargs=None, **kwargs):
     if not metric or not check_threshold_kwargs:
         return
     try:
