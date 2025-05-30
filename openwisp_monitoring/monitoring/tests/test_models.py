@@ -179,6 +179,26 @@ class TestModels(TestMonitoringMixin, TestCase):
             '"reachable" not defined in metric configuration',
         )
 
+    def test_batch_write_historical_data(self):
+        m = self._create_general_metric(name="load")
+        self._create_alert_settings(
+            metric=m, custom_operator=">", custom_threshold=90, custom_tolerance=0
+        )
+        with catch_signal(threshold_crossed) as handler:
+            Metric.batch_write(
+                [
+                    (
+                        m,
+                        {
+                            "value": 91,
+                            "current": False,
+                            "time": start_time - timedelta(minutes=5),
+                        },
+                    )
+                ]
+            )
+        handler.assert_not_called()
+
     def test_tags(self):
         extra_tags = {'a': 'a', 'b': 'b1'}
         metric = self._create_object_metric(extra_tags=extra_tags)

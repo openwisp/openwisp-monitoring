@@ -435,6 +435,7 @@ class AbstractMetric(TimeStampedEditableModel):
             database=database,
             retention_policy=retention_policy,
             current=current,
+            metric=self,
         )
         # check can be disabled,
         # mostly for automated testing and debugging purposes
@@ -445,7 +446,6 @@ class AbstractMetric(TimeStampedEditableModel):
                 "retention_policy": retention_policy,
                 "send_alert": send_alert,
             }
-            options['metric'] = self
 
             # if alert_on_related_field then check threshold
             # on the related_field instead of field_name
