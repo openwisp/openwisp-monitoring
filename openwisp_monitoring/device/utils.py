@@ -1,12 +1,12 @@
 from ..db import timeseries_db
 from . import settings as app_settings
 
-SHORT_RP = 'short'
-DEFAULT_RP = 'autogen'
+SHORT_RP = "short"
+DEFAULT_RP = "autogen"
 
 
-def get_device_cache_key(device, context='react-to-updates'):
-    return f'device-{device.pk}-{context}'
+def get_device_cache_key(device, context="react-to-updates"):
+    return f"device-{device.pk}-{context}"
 
 
 def manage_short_retention_policy():

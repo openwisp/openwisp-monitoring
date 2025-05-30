@@ -5,21 +5,21 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('monitoring', '0008_create_general_metrics'),
+        ("monitoring", "0008_create_general_metrics"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='alertsettings',
+            name="alertsettings",
             options={
-                'permissions': (
-                    ('add_alertsettings_inline', 'Can add Alert settings inline'),
-                    ('change_alertsettings_inline', 'Can change Alert settings inline'),
-                    ('delete_alertsettings_inline', 'Can delete Alert settings inline'),
-                    ('view_alertsettings_inline', 'Can view Alert settings inline'),
+                "permissions": (
+                    ("add_alertsettings_inline", "Can add Alert settings inline"),
+                    ("change_alertsettings_inline", "Can change Alert settings inline"),
+                    ("delete_alertsettings_inline", "Can delete Alert settings inline"),
+                    ("view_alertsettings_inline", "Can view Alert settings inline"),
                 ),
-                'verbose_name': 'Alert settings',
-                'verbose_name_plural': 'Alert settings',
+                "verbose_name": "Alert settings",
+                "verbose_name_plural": "Alert settings",
             },
         ),
     ]

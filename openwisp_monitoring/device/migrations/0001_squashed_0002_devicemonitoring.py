@@ -16,8 +16,8 @@ from ..models import DeviceMonitoring
 
 def create_device_monitoring(apps, schema_editor):
     """Data migration"""
-    Device = apps.get_model('config', 'Device')
-    DeviceMonitoring = apps.get_model('device_monitoring', 'DeviceMonitoring')
+    Device = apps.get_model("config", "Device")
+    DeviceMonitoring = apps.get_model("device_monitoring", "DeviceMonitoring")
     for device in Device.objects.iterator():
         DeviceMonitoring.objects.create(device=device)
 
@@ -26,28 +26,28 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('contenttypes', '0002_remove_content_type_name'),
-        swapper.dependency('config', 'Device', '0004_add_device_model'),
+        ("contenttypes", "0002_remove_content_type_name"),
+        swapper.dependency("config", "Device", "0004_add_device_model"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='DeviceData',
+            name="DeviceData",
             fields=[],
             options={
-                'indexes': [],
-                'proxy': True,
-                'swappable': swapper.swappable_setting(
-                    'device_monitoring', 'DeviceData'
+                "indexes": [],
+                "proxy": True,
+                "swappable": swapper.swappable_setting(
+                    "device_monitoring", "DeviceData"
                 ),
             },
-            bases=(swapper.get_model_name('config', 'Device'),),
+            bases=(swapper.get_model_name("config", "Device"),),
         ),
         migrations.CreateModel(
-            name='DeviceMonitoring',
+            name="DeviceMonitoring",
             fields=[
                 (
-                    'id',
+                    "id",
                     models.UUIDField(
                         default=uuid.uuid4,
                         editable=False,
@@ -56,64 +56,64 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    'created',
+                    "created",
                     model_utils.fields.AutoCreatedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='created',
+                        verbose_name="created",
                     ),
                 ),
                 (
-                    'modified',
+                    "modified",
                     model_utils.fields.AutoLastModifiedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='modified',
+                        verbose_name="modified",
                     ),
                 ),
                 (
-                    'status',
+                    "status",
                     model_utils.fields.StatusField(
                         choices=[
                             (
-                                'unknown',
-                                _(app_settings.HEALTH_STATUS_LABELS['unknown']),
+                                "unknown",
+                                _(app_settings.HEALTH_STATUS_LABELS["unknown"]),
                             ),
-                            ('ok', _(app_settings.HEALTH_STATUS_LABELS['ok'])),
+                            ("ok", _(app_settings.HEALTH_STATUS_LABELS["ok"])),
                             (
-                                'problem',
-                                _(app_settings.HEALTH_STATUS_LABELS['problem']),
-                            ),
-                            (
-                                'critical',
-                                _(app_settings.HEALTH_STATUS_LABELS['critical']),
+                                "problem",
+                                _(app_settings.HEALTH_STATUS_LABELS["problem"]),
                             ),
                             (
-                                'deactivated',
-                                _(app_settings.HEALTH_STATUS_LABELS['deactivated']),
+                                "critical",
+                                _(app_settings.HEALTH_STATUS_LABELS["critical"]),
+                            ),
+                            (
+                                "deactivated",
+                                _(app_settings.HEALTH_STATUS_LABELS["deactivated"]),
                             ),
                         ],
-                        default='unknown',
+                        default="unknown",
                         db_index=True,
-                        help_text=DeviceMonitoring._meta.get_field('status').help_text,
+                        help_text=DeviceMonitoring._meta.get_field("status").help_text,
                         max_length=100,
                         no_check_for_status=True,
-                        verbose_name='health status',
+                        verbose_name="health status",
                     ),
                 ),
                 (
-                    'device',
+                    "device",
                     models.OneToOneField(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name='monitoring',
-                        to=swapper.get_model_name('config', 'Device'),
+                        related_name="monitoring",
+                        to=swapper.get_model_name("config", "Device"),
                     ),
                 ),
             ],
             options={
-                'abstract': False,
-                'swappable': swapper.swappable_setting(
-                    'device_monitoring', 'DeviceMonitoring'
+                "abstract": False,
+                "swappable": swapper.swappable_setting(
+                    "device_monitoring", "DeviceMonitoring"
                 ),
             },
         ),

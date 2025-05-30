@@ -5,12 +5,12 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('device_monitoring', '0007_add_wificlient_field_he'),
+        ("device_monitoring", "0007_add_wificlient_field_he"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='wificlient',
-            options={'ordering': ('-created',), 'verbose_name': 'WiFi Client'},
+            name="wificlient",
+            options={"ordering": ("-created",), "verbose_name": "WiFi Client"},
         ),
     ]

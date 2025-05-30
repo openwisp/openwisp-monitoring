@@ -17,15 +17,15 @@ def transaction_on_commit(func):
 def retry(method):
     @wraps(method)
     def wrapper(*args, **kwargs):
-        max_retries = MONITORING_TIMESERIES_RETRY_OPTIONS.get('max_retries')
-        delay = MONITORING_TIMESERIES_RETRY_OPTIONS.get('delay')
+        max_retries = MONITORING_TIMESERIES_RETRY_OPTIONS.get("max_retries")
+        delay = MONITORING_TIMESERIES_RETRY_OPTIONS.get("delay")
         for attempt_no in range(1, max_retries + 1):
             try:
                 return method(*args, **kwargs)
             except Exception as err:
                 logger.info(
                     f'Error while executing method "{method.__name__}":\n{err}\n'
-                    f'Attempt {attempt_no} out of {max_retries}.\n'
+                    f"Attempt {attempt_no} out of {max_retries}.\n"
                 )
                 if attempt_no > 3:
                     sleep(delay)

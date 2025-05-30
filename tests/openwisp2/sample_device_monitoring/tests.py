@@ -39,8 +39,8 @@ class TestDeviceMonitoring(BaseTestDeviceMonitoring):
     def test_device_monitoring_str(self):
         d = self._create_device()
         dm = d.monitoring
-        self.assertEqual(dm.details, 'devicemonitoring')
-        self.assertEqual(str(dm), 'devicemonitoring')
+        self.assertEqual(dm.details, "devicemonitoring")
+        self.assertEqual(str(dm), "devicemonitoring")
 
 
 class TestTransactions(BaseTestTransactions):

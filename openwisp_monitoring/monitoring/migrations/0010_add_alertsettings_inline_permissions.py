@@ -7,7 +7,7 @@ from . import assign_alertsettings_inline_permissions_to_groups
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('monitoring', '0009_alter_alertsettings_options'),
+        ("monitoring", "0009_alter_alertsettings_options"),
     ]
 
     operations = [

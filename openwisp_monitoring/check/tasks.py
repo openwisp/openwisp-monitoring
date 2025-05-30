@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_check_model():
-    return load_model('check', 'Check')
+    return load_model("check", "Check")
 
 
 @shared_task(time_limit=2 * 60 * 60)
@@ -39,7 +39,7 @@ def run_checks(checks=None):
         )  # pragma: no cover
     if not all(check_path in app_settings.CHECK_LIST for check_path in checks):
         raise ImproperlyConfigured(
-            f'Check path {checks} should be listed in CHECK_CLASSES'
+            f"Check path {checks} should be listed in CHECK_CLASSES"
         )  # pragma: no cover
 
     runnable_checks = []
@@ -50,12 +50,12 @@ def run_checks(checks=None):
     iterator = (
         get_check_model()
         .objects.filter(is_active=True, check_type__in=runnable_checks)
-        .only('id')
-        .values('id')
+        .only("id")
+        .values("id")
         .iterator()
     )
     for check in iterator:
-        perform_check.delay(check['id'])
+        perform_check.delay(check["id"])
 
 
 @shared_task(time_limit=30 * 60)
@@ -68,7 +68,7 @@ def perform_check(uuid):
     try:
         check = get_check_model().objects.get(pk=uuid)
     except ObjectDoesNotExist:
-        logger.warning(f'The check with uuid {uuid} has been deleted')
+        logger.warning(f"The check with uuid {uuid} has been deleted")
         return
     result = check.perform_check()
     if settings.DEBUG:  # pragma: nocover

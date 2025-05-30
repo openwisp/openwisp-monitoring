@@ -5,22 +5,22 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('device_monitoring', '0005_add_group_permissions'),
+        ("device_monitoring", "0005_add_group_permissions"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='wificlient',
-            name='ht',
+            model_name="wificlient",
+            name="ht",
             field=models.BooleanField(
-                blank=True, default=None, null=True, verbose_name='HT'
+                blank=True, default=None, null=True, verbose_name="HT"
             ),
         ),
         migrations.AlterField(
-            model_name='wificlient',
-            name='vht',
+            model_name="wificlient",
+            name="vht",
             field=models.BooleanField(
-                blank=True, default=None, null=True, verbose_name='VHT'
+                blank=True, default=None, null=True, verbose_name="VHT"
             ),
         ),
     ]

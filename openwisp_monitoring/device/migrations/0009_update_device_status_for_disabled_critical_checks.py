@@ -3,10 +3,10 @@ from swapper import load_model
 
 
 def update_critical_device_metric_status(apps, schema_editor):
-    Check = apps.get_model('check', 'Check')
+    Check = apps.get_model("check", "Check")
     # We need to load the real concrete model here, because we
     # will be calling one of its class methods below
-    DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+    DeviceMonitoring = load_model("device_monitoring", "DeviceMonitoring")
     critical_metrics_keys = DeviceMonitoring._get_critical_metric_keys()
 
     for check in Check.objects.filter(
@@ -17,7 +17,7 @@ def update_critical_device_metric_status(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('device_monitoring', '0008_alter_wificlient_options'),
+        ("device_monitoring", "0008_alter_wificlient_options"),
     ]
 
     operations = [

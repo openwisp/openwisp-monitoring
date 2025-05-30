@@ -5,13 +5,13 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('monitoring', '0001_squashed_0023_alert_settings_tolerance_remove_default'),
+        ("monitoring", "0001_squashed_0023_alert_settings_tolerance_remove_default"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='metric',
-            name='is_healthy_tolerant',
+            model_name="metric",
+            name="is_healthy_tolerant",
             field=models.BooleanField(blank=True, default=None, null=True),
         ),
     ]

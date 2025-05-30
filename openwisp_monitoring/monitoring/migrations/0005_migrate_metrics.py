@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class Migration(migrations.Migration):
-    dependencies = [('monitoring', '0004_metric_main_and_extra_tags')]
+    dependencies = [("monitoring", "0004_metric_main_and_extra_tags")]
 
     operations = [
         migrations.RunPython(

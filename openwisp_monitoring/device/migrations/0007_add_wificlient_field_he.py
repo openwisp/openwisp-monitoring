@@ -5,15 +5,15 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('device_monitoring', '0006_alter_wificlient_field_ht_vht'),
+        ("device_monitoring", "0006_alter_wificlient_field_ht_vht"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='wificlient',
-            name='he',
+            model_name="wificlient",
+            name="he",
             field=models.BooleanField(
-                blank=True, default=None, null=True, verbose_name='HE'
+                blank=True, default=None, null=True, verbose_name="HE"
             ),
         ),
     ]

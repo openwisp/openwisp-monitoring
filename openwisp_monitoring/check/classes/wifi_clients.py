@@ -7,16 +7,16 @@ from ...db import timeseries_db
 from .. import settings as app_settings
 from .base import BaseCheck
 
-AlertSettings = load_model('monitoring', 'AlertSettings')
+AlertSettings = load_model("monitoring", "AlertSettings")
 
 
 class WifiClients(BaseCheck):
-    DATE_FORMAT = '%m-%d'
-    TIME_FORMAT = '%H:%M'
+    DATE_FORMAT = "%m-%d"
+    TIME_FORMAT = "%H:%M"
 
     @classmethod
     def get_related_metrics(cls):
-        return ('wifi_clients_min', 'wifi_clients_max')
+        return ("wifi_clients_min", "wifi_clients_max")
 
     @classmethod
     def _get_start_end_datetime(cls, start, end, today):
@@ -58,11 +58,11 @@ class WifiClients(BaseCheck):
         # Construct datetime objects
         start_dt = timezone.make_aware(
             datetime.strptime(
-                f'{start_year}-{start_date} {start_time}', '%Y-%m-%d %H:%M'
+                f"{start_year}-{start_date} {start_time}", "%Y-%m-%d %H:%M"
             )
         )
         end_dt = timezone.make_aware(
-            datetime.strptime(f'{end_year}-{end_date} {end_time}', '%Y-%m-%d %H:%M')
+            datetime.strptime(f"{end_year}-{end_date} {end_time}", "%Y-%m-%d %H:%M")
         )
 
         return start_dt, end_dt
@@ -84,50 +84,50 @@ class WifiClients(BaseCheck):
 
     def _get_wifi_clients_count(self, time_interval):
         values = timeseries_db.read(
-            key='wifi_clients',
-            fields=['clients'],
-            distinct_fields=['clients'],
-            count_fields=['clients'],
+            key="wifi_clients",
+            fields=["clients"],
+            distinct_fields=["clients"],
+            count_fields=["clients"],
             tags={
-                'content_type': self.related_object._meta.label_lower,
-                'object_id': str(self.related_object.pk),
+                "content_type": self.related_object._meta.label_lower,
+                "object_id": str(self.related_object.pk),
             },
             since=(timezone.localtime() - timezone.timedelta(minutes=time_interval)),
         )
         if not values:
             result = 0
         else:
-            result = values[0]['count']
+            result = values[0]["count"]
         return result
 
     def _check_wifi_clients(self, check_type, interval, store=True):
         result = self._get_wifi_clients_count(interval)
         if store:
-            metric = self._get_metric(f'wifi_clients_{check_type}')
+            metric = self._get_metric(f"wifi_clients_{check_type}")
             metric.write(result)
         return result
 
     def _check_wifi_clients_min(self, store=True):
         return self._check_wifi_clients(
-            'min', app_settings.WIFI_CLIENTS_MIN_CHECK_INTERVAL, store
+            "min", app_settings.WIFI_CLIENTS_MIN_CHECK_INTERVAL, store
         )
 
     def _check_wifi_clients_max(self, store=True):
         return self._check_wifi_clients(
-            'max', app_settings.WIFI_CLIENTS_MAX_CHECK_INTERVAL, store
+            "max", app_settings.WIFI_CLIENTS_MAX_CHECK_INTERVAL, store
         )
 
     def check(self, store=True):
         # If the device health status is unknown or critical,
         # then do not run the check.
         if self.related_object.monitoring.status in [
-            'unknown',
-            'critical',
+            "unknown",
+            "critical",
         ]:
             return
         min = self._check_wifi_clients_min(store)
         max = self._check_wifi_clients_max(store)
-        return {'wifi_clients_min': min, 'wifi_clients_max': max}
+        return {"wifi_clients_min": min, "wifi_clients_max": max}
 
     def _get_metric(self, configuration):
         metric, created = self._get_or_create_metric(configuration=configuration)

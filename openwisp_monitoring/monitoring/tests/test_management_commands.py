@@ -5,7 +5,7 @@ from django.test import TestCase
 
 
 class TestManagementCommands(TestCase):
-    @patch('openwisp_monitoring.monitoring.tasks.migrate_timeseries_database.delay')
+    @patch("openwisp_monitoring.monitoring.tasks.migrate_timeseries_database.delay")
     def test_migrate_timeseries(self, mocked_celery_task):
-        call_command('migrate_timeseries')
+        call_command("migrate_timeseries")
         mocked_celery_task.assert_called_once()

@@ -15,67 +15,67 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
     dependencies = [
         swapper.dependency(
-            *swapper.split(settings.AUTH_USER_MODEL), version='0004_default_groups'
+            *swapper.split(settings.AUTH_USER_MODEL), version="0004_default_groups"
         ),
-        swapper.dependency('config', 'Device'),
-        ('device_monitoring', '0003_update_template'),
+        swapper.dependency("config", "Device"),
+        ("device_monitoring", "0003_update_template"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='WifiClient',
+            name="WifiClient",
             fields=[
                 (
-                    'created',
+                    "created",
                     model_utils.fields.AutoCreatedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='created',
+                        verbose_name="created",
                     ),
                 ),
                 (
-                    'modified',
+                    "modified",
                     model_utils.fields.AutoLastModifiedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='modified',
+                        verbose_name="modified",
                     ),
                 ),
                 (
-                    'mac_address',
+                    "mac_address",
                     models.CharField(
                         db_index=True,
-                        help_text='MAC address',
+                        help_text="MAC address",
                         max_length=17,
                         primary_key=True,
                         serialize=False,
                         validators=[
                             django.core.validators.RegexValidator(
-                                re.compile('^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$'),
-                                code='invalid',
-                                message='Must be a valid mac address.',
+                                re.compile("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"),
+                                code="invalid",
+                                message="Must be a valid mac address.",
                             )
                         ],
                     ),
                 ),
-                ('vendor', models.CharField(blank=True, max_length=200, null=True)),
-                ('ht', models.BooleanField(default=False, verbose_name='HT')),
-                ('vht', models.BooleanField(default=False, verbose_name='VHT')),
-                ('wmm', models.BooleanField(default=False, verbose_name='WMM')),
-                ('wds', models.BooleanField(default=False, verbose_name='WDS')),
-                ('wps', models.BooleanField(default=False, verbose_name='WPS')),
+                ("vendor", models.CharField(blank=True, max_length=200, null=True)),
+                ("ht", models.BooleanField(default=False, verbose_name="HT")),
+                ("vht", models.BooleanField(default=False, verbose_name="VHT")),
+                ("wmm", models.BooleanField(default=False, verbose_name="WMM")),
+                ("wds", models.BooleanField(default=False, verbose_name="WDS")),
+                ("wps", models.BooleanField(default=False, verbose_name="WPS")),
             ],
             options={
-                'verbose_name': 'WiFi Client',
-                'abstract': False,
-                'swappable': 'DEVICE_MONITORING_WIFICLIENT_MODEL',
+                "verbose_name": "WiFi Client",
+                "abstract": False,
+                "swappable": "DEVICE_MONITORING_WIFICLIENT_MODEL",
             },
         ),
         migrations.CreateModel(
-            name='WifiSession',
+            name="WifiSession",
             fields=[
                 (
-                    'id',
+                    "id",
                     models.UUIDField(
                         default=uuid.uuid4,
                         editable=False,
@@ -84,52 +84,52 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    'modified',
+                    "modified",
                     model_utils.fields.AutoLastModifiedField(
                         default=django.utils.timezone.now,
                         editable=False,
-                        verbose_name='modified',
+                        verbose_name="modified",
                     ),
                 ),
                 (
-                    'ssid',
+                    "ssid",
                     models.CharField(
-                        blank=True, max_length=32, null=True, verbose_name='SSID'
+                        blank=True, max_length=32, null=True, verbose_name="SSID"
                     ),
                 ),
-                ('interface_name', models.CharField(max_length=15)),
+                ("interface_name", models.CharField(max_length=15)),
                 (
-                    'start_time',
+                    "start_time",
                     models.DateTimeField(
-                        auto_now=True, db_index=True, verbose_name='start time'
+                        auto_now=True, db_index=True, verbose_name="start time"
                     ),
                 ),
                 (
-                    'stop_time',
+                    "stop_time",
                     models.DateTimeField(
-                        blank=True, db_index=True, null=True, verbose_name='stop time'
+                        blank=True, db_index=True, null=True, verbose_name="stop time"
                     ),
                 ),
                 (
-                    'device',
+                    "device",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to=swapper.get_model_name('config', 'Device'),
+                        to=swapper.get_model_name("config", "Device"),
                     ),
                 ),
                 (
-                    'wifi_client',
+                    "wifi_client",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        to=swapper.get_model_name('device_monitoring', 'WifiClient'),
+                        to=swapper.get_model_name("device_monitoring", "WifiClient"),
                     ),
                 ),
             ],
             options={
-                'verbose_name': 'WiFi Session',
-                'ordering': ('-start_time',),
-                'abstract': False,
-                'swappable': 'DEVICE_MONITORING_WIFISESSION_MODEL',
+                "verbose_name": "WiFi Session",
+                "ordering": ("-start_time",),
+                "abstract": False,
+                "swappable": "DEVICE_MONITORING_WIFISESSION_MODEL",
             },
         ),
     ]

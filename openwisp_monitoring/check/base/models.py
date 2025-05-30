@@ -18,49 +18,49 @@ from ..tasks import auto_create_check
 class AbstractCheck(TimeStampedEditableModel):
     name = models.CharField(max_length=64, db_index=True)
     is_active = models.BooleanField(
-        _('active'),
+        _("active"),
         default=True,
         db_index=True,
         help_text=_(
-            'whether the check should be run, related metrics collected and alerts sent'
+            "whether the check should be run, related metrics collected and alerts sent"
         ),
     )
-    description = models.TextField(blank=True, help_text=_('Notes'))
+    description = models.TextField(blank=True, help_text=_("Notes"))
     content_type = models.ForeignKey(
         ContentType, on_delete=models.CASCADE, null=True, blank=True
     )
     object_id = models.CharField(max_length=36, db_index=True, blank=True)
-    content_object = GenericForeignKey('content_type', 'object_id')
+    content_object = GenericForeignKey("content_type", "object_id")
     check_type = models.CharField(
-        _('check type'),
+        _("check type"),
         choices=app_settings.CHECK_CHOICES,
         db_index=True,
         max_length=128,
     )
     params = JSONField(
-        _('parameters'),
+        _("parameters"),
         default=dict,
         blank=True,
-        help_text=_('parameters needed to perform the check'),
-        load_kwargs={'object_pairs_hook': OrderedDict},
-        dump_kwargs={'indent': 4},
+        help_text=_("parameters needed to perform the check"),
+        load_kwargs={"object_pairs_hook": OrderedDict},
+        dump_kwargs={"indent": 4},
     )
 
     class Meta:
         abstract = True
-        unique_together = ('name', 'object_id', 'content_type')
+        unique_together = ("name", "object_id", "content_type")
         indexes = [
             models.Index(
-                fields=['content_type', 'object_id', 'is_active'],
-                name='active_object_checks_idx',
+                fields=["content_type", "object_id", "is_active"],
+                name="active_object_checks_idx",
             )
         ]
 
         permissions = (
-            ('add_check_inline', 'Can add check inline'),
-            ('change_check_inline', 'Can change check inline'),
-            ('delete_check_inline', 'Can delete check inline'),
-            ('view_check_inline', 'Can view check inline'),
+            ("add_check_inline", "Can add check inline"),
+            ("change_check_inline", "Can change check inline"),
+            ("delete_check_inline", "Can delete check inline"),
+            ("view_check_inline", "Can view check inline"),
         )
 
     def __str__(self):
@@ -68,7 +68,7 @@ class AbstractCheck(TimeStampedEditableModel):
             return self.name
         obj = self.content_object
         model_name = obj.__class__.__name__
-        return '{0} ({1}: {2})'.format(self.name, model_name, obj)
+        return "{0} ({1}: {2})".format(self.name, model_name, obj)
 
     def clean(self):
         self.check_instance.validate()
@@ -95,10 +95,10 @@ class AbstractCheck(TimeStampedEditableModel):
     def perform_check(self, store=True):
         """Initializes check instance and calls the check method."""
         if (
-            hasattr(self.content_object, 'is_deactivated')
+            hasattr(self.content_object, "is_deactivated")
             and self.content_object.is_deactivated()
         ) or (
-            hasattr(self.content_object, 'organization_id')
+            hasattr(self.content_object, "organization_id")
             and self.content_object.organization.is_active is False
         ):
             return

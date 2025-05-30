@@ -14,9 +14,9 @@ def _metric_post_write(name, values, metric, check_threshold_kwargs, **kwargs):
     if not metric or not check_threshold_kwargs:
         return
     try:
-        Metric = load_model('monitoring', 'Metric')
+        Metric = load_model("monitoring", "Metric")
         if not isinstance(metric, Metric):
-            metric = Metric.objects.select_related('alertsettings').get(pk=metric)
+            metric = Metric.objects.select_related("alertsettings").get(pk=metric)
     except ObjectDoesNotExist:
         # The metric can be deleted by the time threshold is being checked.
         # This can happen as the task is being run async.
@@ -27,8 +27,8 @@ def _metric_post_write(name, values, metric, check_threshold_kwargs, **kwargs):
             sender=metric.__class__,
             metric=metric,
             values=values,
-            time=kwargs.get('timestamp'),
-            current=kwargs.get('current', 'False'),
+            time=kwargs.get("timestamp"),
+            current=kwargs.get("current", "False"),
         )
         post_metric_write.send(**signal_kwargs)
 
@@ -86,7 +86,7 @@ def _timeseries_batch_write(data):
         timeseries_batch_write(data=data)
     else:
         for item in data:
-            item['metric'] = item['metric'].pk
+            item["metric"] = item["metric"].pk
         timeseries_batch_write.delay(data=data)
 
 

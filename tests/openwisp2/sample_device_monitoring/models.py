@@ -9,19 +9,19 @@ from openwisp_monitoring.device.base.models import (
     AbstractWifiSession,
 )
 
-BaseDevice = load_model('config', 'Device', require_ready=False)
+BaseDevice = load_model("config", "Device", require_ready=False)
 
 
 class DetailsModel(models.Model):
-    details = models.CharField(max_length=64, default='devicemonitoring')
+    details = models.CharField(max_length=64, default="devicemonitoring")
 
     class Meta:
         abstract = True
 
 
 class DeviceData(AbstractDeviceData, BaseDevice):
-    checks = GenericRelation(get_model_name('check', 'Check'))
-    metrics = GenericRelation(get_model_name('monitoring', 'Metric'))
+    checks = GenericRelation(get_model_name("check", "Check"))
+    metrics = GenericRelation(get_model_name("monitoring", "Metric"))
 
     class Meta:
         proxy = True

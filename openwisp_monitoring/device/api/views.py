@@ -53,19 +53,19 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
-Chart = load_model('monitoring', 'Chart')
-Metric = load_model('monitoring', 'Metric')
-AlertSettings = load_model('monitoring', 'AlertSettings')
-Device = load_model('config', 'Device')
-DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
-DeviceData = load_model('device_monitoring', 'DeviceData')
-Location = load_model('geo', 'Location')
-WifiSession = load_model('device_monitoring', 'WifiSession')
+Chart = load_model("monitoring", "Chart")
+Metric = load_model("monitoring", "Metric")
+AlertSettings = load_model("monitoring", "AlertSettings")
+Device = load_model("config", "Device")
+DeviceMonitoring = load_model("device_monitoring", "DeviceMonitoring")
+DeviceData = load_model("device_monitoring", "DeviceData")
+Location = load_model("geo", "Location")
+WifiSession = load_model("device_monitoring", "WifiSession")
 
 
 class ListViewPagination(pagination.PageNumberPagination):
     page_size = 10
-    page_size_query_param = 'page_size'
+    page_size_query_param = "page_size"
     max_page_size = 100
 
 
@@ -85,13 +85,13 @@ def get_charts_args_rewrite(view, request, pk):
 class DeviceKeyAuthenticationMixin(object):
     def get_permissions(self):
         if self.request.method in SAFE_METHODS and not self.request.query_params.get(
-            'key'
+            "key"
         ):
             self.permission_classes = ProtectedAPIMixin.permission_classes
         return super().get_permissions()
 
     def get_authenticators(self):
-        if self.request.method in SAFE_METHODS and not self.request.GET.get('key'):
+        if self.request.method in SAFE_METHODS and not self.request.GET.get("key"):
             self.authentication_classes = ProtectedAPIMixin.authentication_classes
         return super().get_authenticators()
 
@@ -114,9 +114,9 @@ class DeviceMetricView(
     queryset = (
         DeviceData.objects.filter(organization__is_active=True)
         .only(
-            '_is_deactivated',
-            'id',
-            'key',
+            "_is_deactivated",
+            "id",
+            "key",
         )
         .all()
     )
@@ -129,7 +129,7 @@ class DeviceMetricView(
         """Called from signal receiver which performs cache invalidation"""
         view = cls()
         view.get_object.invalidate(view, str(instance.pk))
-        logger.debug(f'invalidated view cache for device ID {instance.pk}')
+        logger.debug(f"invalidated view cache for device ID {instance.pk}")
 
     @classmethod
     def invalidate_get_charts_cache(cls, instance, *args, **kwargs):
@@ -146,10 +146,10 @@ class DeviceMetricView(
         try:
             pk = str(uuid.UUID(pk))
         except ValueError:
-            return Response({'detail': 'not found'}, status=404)
+            return Response({"detail": "not found"}, status=404)
         self.instance = self.get_object(pk)
         response = super().get(request, pk)
-        if not request.query_params.get('csv'):
+        if not request.query_params.get("csv"):
             charts_data = dict(response.data)
             device_metrics_data = MonitoringDeviceDetailSerializer(self.instance).data
             return Response(
@@ -162,11 +162,11 @@ class DeviceMetricView(
         ct = ContentType.objects.get_for_model(Device)
         return Chart.objects.filter(
             metric__object_id=args[0], metric__content_type_id=ct.id
-        ).select_related('metric')
+        ).select_related("metric")
 
     def _get_additional_data(self, request, *args, **kwargs):
-        if request.query_params.get('status', False):
-            return {'data': self.instance.data}
+        if request.query_params.get("status", False):
+            return {"data": self.instance.data}
         return {}
 
     @cache_memoize(CACHE_TIMEOUT, args_rewrite=get_device_args_rewrite)
@@ -188,15 +188,15 @@ class DeviceMetricView(
             logger.info(e.message)
             return Response(e.message, status=status.HTTP_400_BAD_REQUEST)
         time_obj = request.query_params.get(
-            'time', now().utcnow().strftime('%d-%m-%Y_%H:%M:%S.%f')
+            "time", now().utcnow().strftime("%d-%m-%Y_%H:%M:%S.%f")
         )
-        current = request.query_params.get('current', False)
+        current = request.query_params.get("current", False)
         try:
-            time = datetime.strptime(time_obj, '%d-%m-%Y_%H:%M:%S.%f').replace(
+            time = datetime.strptime(time_obj, "%d-%m-%Y_%H:%M:%S.%f").replace(
                 tzinfo=UTC
             )
         except ValueError:
-            return Response({'detail': _('Incorrect time format')}, status=400)
+            return Response({"detail": _("Incorrect time format")}, status=400)
         # writing data is intensive, let's pass that to the background workers
         write_device_metrics.delay(
             str(self.instance.pk), self.instance.data, time=time_obj, current=current
@@ -219,25 +219,25 @@ class MonitoringGeoJsonLocationList(GeoJsonLocationList):
     queryset = (
         Location.objects.filter(devicelocation__isnull=False)
         .annotate(
-            device_count=Count('devicelocation'),
+            device_count=Count("devicelocation"),
             ok_count=Count(
-                'devicelocation',
-                filter=Q(devicelocation__content_object__monitoring__status='ok'),
+                "devicelocation",
+                filter=Q(devicelocation__content_object__monitoring__status="ok"),
             ),
             problem_count=Count(
-                'devicelocation',
-                filter=Q(devicelocation__content_object__monitoring__status='problem'),
+                "devicelocation",
+                filter=Q(devicelocation__content_object__monitoring__status="problem"),
             ),
             critical_count=Count(
-                'devicelocation',
-                filter=Q(devicelocation__content_object__monitoring__status='critical'),
+                "devicelocation",
+                filter=Q(devicelocation__content_object__monitoring__status="critical"),
             ),
             unknown_count=Count(
-                'devicelocation',
-                filter=Q(devicelocation__content_object__monitoring__status='unknown'),
+                "devicelocation",
+                filter=Q(devicelocation__content_object__monitoring__status="unknown"),
             ),
         )
-        .order_by('-created')
+        .order_by("-created")
     )
 
 
@@ -248,7 +248,7 @@ class MonitoringLocationDeviceList(LocationDeviceList):
     serializer_class = MonitoringLocationDeviceSerializer
 
     def get_queryset(self):
-        return super().get_queryset().select_related('monitoring').order_by('name')
+        return super().get_queryset().select_related("monitoring").order_by("name")
 
 
 monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
@@ -264,25 +264,25 @@ class MonitoringNearbyDeviceList(
     permission_classes = []
 
     def get_queryset(self):
-        qs = Device.objects.select_related('monitoring')
-        location_lookup = Q(devicelocation__content_object_id=self.kwargs['pk'])
-        device_key = self.request.query_params.get('key')
+        qs = Device.objects.select_related("monitoring")
+        location_lookup = Q(devicelocation__content_object_id=self.kwargs["pk"])
+        device_key = self.request.query_params.get("key")
         if device_key:
             location_lookup &= Q(devicelocation__content_object__key=device_key)
         if not self.request.user.is_superuser and not device_key:
             qs = self.get_organization_queryset(qs)
         location = get_object_or_404(Location.objects, location_lookup)
         return (
-            qs.exclude(id=self.kwargs['pk'])
+            qs.exclude(id=self.kwargs["pk"])
             .filter(
                 devicelocation__isnull=False,
             )
             .annotate(
                 distance=Round(
-                    Distance('devicelocation__location__geometry', location.geometry)
+                    Distance("devicelocation__location__geometry", location.geometry)
                 )
             )
-            .order_by('distance')
+            .order_by("distance")
         )
 
 
@@ -300,12 +300,12 @@ class MonitoringDeviceList(DeviceListCreateView):
     """
 
     serializer_class = MonitoringDeviceListSerializer
-    http_method_names = ['get', 'head', 'options']
+    http_method_names = ["get", "head", "options"]
     filter_backends = [DjangoFilterBackend]
     filterset_class = MonitoringDeviceFilter
 
     def get_queryset(self):
-        return super().get_queryset().select_related('monitoring').order_by('name')
+        return super().get_queryset().select_related("monitoring").order_by("name")
 
 
 monitoring_device_list = MonitoringDeviceList.as_view()
@@ -313,9 +313,9 @@ monitoring_device_list = MonitoringDeviceList.as_view()
 
 class WifiSessionListView(ProtectedAPIMixin, FilterByOrganizationManaged, ListAPIView):
     queryset = WifiSession.objects.select_related(
-        'device', 'wifi_client', 'device__organization', 'device__group'
+        "device", "wifi_client", "device__organization", "device__group"
     )
-    organization_field = 'device__organization'
+    organization_field = "device__organization"
     filter_backends = [DjangoFilterBackend]
     pagination_class = ListViewPagination
     filterset_class = WifiSessionFilter
@@ -329,9 +329,9 @@ class WifiSessionDetailView(
     ProtectedAPIMixin, FilterByOrganizationManaged, RetrieveAPIView
 ):
     queryset = WifiSession.objects.select_related(
-        'device', 'wifi_client', 'device__organization'
+        "device", "wifi_client", "device__organization"
     )
-    organization_field = 'device__organization'
+    organization_field = "device__organization"
     serializer_class = WifiSessionSerializer
 
 

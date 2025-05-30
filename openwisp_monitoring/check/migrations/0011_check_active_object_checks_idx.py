@@ -5,15 +5,15 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('check', '0010_create_data_collected_check'),
+        ("check", "0010_create_data_collected_check"),
     ]
 
     operations = [
         migrations.AddIndex(
-            model_name='check',
+            model_name="check",
             index=models.Index(
-                fields=['content_type', 'object_id', 'is_active'],
-                name='active_object_checks_idx',
+                fields=["content_type", "object_id", "is_active"],
+                name="active_object_checks_idx",
             ),
         ),
     ]
