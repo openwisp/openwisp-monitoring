@@ -1,5 +1,5 @@
-Managing Device Checks & Alert Settings
-=======================================
+Device Checks & Alert Settings
+==============================
 
 We can add checks and define alert settings directly from the **device
 page**.
@@ -81,3 +81,22 @@ page as shown below:
 .. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/inline-permissions.png
     :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/inline-permissions.png
     :align: center
+
+How is Historical Data Handled?
+-------------------------------
+
+The :doc:`OpenWrt Monitoring Agent </openwrt-monitoring-agent/index>`
+collects and :ref:`temporarily stores monitoring data locally on the
+device <monitoring_agent_send_mode>` when it cannot reach OpenWISP, for
+example, during network or server outages.
+
+OpenWISP Monitoring supports the submission of historical data, meaning
+monitoring information that could not be delivered in real time and is
+sent at a later stage. This capability makes both the agent and the server
+resilient to occasional disruptions.
+
+However, it's important to note that **historical data does not trigger
+alerts** or affect the **health status** of a device. Threshold checks and
+health evaluations are only applied to fresh data. This approach prevents
+conflicts between outdated information and the device's current state,
+which may have changed significantly.

@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
 from django.utils import timezone
+from freezegun import freeze_time
 from swapper import load_model
 
 from openwisp_utils.tests import catch_signal
@@ -355,26 +356,34 @@ class TestModels(TestMonitoringMixin, TestCase):
         self._create_alert_settings(
             metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=5
         )
-        with self.subTest('within tolerance, no alerts expected'):
-            m.write(99, time=timezone.now() - timedelta(minutes=2))
-            m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
+        with freeze_time(start_time):
+            m.write(99)
+        with self.subTest("within tolerance, no alerts expected"):
+            with freeze_time(start_time + timedelta(minutes=2)):
+                m.write(99)
+            m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
             self.assertEqual(m.is_healthy, False)
             self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 0)
-            m.write(99, time=timezone.now() - timedelta(minutes=4))
-            m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
+            with freeze_time(start_time + timedelta(minutes=4)):
+                m.write(99)
+            m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
             self.assertEqual(m.is_healthy, False)
             self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 0)
-        with self.subTest('tolerance trepassed, alerts expected'):
-            m.write(99, time=timezone.now() - timedelta(minutes=6))
-            m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
+        with self.subTest("tolerance trepassed, alerts expected"):
+            with freeze_time(start_time + timedelta(minutes=6)):
+                m.write(99)
+            m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
             self.assertEqual(m.is_healthy, False)
             self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
-        with self.subTest('value back to normal, tolerance not considered'):
-            m.write(71, time=timezone.now() - timedelta(minutes=7))
-            m.refresh_from_db(fields=['is_healthy', 'is_healthy_tolerant'])
+        with self.subTest("value back to normal"):
+            with freeze_time(start_time + timedelta(minutes=7)):
+                m.write(71)
+            with freeze_time(start_time + timedelta(minutes=12)):
+                m.write(71)
+            m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
             self.assertEqual(m.is_healthy, True)
             self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 2)
