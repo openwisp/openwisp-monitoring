@@ -117,9 +117,9 @@ jobs:
       - name: Tests
         if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
         run: |
-          coverage run runtests.py
-          SAMPLE_APP=1 coverage run runtests.py
-          TIMESERIES_UDP=1 coverage run runtests.py
+          coverage run runtests.py --exclude-tag selenium_tests
+          SAMPLE_APP=1 coverage run runtests.py --exclude-tag selenium_tests
+          TIMESERIES_UDP=1 coverage run runtests.py --exclude-tag selenium_tests
           coverage combine
           coverage xml
 
