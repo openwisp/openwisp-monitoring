@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+from django.test import tag
 from django.urls.base import reverse
 from reversion.models import Version
 from selenium.common.exceptions import TimeoutException, UnexpectedAlertPresentException
@@ -75,6 +76,7 @@ class SeleniumTestMixin(BaseSeleniumTestMixin):
         super().setUp()
 
 
+@tag("selenium_tests")
 class TestDeviceConnectionInlineAdmin(
     SeleniumTestMixin,
     TestDeviceMonitoringMixin,
@@ -128,9 +130,7 @@ class TestDeviceConnectionInlineAdmin(
         self.open(
             reverse(f'admin:{self.config_app_label}_device_change', args=[device.id])
         )
-        self.web_driver.find_element(
-            By.XPATH, '//*[@id="device_form"]/div/div[1]/input[1]'
-        ).click()
+        self.web_driver.find_element(By.CSS_SELECTOR, 'input[name="_save"]').click()
         try:
             WebDriverWait(self.web_driver, 5).until(
                 EC.url_to_be(f'{self.live_server_url}/admin/config/device/')
@@ -147,6 +147,14 @@ class TestDeviceConnectionInlineAdmin(
         self.web_driver.find_element(
             by=By.CSS_SELECTOR, value='#content form input[type="submit"]'
         ).click()
+        WebDriverWait(self.web_driver, 5).until(
+            EC.url_to_be(
+                '{}{}'.format(
+                    self.live_server_url,
+                    reverse(f'admin:{self.config_app_label}_device_changelist'),
+                )
+            )
+        )
         self.assertEqual(Device.objects.count(), 0)
         self.assertEqual(DeviceConnection.objects.count(), 0)
         self.assertEqual(Check.objects.count(), 0)
@@ -181,6 +189,7 @@ class TestDeviceConnectionInlineAdmin(
         self.assertEqual(Chart.objects.filter(id__in=device_chart_ids).count(), 3)
 
 
+@tag("selenium_tests")
 class TestDashboardCharts(
     SeleniumTestMixin, TestDeviceMonitoringMixin, StaticLiveServerTestCase
 ):
@@ -262,6 +271,7 @@ class TestDashboardCharts(
         )
 
 
+@tag("selenium_tests")
 class TestWifiSessionInlineAdmin(
     SeleniumTestMixin,
     TestWifiClientSessionMixin,
@@ -288,12 +298,20 @@ class TestWifiSessionInlineAdmin(
         ws2 = self._create_wifi_session(
             device=device, wifi_client=wc2, ssid='Test Wifi Session'
         )
+        WebDriverWait(self.web_driver, 10).until(
+            EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, 'input[name="_continue"]')
+            )
+        )
         # Now press the 'Save' button on the device change page
-        self.web_driver.find_element(
-            By.XPATH, '//*[@id="device_form"]/div/div[1]/input[3]'
-        ).click()
+        self.web_driver.find_element(By.CSS_SELECTOR, 'input[name="_continue"]').click()
         # Make sure the wifi session tab now
         # exists with the correct wifi sessions
+        WebDriverWait(self.web_driver, 5).until(
+            EC.visibility_of_element_located(
+                (By.XPATH, '//*[@id="tabs-container"]/ul/li[7]/a')
+            )
+        )
         wifi_session_inline = self.web_driver.find_element(
             By.XPATH, '//*[@id="tabs-container"]/ul/li[7]/a'
         )
