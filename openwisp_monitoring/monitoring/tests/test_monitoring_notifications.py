@@ -78,7 +78,10 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self._create_alert_settings(
             metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=1
         )
-        m.write(99, time=ten_minutes_ago)
+        with freeze_time(start_time):
+            m.write(99)
+        with freeze_time(ten_minutes_after):
+            m.write(99)
         m.refresh_from_db()
         self.assertEqual(m.is_healthy, False)
         self.assertEqual(m.is_healthy_tolerant, False)
@@ -121,8 +124,9 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             metric=m, custom_operator='>', custom_threshold=90, custom_tolerance=5
         )
 
-        with self.subTest('Test no notification is generated for healthy status'):
-            m.write(89, time=ten_minutes_ago)
+        with self.subTest("Test no notification is generated for healthy status"):
+            with freeze_time(ten_minutes_ago):
+                m.write(89)
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, True)
             self.assertEqual(m.is_healthy_tolerant, True)
@@ -132,8 +136,9 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         # metric from the database provides a time delay that allows the
         # timeseries database to process the transaction.
         self._read_metric(m)
-        with self.subTest('Test no notification is generated when check=False'):
-            m.write(91, time=ten_minutes_ago, check=False)
+        with self.subTest("Test no notification is generated when check=False"):
+            with freeze_time(ten_minutes_ago):
+                m.write(91, check=False)
             self.assertEqual(Notification.objects.count(), 0)
 
         self._read_metric(m)
@@ -241,7 +246,10 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         alert_s = self._create_alert_settings(
             metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=1
         )
-        om.write(99, time=ten_minutes_ago)
+        with freeze_time(start_time):
+            om.write(99)
+        with freeze_time(ten_minutes_after):
+            om.write(99)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, False)
         self.assertEqual(om.is_healthy_tolerant, False)
@@ -271,9 +279,11 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         alert_s = self._create_alert_settings(
             metric=om, custom_operator='>', custom_threshold=90, custom_tolerance=1
         )
-        self._write_metric(om, 89, time=ten_minutes_ago)
+        with freeze_time(ten_minutes_ago):
+            self._write_metric(om, 89)
         self.assertEqual(Notification.objects.count(), 0)
-        self._write_metric(om, 91, time=ten_minutes_ago, check=False)
+        with freeze_time(ten_minutes_ago):
+            self._write_metric(om, 91, check=False)
         self.assertEqual(Notification.objects.count(), 0)
         self._write_metric(om, 92)
         om.refresh_from_db()
@@ -318,6 +328,38 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(om.is_healthy, True)
         self.assertEqual(om.is_healthy_tolerant, True)
         self.assertEqual(Notification.objects.count(), 2)
+
+    @freeze_time(start_time)
+    def test_object_check_threshold_crossed_historical_data(self):
+        """
+        Do not evaluate threshold crossed for historical data
+        """
+        self._create_admin()
+        om = self._create_object_metric(name="load")
+        self._create_alert_settings(
+            metric=om, custom_operator=">", custom_threshold=90, custom_tolerance=1
+        )
+
+        # We need to write with "time" argument instead of freeze_time to
+        # simulate historical data
+        self._write_metric(om, 99, time=start_time - timedelta(minutes=60))
+        om.refresh_from_db()
+        self.assertEqual(om.is_healthy, True)
+        self.assertEqual(om.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
+
+        self._write_metric(om, 99, time=start_time - timedelta(minutes=10))
+        om.refresh_from_db()
+        self.assertEqual(om.is_healthy, True)
+        self.assertEqual(om.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
+
+        # Writing real-time data should enforce the threshold check
+        self._write_metric(om, 99, time=start_time)
+        om.refresh_from_db()
+        self.assertEqual(om.is_healthy, False)
+        self.assertEqual(om.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
 
     def test_flapping_metric_with_tolerance(self):
         self._create_admin()
@@ -403,7 +445,10 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             custom_tolerance=1,
             is_active=False,
         )
-        m.write(99, time=ten_minutes_ago)
+        with freeze_time(start_time):
+            m.write(99)
+        with freeze_time(ten_minutes_after):
+            m.write(99)
         m.refresh_from_db()
         self.assertEqual(m.is_healthy, False)
         self.assertEqual(m.is_healthy_tolerant, False)
@@ -511,7 +556,10 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self._create_alert_settings(
             metric=m, custom_operator='>', custom_threshold=30, custom_tolerance=1
         )
-        m.write(10, time=ten_minutes_ago, extra_values={'test_related_2': 35})
+        with freeze_time(start_time):
+            m.write(10, extra_values={"test_related_2": 35})
+        with freeze_time(ten_minutes_after):
+            m.write(10, extra_values={"test_related_2": 35})
         m.refresh_from_db()
         self.assertEqual(m.is_healthy, False)
         self.assertEqual(m.is_healthy_tolerant, False)
