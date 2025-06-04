@@ -270,7 +270,7 @@
             !netjsonGraph.westWorldFeaturesAppended
           ) {
             let westWorldFeatures = window.structuredClone(netjsonGraph.data);
-            // Exclude the features that may be added for the East world map
+            // Exclude the features that may be added for the East world map.
             westWorldFeatures.features = westWorldFeatures.features.filter(
               (element) => element.geometry.coordinates[0] <= 180,
             );
