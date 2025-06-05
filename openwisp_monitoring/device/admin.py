@@ -7,12 +7,13 @@ from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
 from django.contrib.contenttypes.models import ContentType
 from django.forms import ModelForm
 from django.templatetags.static import static
-from django.urls import resolve, reverse
+from django.urls import path, resolve, reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.formats import localize
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
+from django.views.generic import TemplateView
 from import_export.admin import ImportExportMixin
 from import_export.forms import ExportForm
 from nested_admin.nested import (
@@ -573,3 +574,48 @@ admin.site.register(Device, DeviceAdminExportable)
 if app_settings.WIFI_SESSIONS_ENABLED:
     admin.site.register(WifiSession, WifiSessionAdmin)
     DeviceAdmin.conditional_inlines.append(WiFiSessionInline)
+
+# Not Sure this the right place to put this
+class DeviceMapView(TemplateView):
+    """
+    Dedicated full-screen map page in the admin.
+    """
+
+    template_name = 'admin/map/map_page.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update(admin.site.each_context(self.request))
+        loc_geojson = reverse_lazy(
+            'monitoring:api_location_geojson', urlconf=MONITORING_API_URLCONF
+        )
+        device_list = reverse_lazy(
+            'monitoring:api_location_device_list',
+            urlconf=MONITORING_API_URLCONF,
+            args=['000'],
+        )
+        if MONITORING_API_BASEURL:
+            loc_geojson = urljoin(MONITORING_API_BASEURL, str(loc_geojson))
+            device_list = urljoin(MONITORING_API_BASEURL, str(device_list))
+        ctx['monitoring_location_geojson_url'] = loc_geojson
+        ctx['monitoring_device_list_url'] = device_list
+        ctx['extra_css'] = ['monitoring/css/admin-map.css']
+        return ctx
+
+
+# Temperary patch to add a custom URL for the DeviceMapView
+admin_site = admin.site
+_original_get_urls = admin_site.get_urls
+
+def _patched_get_urls():
+    custom_urls = [
+        path(
+            "map/",
+            admin_site.admin_view(DeviceMapView.as_view()),
+            name="monitoring_device_map",
+        )
+    ]
+    return custom_urls + _original_get_urls()
+
+
+admin_site.get_urls = _patched_get_urls
