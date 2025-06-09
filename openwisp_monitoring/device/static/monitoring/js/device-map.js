@@ -182,18 +182,8 @@
         minZoom: leafletConfig.MIN_ZOOM || 1,
         maxZoom: leafletConfig.MAX_ZOOM || 24,
         fullscreenControl: true,
-        clusterConfig: {
-          symbolSize: 30,
-        },
       },
       mapTileConfig: tiles,
-      nodeCategories: [
-        { name: "ok", nodeStyle: { color: colors.ok } },
-        { name: "problem", nodeStyle: { color: colors.problem } },
-        { name: "critical", nodeStyle: { color: colors.critical } },
-        { name: "unknown", nodeStyle: { color: colors.unknown } },
-        { name: "deactivated", nodeStyle: { color: colors.deactivated } },
-      ],
       geoOptions: {
         style: function (feature) {
           return {
@@ -207,10 +197,10 @@
         },
         onEachFeature: function (feature, layer) {
           const color = getColor(feature.properties);
-          const statusKey = Object.keys(colors).find(
+          feature.properties.status = Object.keys(colors).find(
             (key) => colors[key] === color,
           );
-          feature.properties.status = statusKey || "unknown";
+          feature.properties.status = feature.properties.status || "unknown";
 
           layer.on("mouseover", function () {
             layer.unbindTooltip();
