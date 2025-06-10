@@ -12,6 +12,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from swapper import load_model
 
 from openwisp_controller.connection.tests.utils import CreateConnectionsMixin
+from openwisp_controller.geo.tests.utils import TestGeoMixin
 from openwisp_monitoring.device.tests import (
     TestDeviceMonitoringMixin,
     TestWifiClientSessionMixin,
@@ -28,6 +29,9 @@ AlertSettings = load_model("monitoring", "AlertSettings")
 Metric = load_model("monitoring", "Metric")
 Chart = load_model("monitoring", "Chart")
 Check = load_model("check", "Check")
+Map = load_model("device_monitoring", "Map")
+DeviceLocation = load_model("geo", "DeviceLocation")
+Location = load_model("geo", "Location")
 
 
 class SeleniumTestMixin(BaseSeleniumTestMixin):
@@ -284,3 +288,39 @@ class TestWifiSessionInlineAdmin(
                 "innerHTML"
             ),
         )
+
+
+@tag("selenium tests")
+class TestMapPageAdmin(
+    SeleniumTestMixin, TestGeoMixin, TestDeviceMonitoringMixin, StaticLiveServerTestCase
+):
+    location_model = Location
+    object_location_model = DeviceLocation
+
+    def test_map_render_with_its_location(self):
+        org = self._get_org()
+        device = self._create_device(mac_address="00:12:22:33:44:56", organization=org)
+        location = self._create_location(
+            name="Test_Location", type="indoor", organization=org
+        )
+        self._create_object_location(
+            location=location, content_object=device, organization=org
+        )
+        self.login()
+        map_link = self.find_element(
+            by=By.CSS_SELECTOR, value="a.menu-item[aria-label='Map'] > span.label"
+        )
+        self.assertEqual(map_link.text, "MAP")
+        map_link.click()
+        breadcrumbs = self.find_element(
+            by=By.CSS_SELECTOR, value="div.breadcrumbs span"
+        )
+        self.assertEqual(breadcrumbs.text, "Map")
+        leaflet_container = self.find_element(
+            by=By.CSS_SELECTOR, value=".leaflet-container"
+        )
+        self.assertIsNotNone(leaflet_container)
+        location = self.find_element(by=By.CSS_SELECTOR, value=".leaflet-interactive")
+        location.click()
+        location_heading = self.find_element(by=By.CSS_SELECTOR, value=".map-detail h2")
+        self.assertEqual(location_heading.text, "Test_Location (1)")

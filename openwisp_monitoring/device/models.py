@@ -38,6 +38,7 @@ class WifiSession(AbstractWifiSession):
         abstract = False
         swappable = swappable_setting("device_monitoring", "WifiSession")
 
+
 class Map(BaseLocation):
     class Meta:
         proxy = True

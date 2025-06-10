@@ -7,13 +7,12 @@ from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
 from django.contrib.contenttypes.models import ContentType
 from django.forms import ModelForm
 from django.templatetags.static import static
-from django.urls import path, resolve, reverse, reverse_lazy
+from django.urls import resolve, reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.formats import localize
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
-from django.views.generic import TemplateView
 from import_export.admin import ImportExportMixin
 from import_export.forms import ExportForm
 from nested_admin.nested import (
@@ -27,13 +26,13 @@ from openwisp_controller.config.admin import DeactivatedDeviceReadOnlyMixin
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
 from openwisp_users.multitenancy import MultitenantAdminMixin
 from openwisp_utils.admin import ReadOnlyAdmin
-from .models import Map
 
 from ..monitoring.admin import MetricAdmin
 from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from . import settings as app_settings
 from .exportable import DeviceMonitoringResource
 from .filters import DeviceFilter, DeviceGroupFilter, DeviceOrganizationFilter
+from .models import Map
 
 DeviceData = load_model("device_monitoring", "DeviceData")
 WifiSession = load_model("device_monitoring", "WifiSession")
@@ -589,7 +588,6 @@ class MapPageAdmin(MultitenantAdminMixin, admin.ModelAdmin):
         js = [
             'monitoring/js/lib/netjsongraph.min.js',
             'monitoring/js/lib/leaflet.fullscreen.min.js',
-            'monitoring/js/device-map.js',
         ]
         css = {
             'all': [
@@ -602,25 +600,23 @@ class MapPageAdmin(MultitenantAdminMixin, admin.ModelAdmin):
 
     def changelist_view(self, request, extra_context=None):
         loc_geojson = reverse_lazy(
-            'monitoring:api_location_geojson',
-            urlconf=MONITORING_API_URLCONF
+            'monitoring:api_location_geojson', urlconf=MONITORING_API_URLCONF
         )
         device_list = reverse_lazy(
             'monitoring:api_location_device_list',
             urlconf=MONITORING_API_URLCONF,
             args=['000'],
         )
-        if MONITORING_API_BASEURL:
-            loc_geojson = urljoin(MONITORING_API_BASEURL, str(loc_geojson))
-            device_list = urljoin(MONITORING_API_BASEURL, str(device_list))
-
         extra_context = extra_context or {}
-        extra_context.update({
-            'monitoring_location_geojson_url': loc_geojson,
-            'monitoring_device_list_url':      device_list,
-            # By default shows 'Select Map to change' heading making it empty to hide it
-            'title': '',
-        })
+        extra_context.update(
+            {
+                'monitoring_location_geojson_url': loc_geojson,
+                'monitoring_device_list_url': device_list,
+                # By default shows 'Select Map to change' heading making it empty to hide it
+                'title': '',
+            }
+        )
         return super().changelist_view(request, extra_context=extra_context)
+
 
 admin.site.register(Map, MapPageAdmin)
