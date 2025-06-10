@@ -508,7 +508,8 @@ class DeviceMonitoringConfig(AppConfig):
             position=70,
             config={
                 'label': _('Map'),
-                "url": "map/",
+                'model': get_model_name("device_monitoring", "Map"),
+                'name': 'changelist',
                 'icon': 'ow-geo',
             },
         )

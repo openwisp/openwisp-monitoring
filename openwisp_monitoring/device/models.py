@@ -9,6 +9,7 @@ from .base.models import (
 )
 
 BaseDevice = load_model("config", "Device", require_ready=False)
+BaseLocation = load_model("geo", "Location", require_ready=False)
 
 
 class DeviceData(AbstractDeviceData, BaseDevice):
@@ -36,3 +37,9 @@ class WifiSession(AbstractWifiSession):
     class Meta(AbstractWifiSession.Meta):
         abstract = False
         swappable = swappable_setting("device_monitoring", "WifiSession")
+
+class Map(BaseLocation):
+    class Meta:
+        proxy = True
+        abstract = False
+        swappable = swappable_setting("device_monitoring", "Map")

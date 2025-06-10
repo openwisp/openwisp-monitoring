@@ -1,8 +1,44 @@
 {% extends "admin/base_site.html" %}
-{% block title %}Map{% endblock %}
+{% load static leaflet_tags i18n %}
+
+{% block title %} {% trans 'Map' %} {% endblock %}
+
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a> › <span>{% trans 'Map' %}</span>
+  </div>
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  {{ media }}
+  <script>
+    window._owGeoMapConfig = {
+      geoJsonUrl: '{{ monitoring_location_geojson_url }}',
+      locationDeviceUrl: '{{ monitoring_device_list_url }}?page_size=5'
+    };
+  </script>
+  <style>
+    #device-map-container {
+      width: 100%;
+      height: 85vh;
+      margin: 15px auto;
+    }
+  </style>
+{% endblock %}
 
 {% block content %}
-  <div class="app-monitoring">
-    <h1>Map Tempate is Working</h1>
+  
+<div id='leaflet-config'>
+  {% autoescape on %}{% leaflet_json_config %}{% endautoescape %}
+</div>
+<div id="device-map-container">
+  <div class="no-data">
+    <p>{% trans 'No map data to show' %}.</p>
+    <p><a class="button submit" href="#close">Close</a></p>
   </div>
+  <div class="ow-loading-spinner"></div>
+</div>
+
+<script src="{% static 'monitoring/js/device-map.js' %}"></script>
 {% endblock %}

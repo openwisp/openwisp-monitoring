@@ -27,6 +27,7 @@ from openwisp_controller.config.admin import DeactivatedDeviceReadOnlyMixin
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
 from openwisp_users.multitenancy import MultitenantAdminMixin
 from openwisp_utils.admin import ReadOnlyAdmin
+from .models import Map
 
 from ..monitoring.admin import MetricAdmin
 from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
@@ -575,19 +576,34 @@ if app_settings.WIFI_SESSIONS_ENABLED:
     admin.site.register(WifiSession, WifiSessionAdmin)
     DeviceAdmin.conditional_inlines.append(WiFiSessionInline)
 
-# Not Sure this the right place to put this
-class DeviceMapView(TemplateView):
+
+class MapPageAdmin(MultitenantAdminMixin, admin.ModelAdmin):
     """
-    Dedicated full-screen map page in the admin.
+    Overrides the changelist template of proxy Model Map to render
+    a full-screen interactive map using custom template map_page.html.
     """
 
-    template_name = 'admin/map/map_page.html'
+    change_list_template = 'admin/map/map_page.html'
 
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx.update(admin.site.each_context(self.request))
+    class Media:
+        js = [
+            'monitoring/js/lib/netjsongraph.min.js',
+            'monitoring/js/lib/leaflet.fullscreen.min.js',
+            'monitoring/js/device-map.js',
+        ]
+        css = {
+            'all': [
+                'monitoring/css/device-map.css',
+                'leaflet/leaflet.css',
+                'monitoring/css/leaflet.fullscreen.css',
+                'monitoring/css/netjsongraph.css',
+            ]
+        }
+
+    def changelist_view(self, request, extra_context=None):
         loc_geojson = reverse_lazy(
-            'monitoring:api_location_geojson', urlconf=MONITORING_API_URLCONF
+            'monitoring:api_location_geojson',
+            urlconf=MONITORING_API_URLCONF
         )
         device_list = reverse_lazy(
             'monitoring:api_location_device_list',
@@ -597,25 +613,14 @@ class DeviceMapView(TemplateView):
         if MONITORING_API_BASEURL:
             loc_geojson = urljoin(MONITORING_API_BASEURL, str(loc_geojson))
             device_list = urljoin(MONITORING_API_BASEURL, str(device_list))
-        ctx['monitoring_location_geojson_url'] = loc_geojson
-        ctx['monitoring_device_list_url'] = device_list
-        ctx['extra_css'] = ['monitoring/css/admin-map.css']
-        return ctx
 
+        extra_context = extra_context or {}
+        extra_context.update({
+            'monitoring_location_geojson_url': loc_geojson,
+            'monitoring_device_list_url':      device_list,
+            # By default shows 'Select Map to change' heading making it empty to hide it
+            'title': '',
+        })
+        return super().changelist_view(request, extra_context=extra_context)
 
-# Temperary patch to add a custom URL for the DeviceMapView
-admin_site = admin.site
-_original_get_urls = admin_site.get_urls
-
-def _patched_get_urls():
-    custom_urls = [
-        path(
-            "map/",
-            admin_site.admin_view(DeviceMapView.as_view()),
-            name="monitoring_device_map",
-        )
-    ]
-    return custom_urls + _original_get_urls()
-
-
-admin_site.get_urls = _patched_get_urls
+admin.site.register(Map, MapPageAdmin)
