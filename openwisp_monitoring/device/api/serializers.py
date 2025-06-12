@@ -3,6 +3,7 @@ from swapper import load_model
 
 from openwisp_controller.config.api.serializers import DeviceListSerializer
 from openwisp_controller.geo.api.serializers import (
+    FloorplanCoordinatesSerializer,
     GeoJsonLocationSerializer,
     LocationDeviceSerializer,
 )
@@ -12,6 +13,7 @@ Device = load_model("config", "Device")
 DeviceMonitoring = load_model("device_monitoring", "DeviceMonitoring")
 DeviceData = load_model("device_monitoring", "DeviceData")
 Device = load_model("config", "Device")
+DeviceLocation = load_model("geo", "DeviceLocation")
 WifiSession = load_model("device_monitoring", "WifiSession")
 WifiClient = load_model("device_monitoring", "WifiClient")
 
@@ -153,4 +155,23 @@ class WifiSessionSerializer(serializers.ModelSerializer):
             "start_time",
             "stop_time",
             "modified",
+        ]
+
+
+class MonitoringFloorplanCoordinatesSerializer(FloorplanCoordinatesSerializer):
+    status = serializers.CharField(source="content_object.monitoring.status")
+
+    class Meta:
+        model = DeviceLocation
+        fields = [
+            "name",
+            "mac_address",
+            "is_deactivated",
+            "model",
+            "os",
+            "floor_name",
+            "floor",
+            "image",
+            "status",
+            "location",
         ]
