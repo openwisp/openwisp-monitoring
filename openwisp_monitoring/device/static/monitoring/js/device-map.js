@@ -106,9 +106,9 @@
                                     </tbody>
                                 </table>
                                 ${pagination}
+                                <button class="floorplan-btn">Floorplan</button>
                             </div>`);
         layer.openPopup();
-
         // bind next/prev buttons
         let el = $(layer.getPopup().getElement());
         el.find(".next").click(function () {
@@ -117,7 +117,9 @@
         el.find(".prev").click(function () {
           loadPopUpContent(layer, $(this).data("url"));
         });
-
+        $('.floorplan-btn').on('click', function () {
+          window.openFloorPlan();
+        });
         loadingOverlay.hide();
       },
       error: function () {

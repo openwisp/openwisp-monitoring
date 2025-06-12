@@ -17,6 +17,9 @@
   font-weight: bold;
   text-transform: uppercase;
 }
+.paginator{
+  padding-bottom: 0;
+}
 .map-detail .paginator a {
   padding: 3px 7px;
   margin: 0 3px;
@@ -29,16 +32,31 @@
   background-color: #000000;
   color: #fff;
 }
+.floorplan-btn{
+  padding: 5px 10px;
+  margin-bottom: 10px;
+  width: 100%;
+  background-color: #464646;
+  color: #fff;
+  border-radius: 5px;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+.floorplan-btn:hover{
+  background-color: #000000;
+  color: #fff;
+}
 #device-map-container {
   margin: 50px auto;
   position: relative;
-  height: 300px;
+  height: 80vh;
   width: 90%;
   border: 1px solid rgba(0, 0, 0, 0.3);
 }
 #device-map-container .ow-loading-spinner {
   position: absolute;
-  z-index: 9999;
+  z-index: 99;
   top: 41%;
   left: 49%;
 }

@@ -385,6 +385,7 @@ class DeviceMonitoringConfig(AppConfig):
                 config={
                     "template": "admin/dashboard/device_map.html",
                     "css": (
+                        "monitoring/css/floorplan.css",
                         "monitoring/css/device-map.css",
                         "leaflet/leaflet.css",
                         "monitoring/css/leaflet.fullscreen.css",
@@ -393,6 +394,7 @@ class DeviceMonitoringConfig(AppConfig):
                     "js": (
                         "monitoring/js/lib/netjsongraph.min.js",
                         "monitoring/js/lib/leaflet.fullscreen.min.js",
+                        "monitoring/js/floorplan.js",
                         "monitoring/js/device-map.js",
                     ),
                 },
