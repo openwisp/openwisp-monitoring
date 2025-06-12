@@ -1,0 +1,33 @@
+#floorplan-container {
+  position: absolute;
+  top: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 80%;
+  max-width: 1000px;
+  background: white;
+  z-index: 9999;
+  padding: 20px;
+  overflow: auto;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+}
+#floorplan-content{
+  width: 100%;
+  flex: 1;
+}
+.leaflet-container{
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+#close-floorplan {
+  position: absolute;
+  top: 0;
+  right: 10px;
+  color: #757575;
+  cursor: pointer;
+  font: 16px / 24px Tahoma, Verdana, sans-serif;
+}
