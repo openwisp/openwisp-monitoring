@@ -4,15 +4,12 @@
 <script type="text/javascript">
   window._owGeoMapConfig = {
     geoJsonUrl: '{{ monitoring_location_geojson_url }}',
-    locationDeviceUrl: '{{ monitoring_device_list_url }}?page_size=5'
+    locationDeviceUrl: '{{ monitoring_device_list_url }}?page_size=5',
+    floorplanCoordinatesUrl: '{{ monitoring_floorplan_coordinates_list }}'
   }
 </script>
 <script type="text/javascript" src={%static 'monitoring/js/lib/netjsongraph.min.js' %}></script>
 <script type="text/javascript" src={%static 'monitoring/js/lib/leaflet.fullscreen.min.js' %}></script>
-<script>
-  const jsonPath = "{% static 'monitoring/js/netjsonmap-indoormap.json' %}";
-  const imagePath = "{% static 'monitoring/js/floorplan.png' %}";
-</script>
 <div id='leaflet-config'>
   {% autoescape on %}{% leaflet_json_config %}{% endautoescape %}
 </div>
