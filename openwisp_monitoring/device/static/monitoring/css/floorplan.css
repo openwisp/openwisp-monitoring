@@ -14,11 +14,11 @@
   display: flex;
   flex-direction: column;
 }
-#floorplan-content{
+#floorplan-content {
   width: 100%;
   flex: 1;
 }
-.leaflet-container{
+.leaflet-container {
   position: absolute;
   top: 0;
   left: 0;
@@ -29,5 +29,8 @@
   right: 10px;
   color: #757575;
   cursor: pointer;
-  font: 16px / 24px Tahoma, Verdana, sans-serif;
+  font:
+    16px / 24px Tahoma,
+    Verdana,
+    sans-serif;
 }

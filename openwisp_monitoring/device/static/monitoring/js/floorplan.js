@@ -1,7 +1,7 @@
 "use strict";
 
 (function ($) {
-  function openFloorPlan() {
+  function openFloorPlan(url) {
     const $floorPlanContainer = $(`
     <div id="floorplan-container">
       <span id="close-floorplan">×</span>
@@ -14,21 +14,44 @@
     $("#close-floorplan").on("click", function () {
       $("#floorplan-container").remove();
     });
-
-    renderIndoorMap();
+    $.ajax({
+      url: url,
+      method: "GET",
+      dataType: "json",
+      xhrFields: { withCredentials: true },
+      success: function (data) {
+        if (!data.nodes || data.nodes.length === 0) {
+          $("#floorplan-content").html("<p>No floorplan data available.</p>");
+          return;
+        }
+        // Currenlty support only one floorplan
+        const firstNode = data.nodes[0];
+        const image = firstNode.image;
+        const netjsonData = {
+          type: "NetworkGraph",
+          nodes: [firstNode],
+          links: [],
+        };
+        console.log(netjsonData);
+        renderIndoorMap(netjsonData, image);
+      },
+      error: function () {
+        alert("Error loading floorplan coordinates.");
+      },
+    });
   }
 
-  function renderIndoorMap() {
-    const graph = new NetJSONGraph(jsonPath, {
+  function renderIndoorMap(data, image) {
+    const graph = new NetJSONGraph(data, {
       el: "#floorplan-content",
       render: "map",
 
       mapOptions: {
-        center: [48.577, 18.539],
-        zoom: 5.5,
+        center: [30, 100],
+        zoom: 1.5,
         zoomSnap: 0.3,
-        minZoom: 3.5,
-        maxZoom: 9,
+        minZoom: -1,
+        maxZoom: 2,
         nodeConfig: {
           label: {
             offset: [0, -10],
@@ -37,35 +60,6 @@
             color: "#D9644D",
           },
           animation: false,
-        },
-        linkConfig: { linkStyle: { width: 4 }, animation: false },
-        baseOptions: {
-          toolbox: {
-            show: false,
-          },
-          media: [
-            {
-              query: {
-                minWidth: 320,
-                maxWidth: 850,
-              },
-              option: {
-                tooltip: {
-                  show: false,
-                },
-              },
-            },
-            {
-              query: {
-                minWidth: 851,
-              },
-              option: {
-                tooltip: {
-                  show: true,
-                },
-              },
-            },
-          ],
         },
       },
 
@@ -78,34 +72,23 @@
         });
         return data;
       },
-
+      // Have to find a soultion for rendering coordinates correctly here
       onReady() {
         const map = this.leaflet;
         map.eachLayer((layer) => {
-          if (layer._url) {
-            map.removeLayer(layer);
-          }
+          if (layer._url) map.removeLayer(layer);
         });
-
         const img = new Image();
-        img.src = imagePath;
+        img.src = image;
         img.onload = () => {
-          const aspect = img.width / img.height;
-          const H = 700;
-          const W = aspect * H;
-          const southWest = L.latLng(53, 2);
-          const swPt = map.latLngToContainerPoint(southWest);
-          const nePt = swPt.add(new L.Point(W, H));
-          const northEast = map.containerPointToLatLng(nePt);
-          const bounds = L.latLngBounds(southWest, northEast);
+          const w = img.width,
+            h = img.height,
+            bottomRight = map.unproject([0, h * 2], map.getMaxZoom() - 1),
+            upperLeft = map.unproject([w * 2, 0], map.getMaxZoom() - 1),
+            bounds = new L.LatLngBounds(bottomRight, upperLeft);
 
+          L.imageOverlay(image, bounds).addTo(map);
           map.setMaxBounds(bounds);
-          const zoomFit = map.getBoundsZoom(bounds);
-          if (zoomFit <= map.getMaxZoom()) map.setZoom(zoomFit);
-
-          L.imageOverlay(imagePath, bounds).addTo(map);
-
-          map.invalidateSize();
           map.fitBounds(bounds);
         };
       },

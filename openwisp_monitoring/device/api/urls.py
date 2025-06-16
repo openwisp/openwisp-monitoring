@@ -40,4 +40,9 @@ urlpatterns = [
         views.wifi_session_detail,
         name="api_wifi_session_detail",
     ),
+    path(
+        "api/v1/monitoring/location/<str:pk>/floorplan_coordinates/",
+        views.floorplan_coordinates_list,
+        name="floorplan_coordinates_list",
+    ),
 ]
