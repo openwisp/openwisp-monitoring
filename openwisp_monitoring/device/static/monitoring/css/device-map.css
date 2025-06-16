@@ -17,7 +17,7 @@
   font-weight: bold;
   text-transform: uppercase;
 }
-.paginator{
+.paginator {
   padding-bottom: 0;
 }
 .map-detail .paginator a {
@@ -32,7 +32,7 @@
   background-color: #000000;
   color: #fff;
 }
-.floorplan-btn{
+.floorplan-btn {
   padding: 5px 10px;
   margin-bottom: 10px;
   width: 100%;
@@ -43,7 +43,7 @@
   cursor: pointer;
   font-size: 14px;
 }
-.floorplan-btn:hover{
+.floorplan-btn:hover {
   background-color: #000000;
   color: #fff;
 }
