@@ -1135,7 +1135,8 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
 
         # WiFi session is not closed when a critical metric trepasses the threshold
         # within the tolerance limit
-        ping.write(0)
+        with freeze_time(start_time + timedelta(minutes=1)):
+            ping.write(0)
         _assert_open_wifi_session(1)
 
         # WiFi session is closed when a critical metric trepasses the threshold

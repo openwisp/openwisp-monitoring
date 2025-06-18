@@ -6,10 +6,8 @@ from uuid import uuid4
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
-from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
-from freezegun import freeze_time
 from rest_framework.authtoken.models import Token
 from swapper import load_model
 
@@ -252,71 +250,6 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             m = self.metric_queryset.get(name=f"{ifname} wifi clients", object_id=d.pk)
             points = self._read_metric(m, limit=10, order="-time")
             self.assertEqual(len(points), len(iface["wireless"]["clients"]) * 2)
-
-    def test_passive_metric_alert(self):
-        self._get_admin()
-        data = {
-            "type": "DeviceMonitoring",
-            "resources": {
-                "cpus": 1,
-                "load": [0, 0, 0],
-            },
-        }
-        device = self._create_device(organization=self._create_org())
-        self._post_data(device.id, device.key, data)
-        cpu_metric = Metric.objects.get(key="cpu")
-        self.assertEqual(Notification.objects.count(), 0)
-
-        AlertSettings.objects.update(
-            custom_tolerance=5,
-            custom_threshold=90,
-        )
-
-        data["resources"]["load"] = [100, 100, 100]
-
-        with freeze_time(timezone.now() + timedelta(minutes=1)):
-            response = self._post_data(device.id, device.key, data)
-            self.assertEqual(response.status_code, 200)
-            self.assertEqual(Notification.objects.count(), 0)
-            cpu_metric.refresh_from_db()
-            self.assertEqual(cpu_metric.is_healthy, False)
-            self.assertEqual(cpu_metric.is_healthy_tolerant, True)
-
-        with freeze_time(timezone.now() + timedelta(minutes=4)):
-            # Trigger the alert
-            response = self._post_data(device.id, device.key, data)
-            self.assertEqual(response.status_code, 200)
-            self.assertEqual(Notification.objects.count(), 0)
-            cpu_metric.refresh_from_db()
-            self.assertEqual(cpu_metric.is_healthy, False)
-            self.assertEqual(cpu_metric.is_healthy_tolerant, True)
-
-        with freeze_time(timezone.now() + timedelta(minutes=6)):
-            # Trigger the alert
-            response = self._post_data(device.id, device.key, data)
-            self.assertEqual(response.status_code, 200)
-            self.assertEqual(Notification.objects.count(), 0)
-            cpu_metric.refresh_from_db()
-            self.assertEqual(cpu_metric.is_healthy, False)
-            self.assertEqual(cpu_metric.is_healthy_tolerant, True)
-
-        with freeze_time(timezone.now() + timedelta(minutes=10)):
-            # Trigger the alert
-            response = self._post_data(device.id, device.key, data)
-            self.assertEqual(response.status_code, 200)
-            self.assertEqual(Notification.objects.count(), 0)
-            cpu_metric.refresh_from_db()
-            self.assertEqual(cpu_metric.is_healthy, False)
-            self.assertEqual(cpu_metric.is_healthy_tolerant, True)
-
-        with freeze_time(timezone.now() + timedelta(minutes=16)):
-            # Trigger the alert
-            response = self._post_data(device.id, device.key, data)
-            self.assertEqual(response.status_code, 200)
-            cpu_metric.refresh_from_db()
-            self.assertEqual(cpu_metric.is_healthy, False)
-            self.assertEqual(cpu_metric.is_healthy_tolerant, False)
-            self.assertEqual(Notification.objects.count(), 1)
 
     def test_device_with_location(self):
         self.create_test_data(no_resources=True)

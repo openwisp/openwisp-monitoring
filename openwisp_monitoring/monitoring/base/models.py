@@ -987,38 +987,44 @@ class AbstractAlertSettings(TimeStampedEditableModel):
             return value_crossed
 
         field = self.metric.alert_field
-        now = timezone.now()
+        now = time or timezone.now()
+
+        # Get the last point written before the threshold was crossed
+        timestamp = self.metric.read(
+            limit=1,
+            retention_policy=retention_policy,
+            order="-time",
+            where=[("time", "<=", (now - timedelta(minutes=self.tolerance)))],
+        )
+        if not timestamp:
+            # No points found, return False
+            return False
+        threshold_time = datetime.fromtimestamp(
+            timestamp[0]["time"],
+            tz=utc,
+        )
 
         # Read total points in tolerance window
         options = {
-            "since": now - timedelta(minutes=self.tolerance),
             "limit": None,
             "retention_policy": retention_policy,
             "fields": [field],
             "count_fields": [field],
+            "where": [("time", ">", threshold_time)],
         }
         result = self.metric.read(**options)
         total_count = result[0]["count"] if result else 0
+        if total_count <= 1:
+            return False
 
         # Determine operator based on current value crossing state
         operator = (
-            self.operator if value_crossed else ("<" if self.operator == ">" else ">")
+            self.operator if value_crossed else ("<=" if self.operator == ">" else ">=")
         )
-        options["where"] = [(field, operator, self.threshold)]
+        options["where"].append((field, operator, self.threshold))
 
-        if total_count <= 1:
-            total_count = 2
-            options.update({
-                "since": now - timedelta(minutes=self._tolerance_search_range),
-                "limit": 2,
-                "count_fields": [],
-                "order": "-time",
-            })
-            match_result = self.metric.read(**options)
-            match_count = len(match_result) if match_result else 0
-        else:
-            match_result = self.metric.read(**options)
-            match_count = match_result[0]["count"] if match_result else 0
+        match_result = self.metric.read(**options)
+        match_count = match_result[0]["count"] if match_result else 0
 
         if match_count == total_count:
             return value_crossed
