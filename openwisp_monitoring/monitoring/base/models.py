@@ -494,9 +494,9 @@ class AbstractMetric(TimeStampedEditableModel):
 
     def read(self, **kwargs):
         """reads timeseries data"""
-        return timeseries_db.read(
-            key=self.key, fields=self.field_name, tags=self.tags, **kwargs
-        )
+        options = dict(key=self.key, fields=self.field_name, tags=self.tags)
+        options.update(kwargs)
+        return timeseries_db.read(**options)
 
     def _notify_users(self, notification_type, alert_settings):
         """creates notifications for users"""
@@ -985,45 +985,42 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         # no tolerance specified, return immediately
         if self.tolerance == 0:
             return value_crossed
-        # tolerance is set, we must go back in time
-        # to ensure the threshold is trepassed for enough time
-        # if alert field is supplied, retrieve such field when reading
-        # so that we can let the system calculate the threshold on it
-        extra_fields = []
-        if self.metric.alert_on_related_field:
-            extra_fields = [self.metric.alert_field]
-        time = time or timezone.now()
-        # retrieves latest measurements, ordered by most recent first
-        points = self.metric.read(
-            since=timezone.now() - timedelta(minutes=self._tolerance_search_range),
-            limit=None,
-            order="-time",
-            retention_policy=retention_policy,
-            extra_fields=extra_fields,
+
+        field = self.metric.alert_field
+        now = timezone.now()
+
+        # Read total points in tolerance window
+        options = {
+            "since": now - timedelta(minutes=self.tolerance),
+            "limit": None,
+            "retention_policy": retention_policy,
+            "fields": [field],
+            "count_fields": [field],
+        }
+        result = self.metric.read(**options)
+        total_count = result[0]["count"] if result else 0
+
+        # Determine operator based on current value crossing state
+        operator = (
+            self.operator if value_crossed else ("<" if self.operator == ">" else ">")
         )
-        # store a list with the results
-        results = [value_crossed]
-        # loop on each measurement starting from the most recent
-        for i, point in enumerate(points, 1):
-            # skip the first point because it was just added before this
-            # check started and its value coincides with ``current_value``
-            if i <= 1:
-                continue
-            utc_time = utc.localize(datetime.utcfromtimestamp(point["time"]))
-            # did this point cross the threshold? Append to result list
-            results.append(self._value_crossed(point[self.metric.alert_field]))
-            # tolerance is trepassed
-            if self._time_crossed(utc_time):
-                # if the latest results are consistent, the metric being
-                # monitored is not flapping and we can confidently return
-                # wheter the value crosses the threshold or not
-                if len(set(results)) == 1:
-                    return value_crossed
-                # otherwise, the results are flapping, the situation has not changed
-                # we will return a value that will not trigger changes
-                return not self.metric.is_healthy_tolerant
-            # otherwise keep looking back
-            continue
-        # the search has not yielded any conclusion
-        # return result based on the current value and time
-        return self._time_crossed(time) and value_crossed
+        options["where"] = [(field, operator, self.threshold)]
+
+        if total_count <= 1:
+            total_count = 2
+            options.update({
+                "since": now - timedelta(minutes=self._tolerance_search_range),
+                "limit": 2,
+                "count_fields": [],
+                "order": "-time",
+            })
+            match_result = self.metric.read(**options)
+            match_count = len(match_result) if match_result else 0
+        else:
+            match_result = self.metric.read(**options)
+            match_count = match_result[0]["count"] if match_result else 0
+
+        if match_count == total_count:
+            return value_crossed
+
+        return not self.metric.is_healthy_tolerant
