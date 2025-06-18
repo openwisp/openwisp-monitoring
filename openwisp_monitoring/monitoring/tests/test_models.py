@@ -259,16 +259,6 @@ class TestModels(TestMonitoringMixin, TestCase):
         alert_s.save()
         self.assertTrue(alert_s._is_crossed_by(80))
 
-    def test_threshold_is_crossed_deferred(self):
-        m = self._create_general_metric(name="load")
-        alert_s = self._create_alert_settings(
-            metric=m, custom_operator=">", custom_threshold=90, custom_tolerance=9
-        )
-        self.assertFalse(alert_s._is_crossed_by(95, start_time))
-        self.assertTrue(alert_s._is_crossed_by(95, ten_minutes_ago))
-        self.assertFalse(alert_s._is_crossed_by(80, start_time))
-        self.assertFalse(alert_s._is_crossed_by(80, ten_minutes_ago))
-
     def test_threshold_is_crossed_deferred_2(self):
         self._create_admin()
         m = self._create_general_metric(name="load")

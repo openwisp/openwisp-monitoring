@@ -27,6 +27,7 @@ start_time = timezone.now()
 User = get_user_model()
 Chart = load_model("monitoring", "Chart")
 Metric = load_model("monitoring", "Metric")
+AlertSettings = load_model("monitoring", "AlertSettings")
 DeviceData = load_model("device_monitoring", "DeviceData")
 # needed for config.geo
 Device = load_model("config", "Device")
@@ -36,6 +37,7 @@ Location = load_model("geo", "Location")
 WifiClient = load_model("device_monitoring", "WifiClient")
 WifiSession = load_model("device_monitoring", "WifiSession")
 Group = load_model("openwisp_users", "Group")
+Notification = load_model("openwisp_notifications", "Notification")
 
 
 class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase):
