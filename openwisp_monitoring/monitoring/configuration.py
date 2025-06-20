@@ -118,7 +118,7 @@ DEFAULT_METRICS = {
                 "query": chart_query["rtt"],
             },
         },
-        "alert_settings": {"operator": "<", "threshold": 1, "tolerance": 0},
+        "alert_settings": {"operator": "<", "threshold": 1, "tolerance": 30},
         "notification": {
             "problem": {
                 "verbose_name": "Ping PROBLEM",
@@ -151,7 +151,7 @@ DEFAULT_METRICS = {
         "name": "Configuration Applied",
         "key": "config_applied",
         "field_name": "config_applied",
-        "alert_settings": {"operator": "<", "threshold": 1, "tolerance": 5},
+        "alert_settings": {"operator": "<", "threshold": 1, "tolerance": 10},
         "notification": {
             "problem": {
                 "verbose_name": "Configuration Applied PROBLEM",
@@ -481,7 +481,7 @@ DEFAULT_METRICS = {
                 "query": chart_query["memory"],
             }
         },
-        "alert_settings": {"operator": ">", "threshold": 95, "tolerance": 5},
+        "alert_settings": {"operator": ">", "threshold": 95, "tolerance": 30},
         "notification": {
             "problem": {
                 "verbose_name": "Memory usage PROBLEM",
@@ -531,7 +531,7 @@ DEFAULT_METRICS = {
                 "query": chart_query["cpu"],
             }
         },
-        "alert_settings": {"operator": ">", "threshold": 90, "tolerance": 5},
+        "alert_settings": {"operator": ">", "threshold": 90, "tolerance": 30},
         "notification": {
             "problem": {
                 "verbose_name": "CPU usage PROBLEM",
