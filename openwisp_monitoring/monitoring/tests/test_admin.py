@@ -30,7 +30,7 @@ class TestAdmin(TestMonitoringMixin, TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, '<option value="&lt;" selected>less than</option>')
         self.assertContains(r, 'name="alertsettings-0-custom_threshold" value="1"')
-        self.assertContains(r, 'name="alertsettings-0-custom_tolerance" value="0"')
+        self.assertContains(r, 'name="alertsettings-0-custom_tolerance" value="30"')
 
     def test_admin_menu_groups(self):
         # Test menu group (openwisp-utils menu group) for Metric and Check models

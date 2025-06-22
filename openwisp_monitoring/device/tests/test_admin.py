@@ -657,7 +657,7 @@ class TestAdmin(
             )
             self.assertContains(
                 response,
-                'metric-content_type-object_id-0-alertsettings-0-custom_tolerance" value="0"',
+                'metric-content_type-object_id-0-alertsettings-0-custom_tolerance" value="30"',
             )
 
         with self.subTest(

@@ -18,8 +18,9 @@ setting includes:
   - **Less than**: triggers when the value is below the threshold.
 
 - **Threshold**: the metric value that triggers the alert.
-- **Tolerance**: the duration (in minutes) for which the threshold must be
-  breached before an alert is triggered.
+- **Tolerance**: the duration (in minutes) the threshold must be
+  continuously breached before triggering an alert. Helps reduce noise
+  from flapping metrics.
 
 OpenWISP Monitoring provides built-in alerts for the following metrics:
 
@@ -42,7 +43,7 @@ enabled by default.
 ========= =================
 Operator  ``< (less than)``
 Threshold ``1``
-Tolerance ``0`` minutes
+Tolerance ``30`` minutes
 ========= =================
 
 .. note::
@@ -63,7 +64,7 @@ specified time. This alert is enabled by default.
 ========= =================
 Operator  ``< (less than)``
 Threshold ``1``
-Tolerance ``5`` minutes
+Tolerance ``10`` minutes
 ========= =================
 
 .. note::
@@ -103,7 +104,7 @@ default.
 ========= ====================
 Operator  ``> (greater than)``
 Threshold ``90`` (percent)
-Tolerance ``5`` minutes
+Tolerance ``30`` minutes
 ========= ====================
 
 Memory Usage
@@ -117,7 +118,7 @@ default.
 ========= ====================
 Operator  ``> (greater than)``
 Threshold ``95`` (percent)
-Tolerance ``5`` minutes
+Tolerance ``30`` minutes
 ========= ====================
 
 Disk Usage
