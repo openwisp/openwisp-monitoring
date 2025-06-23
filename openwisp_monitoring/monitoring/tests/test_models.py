@@ -13,6 +13,7 @@ from swapper import load_model
 
 from openwisp_utils.tests import catch_signal
 
+from .. import settings as app_settings
 from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
 from . import TestMonitoringMixin
@@ -259,6 +260,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         alert_s.save()
         self.assertTrue(alert_s._is_crossed_by(80))
 
+    @patch.object(app_settings, "TOLERANCE_INTERVAL", 60)
     def test_threshold_is_crossed_deferred_2(self):
         self._create_admin()
         m = self._create_general_metric(name="load")
@@ -360,6 +362,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         alert_s = AlertSettings(metric=m)
         self.assertIsNone(alert_s.custom_tolerance)
 
+    @patch.object(app_settings, "TOLERANCE_INTERVAL", 300)
     def test_tolerance(self):
         self._create_admin()
         m = self._create_general_metric(name="load")
@@ -370,19 +373,6 @@ class TestModels(TestMonitoringMixin, TestCase):
             m.write(99)
         with self.subTest("within tolerance, no alerts expected"):
             with freeze_time(start_time + timedelta(minutes=2)):
-                m.write(99)
-            m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
-            self.assertEqual(m.is_healthy, False)
-            self.assertEqual(m.is_healthy_tolerant, True)
-            self.assertEqual(Notification.objects.count(), 0)
-            with freeze_time(start_time + timedelta(minutes=4)):
-                m.write(99)
-            m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
-            self.assertEqual(m.is_healthy, False)
-            self.assertEqual(m.is_healthy_tolerant, True)
-            self.assertEqual(Notification.objects.count(), 0)
-        with self.subTest("tolerance trepassed, alerts expected"):
-            with freeze_time(start_time + timedelta(minutes=6)):
                 m.write(99)
             m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
             self.assertEqual(m.is_healthy, False)

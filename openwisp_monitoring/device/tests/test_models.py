@@ -14,6 +14,7 @@ from openwisp_controller.connection.tests.base import CreateConnectionsMixin
 from openwisp_utils.tests import catch_signal
 
 from ...db import timeseries_db
+from ...monitoring import settings as monitoring_settings
 from .. import settings as app_settings
 from ..signals import health_status_changed
 from ..tasks import delete_wifi_clients_and_sessions, trigger_device_critical_checks
@@ -1095,6 +1096,7 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         self.assertEqual(WifiClient.objects.count(), 0)
         self.assertEqual(WifiSession.objects.count(), 0)
 
+    @patch.object(monitoring_settings, "TOLERANCE_INTERVAL", 60)
     def test_device_offline_close_session(self):
         start_time = now()
         device_monitoring = self._create_device_monitoring()
@@ -1153,6 +1155,9 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         # Sets ping.is_healthy_tolerant to True
         with freeze_time(start_time + timedelta(minutes=3)):
             ping.write(1)
+            ping.refresh_from_db()
+            self.assertEqual(ping.is_healthy, True)
+            self.assertEqual(ping.is_healthy_tolerant, True)
         _assert_open_wifi_session(1)
 
         # WiFi session is closed when when a critical metric trepasses the threshold
@@ -1162,6 +1167,9 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         # Sets ping.is_healthy to False, doesn't closes WiFi Session
         with freeze_time(start_time + timedelta(minutes=4)):
             ping.write(0)
+            ping.refresh_from_db()
+            self.assertEqual(ping.is_healthy, False)
+            self.assertEqual(ping.is_healthy_tolerant, True)
         _assert_open_wifi_session(1)
         # Sets ping.is_healthy_tolerant to False, closes WiFi Session
         with freeze_time(start_time + timedelta(minutes=5)):
