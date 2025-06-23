@@ -10,6 +10,7 @@ from ...device.tests import (
 )
 
 Metric = load_model("monitoring", "Metric")
+AlertSettings = load_model("monitoring", "AlertSettings")
 Notification = load_model("openwisp_notifications", "Notification")
 Device = load_model("config", "Device")
 Config = load_model("config", "Config")
@@ -358,8 +359,8 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self._write_metric(om, 99, time=start_time)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, False)
-        self.assertEqual(om.is_healthy_tolerant, True)
-        self.assertEqual(Notification.objects.count(), 0)
+        self.assertEqual(om.is_healthy_tolerant, False)
+        self.assertEqual(Notification.objects.count(), 1)
 
     def test_flapping_metric_with_tolerance(self):
         self._create_admin()
@@ -679,3 +680,48 @@ class TestTransactionMonitoringNotifications(DeviceMonitoringTransactionTestcase
             self.assertEqual(Notification.objects.count(), 1)
             n = notification_queryset.first()
             self._check_notification_parameters(n, admin, om, user)
+
+    def test_passive_metric_alert(self):
+        self._get_admin()
+        data = {
+            "type": "DeviceMonitoring",
+            "resources": {
+                "cpus": 1,
+                "load": [0, 0, 0],
+            },
+        }
+        device = self._create_device(organization=self._create_org())
+        self._post_data(device.id, device.key, data)
+        cpu_metric = Metric.objects.get(key="cpu")
+        self.assertEqual(Notification.objects.count(), 0)
+
+        AlertSettings.objects.update(
+            custom_tolerance=5,
+            custom_threshold=90,
+        )
+
+        data["resources"]["load"] = [100, 100, 100]
+
+        with freeze_time(timezone.now() + timedelta(minutes=1)):
+            response = self._post_data(device.id, device.key, data)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(Notification.objects.count(), 0)
+            cpu_metric.refresh_from_db()
+            self.assertEqual(cpu_metric.is_healthy, False)
+            self.assertEqual(cpu_metric.is_healthy_tolerant, True)
+
+        with freeze_time(timezone.now() + timedelta(minutes=4)):
+            response = self._post_data(device.id, device.key, data)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(Notification.objects.count(), 0)
+            cpu_metric.refresh_from_db()
+            self.assertEqual(cpu_metric.is_healthy, False)
+            self.assertEqual(cpu_metric.is_healthy_tolerant, True)
+
+        with freeze_time(timezone.now() + timedelta(minutes=6)):
+            response = self._post_data(device.id, device.key, data)
+            self.assertEqual(response.status_code, 200)
+            cpu_metric.refresh_from_db()
+            self.assertEqual(cpu_metric.is_healthy, False)
+            self.assertEqual(cpu_metric.is_healthy_tolerant, False)
+            self.assertEqual(Notification.objects.count(), 1)
