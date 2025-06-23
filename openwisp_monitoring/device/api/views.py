@@ -358,9 +358,17 @@ class MonitoringFloorplanCoordinatesList(FloorplanCoordinatesList):
     )
     serializer_class = MonitoringFloorplanCoordinatesSerializer
 
+    def get_floor_count(self):
+        qs = self.get_queryset()
+        floor_count = qs.values("floorplan__floor").distinct().count()
+        return floor_count
+
     def list(self, request, *args, **kwargs):
+        floor_count = self.get_floor_count()
         serializer = self.get_serializer(self.get_queryset(), many=True)
-        return Response({"nodes": serializer.data, "links": []})
+        return Response(
+            {"floor_count": floor_count, "nodes": serializer.data, "links": []}
+        )
 
 
 floorplan_coordinates_list = MonitoringFloorplanCoordinatesList.as_view()
