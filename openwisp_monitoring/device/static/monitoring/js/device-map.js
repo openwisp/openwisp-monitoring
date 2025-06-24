@@ -162,7 +162,7 @@
     /* Workaround for https://github.com/openwisp/openwisp-monitoring/issues/462
         Leaflet does not support looping (wrapping) the map. Therefore, to work around
         abrupt automatic map panning due to bounds, we plot markers on three worlds.
-        This allow users to view devices around the International Date Line without
+        This allows users to view devices around the International Date Line without
         any weird affects.
         */
 
@@ -170,7 +170,11 @@
     const map = new NetJSONGraph(data, {
       el: "#device-map-container",
       render: "map",
-      clustering: false,
+      clustering: true,
+      clusteringAttribute: "status",
+      clusteringThreshold: 2,
+      clusterRadius: 80,
+      clusterSeparation: 20,
       // set map initial state.
       mapOptions: {
         center: leafletConfig.DEFAULT_CENTER,
@@ -193,9 +197,10 @@
         },
         onEachFeature: function (feature, layer) {
           const color = getColor(feature.properties);
-          feature.properties.status = Object.keys(colors).filter(
+          feature.properties.status = Object.keys(colors).find(
             (key) => colors[key] === color,
-          )[0];
+          );
+          feature.properties.status = feature.properties.status || "unknown";
 
           layer.on("mouseover", function () {
             layer.unbindTooltip();
@@ -255,7 +260,7 @@
             !netjsonGraph.westWorldFeaturesAppended
           ) {
             let westWorldFeatures = window.structuredClone(netjsonGraph.data);
-            // Exclude the features that may be added for the East world map
+            // Exclude the features that may be added for the East world map.
             westWorldFeatures.features = westWorldFeatures.features.filter(
               (element) => element.geometry.coordinates[0] <= 180,
             );
