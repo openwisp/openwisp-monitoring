@@ -975,3 +975,22 @@ This setting allows you to set a cache lock expiration time for the iperf3
 check when running on multiple servers. Make sure it is always greater
 than the total iperf3 check time, i.e. greater than the TCP + UDP test
 time. By default, it is set to **600 seconds (10 mins)**.
+
+``OPENWISP_MONITORING_TOLERANCE_INTERVAL``
+------------------------------------------
+
+============ ==============================
+**type**:    ``int``
+**default**: ``300`` (5 minutes in seconds)
+============ ==============================
+
+This setting defines the **minimum tolerance interval** (in seconds) for
+metric threshold violations.
+
+If an ``AlertSetting`` specifies a tolerance lower than this value, it
+will be considered as zero. In such cases, OpenWISP will send a
+notification immediately when a metric crosses its threshold.
+
+To ensure consistent alerting behavior, this value should match the data
+interval configured in the :doc:`OpenWrt Monitoring Agent
+</openwrt-monitoring-agent/>`.
