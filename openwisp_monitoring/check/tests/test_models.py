@@ -208,8 +208,9 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
         """Test that ConfigApplied checks are skipped when device config status is errored."""
         self._create_admin()
         self.assertEqual(Check.objects.count(), 0)
+        start_time = now()
         with freeze_time(
-            now() - timedelta(minutes=app_settings.CONFIG_CHECK_INTERVAL + 10)
+            start_time - timedelta(minutes=app_settings.CONFIG_CHECK_INTERVAL + 10)
         ):
             self._create_config(status="error", organization=self._create_org())
         dm = Device.objects.first().monitoring
@@ -218,7 +219,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
         self.assertEqual(Metric.objects.filter(object_id=dm.id).count(), 0)
         self.assertEqual(AlertSettings.objects.count(), 0)
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
-        with freeze_time(now() - timedelta(minutes=10)):
+        with freeze_time(start_time - timedelta(minutes=10)):
             check.perform_check()
         # Check needs to be run again without mocking time for threshold crossed
         self.assertEqual(check.perform_check(), 0)
@@ -232,10 +233,18 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
         dm.device.config.set_status_applied()
         # We are once again querying for the check to override the cached property check_instance
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
-        # must be performed multiple times to trepass tolerance
-        check.perform_check()
-        with freeze_time(now() + timedelta(minutes=10)):
+        # must be performed multiple times to trespass tolerance
+        print('start looking for "ok" status')
+        with freeze_time(start_time + timedelta(seconds=30)):
             check.perform_check()
+            m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
+            self.assertEqual(m.is_healthy, True)
+            self.assertEqual(m.is_healthy_tolerant, False)
+        with freeze_time(start_time + timedelta(minutes=10)):
+            check.perform_check()
+            m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
+            self.assertEqual(m.is_healthy, True)
+            self.assertEqual(m.is_healthy_tolerant, True)
         dm.refresh_from_db()
         self.assertEqual(dm.status, "ok")
         self.assertEqual(Notification.objects.filter(actor_object_id=m.id).count(), 1)

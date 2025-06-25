@@ -1,4 +1,5 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.utils import timezone
 from freezegun import freeze_time
@@ -8,8 +9,10 @@ from ...device.tests import (
     DeviceMonitoringTestCase,
     DeviceMonitoringTransactionTestcase,
 )
+from .. import settings as app_settings
 
 Metric = load_model("monitoring", "Metric")
+AlertSettings = load_model("monitoring", "AlertSettings")
 Notification = load_model("openwisp_notifications", "Notification")
 Device = load_model("config", "Device")
 Config = load_model("config", "Config")
@@ -72,8 +75,9 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(m.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 2)
 
+    @patch.object(app_settings, "TOLERANCE_INTERVAL", 60)
     def test_general_check_threshold_crossed_deferred(self):
-        admin = self._create_admin()
+        self._create_admin()
         m = self._create_general_metric(name="load")
         self._create_alert_settings(
             metric=m, custom_operator=">", custom_threshold=90, custom_tolerance=1
@@ -84,14 +88,10 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             m.write(99)
         m.refresh_from_db()
         self.assertEqual(m.is_healthy, False)
-        self.assertEqual(m.is_healthy_tolerant, False)
-        self.assertEqual(Notification.objects.count(), 1)
-        n = notification_queryset.first()
-        self.assertEqual(n.recipient, admin)
-        self.assertEqual(n.actor, m)
-        self.assertEqual(n.action_object, m.alertsettings)
-        self.assertEqual(n.level, "warning")
+        self.assertEqual(m.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
 
+    @patch.object(app_settings, "TOLERANCE_INTERVAL", 60)
     def test_general_check_threshold_deferred_not_crossed(self):
         self._create_admin()
         m = self._create_general_metric(name="load")
@@ -110,6 +110,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.create_test_data()
         self.assertEqual(Notification.objects.count(), 0)
 
+    @patch.object(app_settings, "TOLERANCE_INTERVAL", 300)
     def test_general_check_threshold_crossed_for_long_time(self):
         """Test threshold remains crossed for a long time.
 
@@ -143,6 +144,12 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
 
         self._read_metric(m)
         with self.subTest("Test notification for metric with current timestamp"):
+            with freeze_time(start_time - timedelta(minutes=3)):
+                m.write(92)
+                # Tolerance is not passed yet, so no notification
+                self.assertEqual(Notification.objects.count(), 0)
+
+            self._read_metric(m)
             m.write(92)
             m.refresh_from_db()
             self.assertEqual(m.is_healthy, False)
@@ -240,6 +247,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(om.is_healthy_tolerant, True)
             self.assertEqual(Notification.objects.count(), 2)
 
+    @patch.object(app_settings, "TOLERANCE_INTERVAL", 60)
     def test_object_check_threshold_crossed_deferred(self):
         admin = self._create_admin()
         om = self._create_object_metric(name="load")
@@ -248,7 +256,14 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         )
         with freeze_time(start_time):
             om.write(99)
+        # Metric points are outside the tolerance interval,
+        # thus tolerance is not passed yet.
         with freeze_time(ten_minutes_after):
+            om.write(99)
+        om.refresh_from_db()
+        self.assertEqual(om.is_healthy, False)
+        self.assertEqual(om.is_healthy_tolerant, True)
+        with freeze_time(ten_minutes_after + timedelta(minutes=1)):
             om.write(99)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, False)
@@ -261,6 +276,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(n.target, om.content_object)
         self.assertEqual(n.level, "warning")
 
+    @patch.object(app_settings, "TOLERANCE_INTERVAL", 60)
     def test_object_check_threshold_deferred_not_crossed(self):
         self._create_admin()
         om = self._create_object_metric(name="load")
@@ -273,6 +289,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(om.is_healthy_tolerant, True)
         self.assertEqual(Notification.objects.count(), 0)
 
+    @patch.object(app_settings, "TOLERANCE_INTERVAL", 60)
     def test_object_check_threshold_crossed_for_long_time(self):
         admin = self._create_admin()
         om = self._create_object_metric(name="load")
@@ -285,7 +302,14 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         with freeze_time(ten_minutes_ago):
             self._write_metric(om, 91, check=False)
         self.assertEqual(Notification.objects.count(), 0)
+        # The metric has not crossed threshold within tolerance interval,
         self._write_metric(om, 92)
+        om.refresh_from_db()
+        self.assertEqual(om.is_healthy, False)
+        self.assertEqual(om.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
+        # The metric has crossed threshold within tolerance interval,
+        self._write_metric(om, 95)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, False)
         self.assertEqual(om.is_healthy_tolerant, False)
@@ -297,13 +321,14 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(n.target, om.content_object)
         self.assertEqual(n.level, "warning")
         # ensure double alarm not sent
-        self._write_metric(om, 95)
+        self._write_metric(om, 98)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, False)
         self.assertEqual(om.is_healthy_tolerant, False)
         self.assertEqual(Notification.objects.count(), 1)
         # value back to normal but tolerance not passed yet
-        self._write_metric(om, 60)
+        with freeze_time(start_time + timedelta(seconds=30)):
+            self._write_metric(om, 60)
         om.refresh_from_db()
         self.assertEqual(om.is_healthy, True)
         self.assertEqual(om.is_healthy_tolerant, False)
@@ -330,6 +355,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(Notification.objects.count(), 2)
 
     @freeze_time(start_time)
+    @patch.object(app_settings, "TOLERANCE_INTERVAL", 60)
     def test_object_check_threshold_crossed_historical_data(self):
         """
         Do not evaluate threshold crossed for historical data
@@ -361,6 +387,13 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(om.is_healthy_tolerant, True)
         self.assertEqual(Notification.objects.count(), 0)
 
+        self._write_metric(om, 99, time=start_time + timedelta(minutes=1))
+        om.refresh_from_db()
+        self.assertEqual(om.is_healthy, False)
+        self.assertEqual(om.is_healthy_tolerant, False)
+        self.assertEqual(Notification.objects.count(), 1)
+
+    @patch.object(app_settings, "TOLERANCE_INTERVAL", 600)
     def test_flapping_metric_with_tolerance(self):
         self._create_admin()
         om = self._create_object_metric(name="ping")
@@ -550,6 +583,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 0)
 
+    @patch.object(app_settings, "TOLERANCE_INTERVAL", 60)
     def test_general_check_threshold_with_alert_field_crossed_deferred(self):
         admin = self._create_admin()
         m = self._create_general_metric(configuration="test_alert_field")
@@ -558,7 +592,17 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         )
         with freeze_time(start_time):
             m.write(10, extra_values={"test_related_2": 35})
+        m.refresh_from_db()
+        self.assertEqual(m.is_healthy, False)
+        self.assertEqual(m.is_healthy_tolerant, True)
+        # Metric points are outside the tolerance interval,
+        # thus tolerance is not passed yet.
         with freeze_time(ten_minutes_after):
+            m.write(10, extra_values={"test_related_2": 35})
+        m.refresh_from_db()
+        self.assertEqual(m.is_healthy, False)
+        self.assertEqual(m.is_healthy_tolerant, True)
+        with freeze_time(ten_minutes_after + timedelta(minutes=1)):
             m.write(10, extra_values={"test_related_2": 35})
         m.refresh_from_db()
         self.assertEqual(m.is_healthy, False)
@@ -570,6 +614,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(n.action_object, m.alertsettings)
         self.assertEqual(n.level, "warning")
 
+    @patch.object(app_settings, "TOLERANCE_INTERVAL", 60)
     def test_general_check_threshold_with_alert_field_deferred_not_crossed(self):
         self._create_admin()
         m = self._create_general_metric(configuration="test_alert_field")
@@ -582,9 +627,10 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(m.is_healthy_tolerant, True)
         self.assertEqual(Notification.objects.count(), 0)
         m.write(20, extra_values={"test_related_2": 35})
+        m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
         self.assertEqual(m.is_healthy, False)
-        self.assertEqual(m.is_healthy_tolerant, True)
-        self.assertEqual(Notification.objects.count(), 0)
+        self.assertEqual(m.is_healthy_tolerant, False)
+        self.assertEqual(Notification.objects.count(), 1)
 
 
 class TestTransactionMonitoringNotifications(DeviceMonitoringTransactionTestcase):
@@ -622,6 +668,7 @@ class TestTransactionMonitoringNotifications(DeviceMonitoringTransactionTestcase
         self.assertEqual(n.action_object, metric.alertsettings)
         self.assertEqual(n.level, "warning")
 
+    @patch.object(app_settings, "TOLERANCE_INTERVAL", 60)
     def test_multiple_notifications(self):
         testorg = self._create_org()
         admin = self._create_admin()
@@ -679,3 +726,49 @@ class TestTransactionMonitoringNotifications(DeviceMonitoringTransactionTestcase
             self.assertEqual(Notification.objects.count(), 1)
             n = notification_queryset.first()
             self._check_notification_parameters(n, admin, om, user)
+
+    @patch.object(app_settings, "TOLERANCE_INTERVAL", 300)
+    def test_passive_metric_alert(self):
+        self._get_admin()
+        data = {
+            "type": "DeviceMonitoring",
+            "resources": {
+                "cpus": 1,
+                "load": [0, 0, 0],
+            },
+        }
+        device = self._create_device(organization=self._create_org())
+        self._post_data(device.id, device.key, data)
+        cpu_metric = Metric.objects.get(key="cpu")
+        self.assertEqual(Notification.objects.count(), 0)
+
+        AlertSettings.objects.update(
+            custom_tolerance=5,
+            custom_threshold=90,
+        )
+
+        data["resources"]["load"] = [100, 100, 100]
+
+        with freeze_time(timezone.now() + timedelta(minutes=1)):
+            response = self._post_data(device.id, device.key, data)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(Notification.objects.count(), 0)
+            cpu_metric.refresh_from_db()
+            self.assertEqual(cpu_metric.is_healthy, False)
+            self.assertEqual(cpu_metric.is_healthy_tolerant, True)
+
+        with freeze_time(timezone.now() + timedelta(minutes=4)):
+            response = self._post_data(device.id, device.key, data)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(Notification.objects.count(), 0)
+            cpu_metric.refresh_from_db()
+            self.assertEqual(cpu_metric.is_healthy, False)
+            self.assertEqual(cpu_metric.is_healthy_tolerant, True)
+
+        with freeze_time(timezone.now() + timedelta(minutes=9)):
+            response = self._post_data(device.id, device.key, data)
+            self.assertEqual(response.status_code, 200)
+            cpu_metric.refresh_from_db()
+            self.assertEqual(cpu_metric.is_healthy, False)
+            self.assertEqual(cpu_metric.is_healthy_tolerant, False)
+            self.assertEqual(Notification.objects.count(), 1)

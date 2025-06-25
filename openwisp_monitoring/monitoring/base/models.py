@@ -19,7 +19,6 @@ from django.utils.translation import gettext_lazy as _
 from jsonfield import JSONField
 from openwisp_notifications.signals import notify
 from pytz import timezone as tz
-from pytz import utc
 from swapper import get_model_name
 
 from openwisp_monitoring.monitoring.utils import clean_timeseries_data_key
@@ -27,6 +26,7 @@ from openwisp_utils.base import TimeStampedEditableModel
 
 from ...db import default_chart_query, timeseries_db
 from ...settings import CACHE_TIMEOUT, DEFAULT_CHART_TIME
+from .. import settings as app_settings
 from ..configuration import (
     CHART_CONFIGURATION_CHOICES,
     DEFAULT_COLORS,
@@ -494,9 +494,9 @@ class AbstractMetric(TimeStampedEditableModel):
 
     def read(self, **kwargs):
         """reads timeseries data"""
-        return timeseries_db.read(
-            key=self.key, fields=self.field_name, tags=self.tags, **kwargs
-        )
+        options = dict(key=self.key, fields=self.field_name, tags=self.tags)
+        options.update(kwargs)
+        return timeseries_db.read(**options)
 
     def _notify_users(self, notification_type, alert_settings):
         """creates notifications for users"""
@@ -963,68 +963,57 @@ class AbstractAlertSettings(TimeStampedEditableModel):
 
     @property
     def _tolerance_search_range(self):
-        """Returns an amount of minutes to search.
-
-        Allows sufficient room for checking if the tolerance has been
-        trepassed. Minimum 15 minutes, maximum self._MINUTES_MAX * 1.05.
-        """
-        minutes = self.tolerance * 2
-        minutes = minutes if minutes > 15 else 15
-        minutes = minutes if minutes <= self._MINUTES_MAX else self._MINUTES_MAX * 1.05
-        return int(minutes)
+        tolerance_seconds = self.tolerance * 60
+        if (
+            app_settings.TOLERANCE_INTERVAL
+            <= tolerance_seconds
+            <= app_settings.TOLERANCE_INTERVAL * 2
+        ):
+            return tolerance_seconds + int(tolerance_seconds * 0.25)
+        return tolerance_seconds
 
     def _is_crossed_by(self, current_value, time=None, retention_policy=None):
         """Answers the following question:
 
-        do current_value and time cross the threshold and trepass the
+        do current_value and time cross the threshold and trespass the
         tolerance?
         """
         value_crossed = self._value_crossed(current_value)
         if value_crossed is NotImplemented:
-            raise ValueError("Supplied value type not suppported")
+            raise ValueError("Supplied value type not supported")
+        tolerance = self.tolerance * 60
         # no tolerance specified, return immediately
-        if self.tolerance == 0:
+        if tolerance == 0 or tolerance < app_settings.TOLERANCE_INTERVAL:
             return value_crossed
-        # tolerance is set, we must go back in time
-        # to ensure the threshold is trepassed for enough time
-        # if alert field is supplied, retrieve such field when reading
-        # so that we can let the system calculate the threshold on it
-        extra_fields = []
-        if self.metric.alert_on_related_field:
-            extra_fields = [self.metric.alert_field]
-        if time is None:
-            # retrieves latest measurements, ordered by most recent first
-            points = self.metric.read(
-                since=timezone.now() - timedelta(minutes=self._tolerance_search_range),
-                limit=None,
-                order="-time",
-                retention_policy=retention_policy,
-                extra_fields=extra_fields,
-            )
-            # store a list with the results
-            results = [value_crossed]
-            # loop on each measurement starting from the most recent
-            for i, point in enumerate(points, 1):
-                # skip the first point because it was just added before this
-                # check started and its value coincides with ``current_value``
-                if i <= 1:
-                    continue
-                utc_time = utc.localize(datetime.utcfromtimestamp(point["time"]))
-                # did this point cross the threshold? Append to result list
-                results.append(self._value_crossed(point[self.metric.alert_field]))
-                # tolerance is trepassed
-                if self._time_crossed(utc_time):
-                    # if the latest results are consistent, the metric being
-                    # monitored is not flapping and we can confidently return
-                    # wheter the value crosses the threshold or not
-                    if len(set(results)) == 1:
-                        return value_crossed
-                    # otherwise, the results are flapping, the situation has not changed
-                    # we will return a value that will not trigger changes
-                    return not self.metric.is_healthy_tolerant
-                # otherwise keep looking back
-                continue
-            # the search has not yielded any conclusion
-            # return result based on the current value and time
-            time = timezone.now()
-        return self._time_crossed(time) and value_crossed
+        now = time or timezone.now()
+        # There should be atleast two points that have trespassed the threshold
+        trespassed_points = self.metric.read(
+            limit=2,
+            retention_policy=retention_policy,
+            since=(now - timedelta(seconds=self._tolerance_search_range)),
+            where=[
+                (self.metric.alert_field, self.operator, self.threshold),
+            ],
+        )
+
+        if len(trespassed_points) < 2:
+            # Not enough points to determine if the threshold was
+            return False
+
+        flapping_operator = "<=" if self.operator == ">" else ">="
+        # Ensure metric is not flapping
+        # Get the last point written before the threshold was crossed
+        under_thresholdc = self.metric.read(
+            limit=1,
+            retention_policy=retention_policy,
+            order="-time",
+            since=(now - timedelta(seconds=self._tolerance_search_range)),
+            where=[
+                (self.metric.alert_field, flapping_operator, self.threshold),
+            ],
+        )
+        if len(under_thresholdc) != 0:
+            # No points found, so we cannot determine if the metric is flapping
+            return not self.metric.is_healthy_tolerant
+
+        return value_crossed

@@ -54,6 +54,16 @@ class DatabaseClient(object):
     ]
     _FORBIDDEN = ["drop", "create", "delete", "alter", "into"]
     backend_name = "influxdb"
+    _OPERATORS = [
+        "=",
+        "!=",
+        "<",
+        ">",
+        "<=",
+        ">=",
+        "=~",
+        "!~",
+    ]
 
     def __init__(self, db_name=None):
         self._db = None
@@ -120,6 +130,20 @@ class DatabaseClient(object):
     @cached_property
     def use_udp(self):
         return TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False)
+
+    def _clean_operator(self, op):
+        """Returns the operator if it is valid."""
+        if op not in self._OPERATORS:
+            raise self.client_error(
+                f'Invalid operator "{op}" passed.\n'
+                f"Valid operators are: {', '.join(self._OPERATORS)}"
+            )
+        return op
+
+    def _clean_value(self, value):
+        if isinstance(value, datetime):
+            return f"'{self._get_timestamp(value)}'"
+        return value
 
     @retry
     def create_or_alter_retention_policy(self, name, duration):
@@ -243,10 +267,14 @@ class DatabaseClient(object):
         distinct_fields = kwargs.get("distinct_fields", [])
         count_fields = kwargs.get("count_fields", [])
         rp = kwargs.get("retention_policy")
+        where = kwargs.get("where", [])
+        precision = kwargs.get("precision", "s")
 
         # Ensure fields is a list (in case it's passed as a string)
         if isinstance(fields, str):
             fields = [fields]
+        else:
+            fields = list(fields)
 
         # Apply DISTINCT to fields
         if distinct_fields:
@@ -287,8 +315,12 @@ class DatabaseClient(object):
         from_clause = f"{rp}.{key}" if rp else key
         q = f"SELECT {fields_clause} FROM {from_clause}"
 
-        # Add conditions (time and tags)
         conditions = []
+        for field, op, value in where:
+            op = self._clean_operator(op)
+            value = self._clean_value(value)
+            conditions.append(f"{field} {op} {value}")
+        # Add conditions (time and tags)
         if since:
             timestamp = self._get_timestamp(since)
             conditions.append(f"time >= '{timestamp}'")
@@ -313,7 +345,7 @@ class DatabaseClient(object):
             q = f"{q} ORDER BY {order}"
         if limit:
             q = f"{q} LIMIT {limit}"
-        return list(self.query(q, precision="s").get_points())
+        return list(self.query(q, precision=precision).get_points())
 
     def get_list_query(self, query, precision="s"):
         result = self.query(query, precision=precision)
