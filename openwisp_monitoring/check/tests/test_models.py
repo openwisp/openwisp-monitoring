@@ -234,7 +234,6 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
         # We are once again querying for the check to override the cached property check_instance
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         # must be performed multiple times to trespass tolerance
-        print('start looking for "ok" status')
         with freeze_time(start_time + timedelta(seconds=30)):
             check.perform_check()
             m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])

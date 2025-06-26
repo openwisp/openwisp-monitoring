@@ -997,13 +997,13 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         )
 
         if len(trespassed_points) < 2:
-            # Not enough points to determine if the threshold was
+            # Not enough points to determine if the threshold was crossed
             return False
 
         flapping_operator = "<=" if self.operator == ">" else ">="
         # Ensure metric is not flapping
         # Get the last point written before the threshold was crossed
-        under_thresholdc = self.metric.read(
+        under_threshold = self.metric.read(
             limit=1,
             retention_policy=retention_policy,
             order="-time",
@@ -1012,7 +1012,7 @@ class AbstractAlertSettings(TimeStampedEditableModel):
                 (self.metric.alert_field, flapping_operator, self.threshold),
             ],
         )
-        if len(under_thresholdc) != 0:
+        if len(under_threshold) != 0:
             # No points found, so we cannot determine if the metric is flapping
             return not self.metric.is_healthy_tolerant
 
