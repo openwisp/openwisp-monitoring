@@ -19,6 +19,7 @@ from django.utils.translation import gettext_lazy as _
 from jsonfield import JSONField
 from openwisp_notifications.signals import notify
 from pytz import timezone as tz
+from pytz import utc
 from swapper import get_model_name
 
 from openwisp_monitoring.monitoring.utils import clean_timeseries_data_key
@@ -986,21 +987,39 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         if tolerance == 0 or tolerance < app_settings.TOLERANCE_INTERVAL:
             return value_crossed
         now = time or timezone.now()
+        if value_crossed:
+            operator = self.operator
+            flapping_operator = ">=" if operator == "<" else "<="
+        else:
+            # If the value is not crossed, we need to check the opposite operator
+            # to ensure the recovery also respects the tolerance.
+            if self.operator == ">":
+                operator = "<="
+                flapping_operator = ">"
+            else:
+                operator = ">="
+                flapping_operator = "<"
         # There should be atleast two points that have trespassed the threshold
         trespassed_points = self.metric.read(
             limit=2,
             retention_policy=retention_policy,
             since=(now - timedelta(seconds=self._tolerance_search_range)),
             where=[
-                (self.metric.alert_field, self.operator, self.threshold),
+                (self.metric.alert_field, operator, self.threshold),
             ],
         )
 
-        if len(trespassed_points) < 2:
-            # Not enough points to determine if the threshold was crossed
-            return False
+        # We need at least two offending points to determine if the metric has
+        # crossed the threshold. These points should be at least `tolerance` seconds apart.
+        if len(trespassed_points) < 2 or (
+            now - datetime.fromtimestamp(trespassed_points[0]["time"], tz=utc)
+            < timedelta(seconds=tolerance)
+        ):
+            return (
+                self.metric.is_healthy_tolerant is not None
+                and not self.metric.is_healthy_tolerant
+            )
 
-        flapping_operator = "<=" if self.operator == ">" else ">="
         # Ensure metric is not flapping
         # Get the last point written before the threshold was crossed
         under_threshold = self.metric.read(

@@ -376,12 +376,25 @@ class TestModels(TestMonitoringMixin, TestCase):
                 m.write(99)
             m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
             self.assertEqual(m.is_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, True)
+            self.assertEqual(Notification.objects.count(), 0)
+            with freeze_time(start_time + timedelta(minutes=4)):
+                m.write(99)
+            m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
+            self.assertEqual(m.is_healthy, False)
+            self.assertEqual(m.is_healthy_tolerant, True)
+            self.assertEqual(Notification.objects.count(), 0)
+        with self.subTest("tolerance trepassed, alerts expected"):
+            with freeze_time(start_time + timedelta(minutes=6)):
+                m.write(99)
+            m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
+            self.assertEqual(m.is_healthy, False)
             self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
         with self.subTest("value back to normal"):
-            with freeze_time(start_time + timedelta(minutes=7)):
+            with freeze_time(start_time + timedelta(minutes=8)):
                 m.write(71)
-            with freeze_time(start_time + timedelta(minutes=12)):
+            with freeze_time(start_time + timedelta(minutes=13)):
                 m.write(71)
             m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
             self.assertEqual(m.is_healthy, True)
