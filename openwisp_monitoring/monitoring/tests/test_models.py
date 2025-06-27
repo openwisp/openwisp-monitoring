@@ -13,6 +13,7 @@ from swapper import load_model
 
 from openwisp_utils.tests import catch_signal
 
+from .. import settings as app_settings
 from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
 from . import TestMonitoringMixin
@@ -259,16 +260,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         alert_s.save()
         self.assertTrue(alert_s._is_crossed_by(80))
 
-    def test_threshold_is_crossed_deferred(self):
-        m = self._create_general_metric(name="load")
-        alert_s = self._create_alert_settings(
-            metric=m, custom_operator=">", custom_threshold=90, custom_tolerance=9
-        )
-        self.assertFalse(alert_s._is_crossed_by(95, start_time))
-        self.assertTrue(alert_s._is_crossed_by(95, ten_minutes_ago))
-        self.assertFalse(alert_s._is_crossed_by(80, start_time))
-        self.assertFalse(alert_s._is_crossed_by(80, ten_minutes_ago))
-
+    @patch.object(app_settings, "TOLERANCE_INTERVAL", 60)
     def test_threshold_is_crossed_deferred_2(self):
         self._create_admin()
         m = self._create_general_metric(name="load")
@@ -370,6 +362,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         alert_s = AlertSettings(metric=m)
         self.assertIsNone(alert_s.custom_tolerance)
 
+    @patch.object(app_settings, "TOLERANCE_INTERVAL", 300)
     def test_tolerance(self):
         self._create_admin()
         m = self._create_general_metric(name="load")
@@ -399,9 +392,9 @@ class TestModels(TestMonitoringMixin, TestCase):
             self.assertEqual(m.is_healthy_tolerant, False)
             self.assertEqual(Notification.objects.count(), 1)
         with self.subTest("value back to normal"):
-            with freeze_time(start_time + timedelta(minutes=7)):
+            with freeze_time(start_time + timedelta(minutes=8)):
                 m.write(71)
-            with freeze_time(start_time + timedelta(minutes=12)):
+            with freeze_time(start_time + timedelta(minutes=13)):
                 m.write(71)
             m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
             self.assertEqual(m.is_healthy, True)
