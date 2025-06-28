@@ -3,8 +3,8 @@ from swapper import load_model
 
 from openwisp_controller.config.api.serializers import DeviceListSerializer
 from openwisp_controller.geo.api.serializers import (
-    FloorplanCoordinatesSerializer,
     GeoJsonLocationSerializer,
+    IndoorCoordinatesSerializer,
     LocationDeviceSerializer,
 )
 from openwisp_users.api.mixins import FilterSerializerByOrgManaged
@@ -46,6 +46,24 @@ class DeviceMonitoringSerializer(BaseDeviceMonitoringSerializer):
 
 class MonitoringLocationDeviceSerializer(LocationDeviceSerializer):
     monitoring = DeviceMonitoringLocationSerializer()
+
+
+class MonitoringIndoorCoordinatesSerializer(IndoorCoordinatesSerializer):
+    status = serializers.CharField(source="content_object.monitoring.status")
+
+    class Meta(IndoorCoordinatesSerializer.Meta):
+        fields = [
+            "id",
+            "content_object_id",
+            "floorplan_id",
+            "device_name",
+            "status",
+            "mac_address",
+            "floor_name",
+            "floor",
+            "image",
+            "location",
+        ]
 
 
 class MonitoringNearbyDeviceSerializer(
@@ -155,23 +173,4 @@ class WifiSessionSerializer(serializers.ModelSerializer):
             "start_time",
             "stop_time",
             "modified",
-        ]
-
-
-class MonitoringFloorplanCoordinatesSerializer(FloorplanCoordinatesSerializer):
-    status = serializers.CharField(source="content_object.monitoring.status")
-
-    class Meta:
-        model = DeviceLocation
-        fields = [
-            "name",
-            "mac_address",
-            "is_deactivated",
-            "model",
-            "os",
-            "floor_name",
-            "floor",
-            "image",
-            "status",
-            "location",
         ]
