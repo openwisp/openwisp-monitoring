@@ -27,8 +27,8 @@ from swapper import load_model
 from openwisp_controller.config.api.views import DeviceListCreateView
 from openwisp_controller.geo.api.views import (
     DevicePermission,
-    FloorplanCoordinatesList,
     GeoJsonLocationList,
+    IndoorCoordinatesList,
     LocationDeviceList,
     ProtectedAPIMixin,
 )
@@ -47,8 +47,8 @@ from .filters import (
 from .serializers import (
     MonitoringDeviceDetailSerializer,
     MonitoringDeviceListSerializer,
-    MonitoringFloorplanCoordinatesSerializer,
     MonitoringGeoJsonLocationSerializer,
+    MonitoringIndoorCoordinatesSerializer,
     MonitoringLocationDeviceSerializer,
     MonitoringNearbyDeviceSerializer,
     WifiSessionSerializer,
@@ -257,6 +257,33 @@ class MonitoringLocationDeviceList(LocationDeviceList):
 monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
 
 
+# Todo: Remove this
+class TestPagination(ListViewPagination):
+    page_size = 2
+
+
+class MonitoringIndoorCoordinatesList(IndoorCoordinatesList):
+    pagination_class = TestPagination
+    queryset = (
+        DeviceLocation.objects.filter(
+            location__type="indoor",
+            floorplan__isnull=False,
+        )
+        .select_related(
+            "content_object",
+            "content_object__monitoring",
+            "content_object__organization",
+            "location",
+            "floorplan",
+        )
+        .order_by("floorplan__floor")
+    )
+    serializer_class = MonitoringIndoorCoordinatesSerializer
+
+
+monitoring_indoor_coordinates_list = MonitoringIndoorCoordinatesList.as_view()
+
+
 class MonitoringNearbyDeviceList(
     DeviceKeyAuthenticationMixin, FilterByOrganizationManaged, ListAPIView
 ):
@@ -339,36 +366,3 @@ class WifiSessionDetailView(
 
 
 wifi_session_detail = WifiSessionDetailView.as_view()
-
-
-class MonitoringFloorplanCoordinatesList(FloorplanCoordinatesList):
-    queryset = (
-        DeviceLocation.objects.filter(
-            location__type="indoor",
-            floorplan__isnull=False,
-        )
-        .select_related(
-            "content_object",
-            "content_object__monitoring",
-            "content_object__organization",
-            "location",
-            "floorplan",
-        )
-        .order_by("floorplan__floor")
-    )
-    serializer_class = MonitoringFloorplanCoordinatesSerializer
-
-    def get_floor_count(self):
-        qs = self.get_queryset()
-        floor_count = qs.values("floorplan__floor").distinct().count()
-        return floor_count
-
-    def list(self, request, *args, **kwargs):
-        floor_count = self.get_floor_count()
-        serializer = self.get_serializer(self.get_queryset(), many=True)
-        return Response(
-            {"floor_count": floor_count, "nodes": serializer.data, "links": []}
-        )
-
-
-floorplan_coordinates_list = MonitoringFloorplanCoordinatesList.as_view()
