@@ -3,16 +3,22 @@
   top: 5%;
   left: 50%;
   transform: translateX(-50%);
-  width: 70%;
+  width: 80%;
   height: 80%;
   max-width: 1000px;
   background: white;
   z-index: 9999;
-  padding: 20px;
+  padding: 0 20px 20px 20px;
   overflow: hidden;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
+}
+#floorplan-heading {
+  color: #333;
+  margin-top: 15px;
+  font-size: 1rem;
+  text-align: center;
 }
 #floorplan-content {
   width: 100%;
@@ -39,7 +45,7 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  left: calc(90% + 10px);
+  left: calc(92% + 10px);
   height: auto;
   z-index: 9999;
   display: flex;
@@ -51,7 +57,6 @@
 .floorplan-navigation-body {
   border-radius: 6px;
   overflow: hidden;
-  border: 1px solid rgb(194, 192, 192);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -68,25 +73,42 @@
   transition: background 0.2s;
   border-bottom: 1px solid #e2e1e1;
 }
-
 .floor-btn:hover {
-  background-color: #d4d4d4;
+  background-color: #f6f7f8;
 }
 .nav-arrow {
   width: 0;
   height: 0;
-  border-left: 14px solid transparent;
-  border-right: 14px solid transparent;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
   cursor: pointer;
   margin: 6px 0;
-  border-radius: 6px;
+  border-radius: 8px;
+}
+.nav-arrow.disabled {
+  opacity: 0.4;
 }
 
-/* Common color and size */
 .up-arrow {
-  border-bottom: 18px solid white;
+  border-bottom: 12px solid #9ca3af;
 }
 
 .down-arrow {
-  border-top: 18px solid white;
+  border-top: 12px solid #9ca3af;
+}
+
+.floor-btn.selected {
+  background-color: #eaecf0;
+}
+
+@media (max-width: 700px) {
+  #floorplan-container {
+    width: 60%;
+  }
+  #floorplan-navigation {
+    left: calc(85% + 8px);
+  }
+  .floor-btn {
+    padding: 8px 12px;
+  }
 }
