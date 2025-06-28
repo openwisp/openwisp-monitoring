@@ -13,6 +13,9 @@
     unknown: "#353c44",
     deactivated: "#0000",
   };
+  const getIndoorCoordinatesUrl = function (pk) {
+    return window._owGeoMapConfig.indoorCoordinatesUrl.replace("000", pk);
+  };
   const getLocationDeviceUrl = function (pk) {
     return window._owGeoMapConfig.locationDeviceUrl.replace("000", pk);
   };
@@ -106,9 +109,9 @@
                                     </tbody>
                                 </table>
                                 ${pagination}
+                                <button class="default-btn floorplan-btn">Floorplan</button>
                             </div>`);
         layer.openPopup();
-
         // bind next/prev buttons
         let el = $(layer.getPopup().getElement());
         el.find(".next").click(function () {
@@ -117,7 +120,10 @@
         el.find(".prev").click(function () {
           loadPopUpContent(layer, $(this).data("url"));
         });
-
+        $(".floorplan-btn").on("click", function () {
+          url = getIndoorCoordinatesUrl(layer.feature.id);
+          window.openFloorPlan(url);
+        });
         loadingOverlay.hide();
       },
       error: function () {

@@ -28,6 +28,7 @@ from openwisp_controller.config.api.views import DeviceListCreateView
 from openwisp_controller.geo.api.views import (
     DevicePermission,
     GeoJsonLocationList,
+    IndoorCoordinatesList,
     LocationDeviceList,
     ProtectedAPIMixin,
 )
@@ -47,6 +48,7 @@ from .serializers import (
     MonitoringDeviceDetailSerializer,
     MonitoringDeviceListSerializer,
     MonitoringGeoJsonLocationSerializer,
+    MonitoringIndoorCoordinatesSerializer,
     MonitoringLocationDeviceSerializer,
     MonitoringNearbyDeviceSerializer,
     WifiSessionSerializer,
@@ -59,6 +61,7 @@ AlertSettings = load_model("monitoring", "AlertSettings")
 Device = load_model("config", "Device")
 DeviceMonitoring = load_model("device_monitoring", "DeviceMonitoring")
 DeviceData = load_model("device_monitoring", "DeviceData")
+DeviceLocation = load_model("geo", "DeviceLocation")
 Location = load_model("geo", "Location")
 WifiSession = load_model("device_monitoring", "WifiSession")
 
@@ -252,6 +255,48 @@ class MonitoringLocationDeviceList(LocationDeviceList):
 
 
 monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
+
+
+class MonitoringIndoorCoordinatesList(IndoorCoordinatesList):
+    queryset = (
+        DeviceLocation.objects.filter(
+            location__type="indoor",
+            floorplan__isnull=False,
+        )
+        .select_related(
+            "content_object",
+            "content_object__monitoring",
+            "content_object__organization",
+            "location",
+            "floorplan",
+        )
+        .order_by("floorplan__floor")
+    )
+    serializer_class = MonitoringIndoorCoordinatesSerializer
+
+    def get_available_floors(self, qs):
+        available_floors = (
+            qs.values_list("floorplan__floor", flat=True)
+            .distinct()
+            .order_by("floorplan__floor")
+        )
+        return list(available_floors)
+
+    def list(self, request, *args, **kwargs):
+        qs = self.filter_queryset(self.get_queryset())
+        available_floors = self.get_available_floors(qs)
+
+        serializer = self.get_serializer(qs, many=True)
+        return Response(
+            {
+                "available_floors": available_floors,
+                "nodes": serializer.data,
+                "links": [],
+            }
+        )
+
+
+monitoring_indoor_coordinates_list = MonitoringIndoorCoordinatesList.as_view()
 
 
 class MonitoringNearbyDeviceList(
