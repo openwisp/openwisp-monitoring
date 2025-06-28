@@ -6,15 +6,16 @@
   const localStorageKey = "ow-map-shown";
   const mapContainer = $("#device-map-container");
   const statuses = ["critical", "problem", "ok", "unknown", "deactivated"];
-  const colors = {
+  window._owGeoMapConfig.STATUS_COLORS = {
     ok: "#267126",
     problem: "#ffb442",
     critical: "#a72d1d",
     unknown: "#353c44",
     deactivated: "#000000", // Fixed from "#0000"
   };
-  const getFloorplanCoordinatesUrl = function (pk) {
-    return window._owGeoMapConfig.floorplanCoordinatesUrl.replace("000", pk);
+  const colors = window._owGeoMapConfig.STATUS_COLORS;
+  const getIndoorCoordinatesUrl = function (pk) {
+    return window._owGeoMapConfig.indoorCoordinatesUrl.replace("000", pk);
   };
   const getLocationDeviceUrl = function (pk) {
     return window._owGeoMapConfig.locationDeviceUrl.replace("000", pk);
@@ -141,7 +142,7 @@
           loadPopUpContent(nodeData, netjsongraphInstance, $(this).data("url"));
         });
         $(".floorplan-btn").on("click", function () {
-          url = getFloorplanCoordinatesUrl(layer.feature.id);
+          url = getIndoorCoordinatesUrl(layer.feature.id);
           window.openFloorPlan(url);
         });
         loadingOverlay.hide();

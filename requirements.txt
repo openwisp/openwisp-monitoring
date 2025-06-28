@@ -1,4 +1,4 @@
-openwisp-controller @ https://github.com/openwisp/openwisp-controller/tarball/1.2
+openwisp-controller @ git+https://github.com/dee077/openwisp-controller.git@feature/828-api-indoor-map-coordinates#egg=openwisp-controller
 influxdb~=5.3.2
 django-nested-admin~=4.1.4
 python-dateutil>=2.7.0,<3.0.0

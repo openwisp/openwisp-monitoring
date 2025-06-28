@@ -41,8 +41,8 @@ urlpatterns = [
         name="api_wifi_session_detail",
     ),
     path(
-        "api/v1/monitoring/location/<str:pk>/floorplan_coordinates/",
-        views.floorplan_coordinates_list,
-        name="floorplan_coordinates_list",
+        "api/v1/monitoring/location/<str:pk>/indoor-coordinates/",
+        views.monitoring_indoor_coordinates_list,
+        name="api_indoor_coordinates_list",
     ),
 ]
