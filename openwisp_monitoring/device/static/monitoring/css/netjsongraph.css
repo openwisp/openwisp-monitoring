@@ -9,9 +9,11 @@
   border: 1px solid #ccc;
   color: #6d6357;
   line-height: 20px;
-  max-width: 400px;
-  min-width: 200px;
-  padding: 10px 15px;
+  /* max-width: 400px;
+  min-width: 200px; */
+  /* padding: 10px 15px; */
+  width: 100%;
+  padding: 0;
 }
 #graphChartContainer {
   width: 100%;
