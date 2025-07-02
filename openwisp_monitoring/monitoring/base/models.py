@@ -992,39 +992,38 @@ class AbstractAlertSettings(TimeStampedEditableModel):
         extra_fields = []
         if self.metric.alert_on_related_field:
             extra_fields = [self.metric.alert_field]
-        if time is None:
-            # retrieves latest measurements, ordered by most recent first
-            points = self.metric.read(
-                since=timezone.now() - timedelta(minutes=self._tolerance_search_range),
-                limit=None,
-                order="-time",
-                retention_policy=retention_policy,
-                extra_fields=extra_fields,
-            )
-            # store a list with the results
-            results = [value_crossed]
-            # loop on each measurement starting from the most recent
-            for i, point in enumerate(points, 1):
-                # skip the first point because it was just added before this
-                # check started and its value coincides with ``current_value``
-                if i <= 1:
-                    continue
-                utc_time = utc.localize(datetime.utcfromtimestamp(point["time"]))
-                # did this point cross the threshold? Append to result list
-                results.append(self._value_crossed(point[self.metric.alert_field]))
-                # tolerance is trepassed
-                if self._time_crossed(utc_time):
-                    # if the latest results are consistent, the metric being
-                    # monitored is not flapping and we can confidently return
-                    # wheter the value crosses the threshold or not
-                    if len(set(results)) == 1:
-                        return value_crossed
-                    # otherwise, the results are flapping, the situation has not changed
-                    # we will return a value that will not trigger changes
-                    return not self.metric.is_healthy_tolerant
-                # otherwise keep looking back
+        time = time or timezone.now()
+        # retrieves latest measurements, ordered by most recent first
+        points = self.metric.read(
+            since=timezone.now() - timedelta(minutes=self._tolerance_search_range),
+            limit=None,
+            order="-time",
+            retention_policy=retention_policy,
+            extra_fields=extra_fields,
+        )
+        # store a list with the results
+        results = [value_crossed]
+        # loop on each measurement starting from the most recent
+        for i, point in enumerate(points, 1):
+            # skip the first point because it was just added before this
+            # check started and its value coincides with ``current_value``
+            if i <= 1:
                 continue
-            # the search has not yielded any conclusion
-            # return result based on the current value and time
-            time = timezone.now()
+            utc_time = utc.localize(datetime.utcfromtimestamp(point["time"]))
+            # did this point cross the threshold? Append to result list
+            results.append(self._value_crossed(point[self.metric.alert_field]))
+            # tolerance is trepassed
+            if self._time_crossed(utc_time):
+                # if the latest results are consistent, the metric being
+                # monitored is not flapping and we can confidently return
+                # wheter the value crosses the threshold or not
+                if len(set(results)) == 1:
+                    return value_crossed
+                # otherwise, the results are flapping, the situation has not changed
+                # we will return a value that will not trigger changes
+                return not self.metric.is_healthy_tolerant
+            # otherwise keep looking back
+            continue
+        # the search has not yielded any conclusion
+        # return result based on the current value and time
         return self._time_crossed(time) and value_crossed
