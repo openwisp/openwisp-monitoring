@@ -3,6 +3,27 @@ Settings
 
 .. include:: /partials/settings-note.rst
 
+.. _monitoring_tolerance_interval:
+
+``OPENWISP_MONITORING_TOLERANCE_INTERVAL``
+------------------------------------------
+
+============ ==============================
+**type**:    ``int``
+**default**: ``300`` (5 minutes in seconds)
+============ ==============================
+
+This setting defines the **minimum tolerance interval** (in seconds) for
+metric threshold violations.
+
+If an ``AlertSetting`` specifies a tolerance lower than this value, it
+will be considered as zero. In such cases, OpenWISP will send a
+notification immediately when a metric crosses its threshold.
+
+To ensure consistent alerting behavior, this value should match the
+``interval`` setting of the the :doc:`OpenWrt Monitoring Agent
+</openwrt-monitoring-agent/user/settings>`.
+
 .. _timeseries_database:
 
 ``TIMESERIES_DATABASE``
