@@ -246,13 +246,32 @@ class MonitoringGeoJsonLocationList(GeoJsonLocationList):
 
 monitoring_geojson_location_list = MonitoringGeoJsonLocationList.as_view()
 
+class PaginationWithFloorList(ListViewPagination):
+
+    def get_available_floors(self):
+        location_id = self.request.parser_context["kwargs"].get("pk")
+        floors = (
+            DeviceLocation.objects
+            .filter(location__id=location_id, floorplan__isnull=False)
+            .values_list("floorplan__floor", flat=True)
+            .distinct()
+            .order_by("floorplan__floor")
+        )
+        return list(floors)
+
+    def get_paginated_response(self, data):
+        response = super().get_paginated_response(data)
+        response.data["floors"] = self.get_available_floors()
+        return response
+
 
 class MonitoringLocationDeviceList(LocationDeviceList):
     serializer_class = MonitoringLocationDeviceSerializer
+    pagination_class = PaginationWithFloorList
 
     def get_queryset(self):
-        return super().get_queryset().select_related("monitoring").order_by("name")
-
+        qs = super().get_queryset().select_related("monitoring").order_by("name")
+        return qs
 
 monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
 

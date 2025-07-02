@@ -67,6 +67,7 @@
       success: function (data) {
         let html = "",
           device;
+        console.log("Data received:", data);
         for (let i = 0; i < data.results.length; i++) {
           device = data.results[i];
           html += `
@@ -94,6 +95,10 @@
           }
           pagination = `<p class="paginator">${parts.join(" ")}</div>`;
         }
+        let floorplan_btn = "";
+        if(data.floors.length){
+          floorplan_btn = `<button class="default-btn floorplan-btn">Floorplan</button>`;
+        }
         layer.bindPopup(`
                             <div class="map-detail">
                                 <h2>${layer.feature.properties.name} (${data.count})</h2>
@@ -109,7 +114,7 @@
                                     </tbody>
                                 </table>
                                 ${pagination}
-                                <button class="default-btn floorplan-btn">Floorplan</button>
+                                ${floorplan_btn}
                             </div>`);
         layer.openPopup();
         // bind next/prev buttons
