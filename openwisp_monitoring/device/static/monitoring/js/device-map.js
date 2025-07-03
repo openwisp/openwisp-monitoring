@@ -147,6 +147,7 @@
 
   // Helper: expand aggregated location features into one feature per status with non-zero count
   function expandAggregatedFeatures(geojson) {
+    console.log("[DEBUG] Starting feature expansion with", geojson.features.length, "features");
     const statusKeys = ["critical", "problem", "ok", "unknown", "deactivated"];
     const expanded = [];
     geojson.features.forEach((feat) => {
@@ -155,6 +156,22 @@
         .map((status) => ({ status, count: feat.properties[`${status}_count`] || 0 }))
         .filter((s) => s.count > 0);
 
+      if (active.length === 0) {
+        console.log(
+          "[DEBUG] Feature",
+          feat.id || feat.properties.name,
+          "has no active statuses (all counts = 0); skipping",
+        );
+        return; // nothing to render for this feature
+      }
+
+      console.log(
+        "[DEBUG] Feature",
+        feat.id || feat.properties.name,
+        "has statuses:",
+        active.map((a) => `${a.status}:${a.count}`).join(", "),
+      );
+
       // if only one status present, no need to offset
       if (active.length === 1) {
         const { status, count } = active[0];
@@ -162,6 +179,7 @@
         const baseId = feat.id || feat.properties.name;
         clone.id = `${baseId}_${status}`;
         clone.originalId = baseId; // Store original ID for world wrapping
+        console.log("[DEBUG] Single status feature, no offset:", clone.id);
         clone.properties = { ...clone.properties };
         statusKeys.forEach((k) => {
           clone.properties[`${k}_count`] = k === status ? count : 0;
@@ -174,12 +192,14 @@
         const radius = 0.0005; // ~50m offset
         const originLat = feat.geometry.coordinates[1];
         const originLng = feat.geometry.coordinates[0];
+        console.log("[DEBUG] Multiple statuses at location:", originLng, originLat);
 
         active.forEach(({ status, count }, idx) => {
           // calculate position on circle
           const angle = (idx / active.length) * 2 * Math.PI;
           const dLat = radius * Math.sin(angle);
           const dLng = radius * Math.cos(angle);
+          console.log("[DEBUG] Offset for", status, "idx:", idx, "angle:", angle.toFixed(2), "dLng:", dLng.toFixed(6), "dLat:", dLat.toFixed(6));
 
           const clone = window.structuredClone ? window.structuredClone(feat) : JSON.parse(JSON.stringify(feat));
           const baseId = feat.id || feat.properties.name;
@@ -192,10 +212,12 @@
           });
           clone.properties.device_count = count;
           clone.properties.status = status;
+          console.log("[DEBUG] Created offset feature:", clone.id, "at", clone.geometry.coordinates[0].toFixed(6), clone.geometry.coordinates[1].toFixed(6));
           expanded.push(clone);
         });
       }
     });
+    console.log("[DEBUG] Expansion complete:", expanded.length, "features created");
     return { ...geojson, features: expanded };
   }
 
@@ -231,8 +253,9 @@
       clustering: true,
       clusteringAttribute: "status",
       clusteringThreshold: 2,
-      clusterRadius: 120,
-      clusterSeparation: 60,
+      clusterRadius: 60,
+      clusterSeparation: 120,
+      disableClusteringAtLevel: leafletConfig.MAX_ZOOM || 24,
       // set map initial state.
       mapOptions: {
         center: leafletConfig.DEFAULT_CENTER,
@@ -247,11 +270,16 @@
       }),
       // ensure each feature gains a category derived from its status
       prepareData: function (json) {
+        console.log("[DEBUG] prepareData processing", json.features.length, "features");
         if (json && json.features) {
           json.features.forEach(function (f) {
             const st = (f.properties && f.properties.status) || "unknown";
             f.category = st.toLowerCase();
+            console.log("[DEBUG] Feature", f.id, "status:", st, "→ category:", f.category);
           });
+          // Log the unique categories found
+          const categories = [...new Set(json.features.map(f => f.category))];
+          console.log("[DEBUG] Unique categories found:", categories.join(", "));
         }
         return json;
       },
@@ -327,6 +355,7 @@
           let netjsonGraph = this;
           let bounds = event.target.getBounds();
           let needsRefresh = false;
+          console.log("[DEBUG] Map moveend event, bounds:", bounds._southWest.lng, bounds._northEast.lng);
           
           if (
             bounds._southWest.lng < -180 &&
@@ -384,6 +413,7 @@
           // Force refresh clustering if features were added
           if (needsRefresh) {
             // Reset and rebuild clusters
+            console.log("[DEBUG] Refreshing clusters after world wrapping");
             netjsonGraph.leaflet.geoJSON.clearLayers();
             netjsonGraph.render();
           }
