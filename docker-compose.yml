@@ -10,7 +10,6 @@ services:
       - influxdb
       - redis
     volumes:
-      # Mount the local SQLite DB file so the container uses the same data
       - ./openwisp-monitoring.db:/opt/openwisp/tests/openwisp-monitoring.db
 
   influxdb:

@@ -145,6 +145,62 @@
     };
   });
 
+  // Helper: expand aggregated location features into one feature per status with non-zero count
+  function expandAggregatedFeatures(geojson) {
+    const statusKeys = ["critical", "problem", "ok", "unknown", "deactivated"];
+    const expanded = [];
+    geojson.features.forEach((feat) => {
+      // gather active statuses and their counts
+      const active = statusKeys
+        .map((status) => ({ status, count: feat.properties[`${status}_count`] || 0 }))
+        .filter((s) => s.count > 0);
+
+      // if only one status present, no need to offset
+      if (active.length === 1) {
+        const { status, count } = active[0];
+        const clone = window.structuredClone ? window.structuredClone(feat) : JSON.parse(JSON.stringify(feat));
+        clone.id = `${feat.id || feat.properties.name}_${status}`;
+        clone.properties = { ...clone.properties };
+        statusKeys.forEach((k) => {
+          clone.properties[`${k}_count`] = k === status ? count : 0;
+        });
+        clone.properties.device_count = count;
+        clone.properties.status = status;
+        expanded.push(clone);
+        return;
+      }
+
+      // multiple statuses: offset each around the original point
+      const { coordinates } = feat.geometry; // [lng, lat]
+      const originLng = coordinates[0];
+      const originLat = coordinates[1];
+
+      const offsetMeters = 50; // ~50-60 m visual separation
+      const meterInDegreeLat = 1 / 111111; // 1 m ≈ 1/111111° latitude
+      const meterInDegreeLng = 1 / (111111 * Math.cos((originLat * Math.PI) / 180));
+      const radiusDegLat = offsetMeters * meterInDegreeLat;
+      const radiusDegLng = offsetMeters * meterInDegreeLng;
+
+      active.forEach(({ status, count }, idx) => {
+        const angle = (2 * Math.PI * idx) / active.length;
+        const dLng = Math.cos(angle) * radiusDegLng;
+        const dLat = Math.sin(angle) * radiusDegLat;
+
+        const clone = window.structuredClone ? window.structuredClone(feat) : JSON.parse(JSON.stringify(feat));
+        clone.id = `${feat.id || feat.properties.name}_${status}`;
+        clone.geometry.coordinates = [originLng + dLng, originLat + dLat];
+        clone.properties = { ...clone.properties };
+        statusKeys.forEach((k) => {
+          clone.properties[`${k}_count`] = k === status ? count : 0;
+        });
+        clone.properties.device_count = count;
+        clone.properties.status = status;
+        expanded.push(clone);
+      });
+    });
+    return { ...geojson, features: expanded };
+  }
+
   function onAjaxSuccess(data) {
     if (!data.count) {
       mapContainer.find(".no-data").fadeIn(500);
@@ -159,6 +215,10 @@
       localStorage.removeItem(localStorageKey);
       mapContainer.slideDown();
     }
+    // Expand aggregated features so each status gets its own feature – this enables
+    // the NetJSONGraph clustering algorithm to offset them visually.
+    data = expandAggregatedFeatures(data);
+
     /* Workaround for https://github.com/openwisp/openwisp-monitoring/issues/462
         Leaflet does not support looping (wrapping) the map. Therefore, to work around
         abrupt automatic map panning due to bounds, we plot markers on three worlds.
@@ -173,8 +233,8 @@
       clustering: true,
       clusteringAttribute: "status",
       clusteringThreshold: 2,
-      clusterRadius: 80,
-      clusterSeparation: 20,
+      clusterRadius: 120,
+      clusterSeparation: 60,
       // set map initial state.
       mapOptions: {
         center: leafletConfig.DEFAULT_CENTER,
@@ -184,6 +244,19 @@
         fullscreenControl: true,
       },
       mapTileConfig: tiles,
+      nodeCategories: Object.keys(colors).map(function (k) {
+        return { name: k, nodeStyle: { color: colors[k] } };
+      }),
+      // ensure each feature gains a category derived from its status
+      prepareData: function (json) {
+        if (json && json.features) {
+          json.features.forEach(function (f) {
+            const st = (f.properties && f.properties.status) || "unknown";
+            f.category = st.toLowerCase();
+          });
+        }
+        return json;
+      },
       geoOptions: {
         style: function (feature) {
           return {
