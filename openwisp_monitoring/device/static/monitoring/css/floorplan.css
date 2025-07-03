@@ -1,5 +1,5 @@
 #floorplan-container {
-  position: absolute;
+  position: relative;
   top: 5%;
   left: 50%;
   transform: translateX(-50%);
@@ -9,7 +9,6 @@
   background: white;
   z-index: 9999;
   padding: 0 20px 20px 20px;
-  overflow: hidden;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -44,8 +43,8 @@
 #floorplan-navigation {
   position: absolute;
   top: 50%;
+  right: -45px;
   transform: translateY(-50%);
-  left: calc(92% + 10px);
   height: auto;
   z-index: 9999;
   display: flex;
@@ -106,7 +105,7 @@
     width: 60%;
   }
   #floorplan-navigation {
-    left: calc(85% + 8px);
+    right: -37px;
   }
   .floor-btn {
     padding: 8px 12px;

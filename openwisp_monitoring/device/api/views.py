@@ -246,32 +246,26 @@ class MonitoringGeoJsonLocationList(GeoJsonLocationList):
 
 monitoring_geojson_location_list = MonitoringGeoJsonLocationList.as_view()
 
-class PaginationWithFloorList(ListViewPagination):
-
-    def get_available_floors(self):
-        location_id = self.request.parser_context["kwargs"].get("pk")
-        floors = (
-            DeviceLocation.objects
-            .filter(location__id=location_id, floorplan__isnull=False)
-            .values_list("floorplan__floor", flat=True)
-            .distinct()
-            .order_by("floorplan__floor")
-        )
-        return list(floors)
-
-    def get_paginated_response(self, data):
-        response = super().get_paginated_response(data)
-        response.data["floors"] = self.get_available_floors()
-        return response
-
 
 class MonitoringLocationDeviceList(LocationDeviceList):
     serializer_class = MonitoringLocationDeviceSerializer
-    pagination_class = PaginationWithFloorList
 
     def get_queryset(self):
         qs = super().get_queryset().select_related("monitoring").order_by("name")
         return qs
+    
+    def get_has_floorplan(self, qs):
+        qs = qs.filter(devicelocation__floorplan__isnull=False).exists()
+        return qs
+
+    def list(self, request, *args, **kwargsf):
+        qs = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(qs)
+        serializer = self.get_serializer(page, many=True)
+        response = self.get_paginated_response(serializer.data)
+        response.data['has_floorplan'] = self.get_has_floorplan(qs)
+        return response
+
 
 monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
 
@@ -293,26 +287,14 @@ class MonitoringIndoorCoordinatesList(IndoorCoordinatesList):
     )
     serializer_class = MonitoringIndoorCoordinatesSerializer
 
-    def get_available_floors(self, qs):
-        available_floors = (
-            qs.values_list("floorplan__floor", flat=True)
-            .distinct()
-            .order_by("floorplan__floor")
-        )
-        return list(available_floors)
-
     def list(self, request, *args, **kwargs):
         qs = self.filter_queryset(self.get_queryset())
-        available_floors = self.get_available_floors(qs)
-
-        serializer = self.get_serializer(qs, many=True)
-        return Response(
-            {
-                "available_floors": available_floors,
-                "nodes": serializer.data,
-                "links": [],
-            }
-        )
+        page = self.paginate_queryset(qs)
+        serializer = self.get_serializer(page, many=True)
+        response = self.get_paginated_response(serializer.data)
+        response.data['floors'] = self.get_available_floors(qs)
+        response.data['results'] = { "nodes": serializer.data, "links": [] }
+        return response
 
 
 monitoring_indoor_coordinates_list = MonitoringIndoorCoordinatesList.as_view()
