@@ -10,3 +10,4 @@ RETRY_OPTIONS = get_settings_value(
     ),
 )
 ADDITIONAL_DASHBOARD_TRAFFIC_CHART = get_settings_value("DASHBOARD_TRAFFIC_CHART", {})
+TOLERANCE_INTERVAL = get_settings_value("TOLERANCE_INTERVAL", 300)
