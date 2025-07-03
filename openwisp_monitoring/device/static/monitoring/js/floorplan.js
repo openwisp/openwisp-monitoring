@@ -41,8 +41,7 @@
   let navWindowStart = 0;
   let selectedIndex = 0;
 
-  function buildFloorButtons(data) {
-    const floors = data.available_floors;
+  function buildFloorButtons(data, floors) {
     const $navBody = $(".floorplan-navigation-body").empty();
     const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
     navWindowStart = Math.min(navWindowStart, maxStart);
@@ -68,7 +67,7 @@
   }
 
   function bindNavigationHandlers(data) {
-    const floors = data.available_floors;
+    const floors = data.floors;
     const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
     const $nav = $("#floorplan-navigation");
 
@@ -160,7 +159,7 @@
           node.properties = {
             ...node.properties,
             name: node.device_name,
-            status: "ok",
+            status: "critical",
             location: node.location,
             "Mac address": node.mac_address,
           };
@@ -193,10 +192,6 @@
   }
 
   function onAjaxSuccess(data) {
-    if (data.nodes.length === 0) {
-      alert("No floorplans added for this location.");
-      return;
-    }
 
     const $floorPlanContainer = createFloorPlanContainer();
     const $floorNavigation = createFloorNavigation();
@@ -211,13 +206,23 @@
     showFloor(data, data.nodes[0].floor);
   }
 
-  function openFloorPlan(url) {
+  let allResults = {};
+  function openFloorPlan(url, floor='') {
     $.ajax({
-      url,
+      url: `${url}?${floor}`,
       method: "GET",
       dataType: "json",
       xhrFields: { withCredentials: true },
-      success: (data) => onAjaxSuccess(data),
+      success: (data) => {
+        // data append
+        let allResults;
+        if(data.next){
+          openFloorPlan(data.next, floor)
+        }
+        else {
+          onAjaxSuccess(allResults)
+        }
+      },
       error: () => alert("Error loading floorplan coordinates."),
     });
   }
