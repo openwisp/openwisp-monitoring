@@ -159,7 +159,9 @@
       if (active.length === 1) {
         const { status, count } = active[0];
         const clone = window.structuredClone ? window.structuredClone(feat) : JSON.parse(JSON.stringify(feat));
-        clone.id = `${feat.id || feat.properties.name}_${status}`;
+        const baseId = feat.id || feat.properties.name;
+        clone.id = `${baseId}_${status}`;
+        clone.originalId = baseId; // Store original ID for world wrapping
         clone.properties = { ...clone.properties };
         statusKeys.forEach((k) => {
           clone.properties[`${k}_count`] = k === status ? count : 0;
@@ -167,36 +169,32 @@
         clone.properties.device_count = count;
         clone.properties.status = status;
         expanded.push(clone);
-        return;
+      } else {
+        // multiple statuses at same location, offset each around a small circle
+        const radius = 0.0005; // ~50m offset
+        const originLat = feat.geometry.coordinates[1];
+        const originLng = feat.geometry.coordinates[0];
+
+        active.forEach(({ status, count }, idx) => {
+          // calculate position on circle
+          const angle = (idx / active.length) * 2 * Math.PI;
+          const dLat = radius * Math.sin(angle);
+          const dLng = radius * Math.cos(angle);
+
+          const clone = window.structuredClone ? window.structuredClone(feat) : JSON.parse(JSON.stringify(feat));
+          const baseId = feat.id || feat.properties.name;
+          clone.id = `${baseId}_${status}`;
+          clone.originalId = baseId; // Store original ID for world wrapping
+          clone.geometry.coordinates = [originLng + dLng, originLat + dLat];
+          clone.properties = { ...clone.properties };
+          statusKeys.forEach((k) => {
+            clone.properties[`${k}_count`] = k === status ? count : 0;
+          });
+          clone.properties.device_count = count;
+          clone.properties.status = status;
+          expanded.push(clone);
+        });
       }
-
-      // multiple statuses: offset each around the original point
-      const { coordinates } = feat.geometry; // [lng, lat]
-      const originLng = coordinates[0];
-      const originLat = coordinates[1];
-
-      const offsetMeters = 50; // ~50-60 m visual separation
-      const meterInDegreeLat = 1 / 111111; // 1 m ≈ 1/111111° latitude
-      const meterInDegreeLng = 1 / (111111 * Math.cos((originLat * Math.PI) / 180));
-      const radiusDegLat = offsetMeters * meterInDegreeLat;
-      const radiusDegLng = offsetMeters * meterInDegreeLng;
-
-      active.forEach(({ status, count }, idx) => {
-        const angle = (2 * Math.PI * idx) / active.length;
-        const dLng = Math.cos(angle) * radiusDegLng;
-        const dLat = Math.sin(angle) * radiusDegLat;
-
-        const clone = window.structuredClone ? window.structuredClone(feat) : JSON.parse(JSON.stringify(feat));
-        clone.id = `${feat.id || feat.properties.name}_${status}`;
-        clone.geometry.coordinates = [originLng + dLng, originLat + dLat];
-        clone.properties = { ...clone.properties };
-        statusKeys.forEach((k) => {
-          clone.properties[`${k}_count`] = k === status ? count : 0;
-        });
-        clone.properties.device_count = count;
-        clone.properties.status = status;
-        expanded.push(clone);
-      });
     });
     return { ...geojson, features: expanded };
   }
@@ -328,6 +326,8 @@
         map.on("moveend", (event) => {
           let netjsonGraph = this;
           let bounds = event.target.getBounds();
+          let needsRefresh = false;
+          
           if (
             bounds._southWest.lng < -180 &&
             !netjsonGraph.westWorldFeaturesAppended
@@ -340,10 +340,19 @@
             westWorldFeatures.features.forEach((element) => {
               if (element.geometry) {
                 element.geometry.coordinates[0] -= 360;
+                // Ensure IDs are unique across worlds while preserving status
+                if (element.id) {
+                  element.id = `west_${element.id}`;
+                  // Also update category to ensure clustering works
+                  if (element.category) {
+                    element.originalCategory = element.category;
+                  }
+                }
               }
             });
             netjsonGraph.utils.appendData(westWorldFeatures, netjsonGraph);
             netjsonGraph.westWorldFeaturesAppended = true;
+            needsRefresh = true;
           }
           if (
             bounds._northEast.lng > 180 &&
@@ -357,10 +366,26 @@
             eastWorldFeatures.features.forEach((element) => {
               if (element.geometry) {
                 element.geometry.coordinates[0] += 360;
+                // Ensure IDs are unique across worlds while preserving status
+                if (element.id) {
+                  element.id = `east_${element.id}`;
+                  // Also update category to ensure clustering works
+                  if (element.category) {
+                    element.originalCategory = element.category;
+                  }
+                }
               }
             });
             netjsonGraph.utils.appendData(eastWorldFeatures, netjsonGraph);
             netjsonGraph.eastWorldFeaturesAppended = true;
+            needsRefresh = true;
+          }
+          
+          // Force refresh clustering if features were added
+          if (needsRefresh) {
+            // Reset and rebuild clusters
+            netjsonGraph.leaflet.geoJSON.clearLayers();
+            netjsonGraph.render();
           }
         });
       },
