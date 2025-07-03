@@ -1,6 +1,16 @@
 "use strict";
 
 (function ($) {
+  const colors = {
+    ok: "#267126",
+    problem: "#ffb442",
+    critical: "#a72d1d",
+    unknown: "#353c44",
+    deactivated: "#0000",
+  };
+  function getColor(status) {
+    return colors[status] || colors.unknown;
+  }
   function createFloorPlanContainer() {
     return $(`
       <div id="floorplan-container">
@@ -39,7 +49,7 @@
 
     const windowFloors = floors.slice(
       navWindowStart,
-      navWindowStart + NAV_WINDOW_SIZE,
+      navWindowStart + NAV_WINDOW_SIZE
     );
     windowFloors.forEach((floor, idx) => {
       const globalIdx = navWindowStart + idx;
@@ -51,15 +61,10 @@
     });
 
     $(".up-arrow").toggleClass("disabled", selectedIndex === 0);
-    $(".down-arrow").toggleClass(
-      "disabled",
-      selectedIndex === floors.length - 1,
-    );
+    $(".down-arrow").toggleClass("disabled", selectedIndex === floors.length - 1);
 
     $(".floor-btn").removeClass("active selected");
-    $('.floor-btn[data-index="' + selectedIndex + '"]').addClass(
-      "active selected",
-    );
+    $('.floor-btn[data-index="' + selectedIndex + '"]').addClass("active selected");
   }
 
   function bindNavigationHandlers(data) {
@@ -133,7 +138,18 @@
         zoom: 1,
         minZoom: -1,
         maxZoom: 2,
-        nodeConfig: { label: { show: false }, animation: false },
+        nodeConfig: {
+          label: {
+            show: false,
+          },
+          animation: false,
+          nodeStyle: (node) => ({
+            radius: 9,
+            color: getColor(node.properties.status),
+            weight: 3,
+            opacity: 0.7,
+          }),
+        },
         baseOptions: { media: [{ option: { tooltip: { show: true } } }] },
       },
 
@@ -144,7 +160,7 @@
           node.properties = {
             ...node.properties,
             name: node.device_name,
-            status: node.status,
+            status: "ok",
             location: node.location,
             "Mac address": node.mac_address,
           };
@@ -185,7 +201,8 @@
     const $floorPlanContainer = createFloorPlanContainer();
     const $floorNavigation = createFloorNavigation();
 
-    $("#device-map-container").append($floorPlanContainer, $floorNavigation);
+    $("#device-map-container").append($floorPlanContainer);
+    $floorPlanContainer.append($floorNavigation);
 
     bindCloseHandler();
     buildFloorButtons(data);
