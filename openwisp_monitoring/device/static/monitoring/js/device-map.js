@@ -11,7 +11,7 @@
     problem: "#ffb442",
     critical: "#a72d1d",
     unknown: "#353c44",
-    deactivated: "#0000",
+    deactivated: "#000000",
   };
   const getLocationDeviceUrl = function (pk) {
     return window._owGeoMapConfig.locationDeviceUrl.replace("000", pk);
@@ -43,6 +43,8 @@
       if (statusCount) {
         return colors[status];
       }
+      // temporary workaround for deactivated
+      return "#000"
     });
   };
   const loadPopUpContent = function (layer, url) {
@@ -146,116 +148,116 @@
   });
 
   // Helper: expand aggregated location features into one feature per status with non-zero count
-  function expandAggregatedFeatures(geojson) {
-    console.log(
-      "[DEBUG] Starting feature expansion with",
-      geojson.features.length,
-      "features",
-    );
-    const statusKeys = ["critical", "problem", "ok", "unknown", "deactivated"];
-    const expanded = [];
-    geojson.features.forEach((feat) => {
-      // gather active statuses and their counts
-      const active = statusKeys
-        .map((status) => ({
-          status,
-          count: feat.properties[`${status}_count`] || 0,
-        }))
-        .filter((s) => s.count > 0);
-
-      if (active.length === 0) {
-        console.log(
-          "[DEBUG] Feature",
-          feat.id || feat.properties.name,
-          "has no active statuses (all counts = 0); skipping",
-        );
-        return; // nothing to render for this feature
-      }
-
-      console.log(
-        "[DEBUG] Feature",
-        feat.id || feat.properties.name,
-        "has statuses:",
-        active.map((a) => `${a.status}:${a.count}`).join(", "),
-      );
-
-      // if only one status present, no need to offset
-      if (active.length === 1) {
-        const { status, count } = active[0];
-        const clone = window.structuredClone
-          ? window.structuredClone(feat)
-          : JSON.parse(JSON.stringify(feat));
-        const baseId = feat.id || feat.properties.name;
-        clone.id = `${baseId}_${status}`;
-        clone.originalId = baseId; // Store original ID for world wrapping
-        console.log("[DEBUG] Single status feature, no offset:", clone.id);
-        clone.properties = { ...clone.properties };
-        statusKeys.forEach((k) => {
-          clone.properties[`${k}_count`] = k === status ? count : 0;
-        });
-        clone.properties.device_count = count;
-        clone.properties.status = status;
-        expanded.push(clone);
-      } else {
-        // multiple statuses at same location, offset each around a small circle
-        const radius = 0.0005; // ~50m offset
-        const originLat = feat.geometry.coordinates[1];
-        const originLng = feat.geometry.coordinates[0];
-        console.log(
-          "[DEBUG] Multiple statuses at location:",
-          originLng,
-          originLat,
-        );
-
-        active.forEach(({ status, count }, idx) => {
-          // calculate position on circle
-          const angle = (idx / active.length) * 2 * Math.PI;
-          const dLat = radius * Math.sin(angle);
-          const dLng = radius * Math.cos(angle);
-          console.log(
-            "[DEBUG] Offset for",
-            status,
-            "idx:",
-            idx,
-            "angle:",
-            angle.toFixed(2),
-            "dLng:",
-            dLng.toFixed(6),
-            "dLat:",
-            dLat.toFixed(6),
-          );
-
-          const clone = window.structuredClone
-            ? window.structuredClone(feat)
-            : JSON.parse(JSON.stringify(feat));
-          const baseId = feat.id || feat.properties.name;
-          clone.id = `${baseId}_${status}`;
-          clone.originalId = baseId; // Store original ID for world wrapping
-          clone.geometry.coordinates = [originLng + dLng, originLat + dLat];
-          clone.properties = { ...clone.properties };
-          statusKeys.forEach((k) => {
-            clone.properties[`${k}_count`] = k === status ? count : 0;
-          });
-          clone.properties.device_count = count;
-          clone.properties.status = status;
-          console.log(
-            "[DEBUG] Created offset feature:",
-            clone.id,
-            "at",
-            clone.geometry.coordinates[0].toFixed(6),
-            clone.geometry.coordinates[1].toFixed(6),
-          );
-          expanded.push(clone);
-        });
-      }
-    });
-    console.log(
-      "[DEBUG] Expansion complete:",
-      expanded.length,
-      "features created",
-    );
-    return { ...geojson, features: expanded };
-  }
+  // function expandAggregatedFeatures(geojson) {
+  //   console.log(
+  //     "[DEBUG] Starting feature expansion with",
+  //     geojson.features.length,
+  //     "features",
+  //   );
+  //   const statusKeys = ["critical", "problem", "ok", "unknown", "deactivated"];
+  //   const expanded = [];
+  //   geojson.features.forEach((feat) => {
+  //     // gather active statuses and their counts
+  //     const active = statusKeys
+  //       .map((status) => ({
+  //         status,
+  //         count: feat.properties[`${status}_count`] || 0,
+  //       }))
+  //       .filter((s) => s.count > 0);
+  //
+  //     if (active.length === 0) {
+  //       console.log(
+  //         "[DEBUG] Feature",
+  //         feat.id || feat.properties.name,
+  //         "has no active statuses (all counts = 0); skipping",
+  //       );
+  //       return; // nothing to render for this feature
+  //     }
+  //
+  //     console.log(
+  //       "[DEBUG] Feature",
+  //       feat.id || feat.properties.name,
+  //       "has statuses:",
+  //       active.map((a) => `${a.status}:${a.count}`).join(", "),
+  //     );
+  //
+  //     // if only one status present, no need to offset
+  //     if (active.length === 1) {
+  //       const { status, count } = active[0];
+  //       const clone = window.structuredClone
+  //         ? window.structuredClone(feat)
+  //         : JSON.parse(JSON.stringify(feat));
+  //       const baseId = feat.id || feat.properties.name;
+  //       clone.id = `${baseId}_${status}`;
+  //       clone.originalId = baseId; // Store original ID for world wrapping
+  //       console.log("[DEBUG] Single status feature, no offset:", clone.id);
+  //       clone.properties = { ...clone.properties };
+  //       statusKeys.forEach((k) => {
+  //         clone.properties[`${k}_count`] = k === status ? count : 0;
+  //       });
+  //       clone.properties.device_count = count;
+  //       clone.properties.status = status;
+  //       expanded.push(clone);
+  //     } else {
+  //       // multiple statuses at same location, offset each around a small circle
+  //       const radius = 0.0005; // ~50m offset
+  //       const originLat = feat.geometry.coordinates[1];
+  //       const originLng = feat.geometry.coordinates[0];
+  //       console.log(
+  //         "[DEBUG] Multiple statuses at location:",
+  //         originLng,
+  //         originLat,
+  //       );
+  //
+  //       active.forEach(({ status, count }, idx) => {
+  //         // calculate position on circle
+  //         const angle = (idx / active.length) * 2 * Math.PI;
+  //         const dLat = radius * Math.sin(angle);
+  //         const dLng = radius * Math.cos(angle);
+  //         console.log(
+  //           "[DEBUG] Offset for",
+  //           status,
+  //           "idx:",
+  //           idx,
+  //           "angle:",
+  //           angle.toFixed(2),
+  //           "dLng:",
+  //           dLng.toFixed(6),
+  //           "dLat:",
+  //           dLat.toFixed(6),
+  //         );
+  //
+  //         const clone = window.structuredClone
+  //           ? window.structuredClone(feat)
+  //           : JSON.parse(JSON.stringify(feat));
+  //         const baseId = feat.id || feat.properties.name;
+  //         clone.id = `${baseId}_${status}`;
+  //         clone.originalId = baseId; // Store original ID for world wrapping
+  //         clone.geometry.coordinates = [originLng + dLng, originLat + dLat];
+  //         clone.properties = { ...clone.properties };
+  //         statusKeys.forEach((k) => {
+  //           clone.properties[`${k}_count`] = k === status ? count : 0;
+  //         });
+  //         clone.properties.device_count = count;
+  //         clone.properties.status = status;
+  //         console.log(
+  //           "[DEBUG] Created offset feature:",
+  //           clone.id,
+  //           "at",
+  //           clone.geometry.coordinates[0].toFixed(6),
+  //           clone.geometry.coordinates[1].toFixed(6),
+  //         );
+  //         expanded.push(clone);
+  //       });
+  //     }
+  //   });
+  //   console.log(
+  //     "[DEBUG] Expansion complete:",
+  //     expanded.length,
+  //     "features created",
+  //   );
+  //   return { ...geojson, features: expanded };
+  // }
 
   function onAjaxSuccess(data) {
     if (!data.count) {
@@ -273,7 +275,7 @@
     }
     // Expand aggregated features so each status gets its own feature – this enables
     // the NetJSONGraph clustering algorithm to offset them visually.
-    data = expandAggregatedFeatures(data);
+    // data = expandAggregatedFeatures(data);
 
     /* Workaround for https://github.com/openwisp/openwisp-monitoring/issues/462
         Leaflet does not support looping (wrapping) the map. Therefore, to work around
@@ -288,10 +290,10 @@
       render: "map",
       clustering: true,
       clusteringAttribute: "status",
-      clusteringThreshold: 2,
-      clusterRadius: 60,
-      clusterSeparation: 120,
-      disableClusteringAtLevel: leafletConfig.MAX_ZOOM || 24,
+      clusteringThreshold: 5,
+      clusterRadius: 80,
+      clusterSeparation: 20,
+      disableClusteringAtLevel: 16,
       // set map initial state.
       mapOptions: {
         center: leafletConfig.DEFAULT_CENTER,
@@ -305,42 +307,42 @@
         return { name: k, nodeStyle: { color: colors[k] } };
       }),
       // ensure each feature gains a category derived from its status
-      prepareData: function (json) {
-        console.log(
-          "[DEBUG] prepareData processing",
-          json.features.length,
-          "features",
-        );
-        if (json && json.features) {
-          json.features.forEach(function (f) {
-            const st = (f.properties && f.properties.status) || "unknown";
-            f.category = st.toLowerCase();
-            console.log(
-              "[DEBUG] Feature",
-              f.id,
-              "status:",
-              st,
-              "→ category:",
-              f.category,
-            );
-          });
-          // Log the unique categories found
-          const categories = [...new Set(json.features.map((f) => f.category))];
-          console.log(
-            "[DEBUG] Unique categories found:",
-            categories.join(", "),
-          );
-        }
-        return json;
-      },
+      // prepareData: function (json) {
+      //   console.log(
+      //     "[DEBUG] prepareData processing",
+      //     json.features.length,
+      //     "features",
+      //   );
+      //   if (json && json.features) {
+      //     json.features.forEach(function (f) {
+      //       const st = (f.properties && f.properties.status) || "unknown";
+      //       f.category = st.toLowerCase();
+      //       console.log(
+      //         "[DEBUG] Feature",
+      //         f.id,
+      //         "status:",
+      //         st,
+      //         "→ category:",
+      //         f.category,
+      //       );
+      //     });
+      //     // Log the unique categories found
+      //     const categories = [...new Set(json.features.map((f) => f.category))];
+      //     console.log(
+      //       "[DEBUG] Unique categories found:",
+      //       categories.join(", "),
+      //     );
+      //   }
+      //   return json;
+      // },
       geoOptions: {
         style: function (feature) {
           return {
             radius: 9,
             fillColor: getColor(feature.properties),
-            color: "rgba(0, 0, 0, 0.3)",
+            // color: "rgba(0, 0, 0, 0.3)",
             weight: 3,
-            opacity: 1,
+            opacity: 0,
             fillOpacity: 0.7,
           };
         },
@@ -398,82 +400,82 @@
         });
 
         // Workaround for https://github.com/openwisp/openwisp-monitoring/issues/462
-        map.setMaxBounds(
-          L.latLngBounds(L.latLng(-90, -540), L.latLng(90, 540)),
-        );
-        map.on("moveend", (event) => {
-          let netjsonGraph = this;
-          let bounds = event.target.getBounds();
-          let needsRefresh = false;
-          console.log(
-            "[DEBUG] Map moveend event, bounds:",
-            bounds._southWest.lng,
-            bounds._northEast.lng,
-          );
-
-          if (
-            bounds._southWest.lng < -180 &&
-            !netjsonGraph.westWorldFeaturesAppended
-          ) {
-            let westWorldFeatures = window.structuredClone(netjsonGraph.data);
-            // Exclude the features that may be added for the East world map.
-            westWorldFeatures.features = westWorldFeatures.features.filter(
-              (element) =>
-                !element.geometry || element.geometry.coordinates[0] <= 180,
-            );
-            westWorldFeatures.features.forEach((element) => {
-              if (element.geometry) {
-                element.geometry.coordinates[0] -= 360;
-                // Ensure IDs are unique across worlds while preserving status
-                if (element.id) {
-                  element.id = `west_${element.id}`;
-                  // Also update category to ensure clustering works
-                  if (element.category) {
-                    element.originalCategory = element.category;
-                  }
-                }
-              }
-            });
-            netjsonGraph.utils.appendData(westWorldFeatures, netjsonGraph);
-            netjsonGraph.westWorldFeaturesAppended = true;
-            needsRefresh = true;
-          }
-          if (
-            bounds._northEast.lng > 180 &&
-            !netjsonGraph.eastWorldFeaturesAppended
-          ) {
-            let eastWorldFeatures = window.structuredClone(netjsonGraph.data);
-            // Exclude the features that may be added for the West world map
-            eastWorldFeatures.features = eastWorldFeatures.features.filter(
-              (element) =>
-                !element.geometry || element.geometry.coordinates[0] >= -180,
-            );
-            eastWorldFeatures.features.forEach((element) => {
-              if (element.geometry) {
-                element.geometry.coordinates[0] += 360;
-                // Ensure IDs are unique across worlds while preserving status
-                if (element.id) {
-                  element.id = `east_${element.id}`;
-                  // Also update category to ensure clustering works
-                  if (element.category) {
-                    element.originalCategory = element.category;
-                  }
-                }
-              }
-            });
-            netjsonGraph.utils.appendData(eastWorldFeatures, netjsonGraph);
-            netjsonGraph.eastWorldFeaturesAppended = true;
-            needsRefresh = true;
-          }
-
-          // Force refresh clustering if features were added
-          if (needsRefresh) {
-            // Reset and rebuild clusters
-            console.log("[DEBUG] Refreshing clusters after world wrapping");
-            netjsonGraph.leaflet.geoJSON.clearLayers();
-            netjsonGraph.render();
-          }
-        });
+        // map.setMaxBounds(
+        //   L.latLngBounds(L.latLng(-90, -540), L.latLng(90, 540)),
+        // );
+        // map.on("moveend", (event) => {
+        //   let netjsonGraph = this;
+        //   let bounds = event.target.getBounds();
+        //   let needsRefresh = false;
+        //   console.log(
+        //     "[DEBUG] Map moveend event, bounds:",
+        //     bounds._southWest.lng,
+        //     bounds._northEast.lng,
+        //   );
+        //
+        //   if (
+        //     bounds._southWest.lng < -180 &&
+        //     !netjsonGraph.westWorldFeaturesAppended
+        //   ) {
+        //     let westWorldFeatures = window.structuredClone(netjsonGraph.data);
+        //     // Exclude the features that may be added for the East world map.
+        //     westWorldFeatures.features = westWorldFeatures.features.filter(
+        //       (element) =>
+        //         !element.geometry || element.geometry.coordinates[0] <= 180,
+        //     );
+        //     westWorldFeatures.features.forEach((element) => {
+        //       if (element.geometry) {
+        //         element.geometry.coordinates[0] -= 360;
+        //         // Ensure IDs are unique across worlds while preserving status
+        //         if (element.id) {
+        //           element.id = `west_${element.id}`;
+        //           // Also update category to ensure clustering works
+        //           if (element.category) {
+        //             element.originalCategory = element.category;
+        //           }
+        //         }
+        //       }
+        //     });
+        //     netjsonGraph.utils.appendData(westWorldFeatures, netjsonGraph);
+        //     netjsonGraph.westWorldFeaturesAppended = true;
+        //     needsRefresh = true;
+        //   }
+        //   if (
+        //     bounds._northEast.lng > 180 &&
+        //     !netjsonGraph.eastWorldFeaturesAppended
+        //   ) {
+        //     let eastWorldFeatures = window.structuredClone(netjsonGraph.data);
+        //     // Exclude the features that may be added for the West world map
+        //     eastWorldFeatures.features = eastWorldFeatures.features.filter(
+        //       (element) =>
+        //         !element.geometry || element.geometry.coordinates[0] >= -180,
+        //     );
+        //     eastWorldFeatures.features.forEach((element) => {
+        //       if (element.geometry) {
+        //         element.geometry.coordinates[0] += 360;
+        //         // Ensure IDs are unique across worlds while preserving status
+        //         if (element.id) {
+        //           element.id = `east_${element.id}`;
+        //           // Also update category to ensure clustering works
+        //           if (element.category) {
+        //             element.originalCategory = element.category;
+        //           }
+        //         }
+        //       }
+        //     });
+        //     netjsonGraph.utils.appendData(eastWorldFeatures, netjsonGraph);
+        //     netjsonGraph.eastWorldFeaturesAppended = true;
+        //     needsRefresh = true;
+        //   }
+        //
+        //   // Force refresh clustering if features were added
+        //   if (needsRefresh) {
+        //     // Reset and rebuild clusters
+        //     console.log("[DEBUG] Refreshing clusters after world wrapping");
+        //     netjsonGraph.leaflet.geoJSON.clearLayers();
+        //     netjsonGraph.render();
+        //   }
+        // });
       },
     });
     map.setUtils({
