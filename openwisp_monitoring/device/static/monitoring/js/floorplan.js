@@ -1,6 +1,7 @@
 "use strict";
 
 (function ($) {
+  //Todo: Make colors and getColor it global or use from device-map.js
   const colors = {
     ok: "#267126",
     problem: "#ffb442",
@@ -11,12 +12,73 @@
   function getColor(status) {
     return colors[status] || colors.unknown;
   }
+
+  let allResults = { nodes: [], links: [] }, floors = [], currentFloor = null;
+  const NAV_WINDOW_SIZE = 4;
+  let navWindowStart = 0, selectedIndex = 0;
+
+  async function openFloorPlan(url) {
+    await fetchData(url);
+
+    selectedIndex = floors.indexOf(currentFloor) || 0;
+    const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
+    navWindowStart = Math.min(
+      Math.floor(selectedIndex / NAV_WINDOW_SIZE) * NAV_WINDOW_SIZE,
+      maxStart
+    );
+
+    const $floorPlanContainer = createFloorPlanContainer();
+    const $floorNavigation = createFloorNavigation();
+
+    $("#device-map-container").append($floorPlanContainer);
+    $floorPlanContainer.append($floorNavigation);
+
+    closeButtonHandler();
+    addFloorButtons(selectedIndex, navWindowStart);
+    addNavigationHandlers(url);
+    await showFloor(url, currentFloor);
+  }
+
+  function fetchData(url, floor = null) {
+    const reqUrl = floor ? `${url}?floor=${floor}` : url;
+    return new Promise((resolve, reject) => {
+      if (floor && allResults.nodes.some((n) => n.floor === floor)) {
+        resolve();
+        return;
+      }
+      $.ajax({
+        url: reqUrl,
+        method: "GET",
+        dataType: "json",
+        xhrFields: { withCredentials: true },
+        success: async (data) => {
+          if (!floor) floors = data.floors;
+          allResults = {
+            ...allResults,
+            nodes: [...allResults.nodes, ...data.results],
+          };
+          if (!currentFloor && data.results.length) {
+            currentFloor = data.results[0].floor;
+          }
+          if (data.next) {
+            await fetchData(data.next, floor);
+          }
+          resolve();
+        },
+        error: () => {
+          alert("Error loading floorplan coordinates.");
+          reject();
+        },
+      });
+    });
+  }
+
   function createFloorPlanContainer() {
     return $(`
       <div id="floorplan-container">
         <h2 id="floorplan-heading"></h2>
         <span id="floorplan-close-btn">&times;</span>
-        <div id="floorplan-content"></div>
+        <div id="floorplan-content-root"></div>
       </div>
     `);
   }
@@ -31,26 +93,20 @@
     `);
   }
 
-  function bindCloseHandler() {
+  function closeButtonHandler() {
     $("#floorplan-close-btn").on("click", () => {
       $("#floorplan-container, #floorplan-navigation").remove();
     });
   }
 
-  const NAV_WINDOW_SIZE = 4;
-  let navWindowStart = 0;
-  let selectedIndex = 0;
-
-  function buildFloorButtons(data, floors) {
+  function addFloorButtons(selectedIndex, navWindowStart) {
     const $navBody = $(".floorplan-navigation-body").empty();
-    const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
-    navWindowStart = Math.min(navWindowStart, maxStart);
 
-    const windowFloors = floors.slice(
+    const slicedFloors = floors.slice(
       navWindowStart,
       navWindowStart + NAV_WINDOW_SIZE
     );
-    windowFloors.forEach((floor, idx) => {
+    slicedFloors.forEach((floor, idx) => {
       const globalIdx = navWindowStart + idx;
       $navBody.append(`
         <button class="floor-btn" data-index="${globalIdx}" data-floor="${floor}">
@@ -60,75 +116,85 @@
     });
 
     $(".up-arrow").toggleClass("disabled", selectedIndex === 0);
-    $(".down-arrow").toggleClass("disabled", selectedIndex === floors.length - 1);
+    $(".down-arrow").toggleClass(
+      "disabled",
+      selectedIndex === floors.length - 1
+    );
 
     $(".floor-btn").removeClass("active selected");
-    $('.floor-btn[data-index="' + selectedIndex + '"]').addClass("active selected");
+    $('.floor-btn[data-index="' + selectedIndex + '"]').addClass(
+      "active selected"
+    );
   }
 
-  function bindNavigationHandlers(data) {
-    const floors = data.floors;
+  function addNavigationHandlers(url) {
     const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
     const $nav = $("#floorplan-navigation");
 
     $nav.off("click");
-    $nav.on("click", ".floor-btn", (e) => {
-      selectedIndex = +$(e.currentTarget).data("index");
-      adjustWindowAndShow(data);
+    $nav.on("click", ".floor-btn", async (e) => {
+      selectedIndex = +e.currentTarget.dataset.index;
+      navWindowStart = Math.min(Math.max(selectedIndex - 1, 0), maxStart);
+      addFloorButtons(selectedIndex, navWindowStart);
+      currentFloor = floors[selectedIndex];
+      await showFloor(url, currentFloor);
     });
 
-    $nav.on("click", ".down-arrow:not(.disabled)", () => {
+    $nav.on("click", ".down-arrow:not(.disabled)", async () => {
       if (selectedIndex < floors.length - 1) {
         selectedIndex++;
         if (selectedIndex >= navWindowStart + NAV_WINDOW_SIZE) {
           navWindowStart = Math.min(navWindowStart + 1, maxStart);
         }
-        adjustWindowAndShow(data);
+        addFloorButtons(selectedIndex, navWindowStart);
+        currentFloor = floors[selectedIndex];
+        await showFloor(url, currentFloor);
       }
     });
 
-    $nav.on("click", ".up-arrow:not(.disabled)", () => {
+    $nav.on("click", ".up-arrow:not(.disabled)", async () => {
       if (selectedIndex > 0) {
         selectedIndex--;
         if (selectedIndex < navWindowStart) {
           navWindowStart = Math.max(navWindowStart - 1, 0);
         }
-        adjustWindowAndShow(data);
+        addFloorButtons(selectedIndex, navWindowStart);
+        currentFloor = floors[selectedIndex];
+        await showFloor(url, currentFloor);
       }
     });
   }
 
-  function adjustWindowAndShow(data) {
-    buildFloorButtons(data);
-    const floors = data.available_floors;
-    const floorNum = floors[selectedIndex];
-    showFloor(data, floorNum);
-  }
-
-  function showFloor(data, floorNum) {
+  async function showFloor(url, floor) {
     $("#floorplan-navigation .floor-btn")
       .removeClass("active selected")
-      .filter(`[data-floor="${floorNum}"]`)
+      .filter(`[data-floor="${floor}"]`)
       .addClass("active selected");
 
-    $("#floorplan-heading")
-      .text(data.nodes.find((n) => n.floor === floorNum).floor_name)
-      .data("floor", floorNum);
+    await fetchData(url, floor);
 
-    const nodesThisFloor = data.nodes.filter((n) => n.floor === floorNum);
-    if (!nodesThisFloor.length) return;
+    const nodesThisFloor = allResults.nodes.filter((n) => n.floor === floor);
+    $("#floorplan-heading").text(nodesThisFloor[0].floor_name);
 
     const imageUrl = nodesThisFloor[0].image;
-    const filtered = { ...data, nodes: nodesThisFloor };
+    const filtered = { ...allResults, nodes: nodesThisFloor };
 
-    $("#floorplan-content").replaceWith(`<div id="floorplan-content"></div>`);
-
-    renderIndoorMap(filtered, imageUrl);
+    const root = $("#floorplan-content-root");
+    root.children(".floor-content").hide();
+    let $floorDiv = $(`#floor-content-${floor}`);
+    if (!$floorDiv.length) {
+      $floorDiv = $(
+        `<div id="floor-content-${floor}" class="floor-content"></div>`
+      );
+      root.append($floorDiv);
+      renderIndoorMap(filtered, nodesThisFloor[0].image, $floorDiv[0].id);
+    }
+    $floorDiv.show();
   }
 
-  function renderIndoorMap(data, imageUrl) {
-    const graph = new NetJSONGraph(data, {
-      el: "#floorplan-content",
+  function renderIndoorMap(allResults, imageUrl, divId) {
+    const graph = new NetJSONGraph(allResults, {
+      el: `#${divId}`,
       crs: L.CRS.Simple,
       render: "map",
 
@@ -189,42 +255,6 @@
     });
 
     graph.render();
-  }
-
-  function onAjaxSuccess(data) {
-
-    const $floorPlanContainer = createFloorPlanContainer();
-    const $floorNavigation = createFloorNavigation();
-
-    $("#device-map-container").append($floorPlanContainer);
-    $floorPlanContainer.append($floorNavigation);
-
-    bindCloseHandler();
-    buildFloorButtons(data);
-    bindNavigationHandlers(data);
-
-    showFloor(data, data.nodes[0].floor);
-  }
-
-  let allResults = {};
-  function openFloorPlan(url, floor='') {
-    $.ajax({
-      url: `${url}?${floor}`,
-      method: "GET",
-      dataType: "json",
-      xhrFields: { withCredentials: true },
-      success: (data) => {
-        // data append
-        let allResults;
-        if(data.next){
-          openFloorPlan(data.next, floor)
-        }
-        else {
-          onAjaxSuccess(allResults)
-        }
-      },
-      error: () => alert("Error loading floorplan coordinates."),
-    });
   }
 
   window.openFloorPlan = openFloorPlan;
