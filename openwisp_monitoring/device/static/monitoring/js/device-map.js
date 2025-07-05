@@ -13,6 +13,9 @@
     unknown: "#353c44",
     deactivated: "#0000",
   };
+  const getIndoorCoordinatesUrl = function (pk) {
+    return window._owGeoMapConfig.indoorCoordinatesUrl.replace("000", pk);
+  };
   const getLocationDeviceUrl = function (pk) {
     return window._owGeoMapConfig.locationDeviceUrl.replace("000", pk);
   };
@@ -91,6 +94,8 @@
           }
           pagination = `<p class="paginator">${parts.join(" ")}</div>`;
         }
+        const has_floorplan = data.has_floorplan
+        const floorplan_btn = `<button class="default-btn floorplan-btn">Floorplan</button>`;
         layer.bindPopup(`
                             <div class="map-detail">
                                 <h2>${layer.feature.properties.name} (${data.count})</h2>
@@ -106,9 +111,9 @@
                                     </tbody>
                                 </table>
                                 ${pagination}
+                                ${has_floorplan && floorplan_btn}
                             </div>`);
         layer.openPopup();
-
         // bind next/prev buttons
         let el = $(layer.getPopup().getElement());
         el.find(".next").click(function () {
@@ -117,7 +122,10 @@
         el.find(".prev").click(function () {
           loadPopUpContent(layer, $(this).data("url"));
         });
-
+        $(".floorplan-btn").on("click", function () {
+          url = getIndoorCoordinatesUrl(layer.feature.id);
+          window.openFloorPlan(url);
+        });
         loadingOverlay.hide();
       },
       error: function () {
