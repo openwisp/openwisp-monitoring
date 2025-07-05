@@ -263,14 +263,20 @@ class MonitoringLocationDeviceList(LocationDeviceList):
         page = self.paginate_queryset(qs)
         serializer = self.get_serializer(page, many=True)
         response = self.get_paginated_response(serializer.data)
-        response.data['has_floorplan'] = self.get_has_floorplan(qs)
+        if response.status_code == 200:
+            response.data['has_floorplan'] = self.get_has_floorplan(qs)
         return response
 
 
 monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
 
+# Todo: Remove this
+class TestPagination(ListViewPagination):
+    page_size = 2
+
 
 class MonitoringIndoorCoordinatesList(IndoorCoordinatesList):
+    pagination_class = TestPagination
     queryset = (
         DeviceLocation.objects.filter(
             location__type="indoor",
@@ -292,8 +298,8 @@ class MonitoringIndoorCoordinatesList(IndoorCoordinatesList):
         page = self.paginate_queryset(qs)
         serializer = self.get_serializer(page, many=True)
         response = self.get_paginated_response(serializer.data)
-        response.data['floors'] = self.get_available_floors(qs)
-        response.data['results'] = { "nodes": serializer.data, "links": [] }
+        if response.status_code == 200:
+            response.data['floors'] = self.get_available_floors()
         return response
 
 
