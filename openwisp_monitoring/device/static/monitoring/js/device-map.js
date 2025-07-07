@@ -47,7 +47,7 @@
         return colors[status];
       }
       // temporary workaround for deactivated
-      return "#000"
+      return "#000";
     });
   };
   const loadPopUpContent = function (layer, url) {
