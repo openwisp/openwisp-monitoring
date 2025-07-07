@@ -54,8 +54,8 @@ class SeleniumTestMixin(BaseSeleniumTestMixin):
                 "monitoring:api_location_device_list",
                 args=["000"],
             ),
-            "monitoring_location_geojson_url": reverse(
-                "monitoring:api_location_geojson"
+            "monitoring_location_netjson_url": reverse(
+                "monitoring:api_location_netjson"
             ),
         }
         DASHBOARD_TEMPLATES[55][1]["api_url"] = reverse(
