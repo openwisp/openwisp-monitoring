@@ -17,10 +17,6 @@
     return window._owGeoMapConfig.locationDeviceUrl.replace("000", pk);
   };
   const getColor = function (data) {
-    // New format: single device node already carries its status
-    if (data.status) {
-      return colors[data.status] || "#000";
-    }
     let deviceCount = data.device_count,
       findResult = function (func) {
         for (let i in statuses) {
@@ -43,6 +39,7 @@
     }
     // otherwise simply return the color based on the priority
     return findResult(function (status, statusCount) {
+      // if one status has absolute majority, it's the winner
       if (statusCount) {
         return colors[status];
       }
@@ -54,8 +51,7 @@
     // allows reopening the last page which was opened before popup close
     // defaults to the passed URL or the default URL (first page)
     if (!url) {
-      const locationId = layer.feature.properties.location_id;
-      url = layer.url || getLocationDeviceUrl(locationId);
+      url = layer.url || getLocationDeviceUrl(layer.feature.id);
     }
     layer.url = url;
 
@@ -281,26 +277,6 @@
     // the NetJSONGraph clustering algorithm to offset them visually.
     // data = expandAggregatedFeatures(data);
 
-    // Defensive filter: ensure every node has a valid location (lat & lng)
-    if (data.nodes) {
-      data.nodes = data.nodes
-        .filter(function (node) {
-          return (
-            node.properties &&
-            node.properties.location &&
-            typeof node.properties.location.lat === "number" &&
-            typeof node.properties.location.lng === "number"
-          );
-        })
-        // Inject category attribute for color mapping
-        .map(function (node) {
-          if (!node.category && node.properties && node.properties.status) {
-            node.category = node.properties.status.toLowerCase();
-          }
-          return node;
-        });
-    }
-
     /* Workaround for https://github.com/openwisp/openwisp-monitoring/issues/462
         Leaflet does not support looping (wrapping) the map. Therefore, to work around
         abrupt automatic map panning due to bounds, we plot markers on three worlds.
@@ -324,10 +300,6 @@
         zoom: leafletConfig.DEFAULT_ZOOM,
         minZoom: leafletConfig.MIN_ZOOM || 1,
         maxZoom: leafletConfig.MAX_ZOOM || 24,
-        center: [55.78, 11.54],
-        zoom: 5,
-        minZoom: 1,
-        maxZoom: 18,
         fullscreenControl: true,
       },
       mapTileConfig: tiles,
@@ -335,25 +307,34 @@
         return { name: k, nodeStyle: { color: colors[k] } };
       }),
       // ensure each feature gains a category derived from its status
-      prepareData: function (json) {
-        // Only run this logic for GeoJSON datasets that contain a 'features' array.
-        if (json && Array.isArray(json.features)) {
-          console.log(
-            "[DEBUG] prepareData processing",
-            json.features.length,
-            "features",
-          );
-
-          json.features.forEach(function (f) {
-            const st = (f.properties && f.properties.status) || "unknown";
-            f.category = st.toLowerCase();
-          });
-
-          const categories = [...new Set(json.features.map((f) => f.category))];
-          console.log("[DEBUG] Unique categories found:", categories.join(", "));
-        }
-        return json;
-      },
+      // prepareData: function (json) {
+      //   console.log(
+      //     "[DEBUG] prepareData processing",
+      //     json.features.length,
+      //     "features",
+      //   );
+      //   if (json && json.features) {
+      //     json.features.forEach(function (f) {
+      //       const st = (f.properties && f.properties.status) || "unknown";
+      //       f.category = st.toLowerCase();
+      //       console.log(
+      //         "[DEBUG] Feature",
+      //         f.id,
+      //         "status:",
+      //         st,
+      //         "→ category:",
+      //         f.category,
+      //       );
+      //     });
+      //     // Log the unique categories found
+      //     const categories = [...new Set(json.features.map((f) => f.category))];
+      //     console.log(
+      //       "[DEBUG] Unique categories found:",
+      //       categories.join(", "),
+      //     );
+      //   }
+      //   return json;
+      // },
       geoOptions: {
         style: function (feature) {
           return {
@@ -405,93 +386,96 @@
           map.addControl(new L.control.scale(scale));
         }
 
-        // Ensure ECharts overlay resizes both on generic size changes
-        // *and* when Leaflet toggles fullscreen (some browsers skip the
-        // internal "resize" event).
-        const resizeOverlay = () => {
-          // Force a reflow to ensure the container has its final size
-          const container = map.getContainer();
-          if (container) {
-            void container.offsetHeight;
-          }
-          
-          // Invalidate size to force Leaflet to recalculate map dimensions
-          map.invalidateSize({ animate: false });
-          
-          // Get current center and zoom before any potential view changes
-          const center = map.getCenter();
-          const zoom = map.getZoom();
-          
-          // Small delay to ensure the browser has updated the layout
-          setTimeout(() => {
-            // Restore the view with a small offset to force a redraw
-            map.setView(center, zoom, { 
-              animate: false,
-              reset: true  // Force a reset to ensure tiles are redrawn
-            });
-            
-            // If we have ECharts, resize it too
-            if (this.echarts && typeof this.echarts.resize === 'function') {
-              this.echarts.resize();
-            }
-          }, 100);
-        };
-
-        // Set up event listeners for various resize scenarios
-        map.on('resize', resizeOverlay);
-        map.on('fullscreenchange', resizeOverlay);
-        
-        // Listen for fullscreen changes at the document level as a fallback
-        document.addEventListener('fullscreenchange', () => {
-          // Small delay to ensure the fullscreen change is complete
-          setTimeout(resizeOverlay, 100);
-        });
-        
-        // Also listen for orientation changes on mobile devices
-        window.addEventListener('orientationchange', resizeOverlay);
-        
-        // Initial resize check
-        setTimeout(resizeOverlay, 500);
-
-        // Prefer using bounds from the Leaflet geoJSON layer when present (GeoJSON mode).
-        if (map.geoJSON && map.geoJSON.getLayers) {
-          if (map.geoJSON.getLayers().length === 1) {
-            map.setView(map.geoJSON.getBounds().getCenter(), 10);
-          } else {
-            map.fitBounds(map.geoJSON.getBounds());
-          }
-          map.geoJSON.eachLayer(function (layer) {
-            layer[
-              layer.feature.geometry.type == "Point"
-                ? "bringToFront"
-                : "bringToBack"
-            ]();
-          });
+        if (map.geoJSON.getLayers().length === 1) {
+          map.setView(map.geoJSON.getBounds().getCenter(), 10);
         } else {
-          // NetJSON mode: derive bounds from node coordinates
-          const coords = (this.data && this.data.nodes) || [];
-          if (coords.length === 1) {
-            map.setView(
-              [coords[0].location.lat, coords[0].location.lng],
-              10,
-            );
-          } else if (coords.length > 1) {
-            const bounds = L.latLngBounds(
-              coords.map(function (n) {
-                return L.latLng(n.location.lat, n.location.lng);
-              }),
-            );
-            map.fitBounds(bounds);
-          }
+          map.fitBounds(map.geoJSON.getBounds());
         }
+        map.geoJSON.eachLayer(function (layer) {
+          layer[
+            layer.feature.geometry.type == "Point"
+              ? "bringToFront"
+              : "bringToBack"
+          ]();
+        });
 
-        // Fallback: observe the map container for any size changes –
-        // this catches browsers/devices that don't emit a fullscreenchange
-        // event or when the event fires before our listeners are attached.
-        if (window.ResizeObserver) {
-          const ro = new ResizeObserver(() => resizeOverlay());
-          ro.observe(map.getContainer());
-        }
+        // Workaround for https://github.com/openwisp/openwisp-monitoring/issues/462
+        // map.setMaxBounds(
+        //   L.latLngBounds(L.latLng(-90, -540), L.latLng(90, 540)),
+        // );
+        // map.on("moveend", (event) => {
+        //   let netjsonGraph = this;
+        //   let bounds = event.target.getBounds();
+        //   let needsRefresh = false;
+        //   console.log(
+        //     "[DEBUG] Map moveend event, bounds:",
+        //     bounds._southWest.lng,
+        //     bounds._northEast.lng,
+        //   );
+        //
+        //   if (
+        //     bounds._southWest.lng < -180 &&
+        //     !netjsonGraph.westWorldFeaturesAppended
+        //   ) {
+        //     let westWorldFeatures = window.structuredClone(netjsonGraph.data);
+        //     // Exclude the features that may be added for the East world map.
+        //     westWorldFeatures.features = westWorldFeatures.features.filter(
+        //       (element) =>
+        //         !element.geometry || element.geometry.coordinates[0] <= 180,
+        //     );
+        //     westWorldFeatures.features.forEach((element) => {
+        //       if (element.geometry) {
+        //         element.geometry.coordinates[0] -= 360;
+        //         // Ensure IDs are unique across worlds while preserving status
+        //         if (element.id) {
+        //           element.id = `west_${element.id}`;
+        //           // Also update category to ensure clustering works
+        //           if (element.category) {
+        //             element.originalCategory = element.category;
+        //           }
+        //         }
+        //       }
+        //     });
+        //     netjsonGraph.utils.appendData(westWorldFeatures, netjsonGraph);
+        //     netjsonGraph.westWorldFeaturesAppended = true;
+        //     needsRefresh = true;
+        //   }
+        //   if (
+        //     bounds._northEast.lng > 180 &&
+        //     !netjsonGraph.eastWorldFeaturesAppended
+        //   ) {
+        //     let eastWorldFeatures = window.structuredClone(netjsonGraph.data);
+        //     // Exclude the features that may be added for the West world map
+        //     eastWorldFeatures.features = eastWorldFeatures.features.filter(
+        //       (element) =>
+        //         !element.geometry || element.geometry.coordinates[0] >= -180,
+        //     );
+        //     eastWorldFeatures.features.forEach((element) => {
+        //       if (element.geometry) {
+        //         element.geometry.coordinates[0] += 360;
+        //         // Ensure IDs are unique across worlds while preserving status
+        //         if (element.id) {
+        //           element.id = `east_${element.id}`;
+        //           // Also update category to ensure clustering works
+        //           if (element.category) {
+        //             element.originalCategory = element.category;
+        //           }
+        //         }
+        //       }
+        //     });
+        //     netjsonGraph.utils.appendData(eastWorldFeatures, netjsonGraph);
+        //     netjsonGraph.eastWorldFeaturesAppended = true;
+        //     needsRefresh = true;
+        //   }
+        //
+        //   // Force refresh clustering if features were added
+        //   if (needsRefresh) {
+        //     // Reset and rebuild clusters
+        //     console.log("[DEBUG] Refreshing clusters after world wrapping");
+        //     netjsonGraph.leaflet.geoJSON.clearLayers();
+        //     netjsonGraph.render();
+        //   }
+        // });
       },
     });
     map.setUtils({
@@ -509,16 +493,11 @@
           data = res;
           while (
             res.next &&
-            ((data.nodes && data.nodes.length <= this.config.maxPointsFetched) ||
-              (data.features && data.features.length <= this.config.maxPointsFetched))
+            data.features.length <= this.config.maxPointsFetched
           ) {
             res = await this.utils.JSONParamParse(res.next);
             res = await res.json();
-            if (data.nodes) {
-              data.nodes = data.nodes.concat(res.nodes || []);
-            } else if (data.features) {
-              data.features = data.features.concat(res.features || []);
-            }
+            data.features = data.features.concat(res.features);
           }
         } catch (e) {
           /* global console */
@@ -535,7 +514,7 @@
   }
   $.ajax({
     dataType: "json",
-    url: window._owGeoMapConfig.netJsonUrl,
+    url: window._owGeoMapConfig.geoJsonUrl,
     xhrFields: {
       withCredentials: true,
     },

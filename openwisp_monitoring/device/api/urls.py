@@ -31,11 +31,6 @@ urlpatterns = [
         name="api_location_device_list",
     ),
     path(
-        "api/v1/monitoring/netjson/",
-        views.monitoring_netjson_device_list,
-        name="api_location_netjson",
-    ),
-    path(
         "api/v1/monitoring/wifi-session/",
         views.wifi_session_list,
         name="api_wifi_session_list",

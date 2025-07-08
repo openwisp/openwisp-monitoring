@@ -368,8 +368,8 @@ class DeviceMonitoringConfig(AppConfig):
         )
 
         if app_settings.DASHBOARD_MAP:
-            loc_netjson_url = reverse_lazy(
-                "monitoring:api_location_netjson", urlconf=MONITORING_API_URLCONF
+            loc_geojson_url = reverse_lazy(
+                "monitoring:api_location_geojson", urlconf=MONITORING_API_URLCONF
             )
             device_list_url = reverse_lazy(
                 "monitoring:api_location_device_list",
@@ -378,7 +378,7 @@ class DeviceMonitoringConfig(AppConfig):
             )
             if MONITORING_API_BASEURL:
                 device_list_url = urljoin(MONITORING_API_BASEURL, str(device_list_url))
-                loc_netjson_url = urljoin(MONITORING_API_BASEURL, str(loc_netjson_url))
+                loc_geojson_url = urljoin(MONITORING_API_BASEURL, str(loc_geojson_url))
 
             register_dashboard_template(
                 position=0,
@@ -398,7 +398,7 @@ class DeviceMonitoringConfig(AppConfig):
                 },
                 extra_config={
                     "monitoring_device_list_url": device_list_url,
-                    "monitoring_location_netjson_url": loc_netjson_url,
+                    "monitoring_location_geojson_url": loc_geojson_url,
                 },
             )
 

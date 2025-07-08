@@ -50,7 +50,6 @@ from .serializers import (
     MonitoringLocationDeviceSerializer,
     MonitoringNearbyDeviceSerializer,
     WifiSessionSerializer,
-    NetJSONDeviceNodeSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -337,64 +336,3 @@ class WifiSessionDetailView(
 
 
 wifi_session_detail = WifiSessionDetailView.as_view()
-
-
-class MonitoringNetJsonDeviceList(ListAPIView):
-    """Return device locations in NetJSON *NetworkGraph* format.
-
-    This endpoint is meant for the dashboard device map which relies on
-    NetJSONGraph clustering. It emits a minimal NetJSON object:
-
-    {
-        "type": "NetworkGraph",
-        "label": "Device locations",
-        "nodes": [ ... ],  # serialized by ``NetJSONDeviceNodeSerializer``
-        "links": []
-    }
-
-    Only devices which have an associated ``DeviceLocation`` (i.e. a valid
-    geographic point) are returned.
-    """
-
-    serializer_class = NetJSONDeviceNodeSerializer
-    pagination_class = None  # return all in a single response
-    permission_classes = []  # read-only public like geojson endpoint
-
-    def get_queryset(self):
-        # import here to avoid circular import at module level
-        Device = load_model("config", "Device")
-        qs = (
-            Device.objects.select_related("monitoring", "devicelocation")
-            # Return only devices whose DeviceLocation *and* geometry are defined;
-            # otherwise NetJSONGraph will log "position is undefined" and fail.
-            .filter(devicelocation__isnull=False, devicelocation__location__isnull=False)
-            .order_by("name")
-        )
-        # limit to managed organizations for non-superusers (same strategy
-        # already applied in other views via mixin)
-        if not self.request.user.is_superuser:
-            qs = self.get_organization_queryset(qs) if hasattr(self, "get_organization_queryset") else qs
-        return qs
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        # Remove entries whose location could not be resolved; this guarantees
-        # every node sent to NetJSONGraph has valid coordinates.
-        nodes = [n for n in serializer.data if n.get("location") is not None]
-
-        netjson = {
-            "type": "NetworkGraph",
-            "label": "Device locations",
-            "nodes": nodes,
-            "links": [],
-            "count": len(nodes),  # maintain count for frontend check
-        }
-        return Response(netjson)
-
-
-# ---------------------------------------------------------------------------
-# View as-view alias (keeps import path short in urls.py)
-# ---------------------------------------------------------------------------
-
-monitoring_netjson_device_list = MonitoringNetJsonDeviceList.as_view()
