@@ -47,25 +47,25 @@ INSTALLED_APPS = [
     "django.contrib.gis",
     # all-auth
     "django.contrib.sites",
+    "openwisp_users.accounts",
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
     "django_extensions",
-    "django_filters",
     # openwisp2 modules
+    "openwisp_users",
     "openwisp_controller.config",
-    "openwisp_controller.connection",
     "openwisp_controller.pki",
     "openwisp_controller.geo",
-    "openwisp_users",
+    "openwisp_controller.connection",
+    "openwisp_controller.subnet_division",
+    "openwisp_notifications",
     "openwisp_ipam",
     # monitoring
     "openwisp_monitoring.monitoring",
     "openwisp_monitoring.device",
     "openwisp_monitoring.check",
     "nested_admin",
-    # notifications
-    "openwisp_notifications",
     # admin
     # openwisp2 admin theme
     # (must be loaded here)
@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "rest_framework_gis",
+    "django_filters",
     "drf_yasg",
     # channels
     "channels",
