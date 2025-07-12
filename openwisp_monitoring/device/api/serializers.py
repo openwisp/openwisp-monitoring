@@ -49,21 +49,12 @@ class MonitoringLocationDeviceSerializer(LocationDeviceSerializer):
 
 
 class MonitoringIndoorCoordinatesSerializer(IndoorCoordinatesSerializer):
-    status = serializers.CharField(source="content_object.monitoring.status")
+    monitoring = monitoring = DeviceMonitoringLocationSerializer(
+        source="content_object.monitoring", read_only=True
+    )
 
     class Meta(IndoorCoordinatesSerializer.Meta):
-        fields = [
-            "id",
-            "content_object_id",
-            "floorplan_id",
-            "device_name",
-            "status",
-            "mac_address",
-            "floor_name",
-            "floor",
-            "image",
-            "location",
-        ]
+        fields = IndoorCoordinatesSerializer.Meta.fields + ["monitoring"]
 
 
 class MonitoringNearbyDeviceSerializer(
