@@ -28,6 +28,7 @@ from openwisp_controller.config.api.views import DeviceListCreateView
 from openwisp_controller.geo.api.views import (
     DevicePermission,
     GeoJsonLocationList,
+    IndoorCoordinatesList,
     LocationDeviceList,
     ProtectedAPIMixin,
 )
@@ -47,6 +48,7 @@ from .serializers import (
     MonitoringDeviceDetailSerializer,
     MonitoringDeviceListSerializer,
     MonitoringGeoJsonLocationSerializer,
+    MonitoringIndoorCoordinatesSerializer,
     MonitoringLocationDeviceSerializer,
     MonitoringNearbyDeviceSerializer,
     WifiSessionSerializer,
@@ -59,6 +61,7 @@ AlertSettings = load_model("monitoring", "AlertSettings")
 Device = load_model("config", "Device")
 DeviceMonitoring = load_model("device_monitoring", "DeviceMonitoring")
 DeviceData = load_model("device_monitoring", "DeviceData")
+DeviceLocation = load_model("geo", "DeviceLocation")
 Location = load_model("geo", "Location")
 WifiSession = load_model("device_monitoring", "WifiSession")
 
@@ -248,10 +251,59 @@ class MonitoringLocationDeviceList(LocationDeviceList):
     serializer_class = MonitoringLocationDeviceSerializer
 
     def get_queryset(self):
-        return super().get_queryset().select_related("monitoring").order_by("name")
+        qs = super().get_queryset().select_related("monitoring").order_by("name")
+        return qs
+    
+    def get_has_floorplan(self, qs):
+        qs = qs.filter(devicelocation__floorplan__isnull=False).exists()
+        return qs
+
+    def list(self, request, *args, **kwargsf):
+        qs = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(qs)
+        serializer = self.get_serializer(page, many=True)
+        response = self.get_paginated_response(serializer.data)
+        if response.status_code == 200:
+            response.data['has_floorplan'] = self.get_has_floorplan(qs)
+        return response
 
 
 monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
+
+# Todo: Remove this
+class TestPagination(ListViewPagination):
+    page_size = 2
+
+
+class MonitoringIndoorCoordinatesList(IndoorCoordinatesList):
+    pagination_class = TestPagination
+    queryset = (
+        DeviceLocation.objects.filter(
+            location__type="indoor",
+            floorplan__isnull=False,
+        )
+        .select_related(
+            "content_object",
+            "content_object__monitoring",
+            "content_object__organization",
+            "location",
+            "floorplan",
+        )
+        .order_by("floorplan__floor")
+    )
+    serializer_class = MonitoringIndoorCoordinatesSerializer
+
+    def list(self, request, *args, **kwargs):
+        qs = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(qs)
+        serializer = self.get_serializer(page, many=True)
+        response = self.get_paginated_response(serializer.data)
+        if response.status_code == 200:
+            response.data['floors'] = self.get_available_floors()
+        return response
+
+
+monitoring_indoor_coordinates_list = MonitoringIndoorCoordinatesList.as_view()
 
 
 class MonitoringNearbyDeviceList(
