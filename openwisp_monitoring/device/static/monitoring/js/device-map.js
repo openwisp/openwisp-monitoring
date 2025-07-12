@@ -94,7 +94,7 @@
           }
           pagination = `<p class="paginator">${parts.join(" ")}</div>`;
         }
-        const has_floorplan = data.has_floorplan
+        const has_floorplan = data.has_floorplan;
         const floorplan_btn = `<button class="default-btn floorplan-btn">Floorplan</button>`;
         layer.bindPopup(`
                             <div class="map-detail">
@@ -111,7 +111,7 @@
                                     </tbody>
                                 </table>
                                 ${pagination}
-                                ${has_floorplan && floorplan_btn}
+                                ${has_floorplan ? floorplan_btn : ""}
                             </div>`);
         layer.openPopup();
         // bind next/prev buttons
