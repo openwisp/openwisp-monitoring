@@ -184,10 +184,10 @@
       disableClusteringAtLevel: 16,
       // set map initial state.
       mapOptions: {
-        center: leafletConfig.DEFAULT_CENTER,
-        zoom: leafletConfig.DEFAULT_ZOOM,
-        minZoom: leafletConfig.MIN_ZOOM || 1,
-        maxZoom: leafletConfig.MAX_ZOOM || 24,
+        center: [55.78, 11.54],
+        zoom: 5,
+        minZoom: 1,
+        maxZoom: 18,
         fullscreenControl: true,
       },
       mapTileConfig: tiles,
@@ -274,18 +274,18 @@
           map.addControl(new L.control.scale(scale));
         }
 
-        if (map.geoJSON.getLayers().length === 1) {
-          map.setView(map.geoJSON.getBounds().getCenter(), 10);
-        } else {
-          map.fitBounds(map.geoJSON.getBounds());
-        }
-        map.geoJSON.eachLayer(function (layer) {
-          layer[
-            layer.feature.geometry.type == "Point"
-              ? "bringToFront"
-              : "bringToBack"
-          ]();
-        });
+        // if (map.geoJSON.getLayers().length === 1) {
+        //   map.setView(map.geoJSON.getBounds().getCenter(), 10);
+        // } else {
+        //   map.fitBounds(map.geoJSON.getBounds());
+        // }
+        // map.geoJSON.eachLayer(function (layer) {
+        //   layer[
+        //     layer.feature.geometry.type == "Point"
+        //       ? "bringToFront"
+        //       : "bringToBack"
+        //   ]();
+        // });
 
         // Workaround for https://github.com/openwisp/openwisp-monitoring/issues/462
         // map.setMaxBounds(
