@@ -1,14 +1,7 @@
 "use strict";
 
 (function ($) {
-  //Todo: Make colors and getColor it global or use from device-map.js
-  const colors = {
-    ok: "#267126",
-    problem: "#ffb442",
-    critical: "#a72d1d",
-    unknown: "#353c44",
-    deactivated: "#0000",
-  };
+  const colors = window.STATUS_COLORS;
   function getColor(status) {
     return colors[status] || colors.unknown;
   }
@@ -24,6 +17,11 @@
     await fetchData(url);
 
     selectedIndex = floors.indexOf(currentFloor) || 0;
+    // Calculate the starting index of the navigation window so the selected floor appears near the center.
+    // Example: If selectedIndex = 3 and NAV_WINDOW_SIZE = 5,
+    // then navWindowStart = max(0, min(1, floors.length - 5)) => navWindowStart = 1
+    // So we will slice the floors array from index 1 to 6 (1 + NAV_WINDOW_SIZE),
+    // which ensures the initial floor is displayed at the center of the navigation window.
     navWindowStart = Math.max(
       0,
       Math.min(selectedIndex - 2, floors.length - NAV_WINDOW_SIZE),
@@ -44,6 +42,8 @@
   function fetchData(url, floor = null) {
     const reqUrl = floor ? `${url}?floor=${floor}` : url;
     return new Promise((resolve, reject) => {
+      // If data for the requested floor already exists in allResults,
+      // skip the API call to avoid redundant requests.
       if (floor && allResults.nodes.some((n) => n.floor === floor)) {
         resolve();
         return;
@@ -63,7 +63,7 @@
             currentFloor = data.results[0].floor;
           }
           if (data.next) {
-            await fetchData(data.next, floor);
+            await fetchData(data.next);
           }
           resolve();
         },
@@ -108,6 +108,7 @@
       navWindowStart + NAV_WINDOW_SIZE,
     );
     slicedFloors.forEach((floor, idx) => {
+      // The index present in the floors array
       const globalIdx = navWindowStart + idx;
       $navBody.append(`
         <button class="floor-btn" data-index="${globalIdx}" data-floor="${floor}">
@@ -135,7 +136,6 @@
     $nav.off("click");
     $nav.on("click", ".floor-btn", async (e) => {
       selectedIndex = +e.currentTarget.dataset.index;
-      navWindowStart = Math.min(Math.max(selectedIndex - 1, 0), maxStart);
       addFloorButtons(selectedIndex, navWindowStart);
       currentFloor = floors[selectedIndex];
       await showFloor(url, currentFloor);
@@ -188,7 +188,7 @@
         `<div id="floor-content-${floor}" class="floor-content"></div>`,
       );
       root.append($floorDiv);
-      renderIndoorMap(filtered, nodesThisFloor[0].image, $floorDiv[0].id);
+      renderIndoorMap(filtered, imageUrl, $floorDiv[0].id);
     }
     $floorDiv.show();
   }

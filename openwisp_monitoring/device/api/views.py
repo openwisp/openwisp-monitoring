@@ -253,7 +253,7 @@ class MonitoringLocationDeviceList(LocationDeviceList):
     def get_queryset(self):
         qs = super().get_queryset().select_related("monitoring").order_by("name")
         return qs
-    
+
     def get_has_floorplan(self, qs):
         qs = qs.filter(devicelocation__floorplan__isnull=False).exists()
         return qs
@@ -264,11 +264,12 @@ class MonitoringLocationDeviceList(LocationDeviceList):
         serializer = self.get_serializer(page, many=True)
         response = self.get_paginated_response(serializer.data)
         if response.status_code == 200:
-            response.data['has_floorplan'] = self.get_has_floorplan(qs)
+            response.data["has_floorplan"] = self.get_has_floorplan(qs)
         return response
 
 
 monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
+
 
 # Todo: Remove this
 class TestPagination(ListViewPagination):
@@ -292,15 +293,6 @@ class MonitoringIndoorCoordinatesList(IndoorCoordinatesList):
         .order_by("floorplan__floor")
     )
     serializer_class = MonitoringIndoorCoordinatesSerializer
-
-    def list(self, request, *args, **kwargs):
-        qs = self.filter_queryset(self.get_queryset())
-        page = self.paginate_queryset(qs)
-        serializer = self.get_serializer(page, many=True)
-        response = self.get_paginated_response(serializer.data)
-        if response.status_code == 200:
-            response.data['floors'] = self.get_available_floors()
-        return response
 
 
 monitoring_indoor_coordinates_list = MonitoringIndoorCoordinatesList.as_view()
