@@ -1,6 +1,6 @@
 "use strict";
 
-/*jshint esversion: 8 */
+/* jshint esversion: 8 */
 (function ($) {
   const loadingOverlay = $("#device-map-container .ow-loading-spinner");
   const localStorageKey = "ow-map-shown";
@@ -13,30 +13,35 @@
     unknown: "#353c44",
     deactivated: "#000000",
   };
+
   const getLocationDeviceUrl = function (pk) {
     return window._owGeoMapConfig.locationDeviceUrl.replace("000", pk);
   };
+
   const getColor = function (data) {
-    let deviceCount = data.device_count,
-      findResult = function (func) {
-        for (let i in statuses) {
-          let status = statuses[i],
-            statusCount = data[status + "_count"];
-          if (statusCount === 0) {
-            continue;
-          }
-          return func(status, statusCount);
+    let deviceCount = data.device_count;
+    let findResult = function (func) {
+      for (let i in statuses) {
+        let status = statuses[i];
+        let statusCount = data[status + "_count"];
+        if (statusCount === 0) {
+          continue;
         }
-      };
+        return func(status, statusCount);
+      }
+    };
+
     // if one status has absolute majority, it's the winner
     let majority = findResult(function (status, statusCount) {
       if (statusCount > deviceCount / 2) {
         return colors[status];
       }
     });
+
     if (majority) {
       return majority;
     }
+
     // otherwise simply return the color based on the priority
     return findResult(function (status, statusCount) {
       // if one status has absolute majority, it's the winner
@@ -47,6 +52,7 @@
       return "#000";
     });
   };
+
   const loadPopUpContent = function (layer, url) {
     // allows reopening the last page which was opened before popup close
     // defaults to the passed URL or the default URL (first page)
@@ -64,51 +70,62 @@
         withCredentials: true,
       },
       success: function (data) {
-        let html = "",
-          device;
+        let html = "";
+        let device;
+
         for (let i = 0; i < data.results.length; i++) {
           device = data.results[i];
           html += `
-                            <tr>
-                                <td><a href="${device.admin_edit_url}">${device.name}</a></td>
-                                <td>
-                                    <span class="health-status health-${device.monitoring.status}">
-                                        ${device.monitoring.status_label}
-                                    </span>
-                                </td>
-                            </tr>`;
+            <tr>
+              <td>
+                <a href="${device.admin_edit_url}">${device.name}</a>
+              </td>
+              <td>
+                <span class="health-status health-${device.monitoring.status}">
+                  ${device.monitoring.status_label}
+                </span>
+              </td>
+            </tr>
+          `;
         }
-        let pagination = "",
-          parts = [];
+
+        let pagination = "";
+        let parts = [];
+
         if (data.previous || data.next) {
           if (data.previous) {
             parts.push(
               `<a class="prev" href="#prev" data-url="${data.previous}">&#8249; ${gettext("previous")}</a>`,
             );
           }
+
           if (data.next) {
             parts.push(
               `<a class="next" href="#next" data-url="${data.next}">${gettext("next")} &#8250;</a>`,
             );
           }
+
           pagination = `<p class="paginator">${parts.join(" ")}</div>`;
         }
+
         layer.bindPopup(`
-                            <div class="map-detail">
-                                <h2>${layer.feature.properties.name} (${data.count})</h2>
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>${gettext("name")}</th>
-                                            <th>${gettext("status")}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${html}
-                                    </tbody>
-                                </table>
-                                ${pagination}
-                            </div>`);
+          <div class="map-detail">
+            <h2>${layer.feature.properties.name} (${data.count})</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>${gettext("name")}</th>
+                  <th>${gettext("status")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${html}
+              </tbody>
+            </table>
+            ${pagination}
+          </div>
+        `);
+
         layer.openPopup();
 
         // bind next/prev buttons
@@ -128,6 +145,7 @@
       },
     });
   };
+
   const leafletConfig = JSON.parse($("#leaflet-config").text());
   const tiles = leafletConfig.TILES.map((tile) => {
     let tileLayer = tile[1];
@@ -161,6 +179,7 @@
       localStorage.removeItem(localStorageKey);
       mapContainer.slideDown();
     }
+
     // Expand aggregated features so each status gets its own feature – this enables
     // the NetJSONGraph clustering algorithm to offset them visually.
     // data = expandAggregatedFeatures(data);
@@ -178,8 +197,8 @@
       render: "map",
       clustering: true,
       clusteringAttribute: "status",
-      clusteringThreshold: 5,
-      clusterRadius: 80,
+      clusteringThreshold: 0,
+      clusterRadius: 100,
       clusterSeparation: 20,
       disableClusteringAtLevel: 16,
       // set map initial state.
@@ -191,38 +210,45 @@
         fullscreenControl: true,
       },
       mapTileConfig: tiles,
-      nodeCategories: Object.keys(colors).map(function (k) {
-        return { name: k, nodeStyle: { color: colors[k] } };
-      }),
-      // ensure each feature gains a category derived from its status
-      // prepareData: function (json) {
-      //   console.log(
-      //     "[DEBUG] prepareData processing",
-      //     json.features.length,
-      //     "features",
-      //   );
-      //   if (json && json.features) {
-      //     json.features.forEach(function (f) {
-      //       const st = (f.properties && f.properties.status) || "unknown";
-      //       f.category = st.toLowerCase();
-      //       console.log(
-      //         "[DEBUG] Feature",
-      //         f.id,
-      //         "status:",
-      //         st,
-      //         "→ category:",
-      //         f.category,
-      //       );
-      //     });
-      //     // Log the unique categories found
-      //     const categories = [...new Set(json.features.map((f) => f.category))];
-      //     console.log(
-      //       "[DEBUG] Unique categories found:",
-      //       categories.join(", "),
-      //     );
-      //   }
-      //   return json;
-      // },
+      nodeCategories: Object.keys(colors).map((k) => ({
+        name: k,
+        nodeStyle: { color: colors[k] },
+      })),
+      // ensure each element is categorised by status so clustering & styles work
+      prepareData: function (json) {
+        const items = json.nodes || json.features;
+
+        if (Array.isArray(items)) {
+          items.forEach((el) => {
+            const props = el.properties || {};
+
+            // Derive status:
+            let status;
+
+            if (props.status) {
+              status = props.status.toLowerCase();
+            } else {
+              // Fallback: use same heuristic used later in onEachFeature
+              const color = getColor(props);
+              status =
+                Object.keys(colors).find((k) => colors[k] === color) ||
+                "unknown";
+            }
+
+            // Ensure both 'status' and 'category' are populated for clustering & styling
+            props.status = status;
+            el.category = status;
+            props.category = status;
+
+            // In case we created a fresh properties object, re-attach it
+            if (!el.properties) {
+              el.properties = props;
+            }
+          });
+        }
+
+        return json;
+      },
       geoOptions: {
         style: function (feature) {
           return {
@@ -237,7 +263,7 @@
         onEachFeature: function (feature, layer) {
           const color = getColor(feature.properties);
           feature.properties.status = Object.keys(colors).find(
-            (key) => colors[key] === color,
+            (k) => colors[k] === color,
           );
           feature.properties.status = feature.properties.status || "unknown";
 
@@ -247,6 +273,7 @@
               layer.bindTooltip(feature.properties.name).openTooltip();
             }
           });
+
           layer.on("click", function () {
             layer.unbindTooltip();
             layer.unbindPopup();
@@ -260,6 +287,7 @@
           imperial: false,
           metric: false,
         };
+
         if (leafletConfig.SCALE === "metric") {
           scale.metric = true;
         } else if (leafletConfig.SCALE === "imperial") {
@@ -366,6 +394,7 @@
         // });
       },
     });
+
     map.setUtils({
       showLoading: function () {
         loadingOverlay.show();
@@ -376,9 +405,11 @@
       paginatedDataParse: async function (JSONParam) {
         let res;
         let data;
+
         try {
           res = await this.utils.JSONParamParse(JSONParam);
           data = res;
+
           while (
             res.next &&
             data.features.length <= this.config.maxPointsFetched
@@ -391,15 +422,18 @@
           /* global console */
           console.error(e);
         }
+
         return data;
       },
     });
+
     map.render();
   }
 
   if (localStorage.getItem(localStorageKey) === "false") {
     mapContainer.slideUp(50);
   }
+
   $.ajax({
     dataType: "json",
     url: window._owGeoMapConfig.geoJsonUrl,
