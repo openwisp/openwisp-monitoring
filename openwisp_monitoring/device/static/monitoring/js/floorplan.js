@@ -13,18 +13,20 @@
     return colors[status] || colors.unknown;
   }
 
-  let allResults = { nodes: [], links: [] }, floors = [], currentFloor = null;
-  const NAV_WINDOW_SIZE = 4;
-  let navWindowStart = 0, selectedIndex = 0;
+  let allResults = { nodes: [], links: [] };
+  let floors = [];
+  let currentFloor = null;
+  const NAV_WINDOW_SIZE = 5;
+  let navWindowStart = 0;
+  let selectedIndex = 0;
 
   async function openFloorPlan(url) {
     await fetchData(url);
 
     selectedIndex = floors.indexOf(currentFloor) || 0;
-    const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
-    navWindowStart = Math.min(
-      Math.floor(selectedIndex / NAV_WINDOW_SIZE) * NAV_WINDOW_SIZE,
-      maxStart
+    navWindowStart = Math.max(
+      0,
+      Math.min(selectedIndex - 2, floors.length - NAV_WINDOW_SIZE),
     );
 
     const $floorPlanContainer = createFloorPlanContainer();
@@ -52,7 +54,7 @@
         dataType: "json",
         xhrFields: { withCredentials: true },
         success: async (data) => {
-          if (!floor) floors = data.floors;
+          if (!floor) floors = data.floors.sort((a, b) => b - a);
           allResults = {
             ...allResults,
             nodes: [...allResults.nodes, ...data.results],
@@ -101,10 +103,9 @@
 
   function addFloorButtons(selectedIndex, navWindowStart) {
     const $navBody = $(".floorplan-navigation-body").empty();
-
     const slicedFloors = floors.slice(
       navWindowStart,
-      navWindowStart + NAV_WINDOW_SIZE
+      navWindowStart + NAV_WINDOW_SIZE,
     );
     slicedFloors.forEach((floor, idx) => {
       const globalIdx = navWindowStart + idx;
@@ -118,12 +119,12 @@
     $(".up-arrow").toggleClass("disabled", selectedIndex === 0);
     $(".down-arrow").toggleClass(
       "disabled",
-      selectedIndex === floors.length - 1
+      selectedIndex === floors.length - 1,
     );
 
     $(".floor-btn").removeClass("active selected");
     $('.floor-btn[data-index="' + selectedIndex + '"]').addClass(
-      "active selected"
+      "active selected",
     );
   }
 
@@ -184,7 +185,7 @@
     let $floorDiv = $(`#floor-content-${floor}`);
     if (!$floorDiv.length) {
       $floorDiv = $(
-        `<div id="floor-content-${floor}" class="floor-content"></div>`
+        `<div id="floor-content-${floor}" class="floor-content"></div>`,
       );
       root.append($floorDiv);
       renderIndoorMap(filtered, nodesThisFloor[0].image, $floorDiv[0].id);
@@ -192,8 +193,9 @@
     $floorDiv.show();
   }
 
+  let graph;
   function renderIndoorMap(allResults, imageUrl, divId) {
-    const graph = new NetJSONGraph(allResults, {
+    graph = new NetJSONGraph(allResults, {
       el: `#${divId}`,
       crs: L.CRS.Simple,
       render: "map",
