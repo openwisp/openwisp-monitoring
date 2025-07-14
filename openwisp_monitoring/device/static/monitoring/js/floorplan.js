@@ -228,7 +228,7 @@
             ...node.properties,
             name: node.device_name,
             status: "critical",
-            location: node.location,
+            location: node.coordinates,
             "Mac address": node.mac_address,
           };
         });
@@ -251,7 +251,6 @@
           L.imageOverlay(imageUrl, bnds).addTo(map);
           map.fitBounds(bnds);
           map.setMaxBounds(bnds);
-          map.setView([0, 0], 0);
         };
       },
     });
