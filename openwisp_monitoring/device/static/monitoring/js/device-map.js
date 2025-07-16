@@ -204,7 +204,7 @@
       // set map initial state.
       mapOptions: {
         center: [55.78, 11.54],
-        zoom: 5,
+        zoom: 1,
         minZoom: 1,
         maxZoom: 18,
         fullscreenControl: true,
