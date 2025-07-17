@@ -3,20 +3,22 @@
   top: 5%;
   left: 50%;
   transform: translateX(-50%);
-  width: 80%;
-  height: 80%;
+  width: 85%;
+  height: 88%;
   background: white;
   z-index: 9999;
   padding: 0 20px 20px 20px;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
 }
 #floorplan-heading {
   color: #333;
   margin-top: 15px;
   font-size: 1rem;
   text-align: center;
+  padding: 0;
 }
 #floorplan-content-root {
   width: 100%;
@@ -35,9 +37,12 @@
 #floorplan-close-btn {
   position: absolute;
   top: 0;
-  right: 10px;
+  right: 0;
   color: #757575;
   cursor: pointer;
+  width: 24px;
+  height: 24px;
+  text-align: center;
   font:
     16px / 24px Tahoma,
     Verdana,
@@ -47,7 +52,7 @@
 #floorplan-navigation {
   position: absolute;
   top: 50%;
-  right: -45px;
+  right: -55px;
   transform: translateY(-50%);
   height: auto;
   z-index: 9999;
@@ -63,6 +68,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
 }
 
 .floor-btn {
@@ -104,7 +110,8 @@
   background-color: #eaecf0;
 }
 
-@media (max-width: 700px) {
+/* Todo: Wating for ux team opinion for the responsive design */
+/* @media (max-width: 700px) {
   #floorplan-container {
     width: 60%;
   }
@@ -115,4 +122,4 @@
     padding: 8px 12px;
     width: 35px;
   }
-}
+} */

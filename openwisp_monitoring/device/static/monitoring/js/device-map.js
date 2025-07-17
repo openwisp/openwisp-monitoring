@@ -6,14 +6,14 @@
   const localStorageKey = "ow-map-shown";
   const mapContainer = $("#device-map-container");
   const statuses = ["critical", "problem", "ok", "unknown", "deactivated"];
-  window.STATUS_COLORS = {
+  window._owGeoMapConfig.STATUS_COLORS = {
     ok: "#267126",
     problem: "#ffb442",
     critical: "#a72d1d",
     unknown: "#353c44",
-    deactivated: "#0000",
+    deactivated: "#000",
   };
-  const colors = window.STATUS_COLORS;
+  const colors = window._owGeoMapConfig.STATUS_COLORS;
   const getIndoorCoordinatesUrl = function (pk) {
     return window._owGeoMapConfig.indoorCoordinatesUrl.replace("000", pk);
   };
