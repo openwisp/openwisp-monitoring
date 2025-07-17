@@ -1,12 +1,12 @@
 "use strict";
 
 (function ($) {
-  const colors = window.STATUS_COLORS;
+  const colors = window._owGeoMapConfig.STATUS_COLORS;
   function getColor(status) {
     return colors[status] || colors.unknown;
   }
 
-  let allResults = { nodes: [], links: [] };
+  let allResults = {};
   let floors = [];
   let currentFloor = null;
   const NAV_WINDOW_SIZE = 5;
@@ -44,7 +44,7 @@
     return new Promise((resolve, reject) => {
       // If data for the requested floor already exists in allResults,
       // skip the API call to avoid redundant requests.
-      if (floor && allResults.nodes.some((n) => n.floor === floor)) {
+      if (floor && allResults[floor]) {
         resolve();
         return;
       }
@@ -54,11 +54,14 @@
         dataType: "json",
         xhrFields: { withCredentials: true },
         success: async (data) => {
-          if (!floor) floors = data.floors.sort((a, b) => b - a);
-          allResults = {
-            ...allResults,
-            nodes: [...allResults.nodes, ...data.results],
-          };
+          // To make this run only one time as only in the first call floor will not be provided
+          // And sort them in decresing order so that neagtive floor show at bottom and postove at top in floor navigation
+          if (!floor){
+            floors = data.floors.sort((a, b) => b - a);
+            floor = data.results[0].floor
+          }             
+          if (!allResults[floor]) allResults[floor] = []
+          allResults[floor] = [...allResults[floor], ...data.results];
           if (!currentFloor && data.results.length) {
             currentFloor = data.results[0].floor;
           }
@@ -174,11 +177,10 @@
 
     await fetchData(url, floor);
 
-    const nodesThisFloor = allResults.nodes.filter((n) => n.floor === floor);
-    $("#floorplan-heading").text(nodesThisFloor[0].floor_name);
+    const nodesThisFloor = {nodes: allResults[floor], links: []};
 
-    const imageUrl = nodesThisFloor[0].image;
-    const filtered = { ...allResults, nodes: nodesThisFloor };
+    $("#floorplan-heading").text(nodesThisFloor.nodes[0].floor_name);
+    const imageUrl = nodesThisFloor.nodes[0].image;
 
     const root = $("#floorplan-content-root");
     root.children(".floor-content").hide();
@@ -188,7 +190,7 @@
         `<div id="floor-content-${floor}" class="floor-content"></div>`,
       );
       root.append($floorDiv);
-      renderIndoorMap(filtered, imageUrl, $floorDiv[0].id);
+      renderIndoorMap(nodesThisFloor, imageUrl, $floorDiv[0].id);
     }
     $floorDiv.show();
   }
@@ -227,7 +229,7 @@
           node.properties = {
             ...node.properties,
             name: node.device_name,
-            status: "critical",
+            status: node.monitoring.status,
             location: node.coordinates,
             "Mac address": node.mac_address,
           };
@@ -251,7 +253,14 @@
           L.imageOverlay(imageUrl, bnds).addTo(map);
           map.fitBounds(bnds);
           map.setMaxBounds(bnds);
+          map.setView([0,0], 0)
         };
+        // Todo: Explore some better approach if exists
+        const fullScreen = $('#floorplan-container .leaflet-control-fullscreen-button');
+        fullScreen.off("click.zoomOnFullscreen"); // avoid duplicates
+        fullScreen.on("click.zoomOnFullscreen", () => {
+            map.setZoom(map.getZoom() + 1);
+        });
       },
     });
 

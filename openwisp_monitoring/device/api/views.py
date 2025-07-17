@@ -251,21 +251,7 @@ class MonitoringLocationDeviceList(LocationDeviceList):
     serializer_class = MonitoringLocationDeviceSerializer
 
     def get_queryset(self):
-        qs = super().get_queryset().select_related("monitoring").order_by("name")
-        return qs
-
-    def get_has_floorplan(self, qs):
-        qs = qs.filter(devicelocation__floorplan__isnull=False).exists()
-        return qs
-
-    def list(self, request, *args, **kwargsf):
-        qs = self.filter_queryset(self.get_queryset())
-        page = self.paginate_queryset(qs)
-        serializer = self.get_serializer(page, many=True)
-        response = self.get_paginated_response(serializer.data)
-        if response.status_code == 200:
-            response.data["has_floorplan"] = self.get_has_floorplan(qs)
-        return response
+        return super().get_queryset().select_related("monitoring").order_by("name")
 
 
 monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
