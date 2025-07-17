@@ -6,12 +6,16 @@
   const localStorageKey = "ow-map-shown";
   const mapContainer = $("#device-map-container");
   const statuses = ["critical", "problem", "ok", "unknown", "deactivated"];
-  const colors = {
+  window._owGeoMapConfig.STATUS_COLORS = {
     ok: "#267126",
     problem: "#ffb442",
     critical: "#a72d1d",
     unknown: "#353c44",
-    deactivated: "#0000",
+    deactivated: "#000",
+  };
+  const colors = window._owGeoMapConfig.STATUS_COLORS;
+  const getIndoorCoordinatesUrl = function (pk) {
+    return window._owGeoMapConfig.indoorCoordinatesUrl.replace("000", pk);
   };
   const getLocationDeviceUrl = function (pk) {
     return window._owGeoMapConfig.locationDeviceUrl.replace("000", pk);
@@ -91,6 +95,8 @@
           }
           pagination = `<p class="paginator">${parts.join(" ")}</div>`;
         }
+        const has_floorplan = data.has_floorplan;
+        const floorplan_btn = `<button class="default-btn floorplan-btn">Floorplan</button>`;
         layer.bindPopup(`
                             <div class="map-detail">
                                 <h2>${layer.feature.properties.name} (${data.count})</h2>
@@ -106,9 +112,9 @@
                                     </tbody>
                                 </table>
                                 ${pagination}
+                                ${has_floorplan ? floorplan_btn : ""}
                             </div>`);
         layer.openPopup();
-
         // bind next/prev buttons
         let el = $(layer.getPopup().getElement());
         el.find(".next").click(function () {
@@ -117,7 +123,10 @@
         el.find(".prev").click(function () {
           loadPopUpContent(layer, $(this).data("url"));
         });
-
+        $(".floorplan-btn").on("click", function () {
+          url = getIndoorCoordinatesUrl(layer.feature.id);
+          window.openFloorPlan(url);
+        });
         loadingOverlay.hide();
       },
       error: function () {

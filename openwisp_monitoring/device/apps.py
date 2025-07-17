@@ -376,15 +376,23 @@ class DeviceMonitoringConfig(AppConfig):
                 urlconf=MONITORING_API_URLCONF,
                 args=["000"],
             )
+            indoor_coordinates_list_url = reverse_lazy(
+                "monitoring:api_indoor_coordinates_list",
+                args=["000"],
+            )
             if MONITORING_API_BASEURL:
                 device_list_url = urljoin(MONITORING_API_BASEURL, str(device_list_url))
                 loc_geojson_url = urljoin(MONITORING_API_BASEURL, str(loc_geojson_url))
+                indoor_coordinates_list_url = urljoin(
+                    MONITORING_API_BASEURL, str(indoor_coordinates_list_url)
+                )
 
             register_dashboard_template(
                 position=0,
                 config={
                     "template": "admin/dashboard/device_map.html",
                     "css": (
+                        "monitoring/css/floorplan.css",
                         "monitoring/css/device-map.css",
                         "leaflet/leaflet.css",
                         "monitoring/css/leaflet.fullscreen.css",
@@ -394,11 +402,13 @@ class DeviceMonitoringConfig(AppConfig):
                         "monitoring/js/lib/netjsongraph.min.js",
                         "monitoring/js/lib/leaflet.fullscreen.min.js",
                         "monitoring/js/device-map.js",
+                        "monitoring/js/floorplan.js",
                     ),
                 },
                 extra_config={
                     "monitoring_device_list_url": device_list_url,
                     "monitoring_location_geojson_url": loc_geojson_url,
+                    "monitoring_indoor_coordinates_list": indoor_coordinates_list_url,
                 },
             )
 
