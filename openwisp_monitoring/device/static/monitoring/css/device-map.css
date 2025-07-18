@@ -17,6 +17,87 @@
   font-weight: bold;
   text-transform: uppercase;
 }
+.paginator {
+  padding-bottom: 0;
+}
+.leaflet-popup-content {
+  display: flex;
+  min-width: fit-content;
+  padding: 11px 0 11px 4px;
+}
+.map-detail {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+}
+.map-detail h2 {
+  margin: 10px 0;
+  font-size: 20px;
+}
+.input-container {
+  margin: 10px 0;
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  display: flex;
+}
+.input-container::before {
+  content: "";
+  position: absolute;
+  top: 46%;
+  left: 0.6rem;
+  transform: translateY(-54%);
+  width: 1.1rem;
+  height: 1.1rem;
+  background-color: #717680;
+  mask-image: url("Icon.svg");
+  -webkit-mask-image: url("Icon.svg");
+}
+.map-detail input {
+  outline: none;
+  width: 100%;
+  padding: 8px 12px;
+  padding-left: 2rem;
+  box-sizing: border-box;
+  border-radius: 6px;
+  font-size: 18px;
+}
+.label-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 10px 0;
+  gap: 10px;
+}
+.status-filter {
+  cursor: pointer;
+}
+.health-status {
+  border: 1px solid;
+  padding: 3px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.table-container {
+  max-height: 120px;
+  width: 400px;
+  overflow-y: auto;
+  min-width: 300px;
+  box-sizing: border-box;
+  margin: 10px 0;
+}
+.table-container table {
+  width: 100%;
+}
+.no-devices {
+  text-align: center;
+  font-weight: bold;
+}
+.remove-icon {
+  font-weight: bold;
+}
 .map-detail .paginator a {
   padding: 3px 7px;
   margin: 0 3px;
@@ -29,10 +110,19 @@
   background-color: #000000;
   color: #fff;
 }
+.floorplan-btn {
+  padding: 12px 25px;
+  margin: 10px 0;
+  width: fit-content;
+  font-size: 18px;
+  border-radius: 8px;
+  align-self: center;
+}
 #device-map-container {
   margin: 50px auto;
   position: relative;
-  height: 300px;
+  /* Todo: Remove this added only for testing */
+  height: 85vh;
   width: 90%;
   border: 1px solid rgba(0, 0, 0, 0.3);
 }
