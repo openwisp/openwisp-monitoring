@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from django_filters import rest_framework as filters
 from swapper import load_model
@@ -21,6 +22,27 @@ class WifiSessionFilter(FilterDjangoByOrgManaged):
             "start_time": ["exact", "gt", "gte", "lt", "lte"],
             "stop_time": ["exact", "gt", "gte", "lt", "lte", "isnull"],
         }
+
+
+class DeviceFilter(filters.FilterSet):
+    search = filters.CharFilter(method="filter_search")
+    status = filters.CharFilter(method="filter_by_status")
+
+    def filter_search(self, queryset, name, value):
+        value = value.strip()
+        return queryset.filter(
+            Q(name__icontains=value) | Q(mac_address__icontains=value)
+        )
+
+    def filter_by_status(self, qs, name, value):
+        statuses = [s.strip() for s in value.split(",") if s.strip()]
+        if statuses:
+            return qs.filter(monitoring__status__in=statuses)
+        return qs
+
+    class Meta:
+        model = Device
+        fields = []
 
 
 class MonitoringDeviceFilter(OrganizationManagedFilter):
