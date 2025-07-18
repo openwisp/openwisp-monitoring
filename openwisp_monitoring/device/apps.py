@@ -378,6 +378,7 @@ class DeviceMonitoringConfig(AppConfig):
             )
             indoor_coordinates_list_url = reverse_lazy(
                 "monitoring:api_indoor_coordinates_list",
+                urlconf=MONITORING_API_URLCONF,
                 args=["000"],
             )
             if MONITORING_API_BASEURL:

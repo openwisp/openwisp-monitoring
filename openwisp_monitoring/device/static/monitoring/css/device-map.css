@@ -1,48 +1,189 @@
 .health-deactivated {
   color: #000;
+  background-color: #f2f4f7;
+  border: 1px solid #d0d5dd;
 }
 .health-unknown {
-  color: grey;
+  color: #344054;
+  background: #f9fafb;
+  border: 1px solid #eaecf0;
 }
 .health-ok {
-  color: green;
+  color: #067647;
+  background-color: #dcfae6;
+  border: 1px solid #75e0a7;
 }
 .health-problem {
   color: orange;
+  background-color: #fffaeb;
+  border: 1px solid #fedf89;
 }
 .health-critical {
-  color: red;
+  color: #b42318;
+  background-color: #fef3f2;
+  border: 1px solid #fecdca;
 }
 .health-status {
   font-weight: bold;
   text-transform: uppercase;
 }
-.paginator {
-  padding-bottom: 0;
+#device-map-container {
+  margin: 50px auto;
+  position: relative;
+  /* Todo: Remove this added only for testing */
+  height: 85vh;
+  width: 90%;
+  border: 1px solid rgba(0, 0, 0, 0.3);
 }
-.map-detail .paginator a {
-  padding: 3px 7px;
-  margin: 0 3px;
-  background-color: #464646;
+#device-map-container .ow-loading-spinner {
+  position: absolute;
+  z-index: 9999;
+  top: 41%;
+  left: 49%;
+}
+#device-map-container .leaflet-interactive:focus {
+  outline: none;
+}
+#leaflet-config {
+  display: none;
+}
+.no-data {
+  display: none;
+  position: absolute;
+  z-index: 99;
+  top: 0;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  padding-top: 115px;
+}
+.no-data a.button {
   color: #fff;
-  text-decoration: none;
+  padding: 5px 10px;
+  font-weight: bold;
+  text-decoration: none !important;
+}
+.leaflet-popup-content {
+  display: flex;
+  min-width: fit-content;
+  margin: 24px !important;
+}
+.leaflet-popup-close-button {
+  top: 25px !important;
+  right: 25px !important;
+  font-size: 20px !important;
+}
+.map-detail {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+}
+.map-detail h2 {
+  margin: 35px 0 10px 0;
+  font-size: 18px;
+}
+.input-container {
+  margin: 10px 0;
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  display: flex;
+}
+.input-container::before {
+  content: "";
+  position: absolute;
+  top: 46%;
+  left: 0.6rem;
+  transform: translateY(-54%);
+  width: 1.1rem;
+  height: 1.1rem;
+  background-color: #717680;
+  mask-image: url("Icon.svg");
+  -webkit-mask-image: url("Icon.svg");
+}
+.map-detail input {
+  outline: none;
+  width: 100%;
+  padding: 10px 12px;
+  padding-left: 2rem;
+  box-sizing: border-box;
+  border-radius: 6px;
+  font-size: 16px;
+}
+.label-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 10px 0;
+  gap: 10px;
+  justify-content: space-evenly;
+}
+.status-filter {
   cursor: pointer;
 }
-.map-detail .paginator a:hover {
-  background-color: #000000;
-  color: #fff;
+.health-status {
+  padding: 3px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.remove-icon {
+  font-weight: bold;
+}
+.table-container {
+  height: 120px;
+  width: 350px;
+  overflow-y: auto;
+  min-width: 300px;
+  box-sizing: border-box;
+  margin: 10px 0;
+}
+.table-container table {
+  width: 100%;
+}
+.table-spinner {
+  display: none;
+  position: absolute;
+  z-index: 99;
+  top: 60% !important;
+  left: 45% !important;
+}
+.no-devices {
+  font-weight: bold;
+}
+.floor-icon {
+  display: inline-block;
+  width: 25px;
+  height: 25px;
+  background-color: white;
+  mask-repeat: no-repeat;
+  margin-right: 16px;
 }
 .floorplan-btn {
-  padding: 5px 10px;
-  margin-top: 15px;
-  margin-bottom: 10px;
-  width: 100%;
+  padding: 10px 25px;
+  margin-top: 20px;
+  width: fit-content;
+  font-size: 16px;
+  border-radius: 8px;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.floor-icon {
+  display: inline-block;
+  width: 25px;
+  height: 25px;
+  background-color: white;
+  mask-repeat: no-repeat;
+  margin-right: 16px;
 }
 #device-map-container {
   margin: 50px auto;
   position: relative;
-  /* ToDo: Increased for testing remove before merge */
-  height: 80vh;
+  /* Todo: Remove this added only for testing */
+  height: 85vh;
   width: 90%;
   border: 1px solid rgba(0, 0, 0, 0.3);
 }
