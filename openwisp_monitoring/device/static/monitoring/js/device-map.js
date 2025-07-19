@@ -52,7 +52,6 @@
       url = layer.url || getLocationDeviceUrl(layer.feature.id);
     }
     layer.url = url;
-
     loadingOverlay.show();
 
     $.ajax({
@@ -62,60 +61,155 @@
         withCredentials: true,
       },
       success: function (data) {
-        let html = "",
-          device;
-        for (let i = 0; i < data.results.length; i++) {
-          device = data.results[i];
-          html += `
-                            <tr>
-                                <td><a href="${device.admin_edit_url}">${device.name}</a></td>
-                                <td>
-                                    <span class="health-status health-${device.monitoring.status}">
-                                        ${device.monitoring.status_label}
-                                    </span>
-                                </td>
-                            </tr>`;
-        }
-        let pagination = "",
-          parts = [];
-        if (data.previous || data.next) {
-          if (data.previous) {
-            parts.push(
-              `<a class="prev" href="#prev" data-url="${data.previous}">&#8249; ${gettext("previous")}</a>`,
-            );
-          }
-          if (data.next) {
-            parts.push(
-              `<a class="next" href="#next" data-url="${data.next}">${gettext("next")} &#8250;</a>`,
-            );
-          }
-          pagination = `<p class="paginator">${parts.join(" ")}</div>`;
-        }
+        let devices = data.results;
+        let nextUrl = data.next;
+        let params = { search: "", status: "" };
+        const uniqueStatus = Array.from(
+          new Set(devices.map((d) => d.monitoring.status_label)),
+        );
+        let statusFiltersBtn = "";
+        uniqueStatus.forEach((status) => {
+          const label = gettext(status);
+          statusFiltersBtn += `
+             <span 
+                class="health-status health-${status} status-filter" 
+                data-status="${status}"
+              >
+                ${label}
+              </span>
+            `;
+        });
+        const has_floorplan = data.has_floorplan;
+        const floorplan_btn = has_floorplan
+          ? `<button class="default-btn floorplan-btn">
+          <span class="ow-floor floor-icon"></span>  Switch to Floor Plan
+        </button>`
+          : "";
         layer.bindPopup(`
-                            <div class="map-detail">
-                                <h2>${layer.feature.properties.name} (${data.count})</h2>
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>${gettext("name")}</th>
-                                            <th>${gettext("status")}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${html}
-                                    </tbody>
-                                </table>
-                                ${pagination}
-                            </div>`);
+                          <div class="map-detail">
+                            <h2>${layer.feature.properties.name} (${data.count})</h2>
+                            <div class="input-container">
+                              <input id="device-search" placeholder="Search for devices by name or mac address" />
+                            </div>
+                            <div class="label-container">
+                              ${statusFiltersBtn}
+                              <input id="status-filter" style="display: none;" type="text" />
+                            </div>
+                            <div class="table-container">
+                              <table>
+                                <thead>
+                                    <tr>
+                                        <th>${gettext("name")}</th>
+                                        <th><span class ="health-status-heading">${gettext(
+                                          "status",
+                                        )}</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    
+                                </tbody>
+                              </table>
+                              <div class="ow-loading-spinner" style="display: none; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);"></div>
+                            </div>
+                            ${floorplan_btn}
+                          </div>`);
         layer.openPopup();
 
-        // bind next/prev buttons
         let el = $(layer.getPopup().getElement());
-        el.find(".next").click(function () {
-          loadPopUpContent(layer, $(this).data("url"));
+        function renderRows() {
+          if (devices.length === 0) {
+            el.find("tbody").html(`
+              <tr>
+                <td class="no-devices">
+                  ${gettext("No devices found!")}
+                </td>
+              </tr>
+            `);
+            return;
+          }
+          const rows = devices
+            .map(
+              (device) => `
+            <tr>
+                <td><a href="${device.admin_edit_url}">${device.name}</a></td>
+                <td>
+                    <span class="health-status health-${device.monitoring.status}">
+                        ${device.monitoring.status_label}
+                    </span>
+                </td>
+            </tr>
+          `,
+            )
+            .join("");
+          el.find("tbody").html(rows);
+        }
+        function fetchDevices(params) {
+          if (!url) return;
+          console.log("Params:", params);
+          const searchParams = new URLSearchParams();
+          if (params.search) {
+            searchParams.append("search", params.search);
+          }
+
+          if (params.status) {
+            params.status.split(",").forEach((status) => {
+              searchParams.append("status", status);
+            });
+          }
+          console.log(searchParams.toString());
+          $.ajax({
+            dataType: "json",
+            url: `${url}?${searchParams.toString()}`,
+            xhrFields: { withCredentials: true },
+
+            success(data) {
+              console.log("Fetched devices:", data);
+              devices = data.results;
+              nextUrl = data.next;
+              renderRows(devices);
+            },
+            error() {
+              console.error("Could not load more devices from", url);
+            },
+          });
+        }
+        renderRows();
+        el.find("#device-search").on("input", function (e) {
+          const q = e.target.value.toLowerCase().trim();
+          if (!q) {
+            renderRows(devices);
+          } else {
+            params.search = q;
+            console.log("Device before fetch:", devices);
+            fetchDevices(params);
+            console.log("Device after fetch:", devices);
+          }
         });
-        el.find(".prev").click(function () {
-          loadPopUpContent(layer, $(this).data("url"));
+        let activeStatuses = [];
+        el.find(".status-filter").on("click", function (e) {
+          e.stopPropagation();
+          const btn = $(this);
+          const status = btn.data("status");
+          const label = gettext(status);
+
+          if (btn.hasClass("active")) {
+            btn.removeClass("active").html(label);
+            activeStatuses = activeStatuses.filter((s) => s !== status);
+            $(`#status-filter`).val(activeStatuses.join(","));
+          } else {
+            btn
+              .addClass("active")
+              .html(`${label} <span class="remove-icon">&times;</span>`);
+            activeStatuses.push(status);
+            $(`#status-filter`).val(activeStatuses.join(","));
+          }
+          params.status = $(`#status-filter`).val();
+          fetchDevices(params);
+        });
+        el.find(".table-container").on("scroll", function () {
+          if (this.scrollTop + this.clientHeight >= this.scrollHeight - 10) {
+            // Todo: Recreate the rendering logic
+          }
         });
 
         loadingOverlay.hide();

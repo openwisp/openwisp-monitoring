@@ -39,6 +39,7 @@ from ..schema import schema
 from ..signals import device_metrics_received
 from ..tasks import write_device_metrics
 from .filters import (
+    DeviceFilter,
     MonitoringDeviceFilter,
     MonitoringNearbyDeviceFilter,
     WifiSessionFilter,
@@ -246,6 +247,8 @@ monitoring_geojson_location_list = MonitoringGeoJsonLocationList.as_view()
 
 class MonitoringLocationDeviceList(LocationDeviceList):
     serializer_class = MonitoringLocationDeviceSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = DeviceFilter
 
     def get_queryset(self):
         return super().get_queryset().select_related("monitoring").order_by("name")
