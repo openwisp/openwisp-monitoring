@@ -52,7 +52,6 @@
       url = layer.url || getLocationDeviceUrl(layer.feature.id);
     }
     layer.url = url;
-
     loadingOverlay.show();
 
     $.ajax({
@@ -63,13 +62,15 @@
       },
       success: function (data) {
         let devices = data.results;
+        let nextUrl = data.next;
+        let params = { search: "", status: "" };
         const uniqueStatus = Array.from(
-          new Set(devices.map((d) => d.monitoring.status)),
+          new Set(devices.map((d) => d.monitoring.status_label)),
         );
-        let statusFilter = "";
+        let statusFiltersBtn = "";
         uniqueStatus.forEach((status) => {
           const label = gettext(status);
-          statusFilter += `
+          statusFiltersBtn += `
              <span 
                 class="health-status health-${status} status-filter" 
                 data-status="${status}"
@@ -81,17 +82,18 @@
         const has_floorplan = data.has_floorplan;
         const floorplan_btn = has_floorplan
           ? `<button class="default-btn floorplan-btn">
-          <span class="ow-floor icon"></span>  Switch to Floor Plan
+          <span class="ow-floor floor-icon"></span>  Switch to Floor Plan
         </button>`
           : "";
         layer.bindPopup(`
                           <div class="map-detail">
                             <h2>${layer.feature.properties.name} (${data.count})</h2>
                             <div class="input-container">
-                              <input id="device-search" placeholder="Search for devices" />
+                              <input id="device-search" placeholder="Search for devices by name or mac address" />
                             </div>
                             <div class="label-container">
-                              ${statusFilter}
+                              ${statusFiltersBtn}
+                              <input id="status-filter" style="display: none;" type="text" />
                             </div>
                             <div class="table-container">
                               <table>
@@ -114,7 +116,7 @@
         layer.openPopup();
 
         let el = $(layer.getPopup().getElement());
-        function renderRows(devices) {
+        function renderRows() {
           if (devices.length === 0) {
             el.find("tbody").html(`
               <tr>
@@ -141,111 +143,72 @@
             .join("");
           el.find("tbody").html(rows);
         }
-        renderRows(devices);
+        function fetchDevices(params) {
+          if (!url) return;
+          console.log("Params:", params);
+          const searchParams = new URLSearchParams();
+          if (params.search) {
+            searchParams.append("search", params.search);
+          }
+
+          if (params.status) {
+            params.status.split(",").forEach((status) => {
+              searchParams.append("status", status);
+            });
+          }
+          console.log(searchParams.toString());
+          $.ajax({
+            dataType: "json",
+            url: `${url}?${searchParams.toString()}`,
+            xhrFields: { withCredentials: true },
+
+            success(data) {
+              console.log("Fetched devices:", data);
+              devices = data.results;
+              nextUrl = data.next;
+              renderRows(devices);
+            },
+            error() {
+              console.error("Could not load more devices from", url);
+            },
+          });
+        }
+        renderRows();
         el.find("#device-search").on("input", function (e) {
           const q = e.target.value.toLowerCase().trim();
           if (!q) {
             renderRows(devices);
           } else {
-            // const filtered = devices.filter((d) => {
-            //   return (
-            //     d.name.toLowerCase().includes(q) ||
-            //     d.mac_address.toLowerCase().includes(q)
-            //   );
-            // });
-            // renderRows(filtered);
-            $.ajax({
-              dataType: "json",
-              url: url + "&search=" + q,
-              xhrFields: { withCredentials: true },
-
-              success(data) {
-                devices = data.results;
-                nextUrl = data.next;
-                renderRows(devices);
-              },
-              error() {
-                console.error("Could not load more devices from", url);
-                nextUrl = url;
-              },
-            });
+            params.search = q;
+            console.log("Device before fetch:", devices);
+            fetchDevices(params);
+            console.log("Device after fetch:", devices);
           }
         });
         let activeStatuses = [];
         el.find(".status-filter").on("click", function (e) {
           e.stopPropagation();
-          const $badge = $(this);
-          const status = $badge.data("status");
+          const btn = $(this);
+          const status = btn.data("status");
           const label = gettext(status);
 
-          if ($badge.hasClass("active")) {
-            $badge.removeClass("active").html(label);
+          if (btn.hasClass("active")) {
+            btn.removeClass("active").html(label);
             activeStatuses = activeStatuses.filter((s) => s !== status);
+            $(`#status-filter`).val(activeStatuses.join(","));
           } else {
-            $badge
+            btn
               .addClass("active")
               .html(`${label} <span class="remove-icon">&times;</span>`);
             activeStatuses.push(status);
+            $(`#status-filter`).val(activeStatuses.join(","));
           }
-
-          let toShow;
-          if (activeStatuses.length === 0) {
-            toShow = devices;
-          } else {
-            $.ajax({
-              dataType: "json",
-              url: url + "&status=" + label,
-              xhrFields: { withCredentials: true },
-
-              success(data) {
-                devices = data.results;
-                nextUrl = data.next;
-                renderRows(devices);
-              },
-              error() {
-                console.error("Could not load more devices from", url);
-                nextUrl = url;
-              },
-            });
-          }
+          params.status = $(`#status-filter`).val();
+          fetchDevices(params);
         });
-        let nextUrl = data.next;
-        let isLoading = false;
-
-        function loadMoreDevices() {
-          if (!nextUrl || isLoading) return;
-
-          isLoading = true;
-
-          const $spinner = el.find(".table-container .ow-loading-spinner");
-          $spinner.show();
-
-          const url = nextUrl;
-          nextUrl = null;
-
-          $.ajax({
-            dataType: "json",
-            url,
-            xhrFields: { withCredentials: true },
-
-            success(newData) {
-              devices = devices.concat(newData.results);
-              nextUrl = newData.next;
-              renderRows(devices);
-            },
-            error() {
-              console.error("Could not load more devices from", url);
-              nextUrl = url;
-            },
-            complete() {
-              isLoading = false;
-              $spinner.hide();
-            },
-          });
-        }
         el.find(".table-container").on("scroll", function () {
           if (this.scrollTop + this.clientHeight >= this.scrollHeight - 10) {
-            loadMoreDevices(nextUrl);
+            // Todo: Recreate the rendering logic
           }
         });
 

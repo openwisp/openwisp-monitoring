@@ -10,6 +10,7 @@ from openwisp_users.api.filters import (
 
 Device = load_model("config", "Device")
 WifiSession = load_model("device_monitoring", "WifiSession")
+DeviceMonitoring = load_model("device_monitoring", "DeviceMonitoring")
 
 
 class WifiSessionFilter(FilterDjangoByOrgManaged):
@@ -26,7 +27,11 @@ class WifiSessionFilter(FilterDjangoByOrgManaged):
 
 class DeviceFilter(filters.FilterSet):
     search = filters.CharFilter(method="filter_search")
-    status = filters.CharFilter(method="filter_by_status")
+
+    status = filters.MultipleChoiceFilter(
+        field_name="monitoring__status",
+        choices=DeviceMonitoring.STATUS,
+    )
 
     def filter_search(self, queryset, name, value):
         value = value.strip()
@@ -34,15 +39,9 @@ class DeviceFilter(filters.FilterSet):
             Q(name__icontains=value) | Q(mac_address__icontains=value)
         )
 
-    def filter_by_status(self, qs, name, value):
-        statuses = [s.strip() for s in value.split(",") if s.strip()]
-        if statuses:
-            return qs.filter(monitoring__status__in=statuses)
-        return qs
-
     class Meta:
         model = Device
-        fields = []
+        fields = ["search", "status"]
 
 
 class MonitoringDeviceFilter(OrganizationManagedFilter):
