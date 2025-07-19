@@ -25,6 +25,11 @@
   min-width: fit-content;
   padding: 11px 0 11px 4px;
 }
+.leaflet-popup-close-button {
+  top: 25px !important;
+  right: 25px !important;
+  font-size: 20px !important;
+}
 .map-detail {
   display: flex;
   flex-direction: column;
@@ -33,7 +38,7 @@
 }
 .map-detail h2 {
   margin: 10px 0;
-  font-size: 20px;
+  font-size: 18px;
 }
 .input-container {
   margin: 10px 0;
@@ -57,11 +62,11 @@
 .map-detail input {
   outline: none;
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 12px;
   padding-left: 2rem;
   box-sizing: border-box;
   border-radius: 6px;
-  font-size: 18px;
+  font-size: 16px;
 }
 .label-container {
   display: flex;
@@ -78,10 +83,10 @@
   padding: 3px 10px;
   border-radius: 12px;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 12px;
 }
 .table-container {
-  max-height: 120px;
+  height: 120px;
   width: 400px;
   overflow-y: auto;
   min-width: 300px;
@@ -92,7 +97,6 @@
   width: 100%;
 }
 .no-devices {
-  text-align: center;
   font-weight: bold;
 }
 .remove-icon {
@@ -111,12 +115,23 @@
   color: #fff;
 }
 .floorplan-btn {
-  padding: 12px 25px;
-  margin: 10px 0;
+  padding: 10px 25px;
+  margin-top: 10px;
   width: fit-content;
-  font-size: 18px;
+  font-size: 16px;
   border-radius: 8px;
   align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.floor-icon {
+  display: inline-block;
+  width: 25px;
+  height: 25px;
+  background-color: white;
+  mask-repeat: no-repeat;
+  margin-right: 16px;
 }
 #device-map-container {
   margin: 50px auto;
