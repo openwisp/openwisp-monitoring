@@ -67,21 +67,22 @@
       success: function (data) {
         let devices = data.results;
         let nextUrl = data.next;
-        let params = { search: "", status: "" };
-        const uniqueStatus = Array.from(
-          new Set(devices.map((d) => d.monitoring.status_label)),
-        );
+        const uniqueStatus = devices.reduce((acc, device) => {
+          const { status_label, status } = device.monitoring;
+          acc[status_label] = status;
+          return acc;
+        }, {});
         let statusFiltersBtn = "";
-        uniqueStatus.forEach((status) => {
-          const label = gettext(status);
+        Object.entries(uniqueStatus).forEach(([status_label, status]) => {
+          const label = gettext(status_label);
           statusFiltersBtn += `
-             <span 
-                class="health-status health-${status} status-filter" 
-                data-status="${status}"
-              >
-                ${label}
-              </span>
-            `;
+            <span 
+              class="health-status health-${status} status-filter" 
+              data-status="${status}"
+            >
+              ${label}
+            </span>
+          `;
         });
         const has_floorplan = data.has_floorplan;
         const floorplan_btn = has_floorplan
@@ -91,7 +92,9 @@
           : "";
         layer.bindPopup(`
                           <div class="map-detail">
-                            <h2>${layer.feature.properties.name} (${data.count})</h2>
+                            <h2>${layer.feature.properties.name} (${
+                              data.count
+                            })</h2>
                             <div class="input-container">
                               <input id="device-search" placeholder="Search for devices by name or mac address" />
                             </div>
@@ -112,8 +115,8 @@
                                 <tbody>
                                     
                                 </tbody>
-                              </table>
-                              <div class="ow-loading-spinner" style="display: none; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);"></div>
+                                </table>
+                                <div class="ow-loading-spinner table-spinner"></div>
                             </div>
                             ${floorplan_btn}
                           </div>`);
@@ -146,47 +149,66 @@
             .join("");
           el.find("tbody").html(rows);
         }
-        function fetchDevices(params) {
-          if (!url) return;
-          console.log("Params:", params);
-          const searchParams = new URLSearchParams();
-          if (params.search) {
-            searchParams.append("search", params.search);
-          }
+        let fetchDevicesTimeout;
+        let loading = false;
+        function fetchDevices(url, ms = 0) {
+          if (!url || loading) return;
+          clearTimeout(fetchDevicesTimeout);
+          loading = true;
+          const spinner = el.find(".table-spinner");
+          spinner.show();
+          fetchDevicesTimeout = setTimeout(() => {
+            let params = new URLSearchParams();
+            const searchParam = el
+              .find("#device-search")
+              .val()
+              .toLowerCase()
+              .trim();
+            const statusParam = el.find("#status-filter").val();
+            if (searchParam) {
+              params.append("search", searchParam);
+            }
 
-          if (params.status) {
-            params.status.split(",").forEach((status) => {
-              searchParams.append("status", status);
-            });
-          }
-          console.log(searchParams.toString());
-          $.ajax({
-            dataType: "json",
-            url: `${url}?${searchParams.toString()}`,
-            xhrFields: { withCredentials: true },
+            if (statusParam) {
+              statusParam.split(",").forEach((status) => {
+                params.append("status", status);
+              });
+            }
+            const queryString = params.toString();
+            let fetchUrl;
+            // if nextUrl is the same as url, that means we are fetching for infinite scroll
+            if (url === nextUrl) fetchUrl = url;
+            else fetchUrl = queryString ? `${url}?${queryString}` : url;
 
-            success(data) {
-              console.log("Fetched devices:", data);
-              devices = data.results;
-              nextUrl = data.next;
-              renderRows(devices);
-            },
-            error() {
-              console.error("Could not load more devices from", url);
-            },
-          });
+            $.ajax(
+              {
+                dataType: "json",
+                url: fetchUrl,
+                xhrFields: { withCredentials: true },
+
+                success(data) {
+                  if (url === nextUrl) {
+                    devices = devices.concat(data.results);
+                  } else {
+                    devices = data.results;
+                  }
+                  nextUrl = data.next;
+                  renderRows(devices);
+                },
+                error() {
+                  console.error("Could not load more devices from", url);
+                },
+                complete() {
+                  loading = false;
+                  spinner.hide();
+                },
+              },
+            );
+          }, ms);
         }
         renderRows();
-        el.find("#device-search").on("input", function (e) {
-          const q = e.target.value.toLowerCase().trim();
-          if (!q) {
-            renderRows(devices);
-          } else {
-            params.search = q;
-            console.log("Device before fetch:", devices);
-            fetchDevices(params);
-            console.log("Device after fetch:", devices);
-          }
+        el.find("#device-search").on("input", function () {
+          fetchDevices(url, 300);
         });
         let activeStatuses = [];
         el.find(".status-filter").on("click", function (e) {
@@ -198,20 +220,18 @@
           if (btn.hasClass("active")) {
             btn.removeClass("active").html(label);
             activeStatuses = activeStatuses.filter((s) => s !== status);
-            $(`#status-filter`).val(activeStatuses.join(","));
           } else {
             btn
               .addClass("active")
               .html(`${label} <span class="remove-icon">&times;</span>`);
             activeStatuses.push(status);
-            $(`#status-filter`).val(activeStatuses.join(","));
           }
-          params.status = $(`#status-filter`).val();
-          fetchDevices(params);
+          $(`#status-filter`).val(activeStatuses.join(","));
+          fetchDevices(url);
         });
         el.find(".table-container").on("scroll", function () {
           if (this.scrollTop + this.clientHeight >= this.scrollHeight - 10) {
-            // Todo: Recreate the rendering logic
+            fetchDevices(nextUrl, 100);
           }
         });
         $(".floorplan-btn").on("click", function () {
