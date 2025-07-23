@@ -25,9 +25,8 @@ class WifiSessionFilter(FilterDjangoByOrgManaged):
         }
 
 
-class DeviceFilter(filters.FilterSet):
+class MonitoringLocationDeviceFilter(filters.FilterSet):
     search = filters.CharFilter(method="filter_search")
-
     status = filters.MultipleChoiceFilter(
         field_name="monitoring__status",
         choices=DeviceMonitoring.STATUS,

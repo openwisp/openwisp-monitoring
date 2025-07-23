@@ -66,7 +66,7 @@
 .leaflet-popup-content {
   display: flex;
   min-width: fit-content;
-  padding: 11px 0 11px 4px;
+  margin: 24px !important;
 }
 .leaflet-popup-close-button {
   top: 25px !important;
@@ -80,7 +80,7 @@
   box-sizing: border-box;
 }
 .map-detail h2 {
-  margin: 10px 0;
+  margin: 35px 0 10px 0;
   font-size: 18px;
 }
 .input-container {
@@ -117,6 +117,7 @@
   align-items: center;
   margin: 10px 0;
   gap: 10px;
+  justify-content: space-evenly;
 }
 .status-filter {
   cursor: pointer;
@@ -132,7 +133,7 @@
 }
 .table-container {
   height: 120px;
-  width: 400px;
+  width: 350px;
   overflow-y: auto;
   min-width: 300px;
   box-sizing: border-box;
@@ -161,7 +162,7 @@
 }
 .floorplan-btn {
   padding: 10px 25px;
-  margin-top: 10px;
+  margin-top: 20px;
   width: fit-content;
   font-size: 16px;
   border-radius: 8px;

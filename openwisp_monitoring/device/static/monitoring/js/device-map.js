@@ -67,22 +67,27 @@
       success: function (data) {
         let devices = data.results;
         let nextUrl = data.next;
-        const uniqueStatus = devices.reduce((acc, device) => {
-          const { status_label, status } = device.monitoring;
-          acc[status_label] = status;
-          return acc;
-        }, {});
-        let statusFiltersBtn = "";
-        Object.entries(uniqueStatus).forEach(([status_label, status]) => {
+        const statusLabelsMap = {
+          ok: "ok",
+          problem: "problem",
+          critical: "critical",
+          unknown: "unknown",
+          deactivated: "deactivated",
+        };
+        devices.forEach(({ monitoring }) => {
+          statusLabelsMap[monitoring.status] = monitoring.status_label;
+        });
+        let statusFilterButtons = "";
+        Object.entries(statusLabelsMap).forEach(([status_label, status]) => {
           const label = gettext(status_label);
-          statusFiltersBtn += `
-            <span 
+          statusFilterButtons += 
+            `<span 
               class="health-status health-${status} status-filter" 
               data-status="${status}"
             >
               ${label}
-            </span>
-          `;
+            </span>`
+          ;
         });
         const has_floorplan = data.has_floorplan;
         const floorplan_btn = has_floorplan
@@ -96,10 +101,10 @@
                               data.count
                             })</h2>
                             <div class="input-container">
-                              <input id="device-search" placeholder="Search for devices by name or mac address" />
+                              <input id="device-search" placeholder="Search for devices" />
                             </div>
                             <div class="label-container">
-                              ${statusFiltersBtn}
+                              ${statusFilterButtons}
                               <input id="status-filter" style="display: none;" type="text" />
                             </div>
                             <div class="table-container">
@@ -180,30 +185,28 @@
             if (url === nextUrl) fetchUrl = url;
             else fetchUrl = queryString ? `${url}?${queryString}` : url;
 
-            $.ajax(
-              {
-                dataType: "json",
-                url: fetchUrl,
-                xhrFields: { withCredentials: true },
+            $.ajax({
+              dataType: "json",
+              url: fetchUrl,
+              xhrFields: { withCredentials: true },
 
-                success(data) {
-                  if (url === nextUrl) {
-                    devices = devices.concat(data.results);
-                  } else {
-                    devices = data.results;
-                  }
-                  nextUrl = data.next;
-                  renderRows(devices);
-                },
-                error() {
-                  console.error("Could not load more devices from", url);
-                },
-                complete() {
-                  loading = false;
-                  spinner.hide();
-                },
+              success(data) {
+                if (url === nextUrl) {
+                  devices = devices.concat(data.results);
+                } else {
+                  devices = data.results;
+                }
+                nextUrl = data.next;
+                renderRows(devices);
               },
-            );
+              error() {
+                console.error("Could not load more devices from", url);
+              },
+              complete() {
+                loading = false;
+                spinner.hide();
+              },
+            });
           }, ms);
         }
         renderRows();
