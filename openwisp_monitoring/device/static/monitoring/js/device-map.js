@@ -80,14 +80,12 @@
         let statusFilterButtons = "";
         Object.entries(statusLabelsMap).forEach(([status_label, status]) => {
           const label = gettext(status_label);
-          statusFilterButtons += 
-            `<span 
+          statusFilterButtons += `<span 
               class="health-status health-${status} status-filter" 
               data-status="${status}"
             >
               ${label}
-            </span>`
-          ;
+            </span>`;
         });
         const has_floorplan = data.has_floorplan;
         const floorplan_btn = has_floorplan
