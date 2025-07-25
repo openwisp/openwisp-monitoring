@@ -1,3 +1,4 @@
+import json
 from urllib.parse import urljoin
 
 from django.apps import AppConfig
@@ -381,6 +382,15 @@ class DeviceMonitoringConfig(AppConfig):
                 urlconf=MONITORING_API_URLCONF,
                 args=["000"],
             )
+            labels = json.dumps(
+                {
+                    "ok": app_settings.HEALTH_STATUS_LABELS["ok"],
+                    "problem": app_settings.HEALTH_STATUS_LABELS["problem"],
+                    "critical": app_settings.HEALTH_STATUS_LABELS["critical"],
+                    "unknown": app_settings.HEALTH_STATUS_LABELS["unknown"],
+                    "deactivated": app_settings.HEALTH_STATUS_LABELS["deactivated"],
+                }
+            )
             if MONITORING_API_BASEURL:
                 device_list_url = urljoin(MONITORING_API_BASEURL, str(device_list_url))
                 loc_geojson_url = urljoin(MONITORING_API_BASEURL, str(loc_geojson_url))
@@ -410,6 +420,7 @@ class DeviceMonitoringConfig(AppConfig):
                     "monitoring_device_list_url": device_list_url,
                     "monitoring_location_geojson_url": loc_geojson_url,
                     "monitoring_indoor_coordinates_list": indoor_coordinates_list_url,
+                    "monitoring_labels": labels,
                 },
             )
 

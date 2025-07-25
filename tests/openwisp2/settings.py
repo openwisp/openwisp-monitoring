@@ -316,3 +316,12 @@ try:
     from openwisp2.local_settings import *
 except ImportError:
     pass
+
+# Todo: Remove this, Only added to test custom labels
+OPENWISP_MONITORING_HEALTH_STATUS_LABELS = {
+    "ok": "Active",
+    "problem": "Inactive",
+    "deactivated": "Deactivated",
+    "unknown": "Unknown",
+    "critical": "Error",
+}

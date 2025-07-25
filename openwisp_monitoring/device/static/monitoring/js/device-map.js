@@ -14,6 +14,7 @@
     deactivated: "#000",
   };
   const colors = window._owGeoMapConfig.STATUS_COLORS;
+  const labels = window._owGeoMapConfig.labels;
   const getIndoorCoordinatesUrl = function (pk) {
     return window._owGeoMapConfig.indoorCoordinatesUrl.replace("000", pk);
   };
@@ -67,26 +68,20 @@
       success: function (data) {
         let devices = data.results;
         let nextUrl = data.next;
-        const statusLabelsMap = {
-          ok: "ok",
-          problem: "problem",
-          critical: "critical",
-          unknown: "unknown",
-          deactivated: "deactivated",
-        };
-        devices.forEach(({ monitoring }) => {
-          statusLabelsMap[monitoring.status] = monitoring.status_label;
-        });
+        const statusLabelsMap = JSON.parse(labels);
         let statusFilterButtons = "";
-        Object.entries(statusLabelsMap).forEach(([status_label, status]) => {
-          const label = gettext(status_label);
-          statusFilterButtons += `<span 
-              class="health-status health-${status} status-filter" 
-              data-status="${status}"
+        console.log(statusLabelsMap);
+        Object.entries(statusLabelsMap).forEach(
+          ([status_key, status_label]) => {
+            const label = gettext(status_label);
+            statusFilterButtons += `<span 
+              class="health-status health-${status_key} status-filter" 
+              data-status="${status_key}"
             >
               ${label}
             </span>`;
-        });
+          },
+        );
         const has_floorplan = data.has_floorplan;
         const floorplan_btn = has_floorplan
           ? `<button class="default-btn floorplan-btn">
