@@ -12,6 +12,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from swapper import load_model
 
 from openwisp_controller.connection.tests.utils import CreateConnectionsMixin
+from openwisp_controller.geo.tests.utils import TestGeoMixin
 from openwisp_monitoring.device.tests import (
     TestDeviceMonitoringMixin,
     TestWifiClientSessionMixin,
@@ -28,6 +29,9 @@ AlertSettings = load_model("monitoring", "AlertSettings")
 Metric = load_model("monitoring", "Metric")
 Chart = load_model("monitoring", "Chart")
 Check = load_model("check", "Check")
+Location = load_model("geo", "Location")
+DeviceLocation = load_model("geo", "DeviceLocation")
+Floorplan = load_model("geo", "Floorplan")
 
 
 class SeleniumTestMixin(BaseSeleniumTestMixin):
@@ -284,3 +288,66 @@ class TestWifiSessionInlineAdmin(
                 "innerHTML"
             ),
         )
+
+
+@tag("selenium_tests")
+class TestDashboardMap(
+    SeleniumTestMixin, TestDeviceMonitoringMixin, TestGeoMixin, StaticLiveServerTestCase
+):
+    object_model = Device
+    location_model = Location
+    floorplan_model = Floorplan
+    object_location_model = DeviceLocation
+
+    def test_filtering_on_device_popup(self):
+        d1 = self._create_device(name="Test-Device1", mac_address="00:00:00:00:00:01")
+        d2 = self._create_device(name="Test-Device2", mac_address="00:00:00:00:00:02")
+        d2.monitoring.status = "ok"
+        d2.monitoring.save()
+        location = self._create_location(type="indoor", name="Test-Location")
+        self._create_object_location(
+            content_object=d1,
+            location=location,
+        )
+        self._create_object_location(
+            content_object=d2,
+            location=location,
+        )
+        self.login()
+        location_point = self.find_element(By.CSS_SELECTOR, "g path")
+        location_point.click()
+        self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail")
+        table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+        self.assertEqual(len(table_entries), 2)
+
+        with self.subTest("Test filtering by status"):
+            health_ok = self.find_element(By.CSS_SELECTOR, ".map-detail .health-ok")
+            health_ok.click()
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
+            )
+            sleep(0.5)
+            table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+            self.assertEqual(len(table_entries), 1)
+            self.assertIn(
+                "Test-Device2",
+                table_entries[0].text,
+            )
+            health_ok.click()
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
+            )
+            sleep(0.5)
+            table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+            self.assertEqual(len(table_entries), 2)
+
+        with self.subTest("Test filtering by input field"):
+            input_field = self.find_element(By.CSS_SELECTOR, "#device-search")
+            input_field.send_keys("Test-Device1")
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
+            )
+            sleep(0.5)
+            table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+            self.assertEqual(len(table_entries), 1)
+            self.assertIn("Test-Device1", table_entries[0].text)
