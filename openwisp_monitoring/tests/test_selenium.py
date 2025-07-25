@@ -1,6 +1,7 @@
 from time import sleep
 from unittest.mock import patch
 
+from django.contrib.auth.models import Permission
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.test import tag
 from django.urls.base import reverse
@@ -35,6 +36,9 @@ Floorplan = load_model("geo", "Floorplan")
 
 
 class SeleniumTestMixin(BaseSeleniumTestMixin):
+    # Todo: Added for testing
+    retry_max = 1
+
     @classmethod
     def setUpClass(cls):
         """
@@ -60,6 +64,9 @@ class SeleniumTestMixin(BaseSeleniumTestMixin):
             ),
             "monitoring_location_geojson_url": reverse(
                 "monitoring:api_location_geojson"
+            ),
+            "monitoring_indoor_coordinates_list": reverse(
+                "monitoring:api_indoor_coordinates_list", args=["000"]
             ),
         }
         DASHBOARD_TEMPLATES[55][1]["api_url"] = reverse(
@@ -351,3 +358,96 @@ class TestDashboardMap(
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 1)
             self.assertIn("Test-Device1", table_entries[0].text)
+
+        with self.subTest("Test filtering to get no results"):
+            input_field.clear()
+            input_field.send_keys("Non-Existent-Device")
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
+            )
+            sleep(0.5)
+            table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+            self.assertEqual(len(table_entries), 1)
+            self.assertIn("No devices found", table_entries[0].text)
+
+    def test_floorplan_overlay(self):
+        org = self._get_org()
+        location = self._create_location(type="indoor", organization=org)
+        floor1 = self._create_floorplan(floor=1, location=location)
+        floor2 = self._create_floorplan(floor=2, location=location)
+        device1 = self._create_device(
+            name="Test-Device1", mac_address="00:00:00:00:00:01", organization=org
+        )
+        device2 = self._create_device(
+            name="Test-Device2", mac_address="00:00:00:00:00:02", organization=org
+        )
+        self._create_object_location(
+            content_object=device1,
+            location=location,
+            floorplan=floor1,
+            organization=org,
+        )
+        self._create_object_location(
+            content_object=device2,
+            location=location,
+            floorplan=floor2,
+            organization=org,
+        )
+        self.login()
+        self.wait_for_visibility(By.CSS_SELECTOR, "#device-map-container")
+
+        with self.subTest("Test floorplan redering"):
+            location_point = self.find_element(By.CSS_SELECTOR, "g path")
+            location_point.click()
+            self.wait_for(
+                "element_to_be_clickable", By.CSS_SELECTOR, ".map-detail .floorplan-btn"
+            ).click()
+            canvases = self.find_elements(
+                By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
+            )
+            self.assertIsNotNone(canvases)
+
+        with self.subTest("Test floorplan navigation"):
+            up_arrow = self.find_element(
+                By.CSS_SELECTOR, "#floorplan-navigation .up-arrow"
+            )
+            up_arrow.click()
+            floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-heading")
+            self.assertIn("2nd Floor", floor_heading.text)
+            canvases = self.find_elements(
+                By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
+            )
+            self.assertIsNotNone(canvases)
+
+            down_arrow = self.find_element(
+                By.CSS_SELECTOR, "#floorplan-navigation .down-arrow"
+            )
+            down_arrow.click()
+            floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-heading")
+            self.assertIn("1st Floor", floor_heading.text)
+            canvases = self.find_elements(
+                By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
+            )
+            self.assertIsNotNone(canvases)
+
+            second_floor_btn = self.find_element(
+                By.CSS_SELECTOR, "#floorplan-navigation .floor-btn[data-floor='2']"
+            )
+            second_floor_btn.click()
+            floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-heading")
+            self.assertIn("2nd Floor", floor_heading.text)
+            canvases = self.find_elements(
+                By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
+            )
+            self.assertIsNotNone(canvases)
+
+    def test_dashboard_map_without_permissions(self):
+        user = self._create_user(
+            username="testuser", password="password", is_staff=True, is_superuser=True
+        )
+        permissions = Permission.objects.filter(codename__endswith="devicelocation")
+        user.user_permissions.remove(*permissions)
+        self.login(username="testuser", password="password")
+        no_data_div = self.find_element(By.CSS_SELECTOR, ".no-data")
+        self.assertTrue(no_data_div.is_displayed())
+        self.assertIn("No map data to show.", no_data_div.text)

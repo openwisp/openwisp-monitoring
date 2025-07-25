@@ -236,8 +236,8 @@
           }
         });
         $(".floorplan-btn").on("click", function () {
-          url = getIndoorCoordinatesUrl(layer.feature.id);
-          window.openFloorPlan(url);
+          const floorplanUrl = getIndoorCoordinatesUrl(layer.feature.id);
+          window.openFloorPlan(floorplanUrl);
         });
         loadingOverlay.hide();
       },
@@ -451,6 +451,15 @@
       withCredentials: true,
     },
     success: onAjaxSuccess,
+    error: function () {
+      mapContainer.find(".no-data").fadeIn(500);
+      loadingOverlay.hide();
+      mapContainer.find(".no-data").click(function (e) {
+        e.preventDefault();
+        mapContainer.slideUp();
+        localStorage.setItem(localStorageKey, "false");
+      });
+    },
     context: window,
   });
 })(django.jQuery);
