@@ -260,13 +260,7 @@ class MonitoringLocationDeviceList(LocationDeviceList):
 monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
 
 
-# Todo: Remove this
-class TestPagination(ListViewPagination):
-    page_size = 2
-
-
 class MonitoringIndoorCoordinatesList(IndoorCoordinatesList):
-    pagination_class = TestPagination
     queryset = (
         DeviceLocation.objects.filter(
             location__type="indoor",

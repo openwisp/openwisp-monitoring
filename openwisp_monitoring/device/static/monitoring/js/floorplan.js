@@ -12,26 +12,30 @@
   const NAV_WINDOW_SIZE = 5;
   let navWindowStart = 0;
   let selectedIndex = 0;
+  let isFullScreen = false;
+  let maps = {};
 
   async function openFloorPlan(url) {
     await fetchData(url);
 
     selectedIndex = floors.indexOf(currentFloor) || 0;
-    // Calculate the starting index of the navigation window so the selected floor appears near the center.
-    // Example: If selectedIndex = 3 and NAV_WINDOW_SIZE = 5,
-    // then navWindowStart = max(0, min(1, floors.length - 5)) => navWindowStart = 1
-    // So we will slice the floors array from index 1 to 6 (1 + NAV_WINDOW_SIZE),
-    // which ensures the initial floor is displayed at the center of the navigation window.
-    navWindowStart = Math.max(
-      0,
-      Math.min(selectedIndex - 2, floors.length - NAV_WINDOW_SIZE),
-    );
+    // Calculate the starting index of the navigation window so the selected floor is positioned
+    // as close to the center as possible without going out of bounds.
+    // Example: If selectedIndex = 3, NAV_WINDOW_SIZE = 5, floors.length = 10:
+    //   center = Math.floor(5 / 2) = 2
+    //   maxStart = 10 - 5 = 5
+    //   navWindowStart = Math.max(0, Math.min(3 - 2, 5)) = Math.max(0, Math.min(1, 5)) = 1
+    // This means we will slice floors from index 1 to 6, so the selected floor (index 3)
+    // appears in the middle of the navigation window when possible.
+    const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
+    const center = Math.floor(NAV_WINDOW_SIZE / 2);
+    navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
 
     const $floorPlanContainer = createFloorPlanContainer();
     const $floorNavigation = createFloorNavigation();
 
     $("#device-map-container").append($floorPlanContainer);
-    $floorPlanContainer.append($floorNavigation);
+    $("#floorplan-container").append($floorNavigation);
 
     closeButtonHandler();
     addFloorButtons(selectedIndex, navWindowStart);
@@ -55,9 +59,10 @@
         xhrFields: { withCredentials: true },
         success: async (data) => {
           // To make this run only one time as only in the first call floor will not be provided
-          // And sort them in decresing order so that neagtive floor show at bottom and postove at top in floor navigation
+          // And sort them in decreasing order so that negative floors show at the bottom and
+          // positive floors at the top in floor navigation
           if (!floor) {
-            floors = data.floors.sort((a, b) => b - a);
+            floors = data.floors;
             floor = data.results[0].floor;
           }
           if (!allResults[floor]) allResults[floor] = [];
@@ -80,10 +85,12 @@
 
   function createFloorPlanContainer() {
     return $(`
-      <div id="floorplan-container">
-        <h2 id="floorplan-heading"></h2>
-        <span id="floorplan-close-btn">&times;</span>
-        <div id="floorplan-content-root"></div>
+      <div id="floorplan-overlay">
+        <div id="floorplan-container">
+          <h2 id="floorplan-heading"></h2>
+          <span id="floorplan-close-btn">&times;</span>
+          <div id="floorplan-content-root"></div>
+        </div>
       </div>
     `);
   }
@@ -91,9 +98,9 @@
   function createFloorNavigation() {
     return $(`
       <div id="floorplan-navigation">
-        <div class="nav-arrow up-arrow"></div>
+        <div class="nav-arrow left-arrow"></div>
         <div class="floorplan-navigation-body"></div>
-        <div class="nav-arrow down-arrow"></div>
+        <div class="nav-arrow right-arrow"></div>
       </div>
     `);
   }
@@ -101,6 +108,8 @@
   function closeButtonHandler() {
     $("#floorplan-close-btn").on("click", () => {
       $("#floorplan-container, #floorplan-navigation").remove();
+      $("#floorplan-overlay").remove();
+      allResults = {};
     });
   }
 
@@ -120,8 +129,8 @@
       `);
     });
 
-    $(".up-arrow").toggleClass("disabled", selectedIndex === 0);
-    $(".down-arrow").toggleClass(
+    $(".left-arrow").toggleClass("disabled", selectedIndex === 0);
+    $(".right-arrow").toggleClass(
       "disabled",
       selectedIndex === floors.length - 1,
     );
@@ -139,29 +148,38 @@
     $nav.off("click");
     $nav.on("click", ".floor-btn", async (e) => {
       selectedIndex = +e.currentTarget.dataset.index;
+      const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
+      const center = Math.floor(NAV_WINDOW_SIZE / 2);
+      navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
       addFloorButtons(selectedIndex, navWindowStart);
       currentFloor = floors[selectedIndex];
       await showFloor(url, currentFloor);
     });
 
-    $nav.on("click", ".down-arrow:not(.disabled)", async () => {
+    $nav.on("click", ".right-arrow:not(.disabled)", async () => {
       if (selectedIndex < floors.length - 1) {
         selectedIndex++;
-        if (selectedIndex >= navWindowStart + NAV_WINDOW_SIZE) {
-          navWindowStart = Math.min(navWindowStart + 1, maxStart);
-        }
+        const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
+        const center = Math.floor(NAV_WINDOW_SIZE / 2);
+        navWindowStart = Math.max(
+          0,
+          Math.min(selectedIndex - center, maxStart),
+        );
         addFloorButtons(selectedIndex, navWindowStart);
         currentFloor = floors[selectedIndex];
         await showFloor(url, currentFloor);
       }
     });
 
-    $nav.on("click", ".up-arrow:not(.disabled)", async () => {
+    $nav.on("click", ".left-arrow:not(.disabled)", async () => {
       if (selectedIndex > 0) {
         selectedIndex--;
-        if (selectedIndex < navWindowStart) {
-          navWindowStart = Math.max(navWindowStart - 1, 0);
-        }
+        const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
+        const center = Math.floor(NAV_WINDOW_SIZE / 2);
+        navWindowStart = Math.max(
+          0,
+          Math.min(selectedIndex - center, maxStart),
+        );
         addFloorButtons(selectedIndex, navWindowStart);
         currentFloor = floors[selectedIndex];
         await showFloor(url, currentFloor);
@@ -193,23 +211,38 @@
       renderIndoorMap(nodesThisFloor, imageUrl, $floorDiv[0].id);
     }
     $floorDiv.show();
+    const floorNavigation = $("#floorplan-navigation");
+    if (isFullScreen && maps[floor]) {
+      document.exitFullscreen();
+      maps[floor].getContainer().requestFullscreen();
+      floorNavigation.addClass("fullscreen");
+      $(`#floor-content-${floor} .leaflet-container`).append(floorNavigation);
+    }
+    // else {
+    //   floorNavigation.removeClass("fullscreen");
+    //   $("#floorplan-container").append(floorNavigation);
+    // }
+    maps[currentFloor]?.invalidateSize();
   }
 
-  let graph;
   function renderIndoorMap(allResults, imageUrl, divId) {
-    graph = new NetJSONGraph(allResults, {
+    console.log("Render Indoor Map", isFullScreen);
+    const graph = new NetJSONGraph(allResults, {
       el: `#${divId}`,
       crs: L.CRS.Simple,
       render: "map",
 
       mapOptions: {
         center: [50, 50],
-        zoom: 1,
-        minZoom: -1,
+        zoom: 0,
+        minZoom: -4,
         maxZoom: 2,
+        zoomSnap: 0.5,
+        zoomDelta: 0.5,
+        zoomAnimation: false,
         nodeConfig: {
           label: {
-            show: false,
+            show: true,
           },
           animation: false,
           nodeStyle: (node) => ({
@@ -219,13 +252,49 @@
             opacity: 0.7,
           }),
         },
-        baseOptions: { media: [{ option: { tooltip: { show: true } } }] },
+        baseOptions: {
+          media: [
+            {
+              option: {
+                tooltip: {
+                  show: true,
+                  formatter: function (element) {
+                    const node = element.data.node;
+                    return `
+                      <div class="njg-tooltip-inner">
+                        <div class="njg-tooltip-item">
+                          <span class="njg-tooltip-key">name</span>
+                          <span class="njg-tooltip-value">${node.device_name}</span>
+                        </div>
+                        <div class="njg-tooltip-item">
+                          <span class="njg-tooltip-key">Mac address</span>
+                          <span class="njg-tooltip-value">${node.mac_address}</span>
+                        </div>
+                        <div class="njg-tooltip-item">
+                          <span class="njg-tooltip-key">status</span>
+                          <span class="tooltip-status health-${node.monitoring.status} ">
+                            ${node.monitoring.status_label}
+                          </span>
+                        </div>
+                        <div class="njg-tooltip-item">
+                          <button class="default-btn tooltip-btn" data-url="${node.admin_edit_url}"">
+                            <span class="ow-device floor-icon"></span>
+                            Open Device
+                          </button>
+                        </div>
+                        </div>
+                      </div>
+                    `;
+                  },
+                },
+              },
+            },
+          ],
+        },
       },
 
       prepareData(data) {
         data.nodes.forEach((node) => {
-          // To hide DeviceLocation id in tooltip
-          node.id = "";
           node.properties = {
             ...node.properties,
             name: node.device_name,
@@ -239,13 +308,16 @@
 
       onReady() {
         const map = this.leaflet;
+        maps[currentFloor] = map;
         // remove default geo map tiles
         map.eachLayer((layer) => layer._url && map.removeLayer(layer));
         const img = new Image();
         img.src = imageUrl;
+        let initialZoom;
         img.onload = () => {
-          const w = img.width;
           const h = img.height;
+          const aspectRatio = img.width / img.height;
+          const w = aspectRatio * h;
           const zoom = map.getMaxZoom() - 1;
           const sw = map.unproject([0, h * 2], zoom);
           const ne = map.unproject([w * 2, 0], zoom);
@@ -253,16 +325,42 @@
           L.imageOverlay(imageUrl, bnds).addTo(map);
           map.fitBounds(bnds);
           map.setMaxBounds(bnds);
-          // map.setView([0,0], 0)
+          initialZoom = map.getZoom();
+          map.setView([0, 0], initialZoom);
         };
-        // Todo: Explore some better approach if exists
-        const fullScreen = $(
-          "#floorplan-container .leaflet-control-fullscreen-button",
-        );
-        fullScreen.off("click.zoomOnFullscreen"); // avoid duplicates
-        fullScreen.on("click.zoomOnFullscreen", () => {
-          map.setZoom(map.getZoom() + 1);
+        if (isFullScreen) {
+          const container = map.getContainer();
+          container.requestFullscreen();
+        }
+        $("#floorplan-container")
+          .off("click", ".tooltip-btn")
+          .on("click", ".tooltip-btn", function () {
+            const url = $(this).data("url");
+            window.location.href = url;
+          });
+        map.on("fullscreenchange", () => {
+          const floorNavigation = $("#floorplan-navigation");
+          const zoomSnap = map.options.zoomSnap || 1;
+          if (map.isFullscreen()) {
+            map.setZoom(initialZoom + zoomSnap);
+            isFullScreen = true;
+            floorNavigation.addClass("fullscreen");
+            $(`#floor-content-${currentFloor} .leaflet-container`).append(
+              floorNavigation,
+            );
+          } else {
+            isFullScreen = false;
+            map.setZoom(initialZoom);
+            floorNavigation.removeClass("fullscreen");
+            $("#floorplan-container").append(floorNavigation);
+          }
+          map.invalidateSize();
+          // map.setZoom(initialZoom);
         });
+      },
+      onClickElement() {
+        const tooltip = $(`.njg-tooltip`);
+        tooltip.toggleClass("tooltip-visible");
       },
     });
 

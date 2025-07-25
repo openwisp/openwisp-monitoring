@@ -1,6 +1,6 @@
 "use strict";
 
-/* jshint esversion: 8 */
+/*jshint esversion: 8 */
 (function ($) {
   const loadingOverlay = $("#device-map-container .ow-loading-spinner");
   const localStorageKey = "ow-map-shown";
@@ -11,16 +11,16 @@
     problem: "#ffb442",
     critical: "#a72d1d",
     unknown: "#353c44",
-    deactivated: "#000000", // Fixed from "#0000"
+    deactivated: "#000",
   };
   const colors = window._owGeoMapConfig.STATUS_COLORS;
+  const labels = window._owGeoMapConfig.labels;
   const getIndoorCoordinatesUrl = function (pk) {
     return window._owGeoMapConfig.indoorCoordinatesUrl.replace("000", pk);
   };
   const getLocationDeviceUrl = function (pk) {
     return window._owGeoMapConfig.locationDeviceUrl.replace("000", pk);
   };
-
   const getColor = function (data) {
     let deviceCount = data.device_count,
       findResult = function (func) {
@@ -33,6 +33,7 @@
           return func(status, statusCount);
         }
       };
+    // if one status has absolute majority, it's the winner
     let majority = findResult(function (status, statusCount) {
       if (statusCount > deviceCount / 2) {
         return colors[status];
@@ -41,7 +42,9 @@
     if (majority) {
       return majority;
     }
-    return findResult((status, statusCount) => {
+    // otherwise simply return the color based on the priority
+    return findResult(function (status, statusCount) {
+      // if one status has absolute majority, it's the winner
       if (statusCount) {
         return colors[status];
       }
@@ -71,10 +74,12 @@
           device = apiData.results[i];
           html += `
             <tr>
-              <td><a href="${device.admin_edit_url}">${device.name}</a></td>
-              <td>
-                <span class="health-status health-${device.monitoring.status}">${device.monitoring.status_label}</span>
-              </td>
+                <td class="col-name"><a href="${device.admin_edit_url}">${device.name}</a></td>
+                <td class="col-status">
+                    <span class="health-status health-${device.monitoring.status}">
+                        ${device.monitoring.status_label}
+                    </span>
+                </td>
             </tr>
           `;
         }
@@ -119,31 +124,151 @@
 
         const popupContent = `
           <div class="map-detail">
-            <h2>${popupTitle} (${apiData.count})</h2>
-            <table>
-              <thead>
-                <tr><th>${gettext("name")}</th><th>${gettext("status")}</th></tr>
-              </thead>
-              <tbody>${html}</tbody>
-            </table>
-            ${pagination}
+            <h2>${popupTitle} (${data.count})</h2>
+            <div class="input-container">
+              <input id="device-search" placeholder="Search for devices" />
+            </div>
+            <div class="label-container">
+              ${statusFilterButtons}
+              <input id="status-filter" type="hidden" />
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                    <tr>
+                        <th>${gettext("name")}</th>
+                        <th class="th-status"><span class ="health-status-heading">${gettext(
+                          "status",
+                        )}</span></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+                </table>
+                <div class="ow-loading-spinner table-spinner"></div>
+            </div>
+            ${floorplan_btn}
           </div>
         `;
 
         currentPopup = L.popup().setLatLng(latLng).setContent(popupContent).openOn(map);
 
-        const $el = $(currentPopup.getElement());
-        $el.find(".next").click(function (e) {
-          e.preventDefault();
-          loadPopUpContent(nodeData, netjsongraphInstance, $(this).data("url"));
+        const el = $(currentPopup.getElement());
+        function renderRows() {
+          if (devices.length === 0) {
+            el.find("tbody").html(`
+              <tr>
+                <td class="no-devices" colspan="2">
+                  ${gettext("No devices found!")}
+                </td>
+              </tr>
+            `);
+            return;
+          }
+          const rows = devices
+            .map(
+              (device) => `
+            <tr>
+                <td class="col-name"><a href="${device.admin_edit_url}">${device.name}</a></td>
+                <td class="col-status">
+                    <span class="health-status health-${device.monitoring.status}">
+                        ${device.monitoring.status_label}
+                    </span>
+                </td>
+            </tr>
+          `,
+            )
+            .join("");
+          el.find("tbody").html(rows);
+        }
+        let fetchDevicesTimeout;
+        let loading = false;
+        function fetchDevices(url, ms = 0) {
+          if (!url || loading) return;
+          clearTimeout(fetchDevicesTimeout);
+          loading = true;
+          const spinner = el.find(".table-spinner");
+          const table = el.find(".table-container table");
+          spinner.show();
+          table.hide();
+          fetchDevicesTimeout = setTimeout(() => {
+            let params = new URLSearchParams();
+            const searchParam = el
+              .find("#device-search")
+              .val()
+              .toLowerCase()
+              .trim();
+            const statusParam = el.find("#status-filter").val();
+            if (searchParam) {
+              params.append("search", searchParam);
+            }
+
+            if (statusParam) {
+              statusParam.split(",").forEach((status) => {
+                params.append("status", status);
+              });
+            }
+            const queryString = params.toString();
+            let fetchUrl;
+            // if nextUrl is the same as url, that means we are fetching for infinite scroll
+            if (url === nextUrl) {
+              fetchUrl = url;
+            } else {
+              fetchUrl = queryString ? `${url}?${queryString}` : url;
+            }
+            $.ajax({
+              dataType: "json",
+              url: fetchUrl,
+              xhrFields: { withCredentials: true },
+              success(data) {
+                // If we are fetching for infinte scroll new need concat the results otherwise not
+                if (url === nextUrl) {
+                  devices = devices.concat(data.results);
+                } else {
+                  devices = data.results;
+                }
+                nextUrl = data.next;
+                renderRows(devices);
+              },
+              error() {
+                console.error("Could not load more devices from", url);
+                alert("Could not load more devices.");
+              },
+              complete() {
+                loading = false;
+                spinner.hide();
+                table.show();
+              },
+            });
+          }, ms);
+        }
+        renderRows();
+        el.find("#device-search").on("input", function () {
+          fetchDevices(url, 300);
         });
-        $el.find(".prev").click(function (e) {
-          e.preventDefault();
-          loadPopUpContent(nodeData, netjsongraphInstance, $(this).data("url"));
+        let activeStatuses = [];
+        el.find(".status-filter").on("click", function (e) {
+          e.stopPropagation();
+          const btn = $(this);
+          const status = btn.data("status");
+
+          if (btn.hasClass("active")) {
+            btn.removeClass("active");
+            activeStatuses = activeStatuses.filter((s) => s !== status);
+          } else {
+            btn.addClass("active");
+            activeStatuses.push(status);
+          }
+          $(`#status-filter`).val(activeStatuses.join(","));
+          fetchDevices(url);
+        });
+        el.find(".table-container").on("scroll", function () {
+          if (this.scrollTop + this.clientHeight >= this.scrollHeight - 10) {
+            fetchDevices(nextUrl, 100);
+          }
         });
         $(".floorplan-btn").on("click", function () {
-          url = getIndoorCoordinatesUrl(layer.feature.id);
-          window.openFloorPlan(url);
+          const floorplanUrl = getIndoorCoordinatesUrl(locationId);
+          window.openFloorPlan(floorplanUrl);
         });
         loadingOverlay.hide();
       },
@@ -404,7 +529,8 @@
         loadingOverlay.hide();
       },
       paginatedDataParse: async function (JSONParam) {
-        let res, data;
+        let res;
+        let data;
         try {
           res = await this.utils.JSONParamParse(JSONParam);
           data = res;
@@ -418,19 +544,25 @@
         }
         return data;
       },
+      // Added to open popup for a specific location Id in selenium tests
+      openPopup: function (locationId) {
+        const nodeData = map?.data?.nodes?.find((n) => n.id === locationId);
+        loadPopUpContent(nodeData, map);
+      },
     });
-
     map.render();
+    window._owGeoMap = map;
   }
 
   if (localStorage.getItem(localStorageKey) === "false") {
     mapContainer.slideUp(50);
   }
-
   $.ajax({
     dataType: "json",
     url: window._owGeoMapConfig.geoJsonUrl,
-    xhrFields: { withCredentials: true },
+    xhrFields: {
+      withCredentials: true,
+    },
     success: onAjaxSuccess,
     context: window,
   });

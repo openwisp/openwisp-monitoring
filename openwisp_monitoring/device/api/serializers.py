@@ -49,7 +49,7 @@ class MonitoringLocationDeviceSerializer(LocationDeviceSerializer):
 
 
 class MonitoringIndoorCoordinatesSerializer(IndoorCoordinatesSerializer):
-    monitoring = monitoring = DeviceMonitoringLocationSerializer(
+    monitoring = DeviceMonitoringLocationSerializer(
         source="content_object.monitoring", read_only=True
     )
 
