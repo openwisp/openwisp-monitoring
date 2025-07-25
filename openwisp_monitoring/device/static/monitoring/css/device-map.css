@@ -14,7 +14,7 @@
   border: 1px solid #75e0a7;
 }
 .health-problem {
-  color: orange;
+  color: #b54708;
   background-color: #fffaeb;
   border: 1px solid #fedf89;
 }
@@ -73,6 +73,9 @@
   right: 25px !important;
   font-size: 20px !important;
 }
+.leaflet-popup-close-button:hover {
+  color: black !important;
+}
 .map-detail {
   display: flex;
   flex-direction: column;
@@ -80,44 +83,42 @@
   box-sizing: border-box;
 }
 .map-detail h2 {
-  margin: 35px 0 10px 0;
+  margin: 0 0 10px 0;
   font-size: 18px;
 }
 .input-container {
   margin: 10px 0;
   position: relative;
-  display: inline-block;
   width: 100%;
-  display: flex;
 }
 .input-container::before {
   content: "";
   position: absolute;
   top: 46%;
-  left: 0.6rem;
+  left: 14px;
   transform: translateY(-54%);
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 20px;
+  height: 20px;
   background-color: #717680;
-  mask-image: url("Icon.svg");
-  -webkit-mask-image: url("Icon.svg");
+  mask-image: url("search.svg");
+  -webkit-mask-image: url("search.svg");
 }
 .map-detail input {
   outline: none;
   width: 100%;
-  padding: 10px 12px;
-  padding-left: 2rem;
+  padding: 10px 14px;
+  padding-left: 42px;
   box-sizing: border-box;
   border-radius: 6px;
   font-size: 16px;
+  border: 1px solid #d5d7da;
 }
 .label-container {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  margin: 10px 0;
-  gap: 10px;
-  justify-content: space-evenly;
+  margin: 10px 0 22px 0;
+  gap: 8px;
 }
 .status-filter {
   cursor: pointer;
@@ -127,12 +128,20 @@
   border-radius: 12px;
   white-space: nowrap;
   font-size: 12px;
+  opacity: 0.8;
+}
+.health-status.active {
+  opacity: 1;
 }
 .remove-icon {
   font-weight: bold;
+  display: none;
+}
+.status-filter.active .remove-icon {
+  display: inline-block;
 }
 .table-container {
-  height: 120px;
+  height: 195px;
   width: 350px;
   overflow-y: auto;
   min-width: 300px;
@@ -141,6 +150,17 @@
 }
 .table-container table {
   width: 100%;
+}
+.th-status {
+  width: 40%;
+  text-align: center;
+}
+.col-name {
+  width: 60%;
+}
+.col-status {
+  width: 40%;
+  text-align: center;
 }
 .table-spinner {
   display: none;
@@ -161,7 +181,7 @@
   margin-right: 16px;
 }
 .floorplan-btn {
-  padding: 10px 25px;
+  padding: 11.5px 16px;
   margin-top: 20px;
   width: fit-content;
   font-size: 16px;
@@ -178,40 +198,4 @@
   background-color: white;
   mask-repeat: no-repeat;
   margin-right: 16px;
-}
-#device-map-container {
-  margin: 50px auto;
-  position: relative;
-  /* Todo: Remove this added only for testing */
-  height: 85vh;
-  width: 90%;
-  border: 1px solid rgba(0, 0, 0, 0.3);
-}
-#device-map-container .ow-loading-spinner {
-  position: absolute;
-  z-index: 99;
-  top: 41%;
-  left: 49%;
-}
-#device-map-container .leaflet-interactive:focus {
-  outline: none;
-}
-#leaflet-config {
-  display: none;
-}
-.no-data {
-  display: none;
-  position: absolute;
-  z-index: 99;
-  top: 0;
-  left: 0;
-  width: 100%;
-  text-align: center;
-  padding-top: 115px;
-}
-.no-data a.button {
-  color: #fff;
-  padding: 5px 10px;
-  font-weight: bold;
-  text-decoration: none !important;
 }

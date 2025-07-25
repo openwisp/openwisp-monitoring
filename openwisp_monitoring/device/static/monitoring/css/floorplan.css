@@ -1,24 +1,47 @@
+#floorplan-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(225, 225, 225, 0.7);
+  z-index: 9998;
+  display: flex;
+  justify-content: center;
+  pointer-events: auto;
+}
 #floorplan-container {
   position: relative;
   top: 5%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 85%;
-  height: 88%;
+  width: 90%;
+  height: 80%;
   background: white;
   z-index: 9999;
-  padding: 0 20px 20px 20px;
+  padding: 16px;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
+  pointer-events: all;
+}
+#floorplan-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: #757575;
+  cursor: pointer;
+  padding: 8px;
+  font-size: 20px !important;
+  text-align: center;
+}
+#floorplan-close-btn:hover {
+  color: black;
 }
 #floorplan-heading {
-  color: #333;
-  margin-top: 15px;
-  font-size: 1rem;
-  text-align: center;
+  margin: 0;
   padding: 0;
+  font-size: 18px;
+  margin-bottom: 10px;
+  color: #333;
 }
 #floorplan-content-root {
   width: 100%;
@@ -29,51 +52,72 @@
   width: 100%;
   height: 100%;
 }
+#floorplan-container .njg-tooltip {
+  min-width: 240px;
+  pointer-events: auto !important;
+}
+#floorplan-container .tooltip-visible {
+  visibility: visible !important;
+  opacity: 1 !important;
+  will-change: transform !important;
+}
+#floorplan-container .njg-tooltip-item {
+  margin: 3px 0;
+  flex-wrap: nowrap !important;
+}
+.tooltip-status {
+  padding: 1px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+  font-weight: bold;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.tooltip-btn {
+  padding: 8px 12px;
+  cursor: pointer;
+  margin: 2px auto;
+  display: flex;
+  padding: 3px 16px;
+  cursor: pointer;
+  margin: 5px auto;
+  justify-content: center;
+  align-items: center;
+}
 .leaflet-container {
   position: absolute;
   top: 0;
   left: 0;
 }
-#floorplan-close-btn {
-  position: absolute;
-  top: 0;
-  right: 0;
-  color: #757575;
-  cursor: pointer;
-  width: 24px;
-  height: 24px;
-  text-align: center;
-  font:
-    16px / 24px Tahoma,
-    Verdana,
-    sans-serif;
-}
-
 #floorplan-navigation {
   position: absolute;
-  top: 50%;
-  right: -55px;
-  transform: translateY(-50%);
+  left: 50%;
+  bottom: -65px;
+  transform: translateX(-50%);
   height: auto;
   z-index: 9999;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   margin-top: auto;
   margin-bottom: auto;
+}
+#floorplan-navigation.fullscreen {
+  bottom: 60px;
 }
 .floorplan-navigation-body {
   border-radius: 6px;
   overflow: hidden;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
 }
 
 .floor-btn {
   padding: 10px 15px;
-  width: 40px;
+  width: 45px;
+  height: 45px;
   background-color: white;
   border: 1px solid black;
   border: none;
@@ -82,44 +126,33 @@
   transition: background 0.2s;
   border-bottom: 1px solid #e2e1e1;
 }
+.floor-btn.active {
+  cursor: default;
+}
 .floor-btn:hover {
   background-color: #f6f7f8;
 }
 .nav-arrow {
   width: 0;
   height: 0;
-  border-left: 12px solid transparent;
-  border-right: 12px solid transparent;
   cursor: pointer;
-  margin: 6px 0;
+  margin: 0 8px;
   border-radius: 8px;
 }
 .nav-arrow.disabled {
-  opacity: 0.4;
+  opacity: 0.3;
+  cursor: default;
 }
-
-.up-arrow {
-  border-bottom: 12px solid #9ca3af;
+.left-arrow {
+  border-top: 12px solid transparent;
+  border-bottom: 12px solid transparent;
+  border-right: 12px solid #737985;
 }
-
-.down-arrow {
-  border-top: 12px solid #9ca3af;
+.right-arrow {
+  border-top: 12px solid transparent;
+  border-bottom: 12px solid transparent;
+  border-left: 12px solid #737985;
 }
-
 .floor-btn.selected {
   background-color: #eaecf0;
 }
-
-/* Todo: Wating for ux team opinion for the responsive design */
-/* @media (max-width: 700px) {
-  #floorplan-container {
-    width: 60%;
-  }
-  #floorplan-navigation {
-    right: -45px;
-  }
-  .floor-btn {
-    padding: 8px 12px;
-    width: 35px;
-  }
-} */
