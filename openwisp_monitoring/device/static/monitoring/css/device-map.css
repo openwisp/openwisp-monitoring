@@ -117,7 +117,7 @@
   align-items: center;
   margin: 10px 0;
   gap: 10px;
-  justify-content: space-evenly;
+  /* justify-content: space-around; */
 }
 .status-filter {
   cursor: pointer;
@@ -161,7 +161,7 @@
   margin-right: 16px;
 }
 .floorplan-btn {
-  padding: 10px 25px;
+  padding: 11.5px 16px;
   margin-top: 20px;
   width: fit-content;
   font-size: 16px;

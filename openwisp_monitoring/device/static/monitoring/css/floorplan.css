@@ -7,18 +7,27 @@
   height: 88%;
   background: white;
   z-index: 9999;
-  padding: 0 20px 20px 20px;
+  padding: 16px;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
 }
-#floorplan-heading {
-  color: #333;
-  margin-top: 15px;
-  font-size: 1rem;
+#floorplan-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  color: #757575;
+  cursor: pointer;
+  padding: 8px;
+  font-size: 20px !important;
   text-align: center;
-  padding: 0;
+}
+#floorplan-heading {
+  margin: 0;
+  font-size: 18px;
+  padding: 16px 8px;
+  color: #333;
 }
 #floorplan-content-root {
   width: 100%;
@@ -34,21 +43,6 @@
   top: 0;
   left: 0;
 }
-#floorplan-close-btn {
-  position: absolute;
-  top: 0;
-  right: 0;
-  color: #757575;
-  cursor: pointer;
-  width: 24px;
-  height: 24px;
-  text-align: center;
-  font:
-    16px / 24px Tahoma,
-    Verdana,
-    sans-serif;
-}
-
 #floorplan-navigation {
   position: absolute;
   top: 50%;
