@@ -68,7 +68,7 @@
       success: function (data) {
         let devices = data.results;
         let nextUrl = data.next;
-        const statusLabelsMap = JSON.parse(labels);
+        const statusLabelsMap = labels;
         let statusFilterButtons = "";
         console.log(statusLabelsMap);
         Object.entries(statusLabelsMap).forEach(
@@ -446,15 +446,6 @@
       withCredentials: true,
     },
     success: onAjaxSuccess,
-    error: function () {
-      mapContainer.find(".no-data").fadeIn(500);
-      loadingOverlay.hide();
-      mapContainer.find(".no-data").click(function (e) {
-        e.preventDefault();
-        mapContainer.slideUp();
-        localStorage.setItem(localStorageKey, "false");
-      });
-    },
     context: window,
   });
 })(django.jQuery);

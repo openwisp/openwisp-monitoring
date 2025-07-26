@@ -23,6 +23,8 @@ from openwisp_monitoring.monitoring.migrations import create_general_metrics
 from openwisp_utils.admin_theme.dashboard import DASHBOARD_TEMPLATES
 from openwisp_utils.tests import SeleniumTestMixin as BaseSeleniumTestMixin
 
+from .. import settings as app_settings
+
 Device = load_model("config", "Device")
 DeviceConnection = load_model("connection", "DeviceConnection")
 DeviceData = load_model("device_monitoring", "DeviceData")
@@ -68,6 +70,13 @@ class SeleniumTestMixin(BaseSeleniumTestMixin):
             "monitoring_indoor_coordinates_list": reverse(
                 "monitoring:api_indoor_coordinates_list", args=["000"]
             ),
+            "monitoring_labels": {
+                "ok": app_settings.HEALTH_STATUS_LABELS["ok"],
+                "problem": app_settings.HEALTH_STATUS_LABELS["problem"],
+                "critical": app_settings.HEALTH_STATUS_LABELS["critical"],
+                "unknown": app_settings.HEALTH_STATUS_LABELS["unknown"],
+                "deactivated": app_settings.HEALTH_STATUS_LABELS["deactivated"],
+            },
         }
         DASHBOARD_TEMPLATES[55][1]["api_url"] = reverse(
             "monitoring_general:api_dashboard_timeseries"
@@ -321,6 +330,12 @@ class TestDashboardMap(
             location=location,
         )
         self.login()
+        self.wait_for(
+            "element_to_be_clickable",
+            By.CSS_SELECTOR,
+            "g path.leaflet-interactive",
+            timeout=5,
+        )
         location_point = self.find_element(By.CSS_SELECTOR, "g path")
         location_point.click()
         self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail")

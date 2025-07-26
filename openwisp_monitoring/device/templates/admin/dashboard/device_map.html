@@ -6,7 +6,7 @@
     geoJsonUrl: '{{ monitoring_location_geojson_url }}',
     locationDeviceUrl: '{{ monitoring_device_list_url }}',
     indoorCoordinatesUrl: '{{ monitoring_indoor_coordinates_list }}',
-    labels: '{{ monitoring_labels | safe }}',
+    labels: {{ monitoring_labels | safe }}
   }
 </script>
 <script type="text/javascript" src={%static 'monitoring/js/lib/netjsongraph.min.js' %}></script>
