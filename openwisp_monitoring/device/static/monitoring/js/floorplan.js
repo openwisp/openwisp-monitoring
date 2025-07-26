@@ -55,7 +55,8 @@
         xhrFields: { withCredentials: true },
         success: async (data) => {
           // To make this run only one time as only in the first call floor will not be provided
-          // And sort them in decresing order so that neagtive floor show at bottom and postove at top in floor navigation
+          // And sort them in decreasing order so that negative floors show at the bottom and
+          // positive floors at the top in floor navigation
           if (!floor) {
             floors = data.floors.sort((a, b) => b - a);
             floor = data.results[0].floor;

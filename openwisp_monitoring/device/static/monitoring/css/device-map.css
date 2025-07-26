@@ -179,39 +179,3 @@
   mask-repeat: no-repeat;
   margin-right: 16px;
 }
-#device-map-container {
-  margin: 50px auto;
-  position: relative;
-  /* Todo: Remove this added only for testing */
-  height: 85vh;
-  width: 90%;
-  border: 1px solid rgba(0, 0, 0, 0.3);
-}
-#device-map-container .ow-loading-spinner {
-  position: absolute;
-  z-index: 99;
-  top: 41%;
-  left: 49%;
-}
-#device-map-container .leaflet-interactive:focus {
-  outline: none;
-}
-#leaflet-config {
-  display: none;
-}
-.no-data {
-  display: none;
-  position: absolute;
-  z-index: 99;
-  top: 0;
-  left: 0;
-  width: 100%;
-  text-align: center;
-  padding-top: 115px;
-}
-.no-data a.button {
-  color: #fff;
-  padding: 5px 10px;
-  font-weight: bold;
-  text-decoration: none !important;
-}
