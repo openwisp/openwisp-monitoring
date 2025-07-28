@@ -105,7 +105,7 @@
             );
           }
 
-          pagination = `<p class="paginator">${parts.join(" ")}</div>`;
+          pagination = `<p class="paginator">${parts.join(" ")}</p>`;
         }
 
         layer.bindPopup(`
@@ -203,10 +203,16 @@
       disableClusteringAtLevel: 16,
       // set map initial state.
       mapOptions: {
-        center: [55.78, 11.54],
-        zoom: 1,
-        minZoom: 1,
-        maxZoom: 18,
+        center:
+          leafletConfig.CENTER ||
+          leafletConfig.DEFAULT_CENTER ||
+          [55.78, 11.54],
+        zoom:
+          leafletConfig.ZOOM ||
+          leafletConfig.DEFAULT_ZOOM ||
+          1,
+        minZoom: leafletConfig.MIN_ZOOM || 1,
+        maxZoom: leafletConfig.MAX_ZOOM || 18,
         fullscreenControl: true,
       },
       mapTileConfig: tiles,
@@ -302,96 +308,111 @@
           map.addControl(new L.control.scale(scale));
         }
 
-        // if (map.geoJSON.getLayers().length === 1) {
-        //   map.setView(map.geoJSON.getBounds().getCenter(), 10);
-        // } else {
-        //   map.fitBounds(map.geoJSON.getBounds());
-        // }
-        // map.geoJSON.eachLayer(function (layer) {
-        //   layer[
-        //     layer.feature.geometry.type == "Point"
-        //       ? "bringToFront"
-        //       : "bringToBack"
-        //   ]();
-        // });
+        // Some NetJSONGraph versions attach the marker layer to
+        // `leaflet.geoJSON` only *after* the `onReady` callback fires.
+        // Safely access the layer if present; otherwise skip these niceties.
+        const geoLayer = map.geoJSON;
+        if (geoLayer) {
+          if (geoLayer.getLayers().length === 1) {
+            map.setView(geoLayer.getBounds().getCenter(), 10);
+          } else {
+            map.fitBounds(geoLayer.getBounds());
+          }
+
+          geoLayer.eachLayer(function (layer) {
+            layer[
+              layer.feature &&
+              layer.feature.geometry &&
+              layer.feature.geometry.type == "Point"
+                ? "bringToFront"
+                : "bringToBack"
+            ] &&
+              layer[
+                layer.feature &&
+                layer.feature.geometry &&
+                layer.feature.geometry.type == "Point"
+                  ? "bringToFront"
+                  : "bringToBack"
+              ]();
+          });
+        }
 
         // Workaround for https://github.com/openwisp/openwisp-monitoring/issues/462
-        // map.setMaxBounds(
-        //   L.latLngBounds(L.latLng(-90, -540), L.latLng(90, 540)),
-        // );
-        // map.on("moveend", (event) => {
-        //   let netjsonGraph = this;
-        //   let bounds = event.target.getBounds();
-        //   let needsRefresh = false;
-        //   console.log(
-        //     "[DEBUG] Map moveend event, bounds:",
-        //     bounds._southWest.lng,
-        //     bounds._northEast.lng,
-        //   );
-        //
-        //   if (
-        //     bounds._southWest.lng < -180 &&
-        //     !netjsonGraph.westWorldFeaturesAppended
-        //   ) {
-        //     let westWorldFeatures = window.structuredClone(netjsonGraph.data);
-        //     // Exclude the features that may be added for the East world map.
-        //     westWorldFeatures.features = westWorldFeatures.features.filter(
-        //       (element) =>
-        //         !element.geometry || element.geometry.coordinates[0] <= 180,
-        //     );
-        //     westWorldFeatures.features.forEach((element) => {
-        //       if (element.geometry) {
-        //         element.geometry.coordinates[0] -= 360;
-        //         // Ensure IDs are unique across worlds while preserving status
-        //         if (element.id) {
-        //           element.id = `west_${element.id}`;
-        //           // Also update category to ensure clustering works
-        //           if (element.category) {
-        //             element.originalCategory = element.category;
-        //           }
-        //         }
-        //       }
-        //     });
-        //     netjsonGraph.utils.appendData(westWorldFeatures, netjsonGraph);
-        //     netjsonGraph.westWorldFeaturesAppended = true;
-        //     needsRefresh = true;
-        //   }
-        //   if (
-        //     bounds._northEast.lng > 180 &&
-        //     !netjsonGraph.eastWorldFeaturesAppended
-        //   ) {
-        //     let eastWorldFeatures = window.structuredClone(netjsonGraph.data);
-        //     // Exclude the features that may be added for the West world map
-        //     eastWorldFeatures.features = eastWorldFeatures.features.filter(
-        //       (element) =>
-        //         !element.geometry || element.geometry.coordinates[0] >= -180,
-        //     );
-        //     eastWorldFeatures.features.forEach((element) => {
-        //       if (element.geometry) {
-        //         element.geometry.coordinates[0] += 360;
-        //         // Ensure IDs are unique across worlds while preserving status
-        //         if (element.id) {
-        //           element.id = `east_${element.id}`;
-        //           // Also update category to ensure clustering works
-        //           if (element.category) {
-        //             element.originalCategory = element.category;
-        //           }
-        //         }
-        //       }
-        //     });
-        //     netjsonGraph.utils.appendData(eastWorldFeatures, netjsonGraph);
-        //     netjsonGraph.eastWorldFeaturesAppended = true;
-        //     needsRefresh = true;
-        //   }
-        //
-        //   // Force refresh clustering if features were added
-        //   if (needsRefresh) {
-        //     // Reset and rebuild clusters
-        //     console.log("[DEBUG] Refreshing clusters after world wrapping");
-        //     netjsonGraph.leaflet.geoJSON.clearLayers();
-        //     netjsonGraph.render();
-        //   }
-        // });
+        map.setMaxBounds(
+          L.latLngBounds(L.latLng(-90, -540), L.latLng(90, 540)),
+        );
+        map.on("moveend", (event) => {
+          let netjsonGraph = this;
+          let bounds = event.target.getBounds();
+          let needsRefresh = false;
+          console.log(
+            "[DEBUG] Map moveend event, bounds:",
+            bounds._southWest.lng,
+            bounds._northEast.lng,
+          );
+        
+          const isGeoJSON = Array.isArray(netjsonGraph.data?.features);
+
+          if (
+            isGeoJSON &&
+            bounds._southWest.lng < -180 &&
+            !netjsonGraph.westWorldFeaturesAppended
+          ) {
+            let westWorldFeatures = window.structuredClone(netjsonGraph.data);
+            westWorldFeatures.features = westWorldFeatures.features.filter(
+              (element) =>
+                !element.geometry || element.geometry.coordinates[0] <= 180,
+            );
+            westWorldFeatures.features.forEach((element) => {
+              if (element.geometry) {
+                element.geometry.coordinates[0] -= 360;
+                if (element.id) {
+                  element.id = `west_${element.id}`;
+                  if (element.category) {
+                    element.originalCategory = element.category;
+                  }
+                }
+              }
+            });
+            netjsonGraph.utils.appendData(westWorldFeatures, netjsonGraph);
+            netjsonGraph.westWorldFeaturesAppended = true;
+            needsRefresh = true;
+          }
+        
+          if (
+            isGeoJSON &&
+            bounds._northEast.lng > 180 &&
+            !netjsonGraph.eastWorldFeaturesAppended
+          ) {
+            let eastWorldFeatures = window.structuredClone(netjsonGraph.data);
+            eastWorldFeatures.features = eastWorldFeatures.features.filter(
+              (element) =>
+                !element.geometry || element.geometry.coordinates[0] >= -180,
+            );
+            eastWorldFeatures.features.forEach((element) => {
+              if (element.geometry) {
+                element.geometry.coordinates[0] += 360;
+                if (element.id) {
+                  element.id = `east_${element.id}`;
+                  if (element.category) {
+                    element.originalCategory = element.category;
+                  }
+                }
+              }
+            });
+            netjsonGraph.utils.appendData(eastWorldFeatures, netjsonGraph);
+            netjsonGraph.eastWorldFeaturesAppended = true;
+            needsRefresh = true;
+          }
+        
+          // Force refresh clustering if features were added
+          if (needsRefresh) {
+            // Reset and rebuild clusters
+            console.log("[DEBUG] Refreshing clusters after world wrapping");
+            netjsonGraph.leaflet.geoJSON.clearLayers();
+            netjsonGraph.render();
+          }
+        });
       },
     });
 
