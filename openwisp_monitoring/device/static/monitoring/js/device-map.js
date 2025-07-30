@@ -244,6 +244,28 @@
         name: k,
         nodeStyle: { color: colors[k] },
       })),
+      echartsOption: {
+        tooltip: {
+          confine: true,
+          formatter: function (params) {
+            let n = null;
+            if (params.data && params.data.node) {
+              n = params.data.node;
+            } else if (params.data) {
+              n = params.data;
+            }
+            if (n) {
+              return (
+                (n.properties && n.properties.name) ||
+                n.label ||
+                n.id ||
+                ""
+              );
+            }
+            return "";
+          },
+        },
+      },
       // ensure each element is categorised by status so clustering & styles work
       prepareData: function (json) {
         const items = json.nodes || json.features;
