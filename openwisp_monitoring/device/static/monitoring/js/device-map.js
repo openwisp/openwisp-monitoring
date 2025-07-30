@@ -53,13 +53,19 @@
     });
   };
 
-  const loadPopUpContent = function (layer, url) {
-    // allows reopening the last page which was opened before popup close
-    // defaults to the passed URL or the default URL (first page)
+  let currentPopup = null; // Track the popup currently shown
+
+  const loadPopUpContent = function (nodeData, netjsongraphInstance, url) {
+    const map = netjsongraphInstance.leaflet;
     if (!url) {
-      url = layer.url || getLocationDeviceUrl(layer.feature.id);
+      const locationId = nodeData?.properties?.id || nodeData.id;
+      url = getLocationDeviceUrl(locationId);
     }
-    layer.url = url;
+
+    // Close any popup left open
+    if (currentPopup) {
+      currentPopup.remove();
+    }
 
     loadingOverlay.show();
 
@@ -69,72 +75,79 @@
       xhrFields: {
         withCredentials: true,
       },
-      success: function (data) {
+      success: function (apiData) {
         let html = "";
         let device;
-
-        for (let i = 0; i < data.results.length; i++) {
-          device = data.results[i];
+        for (let i = 0; i < apiData.results.length; i++) {
+          device = apiData.results[i];
           html += `
             <tr>
+              <td><a href="${device.admin_edit_url}">${device.name}</a></td>
               <td>
-                <a href="${device.admin_edit_url}">${device.name}</a>
-              </td>
-              <td>
-                <span class="health-status health-${device.monitoring.status}">
-                  ${device.monitoring.status_label}
-                </span>
+                <span class="health-status health-${device.monitoring.status}">${device.monitoring.status_label}</span>
               </td>
             </tr>
           `;
         }
 
         let pagination = "";
-        let parts = [];
-
-        if (data.previous || data.next) {
-          if (data.previous) {
-            parts.push(
-              `<a class="prev" href="#prev" data-url="${data.previous}">&#8249; ${gettext("previous")}</a>`,
-            );
-          }
-
-          if (data.next) {
-            parts.push(
-              `<a class="next" href="#next" data-url="${data.next}">${gettext("next")} &#8250;</a>`,
-            );
-          }
-
+        const parts = [];
+        if (apiData.previous) {
+          parts.push(`<a class="prev" href="#prev" data-url="${apiData.previous}">‹ ${gettext("previous")}</a>`);
+        }
+        if (apiData.next) {
+          parts.push(`<a class="next" href="#next" data-url="${apiData.next}">${gettext("next")} ›</a>`);
+        }
+        if (parts.length) {
           pagination = `<p class="paginator">${parts.join(" ")}</p>`;
         }
 
-        layer.bindPopup(`
+        const popupTitle = nodeData.label || nodeData?.properties?.name || nodeData.id;
+
+        // Determine coordinates (lat, lng)
+        let latLng;
+        if (nodeData.location && typeof nodeData.location.lat === "number") {
+          latLng = [nodeData.location.lat, nodeData.location.lng];
+        } else if (Array.isArray(nodeData.coordinates)) {
+          // NetJSON nodes use [lng, lat]
+          latLng = [nodeData.coordinates[1], nodeData.coordinates[0]];
+        } else if (nodeData.geometry && Array.isArray(nodeData.geometry.coordinates)) {
+          latLng = [nodeData.geometry.coordinates[1], nodeData.geometry.coordinates[0]];
+        }
+
+        if (!latLng || isNaN(latLng[0]) || isNaN(latLng[1])) {
+          console.warn("Could not determine coordinates for popup", nodeData);
+          return;
+        }
+
+        const popupContent = `
           <div class="map-detail">
-            <h2>${layer.feature.properties.name} (${data.count})</h2>
+            <h2>${popupTitle} (${apiData.count})</h2>
             <table>
               <thead>
-                <tr>
-                  <th>${gettext("name")}</th>
-                  <th>${gettext("status")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${html}
-              </tbody>
-            </table>
-            ${pagination}
-          </div>
-        `);
+                <tr><th>${gettext("name")}</th><th>${gettext("status")}</th></tr>
+            </thead>
+            <tbody>${html}</tbody>
+          </table>
+          ${pagination}
+        </div>
+      `;
 
-        layer.openPopup();
+        /* global L */
+        currentPopup = L.popup()
+          .setLatLng(latLng)
+          .setContent(popupContent)
+          .openOn(map);
 
-        // bind next/prev buttons
-        let el = $(layer.getPopup().getElement());
-        el.find(".next").click(function () {
-          loadPopUpContent(layer, $(this).data("url"));
+        // Bind pagination links
+        const $el = $(currentPopup.getElement());
+        $el.find(".next").click(function (e) {
+          e.preventDefault();
+          loadPopUpContent(nodeData, netjsongraphInstance, $(this).data("url"));
         });
-        el.find(".prev").click(function () {
-          loadPopUpContent(layer, $(this).data("url"));
+        $el.find(".prev").click(function (e) {
+          e.preventDefault();
+          loadPopUpContent(nodeData, netjsongraphInstance, $(this).data("url"));
         });
 
         loadingOverlay.hide();
@@ -178,6 +191,17 @@
     } else {
       localStorage.removeItem(localStorageKey);
       mapContainer.slideDown();
+    }
+
+    // Propagate each GeoJSON feature.id into feature.properties.id so the
+    // GeoJSON→NetJSON conversion preserves the real UUID instead of generating
+    // a synthetic `gjn_XXX` id.
+    if (Array.isArray(data.features)) {
+      data.features.forEach((f) => {
+        if (f && f.id && f.properties && !f.properties.id) {
+          f.properties.id = f.id;
+        }
+      });
     }
 
     // Expand aggregated features so each status gets its own feature – this enables
@@ -279,13 +303,14 @@
               layer.bindTooltip(feature.properties.name).openTooltip();
             }
           });
-
-          layer.on("click", function () {
-            layer.unbindTooltip();
-            layer.unbindPopup();
-            loadPopUpContent(layer);
-          });
         },
+      },
+      onClickElement: function (type, data) {
+        if (type === "node") {
+          loadPopUpContent(data, this);
+        } else if (type === "Feature") {
+          console.log("Clicked a GeoJSON Feature:", data);
+        }
       },
       onReady: function () {
         const map = this.leaflet;
