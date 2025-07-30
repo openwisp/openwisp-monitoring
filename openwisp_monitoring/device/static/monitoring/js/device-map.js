@@ -93,16 +93,21 @@
         let pagination = "";
         const parts = [];
         if (apiData.previous) {
-          parts.push(`<a class="prev" href="#prev" data-url="${apiData.previous}">‹ ${gettext("previous")}</a>`);
+          parts.push(
+            `<a class="prev" href="#prev" data-url="${apiData.previous}">‹ ${gettext("previous")}</a>`,
+          );
         }
         if (apiData.next) {
-          parts.push(`<a class="next" href="#next" data-url="${apiData.next}">${gettext("next")} ›</a>`);
+          parts.push(
+            `<a class="next" href="#next" data-url="${apiData.next}">${gettext("next")} ›</a>`,
+          );
         }
         if (parts.length) {
           pagination = `<p class="paginator">${parts.join(" ")}</p>`;
         }
 
-        const popupTitle = nodeData.label || nodeData?.properties?.name || nodeData.id;
+        const popupTitle =
+          nodeData.label || nodeData?.properties?.name || nodeData.id;
 
         // Determine coordinates (lat, lng)
         let latLng;
@@ -111,8 +116,14 @@
         } else if (Array.isArray(nodeData.coordinates)) {
           // NetJSON nodes use [lng, lat]
           latLng = [nodeData.coordinates[1], nodeData.coordinates[0]];
-        } else if (nodeData.geometry && Array.isArray(nodeData.geometry.coordinates)) {
-          latLng = [nodeData.geometry.coordinates[1], nodeData.geometry.coordinates[0]];
+        } else if (
+          nodeData.geometry &&
+          Array.isArray(nodeData.geometry.coordinates)
+        ) {
+          latLng = [
+            nodeData.geometry.coordinates[1],
+            nodeData.geometry.coordinates[0],
+          ];
         }
 
         if (!latLng || isNaN(latLng[0]) || isNaN(latLng[1])) {
@@ -227,14 +238,9 @@
       disableClusteringAtLevel: 16,
       // set map initial state.
       mapOptions: {
-        center:
-          leafletConfig.CENTER ||
-          leafletConfig.DEFAULT_CENTER ||
-          [55.78, 11.54],
-        zoom:
-          leafletConfig.ZOOM ||
-          leafletConfig.DEFAULT_ZOOM ||
-          1,
+        center: leafletConfig.CENTER ||
+          leafletConfig.DEFAULT_CENTER || [55.78, 11.54],
+        zoom: leafletConfig.ZOOM || leafletConfig.DEFAULT_ZOOM || 1,
         minZoom: leafletConfig.MIN_ZOOM || 1,
         maxZoom: leafletConfig.MAX_ZOOM || 18,
         fullscreenControl: true,
@@ -256,10 +262,7 @@
             }
             if (n) {
               return (
-                (n.properties && n.properties.name) ||
-                n.label ||
-                n.id ||
-                ""
+                (n.properties && n.properties.name) || n.label || n.id || ""
               );
             }
             return "";
@@ -397,7 +400,7 @@
             bounds._southWest.lng,
             bounds._northEast.lng,
           );
-        
+
           const isGeoJSON = Array.isArray(netjsonGraph.data?.features);
 
           if (
@@ -425,7 +428,7 @@
             netjsonGraph.westWorldFeaturesAppended = true;
             needsRefresh = true;
           }
-        
+
           if (
             isGeoJSON &&
             bounds._northEast.lng > 180 &&
@@ -451,7 +454,7 @@
             netjsonGraph.eastWorldFeaturesAppended = true;
             needsRefresh = true;
           }
-        
+
           // Force refresh clustering if features were added
           if (needsRefresh) {
             // Reset and rebuild clusters
