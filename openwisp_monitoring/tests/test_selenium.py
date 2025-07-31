@@ -351,10 +351,7 @@ class TestDashboardMap(
             sleep(0.5)
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 1)
-            self.assertIn(
-                "Test-Device2",
-                table_entries[0].text,
-            )
+            self.assertIn(d2.name, table_entries[0].text)
             health_ok.click()
             self.wait_for_invisibility(
                 By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
@@ -372,7 +369,7 @@ class TestDashboardMap(
             sleep(0.5)
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 1)
-            self.assertIn("Test-Device1", table_entries[0].text)
+            self.assertIn(d1.name, table_entries[0].text)
 
         with self.subTest("Test filtering to get no results"):
             input_field.clear()
@@ -423,23 +420,23 @@ class TestDashboardMap(
             self.assertIsNotNone(canvases)
 
         with self.subTest("Test floorplan navigation"):
-            up_arrow = self.find_element(
-                By.CSS_SELECTOR, "#floorplan-navigation .up-arrow"
+            right_arrow = self.find_element(
+                By.CSS_SELECTOR, "#floorplan-navigation .right-arrow"
             )
-            up_arrow.click()
+            right_arrow.click()
             floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-heading")
-            self.assertIn("2nd Floor", floor_heading.text)
+            self.assertIn("2nd floor", floor_heading.text.lower())
             canvases = self.find_elements(
                 By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
             )
             self.assertIsNotNone(canvases)
 
-            down_arrow = self.find_element(
-                By.CSS_SELECTOR, "#floorplan-navigation .down-arrow"
+            left_arrow = self.find_element(
+                By.CSS_SELECTOR, "#floorplan-navigation .left-arrow"
             )
-            down_arrow.click()
+            left_arrow.click()
             floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-heading")
-            self.assertIn("1st Floor", floor_heading.text)
+            self.assertIn("1st floor", floor_heading.text.lower())
             canvases = self.find_elements(
                 By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
             )
@@ -450,7 +447,7 @@ class TestDashboardMap(
             )
             second_floor_btn.click()
             floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-heading")
-            self.assertIn("2nd Floor", floor_heading.text)
+            self.assertIn("2nd floor", floor_heading.text.lower())
             canvases = self.find_elements(
                 By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
             )

@@ -7,11 +7,11 @@
   z-index: 9998;
   display: flex;
   justify-content: center;
-  align-items: center;
   pointer-events: auto;
 }
 #floorplan-container {
   position: relative;
+  top: 5%;
   width: 90%;
   height: 80%;
   background: white;
@@ -88,7 +88,7 @@
 #floorplan-navigation {
   position: absolute;
   left: 50%;
-  bottom: -57px;
+  bottom: -65px;
   transform: translateX(-50%);
   height: auto;
   z-index: 9999;
