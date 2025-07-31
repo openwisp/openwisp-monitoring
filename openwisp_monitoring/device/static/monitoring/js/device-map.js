@@ -52,7 +52,8 @@
       url: url,
       xhrFields: { withCredentials: true },
       success: function (apiData) {
-        let html = "", device;
+        let html = "",
+          device;
         for (let i = 0; i < apiData.results.length; i++) {
           device = apiData.results[i];
           html += `
@@ -67,14 +68,21 @@
 
         const parts = [];
         if (apiData.previous) {
-          parts.push(`<a class="prev" href="#prev" data-url="${apiData.previous}">‹ ${gettext("previous")}</a>`);
+          parts.push(
+            `<a class="prev" href="#prev" data-url="${apiData.previous}">‹ ${gettext("previous")}</a>`,
+          );
         }
         if (apiData.next) {
-          parts.push(`<a class="next" href="#next" data-url="${apiData.next}">${gettext("next")} ›</a>`);
+          parts.push(
+            `<a class="next" href="#next" data-url="${apiData.next}">${gettext("next")} ›</a>`,
+          );
         }
-        const pagination = parts.length ? `<p class="paginator">${parts.join(" ")}</p>` : "";
+        const pagination = parts.length
+          ? `<p class="paginator">${parts.join(" ")}</p>`
+          : "";
 
-        const popupTitle = nodeData.label || nodeData?.properties?.name || nodeData.id;
+        const popupTitle =
+          nodeData.label || nodeData?.properties?.name || nodeData.id;
 
         let latLng;
         if (nodeData.location && typeof nodeData.location.lat === "number") {
@@ -82,7 +90,10 @@
         } else if (Array.isArray(nodeData.coordinates)) {
           latLng = [nodeData.coordinates[1], nodeData.coordinates[0]];
         } else if (nodeData.geometry?.coordinates?.length >= 2) {
-          latLng = [nodeData.geometry.coordinates[1], nodeData.geometry.coordinates[0]];
+          latLng = [
+            nodeData.geometry.coordinates[1],
+            nodeData.geometry.coordinates[0],
+          ];
         }
 
         if (!latLng || isNaN(latLng[0]) || isNaN(latLng[1])) {
@@ -132,7 +143,8 @@
   const tiles = leafletConfig.TILES.map((tile) => {
     let tileLayer = tile[1];
     if (tileLayer.includes("https:")) tileLayer = tileLayer.split("https:")[1];
-    let options = typeof tile[2] === "object" ? tile[2] : { attribution: tile[2] };
+    let options =
+      typeof tile[2] === "object" ? tile[2] : { attribution: tile[2] };
     return { label: tile[0], urlTemplate: `https:${tileLayer}`, options };
   });
 
@@ -185,7 +197,7 @@
           confine: true,
           formatter: function (params) {
             let n = params.data?.node || params.data;
-            return (n?.properties?.name || n?.label || n?.id || "");
+            return n?.properties?.name || n?.label || n?.id || "";
           },
         },
       },
@@ -197,7 +209,9 @@
             let status = props.status?.toLowerCase();
             if (!status) {
               const color = getColor(props);
-              status = Object.keys(colors).find((k) => colors[k] === color) || "unknown";
+              status =
+                Object.keys(colors).find((k) => colors[k] === color) ||
+                "unknown";
             }
             props.status = status;
             props.category = status;
@@ -220,7 +234,9 @@
         },
         onEachFeature: function (feature, layer) {
           const color = getColor(feature.properties);
-          feature.properties.status = Object.keys(colors).find((key) => colors[key] === color);
+          feature.properties.status = Object.keys(colors).find(
+            (key) => colors[key] === color,
+          );
 
           layer.on("mouseover", function () {
             layer.unbindTooltip();
@@ -311,7 +327,10 @@
         try {
           res = await this.utils.JSONParamParse(JSONParam);
           data = res;
-          while (res.next && data.features.length <= this.config.maxPointsFetched) {
+          while (
+            res.next &&
+            data.features.length <= this.config.maxPointsFetched
+          ) {
             res = await this.utils.JSONParamParse(res.next);
             res = await res.json();
             data.features = data.features.concat(res.features);
