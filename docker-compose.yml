@@ -9,8 +9,6 @@ services:
     depends_on:
       - influxdb
       - redis
-    volumes:
-      - ./openwisp-monitoring.db:/opt/openwisp/tests/openwisp-monitoring.db
 
   influxdb:
     image: influxdb:1.8-alpine
