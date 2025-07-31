@@ -244,7 +244,7 @@
         }
       },
       onReady: function () {
-        const map = this.leaflet;
+        const map = this;
         let scale = { imperial: false, metric: false };
         if (leafletConfig.SCALE === "metric") scale.metric = true;
         else if (leafletConfig.SCALE === "imperial") scale.imperial = true;
@@ -252,50 +252,50 @@
           scale.metric = true;
           scale.imperial = true;
         }
-        if (leafletConfig.SCALE) map.addControl(new L.control.scale(scale));
+        // if (leafletConfig.SCALE) map.addControl(new L.control.scale(scale));
 
-        if (map.geoJSON.getLayers().length === 1) {
-          map.setView(map.geoJSON.getBounds().getCenter(), 10);
-        } else {
-          map.fitBounds(map.geoJSON.getBounds());
-        }
+        // if (map.geoJSON.getLayers().length === 1) {
+        //   map.setView(map.geoJSON.getBounds().getCenter(), 10);
+        // } else {
+        //   map.fitBounds(map.geoJSON.getBounds());
+        // }
 
-        map.geoJSON.eachLayer((layer) => {
-          layer[
-            layer.feature.geometry.type === "Point"
-              ? "bringToFront"
-              : "bringToBack"
-          ]();
-        });
+        // map.geoJSON.eachLayer((layer) => {
+        //   layer[
+        //     layer.feature.geometry.type === "Point"
+        //       ? "bringToFront"
+        //       : "bringToBack"
+        //   ]();
+        // });
 
-        map.setMaxBounds(L.latLngBounds(L.latLng(-90, -540), L.latLng(90, 540)));
+        // map.setMaxBounds(L.latLngBounds(L.latLng(-90, -540), L.latLng(90, 540)));
 
-        map.on("moveend", (event) => {
-          const netjsonGraph = this;
-          const bounds = event.target.getBounds();
-          if (bounds._southWest.lng < -180 && !netjsonGraph.westWorldFeaturesAppended) {
-            const westWorldFeatures = structuredClone(netjsonGraph.data);
-            westWorldFeatures.features = westWorldFeatures.features.filter(
-              (f) => !f.geometry || f.geometry.coordinates[0] <= 180
-            );
-            westWorldFeatures.features.forEach((f) => {
-              if (f.geometry) f.geometry.coordinates[0] -= 360;
-            });
-            netjsonGraph.utils.appendData(westWorldFeatures, netjsonGraph);
-            netjsonGraph.westWorldFeaturesAppended = true;
-          }
-          if (bounds._northEast.lng > 180 && !netjsonGraph.eastWorldFeaturesAppended) {
-            const eastWorldFeatures = structuredClone(netjsonGraph.data);
-            eastWorldFeatures.features = eastWorldFeatures.features.filter(
-              (f) => !f.geometry || f.geometry.coordinates[0] >= -180
-            );
-            eastWorldFeatures.features.forEach((f) => {
-              if (f.geometry) f.geometry.coordinates[0] += 360;
-            });
-            netjsonGraph.utils.appendData(eastWorldFeatures, netjsonGraph);
-            netjsonGraph.eastWorldFeaturesAppended = true;
-          }
-        });
+        // map.on("moveend", (event) => {
+        //   const netjsonGraph = this;
+        //   const bounds = event.target.getBounds();
+        //   if (bounds._southWest.lng < -180 && !netjsonGraph.westWorldFeaturesAppended) {
+        //     const westWorldFeatures = structuredClone(netjsonGraph.data);
+        //     westWorldFeatures.features = westWorldFeatures.features.filter(
+        //       (f) => !f.geometry || f.geometry.coordinates[0] <= 180
+        //     );
+        //     westWorldFeatures.features.forEach((f) => {
+        //       if (f.geometry) f.geometry.coordinates[0] -= 360;
+        //     });
+        //     netjsonGraph.utils.appendData(westWorldFeatures, netjsonGraph);
+        //     netjsonGraph.westWorldFeaturesAppended = true;
+        //   }
+        //   if (bounds._northEast.lng > 180 && !netjsonGraph.eastWorldFeaturesAppended) {
+        //     const eastWorldFeatures = structuredClone(netjsonGraph.data);
+        //     eastWorldFeatures.features = eastWorldFeatures.features.filter(
+        //       (f) => !f.geometry || f.geometry.coordinates[0] >= -180
+        //     );
+        //     eastWorldFeatures.features.forEach((f) => {
+        //       if (f.geometry) f.geometry.coordinates[0] += 360;
+        //     });
+        //     netjsonGraph.utils.appendData(eastWorldFeatures, netjsonGraph);
+        //     netjsonGraph.eastWorldFeaturesAppended = true;
+        //   }
+        // });
       },
     });
 
