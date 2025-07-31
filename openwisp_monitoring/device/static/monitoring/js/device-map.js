@@ -70,7 +70,6 @@
         let nextUrl = data.next;
         const statusLabelsMap = labels;
         let statusFilterButtons = "";
-        console.log(statusLabelsMap);
         Object.entries(statusLabelsMap).forEach(
           ([status_key, status_label]) => {
             const label = gettext(status_label);
@@ -79,6 +78,7 @@
               data-status="${status_key}"
             >
               ${label}
+              <span class="remove-icon">&times</span>
             </span>`;
           },
         );
@@ -90,29 +90,25 @@
           : "";
         layer.bindPopup(`
                           <div class="map-detail">
-                            <h2>${layer.feature.properties.name} (${
-                              data.count
-                            })</h2>
+                            <h2>${layer.feature.properties.name} (${data.count})</h2>
                             <div class="input-container">
                               <input id="device-search" placeholder="Search for devices" />
                             </div>
                             <div class="label-container">
                               ${statusFilterButtons}
-                              <input id="status-filter" style="display: none;" type="text" />
+                              <input id="status-filter" type="hidden" />
                             </div>
                             <div class="table-container">
                               <table>
                                 <thead>
                                     <tr>
                                         <th>${gettext("name")}</th>
-                                        <th><span class ="health-status-heading">${gettext(
+                                        <th class="th-status"><span class ="health-status-heading">${gettext(
                                           "status",
                                         )}</span></th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    
-                                </tbody>
+                                <tbody></tbody>
                                 </table>
                                 <div class="ow-loading-spinner table-spinner"></div>
                             </div>
@@ -124,7 +120,7 @@
           if (devices.length === 0) {
             el.find("tbody").html(`
               <tr>
-                <td class="no-devices">
+                <td class="no-devices" colspan="2">
                   ${gettext("No devices found!")}
                 </td>
               </tr>
@@ -135,8 +131,8 @@
             .map(
               (device) => `
             <tr>
-                <td><a href="${device.admin_edit_url}">${device.name}</a></td>
-                <td>
+                <td class="col-name"><a href="${device.admin_edit_url}">${device.name}</a></td>
+                <td class="col-status">
                     <span class="health-status health-${device.monitoring.status}">
                         ${device.monitoring.status_label}
                     </span>
@@ -154,7 +150,9 @@
           clearTimeout(fetchDevicesTimeout);
           loading = true;
           const spinner = el.find(".table-spinner");
+          const table = el.find(".table-container table");
           spinner.show();
+          table.hide();
           fetchDevicesTimeout = setTimeout(() => {
             let params = new URLSearchParams();
             const searchParam = el
@@ -175,15 +173,17 @@
             const queryString = params.toString();
             let fetchUrl;
             // if nextUrl is the same as url, that means we are fetching for infinite scroll
-            if (url === nextUrl) fetchUrl = url;
-            else fetchUrl = queryString ? `${url}?${queryString}` : url;
-
+            if (url === nextUrl) {
+              fetchUrl = url;
+            } else {
+              fetchUrl = queryString ? `${url}?${queryString}` : url;
+            }
             $.ajax({
               dataType: "json",
               url: fetchUrl,
               xhrFields: { withCredentials: true },
-
               success(data) {
+                // If we are fetching for infinte scroll new need concat the results otherwise not
                 if (url === nextUrl) {
                   devices = devices.concat(data.results);
                 } else {
@@ -194,10 +194,12 @@
               },
               error() {
                 console.error("Could not load more devices from", url);
+                alert("Could not load more devices.");
               },
               complete() {
                 loading = false;
                 spinner.hide();
+                table.show();
               },
             });
           }, ms);
@@ -211,15 +213,12 @@
           e.stopPropagation();
           const btn = $(this);
           const status = btn.data("status");
-          const label = gettext(status);
 
           if (btn.hasClass("active")) {
-            btn.removeClass("active").html(label);
+            btn.removeClass("active");
             activeStatuses = activeStatuses.filter((s) => s !== status);
           } else {
-            btn
-              .addClass("active")
-              .html(`${label} <span class="remove-icon">&times;</span>`);
+            btn.addClass("active");
             activeStatuses.push(status);
           }
           $(`#status-filter`).val(activeStatuses.join(","));

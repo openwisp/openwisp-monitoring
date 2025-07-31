@@ -31,7 +31,7 @@
     const $floorNavigation = createFloorNavigation();
 
     $("#device-map-container").append($floorPlanContainer);
-    $floorPlanContainer.append($floorNavigation);
+    $("#floorplan-container").append($floorNavigation);
 
     closeButtonHandler();
     addFloorButtons(selectedIndex, navWindowStart);
@@ -58,7 +58,7 @@
           // And sort them in decreasing order so that negative floors show at the bottom and
           // positive floors at the top in floor navigation
           if (!floor) {
-            floors = data.floors.sort((a, b) => b - a);
+            floors = data.floors;
             floor = data.results[0].floor;
           }
           if (!allResults[floor]) allResults[floor] = [];
@@ -81,10 +81,12 @@
 
   function createFloorPlanContainer() {
     return $(`
-      <div id="floorplan-container">
-        <h2 id="floorplan-heading"></h2>
-        <span id="floorplan-close-btn">&times;</span>
-        <div id="floorplan-content-root"></div>
+      <div id="floorplan-overlay">
+        <div id="floorplan-container">
+          <h2 id="floorplan-heading"></h2>
+          <span id="floorplan-close-btn">&times;</span>
+          <div id="floorplan-content-root"></div>
+        </div>
       </div>
     `);
   }
@@ -92,9 +94,9 @@
   function createFloorNavigation() {
     return $(`
       <div id="floorplan-navigation">
-        <div class="nav-arrow up-arrow"></div>
+        <div class="nav-arrow left-arrow"></div>
         <div class="floorplan-navigation-body"></div>
-        <div class="nav-arrow down-arrow"></div>
+        <div class="nav-arrow right-arrow"></div>
       </div>
     `);
   }
@@ -102,6 +104,8 @@
   function closeButtonHandler() {
     $("#floorplan-close-btn").on("click", () => {
       $("#floorplan-container, #floorplan-navigation").remove();
+      $("#floorplan-overlay").remove();
+      allResults = {};
     });
   }
 
@@ -121,8 +125,8 @@
       `);
     });
 
-    $(".up-arrow").toggleClass("disabled", selectedIndex === 0);
-    $(".down-arrow").toggleClass(
+    $(".left-arrow").toggleClass("disabled", selectedIndex === 0);
+    $(".right-arrow").toggleClass(
       "disabled",
       selectedIndex === floors.length - 1,
     );
@@ -145,7 +149,7 @@
       await showFloor(url, currentFloor);
     });
 
-    $nav.on("click", ".down-arrow:not(.disabled)", async () => {
+    $nav.on("click", ".right-arrow:not(.disabled)", async () => {
       if (selectedIndex < floors.length - 1) {
         selectedIndex++;
         if (selectedIndex >= navWindowStart + NAV_WINDOW_SIZE) {
@@ -157,7 +161,7 @@
       }
     });
 
-    $nav.on("click", ".up-arrow:not(.disabled)", async () => {
+    $nav.on("click", ".left-arrow:not(.disabled)", async () => {
       if (selectedIndex > 0) {
         selectedIndex--;
         if (selectedIndex < navWindowStart) {
@@ -196,9 +200,8 @@
     $floorDiv.show();
   }
 
-  let graph;
   function renderIndoorMap(allResults, imageUrl, divId) {
-    graph = new NetJSONGraph(allResults, {
+    const graph = new NetJSONGraph(allResults, {
       el: `#${divId}`,
       crs: L.CRS.Simple,
       render: "map",
@@ -220,13 +223,49 @@
             opacity: 0.7,
           }),
         },
-        baseOptions: { media: [{ option: { tooltip: { show: true } } }] },
+        baseOptions: {
+          media: [
+            {
+              option: {
+                tooltip: {
+                  show: true,
+                  formatter: function (element) {
+                    const node = element.data.node;
+                    return `
+                      <div class="njg-tooltip-inner">
+                        <div class="njg-tooltip-item">
+                          <span class="njg-tooltip-key">name</span>
+                          <span class="njg-tooltip-value">${node.device_name}</span>
+                        </div>
+                        <div class="njg-tooltip-item">
+                          <span class="njg-tooltip-key">Mac address</span>
+                          <span class="njg-tooltip-value">${node.mac_address}</span>
+                        </div>
+                        <div class="njg-tooltip-item">
+                          <span class="njg-tooltip-key">status</span>
+                          <span class="tooltip-status health-${node.monitoring.status} ">
+                            ${node.monitoring.status_label}
+                          </span>
+                        </div>
+                        <div class="njg-tooltip-item">
+                          <button class="default-btn tooltip-btn" data-url="${node.admin_edit_url}"">
+                            <span class="ow-device floor-icon"></span> 
+                            Open Device
+                          </button> 
+                        </div>
+                        </div>
+                      </div>
+                    `;
+                  },
+                },
+              },
+            },
+          ],
+        },
       },
 
       prepareData(data) {
         data.nodes.forEach((node) => {
-          // To hide DeviceLocation id in tooltip
-          node.id = "";
           node.properties = {
             ...node.properties,
             name: node.device_name,
@@ -256,6 +295,14 @@
           map.setMaxBounds(bnds);
           // map.setView([0,0], 0)
         };
+        $("#floorplan-container")
+          .off("click", ".tooltip-btn")
+          .on("click", ".tooltip-btn", function () {
+            const url = $(this).data("url");
+            console.log("Open device clicked:", url);
+            window.location.href = url;
+          });
+
         // Todo: Explore some better approach if exists
         const fullScreen = $(
           "#floorplan-container .leaflet-control-fullscreen-button",
@@ -264,6 +311,10 @@
         fullScreen.on("click.zoomOnFullscreen", () => {
           map.setZoom(map.getZoom() + 1);
         });
+      },
+      onClickElement() {
+        const tooltip = $(`.njg-tooltip`);
+        tooltip.toggleClass("tooltip-visible");
       },
     });
 
