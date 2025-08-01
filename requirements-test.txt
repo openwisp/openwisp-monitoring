@@ -2,4 +2,4 @@ openwisp-utils[qa,selenium] @ https://github.com/openwisp/openwisp-utils/tarball
 django-redis~=6.0.0
 mock-ssh-server~=0.9.1
 channels_redis~=4.2.1
-freezegun~=1.5.2
+freezegun~=1.5.4
