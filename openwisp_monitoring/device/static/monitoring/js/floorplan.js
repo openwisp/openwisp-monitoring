@@ -208,9 +208,12 @@
 
       mapOptions: {
         center: [50, 50],
-        zoom: 1,
-        minZoom: -1,
+        zoom: 0,
+        minZoom: -4,
         maxZoom: 2,
+        zoomSnap: 0.5,
+        zoomDelta: 0.5,
+        zoomAnimation: false,
         nodeConfig: {
           label: {
             show: false,
@@ -249,9 +252,9 @@
                         </div>
                         <div class="njg-tooltip-item">
                           <button class="default-btn tooltip-btn" data-url="${node.admin_edit_url}"">
-                            <span class="ow-device floor-icon"></span> 
+                            <span class="ow-device floor-icon"></span>
                             Open Device
-                          </button> 
+                          </button>
                         </div>
                         </div>
                       </div>
@@ -283,9 +286,11 @@
         map.eachLayer((layer) => layer._url && map.removeLayer(layer));
         const img = new Image();
         img.src = imageUrl;
+        let initialZoom;
         img.onload = () => {
-          const w = img.width;
           const h = img.height;
+          const aspectRatio = img.width / img.height;
+          const w = aspectRatio * h;
           const zoom = map.getMaxZoom() - 1;
           const sw = map.unproject([0, h * 2], zoom);
           const ne = map.unproject([w * 2, 0], zoom);
@@ -293,7 +298,7 @@
           L.imageOverlay(imageUrl, bnds).addTo(map);
           map.fitBounds(bnds);
           map.setMaxBounds(bnds);
-          // map.setView([0,0], 0)
+          initialZoom = map.getZoom();
         };
         $("#floorplan-container")
           .off("click", ".tooltip-btn")
@@ -302,14 +307,13 @@
             console.log("Open device clicked:", url);
             window.location.href = url;
           });
-
-        // Todo: Explore some better approach if exists
-        const fullScreen = $(
-          "#floorplan-container .leaflet-control-fullscreen-button",
-        );
-        fullScreen.off("click.zoomOnFullscreen"); // avoid duplicates
-        fullScreen.on("click.zoomOnFullscreen", () => {
-          map.setZoom(map.getZoom() + 1);
+        map.on("fullscreenchange", () => {
+          map.invalidateSize();
+          if (document.fullscreenElement === map.getContainer()) {
+            map.setZoom(initialZoom + 1);
+          } else {
+            map.setZoom(initialZoom);
+          }
         });
       },
       onClickElement() {
