@@ -23,6 +23,7 @@ class TestApps(TestCase):
         self.assertEqual(
             template_config[0].get("css"),
             (
+                "monitoring/css/floorplan.css",
                 "monitoring/css/device-map.css",
                 "leaflet/leaflet.css",
                 "monitoring/css/leaflet.fullscreen.css",
@@ -35,5 +36,6 @@ class TestApps(TestCase):
                 "monitoring/js/lib/netjsongraph.min.js",
                 "monitoring/js/lib/leaflet.fullscreen.min.js",
                 "monitoring/js/device-map.js",
+                "monitoring/js/floorplan.js",
             ),
         )
