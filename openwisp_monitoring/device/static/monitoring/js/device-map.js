@@ -268,50 +268,80 @@
           scale.metric = true;
           scale.imperial = true;
         }
-        // if (leafletConfig.SCALE) map.addControl(new L.control.scale(scale));
+        if (leafletConfig.SCALE) map.leaflet.addControl(new L.control.scale(scale));
 
-        // if (map.geoJSON.getLayers().length === 1) {
-        //   map.setView(map.geoJSON.getBounds().getCenter(), 10);
-        // } else {
-        //   map.fitBounds(map.geoJSON.getBounds());
-        // }
+        try {
+          const features = (map.data && map.data.features) || [];
+          if (features.length) {
+            // Create a temporary layer just to calculate bounds – do NOT add it to the map
+            const tempLayer = L.geoJSON(features);
+            const bounds = tempLayer.getBounds();
 
-        // map.geoJSON.eachLayer((layer) => {
-        //   layer[
-        //     layer.feature.geometry.type === "Point"
-        //       ? "bringToFront"
-        //       : "bringToBack"
-        //   ]();
-        // });
+            if (features.length === 1) {
+              map.leaflet.setView(bounds.getCenter(), 10);
+            } else {
+              map.leaflet.fitBounds(bounds);
+            }
 
-        // map.setMaxBounds(L.latLngBounds(L.latLng(-90, -540), L.latLng(90, 540)));
+            // Make sure points sit above polygons for interaction clarity
+            tempLayer.eachLayer((layer) => {
+              layer[
+                layer.feature.geometry.type === "Point"
+                  ? "bringToFront"
+                  : "bringToBack"
+              ]();
+            });
+          }
+        } catch (err) {
+          console.error("Unable to fit NetJSON bounds:", err);
+        }
 
-        // map.on("moveend", (event) => {
-        //   const netjsonGraph = this;
-        //   const bounds = event.target.getBounds();
-        //   if (bounds._southWest.lng < -180 && !netjsonGraph.westWorldFeaturesAppended) {
-        //     const westWorldFeatures = structuredClone(netjsonGraph.data);
-        //     westWorldFeatures.features = westWorldFeatures.features.filter(
-        //       (f) => !f.geometry || f.geometry.coordinates[0] <= 180
-        //     );
-        //     westWorldFeatures.features.forEach((f) => {
-        //       if (f.geometry) f.geometry.coordinates[0] -= 360;
-        //     });
-        //     netjsonGraph.utils.appendData(westWorldFeatures, netjsonGraph);
-        //     netjsonGraph.westWorldFeaturesAppended = true;
-        //   }
-        //   if (bounds._northEast.lng > 180 && !netjsonGraph.eastWorldFeaturesAppended) {
-        //     const eastWorldFeatures = structuredClone(netjsonGraph.data);
-        //     eastWorldFeatures.features = eastWorldFeatures.features.filter(
-        //       (f) => !f.geometry || f.geometry.coordinates[0] >= -180
-        //     );
-        //     eastWorldFeatures.features.forEach((f) => {
-        //       if (f.geometry) f.geometry.coordinates[0] += 360;
-        //     });
-        //     netjsonGraph.utils.appendData(eastWorldFeatures, netjsonGraph);
-        //     netjsonGraph.eastWorldFeaturesAppended = true;
-        //   }
-        // });
+        // Restrict horizontal panning to three wrapped worlds
+        map.leaflet.setMaxBounds(
+          L.latLngBounds(L.latLng(-90, -540), L.latLng(90, 540))
+        );
+
+        map.leaflet.on("moveend", (event) => {
+          const netjsonGraph = map; // alias for clarity
+          const bounds = event.target.getBounds();
+
+          // Ensure data.features exists; otherwise skip wrap logic
+          if (!netjsonGraph.data || !Array.isArray(netjsonGraph.data.features)) {
+            return; // nothing to wrap
+          }
+
+          // When panning west past the dateline, clone features shifted −360°
+          if (
+            bounds._southWest.lng < -180 &&
+            !netjsonGraph.westWorldFeaturesAppended
+          ) {
+            const westWorld = structuredClone(netjsonGraph.data);
+            westWorld.features = westWorld.features.filter(
+              (f) => !f.geometry || f.geometry.coordinates[0] <= 180
+            );
+            westWorld.features.forEach((f) => {
+              if (f.geometry) f.geometry.coordinates[0] -= 360;
+            });
+            netjsonGraph.utils.appendData(westWorld, netjsonGraph);
+            netjsonGraph.westWorldFeaturesAppended = true;
+          }
+
+          // When panning east past the dateline, clone features shifted +360°
+          if (
+            bounds._northEast.lng > 180 &&
+            !netjsonGraph.eastWorldFeaturesAppended
+          ) {
+            const eastWorld = structuredClone(netjsonGraph.data);
+            eastWorld.features = eastWorld.features.filter(
+              (f) => !f.geometry || f.geometry.coordinates[0] >= -180
+            );
+            eastWorld.features.forEach((f) => {
+              if (f.geometry) f.geometry.coordinates[0] += 360;
+            });
+            netjsonGraph.utils.appendData(eastWorld, netjsonGraph);
+            netjsonGraph.eastWorldFeaturesAppended = true;
+          }
+        });
       },
     });
 
