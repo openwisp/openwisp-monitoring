@@ -268,7 +268,8 @@
           scale.metric = true;
           scale.imperial = true;
         }
-        if (leafletConfig.SCALE) map.leaflet.addControl(new L.control.scale(scale));
+        if (leafletConfig.SCALE)
+          map.leaflet.addControl(new L.control.scale(scale));
 
         try {
           const features = (map.data && map.data.features) || [];
@@ -298,7 +299,7 @@
 
         // Restrict horizontal panning to three wrapped worlds
         map.leaflet.setMaxBounds(
-          L.latLngBounds(L.latLng(-90, -540), L.latLng(90, 540))
+          L.latLngBounds(L.latLng(-90, -540), L.latLng(90, 540)),
         );
 
         map.leaflet.on("moveend", (event) => {
@@ -306,7 +307,10 @@
           const bounds = event.target.getBounds();
 
           // Ensure data.features exists; otherwise skip wrap logic
-          if (!netjsonGraph.data || !Array.isArray(netjsonGraph.data.features)) {
+          if (
+            !netjsonGraph.data ||
+            !Array.isArray(netjsonGraph.data.features)
+          ) {
             return; // nothing to wrap
           }
 
@@ -317,7 +321,7 @@
           ) {
             const westWorld = structuredClone(netjsonGraph.data);
             westWorld.features = westWorld.features.filter(
-              (f) => !f.geometry || f.geometry.coordinates[0] <= 180
+              (f) => !f.geometry || f.geometry.coordinates[0] <= 180,
             );
             westWorld.features.forEach((f) => {
               if (f.geometry) f.geometry.coordinates[0] -= 360;
@@ -333,7 +337,7 @@
           ) {
             const eastWorld = structuredClone(netjsonGraph.data);
             eastWorld.features = eastWorld.features.filter(
-              (f) => !f.geometry || f.geometry.coordinates[0] >= -180
+              (f) => !f.geometry || f.geometry.coordinates[0] >= -180,
             );
             eastWorld.features.forEach((f) => {
               if (f.geometry) f.geometry.coordinates[0] += 360;
