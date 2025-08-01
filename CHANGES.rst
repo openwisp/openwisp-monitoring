@@ -6,6 +6,23 @@ Version 1.2.0 [Unreleased]
 
 Work in progress.
 
+Version 1.1.3 [2025-08-01]
+--------------------------
+
+Bugfixes
+~~~~~~~~
+
+- Fixed `issue causing alerts to be triggered when devices uploaded
+  historical data.
+  <https://github.com/openwisp/openwisp-monitoring/issues/666>`_
+- Fixed `potential performance issues in data migrations by replacing use
+  of "Model.objects.all()" with "Model.objects.iterator().
+  <https://github.com/openwisp/openwisp-monitoring/commit/2e7af02f5b110099079b48912a0cb92e34819c88>`_.
+- Fixed `dashboard map issue where east/west map coordinates were not
+  correctly handled.
+  <https://github.com/openwisp/openwisp-monitoring/commit/a6a48e84d5bc218ec6f5a5292f7c9e5818aeb72e>`_.
+- Fixed code examples in the documentation.
+
 Version 1.1.2 [2025-01-31]
 --------------------------
 
