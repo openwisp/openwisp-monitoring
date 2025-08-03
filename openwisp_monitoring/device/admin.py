@@ -7,7 +7,7 @@ from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
 from django.contrib.contenttypes.models import ContentType
 from django.forms import ModelForm
 from django.templatetags.static import static
-from django.urls import resolve, reverse
+from django.urls import resolve, reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.formats import localize
 from django.utils.html import format_html
@@ -32,6 +32,7 @@ from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from . import settings as app_settings
 from .exportable import DeviceMonitoringResource
 from .filters import DeviceFilter, DeviceGroupFilter, DeviceOrganizationFilter
+from .models import Map
 
 DeviceData = load_model("device_monitoring", "DeviceData")
 WifiSession = load_model("device_monitoring", "WifiSession")
@@ -573,3 +574,49 @@ admin.site.register(Device, DeviceAdminExportable)
 if app_settings.WIFI_SESSIONS_ENABLED:
     admin.site.register(WifiSession, WifiSessionAdmin)
     DeviceAdmin.conditional_inlines.append(WiFiSessionInline)
+
+
+class MapPageAdmin(MultitenantAdminMixin, admin.ModelAdmin):
+    """
+    Overrides the changelist template of proxy Model Map to render
+    a full-screen interactive map using custom template map_page.html.
+    """
+
+    change_list_template = 'admin/map/map_page.html'
+
+    class Media:
+        js = [
+            'monitoring/js/lib/netjsongraph.min.js',
+            'monitoring/js/lib/leaflet.fullscreen.min.js',
+        ]
+        css = {
+            'all': [
+                'monitoring/css/device-map.css',
+                'leaflet/leaflet.css',
+                'monitoring/css/leaflet.fullscreen.css',
+                'monitoring/css/netjsongraph.css',
+            ]
+        }
+
+    def changelist_view(self, request, extra_context=None):
+        loc_geojson = reverse_lazy(
+            'monitoring:api_location_geojson', urlconf=MONITORING_API_URLCONF
+        )
+        device_list = reverse_lazy(
+            'monitoring:api_location_device_list',
+            urlconf=MONITORING_API_URLCONF,
+            args=['000'],
+        )
+        extra_context = extra_context or {}
+        extra_context.update(
+            {
+                'monitoring_location_geojson_url': loc_geojson,
+                'monitoring_device_list_url': device_list,
+                # By default shows 'Select Map to change' heading making it empty to hide it
+                'title': '',
+            }
+        )
+        return super().changelist_view(request, extra_context=extra_context)
+
+
+admin.site.register(Map, MapPageAdmin)

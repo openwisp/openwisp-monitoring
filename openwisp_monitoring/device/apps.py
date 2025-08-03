@@ -20,7 +20,7 @@ from openwisp_utils.admin_theme import (
     register_dashboard_chart,
     register_dashboard_template,
 )
-from openwisp_utils.admin_theme.menu import register_menu_subitem
+from openwisp_utils.admin_theme.menu import register_menu_group, register_menu_subitem
 
 from ..check import settings as check_settings
 from ..monitoring.signals import threshold_crossed
@@ -504,6 +504,15 @@ class DeviceMonitoringConfig(AppConfig):
                     "icon": "ow-monitoring-wifi",
                 },
             )
+        register_menu_group(
+            position=70,
+            config={
+                'label': _('Map'),
+                'model': get_model_name("device_monitoring", "Map"),
+                'name': 'changelist',
+                'icon': 'ow-geo',
+            },
+        )
 
     def add_connection_ignore_notification_reasons(self):
         from openwisp_controller.connection.apps import ConnectionConfig
