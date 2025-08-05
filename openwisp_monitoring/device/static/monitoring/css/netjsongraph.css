@@ -4,60 +4,62 @@
   right: 0;
 }
 .njg-container {
+  position: relative;
+  left: 0;
+  right: 0;
   background: #fbfbfb;
   border-radius: 2px;
   border: 1px solid #ccc;
   color: #6d6357;
   line-height: 20px;
-  max-width: 400px;
+  max-width: 100%;
   min-width: 200px;
-  padding: 10px 15px;
 }
-#graphChartContainer {
+.njg-container #graphChartContainer {
   width: 100%;
   height: 100%;
   overflow: hidden;
   z-index: 0;
 }
-.leaflet-control-zoom {
+.njg-container .leaflet-control-zoom {
   top: 5px;
 }
-.leaflet-control-zoom-in {
+.njg-container .leaflet-control-zoom-in {
   border-top-left-radius: 5px !important;
   border-top-right-radius: 5px !important;
 }
-.leaflet-control-zoom-out {
+.njg-container .leaflet-control-zoom-out {
   border-bottom-left-radius: 5px !important;
   border-bottom-right-radius: 5px !important;
 }
-.leaflet-control-fullscreen {
+.njg-container .leaflet-control-fullscreen {
   top: 5px;
 }
-.leaflet-control-fullscreen-button {
+.njg-container .leaflet-control-fullscreen-button {
   border-radius: 5px !important;
 }
-.leaflet-control-layers-toggle {
+.njg-container .leaflet-control-layers-toggle {
   height: 35px !important;
   width: 35px !important;
   background-size: 20px 20px !important;
 }
-.marker-cluster div {
+.njg-container .marker-cluster div {
   color: #fff;
   background-color: rgba(53, 60, 68, 0.8) !important;
 }
-.ok div {
+.njg-container .ok div {
   background-color: rgba(38, 113, 38, 0.8) !important;
 }
-.problem div {
+.njg-container .problem div {
   background-color: rgba(255, 180, 66, 0.8) !important;
 }
-.critical div {
+.njg-container .critical div {
   background-color: rgba(167, 45, 29, 0.8) !important;
 }
-.unknown div {
+.njg-container .unknown div {
   background-color: rgba(53, 60, 68, 0.8) !important;
 }
-.njg-controls {
+.njg-container .njg-controls {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -67,21 +69,21 @@
   z-index: 999;
   background-color: inherit;
 }
-.njg-sideBar {
+.njg-container .njg-sideBar {
   display: none;
 }
-.njg-tooltip {
+.njg-container .njg-tooltip {
   background: #fff !important;
   border: none !important;
 }
-.njg-tooltip-item {
+.njg-container .njg-tooltip-item {
   display: flex;
   align-items: center;
   width: 100%;
   padding: 1px 0;
   flex-wrap: wrap;
 }
-.njg-tooltip-key {
+.njg-container .njg-tooltip-key {
   display: inline-flex;
   flex-basis: 40%;
   flex-wrap: wrap;
@@ -89,7 +91,7 @@
   font-weight: 600;
   color: #000;
 }
-.njg-tooltip-value {
+.njg-container .njg-tooltip-value {
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;

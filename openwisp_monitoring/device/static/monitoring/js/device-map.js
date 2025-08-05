@@ -1,6 +1,6 @@
 "use strict";
 
-/*jshint esversion: 8 */
+/* jshint esversion: 8 */
 (function ($) {
   const loadingOverlay = $("#device-map-container .ow-loading-spinner");
   const localStorageKey = "ow-map-shown";
@@ -11,111 +11,123 @@
     problem: "#ffb442",
     critical: "#a72d1d",
     unknown: "#353c44",
-    deactivated: "#0000",
+    deactivated: "#000000", // Fixed from "#0000"
   };
+
   const getLocationDeviceUrl = function (pk) {
     return window._owGeoMapConfig.locationDeviceUrl.replace("000", pk);
   };
+
   const getColor = function (data) {
     let deviceCount = data.device_count,
       findResult = function (func) {
         for (let i in statuses) {
           let status = statuses[i],
             statusCount = data[status + "_count"];
-          if (statusCount === 0) {
-            continue;
-          }
+          if (statusCount === 0) continue;
           return func(status, statusCount);
         }
       };
-    // if one status has absolute majority, it's the winner
     let majority = findResult(function (status, statusCount) {
-      if (statusCount > deviceCount / 2) {
-        return colors[status];
-      }
+      if (statusCount > deviceCount / 2) return colors[status];
     });
-    if (majority) {
-      return majority;
-    }
-    // otherwise simply return the color based on the priority
-    return findResult(function (status, statusCount) {
-      // if one status has absolute majority, it's the winner
-      if (statusCount) {
-        return colors[status];
-      }
+    if (majority) return majority;
+    return findResult((status, statusCount) => {
+      if (statusCount) return colors[status];
     });
   };
-  const loadPopUpContent = function (layer, url) {
-    // allows reopening the last page which was opened before popup close
-    // defaults to the passed URL or the default URL (first page)
-    if (!url) {
-      url = layer.url || getLocationDeviceUrl(layer.feature.id);
-    }
-    layer.url = url;
 
+  let currentPopup = null;
+
+  const loadPopUpContent = function (nodeData, netjsongraphInstance, url) {
+    const map = netjsongraphInstance.leaflet;
+    const locationId = nodeData?.properties?.id || nodeData.id;
+    url = url || getLocationDeviceUrl(locationId);
+
+    if (currentPopup) currentPopup.remove();
     loadingOverlay.show();
 
     $.ajax({
       dataType: "json",
       url: url,
-      xhrFields: {
-        withCredentials: true,
-      },
-      success: function (data) {
+      xhrFields: { withCredentials: true },
+      success: function (apiData) {
         let html = "",
           device;
-        for (let i = 0; i < data.results.length; i++) {
-          device = data.results[i];
+        for (let i = 0; i < apiData.results.length; i++) {
+          device = apiData.results[i];
           html += `
-                            <tr>
-                                <td><a href="${device.admin_edit_url}">${device.name}</a></td>
-                                <td>
-                                    <span class="health-status health-${device.monitoring.status}">
-                                        ${device.monitoring.status_label}
-                                    </span>
-                                </td>
-                            </tr>`;
+            <tr>
+              <td><a href="${device.admin_edit_url}">${device.name}</a></td>
+              <td>
+                <span class="health-status health-${device.monitoring.status}">${device.monitoring.status_label}</span>
+              </td>
+            </tr>
+          `;
         }
-        let pagination = "",
-          parts = [];
-        if (data.previous || data.next) {
-          if (data.previous) {
-            parts.push(
-              `<a class="prev" href="#prev" data-url="${data.previous}">&#8249; ${gettext("previous")}</a>`,
-            );
-          }
-          if (data.next) {
-            parts.push(
-              `<a class="next" href="#next" data-url="${data.next}">${gettext("next")} &#8250;</a>`,
-            );
-          }
-          pagination = `<p class="paginator">${parts.join(" ")}</div>`;
-        }
-        layer.bindPopup(`
-                            <div class="map-detail">
-                                <h2>${layer.feature.properties.name} (${data.count})</h2>
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>${gettext("name")}</th>
-                                            <th>${gettext("status")}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${html}
-                                    </tbody>
-                                </table>
-                                ${pagination}
-                            </div>`);
-        layer.openPopup();
 
-        // bind next/prev buttons
-        let el = $(layer.getPopup().getElement());
-        el.find(".next").click(function () {
-          loadPopUpContent(layer, $(this).data("url"));
+        const parts = [];
+        if (apiData.previous) {
+          parts.push(
+            `<a class="prev" href="#prev" data-url="${apiData.previous}">‹ ${gettext("previous")}</a>`,
+          );
+        }
+        if (apiData.next) {
+          parts.push(
+            `<a class="next" href="#next" data-url="${apiData.next}">${gettext("next")} ›</a>`,
+          );
+        }
+        const pagination = parts.length
+          ? `<p class="paginator">${parts.join(" ")}</p>`
+          : "";
+
+        const popupTitle =
+          nodeData.label || nodeData?.properties?.name || nodeData.id;
+
+        let latLng;
+        if (nodeData.location && typeof nodeData.location.lat === "number") {
+          latLng = [nodeData.location.lat, nodeData.location.lng];
+        } else if (Array.isArray(nodeData.coordinates)) {
+          latLng = [nodeData.coordinates[1], nodeData.coordinates[0]];
+        } else if (nodeData.geometry?.coordinates?.length >= 2) {
+          latLng = [
+            nodeData.geometry.coordinates[1],
+            nodeData.geometry.coordinates[0],
+          ];
+        }
+
+        if (!latLng || isNaN(latLng[0]) || isNaN(latLng[1])) {
+          console.warn("Could not determine coordinates for popup", nodeData);
+          loadingOverlay.hide();
+          return;
+        }
+
+        const popupContent = `
+          <div class="map-detail">
+            <h2>${popupTitle} (${apiData.count})</h2>
+            <table>
+              <thead>
+                <tr><th>${gettext("name")}</th><th>${gettext("status")}</th></tr>
+              </thead>
+              <tbody>${html}</tbody>
+            </table>
+            ${pagination}
+          </div>
+        `;
+
+        currentPopup = L.popup()
+          .setLatLng(latLng)
+          .setContent(popupContent)
+          .openOn(map);
+
+        const $el = $(currentPopup.getElement());
+        $el.find(".next").click(function (e) {
+          e.preventDefault();
+          loadPopUpContent(nodeData, netjsongraphInstance, $(this).data("url"));
         });
-        el.find(".prev").click(function () {
-          loadPopUpContent(layer, $(this).data("url"));
+        $el.find(".prev").click(function (e) {
+          e.preventDefault();
+          loadPopUpContent(nodeData, netjsongraphInstance, $(this).data("url"));
         });
 
         loadingOverlay.hide();
@@ -126,23 +138,14 @@
       },
     });
   };
+
   const leafletConfig = JSON.parse($("#leaflet-config").text());
   const tiles = leafletConfig.TILES.map((tile) => {
     let tileLayer = tile[1];
-    if (tileLayer.includes("https:")) {
-      tileLayer = tileLayer.split("https:")[1];
-    }
-    let options = {};
-    if (typeof tile[2] === "object") {
-      options = tile[2];
-    } else {
-      options.attribution = tile[2];
-    }
-    return {
-      label: tile[0],
-      urlTemplate: `https:${tileLayer}`,
-      options,
-    };
+    if (tileLayer.includes("https:")) tileLayer = tileLayer.split("https:")[1];
+    let options =
+      typeof tile[2] === "object" ? tile[2] : { attribution: tile[2] };
+    return { label: tile[0], urlTemplate: `https:${tileLayer}`, options };
   });
 
   function onAjaxSuccess(data) {
@@ -159,27 +162,65 @@
       localStorage.removeItem(localStorageKey);
       mapContainer.slideDown();
     }
-    /* Workaround for https://github.com/openwisp/openwisp-monitoring/issues/462
-        Leaflet does not support looping (wrapping) the map. Therefore, to work around
-        abrupt automatic map panning due to bounds, we plot markers on three worlds.
-        This allow users to view devices around the International Date Line without
-        any weird affects.
-        */
 
-    /* global NetJSONGraph */
+    if (Array.isArray(data.features)) {
+      data.features.forEach((f) => {
+        if (f?.id && f.properties && !f.properties.id) {
+          f.properties.id = f.id;
+        }
+      });
+    }
+
     const map = new NetJSONGraph(data, {
       el: "#device-map-container",
       render: "map",
-      clustering: false,
-      // set map initial state.
+      clustering: true,
+      clusteringAttribute: "status",
+      clusteringThreshold: 0,
+      clusterRadius: 100,
+      clusterSeparation: 20,
+      disableClusteringAtLevel: 16,
       mapOptions: {
-        center: leafletConfig.DEFAULT_CENTER,
-        zoom: leafletConfig.DEFAULT_ZOOM,
+        center: leafletConfig.DEFAULT_CENTER || [55.78, 11.54],
+        zoom: leafletConfig.DEFAULT_ZOOM || 1,
         minZoom: leafletConfig.MIN_ZOOM || 1,
         maxZoom: leafletConfig.MAX_ZOOM || 24,
         fullscreenControl: true,
       },
       mapTileConfig: tiles,
+      nodeCategories: Object.keys(colors).map((k) => ({
+        name: k,
+        nodeStyle: { color: colors[k] },
+      })),
+      echartsOption: {
+        tooltip: {
+          confine: true,
+          formatter: function (params) {
+            let n = params.data?.node || params.data;
+            return n?.properties?.name || n?.label || n?.id || "";
+          },
+        },
+      },
+      prepareData: function (json) {
+        const items = json.nodes || json.features;
+        if (Array.isArray(items)) {
+          items.forEach((el) => {
+            const props = el.properties || {};
+            let status = props.status?.toLowerCase();
+            if (!status) {
+              const color = getColor(props);
+              status =
+                Object.keys(colors).find((k) => colors[k] === color) ||
+                "unknown";
+            }
+            props.status = status;
+            props.category = status;
+            el.category = status;
+            if (!el.properties) el.properties = props;
+          });
+        }
+        return json;
+      },
       geoOptions: {
         style: function (feature) {
           return {
@@ -193,9 +234,9 @@
         },
         onEachFeature: function (feature, layer) {
           const color = getColor(feature.properties);
-          feature.properties.status = Object.keys(colors).filter(
+          feature.properties.status = Object.keys(colors).find(
             (key) => colors[key] === color,
-          )[0];
+          );
 
           layer.on("mouseover", function () {
             layer.unbindTooltip();
@@ -203,92 +244,111 @@
               layer.bindTooltip(feature.properties.name).openTooltip();
             }
           });
+
           layer.on("click", function () {
             layer.unbindTooltip();
             layer.unbindPopup();
-            loadPopUpContent(layer);
+            loadPopUpContent(feature, map);
           });
         },
       },
+      onClickElement: function (type, data) {
+        if (type === "node") {
+          loadPopUpContent(data, this);
+        } else if (type === "Feature") {
+          console.log("Clicked GeoJSON Feature:", data);
+        }
+      },
       onReady: function () {
-        const map = this.leaflet;
-        let scale = {
-          imperial: false,
-          metric: false,
-        };
-        if (leafletConfig.SCALE === "metric") {
-          scale.metric = true;
-        } else if (leafletConfig.SCALE === "imperial") {
-          scale.imperial = true;
-        } else if (leafletConfig.SCALE === "both") {
+        const map = this;
+        let scale = { imperial: false, metric: false };
+        if (leafletConfig.SCALE === "metric") scale.metric = true;
+        else if (leafletConfig.SCALE === "imperial") scale.imperial = true;
+        else if (leafletConfig.SCALE === "both") {
           scale.metric = true;
           scale.imperial = true;
         }
+        if (leafletConfig.SCALE)
+          map.leaflet.addControl(new L.control.scale(scale));
 
-        if (leafletConfig.SCALE) {
-          /* global L */
-          map.addControl(new L.control.scale(scale));
+        try {
+          const features = (map.data && map.data.features) || [];
+          if (features.length) {
+            // Create a temporary layer just to calculate bounds – do NOT add it to the map
+            const tempLayer = L.geoJSON(features);
+            const bounds = tempLayer.getBounds();
+
+            if (features.length === 1) {
+              map.leaflet.setView(bounds.getCenter(), 10);
+            } else {
+              map.leaflet.fitBounds(bounds);
+            }
+
+            // Make sure points sit above polygons for interaction clarity
+            tempLayer.eachLayer((layer) => {
+              layer[
+                layer.feature.geometry.type === "Point"
+                  ? "bringToFront"
+                  : "bringToBack"
+              ]();
+            });
+          }
+        } catch (err) {
+          console.error("Unable to fit NetJSON bounds:", err);
         }
 
-        if (map.geoJSON.getLayers().length === 1) {
-          map.setView(map.geoJSON.getBounds().getCenter(), 10);
-        } else {
-          map.fitBounds(map.geoJSON.getBounds());
-        }
-        map.geoJSON.eachLayer(function (layer) {
-          layer[
-            layer.feature.geometry.type == "Point"
-              ? "bringToFront"
-              : "bringToBack"
-          ]();
-        });
-
-        // Workaround for https://github.com/openwisp/openwisp-monitoring/issues/462
-        map.setMaxBounds(
+        // Restrict horizontal panning to three wrapped worlds
+        map.leaflet.setMaxBounds(
           L.latLngBounds(L.latLng(-90, -540), L.latLng(90, 540)),
         );
-        map.on("moveend", (event) => {
-          let netjsonGraph = this;
-          let bounds = event.target.getBounds();
+
+        map.leaflet.on("moveend", (event) => {
+          const netjsonGraph = map; // alias for clarity
+          const bounds = event.target.getBounds();
+
+          // Ensure data.features exists; otherwise skip wrap logic
+          if (
+            !netjsonGraph.data ||
+            !Array.isArray(netjsonGraph.data.features)
+          ) {
+            return; // nothing to wrap
+          }
+
+          // When panning west past the dateline, clone features shifted −360°
           if (
             bounds._southWest.lng < -180 &&
             !netjsonGraph.westWorldFeaturesAppended
           ) {
-            let westWorldFeatures = window.structuredClone(netjsonGraph.data);
-            // Exclude the features that may be added for the East world map
-            westWorldFeatures.features = westWorldFeatures.features.filter(
-              (element) =>
-                !element.geometry || element.geometry.coordinates[0] <= 180,
+            const westWorld = structuredClone(netjsonGraph.data);
+            westWorld.features = westWorld.features.filter(
+              (f) => !f.geometry || f.geometry.coordinates[0] <= 180,
             );
-            westWorldFeatures.features.forEach((element) => {
-              if (element.geometry) {
-                element.geometry.coordinates[0] -= 360;
-              }
+            westWorld.features.forEach((f) => {
+              if (f.geometry) f.geometry.coordinates[0] -= 360;
             });
-            netjsonGraph.utils.appendData(westWorldFeatures, netjsonGraph);
+            netjsonGraph.utils.appendData(westWorld, netjsonGraph);
             netjsonGraph.westWorldFeaturesAppended = true;
           }
+
+          // When panning east past the dateline, clone features shifted +360°
           if (
             bounds._northEast.lng > 180 &&
             !netjsonGraph.eastWorldFeaturesAppended
           ) {
-            let eastWorldFeatures = window.structuredClone(netjsonGraph.data);
-            // Exclude the features that may be added for the West world map
-            eastWorldFeatures.features = eastWorldFeatures.features.filter(
-              (element) =>
-                !element.geometry || element.geometry.coordinates[0] >= -180,
+            const eastWorld = structuredClone(netjsonGraph.data);
+            eastWorld.features = eastWorld.features.filter(
+              (f) => !f.geometry || f.geometry.coordinates[0] >= -180,
             );
-            eastWorldFeatures.features.forEach((element) => {
-              if (element.geometry) {
-                element.geometry.coordinates[0] += 360;
-              }
+            eastWorld.features.forEach((f) => {
+              if (f.geometry) f.geometry.coordinates[0] += 360;
             });
-            netjsonGraph.utils.appendData(eastWorldFeatures, netjsonGraph);
+            netjsonGraph.utils.appendData(eastWorld, netjsonGraph);
             netjsonGraph.eastWorldFeaturesAppended = true;
           }
         });
       },
     });
+
     map.setUtils({
       showLoading: function () {
         loadingOverlay.show();
@@ -297,8 +357,7 @@
         loadingOverlay.hide();
       },
       paginatedDataParse: async function (JSONParam) {
-        let res;
-        let data;
+        let res, data;
         try {
           res = await this.utils.JSONParamParse(JSONParam);
           data = res;
@@ -311,24 +370,23 @@
             data.features = data.features.concat(res.features);
           }
         } catch (e) {
-          /* global console */
           console.error(e);
         }
         return data;
       },
     });
+
     map.render();
   }
 
   if (localStorage.getItem(localStorageKey) === "false") {
     mapContainer.slideUp(50);
   }
+
   $.ajax({
     dataType: "json",
     url: window._owGeoMapConfig.geoJsonUrl,
-    xhrFields: {
-      withCredentials: true,
-    },
+    xhrFields: { withCredentials: true },
     success: onAjaxSuccess,
     context: window,
   });
