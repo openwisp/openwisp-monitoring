@@ -109,7 +109,11 @@ class TestAdmin(
             "Map": "devicelocation-heading",
             "Credentials": "deviceconnection_set-heading",
         }
-        return f'<h2 id="{heading_map[heading]}" class="inline-heading">\n\n{heading}\n\n</h2>'
+        newline = "\n" if heading == "Alert Settings" else "\n\n"
+        return (
+            f'<h2 id="{heading_map[heading]}" class="inline-heading">'
+            f"{newline}{heading}{newline}</h2>"
+        )
 
     def test_device_admin(self):
         dd = self.create_test_data()
