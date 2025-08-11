@@ -309,8 +309,9 @@
           });
         map.on("fullscreenchange", () => {
           map.invalidateSize();
+          const zoomSnap = map.options.zoomSnap || 1;
           if (document.fullscreenElement === map.getContainer()) {
-            map.setZoom(initialZoom + 1);
+            map.setZoom(initialZoom + zoomSnap);
           } else {
             map.setZoom(initialZoom);
           }
