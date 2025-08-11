@@ -103,7 +103,7 @@ class TestAdmin(
             return f"<h2>{heading}</h2>"
         heading_map = {
             "Checks": f"{Check._meta.app_label}-check-content_type-object_id-heading",
-            "Alert Settings": f"{Metric._meta.app_label}-alertsettings-content_type-object_id-heading",
+            "Alert Settings": f"{Metric._meta.app_label}-metric-content_type-object_id-heading",
             "WiFi Sessions": "wifisession_set-heading",
             "Configuration": "config-heading",
             "Map": "devicelocation-heading",
