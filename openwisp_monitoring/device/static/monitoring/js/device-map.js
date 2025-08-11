@@ -24,16 +24,24 @@
         for (let i in statuses) {
           let status = statuses[i],
             statusCount = data[status + "_count"];
-          if (statusCount === 0) continue;
+          if (statusCount === 0) {
+            continue;
+          }
           return func(status, statusCount);
         }
       };
     let majority = findResult(function (status, statusCount) {
-      if (statusCount > deviceCount / 2) return colors[status];
+      if (statusCount > deviceCount / 2) {
+        return colors[status];
+      }
     });
-    if (majority) return majority;
+    if (majority) {
+      return majority;
+    }
     return findResult((status, statusCount) => {
-      if (statusCount) return colors[status];
+      if (statusCount) {
+        return colors[status];
+      }
     });
   };
 
@@ -44,7 +52,9 @@
     const locationId = nodeData?.properties?.id || nodeData.id;
     url = url || getLocationDeviceUrl(locationId);
 
-    if (currentPopup) currentPopup.remove();
+    if (currentPopup) {
+      currentPopup.remove();
+    }
     loadingOverlay.show();
 
     $.ajax({
@@ -84,6 +94,12 @@
         const popupTitle =
           nodeData.label || nodeData?.properties?.name || nodeData.id;
 
+        // Determine coordinates for the popup. We support:
+        // 1. NetJSONGraph objects (nodeData.location)
+        // 2. GeoJSON Point array (nodeData.coordinates)
+        // 3. GeoJSON Feature geometry (nodeData.geometry.coordinates)
+        // This fallback chain ensures the popup always plots at the correct
+        // position regardless of datasource format.
         let latLng;
         if (nodeData.location && typeof nodeData.location.lat === "number") {
           latLng = [nodeData.location.lat, nodeData.location.lng];
@@ -142,7 +158,9 @@
   const leafletConfig = JSON.parse($("#leaflet-config").text());
   const tiles = leafletConfig.TILES.map((tile) => {
     let tileLayer = tile[1];
-    if (tileLayer.includes("https:")) tileLayer = tileLayer.split("https:")[1];
+    if (tileLayer.includes("https:")) {
+      tileLayer = tileLayer.split("https:")[1];
+    }
     let options =
       typeof tile[2] === "object" ? tile[2] : { attribution: tile[2] };
     return { label: tile[0], urlTemplate: `https:${tileLayer}`, options };
@@ -181,6 +199,7 @@
       clusterSeparation: 20,
       disableClusteringAtLevel: 16,
       mapOptions: {
+        // Use sensible fallback if the backend does not provide DEFAULT_CENTER.
         center: leafletConfig.DEFAULT_CENTER || [55.78, 11.54],
         zoom: leafletConfig.DEFAULT_ZOOM || 1,
         minZoom: leafletConfig.MIN_ZOOM || 1,
@@ -188,9 +207,9 @@
         fullscreenControl: true,
       },
       mapTileConfig: tiles,
-      nodeCategories: Object.keys(colors).map((k) => ({
-        name: k,
-        nodeStyle: { color: colors[k] },
+      nodeCategories: Object.keys(colors).map((status) => ({
+        name: status,
+        nodeStyle: { color: colors[status] },
       })),
       echartsOption: {
         tooltip: {
@@ -262,14 +281,17 @@
       onReady: function () {
         const map = this;
         let scale = { imperial: false, metric: false };
-        if (leafletConfig.SCALE === "metric") scale.metric = true;
-        else if (leafletConfig.SCALE === "imperial") scale.imperial = true;
-        else if (leafletConfig.SCALE === "both") {
+        if (leafletConfig.SCALE === "metric") {
+          scale.metric = true;
+        } else if (leafletConfig.SCALE === "imperial") {
+          scale.imperial = true;
+        } else if (leafletConfig.SCALE === "both") {
           scale.metric = true;
           scale.imperial = true;
         }
-        if (leafletConfig.SCALE)
+        if (leafletConfig.SCALE) {
           map.leaflet.addControl(new L.control.scale(scale));
+        }
 
         try {
           const features = (map.data && map.data.features) || [];
@@ -324,7 +346,9 @@
               (f) => !f.geometry || f.geometry.coordinates[0] <= 180,
             );
             westWorld.features.forEach((f) => {
-              if (f.geometry) f.geometry.coordinates[0] -= 360;
+              if (f.geometry) {
+                f.geometry.coordinates[0] -= 360;
+              }
             });
             netjsonGraph.utils.appendData(westWorld, netjsonGraph);
             netjsonGraph.westWorldFeaturesAppended = true;
@@ -340,7 +364,9 @@
               (f) => !f.geometry || f.geometry.coordinates[0] >= -180,
             );
             eastWorld.features.forEach((f) => {
-              if (f.geometry) f.geometry.coordinates[0] += 360;
+              if (f.geometry) {
+                f.geometry.coordinates[0] += 360;
+              }
             });
             netjsonGraph.utils.appendData(eastWorld, netjsonGraph);
             netjsonGraph.eastWorldFeaturesAppended = true;
