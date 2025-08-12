@@ -99,11 +99,10 @@ class TestAdmin(
         This method helps us generate the appropriate HTML heading format
         based on the Django version being used.
         """
-        if django.VERSION < (5, 1) and heading != "Alert Settings":
+        if django.VERSION < (5, 1) or heading in ["Alert Settings"]:
             return f"<h2>{heading}</h2>"
         heading_map = {
             "Checks": f"{Check._meta.app_label}-check-content_type-object_id-heading",
-            "Alert Settings": f"{Metric._meta.app_label}-metric-content_type-object_id-heading",
             "WiFi Sessions": "wifisession_set-heading",
             "Configuration": "config-heading",
             "Map": "devicelocation-heading",
@@ -643,7 +642,14 @@ class TestAdmin(
                 '<img src="/static/admin/img/icon-yes.svg" alt="True">',
                 html=True,
             )
-            self.assertContains(response, "<h2>Advanced options</h2>", html=True)
+            # TODO: Remove when dropping support for Django 4.2
+            self.assertContains(
+                response,
+                (
+                    '<h{heading_level} class="fieldset-heading">Advanced options</h{heading_level}>'
+                ).format(heading_level=2 if django.VERSION < (5, 1) else 4),
+                html=True,
+            )
             self.assertContains(
                 response,
                 "metric-content_type-object_id-0-alertsettings-0-is_active",
