@@ -80,6 +80,9 @@ td.field-health_status,
 #monitoring-metric-content_type-object_id-group {
   padding-top: 0 !important;
 }
+#monitoring-metric-content_type-object_id-group fieldset .form-row:last-child {
+  border-bottom: 0 none;
+}
 .form-row.field-health_checks div.readonly {
   margin-left: 0px !important;
 }
