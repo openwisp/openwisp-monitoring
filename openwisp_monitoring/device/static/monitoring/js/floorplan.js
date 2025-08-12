@@ -12,20 +12,24 @@
   const NAV_WINDOW_SIZE = 5;
   let navWindowStart = 0;
   let selectedIndex = 0;
+  let isFullScreen = false;
+  let maps = {};
 
   async function openFloorPlan(url) {
     await fetchData(url);
 
     selectedIndex = floors.indexOf(currentFloor) || 0;
-    // Calculate the starting index of the navigation window so the selected floor appears near the center.
-    // Example: If selectedIndex = 3 and NAV_WINDOW_SIZE = 5,
-    // then navWindowStart = max(0, min(1, floors.length - 5)) => navWindowStart = 1
-    // So we will slice the floors array from index 1 to 6 (1 + NAV_WINDOW_SIZE),
-    // which ensures the initial floor is displayed at the center of the navigation window.
-    navWindowStart = Math.max(
-      0,
-      Math.min(selectedIndex - 2, floors.length - NAV_WINDOW_SIZE),
-    );
+    // Calculate the starting index of the navigation window so the selected floor is positioned
+    // as close to the center as possible without going out of bounds.
+    // Example: If selectedIndex = 3, NAV_WINDOW_SIZE = 5, floors.length = 10:
+    //   center = Math.floor(5 / 2) = 2
+    //   maxStart = 10 - 5 = 5
+    //   navWindowStart = Math.max(0, Math.min(3 - 2, 5)) = Math.max(0, Math.min(1, 5)) = 1
+    // This means we will slice floors from index 1 to 6, so the selected floor (index 3)
+    // appears in the middle of the navigation window when possible.
+    const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
+    const center = Math.floor(NAV_WINDOW_SIZE / 2);
+    navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
 
     const $floorPlanContainer = createFloorPlanContainer();
     const $floorNavigation = createFloorNavigation();
@@ -144,6 +148,9 @@
     $nav.off("click");
     $nav.on("click", ".floor-btn", async (e) => {
       selectedIndex = +e.currentTarget.dataset.index;
+      const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
+      const center = Math.floor(NAV_WINDOW_SIZE / 2);
+      navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
       addFloorButtons(selectedIndex, navWindowStart);
       currentFloor = floors[selectedIndex];
       await showFloor(url, currentFloor);
@@ -152,9 +159,12 @@
     $nav.on("click", ".right-arrow:not(.disabled)", async () => {
       if (selectedIndex < floors.length - 1) {
         selectedIndex++;
-        if (selectedIndex >= navWindowStart + NAV_WINDOW_SIZE) {
-          navWindowStart = Math.min(navWindowStart + 1, maxStart);
-        }
+        const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
+        const center = Math.floor(NAV_WINDOW_SIZE / 2);
+        navWindowStart = Math.max(
+          0,
+          Math.min(selectedIndex - center, maxStart),
+        );
         addFloorButtons(selectedIndex, navWindowStart);
         currentFloor = floors[selectedIndex];
         await showFloor(url, currentFloor);
@@ -164,9 +174,12 @@
     $nav.on("click", ".left-arrow:not(.disabled)", async () => {
       if (selectedIndex > 0) {
         selectedIndex--;
-        if (selectedIndex < navWindowStart) {
-          navWindowStart = Math.max(navWindowStart - 1, 0);
-        }
+        const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
+        const center = Math.floor(NAV_WINDOW_SIZE / 2);
+        navWindowStart = Math.max(
+          0,
+          Math.min(selectedIndex - center, maxStart),
+        );
         addFloorButtons(selectedIndex, navWindowStart);
         currentFloor = floors[selectedIndex];
         await showFloor(url, currentFloor);
@@ -198,9 +211,21 @@
       renderIndoorMap(nodesThisFloor, imageUrl, $floorDiv[0].id);
     }
     $floorDiv.show();
+    const floorNavigation = $("#floorplan-navigation");
+    if (isFullScreen && maps[floor]) {
+      document.exitFullscreen();
+      maps[floor].getContainer().requestFullscreen();
+      floorNavigation.addClass("fullscreen");
+      $(`#floor-content-${floor} .leaflet-container`).append(floorNavigation);
+    } else {
+      floorNavigation.removeClass("fullscreen");
+      $("#floorplan-container").append(floorNavigation);
+    }
+    maps[currentFloor].invalidateSize();
   }
 
   function renderIndoorMap(allResults, imageUrl, divId) {
+    console.log("Render Indoor Map", isFullScreen);
     const graph = new NetJSONGraph(allResults, {
       el: `#${divId}`,
       crs: L.CRS.Simple,
@@ -216,7 +241,7 @@
         zoomAnimation: false,
         nodeConfig: {
           label: {
-            show: false,
+            show: true,
           },
           animation: false,
           nodeStyle: (node) => ({
@@ -282,6 +307,7 @@
 
       onReady() {
         const map = this.leaflet;
+        maps[currentFloor] = map;
         // remove default geo map tiles
         map.eachLayer((layer) => layer._url && map.removeLayer(layer));
         const img = new Image();
@@ -299,22 +325,36 @@
           map.fitBounds(bnds);
           map.setMaxBounds(bnds);
           initialZoom = map.getZoom();
+          map.setView([0, 0], initialZoom);
         };
+        if (isFullScreen) {
+          const container = map.getContainer();
+          container.requestFullscreen();
+        }
         $("#floorplan-container")
           .off("click", ".tooltip-btn")
           .on("click", ".tooltip-btn", function () {
             const url = $(this).data("url");
-            console.log("Open device clicked:", url);
             window.location.href = url;
           });
         map.on("fullscreenchange", () => {
-          map.invalidateSize();
-          const zoomSnap = map.options.zoomSnap || 1;
-          if (document.fullscreenElement === map.getContainer()) {
-            map.setZoom(initialZoom + zoomSnap);
-          } else {
+          const floorNavigation = $("#floorplan-navigation");
+          // const zoomSnap = map.options.zoomSnap || 1;
+          if (map.isFullscreen()) {
             map.setZoom(initialZoom);
+            isFullScreen = true;
+            floorNavigation.addClass("fullscreen");
+            $(`#floor-content-${currentFloor} .leaflet-container`).append(
+              floorNavigation,
+            );
+          } else {
+            isFullScreen = false;
+            map.setZoom(initialZoom);
+            floorNavigation.removeClass("fullscreen");
+            $("#floorplan-container").append(floorNavigation);
           }
+          map.invalidateSize();
+          map.setZoom(initialZoom);
         });
       },
       onClickElement() {

@@ -73,6 +73,9 @@
   right: 25px !important;
   font-size: 20px !important;
 }
+.leaflet-popup-close-button:hover {
+  color: black !important;
+}
 .map-detail {
   display: flex;
   flex-direction: column;
@@ -80,7 +83,7 @@
   box-sizing: border-box;
 }
 .map-detail h2 {
-  margin: 35px 0 10px 0;
+  margin: 0 0 10px 0;
   font-size: 18px;
 }
 .input-container {
@@ -125,6 +128,10 @@
   border-radius: 12px;
   white-space: nowrap;
   font-size: 12px;
+  opacity: 0.8;
+}
+.health-status.active {
+  opacity: 1;
 }
 .remove-icon {
   font-weight: bold;
@@ -134,7 +141,7 @@
   display: inline-block;
 }
 .table-container {
-  height: 120px;
+  height: 195px;
   width: 350px;
   overflow-y: auto;
   min-width: 300px;
