@@ -46,6 +46,8 @@
   };
 
   let currentPopup = null;
+  // Track node IDs that should not show tooltips while their popup is open
+  const blockedTooltipIds = new Set();
 
   const loadPopUpContent = function (nodeData, netjsongraphInstance, url) {
     const map = netjsongraphInstance.leaflet;
@@ -136,6 +138,12 @@
           .setContent(popupContent)
           .openOn(map);
 
+        // Re-enable tooltip for NetJSONGraph node when popup closes
+        currentPopup.on("remove", () => {
+          const nid = nodeData?.id || nodeData?.properties?.id;
+          if (nid) blockedTooltipIds.delete(nid);
+        });
+
         const $el = $(currentPopup.getElement());
         $el.find(".next").click(function (e) {
           e.preventDefault();
@@ -216,6 +224,9 @@
           confine: true,
           formatter: function (params) {
             let n = params.data?.node || params.data;
+            if (n?.id && blockedTooltipIds.has(n.id)) {
+              return ""; // suppress tooltip while popup active
+            }
             return n?.properties?.name || n?.label || n?.id || "";
           },
         },
@@ -258,6 +269,7 @@
           );
 
           layer.on("mouseover", function () {
+            if (layer._tooltipDisabled) return;
             layer.unbindTooltip();
             if (!layer.isPopupOpen()) {
               layer.bindTooltip(feature.properties.name).openTooltip();
@@ -265,14 +277,31 @@
           });
 
           layer.on("click", function () {
-            layer.unbindTooltip();
-            layer.unbindPopup();
+            const clickedLayer = this;
+            // Close any open Leaflet tooltip before showing the popup
+            clickedLayer.closeTooltip();
+            clickedLayer.unbindTooltip();
+            clickedLayer.unbindPopup();
+            clickedLayer._tooltipDisabled = true; // block future hovers for this marker
+
             loadPopUpContent(feature, map);
+
+            // Re-enable tooltip when the popup is closed
+            map.leaflet.once("popupclose", function () {
+              clickedLayer._tooltipDisabled = false;
+            });
           });
         },
       },
       onClickElement: function (type, data) {
         if (type === "node") {
+          // Hide ECharts tooltip
+          try {
+            this.echarts.dispatchAction({ type: "hideTip" });
+          } catch (e) {
+            console.warn("Unable to hide ECharts tooltip", e);
+          }
+          if (data?.id) blockedTooltipIds.add(data.id);
           loadPopUpContent(data, this);
         } else if (type === "Feature") {
           console.log("Clicked GeoJSON Feature:", data);
