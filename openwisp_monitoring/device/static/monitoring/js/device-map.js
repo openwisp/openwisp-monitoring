@@ -136,7 +136,6 @@
           .setContent(popupContent)
           .openOn(map);
 
-        });
         const $el = $(currentPopup.getElement());
         $el.find(".next").click(function (e) {
           e.preventDefault();
