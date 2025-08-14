@@ -46,8 +46,6 @@
   };
 
   let currentPopup = null;
-  // Track node IDs that should not show tooltips while their popup is open
-  const blockedTooltipIds = new Set();
 
   const loadPopUpContent = function (nodeData, netjsongraphInstance, url) {
     const map = netjsongraphInstance.leaflet;
@@ -138,12 +136,6 @@
           .setContent(popupContent)
           .openOn(map);
 
-        // Re-enable tooltip for NetJSONGraph node when popup closes
-        currentPopup.on("remove", () => {
-          const nid = nodeData?.id || nodeData?.properties?.id;
-          if (nid) blockedTooltipIds.delete(nid);
-        });
-
         const $el = $(currentPopup.getElement());
         $el.find(".next").click(function (e) {
           e.preventDefault();
@@ -213,13 +205,14 @@
         minZoom: leafletConfig.MIN_ZOOM || 1,
         maxZoom: leafletConfig.MAX_ZOOM || 24,
         fullscreenControl: true,
+
         // Force tooltips ON for all viewport widths; override library's
         // responsive media rules that hide tooltips under 851px.
         baseOptions: {
           media: [
             {
               query: { minWidth: 0 },
-              option: { tooltip: { show: true } },
+              option: { tooltip: { show: false } },
             },
           ],
         },
@@ -230,17 +223,10 @@
         nodeStyle: { color: colors[status] },
       })),
       // Hide ECharts node labels completely at any zoom level
-      showLabelsAtZoomLevel: 10000,
+      showLabelsAtZoomLevel: 0,
       echartsOption: {
         tooltip: {
-          confine: true,
-          formatter: function (params) {
-            let n = params.data?.node || params.data;
-            if (n?.id && blockedTooltipIds.has(n.id)) {
-              return ""; // suppress tooltip while popup active
-            }
-            return n?.properties?.name || n?.label || n?.id || "";
-          },
+          show: false, // Completely disable tooltips
         },
       },
       prepareData: function (json) {
@@ -307,13 +293,6 @@
       },
       onClickElement: function (type, data) {
         if (type === "node") {
-          // Hide ECharts tooltip
-          try {
-            this.echarts.dispatchAction({ type: "hideTip" });
-          } catch (e) {
-            console.warn("Unable to hide ECharts tooltip", e);
-          }
-          if (data?.id) blockedTooltipIds.add(data.id);
           loadPopUpContent(data, this);
         } else if (type === "Feature") {
           console.log("Clicked GeoJSON Feature:", data);
@@ -332,6 +311,21 @@
         }
         if (leafletConfig.SCALE) {
           map.leaflet.addControl(new L.control.scale(scale));
+        }
+
+        try {
+          const initialZoom = map.leaflet.getZoom();
+          const showLabel = initialZoom >= map.config.showLabelsAtZoomLevel;
+          map.echarts.setOption({
+            series: [
+              {
+                label: { show: false },
+                emphasis: { label: { show: showLabel } },
+              },
+            ],
+          });
+        } catch (e) {
+          console.warn("Unable to set initial label visibility", e);
         }
 
         try {
