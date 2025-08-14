@@ -217,11 +217,12 @@
       maps[floor].getContainer().requestFullscreen();
       floorNavigation.addClass("fullscreen");
       $(`#floor-content-${floor} .leaflet-container`).append(floorNavigation);
-    } else {
-      floorNavigation.removeClass("fullscreen");
-      $("#floorplan-container").append(floorNavigation);
     }
-    maps[currentFloor].invalidateSize();
+    // else {
+    //   floorNavigation.removeClass("fullscreen");
+    //   $("#floorplan-container").append(floorNavigation);
+    // }
+    maps[currentFloor]?.invalidateSize();
   }
 
   function renderIndoorMap(allResults, imageUrl, divId) {
@@ -339,9 +340,9 @@
           });
         map.on("fullscreenchange", () => {
           const floorNavigation = $("#floorplan-navigation");
-          // const zoomSnap = map.options.zoomSnap || 1;
+          const zoomSnap = map.options.zoomSnap || 1;
           if (map.isFullscreen()) {
-            map.setZoom(initialZoom);
+            map.setZoom(initialZoom + zoomSnap);
             isFullScreen = true;
             floorNavigation.addClass("fullscreen");
             $(`#floor-content-${currentFloor} .leaflet-container`).append(
@@ -354,7 +355,7 @@
             $("#floorplan-container").append(floorNavigation);
           }
           map.invalidateSize();
-          map.setZoom(initialZoom);
+          // map.setZoom(initialZoom);
         });
       },
       onClickElement() {
