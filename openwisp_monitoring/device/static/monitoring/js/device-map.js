@@ -205,6 +205,9 @@
         minZoom: leafletConfig.MIN_ZOOM || 1,
         maxZoom: leafletConfig.MAX_ZOOM || 24,
         fullscreenControl: true,
+
+        // Force tooltips ON for all viewport widths; override library's
+        // responsive media rules that hide tooltips under 851px.
         baseOptions: {
           media: [
             {
