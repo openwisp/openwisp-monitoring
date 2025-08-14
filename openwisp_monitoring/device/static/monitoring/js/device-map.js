@@ -6,12 +6,17 @@
   const localStorageKey = "ow-map-shown";
   const mapContainer = $("#device-map-container");
   const statuses = ["critical", "problem", "ok", "unknown", "deactivated"];
-  const colors = {
+  window._owGeoMapConfig.STATUS_COLORS = {
     ok: "#267126",
     problem: "#ffb442",
     critical: "#a72d1d",
     unknown: "#353c44",
-    deactivated: "#0000",
+    deactivated: "#000",
+  };
+  const colors = window._owGeoMapConfig.STATUS_COLORS;
+  const labels = window._owGeoMapConfig.labels;
+  const getIndoorCoordinatesUrl = function (pk) {
+    return window._owGeoMapConfig.indoorCoordinatesUrl.replace("000", pk);
   };
   const getLocationDeviceUrl = function (pk) {
     return window._owGeoMapConfig.locationDeviceUrl.replace("000", pk);
@@ -52,7 +57,6 @@
       url = layer.url || getLocationDeviceUrl(layer.feature.id);
     }
     layer.url = url;
-
     loadingOverlay.show();
 
     $.ajax({
@@ -62,62 +66,173 @@
         withCredentials: true,
       },
       success: function (data) {
-        let html = "",
-          device;
-        for (let i = 0; i < data.results.length; i++) {
-          device = data.results[i];
-          html += `
-                            <tr>
-                                <td><a href="${device.admin_edit_url}">${device.name}</a></td>
-                                <td>
-                                    <span class="health-status health-${device.monitoring.status}">
-                                        ${device.monitoring.status_label}
-                                    </span>
-                                </td>
-                            </tr>`;
-        }
-        let pagination = "",
-          parts = [];
-        if (data.previous || data.next) {
-          if (data.previous) {
-            parts.push(
-              `<a class="prev" href="#prev" data-url="${data.previous}">&#8249; ${gettext("previous")}</a>`,
-            );
-          }
-          if (data.next) {
-            parts.push(
-              `<a class="next" href="#next" data-url="${data.next}">${gettext("next")} &#8250;</a>`,
-            );
-          }
-          pagination = `<p class="paginator">${parts.join(" ")}</div>`;
-        }
+        let devices = data.results;
+        let nextUrl = data.next;
+        const statusLabelsMap = labels;
+        let statusFilterButtons = "";
+        Object.entries(statusLabelsMap).forEach(
+          ([status_key, status_label]) => {
+            const label = gettext(status_label);
+            statusFilterButtons += `<span 
+              class="health-status health-${status_key} status-filter" 
+              data-status="${status_key}"
+            >
+              ${label}
+              <span class="remove-icon">&times</span>
+            </span>`;
+          },
+        );
+        const has_floorplan = data.has_floorplan;
+        const floorplan_btn = has_floorplan
+          ? `<button class="default-btn floorplan-btn">
+          <span class="ow-floor floor-icon"></span>  Switch to Floor Plan
+        </button>`
+          : "";
         layer.bindPopup(`
-                            <div class="map-detail">
-                                <h2>${layer.feature.properties.name} (${data.count})</h2>
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>${gettext("name")}</th>
-                                            <th>${gettext("status")}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${html}
-                                    </tbody>
+                          <div class="map-detail">
+                            <h2>${layer.feature.properties.name} (${data.count})</h2>
+                            <div class="input-container">
+                              <input id="device-search" placeholder="Search for devices" />
+                            </div>
+                            <div class="label-container">
+                              ${statusFilterButtons}
+                              <input id="status-filter" type="hidden" />
+                            </div>
+                            <div class="table-container">
+                              <table>
+                                <thead>
+                                    <tr>
+                                        <th>${gettext("name")}</th>
+                                        <th class="th-status"><span class ="health-status-heading">${gettext(
+                                          "status",
+                                        )}</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
                                 </table>
-                                ${pagination}
-                            </div>`);
+                                <div class="ow-loading-spinner table-spinner"></div>
+                            </div>
+                            ${floorplan_btn}
+                          </div>`);
         layer.openPopup();
-
-        // bind next/prev buttons
         let el = $(layer.getPopup().getElement());
-        el.find(".next").click(function () {
-          loadPopUpContent(layer, $(this).data("url"));
-        });
-        el.find(".prev").click(function () {
-          loadPopUpContent(layer, $(this).data("url"));
-        });
+        function renderRows() {
+          if (devices.length === 0) {
+            el.find("tbody").html(`
+              <tr>
+                <td class="no-devices" colspan="2">
+                  ${gettext("No devices found!")}
+                </td>
+              </tr>
+            `);
+            return;
+          }
+          const rows = devices
+            .map(
+              (device) => `
+            <tr>
+                <td class="col-name"><a href="${device.admin_edit_url}">${device.name}</a></td>
+                <td class="col-status">
+                    <span class="health-status health-${device.monitoring.status}">
+                        ${device.monitoring.status_label}
+                    </span>
+                </td>
+            </tr>
+          `,
+            )
+            .join("");
+          el.find("tbody").html(rows);
+        }
+        let fetchDevicesTimeout;
+        let loading = false;
+        function fetchDevices(url, ms = 0) {
+          if (!url || loading) return;
+          clearTimeout(fetchDevicesTimeout);
+          loading = true;
+          const spinner = el.find(".table-spinner");
+          const table = el.find(".table-container table");
+          spinner.show();
+          table.hide();
+          fetchDevicesTimeout = setTimeout(() => {
+            let params = new URLSearchParams();
+            const searchParam = el
+              .find("#device-search")
+              .val()
+              .toLowerCase()
+              .trim();
+            const statusParam = el.find("#status-filter").val();
+            if (searchParam) {
+              params.append("search", searchParam);
+            }
 
+            if (statusParam) {
+              statusParam.split(",").forEach((status) => {
+                params.append("status", status);
+              });
+            }
+            const queryString = params.toString();
+            let fetchUrl;
+            // if nextUrl is the same as url, that means we are fetching for infinite scroll
+            if (url === nextUrl) {
+              fetchUrl = url;
+            } else {
+              fetchUrl = queryString ? `${url}?${queryString}` : url;
+            }
+            $.ajax({
+              dataType: "json",
+              url: fetchUrl,
+              xhrFields: { withCredentials: true },
+              success(data) {
+                // If we are fetching for infinte scroll new need concat the results otherwise not
+                if (url === nextUrl) {
+                  devices = devices.concat(data.results);
+                } else {
+                  devices = data.results;
+                }
+                nextUrl = data.next;
+                renderRows(devices);
+              },
+              error() {
+                console.error("Could not load more devices from", url);
+                alert("Could not load more devices.");
+              },
+              complete() {
+                loading = false;
+                spinner.hide();
+                table.show();
+              },
+            });
+          }, ms);
+        }
+        renderRows();
+        el.find("#device-search").on("input", function () {
+          fetchDevices(url, 300);
+        });
+        let activeStatuses = [];
+        el.find(".status-filter").on("click", function (e) {
+          e.stopPropagation();
+          const btn = $(this);
+          const status = btn.data("status");
+
+          if (btn.hasClass("active")) {
+            btn.removeClass("active");
+            activeStatuses = activeStatuses.filter((s) => s !== status);
+          } else {
+            btn.addClass("active");
+            activeStatuses.push(status);
+          }
+          $(`#status-filter`).val(activeStatuses.join(","));
+          fetchDevices(url);
+        });
+        el.find(".table-container").on("scroll", function () {
+          if (this.scrollTop + this.clientHeight >= this.scrollHeight - 10) {
+            fetchDevices(nextUrl, 100);
+          }
+        });
+        $(".floorplan-btn").on("click", function () {
+          const floorplanUrl = getIndoorCoordinatesUrl(layer.feature.id);
+          window.openFloorPlan(floorplanUrl);
+        });
         loadingOverlay.hide();
       },
       error: function () {
