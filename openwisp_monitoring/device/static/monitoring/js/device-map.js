@@ -205,7 +205,7 @@
       clusteringThreshold: 0,
       clusterRadius: 100,
       clusterSeparation: 20,
-      disableClusteringAtLevel: 16,
+      disableClusteringAtLevel: 15,
       mapOptions: {
         // Use sensible fallback if the backend does not provide DEFAULT_CENTER.
         center: leafletConfig.DEFAULT_CENTER || [55.78, 11.54],
@@ -213,12 +213,24 @@
         minZoom: leafletConfig.MIN_ZOOM || 1,
         maxZoom: leafletConfig.MAX_ZOOM || 24,
         fullscreenControl: true,
+        // Force tooltips ON for all viewport widths; override library's
+        // responsive media rules that hide tooltips under 851px.
+        baseOptions: {
+          media: [
+            {
+              query: { minWidth: 0 },
+              option: { tooltip: { show: true } },
+            },
+          ],
+        },
       },
       mapTileConfig: tiles,
       nodeCategories: Object.keys(colors).map((status) => ({
         name: status,
         nodeStyle: { color: colors[status] },
       })),
+      // Hide ECharts node labels completely at any zoom level
+      showLabelsAtZoomLevel: 10000,
       echartsOption: {
         tooltip: {
           confine: true,
