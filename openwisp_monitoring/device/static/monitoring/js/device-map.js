@@ -302,7 +302,7 @@
     } else {
       localStorage.removeItem(localStorageKey);
       mapContainer.slideDown();
-    }
+  }
 
     if (Array.isArray(data.features)) {
       data.features.forEach((f) => {
