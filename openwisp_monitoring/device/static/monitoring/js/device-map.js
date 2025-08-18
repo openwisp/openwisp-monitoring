@@ -1,6 +1,6 @@
 "use strict";
 
-/* jshint esversion: 8 */
+/*jshint esversion: 8 */
 (function ($) {
   const loadingOverlay = $("#device-map-container .ow-loading-spinner");
   const localStorageKey = "ow-map-shown";
@@ -11,7 +11,7 @@
     problem: "#ffb442",
     critical: "#a72d1d",
     unknown: "#353c44",
-    deactivated: "#000000", // Fixed from "#0000"
+    deactivated: "#000",
   };
   const colors = window._owGeoMapConfig.STATUS_COLORS;
   const labels = window._owGeoMapConfig.labels;
@@ -21,7 +21,6 @@
   const getLocationDeviceUrl = function (pk) {
     return window._owGeoMapConfig.locationDeviceUrl.replace("000", pk);
   };
-
   const getColor = function (data) {
     let deviceCount = data.device_count,
       findResult = function (func) {
@@ -34,6 +33,7 @@
           return func(status, statusCount);
         }
       };
+    // if one status has absolute majority, it's the winner
     let majority = findResult(function (status, statusCount) {
       if (statusCount > deviceCount / 2) {
         return colors[status];
@@ -42,7 +42,9 @@
     if (majority) {
       return majority;
     }
-    return findResult((status, statusCount) => {
+    // otherwise simply return the color based on the priority
+    return findResult(function (status, statusCount) {
+      // if one status has absolute majority, it's the winner
       if (statusCount) {
         return colors[status];
       }
@@ -64,9 +66,7 @@
     $.ajax({
       dataType: "json",
       url: url,
-      xhrFields: {
-        withCredentials: true,
-      },
+      xhrFields: { withCredentials: true },
       success: function (data) {
         let devices = data.results;
         let nextUrl = data.next;
@@ -90,34 +90,68 @@
           <span class="ow-floor floor-icon"></span>  Switch to Floor Plan
         </button>`
           : "";
-        layer.bindPopup(`
-                          <div class="map-detail">
-                            <h2>${layer.feature.properties.name} (${data.count})</h2>
-                            <div class="input-container">
-                              <input id="device-search" placeholder="Search for devices" />
-                            </div>
-                            <div class="label-container">
-                              ${statusFilterButtons}
-                              <input id="status-filter" type="hidden" />
-                            </div>
-                            <div class="table-container">
-                              <table>
-                                <thead>
-                                    <tr>
-                                        <th>${gettext("name")}</th>
-                                        <th class="th-status"><span class ="health-status-heading">${gettext(
-                                          "status",
-                                        )}</span></th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                                </table>
-                                <div class="ow-loading-spinner table-spinner"></div>
-                            </div>
-                            ${floorplan_btn}
-                          </div>`);
-        layer.openPopup();
-        let el = $(layer.getPopup().getElement());
+
+        const popupTitle =
+          nodeData.label || nodeData?.properties?.name || nodeData.id;
+
+        // Determine coordinates for the popup. We support:
+        // 1. NetJSONGraph objects (nodeData.location)
+        // 2. GeoJSON Point array (nodeData.coordinates)
+        // 3. GeoJSON Feature geometry (nodeData.geometry.coordinates)
+        // This fallback chain ensures the popup always plots at the correct
+        // position regardless of datasource format.
+        let latLng;
+        if (nodeData.location && typeof nodeData.location.lat === "number") {
+          latLng = [nodeData.location.lat, nodeData.location.lng];
+        } else if (Array.isArray(nodeData.coordinates)) {
+          latLng = [nodeData.coordinates[1], nodeData.coordinates[0]];
+        } else if (nodeData.geometry?.coordinates?.length >= 2) {
+          latLng = [
+            nodeData.geometry.coordinates[1],
+            nodeData.geometry.coordinates[0],
+          ];
+        }
+
+        if (!latLng || isNaN(latLng[0]) || isNaN(latLng[1])) {
+          console.warn("Could not determine coordinates for popup", nodeData);
+          loadingOverlay.hide();
+          return;
+        }
+        
+        const popupContent = `
+          <div class="map-detail">
+            <h2>${popupTitle} (${data.count})</h2>
+            <div class="input-container">
+              <input id="device-search" placeholder="Search for devices" />
+            </div>
+            <div class="label-container">
+              ${statusFilterButtons}
+              <input id="status-filter" type="hidden" />
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                    <tr>
+                        <th>${gettext("name")}</th>
+                        <th class="th-status"><span class ="health-status-heading">${gettext(
+                          "status",
+                        )}</span></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+                </table>
+                <div class="ow-loading-spinner table-spinner"></div>
+            </div>
+            ${floorplan_btn}
+          </div>
+        `;
+        
+        currentPopup = L.popup()
+          .setLatLng(latLng)
+          .setContent(popupContent)
+          .openOn(map);
+        
+        const el = $(currentPopup.getElement());
         function renderRows() {
           if (devices.length === 0) {
             el.find("tbody").html(`
@@ -226,12 +260,13 @@
           $(`#status-filter`).val(activeStatuses.join(","));
           fetchDevices(url);
         });
-        $el.find(".prev").click(function (e) {
-          e.preventDefault();
-          loadPopUpContent(nodeData, netjsongraphInstance, $(this).data("url"));
+        el.find(".table-container").on("scroll", function () {
+          if (this.scrollTop + this.clientHeight >= this.scrollHeight - 10) {
+            fetchDevices(nextUrl, 100);
+          }
         });
         $(".floorplan-btn").on("click", function () {
-          const floorplanUrl = getIndoorCoordinatesUrl(layer.feature.id);
+          const floorplanUrl = getIndoorCoordinatesUrl(locationId);
           window.openFloorPlan(floorplanUrl);
         });
         loadingOverlay.hide();
@@ -267,7 +302,7 @@
     } else {
       localStorage.removeItem(localStorageKey);
       mapContainer.slideDown();
-    }
+  }
 
     if (Array.isArray(data.features)) {
       data.features.forEach((f) => {
@@ -506,7 +541,8 @@
         loadingOverlay.hide();
       },
       paginatedDataParse: async function (JSONParam) {
-        let res, data;
+        let res;
+        let data;
         try {
           res = await this.utils.JSONParamParse(JSONParam);
           data = res;
@@ -524,18 +560,18 @@
         return data;
       },
     });
-
     map.render();
   }
 
   if (localStorage.getItem(localStorageKey) === "false") {
     mapContainer.slideUp(50);
   }
-
   $.ajax({
     dataType: "json",
     url: window._owGeoMapConfig.geoJsonUrl,
-    xhrFields: { withCredentials: true },
+    xhrFields: {
+      withCredentials: true,
+    },
     success: onAjaxSuccess,
     context: window,
   });
