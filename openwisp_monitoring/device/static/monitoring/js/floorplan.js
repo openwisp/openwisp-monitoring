@@ -148,7 +148,6 @@
     $nav.off("click");
     $nav.on("click", ".floor-btn", async (e) => {
       selectedIndex = +e.currentTarget.dataset.index;
-      const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
       const center = Math.floor(NAV_WINDOW_SIZE / 2);
       navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
       addFloorButtons(selectedIndex, navWindowStart);
@@ -159,7 +158,6 @@
     $nav.on("click", ".right-arrow:not(.disabled)", async () => {
       if (selectedIndex < floors.length - 1) {
         selectedIndex++;
-        const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
         const center = Math.floor(NAV_WINDOW_SIZE / 2);
         navWindowStart = Math.max(
           0,
@@ -174,7 +172,6 @@
     $nav.on("click", ".left-arrow:not(.disabled)", async () => {
       if (selectedIndex > 0) {
         selectedIndex--;
-        const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
         const center = Math.floor(NAV_WINDOW_SIZE / 2);
         navWindowStart = Math.max(
           0,
@@ -214,20 +211,52 @@
     const floorNavigation = $("#floorplan-navigation");
     if (isFullScreen && maps[floor]) {
       document.exitFullscreen();
-      maps[floor].getContainer().requestFullscreen();
       floorNavigation.addClass("fullscreen");
       $(`#floor-content-${floor} .leaflet-container`).append(floorNavigation);
     }
-    // else {
-    //   floorNavigation.removeClass("fullscreen");
-    //   $("#floorplan-container").append(floorNavigation);
-    // }
     maps[currentFloor]?.invalidateSize();
   }
 
+  let currentPopup = null;
+  function loadPopUpContent(node, netjsongraphInstance) {
+    const map = netjsongraphInstance.leaflet;
+    if (currentPopup) {
+      currentPopup.remove();
+    }
+    const popupContent = `
+    <div class="njg-tooltip-inner">
+      <div class="njg-tooltip-item">
+        <span class="njg-tooltip-key">name</span>
+        <span class="njg-tooltip-value">${node.device_name}</span>
+      </div>
+      <div class="njg-tooltip-item">
+        <span class="njg-tooltip-key">Mac address</span>
+        <span class="njg-tooltip-value">${node.mac_address}</span>
+      </div>
+      <div class="njg-tooltip-item">
+        <span class="njg-tooltip-key">status</span>
+        <span class="tooltip-status health-${node.monitoring.status} ">
+          ${node.monitoring.status_label}
+        </span>
+      </div>
+      <div class="tooltip-btn-container">
+        <button class="default-btn tooltip-btn" data-url="${node.admin_edit_url}"">
+          <span class="ow-device floor-icon"></span>
+          Open Device
+        </button>
+      </div>
+      </div>
+    </div>
+    `;
+    // Todo: Popup does not show when closeOnClick is true need to figure out why
+    currentPopup = L.popup({ closeOnClick: false })
+      .setLatLng(node.coordinates)
+      .setContent(popupContent)
+      .openOn(map);
+  }
+
   function renderIndoorMap(allResults, imageUrl, divId) {
-    console.log("Render Indoor Map", isFullScreen);
-    const graph = new NetJSONGraph(allResults, {
+    const indoorMap = new NetJSONGraph(allResults, {
       el: `#${divId}`,
       crs: L.CRS.Simple,
       render: "map",
@@ -242,14 +271,14 @@
         zoomAnimation: false,
         nodeConfig: {
           label: {
-            show: true,
+            show: false,
           },
           animation: false,
           nodeStyle: (node) => ({
             radius: 9,
             color: getColor(node.properties.status),
             weight: 3,
-            opacity: 0.7,
+            opacity: 1,
           }),
         },
         baseOptions: {
@@ -257,42 +286,13 @@
             {
               option: {
                 tooltip: {
-                  show: true,
-                  formatter: function (element) {
-                    const node = element.data.node;
-                    return `
-                      <div class="njg-tooltip-inner">
-                        <div class="njg-tooltip-item">
-                          <span class="njg-tooltip-key">name</span>
-                          <span class="njg-tooltip-value">${node.device_name}</span>
-                        </div>
-                        <div class="njg-tooltip-item">
-                          <span class="njg-tooltip-key">Mac address</span>
-                          <span class="njg-tooltip-value">${node.mac_address}</span>
-                        </div>
-                        <div class="njg-tooltip-item">
-                          <span class="njg-tooltip-key">status</span>
-                          <span class="tooltip-status health-${node.monitoring.status} ">
-                            ${node.monitoring.status_label}
-                          </span>
-                        </div>
-                        <div class="njg-tooltip-item">
-                          <button class="default-btn tooltip-btn" data-url="${node.admin_edit_url}"">
-                            <span class="ow-device floor-icon"></span>
-                            Open Device
-                          </button>
-                        </div>
-                        </div>
-                      </div>
-                    `;
-                  },
+                  show: false,
                 },
               },
             },
           ],
         },
       },
-
       prepareData(data) {
         data.nodes.forEach((node) => {
           node.properties = {
@@ -328,16 +328,12 @@
           initialZoom = map.getZoom();
           map.setView([0, 0], initialZoom);
         };
-        if (isFullScreen) {
-          const container = map.getContainer();
-          container.requestFullscreen();
-        }
-        $("#floorplan-container")
-          .off("click", ".tooltip-btn")
-          .on("click", ".tooltip-btn", function () {
-            const url = $(this).data("url");
-            window.location.href = url;
-          });
+        // $("#floorplan-container")
+        //   .off("click", ".tooltip-btn")
+        //   .on("click", ".tooltip-btn", function () {
+        //     const url = $(this).data("url");
+        //     window.location.href = url;
+        //   });
         map.on("fullscreenchange", () => {
           const floorNavigation = $("#floorplan-navigation");
           const zoomSnap = map.options.zoomSnap || 1;
@@ -355,16 +351,23 @@
             $("#floorplan-container").append(floorNavigation);
           }
           map.invalidateSize();
-          // map.setZoom(initialZoom);
         });
       },
-      onClickElement() {
-        const tooltip = $(`.njg-tooltip`);
-        tooltip.toggleClass("tooltip-visible");
+      onClickElement: function (type, data) {
+        loadPopUpContent(data, this);
       },
     });
-
-    graph.render();
+    indoorMap.setUtils({
+      // Added to open popup for a specific location Id in selenium tests
+      openPopup: function (deviceId) {
+        const nodeData = indoorMap.data?.nodes.find(
+          (n) => n.content_object_id === deviceId,
+        );
+        loadPopUpContent(nodeData, indoorMap);
+      },
+    });
+    indoorMap.render();
+    window._owIndoorMap = indoorMap;
   }
 
   window.openFloorPlan = openFloorPlan;

@@ -150,7 +150,10 @@
           </div>
         `;
 
-        currentPopup = L.popup().setLatLng(latLng).setContent(popupContent).openOn(map);
+        currentPopup = L.popup()
+          .setLatLng(latLng)
+          .setContent(popupContent)
+          .openOn(map);
 
         const el = $(currentPopup.getElement());
         function renderRows() {
@@ -302,7 +305,7 @@
     } else {
       localStorage.removeItem(localStorageKey);
       mapContainer.slideDown();
-  }
+    }
 
     if (Array.isArray(data.features)) {
       data.features.forEach((f) => {
@@ -546,7 +549,7 @@
       },
       // Added to open popup for a specific location Id in selenium tests
       openPopup: function (locationId) {
-        const nodeData = map?.data?.nodes?.find((n) => n.id === locationId);
+        const nodeData = map.data?.nodes.find((n) => n.id === locationId);
         loadPopUpContent(nodeData, map);
       },
     });
