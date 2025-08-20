@@ -203,7 +203,7 @@
         center: leafletConfig.DEFAULT_CENTER || [55.78, 11.54],
         zoom: leafletConfig.DEFAULT_ZOOM || 1,
         minZoom: leafletConfig.MIN_ZOOM || 1,
-        maxZoom: leafletConfig.MAX_ZOOM || 24,
+        maxZoom: leafletConfig.MAX_ZOOM || 18,
         fullscreenControl: true,
 
         // Force tooltips ON for all viewport widths; override library's
