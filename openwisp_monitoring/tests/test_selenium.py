@@ -315,7 +315,14 @@ class TestDashboardMap(
     floorplan_model = Floorplan
     object_location_model = DeviceLocation
 
-    def test_filtering_on_device_popup(self):
+    def _open_popup(self, mapType, id):
+        self.web_driver.execute_script(
+            "return window[arguments[0]].utils.openPopup(arguments[1]);",
+            mapType,
+            str(id),
+        )
+
+    def test_features_on_device_popup(self):
         d1 = self._create_device(name="Test-Device1", mac_address="00:00:00:00:00:01")
         d2 = self._create_device(name="Test-Device2", mac_address="00:00:00:00:00:02")
         d2.monitoring.status = "ok"
@@ -330,14 +337,8 @@ class TestDashboardMap(
             location=location,
         )
         self.login()
-        self.wait_for(
-            "element_to_be_clickable",
-            By.CSS_SELECTOR,
-            "g path.leaflet-interactive",
-            timeout=5,
-        )
-        location_point = self.find_element(By.CSS_SELECTOR, "g path")
-        location_point.click()
+        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+        self._open_popup("_owGeoMap", location.id)
         self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail")
         table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
         self.assertEqual(len(table_entries), 2)

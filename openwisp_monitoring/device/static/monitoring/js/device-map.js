@@ -117,7 +117,7 @@
           loadingOverlay.hide();
           return;
         }
-        
+
         const popupContent = `
           <div class="map-detail">
             <h2>${popupTitle} (${data.count})</h2>
@@ -145,12 +145,12 @@
             ${floorplan_btn}
           </div>
         `;
-        
+
         currentPopup = L.popup()
           .setLatLng(latLng)
           .setContent(popupContent)
           .openOn(map);
-        
+
         const el = $(currentPopup.getElement());
         function renderRows() {
           if (devices.length === 0) {
@@ -302,7 +302,7 @@
     } else {
       localStorage.removeItem(localStorageKey);
       mapContainer.slideDown();
-  }
+    }
 
     if (Array.isArray(data.features)) {
       data.features.forEach((f) => {
@@ -559,8 +559,14 @@
         }
         return data;
       },
+      // Added to open popup for a specific location Id in selenium tests
+      openPopup: function (locationId) {
+        const nodeData = map.data?.nodes.find((n) => n.id === locationId);
+        loadPopUpContent(nodeData, map);
+      },
     });
     map.render();
+    window._owGeoMap = map;
   }
 
   if (localStorage.getItem(localStorageKey) === "false") {
