@@ -117,20 +117,17 @@ django.jQuery(
         // Handle chart zooming with custom dates
         var zoomCharts = document.getElementsByClassName(chartsContainers);
         // Set zoomChartId, required for scrolling after the zoom-in event
-        $(".js-plotly-plot").on(
-          "click dblclick mouseover mouseout",
-          function () {
-            var zoomChartId = $(this).parent().prop("id");
-            if (zoomChartId === "chart-0") {
-              var activeChartsLocation = window.location.hash;
-              zoomChartId =
-                activeChartsLocation === "#ow-chart-container"
-                  ? "container"
-                  : "ow-chart-inner-container";
-            }
-            localStorage.setItem(zoomChartIdKey, zoomChartId);
-          },
-        );
+        $(".js-plotly-plot").on("click dblclick mouseover mouseout", function () {
+          var zoomChartId = $(this).parent().prop("id");
+          if (zoomChartId === "chart-0") {
+            var activeChartsLocation = window.location.hash;
+            zoomChartId =
+              activeChartsLocation === "#ow-chart-container"
+                ? "container"
+                : "ow-chart-inner-container";
+          }
+          localStorage.setItem(zoomChartIdKey, zoomChartId);
+        });
         for (var zoomChart of zoomCharts) {
           if (!zoomChart) {
             localStorage.setItem(isChartZoomed, false);
@@ -154,11 +151,9 @@ django.jQuery(
               var daysBeforeZoom = localStorage.getItem(timeRangeKey);
               // Set custom date range labels & select custom date ranges for the widget
               var initialStartLabel =
-                localStorage.getItem(startDayKey) ||
-                moment().format("MMMM D, YYYY");
+                localStorage.getItem(startDayKey) || moment().format("MMMM D, YYYY");
               var initialEndLabel =
-                localStorage.getItem(endDayKey) ||
-                moment().format("MMMM D, YYYY");
+                localStorage.getItem(endDayKey) || moment().format("MMMM D, YYYY");
               var initialStartDate = moment(initialStartLabel, "MMMM D, YYYY");
               var initialEndDate = moment(initialEndLabel, "MMMM D, YYYY");
               // Set date range picker widget labels
@@ -194,10 +189,7 @@ django.jQuery(
               zoomStartDayKey,
               pickerStartDate.format("MMMM D, YYYY"),
             );
-            localStorage.setItem(
-              zoomEndDayKey,
-              pickerEndDate.format("MMMM D, YYYY"),
-            );
+            localStorage.setItem(zoomEndDayKey, pickerEndDate.format("MMMM D, YYYY"));
             localStorage.setItem(isChartZoomScroll, true);
             localStorage.setItem(isChartZoomed, true);
             localStorage.setItem(isCustomDateRange, true);
@@ -223,10 +215,7 @@ django.jQuery(
           localStorage.getItem(zoomChartIdKey),
         );
         // If the chart zoom scrolling is active, then scroll to the zoomed chart container
-        if (
-          localStorage.getItem(isChartZoomScroll) === "true" &&
-          zoomChartContainer
-        ) {
+        if (localStorage.getItem(isChartZoomScroll) === "true" && zoomChartContainer) {
           zoomChartContainer.scrollIntoView();
         }
       }
@@ -283,14 +272,7 @@ django.jQuery(
                   '<div class="js-plotly-plot"></div></div>',
               );
             }
-            createChart(
-              chart,
-              data.x,
-              htmlId,
-              chart.title,
-              chart.type,
-              chartQuickLink,
-            );
+            createChart(chart, data.x, htmlId, chart.title, chart.type, chartQuickLink);
           });
         },
         addOrganizationSelector = function (data) {
@@ -340,8 +322,7 @@ django.jQuery(
               );
               if (response.responseJSON) {
                 if (response.responseJSON.constructor === Array) {
-                  errorMessage =
-                    errorMessage + ": " + response.responseJSON.join(" ");
+                  errorMessage = errorMessage + ": " + response.responseJSON.join(" ");
                 }
               }
               alert(errorMessage);
@@ -396,9 +377,7 @@ django.jQuery(
           // Add label to daterangepicker widget
           addDateRangePickerLabel(startLabel, endLabel);
           // Set last selected default dates after page reload
-          $(".daterangepicker .ranges ul li[data-time=" + range + "]").trigger(
-            "click",
-          );
+          $(".daterangepicker .ranges ul li[data-time=" + range + "]").trigger("click");
         }
       };
       // try adding the browser timezone to the querystring
@@ -411,42 +390,36 @@ django.jQuery(
       } catch (e) {}
 
       // daterangepicker widget logic here
-      $("#daterangepicker-widget").on(
-        "apply.daterangepicker",
-        function (ev, picker) {
-          pickerChosenLabel = picker.chosenLabel;
-          pickerStart = moment(picker.startDate.format("YYYY-MM-DD HH:mm:ss"));
-          pickerEnd = moment(picker.endDate.format("YYYY-MM-DD HH:mm:ss"));
-          pickerDays = pickerEnd.diff(pickerStart, "days") + "d";
-          // set date values required for daterangepicker labels
-          localStorage.setItem(pickerChosenLabelKey, pickerChosenLabel);
-          localStorage.setItem(
-            startDateTimeKey,
-            picker.startDate.format("YYYY-MM-DD HH:mm:ss"),
-          );
-          localStorage.setItem(
-            endDateTimeKey,
-            picker.endDate.format("YYYY-MM-DD HH:mm:ss"),
-          );
-          localStorage.setItem(startDayKey, pickerStart.format("MMMM D, YYYY"));
-          localStorage.setItem(endDayKey, pickerEnd.format("MMMM D, YYYY"));
-          localStorage.setItem(isChartZoomed, false);
-          localStorage.setItem(isChartZoomScroll, false);
-          localStorage.setItem(timeRangeKey, pickerDays);
-          localStorage.setItem(
-            isCustomDateRange,
-            pickerChosenLabel === "Custom Range",
-          );
-          loadCharts(pickerDays, true);
-          // refresh charts every 2.5 minutes
-          clearInterval(window.owChartRefresh);
-          window.owChartRefresh = setInterval(
-            loadFetchedCharts,
-            1000 * 60 * 2.5,
-            pickerDays,
-          );
-        },
-      );
+      $("#daterangepicker-widget").on("apply.daterangepicker", function (ev, picker) {
+        pickerChosenLabel = picker.chosenLabel;
+        pickerStart = moment(picker.startDate.format("YYYY-MM-DD HH:mm:ss"));
+        pickerEnd = moment(picker.endDate.format("YYYY-MM-DD HH:mm:ss"));
+        pickerDays = pickerEnd.diff(pickerStart, "days") + "d";
+        // set date values required for daterangepicker labels
+        localStorage.setItem(pickerChosenLabelKey, pickerChosenLabel);
+        localStorage.setItem(
+          startDateTimeKey,
+          picker.startDate.format("YYYY-MM-DD HH:mm:ss"),
+        );
+        localStorage.setItem(
+          endDateTimeKey,
+          picker.endDate.format("YYYY-MM-DD HH:mm:ss"),
+        );
+        localStorage.setItem(startDayKey, pickerStart.format("MMMM D, YYYY"));
+        localStorage.setItem(endDayKey, pickerEnd.format("MMMM D, YYYY"));
+        localStorage.setItem(isChartZoomed, false);
+        localStorage.setItem(isChartZoomScroll, false);
+        localStorage.setItem(timeRangeKey, pickerDays);
+        localStorage.setItem(isCustomDateRange, pickerChosenLabel === "Custom Range");
+        loadCharts(pickerDays, true);
+        // refresh charts every 2.5 minutes
+        clearInterval(window.owChartRefresh);
+        window.owChartRefresh = setInterval(
+          loadFetchedCharts,
+          1000 * 60 * 2.5,
+          pickerDays,
+        );
+      });
       // bind export button
       $("#ow-chart-export").click(function () {
         var queryString,
@@ -497,10 +470,7 @@ django.jQuery(
       }
 
       $("#org-selector").change(function () {
-        loadCharts(
-          localStorage.getItem(timeRangeKey) || defaultTimeRange,
-          true,
-        );
+        loadCharts(localStorage.getItem(timeRangeKey) || defaultTimeRange, true);
       });
     });
   })(django.jQuery),

@@ -91,8 +91,7 @@
           ? `<p class="paginator">${parts.join(" ")}</p>`
           : "";
 
-        const popupTitle =
-          nodeData.label || nodeData?.properties?.name || nodeData.id;
+        const popupTitle = nodeData.label || nodeData?.properties?.name || nodeData.id;
 
         // Determine coordinates for the popup. We support:
         // 1. NetJSONGraph objects (nodeData.location)
@@ -106,10 +105,7 @@
         } else if (Array.isArray(nodeData.coordinates)) {
           latLng = [nodeData.coordinates[1], nodeData.coordinates[0]];
         } else if (nodeData.geometry?.coordinates?.length >= 2) {
-          latLng = [
-            nodeData.geometry.coordinates[1],
-            nodeData.geometry.coordinates[0],
-          ];
+          latLng = [nodeData.geometry.coordinates[1], nodeData.geometry.coordinates[0]];
         }
 
         if (!latLng || isNaN(latLng[0]) || isNaN(latLng[1])) {
@@ -131,10 +127,7 @@
           </div>
         `;
 
-        currentPopup = L.popup()
-          .setLatLng(latLng)
-          .setContent(popupContent)
-          .openOn(map);
+        currentPopup = L.popup().setLatLng(latLng).setContent(popupContent).openOn(map);
 
         const $el = $(currentPopup.getElement());
         $el.find(".next").click(function (e) {
@@ -161,8 +154,7 @@
     if (tileLayer.includes("https:")) {
       tileLayer = tileLayer.split("https:")[1];
     }
-    let options =
-      typeof tile[2] === "object" ? tile[2] : { attribution: tile[2] };
+    let options = typeof tile[2] === "object" ? tile[2] : { attribution: tile[2] };
     return { label: tile[0], urlTemplate: `https:${tileLayer}`, options };
   });
 
@@ -238,8 +230,7 @@
             if (!status) {
               const color = getColor(props);
               status =
-                Object.keys(colors).find((k) => colors[k] === color) ||
-                "unknown";
+                Object.keys(colors).find((k) => colors[k] === color) || "unknown";
             }
             props.status = status;
             props.category = status;
@@ -344,9 +335,7 @@
             // Make sure points sit above polygons for interaction clarity
             tempLayer.eachLayer((layer) => {
               layer[
-                layer.feature.geometry.type === "Point"
-                  ? "bringToFront"
-                  : "bringToBack"
+                layer.feature.geometry.type === "Point" ? "bringToFront" : "bringToBack"
               ]();
             });
           }
@@ -364,18 +353,12 @@
           const bounds = event.target.getBounds();
 
           // Ensure data.features exists; otherwise skip wrap logic
-          if (
-            !netjsonGraph.data ||
-            !Array.isArray(netjsonGraph.data.features)
-          ) {
+          if (!netjsonGraph.data || !Array.isArray(netjsonGraph.data.features)) {
             return; // nothing to wrap
           }
 
           // When panning west past the dateline, clone features shifted −360°
-          if (
-            bounds._southWest.lng < -180 &&
-            !netjsonGraph.westWorldFeaturesAppended
-          ) {
+          if (bounds._southWest.lng < -180 && !netjsonGraph.westWorldFeaturesAppended) {
             const westWorld = structuredClone(netjsonGraph.data);
             westWorld.features = westWorld.features.filter(
               (f) => !f.geometry || f.geometry.coordinates[0] <= 180,
@@ -390,10 +373,7 @@
           }
 
           // When panning east past the dateline, clone features shifted +360°
-          if (
-            bounds._northEast.lng > 180 &&
-            !netjsonGraph.eastWorldFeaturesAppended
-          ) {
+          if (bounds._northEast.lng > 180 && !netjsonGraph.eastWorldFeaturesAppended) {
             const eastWorld = structuredClone(netjsonGraph.data);
             eastWorld.features = eastWorld.features.filter(
               (f) => !f.geometry || f.geometry.coordinates[0] >= -180,
@@ -422,10 +402,7 @@
         try {
           res = await this.utils.JSONParamParse(JSONParam);
           data = res;
-          while (
-            res.next &&
-            data.features.length <= this.config.maxPointsFetched
-          ) {
+          while (res.next && data.features.length <= this.config.maxPointsFetched) {
             res = await this.utils.JSONParamParse(res.next);
             res = await res.json();
             data.features = data.features.concat(res.features);
