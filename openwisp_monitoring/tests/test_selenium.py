@@ -315,7 +315,7 @@ class TestDashboardMap(
     floorplan_model = Floorplan
     object_location_model = DeviceLocation
 
-    def _open_popup(self, mapType, id):
+    def open_popup(self, mapType, id):
         self.web_driver.execute_script(
             "return window[arguments[0]].utils.openPopup(arguments[1]);",
             mapType,
@@ -338,14 +338,17 @@ class TestDashboardMap(
         )
         self.login()
         self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
-        self._open_popup("_owGeoMap", location.id)
+        self.open_popup("_owGeoMap", location.id)
         self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail")
         table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
         self.assertEqual(len(table_entries), 2)
 
-        with self.subTest("Test filtering by status"):
-            health_ok = self.find_element(By.CSS_SELECTOR, ".map-detail .health-ok")
-            health_ok.click()
+        with self.subTest("Test filtering by status for status ok"):
+            status_ok = self.find_element(By.CSS_SELECTOR, ".map-detail .health-ok")
+            status_ok_close_btn = self.find_element(By.CSS_SELECTOR, ".health-ok .remove-icon", wait_for="presence")
+            self.assertFalse(status_ok_close_btn.is_displayed())
+            status_ok.click()
+            self.assertTrue(status_ok_close_btn.is_displayed())
             self.wait_for_invisibility(
                 By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
             )
@@ -353,7 +356,32 @@ class TestDashboardMap(
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 1)
             self.assertIn(d2.name, table_entries[0].text)
-            health_ok.click()
+
+        with self.subTest("Test filtering by status for status ok and unknown"):
+            status_unknown = self.find_element(By.CSS_SELECTOR, ".map-detail .health-unknown")
+            status_unknown_close_btn = self.find_element(By.CSS_SELECTOR, ".health-unknown .remove-icon", wait_for="presence")
+            self.assertFalse(status_unknown_close_btn.is_displayed())
+            status_unknown.click()
+            self.assertTrue(status_unknown_close_btn.is_displayed())
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
+            )
+            sleep(0.5)
+            table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+            self.assertEqual(len(table_entries), 2)
+
+        with self.subTest("Test removing status filter"):
+            status_ok_close_btn.click()
+            self.assertFalse(status_ok_close_btn.is_displayed())
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
+            )
+            sleep(0.5)
+            table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+            self.assertEqual(len(table_entries), 1)
+            self.assertIn(d1.name, table_entries[0].text)
+            status_unknown.click()
+            self.assertFalse(status_unknown_close_btn.is_displayed())
             self.wait_for_invisibility(
                 By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
             )
@@ -363,7 +391,7 @@ class TestDashboardMap(
 
         with self.subTest("Test filtering by input field"):
             input_field = self.find_element(By.CSS_SELECTOR, "#device-search")
-            input_field.send_keys("Test-Device1")
+            input_field.send_keys("device1")
             self.wait_for_invisibility(
                 By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
             )
@@ -372,8 +400,18 @@ class TestDashboardMap(
             self.assertEqual(len(table_entries), 1)
             self.assertIn(d1.name, table_entries[0].text)
 
-        with self.subTest("Test filtering to get no results"):
+        with self.subTest("Test clearing input field"):
             input_field.clear()
+            # Just clearing the input field does not trigger the event listeners
+            input_field.send_keys(" ")
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
+            )
+            sleep(0.5)
+            table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+            self.assertEqual(len(table_entries), 2)
+
+        with self.subTest("Test filtering to get no results"):
             input_field.send_keys("Non-Existent-Device")
             self.wait_for_invisibility(
                 By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
@@ -382,6 +420,31 @@ class TestDashboardMap(
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 1)
             self.assertIn("No devices found", table_entries[0].text)
+
+    def test_infinite_scroll_on_popup(self):
+        location = self._create_location(type="indoor", name="Test-Location")
+        for i in range(20):
+            device = self._create_device(
+                name=f"Test-Device-{i+1}",
+                mac_address=f"00:00:00:00:00:{i+1:02d}",
+                organization=location.organization,
+            )
+            self._create_object_location(
+                content_object=device,
+                location=location,
+            )
+        self.login()
+        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+        self.open_popup("_owGeoMap", location.id)
+        self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail")
+        table_container = self.find_element(By.CSS_SELECTOR, ".map-detail .table-container")
+        table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+        self.assertEqual(len(table_entries), 10)
+        self.web_driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", table_container)
+        self.wait_for_invisibility(By.CSS_SELECTOR, ".map-detail .ow-loading-spinner")
+        sleep(0.5)
+        table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+        self.assertEqual(len(table_entries), 20)
 
     def test_floorplan_overlay(self):
         org = self._get_org()
@@ -408,10 +471,10 @@ class TestDashboardMap(
         )
         self.login()
         self.wait_for_visibility(By.CSS_SELECTOR, "#device-map-container")
+        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+        self.open_popup("_owGeoMap", location.id)
 
         with self.subTest("Test floorplan redering"):
-            location_point = self.find_element(By.CSS_SELECTOR, "g path")
-            location_point.click()
             self.wait_for(
                 "element_to_be_clickable", By.CSS_SELECTOR, ".map-detail .floorplan-btn"
             ).click()
@@ -453,6 +516,19 @@ class TestDashboardMap(
                 By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
             )
             self.assertIsNotNone(canvases)
+
+        with self.subTest("Test redirecting to device page from indoor map"):
+            sleep(10)
+            self.open_popup("_owIndoorMap", device2.id)
+            open_device_btn = self.find_element(By.CSS_SELECTOR, ".njg-tooltip-inner .open-device-btn")
+            open_device_btn.click()
+            try:
+                WebDriverWait(self.web_driver, 5).until(
+                    EC.url_to_be(f"{self.live_server_url}/admin/config/device/{device2.id}/change/")
+                )
+            except TimeoutException:
+                self.fail("Failed to redirect to device change page")
+            self.assertIn(f"/config/device/{device2.id}/change/", self.web_driver.current_url)
 
     def test_dashboard_map_without_permissions(self):
         user = self._create_user(
