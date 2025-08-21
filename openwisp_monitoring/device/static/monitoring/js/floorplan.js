@@ -223,24 +223,25 @@
     if (currentPopup) {
       currentPopup.remove();
     }
+    // Todo: Fix padding spacing
     const popupContent = `
     <div class="njg-tooltip-inner">
       <div class="njg-tooltip-item">
         <span class="njg-tooltip-key">name</span>
-        <span class="njg-tooltip-value">${node.device_name}</span>
+        <span class="njg-tooltip-value">${node?.device_name}</span>
       </div>
       <div class="njg-tooltip-item">
         <span class="njg-tooltip-key">Mac address</span>
-        <span class="njg-tooltip-value">${node.mac_address}</span>
+        <span class="njg-tooltip-value">${node?.mac_address}</span>
       </div>
       <div class="njg-tooltip-item">
         <span class="njg-tooltip-key">status</span>
-        <span class="tooltip-status health-${node.monitoring.status} ">
-          ${node.monitoring.status_label}
+        <span class="popup-status health-${node?.monitoring.status} ">
+          ${node?.monitoring.status_label}
         </span>
       </div>
-      <div class="tooltip-btn-container">
-        <button class="default-btn tooltip-btn" data-url="${node.admin_edit_url}"">
+      <div class="open-device-btn-container">
+        <button class="default-btn open-device-btn" data-url="${node?.admin_edit_url}"">
           <span class="ow-device floor-icon"></span>
           Open Device
         </button>
@@ -248,9 +249,15 @@
       </div>
     </div>
     `;
+    $("#floorplan-container")
+      .off("click", ".open-device-btn")
+      .on("click", ".open-device-btn", function () {
+        const url = $(this).data("url");
+        window.location.href = url;
+      });
     // Todo: Popup does not show when closeOnClick is true need to figure out why
     currentPopup = L.popup({ closeOnClick: false })
-      .setLatLng(node.coordinates)
+      .setLatLng(node?.coordinates)
       .setContent(popupContent)
       .openOn(map);
   }
@@ -328,12 +335,6 @@
           initialZoom = map.getZoom();
           map.setView([0, 0], initialZoom);
         };
-        // $("#floorplan-container")
-        //   .off("click", ".tooltip-btn")
-        //   .on("click", ".tooltip-btn", function () {
-        //     const url = $(this).data("url");
-        //     window.location.href = url;
-        //   });
         map.on("fullscreenchange", () => {
           const floorNavigation = $("#floorplan-navigation");
           const zoomSnap = map.options.zoomSnap || 1;
@@ -360,7 +361,7 @@
     indoorMap.setUtils({
       // Added to open popup for a specific location Id in selenium tests
       openPopup: function (deviceId) {
-        const nodeData = indoorMap.data?.nodes.find(
+        const nodeData = indoorMap?.data?.nodes?.find(
           (n) => n.content_object_id === deviceId,
         );
         loadPopUpContent(nodeData, indoorMap);

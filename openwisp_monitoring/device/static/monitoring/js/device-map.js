@@ -549,7 +549,7 @@
       },
       // Added to open popup for a specific location Id in selenium tests
       openPopup: function (locationId) {
-        const nodeData = map.data?.nodes.find((n) => n.id === locationId);
+        const nodeData = map?.data?.nodes?.find((n) => n.id === locationId);
         loadPopUpContent(nodeData, map);
       },
     });

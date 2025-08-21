@@ -140,7 +140,7 @@
   font-size: 14px;
   margin-bottom: 8px;
 }
-.tooltip-status {
+.popup-status {
   padding: 1px 10px;
   border-radius: 12px;
   white-space: nowrap;
@@ -148,12 +148,12 @@
   font-size: 12px;
   text-transform: uppercase;
 }
-.tooltip-btn-container {
+.open-device-btn-container {
   display: flex;
   align-items: center;
   margin-top: 12px;
 }
-.tooltip-btn {
+.open-device-btn {
   padding: 8px 12px;
   cursor: pointer;
   margin: 2px auto;
