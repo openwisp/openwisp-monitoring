@@ -65,7 +65,9 @@
             floors = data.floors;
             floor = data.results[0].floor;
           }
-          if (!allResults[floor]) allResults[floor] = [];
+          if (!allResults[floor]) {
+            allResults[floor] = [];
+          }
           allResults[floor] = [...allResults[floor], ...data.results];
           if (!currentFloor && data.results.length) {
             currentFloor = data.results[0].floor;
@@ -265,14 +267,13 @@
   function renderIndoorMap(allResults, imageUrl, divId) {
     const indoorMap = new NetJSONGraph(allResults, {
       el: `#${divId}`,
-      crs: L.CRS.Simple,
       render: "map",
 
       mapOptions: {
-        center: [50, 50],
+        center: [0, 0],
         zoom: 0,
-        minZoom: -4,
-        maxZoom: 2,
+        minZoom: 6,
+        maxZoom: 10,
         zoomSnap: 0.5,
         zoomDelta: 0.5,
         zoomAnimation: false,
@@ -293,7 +294,7 @@
             {
               option: {
                 tooltip: {
-                  show: false,
+                  show: true,
                 },
               },
             },
@@ -315,6 +316,7 @@
 
       onReady() {
         const map = this.leaflet;
+        console.log("Indoor map instance:", this);
         maps[currentFloor] = map;
         // remove default geo map tiles
         map.eachLayer((layer) => layer._url && map.removeLayer(layer));
@@ -322,19 +324,37 @@
         img.src = imageUrl;
         let initialZoom;
         img.onload = () => {
-          const h = img.height;
           const aspectRatio = img.width / img.height;
-          const w = aspectRatio * h;
-          const zoom = map.getMaxZoom() - 1;
-          const sw = map.unproject([0, h * 2], zoom);
-          const ne = map.unproject([w * 2, 0], zoom);
-          const bnds = new L.LatLngBounds(sw, ne);
+          const h = img.height;
+          const w = h*aspectRatio;
+          const zoom = map.getMaxZoom()-1;
+          const anchorLatLng = L.latLng(0, 0);
+          const anchorPoint = map.project(anchorLatLng, zoom);
+          const topLeft = L.point(anchorPoint.x - w / 2, anchorPoint.y - h / 2);
+          const bottomRight = L.point(anchorPoint.x + w / 2, anchorPoint.y + h / 2);
+
+          this.data.nodes.forEach((node) => {
+            const px = Number(node.coordinates.lng);
+            const py = -Number(node.coordinates.lat);
+            const nodeProjected = L.point(topLeft.x + px, topLeft.y + py);
+            const nodeLatLng = map.unproject(nodeProjected, zoom);
+            node.properties = {
+              ...node.properties,
+              location: nodeLatLng,
+            };
+          });
+          const mapOptions = this.utils.generateMapOption(this.data, this);
+          this.echarts.setOption(mapOptions);
+
+          const nw = map.unproject(topLeft, zoom);
+          const se = map.unproject(bottomRight, zoom);
+          const bnds = L.latLngBounds(nw, se);
           L.imageOverlay(imageUrl, bnds).addTo(map);
           map.fitBounds(bnds);
           map.setMaxBounds(bnds);
           initialZoom = map.getZoom();
-          map.setView([0, 0], initialZoom);
-        };
+          map.invalidateSize();
+         };
         map.on("fullscreenchange", () => {
           const floorNavigation = $("#floorplan-navigation");
           const zoomSnap = map.options.zoomSnap || 1;
