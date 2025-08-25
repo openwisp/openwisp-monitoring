@@ -257,9 +257,8 @@
         const url = $(this).data("url");
         window.location.href = url;
       });
-    // Todo: Popup does not show when closeOnClick is true need to figure out why
     currentPopup = L.popup({ closeOnClick: false })
-      .setLatLng(node?.coordinates)
+      .setLatLng(node?.properties.location)
       .setContent(popupContent)
       .openOn(map);
   }
@@ -316,7 +315,6 @@
 
       onReady() {
         const map = this.leaflet;
-        console.log("Indoor map instance:", this);
         maps[currentFloor] = map;
         // remove default geo map tiles
         map.eachLayer((layer) => layer._url && map.removeLayer(layer));
@@ -328,11 +326,25 @@
           const h = img.height;
           const w = h*aspectRatio;
           const zoom = map.getMaxZoom()-1;
+
+          // To make the image center in the map at (0,0) coordinates
           const anchorLatLng = L.latLng(0, 0);
           const anchorPoint = map.project(anchorLatLng, zoom);
+
+          // Calculate the bounds of the image, with respect to the anchor point (0, 0)
+          // Leaflet's pixel coordinates increase to the right and downwards
+          // Unlike cartesian system where y increases upwards
+          // So top-left will have negative y and bottom-right will have positive y
+          // Similarly left will have negative x and right will have positive x
           const topLeft = L.point(anchorPoint.x - w / 2, anchorPoint.y - h / 2);
           const bottomRight = L.point(anchorPoint.x + w / 2, anchorPoint.y + h / 2);
 
+          // Update node coordinates to fit the image overlay
+          // We get the node coordinates from the API in the format for L.CRS.Simple
+          // So the coordinates is in for cartesian system with origin at top left corner
+          // Rendering image in the third quadrant with topLeft as (0,0) and bottomRight as (w,-h)
+          // So we convert py to positive and then project the point to get the corresponding topLeft
+          // Then unproject the point to get the corresponding latlng on the map
           this.data.nodes.forEach((node) => {
             const px = Number(node.coordinates.lng);
             const py = -Number(node.coordinates.lat);
@@ -343,9 +355,11 @@
               location: nodeLatLng,
             };
           });
+          // Update the map options with new node locations
           const mapOptions = this.utils.generateMapOption(this.data, this);
           this.echarts.setOption(mapOptions);
 
+          // Unproject the topLeft and bottomRight points to get northWest and southEast latlngs
           const nw = map.unproject(topLeft, zoom);
           const se = map.unproject(bottomRight, zoom);
           const bnds = L.latLngBounds(nw, se);
@@ -354,7 +368,8 @@
           map.setMaxBounds(bnds);
           initialZoom = map.getZoom();
           map.invalidateSize();
-         };
+        };
+
         map.on("fullscreenchange", () => {
           const floorNavigation = $("#floorplan-navigation");
           const zoomSnap = map.options.zoomSnap || 1;
