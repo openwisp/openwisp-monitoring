@@ -49,6 +49,7 @@
       // If data for the requested floor already exists in allResults,
       // skip the API call to avoid redundant requests.
       if (floor && allResults[floor]) {
+        $(".floorplan-loading-spinner").hide();
         resolve();
         return;
       }
@@ -59,8 +60,6 @@
         xhrFields: { withCredentials: true },
         success: async (data) => {
           // To make this run only one time as only in the first call floor will not be provided
-          // And sort them in decreasing order so that negative floors show at the bottom and
-          // positive floors at the top in floor navigation
           if (!floor) {
             floors = data.floors;
             floor = data.results[0].floor;
@@ -75,6 +74,7 @@
           if (data.next) {
             await fetchData(data.next);
           }
+          $(".floorplan-loading-spinner").hide();
           resolve();
         },
         error: () => {
@@ -92,6 +92,7 @@
           <h2 id="floorplan-heading"></h2>
           <span id="floorplan-close-btn">&times;</span>
           <div id="floorplan-content-root"></div>
+          <div class="ow-loading-spinner floorplan-loading-spinner">
         </div>
       </div>
     `);
@@ -112,6 +113,7 @@
       $("#floorplan-container, #floorplan-navigation").remove();
       $("#floorplan-overlay").remove();
       allResults = {};
+      currentFloor = null;
     });
   }
 
@@ -191,7 +193,7 @@
       .removeClass("active selected")
       .filter(`[data-floor="${floor}"]`)
       .addClass("active selected");
-
+    $(".floorplan-loading-spinner").show();
     await fetchData(url, floor);
 
     const nodesThisFloor = { nodes: allResults[floor], links: [] };
@@ -257,7 +259,9 @@
         const url = $(this).data("url");
         window.location.href = url;
       });
-    currentPopup = L.popup({ closeOnClick: false })
+    currentPopup = L.popup({ 
+        closeOnClick: false, 
+      })
       .setLatLng(node?.properties.location)
       .setContent(popupContent)
       .openOn(map);
@@ -267,7 +271,7 @@
     const indoorMap = new NetJSONGraph(allResults, {
       el: `#${divId}`,
       render: "map",
-
+      showLabelsAtZoomLevel: 0,
       mapOptions: {
         center: [0, 0],
         zoom: 0,
@@ -278,7 +282,7 @@
         zoomAnimation: false,
         nodeConfig: {
           label: {
-            show: false,
+            show: true,
           },
           animation: false,
           nodeStyle: (node) => ({
@@ -293,7 +297,7 @@
             {
               option: {
                 tooltip: {
-                  show: true,
+                  show: false,
                 },
               },
             },
@@ -308,7 +312,10 @@
             status: node.monitoring.status,
             location: node.coordinates,
             "Mac address": node.mac_address,
+            
           };
+          node.label = node.properties.name;
+          node.category = node.monitoring.status;
         });
         return data;
       },
@@ -357,6 +364,7 @@
           });
           // Update the map options with new node locations
           const mapOptions = this.utils.generateMapOption(this.data, this);
+          console.log(mapOptions);
           this.echarts.setOption(mapOptions);
 
           // Unproject the topLeft and bottomRight points to get northWest and southEast latlngs
@@ -365,8 +373,9 @@
           const bnds = L.latLngBounds(nw, se);
           L.imageOverlay(imageUrl, bnds).addTo(map);
           map.fitBounds(bnds);
-          map.setMaxBounds(bnds);
+          map.setMaxBounds(bnds.pad(1));
           initialZoom = map.getZoom();
+          console.log(initialZoom);
           map.invalidateSize();
         };
 
@@ -403,6 +412,7 @@
       },
     });
     indoorMap.render();
+    $("ow-loading-spinner").hide();
     window._owIndoorMap = indoorMap;
   }
 
