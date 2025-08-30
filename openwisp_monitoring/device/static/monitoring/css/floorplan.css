@@ -134,11 +134,17 @@
   font-size: 20px !important;
 }
 #floorplan-container .njg-tooltip-inner {
-  min-width: 250px;
+  min-width: 240px;
 }
 #floorplan-container .njg-tooltip-item {
   font-size: 14px;
   margin-bottom: 8px;
+}
+#floorplan-container .njg-tooltip-key {
+  flex-basis: 45%;
+}
+#floorplan-container .njg-tooltip-value {
+  flex-basis: auto;
 }
 .popup-status {
   padding: 1px 10px;
@@ -154,13 +160,13 @@
   margin-top: 12px;
 }
 .open-device-btn {
-  padding: 8px 12px;
-  cursor: pointer;
-  margin: 2px auto;
+  padding: 5px 18px !important;
+  margin: 4px auto !important;
   display: flex;
-  padding: 3px 16px;
-  cursor: pointer;
-  margin: 5px auto;
   justify-content: center;
   align-items: center;
+  color: white !important;
+}
+.open-device-btn:hover {
+  text-decoration: none;
 }

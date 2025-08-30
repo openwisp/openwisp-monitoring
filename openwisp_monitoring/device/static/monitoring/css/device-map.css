@@ -28,9 +28,9 @@
   text-transform: uppercase;
 }
 #device-map-container {
-  margin: 50px auto;
+  margin: 50px auto 10px auto;
   position: relative;
-  /* Todo: Remove this added only for testing */
+  /* height: 340px; */
   height: 85vh;
   width: 90%;
   border: 1px solid rgba(0, 0, 0, 0.3);
@@ -66,10 +66,10 @@
 .leaflet-popup-content {
   display: flex;
   min-width: fit-content;
-  margin: 24px !important;
+  margin: 18px 24px !important;
 }
 .leaflet-popup-close-button {
-  top: 25px !important;
+  top: 18px !important;
   right: 25px !important;
   font-size: 20px !important;
 }
@@ -83,11 +83,11 @@
   box-sizing: border-box;
 }
 .map-detail h2 {
-  margin: 0 0 10px 0;
+  margin: 0 0 7px 0;
   font-size: 18px;
 }
 .input-container {
-  margin: 10px 0;
+  margin: 7px 0;
   position: relative;
   width: 100%;
 }
@@ -117,7 +117,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  margin: 10px 0 22px 0;
+  margin: 10px 0;
   gap: 8px;
 }
 .status-filter {
@@ -141,7 +141,7 @@
   display: inline-block;
 }
 .table-container {
-  height: 195px;
+  height: 120px;
   width: 350px;
   overflow-y: auto;
   min-width: 300px;

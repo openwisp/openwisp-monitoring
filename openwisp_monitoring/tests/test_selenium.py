@@ -345,7 +345,9 @@ class TestDashboardMap(
 
         with self.subTest("Test filtering by status for status ok"):
             status_ok = self.find_element(By.CSS_SELECTOR, ".map-detail .health-ok")
-            status_ok_close_btn = self.find_element(By.CSS_SELECTOR, ".health-ok .remove-icon", wait_for="presence")
+            status_ok_close_btn = self.find_element(
+                By.CSS_SELECTOR, ".health-ok .remove-icon", wait_for="presence"
+            )
             self.assertFalse(status_ok_close_btn.is_displayed())
             status_ok.click()
             self.assertTrue(status_ok_close_btn.is_displayed())
@@ -358,8 +360,12 @@ class TestDashboardMap(
             self.assertIn(d2.name, table_entries[0].text)
 
         with self.subTest("Test filtering by status for status ok and unknown"):
-            status_unknown = self.find_element(By.CSS_SELECTOR, ".map-detail .health-unknown")
-            status_unknown_close_btn = self.find_element(By.CSS_SELECTOR, ".health-unknown .remove-icon", wait_for="presence")
+            status_unknown = self.find_element(
+                By.CSS_SELECTOR, ".map-detail .health-unknown"
+            )
+            status_unknown_close_btn = self.find_element(
+                By.CSS_SELECTOR, ".health-unknown .remove-icon", wait_for="presence"
+            )
             self.assertFalse(status_unknown_close_btn.is_displayed())
             status_unknown.click()
             self.assertTrue(status_unknown_close_btn.is_displayed())
@@ -437,10 +443,14 @@ class TestDashboardMap(
         self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
         self.open_popup("_owGeoMap", location.id)
         self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail")
-        table_container = self.find_element(By.CSS_SELECTOR, ".map-detail .table-container")
+        table_container = self.find_element(
+            By.CSS_SELECTOR, ".map-detail .table-container"
+        )
         table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
         self.assertEqual(len(table_entries), 10)
-        self.web_driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", table_container)
+        self.web_driver.execute_script(
+            "arguments[0].scrollTop = arguments[0].scrollHeight", table_container
+        )
         self.wait_for_invisibility(By.CSS_SELECTOR, ".map-detail .ow-loading-spinner")
         sleep(0.5)
         table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
@@ -520,15 +530,21 @@ class TestDashboardMap(
         with self.subTest("Test redirecting to device page from indoor map"):
             sleep(10)
             self.open_popup("_owIndoorMap", device2.id)
-            open_device_btn = self.find_element(By.CSS_SELECTOR, ".njg-tooltip-inner .open-device-btn")
+            open_device_btn = self.find_element(
+                By.CSS_SELECTOR, ".njg-tooltip-inner .open-device-btn"
+            )
             open_device_btn.click()
             try:
                 WebDriverWait(self.web_driver, 5).until(
-                    EC.url_to_be(f"{self.live_server_url}/admin/config/device/{device2.id}/change/")
+                    EC.url_to_be(
+                        f"{self.live_server_url}/admin/config/device/{device2.id}/change/"
+                    )
                 )
             except TimeoutException:
                 self.fail("Failed to redirect to device change page")
-            self.assertIn(f"/config/device/{device2.id}/change/", self.web_driver.current_url)
+            self.assertIn(
+                f"/config/device/{device2.id}/change/", self.web_driver.current_url
+            )
 
     def test_dashboard_map_without_permissions(self):
         user = self._create_user(

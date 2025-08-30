@@ -1,10 +1,7 @@
 "use strict";
 
 (function ($) {
-  const colors = window._owGeoMapConfig.STATUS_COLORS;
-  function getColor(status) {
-    return colors[status] || colors.unknown;
-  }
+  const status_colors = window._owGeoMapConfig.STATUS_COLORS;
 
   let allResults = {};
   let floors = [];
@@ -48,7 +45,7 @@
     return new Promise((resolve, reject) => {
       // If data for the requested floor already exists in allResults,
       // skip the API call to avoid redundant requests.
-      if (floor && allResults[floor]) {
+      if (floor != null && allResults[floor]) {
         $(".floorplan-loading-spinner").hide();
         resolve();
         return;
@@ -74,11 +71,11 @@
           if (data.next) {
             await fetchData(data.next);
           }
-          $(".floorplan-loading-spinner").hide();
           resolve();
         },
         error: () => {
           alert("Error loading floorplan coordinates.");
+          $(".floorplan-loading-spinner").hide();
           reject();
         },
       });
@@ -193,7 +190,8 @@
       .removeClass("active selected")
       .filter(`[data-floor="${floor}"]`)
       .addClass("active selected");
-    $(".floorplan-loading-spinner").show();
+
+    $(".floorplan-loading-spinner").hide();
     await fetchData(url, floor);
 
     const nodesThisFloor = { nodes: allResults[floor], links: [] };
@@ -227,41 +225,35 @@
     if (currentPopup) {
       currentPopup.remove();
     }
-    // Todo: Fix padding spacing
     const popupContent = `
-    <div class="njg-tooltip-inner">
-      <div class="njg-tooltip-item">
-        <span class="njg-tooltip-key">name</span>
-        <span class="njg-tooltip-value">${node?.device_name}</span>
+      <div class="njg-tooltip-inner">
+        <div class="njg-tooltip-item">
+          <span class="njg-tooltip-key">name</span>
+          <span class="njg-tooltip-value">${node?.device_name}</span>
+        </div>
+        <div class="njg-tooltip-item">
+          <span class="njg-tooltip-key">Mac address</span>
+          <span class="njg-tooltip-value">${node?.mac_address}</span>
+        </div>
+        <div class="njg-tooltip-item">
+          <span class="njg-tooltip-key">status</span>
+          <span class="popup-status health-${node?.monitoring.status} ">
+            ${node?.monitoring.status_label}
+          </span>
+        </div>
+        <div class="open-device-btn-container">
+          <a class="default-btn open-device-btn" href="${node?.admin_edit_url}"">
+            <span class="ow-device floor-icon"></span>
+            Open Device
+          </a>
+        </div>
+        </div>
       </div>
-      <div class="njg-tooltip-item">
-        <span class="njg-tooltip-key">Mac address</span>
-        <span class="njg-tooltip-value">${node?.mac_address}</span>
-      </div>
-      <div class="njg-tooltip-item">
-        <span class="njg-tooltip-key">status</span>
-        <span class="popup-status health-${node?.monitoring.status} ">
-          ${node?.monitoring.status_label}
-        </span>
-      </div>
-      <div class="open-device-btn-container">
-        <button class="default-btn open-device-btn" data-url="${node?.admin_edit_url}"">
-          <span class="ow-device floor-icon"></span>
-          Open Device
-        </button>
-      </div>
-      </div>
-    </div>
     `;
-    $("#floorplan-container")
-      .off("click", ".open-device-btn")
-      .on("click", ".open-device-btn", function () {
-        const url = $(this).data("url");
-        window.location.href = url;
-      });
-    currentPopup = L.popup({ 
-        closeOnClick: false, 
-      })
+    // Popup does not show on closeOnClick: true (default)
+    currentPopup = L.popup({
+      closeOnClick: false,
+    })
       .setLatLng(node?.properties.location)
       .setContent(popupContent)
       .openOn(map);
@@ -283,27 +275,46 @@
         nodeConfig: {
           label: {
             show: true,
+            color: "#ffffff",
+            backgroundColor: "#000000",
+            fontWeight: "bold",
+            borderWidth: 1,
+            borderRadius: 8,
           },
-          animation: false,
-          nodeStyle: (node) => ({
-            radius: 9,
-            color: getColor(node.properties.status),
-            weight: 3,
-            opacity: 1,
-          }),
-        },
-        baseOptions: {
-          media: [
-            {
-              option: {
-                tooltip: {
-                  show: false,
-                },
-              },
-            },
-          ],
         },
       },
+      nodeCategories: [
+        {
+          name: "ok",
+          nodeStyle: {
+            color: status_colors["ok"],
+          },
+        },
+        {
+          name: "problem",
+          nodeStyle: {
+            color: status_colors["problem"],
+          },
+        },
+        {
+          name: "critical",
+          nodeStyle: {
+            color: status_colors["critical"],
+          },
+        },
+        {
+          name: "unknown",
+          nodeStyle: {
+            color: status_colors["unknown"],
+          },
+        },
+        {
+          name: "deactivated",
+          nodeStyle: {
+            color: status_colors["deactivated"],
+          },
+        },
+      ],
       prepareData(data) {
         data.nodes.forEach((node) => {
           node.properties = {
@@ -312,7 +323,6 @@
             status: node.monitoring.status,
             location: node.coordinates,
             "Mac address": node.mac_address,
-            
           };
           node.label = node.properties.name;
           node.category = node.monitoring.status;
@@ -331,8 +341,8 @@
         img.onload = () => {
           const aspectRatio = img.width / img.height;
           const h = img.height;
-          const w = h*aspectRatio;
-          const zoom = map.getMaxZoom()-1;
+          const w = h * aspectRatio;
+          const zoom = map.getMaxZoom() - 1;
 
           // To make the image center in the map at (0,0) coordinates
           const anchorLatLng = L.latLng(0, 0);
@@ -344,7 +354,10 @@
           // So top-left will have negative y and bottom-right will have positive y
           // Similarly left will have negative x and right will have positive x
           const topLeft = L.point(anchorPoint.x - w / 2, anchorPoint.y - h / 2);
-          const bottomRight = L.point(anchorPoint.x + w / 2, anchorPoint.y + h / 2);
+          const bottomRight = L.point(
+            anchorPoint.x + w / 2,
+            anchorPoint.y + h / 2,
+          );
 
           // Update node coordinates to fit the image overlay
           // We get the node coordinates from the API in the format for L.CRS.Simple
@@ -352,19 +365,18 @@
           // Rendering image in the third quadrant with topLeft as (0,0) and bottomRight as (w,-h)
           // So we convert py to positive and then project the point to get the corresponding topLeft
           // Then unproject the point to get the corresponding latlng on the map
-          this.data.nodes.forEach((node) => {
+          const mapOptions = this.echarts.getOption();
+          // series[0]: nodes config, series[1]: links config and both are always present
+          mapOptions.series[0].data.forEach((data) => {
+            const node = data.node;
             const px = Number(node.coordinates.lng);
             const py = -Number(node.coordinates.lat);
             const nodeProjected = L.point(topLeft.x + px, topLeft.y + py);
+            // This requrires an map instance to unproject coordinates so it cann't be done in prepareData
             const nodeLatLng = map.unproject(nodeProjected, zoom);
-            node.properties = {
-              ...node.properties,
-              location: nodeLatLng,
-            };
+            node.properties.location = nodeLatLng;
+            data.value = [nodeLatLng.lng, nodeLatLng.lat];
           });
-          // Update the map options with new node locations
-          const mapOptions = this.utils.generateMapOption(this.data, this);
-          console.log(mapOptions);
           this.echarts.setOption(mapOptions);
 
           // Unproject the topLeft and bottomRight points to get northWest and southEast latlngs
@@ -375,7 +387,6 @@
           map.fitBounds(bnds);
           map.setMaxBounds(bnds.pad(1));
           initialZoom = map.getZoom();
-          console.log(initialZoom);
           map.invalidateSize();
         };
 
@@ -412,7 +423,7 @@
       },
     });
     indoorMap.render();
-    $("ow-loading-spinner").hide();
+    $(".ow-loading-spinner").hide();
     window._owIndoorMap = indoorMap;
   }
 
