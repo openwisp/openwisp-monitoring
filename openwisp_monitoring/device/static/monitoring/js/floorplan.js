@@ -416,10 +416,11 @@
     indoorMap.setUtils({
       // Added to open popup for a specific location Id in selenium tests
       openPopup: function (deviceId) {
-        const nodeData = indoorMap?.data?.nodes?.find(
-          (n) => n.content_object_id === deviceId,
+        const mapOptions = indoorMap.echarts.getOption();
+        const data = mapOptions.series[0].data.find(
+          (data) => data.node.content_object_id === deviceId,
         );
-        loadPopUpContent(nodeData, indoorMap);
+        loadPopUpContent(data?.node, indoorMap);
       },
     });
     indoorMap.render();

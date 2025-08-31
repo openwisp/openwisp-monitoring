@@ -113,7 +113,7 @@ jobs:
         env:
           SELENIUM_HEADLESS: 1
           GECKO_LOG: 1
-
+      
       - name: Show gecko web driver log on failures
         if: ${{ failure() }}
         run: cat geckodriver.log
