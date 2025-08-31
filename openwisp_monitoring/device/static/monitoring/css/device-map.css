@@ -28,10 +28,9 @@
   text-transform: uppercase;
 }
 #device-map-container {
-  margin: 50px auto 10px auto;
+  margin: 50px auto 0px auto;
   position: relative;
-  /* height: 340px; */
-  height: 85vh;
+  height: 350px;
   width: 90%;
   border: 1px solid rgba(0, 0, 0, 0.3);
 }
@@ -66,13 +65,15 @@
 .leaflet-popup-content {
   display: flex;
   min-width: fit-content;
-  margin: 18px 24px !important;
+  margin: 15px 20px !important;
 }
 .leaflet-popup-close-button {
-  top: 18px !important;
-  right: 25px !important;
-  font-size: 20px !important;
+  top: 14px !important;
+  right: 20px !important;
+  font-size: 18px !important;
 }
+.leaflet-popup-close-button:hover, 
+.leaflet-popup-close-button:active, 
 .leaflet-popup-close-button:hover {
   color: black !important;
 }
@@ -84,7 +85,7 @@
 }
 .map-detail h2 {
   margin: 0 0 7px 0;
-  font-size: 18px;
+  font-size: 16px;
 }
 .input-container {
   margin: 7px 0;
@@ -95,7 +96,7 @@
   content: "";
   position: absolute;
   top: 46%;
-  left: 14px;
+  left: 10px;
   transform: translateY(-54%);
   width: 20px;
   height: 20px;
@@ -106,8 +107,8 @@
 .map-detail input {
   outline: none;
   width: 100%;
-  padding: 10px 14px;
-  padding-left: 42px;
+  padding: 7px 14px;
+  padding-left: 38px;
   box-sizing: border-box;
   border-radius: 6px;
   font-size: 16px;
@@ -117,7 +118,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  margin: 10px 0;
+  margin: 7px 0;
   gap: 8px;
 }
 .status-filter {
@@ -141,15 +142,22 @@
   display: inline-block;
 }
 .table-container {
-  height: 120px;
-  width: 350px;
+  height: 97px;
+  width: 330px;
   overflow-y: auto;
   min-width: 300px;
   box-sizing: border-box;
-  margin: 10px 0;
+  margin: 7px 0;
 }
 .table-container table {
   width: 100%;
+}
+.table-container table thead th {
+  padding: 10px !important;
+}
+.table-container table tbody td {
+  padding: 12px 10px !important;
+  font-size: 14px !important;
 }
 .th-status {
   width: 40%;
@@ -174,28 +182,20 @@
 }
 .floor-icon {
   display: inline-block;
-  width: 25px;
-  height: 25px;
+  width: 23px;
+  height: 23px;
   background-color: white;
   mask-repeat: no-repeat;
   margin-right: 16px;
 }
 .floorplan-btn {
-  padding: 11.5px 16px;
-  margin-top: 20px;
+  padding: 7px 16px;
+  margin-top: 7px;
   width: fit-content;
-  font-size: 16px;
+  font-size: 15px;
   border-radius: 8px;
   align-self: center;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-.floor-icon {
-  display: inline-block;
-  width: 25px;
-  height: 25px;
-  background-color: white;
-  mask-repeat: no-repeat;
-  margin-right: 16px;
 }
