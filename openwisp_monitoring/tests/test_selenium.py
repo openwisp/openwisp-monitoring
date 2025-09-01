@@ -315,12 +315,6 @@ class TestDashboardMap(
     floorplan_model = Floorplan
     object_location_model = DeviceLocation
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.web_driver.save_screenshot("ss.png")
-        cls.web_driver.quit()
-        super().tearDownClass()
-
     def open_popup(self, mapType, id):
         self.web_driver.execute_script(
             "return window[arguments[0]].utils.openPopup(arguments[1]);",
@@ -534,7 +528,6 @@ class TestDashboardMap(
             self.assertIsNotNone(canvases)
 
         with self.subTest("Test redirecting to device page from indoor map"):
-            # import ipdb; ipdb.set_trace()
             self.open_popup("_owIndoorMap", device2.id)
             open_device_btn = self.find_element(
                 By.CSS_SELECTOR, ".open-device-btn-container .open-device-btn"

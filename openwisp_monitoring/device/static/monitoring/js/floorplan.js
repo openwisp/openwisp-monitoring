@@ -31,6 +31,8 @@
     const $floorPlanContainer = createFloorPlanContainer();
     const $floorNavigation = createFloorNavigation();
 
+    updateBackdrop();
+
     $("#device-map-container").append($floorPlanContainer);
     $("#floorplan-container").append($floorNavigation);
 
@@ -109,9 +111,15 @@
     $("#floorplan-close-btn").on("click", () => {
       $("#floorplan-container, #floorplan-navigation").remove();
       $("#floorplan-overlay").remove();
+      updateBackdrop();
       allResults = {};
       currentFloor = null;
     });
+  }
+
+  function updateBackdrop() {
+    $("body").toggleClass("no-scroll");
+    $(".menu-backdrop").toggleClass("active");
   }
 
   function addFloorButtons(selectedIndex, navWindowStart) {
@@ -418,7 +426,7 @@
       openPopup: function (deviceId) {
         const mapOptions = indoorMap.echarts.getOption();
         const data = mapOptions.series[0].data.find(
-          (data) => data.node.content_object_id === deviceId,
+          (data) => data.node.device_id === deviceId,
         );
         loadPopUpContent(data?.node, indoorMap);
       },
