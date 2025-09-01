@@ -72,8 +72,8 @@
   right: 20px !important;
   font-size: 18px !important;
 }
-.leaflet-popup-close-button:hover, 
-.leaflet-popup-close-button:active, 
+.leaflet-popup-close-button:hover,
+.leaflet-popup-close-button:active,
 .leaflet-popup-close-button:hover {
   color: black !important;
 }
