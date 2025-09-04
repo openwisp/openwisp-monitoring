@@ -9,9 +9,7 @@
 .njg-container .leaflet-container-fullscreen .leaflet-control-fullscreen a {
   background-position: 0 -26px;
 }
-.njg-container.leaflet-touch.leaflet-fullscreen-on
-  .leaflet-control-fullscreen
-  a,
+.njg-container.leaflet-touch.leaflet-fullscreen-on .leaflet-control-fullscreen a,
 .njg-container
   .leaflet-touch
   .leaflet-container-fullscreen

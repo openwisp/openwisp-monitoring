@@ -431,8 +431,8 @@ class TestDashboardMap(
         location = self._create_location(type="indoor", name="Test-Location")
         for i in range(20):
             device = self._create_device(
-                name=f"Test-Device-{i+1}",
-                mac_address=f"00:00:00:00:00:{i+1:02d}",
+                name=f"Test-Device-{i + 1}",
+                mac_address=f"00:00:00:00:00:{i + 1:02d}",
                 organization=location.organization,
             )
             self._create_object_location(
@@ -544,6 +544,65 @@ class TestDashboardMap(
             self.assertIn(
                 f"/config/device/{device2.id}/change/", self.web_driver.current_url
             )
+
+    def test_switching_floorplan_in_fullscreen_mode(self):
+        org = self._get_org()
+        location = self._create_location(type="indoor", organization=org)
+        floor1 = self._create_floorplan(floor=1, location=location)
+        floor2 = self._create_floorplan(floor=2, location=location)
+        device1 = self._create_device(
+            name="Test-Device1", mac_address="00:00:00:00:00:01", organization=org
+        )
+        device2 = self._create_device(
+            name="Test-Device2", mac_address="00:00:00:00:00:02", organization=org
+        )
+        self._create_object_location(
+            content_object=device1,
+            location=location,
+            floorplan=floor1,
+            organization=org,
+        )
+        self._create_object_location(
+            content_object=device2,
+            location=location,
+            floorplan=floor2,
+            organization=org,
+        )
+        self.login()
+        self.wait_for_visibility(By.CSS_SELECTOR, "#device-map-container")
+        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+        self.open_popup("_owGeoMap", location.id)
+        self.wait_for(
+            "element_to_be_clickable", By.CSS_SELECTOR, ".map-detail .floorplan-btn"
+        ).click()
+        canvases = self.find_elements(
+            By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
+        )
+        self.assertIsNotNone(canvases)
+        fullscreen_btn = self.find_element(
+            By.CSS_SELECTOR, "#floor-content-1 .leaflet-control-fullscreen-button"
+        )
+        fullscreen_btn.click()
+        sleep(0.5)
+        container = self.find_element(
+            By.CSS_SELECTOR, "#floor-content-1 .leaflet-container"
+        )
+        self.assertIn("leaflet-fullscreen-on", container.get_attribute("class"))
+        right_arrow = self.find_element(
+            By.CSS_SELECTOR, "#floorplan-navigation .right-arrow"
+        )
+        right_arrow.click()
+        sleep(0.5)
+        container = self.find_element(
+            By.CSS_SELECTOR, "#floor-content-1 .leaflet-container", wait_for="presence"
+        )
+        self.assertNotIn("leaflet-fullscreen-on", container.get_attribute("class"))
+        floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-heading")
+        self.assertIn("2nd floor", floor_heading.text.lower())
+        canvases = self.find_elements(
+            By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
+        )
+        self.assertIsNotNone(canvases)
 
     def test_dashboard_map_without_permissions(self):
         user = self._create_user(

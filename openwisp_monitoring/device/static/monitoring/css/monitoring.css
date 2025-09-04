@@ -86,11 +86,7 @@ td.field-health_status,
 .form-row.field-health_checks div.readonly {
   margin-left: 0px !important;
 }
-.form-row.field-health_checks
-  div
-  div.flex-container
-  div.readonly
-  ul.health_checks {
+.form-row.field-health_checks div div.flex-container div.readonly ul.health_checks {
   margin-left: 0px !important;
   padding-left: 0px !important;
 }
