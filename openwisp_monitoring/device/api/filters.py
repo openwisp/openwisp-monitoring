@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from django_filters import rest_framework as filters
 from swapper import load_model
@@ -9,6 +10,7 @@ from openwisp_users.api.filters import (
 
 Device = load_model("config", "Device")
 WifiSession = load_model("device_monitoring", "WifiSession")
+DeviceMonitoring = load_model("device_monitoring", "DeviceMonitoring")
 
 
 class WifiSessionFilter(FilterDjangoByOrgManaged):
@@ -21,6 +23,24 @@ class WifiSessionFilter(FilterDjangoByOrgManaged):
             "start_time": ["exact", "gt", "gte", "lt", "lte"],
             "stop_time": ["exact", "gt", "gte", "lt", "lte", "isnull"],
         }
+
+
+class MonitoringLocationDeviceFilter(filters.FilterSet):
+    search = filters.CharFilter(method="filter_search")
+    status = filters.MultipleChoiceFilter(
+        field_name="monitoring__status",
+        choices=DeviceMonitoring.STATUS,
+    )
+
+    def filter_search(self, queryset, name, value):
+        value = value.strip()
+        return queryset.filter(
+            Q(name__icontains=value) | Q(mac_address__icontains=value)
+        )
+
+    class Meta:
+        model = Device
+        fields = ["search", "status"]
 
 
 class MonitoringDeviceFilter(OrganizationManagedFilter):
