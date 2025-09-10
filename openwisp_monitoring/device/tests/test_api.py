@@ -1497,17 +1497,29 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
                 data["results"][1]["monitoring"],
                 {"status": "problem", "status_label": "problem"},
             )
-        with self.subTest("Test filter by name and monitoring status"):
+        with self.subTest("Filter by name"):
             response = self.client.get(f"{url}?search=test1")
             data = response.data
             self.assertEqual(data["count"], 1)
             self.assertEqual(len(data["results"]), 1)
             self.assertEqual(data["results"][0]["id"], str(device1.id))
+
+        with self.subTest("Filter by status"):
             response = self.client.get(f"{url}?status=problem")
             data = response.data
             self.assertEqual(data["count"], 1)
             self.assertEqual(len(data["results"]), 1)
             self.assertEqual(data["results"][0]["id"], str(device2.id))
+
+            # Status filters work in OR operation
+            response = self.client.get(f"{url}?status=problem&status=ok")
+            data = response.data
+            self.assertEqual(data["count"], 2)
+            self.assertEqual(len(data["results"]), 2)
+            for result in data["results"]:
+                self.assertIn(result["id"], [str(device1.id), str(device2.id)])
+
+        with self.subTest("Filter by name and status"):
             response = self.client.get(f"{url}?search=test1&status=ok")
             data = response.data
             self.assertEqual(data["count"], 1)

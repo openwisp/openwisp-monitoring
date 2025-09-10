@@ -34,7 +34,7 @@
     updateBackdrop();
 
     $("#device-map-container").append($floorPlanContainer);
-    $("#floorplan-container").append($floorNavigation);
+    $("#floorplan-overlay").append($floorNavigation);
 
     closeButtonHandler();
     addFloorButtons(selectedIndex, navWindowStart);
@@ -88,8 +88,10 @@
     return $(`
       <div id="floorplan-overlay">
         <div id="floorplan-container">
-          <h2 id="floorplan-heading"></h2>
-          <span id="floorplan-close-btn">&times;</span>
+          <div id="floorplan-header">
+            <h2 id="floorplan-title"></h2>
+            <span id="floorplan-close-btn">&times;</span>
+          </div>
           <div id="floorplan-content-root"></div>
           <div class="ow-loading-spinner floorplan-loading-spinner">
         </div>
@@ -189,7 +191,7 @@
 
     const nodesThisFloor = { nodes: allResults[floor], links: [] };
 
-    $("#floorplan-heading").text(nodesThisFloor.nodes[0].floor_name);
+    $("#floorplan-title").text(nodesThisFloor.nodes[0].floor_name);
     const imageUrl = nodesThisFloor.nodes[0].image;
 
     const root = $("#floorplan-content-root");
@@ -266,9 +268,9 @@
             show: true,
             color: "#ffffff",
             backgroundColor: "#000000",
-            fontWeight: "bold",
             borderWidth: 1,
             borderRadius: 8,
+            opacity: 1,
           },
         },
         baseOptions: { media: [{ option: { tooltip: { show: false } } }] },
@@ -363,7 +365,7 @@
             isFullScreen = false;
             map.setZoom(initialZoom);
             floorNavigation.removeClass("fullscreen");
-            $("#floorplan-container").append(floorNavigation);
+            $("#floorplan-overlay").append(floorNavigation);
           }
           map.invalidateSize();
         });

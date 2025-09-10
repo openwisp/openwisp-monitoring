@@ -11,10 +11,10 @@
     problem: "#ffb442",
     critical: "#a72d1d",
     unknown: "#353c44",
-    deactivated: "#000",
+    deactivated: "#000000",
   };
-  const colors = window._owGeoMapConfig.STATUS_COLORS;
-  const labels = window._owGeoMapConfig.labels;
+  const STATUS_COLORS = window._owGeoMapConfig.STATUS_COLORS;
+  const STATUS_LABELS = window._owGeoMapConfig.labels;
   const getIndoorCoordinatesUrl = function (pk) {
     return window._owGeoMapConfig.indoorCoordinatesUrl.replace("000", pk);
   };
@@ -36,7 +36,7 @@
     // if one status has absolute majority, it's the winner
     let majority = findResult(function (status, statusCount) {
       if (statusCount > deviceCount / 2) {
-        return colors[status];
+        return STATUS_COLORS[status];
       }
     });
     if (majority) {
@@ -46,7 +46,7 @@
     return findResult(function (status, statusCount) {
       // if one status has absolute majority, it's the winner
       if (statusCount) {
-        return colors[status];
+        return STATUS_COLORS[status];
       }
     });
   };
@@ -70,15 +70,13 @@
       success: function (data) {
         let devices = data.results;
         let nextUrl = data.next;
-        const statusLabelsMap = labels;
         let statusFilterButtons = "";
-        Object.entries(statusLabelsMap).forEach(([status_key, status_label]) => {
-          const label = gettext(status_label);
-          statusFilterButtons += `<span 
-              class="health-status health-${status_key} status-filter" 
+        Object.entries(STATUS_LABELS).forEach(([status_key, status_label]) => {
+          statusFilterButtons += `<span
+              class="health-status health-${status_key} status-filter"
               data-status="${status_key}"
             >
-              ${label}
+              ${gettext(status_label)}
               <span class="remove-icon">&times</span>
             </span>`;
         });
@@ -312,7 +310,7 @@
         center: leafletConfig.DEFAULT_CENTER || [55.78, 11.54],
         zoom: leafletConfig.DEFAULT_ZOOM || 1,
         minZoom: leafletConfig.MIN_ZOOM || 1,
-        maxZoom: leafletConfig.MAX_ZOOM || 24,
+        maxZoom: leafletConfig.MAX_ZOOM || 18,
         fullscreenControl: true,
 
         // Force tooltips ON for all viewport widths; override library's
@@ -327,9 +325,9 @@
         },
       },
       mapTileConfig: tiles,
-      nodeCategories: Object.keys(colors).map((status) => ({
+      nodeCategories: Object.keys(STATUS_COLORS).map((status) => ({
         name: status,
-        nodeStyle: { color: colors[status] },
+        nodeStyle: { color: STATUS_COLORS[status] },
       })),
       // Hide ECharts node labels completely at any zoom level
       showLabelsAtZoomLevel: 0,
@@ -347,7 +345,8 @@
             if (!status) {
               const color = getColor(props);
               status =
-                Object.keys(colors).find((k) => colors[k] === color) || "unknown";
+                Object.keys(STATUS_COLORS).find((k) => STATUS_COLORS[k] === color) ||
+                "unknown";
             }
             props.status = status;
             props.category = status;
@@ -370,8 +369,8 @@
         },
         onEachFeature: function (feature, layer) {
           const color = getColor(feature.properties);
-          feature.properties.status = Object.keys(colors).find(
-            (key) => colors[key] === color,
+          feature.properties.status = Object.keys(STATUS_COLORS).find(
+            (key) => STATUS_COLORS[key] === color,
           );
 
           layer.on("mouseover", function () {

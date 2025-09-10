@@ -38,8 +38,6 @@ Floorplan = load_model("geo", "Floorplan")
 
 
 class SeleniumTestMixin(BaseSeleniumTestMixin):
-    # Todo: Added for testing
-    retry_max = 1
 
     @classmethod
     def setUpClass(cls):
@@ -327,7 +325,7 @@ class TestDashboardMap(
         d2 = self._create_device(name="Test-Device2", mac_address="00:00:00:00:00:02")
         d2.monitoring.status = "ok"
         d2.monitoring.save()
-        location = self._create_location(type="indoor", name="Test-Location")
+        location = self._create_location(type="outdoor", name="Test-Location")
         self._create_object_location(
             content_object=d1,
             location=location,
@@ -339,7 +337,7 @@ class TestDashboardMap(
         self.login()
         self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
         self.open_popup("_owGeoMap", location.id)
-        self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail")
+        self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail", timeout=5)
         table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
         self.assertEqual(len(table_entries), 2)
 
@@ -376,7 +374,7 @@ class TestDashboardMap(
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 2)
 
-        with self.subTest("Test removing status filter"):
+        with self.subTest("Test removing filters by clicking close button"):
             status_ok_close_btn.click()
             self.assertFalse(status_ok_close_btn.is_displayed())
             self.wait_for_invisibility(
@@ -395,7 +393,7 @@ class TestDashboardMap(
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 2)
 
-        with self.subTest("Test filtering by input field"):
+        with self.subTest("Test search field"):
             input_field = self.find_element(By.CSS_SELECTOR, "#device-search")
             input_field.send_keys("device1")
             self.wait_for_invisibility(
@@ -425,7 +423,10 @@ class TestDashboardMap(
             sleep(0.5)
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 1)
-            self.assertIn("No devices found", table_entries[0].text)
+            self.assertIn("No devices found!", table_entries[0].text)
+
+        with self.subTest("Verify show floor button is not present"):
+            self.wait_for_invisibility(By.CSS_SELECTOR, ".map-detail .floorplan-btn")
 
     def test_infinite_scroll_on_popup(self):
         location = self._create_location(type="indoor", name="Test-Location")
@@ -442,7 +443,7 @@ class TestDashboardMap(
         self.login()
         self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
         self.open_popup("_owGeoMap", location.id)
-        self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail")
+        self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail", timeout=5)
         table_container = self.find_element(
             By.CSS_SELECTOR, ".map-detail .table-container"
         )
@@ -484,9 +485,12 @@ class TestDashboardMap(
         self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
         self.open_popup("_owGeoMap", location.id)
 
-        with self.subTest("Test floorplan redering"):
+        with self.subTest("Test floorplan rendering"):
             self.wait_for(
-                "element_to_be_clickable", By.CSS_SELECTOR, ".map-detail .floorplan-btn"
+                "element_to_be_clickable",
+                By.CSS_SELECTOR,
+                ".map-detail .floorplan-btn",
+                timeout=5,
             ).click()
             canvases = self.find_elements(
                 By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
@@ -498,7 +502,8 @@ class TestDashboardMap(
                 By.CSS_SELECTOR, "#floorplan-navigation .right-arrow"
             )
             right_arrow.click()
-            floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-heading")
+            sleep(0.3)
+            floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
             self.assertIn("2nd floor", floor_heading.text.lower())
             canvases = self.find_elements(
                 By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
@@ -509,7 +514,8 @@ class TestDashboardMap(
                 By.CSS_SELECTOR, "#floorplan-navigation .left-arrow"
             )
             left_arrow.click()
-            floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-heading")
+            sleep(0.3)
+            floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
             self.assertIn("1st floor", floor_heading.text.lower())
             canvases = self.find_elements(
                 By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
@@ -520,7 +526,7 @@ class TestDashboardMap(
                 By.CSS_SELECTOR, "#floorplan-navigation .floor-btn[data-floor='2']"
             )
             second_floor_btn.click()
-            floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-heading")
+            floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
             self.assertIn("2nd floor", floor_heading.text.lower())
             canvases = self.find_elements(
                 By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
@@ -530,7 +536,9 @@ class TestDashboardMap(
         with self.subTest("Test redirecting to device page from indoor map"):
             self.open_popup("_owIndoorMap", device2.id)
             open_device_btn = self.find_element(
-                By.CSS_SELECTOR, ".open-device-btn-container .open-device-btn"
+                By.CSS_SELECTOR,
+                ".open-device-btn-container .open-device-btn",
+                timeout=5,
             )
             open_device_btn.click()
             try:
@@ -597,7 +605,7 @@ class TestDashboardMap(
             By.CSS_SELECTOR, "#floor-content-1 .leaflet-container", wait_for="presence"
         )
         self.assertNotIn("leaflet-fullscreen-on", container.get_attribute("class"))
-        floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-heading")
+        floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
         self.assertIn("2nd floor", floor_heading.text.lower())
         canvases = self.find_elements(
             By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5

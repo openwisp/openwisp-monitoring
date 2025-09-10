@@ -29,10 +29,3 @@ CACHE_TIMEOUT = get_settings_value(
     24 * 60 * 60,  # 24 hours in seconds
 )
 DEFAULT_CHART_TIME = get_settings_value("DEFAULT_CHART_TIME", "7d")
-HEALTH_STATUS_LABELS = {
-    "ok": "Healthy",
-    "problem": "Issue",
-    "critical": "Critical",
-    "unknown": "Unknown",
-    "deactivated": "Deactivated",
-}
