@@ -1461,16 +1461,81 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
         self.assertEqual(data["features"][0]["properties"]["unknown_count"], 0)
 
     def test_api_location_device_list(self):
-        device_location = self._create_object_location()
-        device_location.device.monitoring.update_status("ok")
-        location = device_location.location
+        org = self._get_org()
+        location = self._create_location(organization=org)
+        device1 = self._create_device(
+            name="test1", mac_address="00:00:00:00:00:01", organization=org
+        )
+        device1.monitoring.update_status("ok")
+        self._create_object_location(
+            content_object=device1, location=location, organization=org
+        )
+        device2 = self._create_device(
+            name="test2", mac_address="00:00:00:00:00:02", organization=org
+        )
+        device2.monitoring.update_status("problem")
+        self._create_object_location(
+            content_object=device2, location=location, organization=org
+        )
         self._login_admin()
         url = reverse("monitoring:api_location_device_list", args=[location.pk])
+        with self.subTest("Test api response data entries"):
+            response = self.client.get(url)
+            data = response.data
+            self.assertEqual(data["count"], 2)
+            self.assertEqual(len(data["results"]), 2)
+            self.assertEqual(data["results"][0]["id"], str(device1.id))
+            self.assertEqual(data["results"][1]["id"], str(device2.id))
+            self.assertIn("monitoring", data["results"][0])
+            self.assertIsInstance(data["results"][0]["monitoring"], dict)
+            self.assertDictEqual(
+                data["results"][0]["monitoring"], {"status": "ok", "status_label": "ok"}
+            )
+            self.assertIn("monitoring", data["results"][1])
+            self.assertIsInstance(data["results"][1]["monitoring"], dict)
+            self.assertDictEqual(
+                data["results"][1]["monitoring"],
+                {"status": "problem", "status_label": "problem"},
+            )
+        with self.subTest("Test filter by name and monitoring status"):
+            response = self.client.get(f"{url}?search=test1")
+            data = response.data
+            self.assertEqual(data["count"], 1)
+            self.assertEqual(len(data["results"]), 1)
+            self.assertEqual(data["results"][0]["id"], str(device1.id))
+            response = self.client.get(f"{url}?status=problem")
+            data = response.data
+            self.assertEqual(data["count"], 1)
+            self.assertEqual(len(data["results"]), 1)
+            self.assertEqual(data["results"][0]["id"], str(device2.id))
+            response = self.client.get(f"{url}?search=test1&status=ok")
+            data = response.data
+            self.assertEqual(data["count"], 1)
+            self.assertEqual(len(data["results"]), 1)
+            self.assertEqual(data["results"][0]["id"], str(device1.id))
+
+    def test_api_indoor_coordinates_list(self):
+        org = self._get_org()
+        location = self._create_location(type="indoor", organization=org)
+        floorplan = self._create_floorplan(floor=1, location=location, organization=org)
+        device = self._create_device(
+            name="device1", mac_address="00:00:00:00:00:01", organization=org
+        )
+        device.monitoring.update_status("ok")
+        self._create_object_location(
+            content_object=device,
+            location=location,
+            floorplan=floorplan,
+            organization=org,
+        )
+        self._login_admin()
+        url = reverse("monitoring:api_indoor_coordinates_list", args=[location.id])
         response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
         data = response.data
-        self.assertEqual(data["count"], 1)
         self.assertEqual(len(data["results"]), 1)
-        self.assertEqual(data["results"][0]["id"], str(device_location.device.id))
+        self.assertEqual(response.data["results"][0]["device_id"], str(device.id))
+        self.assertEqual(response.data["results"][0]["floor"], floorplan.floor)
         self.assertIn("monitoring", data["results"][0])
         self.assertIsInstance(data["results"][0]["monitoring"], dict)
         self.assertDictEqual(
