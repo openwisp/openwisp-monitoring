@@ -28,9 +28,9 @@
   text-transform: uppercase;
 }
 #device-map-container {
-  margin: 50px auto 0px auto;
+  margin: 30px auto 0px auto;
   position: relative;
-  height: 350px;
+  height: 430px;
   width: 90%;
   border: 1px solid rgba(0, 0, 0, 0.3);
 }
@@ -64,7 +64,7 @@
 }
 .leaflet-popup-content {
   display: flex;
-  min-width: fit-content;
+  min-width: 410px;
   margin: 15px 20px !important;
 }
 .leaflet-popup-close-button {
@@ -84,12 +84,12 @@
   box-sizing: border-box;
 }
 .map-detail h2 {
-  margin: 0 0 7px 0;
-  font-size: 16px;
+  margin: 0 0 5px 0;
+  font-size: 15px;
   width: 90%;
 }
 .input-container {
-  margin: 7px 0;
+  margin: 5px 0;
   position: relative;
   width: 100%;
 }
@@ -99,8 +99,8 @@
   top: 46%;
   left: 10px;
   transform: translateY(-54%);
-  width: 20px;
-  height: 20px;
+  width: 15px;
+  height: 15px;
   background-color: #717680;
   mask-image: url("search.svg");
   -webkit-mask-image: url("search.svg");
@@ -108,29 +108,30 @@
 .map-detail input {
   outline: none;
   width: 100%;
-  padding: 6px 14px;
-  padding-left: 38px;
+  padding: 5px 14px;
+  padding-left: 30px;
   box-sizing: border-box;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 12px;
   border: 1px solid #d5d7da;
 }
 .label-container {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  margin: 7px 0;
-  gap: 8px;
+  margin: 5px 0;
+  gap: 6px;
 }
 .status-filter {
   cursor: pointer;
 }
 .health-status {
-  padding: 3px 10px;
+  padding: 3px 7px;
   border-radius: 12px;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: 10px;
   opacity: 0.8;
+  letter-spacing: -0.25px;
 }
 .health-status.active {
   opacity: 1;
@@ -143,21 +144,20 @@
   display: inline-block;
 }
 .table-container {
-  height: 97px;
+  max-height: 181px;
   overflow-y: auto;
-  min-width: 330px;
   box-sizing: border-box;
-  margin: 7px 0;
+  margin: 10px 0;
 }
 .table-container table {
   width: 100%;
 }
 .table-container table thead th {
   font-size: 13px;
-  padding: 7px !important;
+  padding: 8px 10px !important;
 }
 .table-container table tbody td {
-  padding: 7px !important;
+  padding: 10px !important;
   font-size: 13px !important;
 }
 .th-status {
@@ -183,17 +183,18 @@
 }
 .floor-icon {
   display: inline-block;
-  width: 23px;
-  height: 23px;
+  width: 20px;
+  height: 20px;
   background-color: white;
   mask-repeat: no-repeat;
-  margin-right: 16px;
+  margin-right: 10px;
+  mask-size: 90%;
+  mask-position: center;
 }
 .floorplan-btn {
-  padding: 7px 16px;
-  margin-top: 7px;
-  width: fit-content;
-  font-size: 15px;
+  padding: 5px 13px;
+  margin-top: 5px;
+  font-size: 13px;
   border-radius: 8px;
   align-self: center;
   display: flex;

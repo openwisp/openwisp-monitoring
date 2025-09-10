@@ -81,9 +81,10 @@
             </span>`;
         });
         const has_floorplan = data.has_floorplan;
+        const buttonText = gettext("Switch to Indoor View");
         const floorplan_btn = has_floorplan
           ? `<button class="default-btn floorplan-btn">
-          <span class="ow-floor floor-icon"></span>  Switch to Floor Plan
+          <span class="ow-floor floor-icon"></span> ${buttonText}
         </button>`
           : "";
 
@@ -138,7 +139,13 @@
           </div>
         `;
 
-        currentPopup = L.popup().setLatLng(latLng).setContent(popupContent).openOn(map);
+        currentPopup = L.popup({
+          autoPan: true,
+          autoPanPadding: [50, 50], // extra margin around the popup
+        })
+          .setLatLng(latLng)
+          .setContent(popupContent)
+          .openOn(map);
 
         const el = $(currentPopup.getElement());
         function renderRows() {
