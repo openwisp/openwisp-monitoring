@@ -1,25 +1,21 @@
-body.no-scroll {
-  overflow: hidden;
-}
 .menu-backdrop.active {
   display: block;
   background-color: rgba(225, 225, 225, 0.7);
   z-index: 9999;
+  pointer-events: none;
 }
 #floorplan-overlay {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 90vh;
-  background: rgba(225, 225, 225, 0.7);
   z-index: 99998;
   display: flex;
   justify-content: center;
-  pointer-events: auto;
 }
 #floorplan-container {
   position: relative;
-  top: -3%;
+  top: -4%;
   width: 100%;
   height: 85%;
   background: white;
@@ -51,6 +47,7 @@ body.no-scroll {
   font-size: 18px;
   margin-bottom: 10px;
   color: #333;
+  white-space: normal;
 }
 #floorplan-content-root {
   width: 100%;
@@ -178,4 +175,13 @@ body.no-scroll {
 }
 .open-device-btn:hover {
   text-decoration: none;
+}
+@media (max-width: 768px) {
+  .menu-backdrop.active {
+    z-index: 10000;
+  }
+  #floorplan-container {
+    top: -8%;
+    height: 80%;
+  }
 }

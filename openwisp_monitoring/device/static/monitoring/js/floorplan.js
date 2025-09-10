@@ -118,16 +118,12 @@
   }
 
   function updateBackdrop() {
-    $("body").toggleClass("no-scroll");
     $(".menu-backdrop").toggleClass("active");
   }
 
   function addFloorButtons(selectedIndex, navWindowStart) {
     const $navBody = $(".floorplan-navigation-body").empty();
-    const slicedFloors = floors.slice(
-      navWindowStart,
-      navWindowStart + NAV_WINDOW_SIZE,
-    );
+    const slicedFloors = floors.slice(navWindowStart, navWindowStart + NAV_WINDOW_SIZE);
     slicedFloors.forEach((floor, idx) => {
       // The index present in the floors array
       const globalIdx = navWindowStart + idx;
@@ -139,15 +135,10 @@
     });
 
     $(".left-arrow").toggleClass("disabled", selectedIndex === 0);
-    $(".right-arrow").toggleClass(
-      "disabled",
-      selectedIndex === floors.length - 1,
-    );
+    $(".right-arrow").toggleClass("disabled", selectedIndex === floors.length - 1);
 
     $(".floor-btn").removeClass("active selected");
-    $('.floor-btn[data-index="' + selectedIndex + '"]').addClass(
-      "active selected",
-    );
+    $('.floor-btn[data-index="' + selectedIndex + '"]').addClass("active selected");
   }
 
   function addNavigationHandlers(url) {
@@ -168,10 +159,7 @@
       if (selectedIndex < floors.length - 1) {
         selectedIndex++;
         const center = Math.floor(NAV_WINDOW_SIZE / 2);
-        navWindowStart = Math.max(
-          0,
-          Math.min(selectedIndex - center, maxStart),
-        );
+        navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
         addFloorButtons(selectedIndex, navWindowStart);
         currentFloor = floors[selectedIndex];
         await showFloor(url, currentFloor);
@@ -182,10 +170,7 @@
       if (selectedIndex > 0) {
         selectedIndex--;
         const center = Math.floor(NAV_WINDOW_SIZE / 2);
-        navWindowStart = Math.max(
-          0,
-          Math.min(selectedIndex - center, maxStart),
-        );
+        navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
         addFloorButtons(selectedIndex, navWindowStart);
         currentFloor = floors[selectedIndex];
         await showFloor(url, currentFloor);
@@ -208,22 +193,17 @@
     const imageUrl = nodesThisFloor.nodes[0].image;
 
     const root = $("#floorplan-content-root");
+    if (isFullScreen) {
+      document.exitFullscreen();
+    }
     root.children(".floor-content").hide();
     let $floorDiv = $(`#floor-content-${floor}`);
     if (!$floorDiv.length) {
-      $floorDiv = $(
-        `<div id="floor-content-${floor}" class="floor-content"></div>`,
-      );
+      $floorDiv = $(`<div id="floor-content-${floor}" class="floor-content"></div>`);
       root.append($floorDiv);
       renderIndoorMap(nodesThisFloor, imageUrl, $floorDiv[0].id);
     }
     $floorDiv.show();
-    const floorNavigation = $("#floorplan-navigation");
-    if (isFullScreen && maps[floor]) {
-      document.exitFullscreen();
-      floorNavigation.addClass("fullscreen");
-      $(`#floor-content-${floor} .leaflet-container`).append(floorNavigation);
-    }
     maps[currentFloor]?.invalidateSize();
   }
 
@@ -280,6 +260,7 @@
         zoomSnap: 0.5,
         zoomDelta: 0.5,
         zoomAnimation: false,
+        fullscreenControl: true,
         nodeConfig: {
           label: {
             show: true,
@@ -290,39 +271,12 @@
             borderRadius: 8,
           },
         },
+        baseOptions: { media: [{ option: { tooltip: { show: false } } }] },
       },
-      nodeCategories: [
-        {
-          name: "ok",
-          nodeStyle: {
-            color: status_colors["ok"],
-          },
-        },
-        {
-          name: "problem",
-          nodeStyle: {
-            color: status_colors["problem"],
-          },
-        },
-        {
-          name: "critical",
-          nodeStyle: {
-            color: status_colors["critical"],
-          },
-        },
-        {
-          name: "unknown",
-          nodeStyle: {
-            color: status_colors["unknown"],
-          },
-        },
-        {
-          name: "deactivated",
-          nodeStyle: {
-            color: status_colors["deactivated"],
-          },
-        },
-      ],
+      nodeCategories: Object.keys(status_colors).map((status) => ({
+        name: status,
+        nodeStyle: { color: status_colors[status] },
+      })),
       prepareData(data) {
         data.nodes.forEach((node) => {
           node.properties = {
@@ -362,10 +316,7 @@
           // So top-left will have negative y and bottom-right will have positive y
           // Similarly left will have negative x and right will have positive x
           const topLeft = L.point(anchorPoint.x - w / 2, anchorPoint.y - h / 2);
-          const bottomRight = L.point(
-            anchorPoint.x + w / 2,
-            anchorPoint.y + h / 2,
-          );
+          const bottomRight = L.point(anchorPoint.x + w / 2, anchorPoint.y + h / 2);
 
           // Update node coordinates to fit the image overlay
           // We get the node coordinates from the API in the format for L.CRS.Simple

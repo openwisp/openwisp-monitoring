@@ -67,36 +67,26 @@
       dataType: "json",
       url: url,
       xhrFields: { withCredentials: true },
-      success: function (apiData) {
-        let html = "",
-          device;
-        for (let i = 0; i < apiData.results.length; i++) {
-          device = apiData.results[i];
-          html += `
-            <tr>
-                <td class="col-name"><a href="${device.admin_edit_url}">${device.name}</a></td>
-                <td class="col-status">
-                    <span class="health-status health-${device.monitoring.status}">
-                        ${device.monitoring.status_label}
-                    </span>
-                </td>
-            </tr>
-          `;
-        }
-
-        const parts = [];
-        if (apiData.previous) {
-          parts.push(
-            `<a class="prev" href="#prev" data-url="${apiData.previous}">‹ ${gettext("previous")}</a>`,
-          );
-        }
-        if (apiData.next) {
-          parts.push(
-            `<a class="next" href="#next" data-url="${apiData.next}">${gettext("next")} ›</a>`,
-          );
-        }
-        const pagination = parts.length
-          ? `<p class="paginator">${parts.join(" ")}</p>`
+      success: function (data) {
+        let devices = data.results;
+        let nextUrl = data.next;
+        const statusLabelsMap = labels;
+        let statusFilterButtons = "";
+        Object.entries(statusLabelsMap).forEach(([status_key, status_label]) => {
+          const label = gettext(status_label);
+          statusFilterButtons += `<span 
+              class="health-status health-${status_key} status-filter" 
+              data-status="${status_key}"
+            >
+              ${label}
+              <span class="remove-icon">&times</span>
+            </span>`;
+        });
+        const has_floorplan = data.has_floorplan;
+        const floorplan_btn = has_floorplan
+          ? `<button class="default-btn floorplan-btn">
+          <span class="ow-floor floor-icon"></span>  Switch to Floor Plan
+        </button>`
           : "";
 
         const popupTitle = nodeData.label || nodeData?.properties?.name || nodeData.id;
@@ -150,10 +140,7 @@
           </div>
         `;
 
-        currentPopup = L.popup()
-          .setLatLng(latLng)
-          .setContent(popupContent)
-          .openOn(map);
+        currentPopup = L.popup().setLatLng(latLng).setContent(popupContent).openOn(map);
 
         const el = $(currentPopup.getElement());
         function renderRows() {
@@ -195,11 +182,7 @@
           table.hide();
           fetchDevicesTimeout = setTimeout(() => {
             let params = new URLSearchParams();
-            const searchParam = el
-              .find("#device-search")
-              .val()
-              .toLowerCase()
-              .trim();
+            const searchParam = el.find("#device-search").val().toLowerCase().trim();
             const statusParam = el.find("#status-filter").val();
             if (searchParam) {
               params.append("search", searchParam);
@@ -329,7 +312,7 @@
         center: leafletConfig.DEFAULT_CENTER || [55.78, 11.54],
         zoom: leafletConfig.DEFAULT_ZOOM || 1,
         minZoom: leafletConfig.MIN_ZOOM || 1,
-        maxZoom: leafletConfig.MAX_ZOOM || 18,
+        maxZoom: leafletConfig.MAX_ZOOM || 24,
         fullscreenControl: true,
 
         // Force tooltips ON for all viewport widths; override library's
