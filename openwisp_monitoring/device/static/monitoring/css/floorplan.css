@@ -14,6 +14,8 @@
   z-index: 99998;
   display: flex;
   flex-direction: column;
+  min-width: 320px;
+  min-height: 375px;
 }
 #floorplan-container {
   background: white;

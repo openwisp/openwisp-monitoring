@@ -23,7 +23,7 @@ from openwisp_monitoring.monitoring.migrations import create_general_metrics
 from openwisp_utils.admin_theme.dashboard import DASHBOARD_TEMPLATES
 from openwisp_utils.tests import SeleniumTestMixin as BaseSeleniumTestMixin
 
-from .. import settings as app_settings
+from ..device import settings as device_app_settings
 
 Device = load_model("config", "Device")
 DeviceConnection = load_model("connection", "DeviceConnection")
@@ -38,6 +38,7 @@ Floorplan = load_model("geo", "Floorplan")
 
 
 class SeleniumTestMixin(BaseSeleniumTestMixin):
+    browser = "chrome"
 
     @classmethod
     def setUpClass(cls):
@@ -69,11 +70,11 @@ class SeleniumTestMixin(BaseSeleniumTestMixin):
                 "monitoring:api_indoor_coordinates_list", args=["000"]
             ),
             "monitoring_labels": {
-                "ok": app_settings.HEALTH_STATUS_LABELS["ok"],
-                "problem": app_settings.HEALTH_STATUS_LABELS["problem"],
-                "critical": app_settings.HEALTH_STATUS_LABELS["critical"],
-                "unknown": app_settings.HEALTH_STATUS_LABELS["unknown"],
-                "deactivated": app_settings.HEALTH_STATUS_LABELS["deactivated"],
+                "ok": device_app_settings.HEALTH_STATUS_LABELS["ok"],
+                "problem": device_app_settings.HEALTH_STATUS_LABELS["problem"],
+                "critical": device_app_settings.HEALTH_STATUS_LABELS["critical"],
+                "unknown": device_app_settings.HEALTH_STATUS_LABELS["unknown"],
+                "deactivated": device_app_settings.HEALTH_STATUS_LABELS["deactivated"],
             },
         }
         DASHBOARD_TEMPLATES[55][1]["api_url"] = reverse(
