@@ -257,7 +257,7 @@
         });
         $(".floorplan-btn").on("click", function () {
           const floorplanUrl = getIndoorCoordinatesUrl(locationId);
-          window.openFloorPlan(floorplanUrl);
+          window.openFloorPlan(floorplanUrl, locationId);
         });
         loadingOverlay.hide();
       },
@@ -328,6 +328,10 @@
             },
           ],
         },
+      },
+      urlFragments: {
+        show: true,
+        id: "dashboard-geo-map"
       },
       mapTileConfig: tiles,
       nodeCategories: Object.keys(STATUS_COLORS).map((status) => ({
