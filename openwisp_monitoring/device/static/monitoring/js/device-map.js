@@ -331,7 +331,7 @@
       },
       urlFragments: {
         show: true,
-        id: "dashboard-geo-map"
+        id: "dashboard-geo-map",
       },
       mapTileConfig: tiles,
       nodeCategories: Object.keys(STATUS_COLORS).map((status) => ({
