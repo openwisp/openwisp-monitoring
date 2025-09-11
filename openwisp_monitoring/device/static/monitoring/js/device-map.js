@@ -1,6 +1,5 @@
 "use strict";
 
-/*jshint esversion: 8 */
 (function ($) {
   const loadingOverlay = $("#device-map-container .ow-loading-spinner");
   const localStorageKey = "ow-map-shown";
@@ -54,6 +53,7 @@
   let currentPopup = null;
 
   const loadPopUpContent = function (nodeData, netjsongraphInstance, url) {
+    loadingOverlay.show();
     const map = netjsongraphInstance.leaflet;
     const locationId = nodeData?.properties?.id || nodeData.id;
     url = url || getLocationDeviceUrl(locationId);
@@ -88,7 +88,7 @@
         </button>`
           : "";
 
-        const popupTitle = nodeData.label || nodeData?.properties?.name || nodeData.id;
+        const popupTitle = nodeData.label;
 
         // Determine coordinates for the popup. We support:
         // 1. NetJSONGraph objects (nodeData.location)
@@ -106,7 +106,7 @@
         }
 
         if (!latLng || isNaN(latLng[0]) || isNaN(latLng[1])) {
-          console.warn("Could not determine coordinates for popup", nodeData);
+          console.warn(gettext("Could not determine coordinates for popup"), nodeData);
           loadingOverlay.hide();
           return;
         }
@@ -125,13 +125,13 @@
               <table>
                 <thead>
                     <tr>
-                        <th>${gettext("name")}</th>
+                      <th>${gettext("name")}</th>
                         <th class="th-status"><span class ="health-status-heading">${gettext(
                           "status",
                         )}</span></th>
                     </tr>
                 </thead>
-                <tbody></tbody>
+                <tbody>${renderRows()}</tbody>
                 </table>
                 <div class="ow-loading-spinner table-spinner"></div>
             </div>
@@ -141,19 +141,19 @@
 
         currentPopup = L.popup({
           autoPan: true,
-          autoPanPadding: [50, 50], // extra margin around the popup
+          autoPanPadding: [25, 25],
         })
           .setLatLng(latLng)
           .setContent(popupContent)
           .openOn(map);
-
         const el = $(currentPopup.getElement());
         function renderRows() {
+          const popup = $(".map-detail");
           if (devices.length === 0) {
-            el.find("tbody").html(`
+            popup.find("tbody").html(`
               <tr>
                 <td class="no-devices" colspan="2">
-                  ${gettext("No devices found!")}
+                  ${gettext("No devices found")}
                 </td>
               </tr>
             `);
@@ -165,15 +165,16 @@
             <tr>
                 <td class="col-name"><a href="${device.admin_edit_url}">${device.name}</a></td>
                 <td class="col-status">
-                    <span class="health-status health-${device.monitoring.status}">
-                        ${device.monitoring.status_label}
-                    </span>
+                  <span class="health-status health-${device.monitoring.status}">
+                      ${gettext(device.monitoring.status_label)}
+                  </span>
                 </td>
             </tr>
           `,
             )
             .join("");
-          el.find("tbody").html(rows);
+          popup.find("tbody").html(rows);
+          return rows;
         }
         let fetchDevicesTimeout;
         let loading = false;
@@ -221,8 +222,8 @@
                 renderRows(devices);
               },
               error() {
-                console.error("Could not load more devices from", url);
-                alert("Could not load more devices.");
+                console.error(gettext("Could not load more devices from"), url);
+                alert(gettext("Could not load more devices."));
               },
               complete() {
                 loading = false;
@@ -232,7 +233,6 @@
             });
           }, ms);
         }
-        renderRows();
         el.find("#device-search").on("input", function () {
           fetchDevices(url, 300);
         });
@@ -358,6 +358,7 @@
             props.status = status;
             props.category = status;
             el.category = status;
+            el.label = props.name;
             if (!el.properties) el.properties = props;
           });
         }
@@ -408,8 +409,6 @@
       onClickElement: function (type, data) {
         if (type === "node") {
           loadPopUpContent(data, this);
-        } else if (type === "Feature") {
-          console.log("Clicked GeoJSON Feature:", data);
         }
       },
       onReady: function () {
@@ -439,7 +438,7 @@
             ],
           });
         } catch (e) {
-          console.warn("Unable to set initial label visibility", e);
+          console.warn(gettext("Unable to set initial label visibility"), e);
         }
 
         try {
@@ -463,7 +462,7 @@
             });
           }
         } catch (err) {
-          console.error("Unable to fit NetJSON bounds:", err);
+          console.error(gettext("Unable to fit NetJSON bounds:"), err);
         }
 
         // Restrict horizontal panning to three wrapped worlds

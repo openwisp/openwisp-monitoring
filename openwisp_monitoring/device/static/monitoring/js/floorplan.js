@@ -76,7 +76,7 @@
           resolve();
         },
         error: () => {
-          alert("Error loading floorplan coordinates.");
+          alert(gettext("Error loading floorplan coordinates."));
           $(".floorplan-loading-spinner").hide();
           reject();
         },
@@ -228,13 +228,13 @@
         <div class="njg-tooltip-item">
           <span class="njg-tooltip-key">status</span>
           <span class="popup-status health-${node?.monitoring.status} ">
-            ${node?.monitoring.status_label}
+            ${gettext(node?.monitoring.status_label)}
           </span>
         </div>
         <div class="open-device-btn-container">
           <a class="default-btn open-device-btn" href="${node?.admin_edit_url}"">
             <span class="ow-device floor-icon"></span>
-            Open Device
+            ${gettext("Open Device")}
           </a>
         </div>
         </div>

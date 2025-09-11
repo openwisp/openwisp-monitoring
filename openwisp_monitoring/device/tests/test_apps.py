@@ -23,7 +23,6 @@ class TestApps(TestCase):
         self.assertEqual(
             template_config[0].get("css"),
             (
-                "monitoring/css/floorplan.css",
                 "monitoring/css/device-map.css",
                 "leaflet/leaflet.css",
                 "monitoring/css/leaflet.fullscreen.css",
