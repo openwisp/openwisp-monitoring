@@ -14,23 +14,25 @@
   let locationId = null;
 
   const rawUrlFragments = window.location.hash.replace(/^#/, "");
-  const fragments = rawUrlFragments.split(";").filter(f => f.trim() !== "");
+  const fragments = rawUrlFragments.split(";").filter((f) => f.trim() !== "");
 
-  const indoorMapFragment = fragments.find(fragment => {
+  const indoorMapFragment = fragments.find((fragment) => {
     const params = new URLSearchParams(fragment);
     return params.get("id") !== "dashboard-geo-map";
   });
-  if(indoorMapFragment){
+  if (indoorMapFragment) {
     const params = new URLSearchParams(indoorMapFragment);
-    const id = params.get("id")
+    const id = params.get("id");
     const [locationId, floor] = id.split(":");
-    console.log(locationId, floor)
-    const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace("000", locationId);
-    openFloorPlan(`${floorplanUrl}?floor=${floor}`, locationId)
+    const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
+      "000",
+      locationId,
+    );
+    openFloorPlan(`${floorplanUrl}?floor=${floor}`, locationId);
   }
 
   async function openFloorPlan(url, locId) {
-    locationId=locId
+    locationId = locId;
     await fetchData(url);
 
     selectedIndex = floors.indexOf(currentFloor) || 0;
@@ -299,7 +301,7 @@
       },
       urlFragments: {
         show: true,
-        id: `${locationId}:${floor}`
+        id: `${locationId}:${floor}`,
       },
       nodeCategories: Object.keys(status_colors).map((status) => ({
         name: status,
@@ -321,6 +323,7 @@
         return data;
       },
 
+      async onReady() {
       async onReady() {
         const map = this.leaflet;
         maps[currentFloor] = indoorMap;
@@ -348,28 +351,28 @@
         const topLeft = L.point(anchorPoint.x - w / 2, anchorPoint.y - h / 2);
         const bottomRight = L.point(anchorPoint.x + w / 2, anchorPoint.y + h / 2);
 
-          // Update node coordinates to fit the image overlay
-          // We get the node coordinates from the API in the format for L.CRS.Simple
-          // So the coordinates is in for cartesian system with origin at top left corner
-          // Rendering image in the third quadrant with topLeft as (0,0) and bottomRight as (w,-h)
-          // So we convert py to positive and then project the point to get the corresponding topLeft
-          // Then unproject the point to get the corresponding latlng on the map
-          const mapOptions = this.echarts.getOption();
-          // series[0]: nodes config, series[1]: links config and both are always present
-          mapOptions.series[0].data.forEach((data, index) => {
-            const node = data.node;
-            const px = Number(node.coordinates.lng);
-            const py = -Number(node.coordinates.lat);
-            const nodeProjected = L.point(topLeft.x + px, topLeft.y + py);
-            // This requrires an map instance to unproject coordinates so it cann't be done in prepareData
-            const nodeLatLng = map.unproject(nodeProjected, zoom);
-            // Also updating this.data so that after onReady when applyUrlFragmentState is called it whould
-            // have the correct coordinates data points to trigger the popup at right place.
-            this.data.nodes[index].properties.location = nodeLatLng;
-            node.properties.location = nodeLatLng;
-            data.value = [nodeLatLng.lng, nodeLatLng.lat];
-          });
-          this.echarts.setOption(mapOptions);
+        // Update node coordinates to fit the image overlay
+        // We get the node coordinates from the API in the format for L.CRS.Simple
+        // So the coordinates is in for cartesian system with origin at top left corner
+        // Rendering image in the third quadrant with topLeft as (0,0) and bottomRight as (w,-h)
+        // So we convert py to positive and then project the point to get the corresponding topLeft
+        // Then unproject the point to get the corresponding latlng on the map
+        const mapOptions = this.echarts.getOption();
+        // series[0]: nodes config, series[1]: links config and both are always present
+        mapOptions.series[0].data.forEach((data, index) => {
+          const node = data.node;
+          const px = Number(node.coordinates.lng);
+          const py = -Number(node.coordinates.lat);
+          const nodeProjected = L.point(topLeft.x + px, topLeft.y + py);
+          // This requrires an map instance to unproject coordinates so it cann't be done in prepareData
+          const nodeLatLng = map.unproject(nodeProjected, zoom);
+          // Also updating this.data so that after onReady when applyUrlFragmentState is called it whould
+          // have the correct coordinates data points to trigger the popup at right place.
+          this.data.nodes[index].properties.location = nodeLatLng;
+          node.properties.location = nodeLatLng;
+          data.value = [nodeLatLng.lng, nodeLatLng.lat];
+        });
+        this.echarts.setOption(mapOptions);
 
         // Unproject the topLeft and bottomRight points to get northWest and southEast latlngs
         const nw = map.unproject(topLeft, zoom);
