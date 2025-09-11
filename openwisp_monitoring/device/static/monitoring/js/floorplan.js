@@ -218,15 +218,15 @@
     const popupContent = `
       <div class="njg-tooltip-inner">
         <div class="njg-tooltip-item">
-          <span class="njg-tooltip-key">name</span>
+          <span class="njg-tooltip-key">${gettext("name")}</span>
           <span class="njg-tooltip-value">${node?.device_name}</span>
         </div>
         <div class="njg-tooltip-item">
-          <span class="njg-tooltip-key">Mac address</span>
+          <span class="njg-tooltip-key">${gettext("mac address")}</span>
           <span class="njg-tooltip-value">${node?.mac_address}</span>
         </div>
         <div class="njg-tooltip-item">
-          <span class="njg-tooltip-key">status</span>
+          <span class="njg-tooltip-key">${gettext("status")}</span>
           <span class="popup-status health-${node?.monitoring.status} ">
             ${gettext(node?.monitoring.status_label)}
           </span>

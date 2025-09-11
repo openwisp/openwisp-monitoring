@@ -115,7 +115,7 @@
           <div class="map-detail">
             <h2>${popupTitle} (${data.count})</h2>
             <div class="input-container">
-              <input id="device-search" placeholder="Search for devices" />
+              <input id="device-search" placeholder="${gettext("Search for devices")}" />
             </div>
             <div class="label-container">
               ${statusFilterButtons}
@@ -124,16 +124,14 @@
             <div class="table-container">
               <table>
                 <thead>
-                    <tr>
-                      <th>${gettext("name")}</th>
-                        <th class="th-status"><span class ="health-status-heading">${gettext(
-                          "status",
-                        )}</span></th>
-                    </tr>
+                  <tr>
+                    <th>${gettext("name")}</th>
+                    <th class="th-status"><span class ="health-status-heading">${gettext("status")}</span></th>
+                  </tr>
                 </thead>
                 <tbody>${renderRows()}</tbody>
-                </table>
-                <div class="ow-loading-spinner table-spinner"></div>
+              </table>
+              <div class="ow-loading-spinner table-spinner"></div>
             </div>
             ${floorplan_btn}
           </div>
@@ -163,12 +161,12 @@
             .map(
               (device) => `
             <tr>
-                <td class="col-name"><a href="${device.admin_edit_url}">${device.name}</a></td>
-                <td class="col-status">
-                  <span class="health-status health-${device.monitoring.status}">
-                      ${gettext(device.monitoring.status_label)}
-                  </span>
-                </td>
+              <td class="col-name"><a href="${device.admin_edit_url}">${device.name}</a></td>
+              <td class="col-status">
+                <span class="health-status health-${device.monitoring.status}">
+                  ${gettext(device.monitoring.status_label)}
+                </span>
+              </td>
             </tr>
           `,
             )

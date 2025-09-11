@@ -38,7 +38,6 @@ Floorplan = load_model("geo", "Floorplan")
 
 
 class SeleniumTestMixin(BaseSeleniumTestMixin):
-    browser = "chrome"
 
     @classmethod
     def setUpClass(cls):
@@ -424,7 +423,7 @@ class TestDashboardMap(
             sleep(0.5)
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 1)
-            self.assertIn("No devices found!", table_entries[0].text)
+            self.assertIn("No devices found", table_entries[0].text)
 
         with self.subTest("Verify show floor button is not present"):
             self.wait_for_invisibility(By.CSS_SELECTOR, ".map-detail .floorplan-btn")
