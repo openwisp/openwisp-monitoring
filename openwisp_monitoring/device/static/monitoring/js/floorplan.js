@@ -11,8 +11,26 @@
   let selectedIndex = 0;
   let isFullScreen = false;
   let maps = {};
+  let locationId = null;
 
-  async function openFloorPlan(url) {
+  const rawUrlFragments = window.location.hash.replace(/^#/, "");
+  const fragments = rawUrlFragments.split(";").filter(f => f.trim() !== "");
+
+  const indoorMapFragment = fragments.find(fragment => {
+    const params = new URLSearchParams(fragment);
+    return params.get("id") !== "dashboard-geo-map";
+  });
+  if(indoorMapFragment){
+    const params = new URLSearchParams(indoorMapFragment);
+    const id = params.get("id")
+    const [locationId, floor] = id.split(":");
+    console.log(locationId, floor)
+    const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace("000", locationId);
+    openFloorPlan(`${floorplanUrl}?floor=${floor}`, locationId)
+  }
+
+  async function openFloorPlan(url, locId) {
+    locationId=locId
     await fetchData(url);
 
     selectedIndex = floors.indexOf(currentFloor) || 0;
@@ -33,7 +51,7 @@
 
     updateBackdrop();
 
-    $("#device-map-container").append($floorPlanContainer);
+    $("#dashboard-map-overlay").append($floorPlanContainer);
     $("#floorplan-overlay").append($floorNavigation);
 
     closeButtonHandler();
@@ -203,7 +221,7 @@
     if (!$floorDiv.length) {
       $floorDiv = $(`<div id="floor-content-${floor}" class="floor-content"></div>`);
       root.append($floorDiv);
-      renderIndoorMap(nodesThisFloor, imageUrl, $floorDiv[0].id);
+      renderIndoorMap(nodesThisFloor, imageUrl, $floorDiv[0].id, floor);
     }
     $floorDiv.show();
     maps[currentFloor]?.invalidateSize();
@@ -249,7 +267,7 @@
       .openOn(map);
   }
 
-  function renderIndoorMap(allResults, imageUrl, divId) {
+  function renderIndoorMap(allResults, imageUrl, divId, floor) {
     const indoorMap = new NetJSONGraph(allResults, {
       el: `#${divId}`,
       render: "map",
@@ -274,6 +292,10 @@
           },
         },
         baseOptions: { media: [{ option: { tooltip: { show: false } } }] },
+      },
+      urlFragments: {
+        show: true,
+        id: `${locationId}:${floor}`
       },
       nodeCategories: Object.keys(status_colors).map((status) => ({
         name: status,
@@ -328,13 +350,16 @@
           // Then unproject the point to get the corresponding latlng on the map
           const mapOptions = this.echarts.getOption();
           // series[0]: nodes config, series[1]: links config and both are always present
-          mapOptions.series[0].data.forEach((data) => {
+          mapOptions.series[0].data.forEach((data, index) => {
             const node = data.node;
             const px = Number(node.coordinates.lng);
             const py = -Number(node.coordinates.lat);
             const nodeProjected = L.point(topLeft.x + px, topLeft.y + py);
             // This requrires an map instance to unproject coordinates so it cann't be done in prepareData
             const nodeLatLng = map.unproject(nodeProjected, zoom);
+            // Also updating this.data so that after onReady when applyUrlFragmentState is called it whould
+            // have the correct coordinates data points to trigger the popup at right place.
+            this.data.nodes[index].properties.location = nodeLatLng;
             node.properties.location = nodeLatLng;
             data.value = [nodeLatLng.lng, nodeLatLng.lat];
           });
