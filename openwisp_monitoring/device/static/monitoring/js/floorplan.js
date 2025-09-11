@@ -14,23 +14,25 @@
   let locationId = null;
 
   const rawUrlFragments = window.location.hash.replace(/^#/, "");
-  const fragments = rawUrlFragments.split(";").filter(f => f.trim() !== "");
+  const fragments = rawUrlFragments.split(";").filter((f) => f.trim() !== "");
 
-  const indoorMapFragment = fragments.find(fragment => {
+  const indoorMapFragment = fragments.find((fragment) => {
     const params = new URLSearchParams(fragment);
     return params.get("id") !== "dashboard-geo-map";
   });
-  if(indoorMapFragment){
+  if (indoorMapFragment) {
     const params = new URLSearchParams(indoorMapFragment);
-    const id = params.get("id")
+    const id = params.get("id");
     const [locationId, floor] = id.split(":");
-    console.log(locationId, floor)
-    const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace("000", locationId);
-    openFloorPlan(`${floorplanUrl}?floor=${floor}`, locationId)
+    const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
+      "000",
+      locationId,
+    );
+    openFloorPlan(`${floorplanUrl}?floor=${floor}`, locationId);
   }
 
   async function openFloorPlan(url, locId) {
-    locationId=locId
+    locationId = locId;
     await fetchData(url);
 
     selectedIndex = floors.indexOf(currentFloor) || 0;
@@ -295,7 +297,7 @@
       },
       urlFragments: {
         show: true,
-        id: `${locationId}:${floor}`
+        id: `${locationId}:${floor}`,
       },
       nodeCategories: Object.keys(status_colors).map((status) => ({
         name: status,
@@ -316,65 +318,65 @@
         return data;
       },
 
-      onReady() {
+      async onReady() {
         const map = this.leaflet;
         maps[currentFloor] = map;
         // remove default geo map tiles
         map.eachLayer((layer) => layer._url && map.removeLayer(layer));
         const img = new Image();
         img.src = imageUrl;
+        await img.decode();
         let initialZoom;
-        img.onload = () => {
-          const aspectRatio = img.width / img.height;
-          const h = img.height;
-          const w = h * aspectRatio;
-          const zoom = map.getMaxZoom() - 1;
 
-          // To make the image center in the map at (0,0) coordinates
-          const anchorLatLng = L.latLng(0, 0);
-          const anchorPoint = map.project(anchorLatLng, zoom);
+        const aspectRatio = img.width / img.height;
+        const h = img.height;
+        const w = h * aspectRatio;
+        const zoom = map.getMaxZoom() - 1;
 
-          // Calculate the bounds of the image, with respect to the anchor point (0, 0)
-          // Leaflet's pixel coordinates increase to the right and downwards
-          // Unlike cartesian system where y increases upwards
-          // So top-left will have negative y and bottom-right will have positive y
-          // Similarly left will have negative x and right will have positive x
-          const topLeft = L.point(anchorPoint.x - w / 2, anchorPoint.y - h / 2);
-          const bottomRight = L.point(anchorPoint.x + w / 2, anchorPoint.y + h / 2);
+        // To make the image center in the map at (0,0) coordinates
+        const anchorLatLng = L.latLng(0, 0);
+        const anchorPoint = map.project(anchorLatLng, zoom);
 
-          // Update node coordinates to fit the image overlay
-          // We get the node coordinates from the API in the format for L.CRS.Simple
-          // So the coordinates is in for cartesian system with origin at top left corner
-          // Rendering image in the third quadrant with topLeft as (0,0) and bottomRight as (w,-h)
-          // So we convert py to positive and then project the point to get the corresponding topLeft
-          // Then unproject the point to get the corresponding latlng on the map
-          const mapOptions = this.echarts.getOption();
-          // series[0]: nodes config, series[1]: links config and both are always present
-          mapOptions.series[0].data.forEach((data, index) => {
-            const node = data.node;
-            const px = Number(node.coordinates.lng);
-            const py = -Number(node.coordinates.lat);
-            const nodeProjected = L.point(topLeft.x + px, topLeft.y + py);
-            // This requrires an map instance to unproject coordinates so it cann't be done in prepareData
-            const nodeLatLng = map.unproject(nodeProjected, zoom);
-            // Also updating this.data so that after onReady when applyUrlFragmentState is called it whould
-            // have the correct coordinates data points to trigger the popup at right place.
-            this.data.nodes[index].properties.location = nodeLatLng;
-            node.properties.location = nodeLatLng;
-            data.value = [nodeLatLng.lng, nodeLatLng.lat];
-          });
-          this.echarts.setOption(mapOptions);
+        // Calculate the bounds of the image, with respect to the anchor point (0, 0)
+        // Leaflet's pixel coordinates increase to the right and downwards
+        // Unlike cartesian system where y increases upwards
+        // So top-left will have negative y and bottom-right will have positive y
+        // Similarly left will have negative x and right will have positive x
+        const topLeft = L.point(anchorPoint.x - w / 2, anchorPoint.y - h / 2);
+        const bottomRight = L.point(anchorPoint.x + w / 2, anchorPoint.y + h / 2);
 
-          // Unproject the topLeft and bottomRight points to get northWest and southEast latlngs
-          const nw = map.unproject(topLeft, zoom);
-          const se = map.unproject(bottomRight, zoom);
-          const bnds = L.latLngBounds(nw, se);
-          L.imageOverlay(imageUrl, bnds).addTo(map);
-          map.fitBounds(bnds);
-          map.setMaxBounds(bnds.pad(1));
-          initialZoom = map.getZoom();
-          map.invalidateSize();
-        };
+        // Update node coordinates to fit the image overlay
+        // We get the node coordinates from the API in the format for L.CRS.Simple
+        // So the coordinates is in for cartesian system with origin at top left corner
+        // Rendering image in the third quadrant with topLeft as (0,0) and bottomRight as (w,-h)
+        // So we convert py to positive and then project the point to get the corresponding topLeft
+        // Then unproject the point to get the corresponding latlng on the map
+        const mapOptions = this.echarts.getOption();
+        // series[0]: nodes config, series[1]: links config and both are always present
+        mapOptions.series[0].data.forEach((data, index) => {
+          const node = data.node;
+          const px = Number(node.coordinates.lng);
+          const py = -Number(node.coordinates.lat);
+          const nodeProjected = L.point(topLeft.x + px, topLeft.y + py);
+          // This requrires an map instance to unproject coordinates so it cann't be done in prepareData
+          const nodeLatLng = map.unproject(nodeProjected, zoom);
+          // Also updating this.data so that after onReady when applyUrlFragmentState is called it whould
+          // have the correct coordinates data points to trigger the popup at right place.
+          this.data.nodes[index].properties.location = nodeLatLng;
+          node.properties.location = nodeLatLng;
+          data.value = [nodeLatLng.lng, nodeLatLng.lat];
+        });
+        this.echarts.setOption(mapOptions);
+
+        // Unproject the topLeft and bottomRight points to get northWest and southEast latlngs
+        const nw = map.unproject(topLeft, zoom);
+        const se = map.unproject(bottomRight, zoom);
+        const bnds = L.latLngBounds(nw, se);
+        L.imageOverlay(imageUrl, bnds).addTo(map);
+        map.fitBounds(bnds);
+        map.setMaxBounds(bnds.pad(1));
+        initialZoom = map.getZoom();
+        map.invalidateSize();
 
         map.on("fullscreenchange", () => {
           const floorNavigation = $("#floorplan-navigation");
