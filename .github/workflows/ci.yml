@@ -89,6 +89,8 @@ jobs:
           pip install -r requirements-test.txt
           pip install -U -I -e .
           pip uninstall -y Django
+          # TODO: Remove before merging - install branch build of openwisp-utils for CI testing
+          pip install -U -I "openwisp-utils @ https://github.com/openwisp/openwisp-utils/tarball/gsoc25-map-adjustments"
           pip install -U ${{ matrix.django-version }}
           sudo npm install -g prettier
 
