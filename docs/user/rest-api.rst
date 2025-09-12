@@ -226,44 +226,43 @@ Here's a few examples:
     GET /api/v1/monitoring/device/{pk}/nearby-devices/?model={model1,model2}
     GET /api/v1/monitoring/device/{pk}/nearby-devices/?distance__lte={distance}
 
-List Devices for a Location
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+List Devices in a Location
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: text
 
     GET /api/v1/monitoring/location/{pk}/device/
 
-Returns list of devices present for a perticualar location
+Returns a list of network devices deployed in the specified location.
 
 **Available filters**
 
-The list of devices for a location provides the following filters:
-
-- ``search`` (Search by device name)
-- ``status`` (Monitoring status of the device; multiple statuses can be
-  provided and are treated as OR filters)
+- ``search`` (search by device name)
+- ``status`` (monitoring status of the device; multiple statuses can be
+  provided and will be treated as OR filters)
 
 Here's a few examples:
 
 .. code-block:: text
 
-    GET /api/v1/monitoring/location/5/device/?search=hall-router
-    GET /api/v1/monitoring/location/5/device/?status=ok
-    GET /api/v1/monitoring/location/{pk}/device/?search=router&status=ok&status=problem
+    # search by device name
+    GET /api/v1/monitoring/location/{pk}/device/?search=hall
+    # status
+    GET /api/v1/monitoring/location/{pk}/device/?status=ok
+    # multiple statuses
+    GET /api/v1/monitoring/location/{pk}/device/?status=ok&status=problem
 
-List Indoor Coordinates of Devices
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+List Device Indoor Coordinates in a Location
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Returns a list of indoor coordinates of network devices deployed in the
+specified location, along with device details and available floors.
 
 .. code-block:: text
 
     GET /api/v1/monitoring/location/{pk}/indoor-coordinates/
 
-Returns list of devices present a perticualar location which has floorplan
-along with details of device and all floors available in that location.
-
 **Available filters**
-
-The list indoor coordinates of devices provides the following filters:
 
 - ``floor`` (floor number of the floorplan)
 
