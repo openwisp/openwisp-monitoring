@@ -35,5 +35,6 @@ class TestApps(TestCase):
                 "monitoring/js/lib/netjsongraph.min.js",
                 "monitoring/js/lib/leaflet.fullscreen.min.js",
                 "monitoring/js/device-map.js",
+                "monitoring/js/floorplan.js",
             ),
         )
