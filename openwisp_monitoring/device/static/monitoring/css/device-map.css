@@ -28,10 +28,10 @@
   text-transform: uppercase;
 }
 #device-map-container {
-  margin: 30px auto 0px auto;
-  position: relative;
   height: 430px;
   width: 90%;
+  margin: 30px auto 0px auto;
+  position: relative;
   border: 1px solid rgba(0, 0, 0, 0.3);
 }
 #device-map-container .ow-loading-spinner {
@@ -396,5 +396,8 @@
   #floorplan-container {
     top: -8%;
     height: 80%;
+  }
+  .map-detail {
+    min-width: auto;
   }
 }
