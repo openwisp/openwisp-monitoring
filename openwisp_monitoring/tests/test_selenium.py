@@ -1,6 +1,7 @@
 from time import sleep
 from unittest.mock import patch
 
+from django.contrib.auth.models import Permission
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.test import tag
 from django.urls.base import reverse
@@ -12,6 +13,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from swapper import load_model
 
 from openwisp_controller.connection.tests.utils import CreateConnectionsMixin
+from openwisp_controller.geo.tests.utils import TestGeoMixin
 from openwisp_monitoring.device.tests import (
     TestDeviceMonitoringMixin,
     TestWifiClientSessionMixin,
@@ -21,6 +23,8 @@ from openwisp_monitoring.monitoring.migrations import create_general_metrics
 from openwisp_utils.admin_theme.dashboard import DASHBOARD_TEMPLATES
 from openwisp_utils.tests import SeleniumTestMixin as BaseSeleniumTestMixin
 
+from ..device import settings as device_app_settings
+
 Device = load_model("config", "Device")
 DeviceConnection = load_model("connection", "DeviceConnection")
 DeviceData = load_model("device_monitoring", "DeviceData")
@@ -28,9 +32,13 @@ AlertSettings = load_model("monitoring", "AlertSettings")
 Metric = load_model("monitoring", "Metric")
 Chart = load_model("monitoring", "Chart")
 Check = load_model("check", "Check")
+Location = load_model("geo", "Location")
+DeviceLocation = load_model("geo", "DeviceLocation")
+Floorplan = load_model("geo", "Floorplan")
 
 
 class SeleniumTestMixin(BaseSeleniumTestMixin):
+
     @classmethod
     def setUpClass(cls):
         """
@@ -57,6 +65,16 @@ class SeleniumTestMixin(BaseSeleniumTestMixin):
             "monitoring_location_geojson_url": reverse(
                 "monitoring:api_location_geojson"
             ),
+            "monitoring_indoor_coordinates_list": reverse(
+                "monitoring:api_indoor_coordinates_list", args=["000"]
+            ),
+            "monitoring_labels": {
+                "ok": device_app_settings.HEALTH_STATUS_LABELS["ok"],
+                "problem": device_app_settings.HEALTH_STATUS_LABELS["problem"],
+                "critical": device_app_settings.HEALTH_STATUS_LABELS["critical"],
+                "unknown": device_app_settings.HEALTH_STATUS_LABELS["unknown"],
+                "deactivated": device_app_settings.HEALTH_STATUS_LABELS["deactivated"],
+            },
         }
         DASHBOARD_TEMPLATES[55][1]["api_url"] = reverse(
             "monitoring_general:api_dashboard_timeseries"
@@ -284,3 +302,323 @@ class TestWifiSessionInlineAdmin(
                 "innerHTML"
             ),
         )
+
+
+@tag("selenium_tests")
+class TestDashboardMap(
+    SeleniumTestMixin, TestDeviceMonitoringMixin, TestGeoMixin, StaticLiveServerTestCase
+):
+    object_model = Device
+    location_model = Location
+    floorplan_model = Floorplan
+    object_location_model = DeviceLocation
+
+    def open_popup(self, mapType, id):
+        self.web_driver.execute_script(
+            "return window[arguments[0]].utils.openPopup(arguments[1]);",
+            mapType,
+            str(id),
+        )
+
+    def test_features_on_device_popup(self):
+        d1 = self._create_device(name="Test-Device1", mac_address="00:00:00:00:00:01")
+        d2 = self._create_device(name="Test-Device2", mac_address="00:00:00:00:00:02")
+        d2.monitoring.status = "ok"
+        d2.monitoring.save()
+        location = self._create_location(type="outdoor", name="Test-Location")
+        self._create_object_location(
+            content_object=d1,
+            location=location,
+        )
+        self._create_object_location(
+            content_object=d2,
+            location=location,
+        )
+        self.login()
+        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+        self.open_popup("_owGeoMap", location.id)
+        self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail", timeout=5)
+        table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+        self.assertEqual(len(table_entries), 2)
+
+        with self.subTest("Test filtering by status for status ok"):
+            status_ok = self.find_element(By.CSS_SELECTOR, ".map-detail .health-ok")
+            status_ok_close_btn = self.find_element(
+                By.CSS_SELECTOR, ".health-ok .remove-icon", wait_for="presence"
+            )
+            self.assertFalse(status_ok_close_btn.is_displayed())
+            status_ok.click()
+            self.assertTrue(status_ok_close_btn.is_displayed())
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
+            )
+            sleep(0.5)
+            table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+            self.assertEqual(len(table_entries), 1)
+            self.assertIn(d2.name, table_entries[0].text)
+
+        with self.subTest("Test filtering by status for status ok and unknown"):
+            status_unknown = self.find_element(
+                By.CSS_SELECTOR, ".map-detail .health-unknown"
+            )
+            status_unknown_close_btn = self.find_element(
+                By.CSS_SELECTOR, ".health-unknown .remove-icon", wait_for="presence"
+            )
+            self.assertFalse(status_unknown_close_btn.is_displayed())
+            status_unknown.click()
+            self.assertTrue(status_unknown_close_btn.is_displayed())
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
+            )
+            sleep(0.5)
+            table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+            self.assertEqual(len(table_entries), 2)
+
+        with self.subTest("Test removing filters by clicking close button"):
+            status_ok_close_btn.click()
+            self.assertFalse(status_ok_close_btn.is_displayed())
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
+            )
+            sleep(0.5)
+            table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+            self.assertEqual(len(table_entries), 1)
+            self.assertIn(d1.name, table_entries[0].text)
+            status_unknown.click()
+            self.assertFalse(status_unknown_close_btn.is_displayed())
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
+            )
+            sleep(0.5)
+            table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+            self.assertEqual(len(table_entries), 2)
+
+        with self.subTest("Test search field"):
+            input_field = self.find_element(By.CSS_SELECTOR, "#device-search")
+            input_field.send_keys("device1")
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
+            )
+            sleep(0.5)
+            table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+            self.assertEqual(len(table_entries), 1)
+            self.assertIn(d1.name, table_entries[0].text)
+
+        with self.subTest("Test clearing input field"):
+            input_field.clear()
+            # Just clearing the input field does not trigger the event listeners
+            input_field.send_keys(" ")
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
+            )
+            sleep(0.5)
+            table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+            self.assertEqual(len(table_entries), 2)
+
+        with self.subTest("Test filtering to get no results"):
+            input_field.send_keys("Non-Existent-Device")
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
+            )
+            sleep(0.5)
+            table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+            self.assertEqual(len(table_entries), 1)
+            self.assertIn("No devices found", table_entries[0].text)
+
+        with self.subTest("Verify show floor button is not present"):
+            self.wait_for_invisibility(By.CSS_SELECTOR, ".map-detail .floorplan-btn")
+
+    def test_infinite_scroll_on_popup(self):
+        location = self._create_location(type="indoor", name="Test-Location")
+        for i in range(20):
+            device = self._create_device(
+                name=f"Test-Device-{i + 1}",
+                mac_address=f"00:00:00:00:00:{i + 1:02d}",
+                organization=location.organization,
+            )
+            self._create_object_location(
+                content_object=device,
+                location=location,
+            )
+        self.login()
+        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+        self.open_popup("_owGeoMap", location.id)
+        self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail", timeout=5)
+        table_container = self.find_element(
+            By.CSS_SELECTOR, ".map-detail .table-container"
+        )
+        table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+        self.assertEqual(len(table_entries), 10)
+        self.web_driver.execute_script(
+            "arguments[0].scrollTop = arguments[0].scrollHeight", table_container
+        )
+        self.wait_for_invisibility(By.CSS_SELECTOR, ".map-detail .ow-loading-spinner")
+        sleep(0.5)
+        table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+        self.assertEqual(len(table_entries), 20)
+
+    def test_floorplan_overlay(self):
+        org = self._get_org()
+        location = self._create_location(type="indoor", organization=org)
+        floor1 = self._create_floorplan(floor=1, location=location)
+        floor2 = self._create_floorplan(floor=2, location=location)
+        device1 = self._create_device(
+            name="Test-Device1", mac_address="00:00:00:00:00:01", organization=org
+        )
+        device2 = self._create_device(
+            name="Test-Device2", mac_address="00:00:00:00:00:02", organization=org
+        )
+        self._create_object_location(
+            content_object=device1,
+            location=location,
+            floorplan=floor1,
+            organization=org,
+        )
+        self._create_object_location(
+            content_object=device2,
+            location=location,
+            floorplan=floor2,
+            organization=org,
+        )
+        self.login()
+        self.wait_for_visibility(By.CSS_SELECTOR, "#device-map-container")
+        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+        self.open_popup("_owGeoMap", location.id)
+
+        with self.subTest("Test floorplan rendering"):
+            self.wait_for(
+                "element_to_be_clickable",
+                By.CSS_SELECTOR,
+                ".map-detail .floorplan-btn",
+                timeout=5,
+            ).click()
+            canvases = self.find_elements(
+                By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
+            )
+            self.assertIsNotNone(canvases)
+
+        with self.subTest("Test floorplan navigation"):
+            right_arrow = self.find_element(
+                By.CSS_SELECTOR, "#floorplan-navigation .right-arrow"
+            )
+            right_arrow.click()
+            sleep(0.3)
+            floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
+            self.assertIn("2nd floor", floor_heading.text.lower())
+            canvases = self.find_elements(
+                By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
+            )
+            self.assertIsNotNone(canvases)
+
+            left_arrow = self.find_element(
+                By.CSS_SELECTOR, "#floorplan-navigation .left-arrow"
+            )
+            left_arrow.click()
+            sleep(0.3)
+            floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
+            self.assertIn("1st floor", floor_heading.text.lower())
+            canvases = self.find_elements(
+                By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
+            )
+            self.assertIsNotNone(canvases)
+
+            second_floor_btn = self.find_element(
+                By.CSS_SELECTOR, "#floorplan-navigation .floor-btn[data-floor='2']"
+            )
+            second_floor_btn.click()
+            floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
+            self.assertIn("2nd floor", floor_heading.text.lower())
+            canvases = self.find_elements(
+                By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
+            )
+            self.assertIsNotNone(canvases)
+
+        with self.subTest("Test redirecting to device page from indoor map"):
+            self.open_popup("_owIndoorMap", device2.id)
+            open_device_btn = self.find_element(
+                By.CSS_SELECTOR,
+                ".open-device-btn-container .open-device-btn",
+                timeout=5,
+            )
+            open_device_btn.click()
+            try:
+                WebDriverWait(self.web_driver, 5).until(
+                    EC.url_to_be(
+                        f"{self.live_server_url}/admin/config/device/{device2.id}/change/"
+                    )
+                )
+            except TimeoutException:
+                self.fail("Failed to redirect to device change page")
+            self.assertIn(
+                f"/config/device/{device2.id}/change/", self.web_driver.current_url
+            )
+
+    def test_switching_floorplan_in_fullscreen_mode(self):
+        org = self._get_org()
+        location = self._create_location(type="indoor", organization=org)
+        floor1 = self._create_floorplan(floor=1, location=location)
+        floor2 = self._create_floorplan(floor=2, location=location)
+        device1 = self._create_device(
+            name="Test-Device1", mac_address="00:00:00:00:00:01", organization=org
+        )
+        device2 = self._create_device(
+            name="Test-Device2", mac_address="00:00:00:00:00:02", organization=org
+        )
+        self._create_object_location(
+            content_object=device1,
+            location=location,
+            floorplan=floor1,
+            organization=org,
+        )
+        self._create_object_location(
+            content_object=device2,
+            location=location,
+            floorplan=floor2,
+            organization=org,
+        )
+        self.login()
+        self.wait_for_visibility(By.CSS_SELECTOR, "#device-map-container")
+        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+        self.open_popup("_owGeoMap", location.id)
+        self.wait_for(
+            "element_to_be_clickable", By.CSS_SELECTOR, ".map-detail .floorplan-btn"
+        ).click()
+        canvases = self.find_elements(
+            By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
+        )
+        self.assertIsNotNone(canvases)
+        fullscreen_btn = self.find_element(
+            By.CSS_SELECTOR, "#floor-content-1 .leaflet-control-fullscreen-button"
+        )
+        fullscreen_btn.click()
+        sleep(0.5)
+        container = self.find_element(
+            By.CSS_SELECTOR, "#floor-content-1 .leaflet-container"
+        )
+        self.assertIn("leaflet-fullscreen-on", container.get_attribute("class"))
+        right_arrow = self.find_element(
+            By.CSS_SELECTOR, "#floorplan-navigation .right-arrow"
+        )
+        right_arrow.click()
+        sleep(0.5)
+        container = self.find_element(
+            By.CSS_SELECTOR, "#floor-content-1 .leaflet-container", wait_for="presence"
+        )
+        self.assertNotIn("leaflet-fullscreen-on", container.get_attribute("class"))
+        floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
+        self.assertIn("2nd floor", floor_heading.text.lower())
+        canvases = self.find_elements(
+            By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
+        )
+        self.assertIsNotNone(canvases)
+
+    def test_dashboard_map_without_permissions(self):
+        user = self._create_user(
+            username="testuser", password="password", is_staff=True, is_superuser=True
+        )
+        permissions = Permission.objects.filter(codename__endswith="devicelocation")
+        user.user_permissions.remove(*permissions)
+        self.login(username="testuser", password="password")
+        no_data_div = self.find_element(By.CSS_SELECTOR, ".no-data")
+        self.assertTrue(no_data_div.is_displayed())
+        self.assertIn("No map data to show.", no_data_div.text)
