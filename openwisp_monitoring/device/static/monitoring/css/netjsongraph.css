@@ -12,8 +12,10 @@
   border: 1px solid #ccc;
   color: #6d6357;
   line-height: 20px;
-  max-width: 100%;
   min-width: 200px;
+  padding: 10px 15px;
+  width: 100%;
+  padding: 0;
 }
 .njg-container #graphChartContainer {
   width: 100%;

@@ -28,6 +28,7 @@ from openwisp_controller.config.api.views import DeviceListCreateView
 from openwisp_controller.geo.api.views import (
     DevicePermission,
     GeoJsonLocationList,
+    IndoorCoordinatesList,
     LocationDeviceList,
     ProtectedAPIMixin,
 )
@@ -40,6 +41,7 @@ from ..signals import device_metrics_received
 from ..tasks import write_device_metrics
 from .filters import (
     MonitoringDeviceFilter,
+    MonitoringLocationDeviceFilter,
     MonitoringNearbyDeviceFilter,
     WifiSessionFilter,
 )
@@ -47,6 +49,7 @@ from .serializers import (
     MonitoringDeviceDetailSerializer,
     MonitoringDeviceListSerializer,
     MonitoringGeoJsonLocationSerializer,
+    MonitoringIndoorCoordinatesSerializer,
     MonitoringLocationDeviceSerializer,
     MonitoringNearbyDeviceSerializer,
     WifiSessionSerializer,
@@ -59,6 +62,7 @@ AlertSettings = load_model("monitoring", "AlertSettings")
 Device = load_model("config", "Device")
 DeviceMonitoring = load_model("device_monitoring", "DeviceMonitoring")
 DeviceData = load_model("device_monitoring", "DeviceData")
+DeviceLocation = load_model("geo", "DeviceLocation")
 Location = load_model("geo", "Location")
 WifiSession = load_model("device_monitoring", "WifiSession")
 
@@ -246,12 +250,35 @@ monitoring_geojson_location_list = MonitoringGeoJsonLocationList.as_view()
 
 class MonitoringLocationDeviceList(LocationDeviceList):
     serializer_class = MonitoringLocationDeviceSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = MonitoringLocationDeviceFilter
 
     def get_queryset(self):
         return super().get_queryset().select_related("monitoring").order_by("name")
 
 
 monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
+
+
+class MonitoringIndoorCoordinatesList(IndoorCoordinatesList):
+    queryset = (
+        DeviceLocation.objects.filter(
+            location__type="indoor",
+            floorplan__isnull=False,
+        )
+        .select_related(
+            "content_object",
+            "content_object__monitoring",
+            "content_object__organization",
+            "location",
+            "floorplan",
+        )
+        .order_by("floorplan__floor")
+    )
+    serializer_class = MonitoringIndoorCoordinatesSerializer
+
+
+monitoring_indoor_coordinates_list = MonitoringIndoorCoordinatesList.as_view()
 
 
 class MonitoringNearbyDeviceList(

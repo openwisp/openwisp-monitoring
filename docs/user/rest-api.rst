@@ -226,6 +226,52 @@ Here's a few examples:
     GET /api/v1/monitoring/device/{pk}/nearby-devices/?model={model1,model2}
     GET /api/v1/monitoring/device/{pk}/nearby-devices/?distance__lte={distance}
 
+List Devices in a Location
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: text
+
+    GET /api/v1/monitoring/location/{pk}/device/
+
+Returns a list of network devices deployed in the specified location.
+
+**Available filters**
+
+- ``search`` (search by device name)
+- ``status`` (monitoring status of the device; multiple statuses can be
+  provided and will be treated as OR filters)
+
+Here's a few examples:
+
+.. code-block:: text
+
+    # search by device name
+    GET /api/v1/monitoring/location/{pk}/device/?search=hall
+    # status
+    GET /api/v1/monitoring/location/{pk}/device/?status=ok
+    # multiple statuses
+    GET /api/v1/monitoring/location/{pk}/device/?status=ok&status=problem
+
+List Device Indoor Coordinates in a Location
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Returns a list of indoor coordinates of network devices deployed in the
+specified location, along with device details and available floors.
+
+.. code-block:: text
+
+    GET /api/v1/monitoring/location/{pk}/indoor-coordinates/
+
+**Available filters**
+
+- ``floor`` (floor number of the floorplan)
+
+Here's a few examples:
+
+.. code-block:: text
+
+    GET /api/v1/monitoring/location/5/indoor-coordinates/?floor=2
+
 List WiFi Session
 ~~~~~~~~~~~~~~~~~
 
