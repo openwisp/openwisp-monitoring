@@ -259,6 +259,10 @@
           const floorplanUrl = getIndoorCoordinatesUrl(locationId);
           window.openFloorPlan(floorplanUrl, locationId);
         });
+        el.find(".leaflet-popup-close-button").on("click", function () {
+          const id = netjsongraphInstance.config.bookmarkableActions.id;
+          netjsongraphInstance.utils.removeUrlFragment(id);
+        });
         loadingOverlay.hide();
       },
       error: function () {
@@ -329,8 +333,8 @@
           ],
         },
       },
-      urlFragments: {
-        show: true,
+      bookmarkableActions: {
+        enabled: true,
         id: "dashboard-geo-map",
       },
       mapTileConfig: tiles,

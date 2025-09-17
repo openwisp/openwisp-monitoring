@@ -28,12 +28,12 @@
       "000",
       locationId,
     );
-    openFloorPlan(`${floorplanUrl}?floor=${floor}`, locationId);
+    openFloorPlan(`${floorplanUrl}`, locationId, floor);
   }
 
-  async function openFloorPlan(url, locId) {
+  async function openFloorPlan(url, locId = null, floor = currentFloor) {
     locationId = locId;
-    await fetchData(url);
+    await fetchData(url, floor);
 
     selectedIndex = floors.indexOf(currentFloor) || 0;
     // Calculate the starting index of the navigation window so the selected floor is positioned
@@ -56,7 +56,7 @@
     $("#dashboard-map-overlay").append($floorPlanContainer);
     $("#floorplan-overlay").append($floorNavigation);
 
-    closeButtonHandler();
+    $("#floorplan-close-btn").on("click", closeButtonHandler);
     addFloorButtons(selectedIndex, navWindowStart);
     addNavigationHandlers(url);
     await showFloor(url, currentFloor);
@@ -78,15 +78,12 @@
         dataType: "json",
         xhrFields: { withCredentials: true },
         success: async (data) => {
-          // To make this run only one time as only in the first call floor will not be provided
-          if (!floor) {
-            floors = data.floors;
-            floor = data.results[0].floor;
-          }
           if (!allResults[floor]) {
             allResults[floor] = [];
           }
           allResults[floor] = [...allResults[floor], ...data.results];
+          floors = data.floors;
+          floor = data.results[0].floor;
           if (!currentFloor && data.results.length) {
             currentFloor = data.results[0].floor;
           }
@@ -130,17 +127,25 @@
   }
 
   function closeButtonHandler() {
-    $("#floorplan-close-btn").on("click", () => {
-      $("#floorplan-container, #floorplan-navigation").remove();
-      $("#floorplan-overlay").remove();
-      updateBackdrop();
-      allResults = {};
-      currentFloor = null;
-    });
+    $("#floorplan-container, #floorplan-navigation").remove();
+    $("#floorplan-overlay").remove();
+    updateBackdrop();
+    removeUrlFragment();
+    allResults = {};
+    currentFloor = null;
+    maps = {};
+    locationId = null;
   }
 
   function updateBackdrop() {
     $(".menu-backdrop").toggleClass("active");
+  }
+
+  function removeUrlFragment() {
+    if (locationId != null) {
+      const id = maps[currentFloor].config.bookmarkableActions.id;
+      maps[currentFloor].utils.removeUrlFragment(id);
+    }
   }
 
   function addFloorButtons(selectedIndex, navWindowStart) {
@@ -172,6 +177,7 @@
       selectedIndex = +e.currentTarget.dataset.index;
       const center = Math.floor(NAV_WINDOW_SIZE / 2);
       navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
+      removeUrlFragment();
       addFloorButtons(selectedIndex, navWindowStart);
       currentFloor = floors[selectedIndex];
       await showFloor(url, currentFloor);
@@ -182,6 +188,7 @@
         selectedIndex++;
         const center = Math.floor(NAV_WINDOW_SIZE / 2);
         navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
+        removeUrlFragment();
         addFloorButtons(selectedIndex, navWindowStart);
         currentFloor = floors[selectedIndex];
         await showFloor(url, currentFloor);
@@ -193,6 +200,7 @@
         selectedIndex--;
         const center = Math.floor(NAV_WINDOW_SIZE / 2);
         navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
+        removeUrlFragment();
         addFloorButtons(selectedIndex, navWindowStart);
         currentFloor = floors[selectedIndex];
         await showFloor(url, currentFloor);
@@ -226,7 +234,7 @@
       renderIndoorMap(nodesThisFloor, imageUrl, $floorDiv[0].id, floor);
     }
     $floorDiv.show();
-    maps[currentFloor]?.invalidateSize();
+    maps[currentFloor]?.leaflet.invalidateSize();
   }
 
   let currentPopup = null;
@@ -295,8 +303,8 @@
         },
         baseOptions: { media: [{ option: { tooltip: { show: false } } }] },
       },
-      urlFragments: {
-        show: true,
+      bookmarkableActions: {
+        enabled: true,
         id: `${locationId}:${floor}`,
       },
       nodeCategories: Object.keys(status_colors).map((status) => ({
@@ -305,6 +313,7 @@
       })),
       prepareData(data) {
         data.nodes.forEach((node) => {
+          node.location = node.coordinates;
           node.properties = {
             ...node.properties,
             name: node.device_name,
@@ -320,7 +329,7 @@
 
       async onReady() {
         const map = this.leaflet;
-        maps[currentFloor] = map;
+        maps[currentFloor] = indoorMap;
         // remove default geo map tiles
         map.eachLayer((layer) => layer._url && map.removeLayer(layer));
         const img = new Image();
@@ -362,6 +371,7 @@
           const nodeLatLng = map.unproject(nodeProjected, zoom);
           // Also updating this.data so that after onReady when applyUrlFragmentState is called it whould
           // have the correct coordinates data points to trigger the popup at right place.
+          this.data.nodes[index].location = nodeLatLng;
           this.data.nodes[index].properties.location = nodeLatLng;
           node.properties.location = nodeLatLng;
           data.value = [nodeLatLng.lng, nodeLatLng.lat];
@@ -414,6 +424,12 @@
     indoorMap.render();
     $(".ow-loading-spinner").hide();
     window._owIndoorMap = indoorMap;
+    window.addEventListener("popstate", () => {
+      const fragments = indoorMap.utils.parseUrlFragments();
+      if (!fragments[`${locationId}:${floor}`]) {
+        closeButtonHandler();
+      }
+    });
   }
 
   window.openFloorPlan = openFloorPlan;
