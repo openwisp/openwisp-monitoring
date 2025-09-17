@@ -28,12 +28,12 @@
       "000",
       locationId,
     );
-    openFloorPlan(`${floorplanUrl}?floor=${floor}`, locationId);
+    openFloorPlan(`${floorplanUrl}`, locationId, floor);
   }
 
-  async function openFloorPlan(url, locId) {
+  async function openFloorPlan(url, locId = null, floor = currentFloor) {
     locationId = locId;
-    await fetchData(url);
+    await fetchData(url, floor);
 
     selectedIndex = floors.indexOf(currentFloor) || 0;
     // Calculate the starting index of the navigation window so the selected floor is positioned
@@ -129,8 +129,8 @@
   function closeButtonHandler() {
     $("#floorplan-container, #floorplan-navigation").remove();
     $("#floorplan-overlay").remove();
-    $(".menu-backdrop").removeClass("active");
-    removeUrlFragment(locationId);
+    updateBackdrop();
+    removeUrlFragment();
     allResults = {};
     currentFloor = null;
     maps = {};
@@ -138,6 +138,20 @@
   }
 
   function removeUrlFragment(locationId) {
+    if (locationId != null) {
+      const id = maps[currentFloor].config.bookmarkableActions.id;
+      maps[currentFloor].utils.removeUrlFragment(id);
+    }
+  }
+
+  function removeUrlFragment() {
+    if (locationId != null) {
+      const id = maps[currentFloor].config.bookmarkableActions.id;
+      maps[currentFloor].utils.removeUrlFragment(id);
+    }
+  }
+
+  function removeUrlFragment() {
     if (locationId != null) {
       const id = maps[currentFloor].config.bookmarkableActions.id;
       maps[currentFloor].utils.removeUrlFragment(id);
@@ -173,7 +187,7 @@
       selectedIndex = +e.currentTarget.dataset.index;
       const center = Math.floor(NAV_WINDOW_SIZE / 2);
       navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
-      removeUrlFragment(locationId);
+      removeUrlFragment();
       addFloorButtons(selectedIndex, navWindowStart);
       currentFloor = floors[selectedIndex];
       await showFloor(url, currentFloor);
@@ -184,7 +198,7 @@
         selectedIndex++;
         const center = Math.floor(NAV_WINDOW_SIZE / 2);
         navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
-        removeUrlFragment(locationId);
+        removeUrlFragment();
         addFloorButtons(selectedIndex, navWindowStart);
         currentFloor = floors[selectedIndex];
         await showFloor(url, currentFloor);
@@ -196,7 +210,7 @@
         selectedIndex--;
         const center = Math.floor(NAV_WINDOW_SIZE / 2);
         navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
-        removeUrlFragment(locationId);
+        removeUrlFragment();
         addFloorButtons(selectedIndex, navWindowStart);
         currentFloor = floors[selectedIndex];
         await showFloor(url, currentFloor);
@@ -299,8 +313,8 @@
         },
         baseOptions: { media: [{ option: { tooltip: { show: false } } }] },
       },
-      urlFragments: {
-        show: true,
+      bookmarkableActions: {
+        enabled: true,
         id: `${locationId}:${floor}`,
       },
       nodeCategories: Object.keys(status_colors).map((status) => ({
@@ -368,6 +382,7 @@
           const nodeLatLng = map.unproject(nodeProjected, zoom);
           // Also updating this.data so that after onReady when applyUrlFragmentState is called it whould
           // have the correct coordinates data points to trigger the popup at right place.
+          this.data.nodes[index].location = nodeLatLng;
           this.data.nodes[index].properties.location = nodeLatLng;
           node.properties.location = nodeLatLng;
           data.value = [nodeLatLng.lng, nodeLatLng.lat];
