@@ -1,5 +1,6 @@
 from time import sleep
 from unittest.mock import patch
+from urllib.parse import quote_plus
 
 from django.contrib.auth.models import Permission
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
@@ -457,6 +458,50 @@ class TestDashboardMap(
         table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
         self.assertEqual(len(table_entries), 20)
 
+    def test_url_fragment_actions_on_geo_map(self):
+        device_location = self._create_object_location()
+        device = device_location.device
+        location = device_location.location
+        self.login()
+        mapId = "dashboard-geo-map"
+
+        with self.subTest("Test setting url fragments on click event of node"):
+            self.open_popup("_owGeoMap", location.id)
+            current_hash = self.web_driver.execute_script(
+                "return window.location.hash;"
+            )
+            expected_hash = f"id={mapId}&nodeId={location.id}"
+            self.assertIn(expected_hash, current_hash)
+
+        with self.subTest("Test applying url fragment state on map"):
+            current_url = self.web_driver.current_url
+            self.web_driver.switch_to.new_window("tab")
+            tabs = self.web_driver.window_handles
+            self.web_driver.switch_to.window(tabs[1])
+            self.web_driver.get(current_url)
+            sleep(0.5)
+            popup = self.find_element(By.CSS_SELECTOR, ".map-detail")
+            device_link = self.find_element(
+                By.XPATH, f".//td[@class='col-name']/a[text()='{device.name}']"
+            )
+            self.assertTrue(popup.is_displayed())
+            self.assertTrue(device_link.is_displayed())
+            self.web_driver.close()
+            self.web_driver.switch_to.window(tabs[0])
+
+        with self.subTest("Test with incorrect node Id"):
+            incorrect_url = (
+                f"{self.live_server_url}/admin/#id={mapId}&nodeId=incorrectId"
+            )
+            self.web_driver.switch_to.new_window("tab")
+            tabs = self.web_driver.window_handles
+            self.web_driver.switch_to.window(tabs[1])
+            self.web_driver.get(incorrect_url)
+            sleep(0.5)
+            self.wait_for_invisibility(By.CSS_SELECTOR, ".map-detail")
+            self.web_driver.close()
+            self.web_driver.switch_to.window(tabs[0])
+
     def test_floorplan_overlay(self):
         org = self._get_org()
         location = self._create_location(type="indoor", organization=org)
@@ -611,6 +656,67 @@ class TestDashboardMap(
             By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
         )
         self.assertIsNotNone(canvases)
+
+    def test_url_fragment_actions_on_indoor_map(self):
+        org = self._get_org()
+        device = self._create_device(organization=org)
+        location = self._create_location(type="indoor", organization=org)
+        floorplan = self._create_floorplan(floor=1, location=location)
+        device_location = self._create_object_location(
+            content_object=device,
+            location=location,
+            floorplan=floorplan,
+            organization=org,
+        )
+        self.login()
+        self.open_popup("_owGeoMap", location.id)
+        self.wait_for(
+            "element_to_be_clickable",
+            By.CSS_SELECTOR,
+            ".map-detail .floorplan-btn",
+            timeout=5,
+        ).click()
+        sleep(0.5)
+        mapId = "dashboard-geo-map"
+        indoorMapId = f"{location.id}:{floorplan.floor}"
+
+        with self.subTest("Test setting url fragments on click event of node"):
+            self.open_popup("_owIndoorMap", device.id)
+            # import ipdb; ipdb.set_trace()
+            current_hash = self.web_driver.execute_script(
+                "return window.location.hash;"
+            )
+            expected_hash = (
+                f"#id={mapId}&nodeId={location.id};"
+                f"id={quote_plus(indoorMapId)}&nodeId={device_location.id}"
+            )
+            self.assertIn(expected_hash, current_hash)
+
+        with self.subTest("Test applying url fragment state on indoor map"):
+            current_url = self.web_driver.current_url
+            self.web_driver.switch_to.new_window("tab")
+            tabs = self.web_driver.window_handles
+            self.web_driver.switch_to.window(tabs[1])
+            self.web_driver.get(current_url)
+            sleep(0.5)
+            popup = self.find_element(By.CSS_SELECTOR, ".njg-tooltip-inner")
+            self.assertTrue(popup.is_displayed())
+            self.assertIn(device.name, popup.get_attribute("innerHTML"))
+            self.web_driver.close()
+            self.web_driver.switch_to.window(tabs[0])
+
+        with self.subTest("Test with incorrect node Id"):
+            incorrect_url = (
+                f"{self.live_server_url}/admin/#id={indoorMapId}&nodeId=incorrectId"
+            )
+            self.web_driver.switch_to.new_window("tab")
+            tabs = self.web_driver.window_handles
+            self.web_driver.switch_to.window(tabs[1])
+            self.web_driver.get(incorrect_url)
+            sleep(0.5)
+            self.wait_for_invisibility(By.CSS_SELECTOR, ".njg-tooltip-inner")
+            self.web_driver.close()
+            self.web_driver.switch_to.window(tabs[0])
 
     def test_dashboard_map_without_permissions(self):
         user = self._create_user(

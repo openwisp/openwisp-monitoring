@@ -543,8 +543,29 @@
       },
       // Added to open popup for a specific location Id in selenium tests
       openPopup: function (locationId) {
-        const nodeData = map?.data?.nodes?.find((n) => n.id === locationId);
-        loadPopUpContent(nodeData, map);
+        const index = map?.data?.nodes?.findIndex((n) => n.id === locationId);
+        const nodeData = map?.data?.nodes?.[index];
+        if (index === -1 || !nodeData) {
+          console.error(`Node with ID "${locationId}" not found.`);
+          return;
+        }
+        const option = map.echarts.getOption();
+        const series = option.series.find(
+          (s) => s.type === "scatter" || "effectScatter",
+        );
+        const seriesIndex = option.series.indexOf(series);
+
+        const params = {
+          componentType: "series",
+          componentSubType: series.type,
+          seriesIndex: seriesIndex,
+          dataIndex: index,
+          data: {
+            ...series.data[index],
+            node: nodeData,
+          },
+        };
+        map.echarts.trigger("click", params);
       },
     });
     map.render();

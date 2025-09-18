@@ -20,15 +20,16 @@
     const params = new URLSearchParams(fragment);
     return params.get("id") !== "dashboard-geo-map";
   });
-  if (indoorMapFragment) {
-    const params = new URLSearchParams(indoorMapFragment);
-    const id = params.get("id");
-    const [locationId, floor] = id.split(":");
+
+  const params = new URLSearchParams(indoorMapFragment);
+  const fragmentId = params.get("id");
+  const [fragmentLocationId, fragmentFloor] = fragmentId?.split(":") || [];
+  if (fragmentLocationId && fragmentFloor != null) {
     const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
       "000",
-      locationId,
+      fragmentLocationId,
     );
-    openFloorPlan(`${floorplanUrl}`, locationId, floor);
+    openFloorPlan(`${floorplanUrl}`, fragmentLocationId, fragmentFloor);
   }
 
   async function openFloorPlan(url, locId = null, floor = currentFloor) {
@@ -361,8 +362,8 @@
         // So we convert py to positive and then project the point to get the corresponding topLeft
         // Then unproject the point to get the corresponding latlng on the map
         const mapOptions = this.echarts.getOption();
-        // series[0]: nodes config, series[1]: links config and both are always present
-        mapOptions.series[0].data.forEach((data, index) => {
+        const series = mapOptions.series.find((s) => s.type === "scatter");
+        series.data.forEach((data, index) => {
           const node = data.node;
           const px = Number(node.coordinates.lng);
           const py = -Number(node.coordinates.lat);
@@ -414,11 +415,29 @@
     indoorMap.setUtils({
       // Added to open popup for a specific location Id in selenium tests
       openPopup: function (deviceId) {
-        const mapOptions = indoorMap.echarts.getOption();
-        const data = mapOptions.series[0].data.find(
-          (data) => data.node.device_id === deviceId,
+        const index = indoorMap?.data?.nodes?.findIndex(
+          (n) => n.device_id === deviceId,
         );
-        loadPopUpContent(data?.node, indoorMap);
+        const nodeData = indoorMap?.data?.nodes?.[index];
+        if (index === -1 || !nodeData) {
+          console.error(`Node with ID "${deviceId}" not found.`);
+          return;
+        }
+        const option = indoorMap.echarts.getOption();
+        const series = option.series.find((s) => s.type === "scatter");
+        const seriesIndex = option.series.indexOf(series);
+
+        const params = {
+          componentType: "series",
+          componentSubType: series.type,
+          seriesIndex: seriesIndex,
+          dataIndex: index,
+          data: {
+            ...series.data[index],
+            node: nodeData,
+          },
+        };
+        indoorMap.echarts.trigger("click", params);
       },
     });
     indoorMap.render();
