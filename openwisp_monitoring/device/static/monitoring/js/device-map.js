@@ -300,7 +300,7 @@
     if (Array.isArray(data.features)) {
       data.features.forEach((f) => {
         if (f?.id && f.properties && !f.properties.id) {
-          f.properties.id = f.id;
+          f.properties.id = f.id
         }
       });
     }
@@ -321,7 +321,6 @@
         minZoom: leafletConfig.MIN_ZOOM || 1,
         maxZoom: leafletConfig.MAX_ZOOM || 18,
         fullscreenControl: true,
-
         // Force tooltips ON for all viewport widths; override library's
         // responsive media rules that hide tooltips under 851px.
         baseOptions: {
@@ -569,6 +568,12 @@
       },
     });
     map.render();
+
+    data.features.forEach((f) => {
+      const id = f.id
+      listenForLocationUpdates(map, id)
+    });
+
     window._owGeoMap = map;
   }
 
@@ -584,4 +589,17 @@
     success: onAjaxSuccess,
     context: window,
   });
+  function listenForLocationUpdates(map, id) {
+    var host = window.location.host,
+      protocol = window.location.protocol === "http:" ? "ws" : "wss",
+      ws = new ReconnectingWebSocket(
+        protocol + "://" + host + "/ws/loci/location/" + id + "/",
+      );
+    ws.onmessage = function (e) {
+      const data = JSON.parse(e.data);
+      const [lng, lat] = data.coordinates
+      map.utils.moveNodeInRealTime(map, id, {lng, lat})
+    };
+  }
+
 })(django.jQuery);
