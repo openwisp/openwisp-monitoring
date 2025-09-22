@@ -632,19 +632,21 @@ class TestDashboardMap(
             By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
         )
         self.assertIsNotNone(canvases)
-        fullscreen_btn = self.find_element(
-            By.CSS_SELECTOR, "#floor-content-1 .leaflet-control-fullscreen-button"
-        )
-        fullscreen_btn.click()
+        self.wait_for(
+            "element_to_be_clickable",
+            By.CSS_SELECTOR,
+            "#floor-content-1 .leaflet-control-fullscreen-button",
+        ).click()
         sleep(0.5)
         container = self.find_element(
             By.CSS_SELECTOR, "#floor-content-1 .leaflet-container"
         )
         self.assertIn("leaflet-fullscreen-on", container.get_attribute("class"))
-        right_arrow = self.find_element(
-            By.CSS_SELECTOR, "#floorplan-navigation .right-arrow"
-        )
-        right_arrow.click()
+        self.wait_for(
+            "element_to_be_clickable",
+            By.CSS_SELECTOR,
+            "#floorplan-navigation .right-arrow",
+        ).click()
         sleep(0.5)
         container = self.find_element(
             By.CSS_SELECTOR, "#floor-content-1 .leaflet-container", wait_for="presence"
@@ -682,13 +684,13 @@ class TestDashboardMap(
 
         with self.subTest("Test setting url fragments on click event of node"):
             self.open_popup("_owIndoorMap", device.id)
-            # import ipdb; ipdb.set_trace()
             current_hash = self.web_driver.execute_script(
                 "return window.location.hash;"
             )
+            indoorMapId_encoded = quote_plus(indoorMapId)
             expected_hash = (
                 f"#id={mapId}&nodeId={location.id};"
-                f"id={quote_plus(indoorMapId)}&nodeId={device_location.id}"
+                f"id={indoorMapId_encoded}&nodeId={device_location.id}"
             )
             self.assertIn(expected_hash, current_hash)
 
@@ -700,6 +702,8 @@ class TestDashboardMap(
             self.web_driver.get(current_url)
             sleep(0.5)
             popup = self.find_element(By.CSS_SELECTOR, ".njg-tooltip-inner")
+            logs = self.get_browser_logs()
+            self.assertEqual(len(logs), 0)
             self.assertTrue(popup.is_displayed())
             self.assertIn(device.name, popup.get_attribute("innerHTML"))
             self.web_driver.close()
@@ -715,8 +719,18 @@ class TestDashboardMap(
             self.web_driver.get(incorrect_url)
             sleep(0.5)
             self.wait_for_invisibility(By.CSS_SELECTOR, ".njg-tooltip-inner")
+            logs = self.get_browser_logs()
+            self.assertEqual(len(logs), 0)
             self.web_driver.close()
             self.web_driver.switch_to.window(tabs[0])
+
+        # Cleanup in case anything fails and don't end up with multiple tabs
+        tabs = self.web_driver.window_handles
+        while len(tabs) > 1:
+            self.web_driver.switch_to.window(tabs[-1])
+            self.web_driver.close()
+            tabs = self.web_driver.window_handles
+        self.web_driver.switch_to.window(tabs[0])
 
     def test_dashboard_map_without_permissions(self):
         user = self._create_user(

@@ -546,6 +546,8 @@
         const index = map?.data?.nodes?.findIndex((n) => n.id === locationId);
         const nodeData = map?.data?.nodes?.[index];
         if (index === -1 || !nodeData) {
+          const id = map.config.bookmarkableActions.id;
+          map.utils.removeUrlFragment(id);
           console.error(`Node with ID "${locationId}" not found.`);
           return;
         }
