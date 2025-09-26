@@ -514,6 +514,10 @@
             netjsonGraph.eastWorldFeaturesAppended = true;
           }
         });
+
+        map.data.nodes.forEach(node => {
+            listenForLocationUpdates(map, node.id);
+        });
       },
     });
 
@@ -569,11 +573,6 @@
     });
     map.render();
 
-    data.features.forEach((f) => {
-      const id = f.id
-      listenForLocationUpdates(map, id)
-    });
-
     window._owGeoMap = map;
   }
 
@@ -597,6 +596,7 @@
       );
     ws.onmessage = function (e) {
       const data = JSON.parse(e.data);
+      console.log(data)
       const [lng, lat] = data.coordinates
       map.utils.moveNodeInRealTime(map, id, {lng, lat})
     };
