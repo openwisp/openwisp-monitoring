@@ -313,6 +313,7 @@ class TestDashboardMap(
     location_model = Location
     floorplan_model = Floorplan
     object_location_model = DeviceLocation
+    config_app_label = "config"
 
     def open_popup(self, mapType, id):
         self.web_driver.execute_script(
@@ -731,6 +732,83 @@ class TestDashboardMap(
             self.web_driver.close()
             tabs = self.web_driver.window_handles
         self.web_driver.switch_to.window(tabs[0])
+
+    def test_redirect_to_map_view_from_device_location_inline(self):
+        org = self._get_org()
+        device = self._create_device(organization=org)
+        location = self._create_location(type="indoor", organization=org)
+        floorplan = self._create_floorplan(floor=1, location=location)
+        device_location = self._create_object_location(
+            content_object=device,
+            location=location,
+            floorplan=floorplan,
+            organization=org,
+        )
+        self.login()
+
+        with self.subTest("Test redirecting to geo map with visible popup"):
+            self.open(
+                reverse(
+                    f"admin:{self.config_app_label}_device_change", args=[device.id]
+                )
+            )
+            sleep(0.5)
+            self.wait_for(
+                "element_to_be_clickable",
+                By.CSS_SELECTOR,
+                'li.map a[href="#devicelocation-group"]',
+                timeout=5,
+            ).click()
+            sleep(0.5)
+            mapId = "dashboard-geo-map"
+            self.wait_for(
+                "element_to_be_clickable",
+                By.CSS_SELECTOR,
+                "#open-location-btn",
+                timeout=5,
+            ).click()
+            current_hash = self.web_driver.execute_script(
+                "return window.location.hash;"
+            )
+            expected_hash = f"#id={mapId}&nodeId={location.id}"
+            self.assertEqual(expected_hash, current_hash)
+            popup = self.find_element(By.CSS_SELECTOR, ".map-detail", timeout=5)
+            logs = self.get_browser_logs()
+            self.assertEqual(len(logs), 0)
+            self.assertTrue(popup.is_displayed())
+            self.assertIn(device.name, popup.get_attribute("innerHTML"))
+
+        with self.subTest("Test redirecting to indoor map with visible popup"):
+            self.open(
+                reverse(
+                    f"admin:{self.config_app_label}_device_change", args=[device.id]
+                )
+            )
+            sleep(0.5)
+            self.wait_for(
+                "element_to_be_clickable",
+                By.CSS_SELECTOR,
+                'li.map a[href="#devicelocation-group"]',
+                timeout=5,
+            ).click()
+            sleep(0.5)
+            indoorMapId = f"{location.id}:{floorplan.floor}"
+            self.wait_for(
+                "element_to_be_clickable",
+                By.CSS_SELECTOR,
+                "#open-indoor-device-btn",
+                timeout=5,
+            ).click()
+            current_hash = self.web_driver.execute_script(
+                "return window.location.hash;"
+            )
+            expected_hash = f"#id={indoorMapId}&nodeId={device_location.id}"
+            self.assertEqual(expected_hash, current_hash)
+            popup = self.find_element(By.CSS_SELECTOR, ".njg-tooltip-inner", timeout=5)
+            logs = self.get_browser_logs()
+            self.assertEqual(len(logs), 0)
+            self.assertTrue(popup.is_displayed())
+            self.assertIn(device.name, popup.get_attribute("innerHTML"))
 
     def test_dashboard_map_without_permissions(self):
         user = self._create_user(

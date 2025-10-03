@@ -1,6 +1,7 @@
 import uuid
 from urllib.parse import urljoin
 
+from django import forms
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline
 from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
@@ -24,6 +25,7 @@ from swapper import load_model
 
 from openwisp_controller.config.admin import DeactivatedDeviceReadOnlyMixin
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
+from openwisp_controller.geo.admin import DeviceLocationInline
 from openwisp_users.multitenancy import MultitenantAdminMixin
 from openwisp_utils.admin import ReadOnlyAdmin
 
@@ -574,6 +576,19 @@ class WifiSessionAdmin(
     def has_delete_permission(self, request, obj=None):
         return super(admin.ModelAdmin, self).has_delete_permission(request, obj)
 
+
+def patch_device_location_inline(self):
+    base = super(DeviceLocationInline, self).media
+    extra = forms.Media(
+        js=(
+            "admin/js/jquery.init.js",
+            "monitoring/js/location-inline.js",
+        )
+    )
+    return base + extra
+
+
+DeviceLocationInline.media = property(patch_device_location_inline)
 
 admin.site.unregister(Device)
 admin.site.register(Device, DeviceAdminExportable)
