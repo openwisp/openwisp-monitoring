@@ -16,13 +16,12 @@ OpenWISP provides the following monitoring capabilities:
   like uptime, RAM status, CPU load averages, Interface properties and
   addresses, WiFi interface status and associated clients, Neighbors
   information, DHCP Leases, Disk/Flash status
-- Monitoring charts for :ref:`ping success rate <ping_check>`,
-  :ref:`packet loss <ping_check>`, :ref:`round trip time (latency)
-  <ping_check>`, :ref:`associated wifi clients <wifi_clients>`,
-  :ref:`interface traffic <traffic>`, :ref:`RAM usage <memory_usage>`,
-  :ref:`CPU load <cpu_load_averages>`, :ref:`flash/disk usage
-  <disk_usage>`, mobile signal (LTE/UMTS/GSM :ref:`signal strength
-  <mobile_signal_strength>`, :ref:`signal quality
+- Monitoring charts for :ref:`ping success rate <ping>`, :ref:`packet loss
+  <ping>`, :ref:`round trip time (latency) <ping>`, :ref:`associated wifi
+  clients <wifi_clients>`, :ref:`interface traffic <traffic>`, :ref:`RAM
+  usage <memory_usage>`, :ref:`CPU load <cpu_load_averages>`,
+  :ref:`flash/disk usage <disk_usage>`, mobile signal (LTE/UMTS/GSM
+  :ref:`signal strength <mobile_signal_strength>`, :ref:`signal quality
   <mobile_signal_quality>`, :ref:`access technology in use
   <mobile_access_technology_in_use>`), :ref:`bandwidth <iperf3>`,
   :ref:`transferred data <iperf3>`, :ref:`restransmits <iperf3>`,
@@ -38,9 +37,8 @@ OpenWISP provides the following monitoring capabilities:
 - Possibility to configure additional :ref:`Metrics
   <openwisp_monitoring_metrics>` and :ref:`Charts
   <openwisp_monitoring_charts>`
-- :doc:`Extensible active check system
-  <device-checks-and-alert-settings>`: it's possible to write additional
-  checks that are run periodically using python classes
+- :doc:`Extensible active check system <checks>`: it's possible to write
+  additional checks that are run periodically using python classes
 - Extensible :ref:`metrics <openwisp_monitoring_metrics>` and :ref:`charts
   <openwisp_monitoring_charts>`: it's possible to define new metrics and
   new charts
