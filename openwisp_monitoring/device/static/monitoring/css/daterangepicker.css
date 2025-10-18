@@ -397,16 +397,6 @@
 .daterangepicker .drp-calendar {
   max-width: 370px;
 }
-#daterangepicker-widget span {
-  color: white;
-  background-color: #333;
-  padding: 5px 10px;
-  border-radius: 3px;
-  cursor: pointer;
-}
-#daterangepicker-widget span:hover {
-  background-color: #777;
-}
 
 /* DATERANGEPICKERS STYLING FOR NARROW SCREENS */
 @media screen and (max-width: 975px) {
