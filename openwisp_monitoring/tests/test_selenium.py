@@ -767,15 +767,25 @@ class TestDashboardMap(
                 "#open-location-btn",
                 timeout=5,
             ).click()
-            current_hash = self.web_driver.execute_script(
-                "return window.location.hash;"
-            )
             expected_hash = f"#id={mapId}&nodeId={location.id}"
-            self.assertEqual(expected_hash, current_hash)
+            map_admin_path = "admin/device_monitoring/map"
+            expected_full_url = (
+                f"{self.live_server_url}/{map_admin_path}/{expected_hash}"
+            )
+            try:
+                WebDriverWait(self.web_driver, 5).until(EC.url_to_be(expected_full_url))
+            except TimeoutException:
+                self.fail(
+                    f"Failed redirecting to map page.\n"
+                    f"Expected URL: {self.live_server_url}{expected_hash}\n"
+                    f"Current URL: {self.web_driver.current_url}"
+                )
             popup = self.find_element(By.CSS_SELECTOR, ".map-detail", timeout=5)
+            locaton_title = self.find_element(By.CSS_SELECTOR, ".map-detail h2")
             logs = self.get_browser_logs()
             self.assertEqual(len(logs), 0)
             self.assertTrue(popup.is_displayed())
+            self.assertIn(location.name.strip(), locaton_title.text.strip())
             self.assertIn(device.name, popup.get_attribute("innerHTML"))
 
         with self.subTest("Test redirecting to indoor map with visible popup"):
@@ -799,15 +809,27 @@ class TestDashboardMap(
                 "#open-indoor-device-btn",
                 timeout=5,
             ).click()
-            current_hash = self.web_driver.execute_script(
-                "return window.location.hash;"
-            )
             expected_hash = f"#id={indoorMapId}&nodeId={device_location.id}"
-            self.assertEqual(expected_hash, current_hash)
+            map_admin_path = "admin/device_monitoring/map"
+            expected_full_url = (
+                f"{self.live_server_url}/{map_admin_path}/{expected_hash}"
+            )
+            try:
+                WebDriverWait(self.web_driver, 5).until(EC.url_to_be(expected_full_url))
+            except TimeoutException:
+                self.fail(
+                    f"Failed redirecting to map page.\n"
+                    f"Expected URL: {self.live_server_url}{expected_hash}\n"
+                    f"Current URL: {self.web_driver.current_url}"
+                )
             popup = self.find_element(By.CSS_SELECTOR, ".njg-tooltip-inner", timeout=5)
+            floorplan_title = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
             logs = self.get_browser_logs()
             self.assertEqual(len(logs), 0)
             self.assertTrue(popup.is_displayed())
+            self.assertIn(
+                str(device_location.floorplan).strip(), floorplan_title.text.strip()
+            )
             self.assertIn(device.name, popup.get_attribute("innerHTML"))
 
     def test_dashboard_map_without_permissions(self):
