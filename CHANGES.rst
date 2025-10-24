@@ -1,10 +1,57 @@
 Changelog
 =========
 
-Version 1.2.0 [Unreleased]
+Version 1.2.0 [2025-10-24]
 --------------------------
 
-Work in progress.
+Features
+~~~~~~~~
+
+- Added logging for execution time of monitoring checks `#658
+  <https://github.com/openwisp/openwisp-monitoring/issues/658>`_.
+- Added `WiFi Clients check
+  <https://openwisp.io/docs/dev/monitoring/user/checks.html#wifi-clients>`_
+  to monitor AP load and inactivity.
+
+Changes
+~~~~~~~
+
+Other changes
++++++++++++++
+
+- Updated ``netjsongraph.js`` to fix overlapping map clusters on the geo
+  view.
+- Optimized logic for detecting when thresholds are crossed `#667
+  <https://github.com/openwisp/openwisp-monitoring/issues/667>`_.
+- Adjusted `default alert tolerances
+  <https://openwisp.io/docs/dev/monitoring/user/alerts.html>`_ to reduce
+  unnecessary alert noise.
+- Added metric names to signal chart labels `#311
+  <https://github.com/openwisp/openwisp-monitoring/issues/311>`_.
+- Improved critical state evaluation `#566
+  <https://github.com/openwisp/openwisp-monitoring/issues/566>`_. Devices
+  are now marked as critical only when all metrics defined in
+  `OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS
+  <https://openwisp.io/docs/dev/monitoring/user/settings.html#openwisp-monitoring-critical-device-metrics>`_
+  are unhealthy.
+- Recovery detection now triggers only for critical checks `#642
+  <https://github.com/opnwisp/openwisp-monitoring/issues/642>`_.
+
+Dependencies
+++++++++++++
+
+- Bumped ``openwisp-controller~=1.2.0``.
+- Bumped ``django-nested-admin~=4.1.4``.
+- Added support for Django ``5.x``.
+- Added support for Python ``3.11``, ``3.12``, and ``3.13``.
+- Dropped support for Django ``3.2`` and ``4.1``.
+- Dropped support for Python ``3.8``.
+
+Bugfixes
+~~~~~~~~
+
+- Fixed issue where alerts were not sent for passive metrics `#670
+  <https://github.com/openwisp/openwisp-monitoring/issues/670>`_.
 
 Version 1.1.3 [2025-08-01]
 --------------------------
