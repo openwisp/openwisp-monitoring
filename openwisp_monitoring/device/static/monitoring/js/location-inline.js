@@ -10,6 +10,10 @@
     const geoMapId = "dashboard-geo-map";
     const indoorMapId = `${locationId}:${floor}`;
 
+    if (!locationId) {
+      return;
+    }
+
     const openLocationBtn = `
         <div class="form-row field-location-view-button" style="display: block;">
           <div>
@@ -24,6 +28,11 @@
           </div>    
         </div>
     `;
+    locationParent.append(openLocationBtn);
+
+    if (!floor) {
+      return;
+    }
 
     const openIndoorDeviceBtn = `
         <div class="form-row field-indoor-view-button" style="display: block;">
@@ -39,13 +48,6 @@
           </div>    
         </div>
     `;
-
-    if (locationId) {
-      locationParent.append(openLocationBtn);
-    }
-
-    if (floor && locationId) {
-      floorplanParent.append(openIndoorDeviceBtn);
-    }
+    floorplanParent.append(openIndoorDeviceBtn);
   });
 })(django.jQuery);

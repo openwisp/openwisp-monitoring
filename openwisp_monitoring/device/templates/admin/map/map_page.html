@@ -12,14 +12,6 @@
 {% block extrahead %}
   {{ block.super }}
   {{ media }}
-  <script>
-    window._owGeoMapConfig = {
-      geoJsonUrl: '{{ monitoring_location_geojson_url }}',
-      locationDeviceUrl: '{{ monitoring_device_list_url }}',
-      indoorCoordinatesUrl: '{{ monitoring_indoor_coordinates_list }}',
-      labels: {{ monitoring_labels | safe }}
-    }
-  </script>
   <style>
     #device-map-container {
       width: 100%;
@@ -30,7 +22,7 @@
 {% endblock %}
 
 {% block content %} 
-  <div id='leaflet-config'>
+  <div id="leaflet-config">
     {% autoescape on %}{% leaflet_json_config %}{% endautoescape %}
   </div>
 <div id="dashboard-map-overlay">
@@ -42,6 +34,17 @@
     <div class="ow-loading-spinner"></div>
   </div>
 </div>
+{% endblock %}
+{% block footer %}
+  {{ block.super }}
+<script>
+    window._owGeoMapConfig = {
+      geoJsonUrl: '{{ monitoring_location_geojson_url }}',
+      locationDeviceUrl: '{{ monitoring_device_list_url }}',
+      indoorCoordinatesUrl: '{{ monitoring_indoor_coordinates_list }}',
+      labels: {{ monitoring_labels | safe }}
+    }
+  </script>
   <script src="{% static 'monitoring/js/device-map.js' %}"></script>
   <script src="{% static 'monitoring/js/floorplan.js' %}"></script>
-{% endblock %}
+  {% endblock %}
