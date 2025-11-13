@@ -423,7 +423,7 @@
       },
     });
     indoorMap.setUtils({
-      // Added to open popup for a specific location Id in selenium tests
+      // Added a utility function to open a specific popup for a device Id in selenium tests
       openPopup: function (deviceId) {
         const index = indoorMap?.data?.nodes?.findIndex(
           (n) => n.device_id === deviceId,
@@ -442,12 +442,13 @@
         const params = {
           componentType: "series",
           componentSubType: series.type,
-          seriesIndex: seriesIndex,
           dataIndex: index,
           data: {
             ...series.data[index],
             node: nodeData,
           },
+          seriesIndex: seriesIndex,
+          seriesType: series.type,
         };
         indoorMap.echarts.trigger("click", params);
       },

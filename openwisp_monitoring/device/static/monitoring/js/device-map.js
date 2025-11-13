@@ -560,12 +560,13 @@
         const params = {
           componentType: "series",
           componentSubType: series.type,
-          seriesIndex: seriesIndex,
           dataIndex: index,
           data: {
             ...series.data[index],
             node: nodeData,
           },
+          seriesIndex: seriesIndex,
+          seriesType: series.type,
         };
         map.echarts.trigger("click", params);
       },
