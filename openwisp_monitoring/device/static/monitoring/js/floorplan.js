@@ -317,6 +317,9 @@
       bookmarkableActions: {
         enabled: true,
         id: `${locationId}:${floor}`,
+        zoom: {
+          enabled: false,
+        }
       },
       nodeCategories: Object.keys(status_colors).map((status) => ({
         name: status,

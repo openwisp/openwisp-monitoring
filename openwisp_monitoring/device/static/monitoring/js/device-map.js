@@ -336,6 +336,10 @@
       bookmarkableActions: {
         enabled: true,
         id: "dashboard-geo-map",
+        zoom: {
+          enabled: true,
+          zoomLevel: 10,
+        },
       },
       mapTileConfig: tiles,
       nodeCategories: Object.keys(STATUS_COLORS).map((status) => ({
