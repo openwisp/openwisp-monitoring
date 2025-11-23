@@ -3,8 +3,7 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("sample_device_monitoring", "0002_auto_20200429_1754"),
-        ("openwisp_controller_geo", "0004_default_groups"),
+        ("sample_device_monitoring", "0002_add_group_permissions"),
     ]
 
     operations = [
