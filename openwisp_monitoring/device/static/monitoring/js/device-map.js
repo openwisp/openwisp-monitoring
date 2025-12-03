@@ -514,10 +514,6 @@
             netjsonGraph.eastWorldFeaturesAppended = true;
           }
         });
-
-        map.data.nodes.forEach(node => {
-            listenForLocationUpdates(map, node.id);
-        });
       },
     });
 
@@ -572,7 +568,7 @@
       },
     });
     map.render();
-
+    listenForLocationUpdates(map);
     window._owGeoMap = map;
   }
 
@@ -588,17 +584,22 @@
     success: onAjaxSuccess,
     context: window,
   });
-  function listenForLocationUpdates(map, id) {
+  function listenForLocationUpdates(map) {
+    if(!map){
+      return;
+    }
     var host = window.location.host,
       protocol = window.location.protocol === "http:" ? "ws" : "wss",
       ws = new ReconnectingWebSocket(
-        protocol + "://" + host + "/ws/loci/location/" + id + "/",
+        protocol + "://" + host + "/ws/loci/location/all/",
       );
     ws.onmessage = function (e) {
       const data = JSON.parse(e.data);
-      console.log(data)
-      const [lng, lat] = data.coordinates
-      map.utils.moveNodeInRealTime(map, id, {lng, lat})
+      const [lng, lat] = data.geometry.coordinates
+      map.utils.moveNodeInRealTime(map, data.id, {lng, lat})
+      if(currentPopup){
+        currentPopup.setLatLng([lat, lng]);
+      }
     };
   }
 
