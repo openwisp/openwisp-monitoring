@@ -809,7 +809,7 @@ class TestDashboardMap(
                 "#open-indoor-device-btn",
                 timeout=5,
             ).click()
-            expected_hash = f"#id={indoorMapId}&nodeId={device_location.id}"
+            expected_hash = f"#id={mapId}&nodeId={location.id};id={indoorMapId}&nodeId={device_location.id}"
             map_admin_path = "admin/device_monitoring/map"
             expected_full_url = (
                 f"{self.live_server_url}/{map_admin_path}/{expected_hash}"
