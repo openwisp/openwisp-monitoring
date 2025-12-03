@@ -7,8 +7,7 @@
     const deviceLocationId = $("#id_devicelocation-0-id").val();
     const locationId = $("#id_devicelocation-0-location").val();
     const floor = $("#id_devicelocation-0-floor").val();
-    const geoMapId = "dashboard-geo-map";
-    const indoorMapId = `${locationId}:${floor}`;
+    const geoMapId = `id=dashboard-geo-map&nodeId=${locationId}`;
 
     if (!locationId) {
       return;
@@ -17,15 +16,15 @@
     const openLocationBtn = `
         <div class="form-row field-location-view-button" style="display: block;">
           <div>
-            <div class="flex-container">                              
-                <a href="/admin/device_monitoring/map#id=${geoMapId}&nodeId=${locationId}" 
+            <div class="flex-container">
+                <a href="/admin/device_monitoring/map#${geoMapId}"
                    id="open-location-btn"
                    class="default-btn"
                    style="color: white; text-decoration: none;">
                      Open Location on Map
-                </a>                    
+                </a>
             </div>
-          </div>    
+          </div>
         </div>
     `;
     locationParent.append(openLocationBtn);
@@ -34,18 +33,19 @@
       return;
     }
 
+    const indoorMapId = `id=${locationId}:${floor}&nodeId=${deviceLocationId}`;
     const openIndoorDeviceBtn = `
         <div class="form-row field-indoor-view-button" style="display: block;">
           <div>
-            <div class="flex-container">                             
-                <a href="/admin/device_monitoring/map#id=${indoorMapId}&nodeId=${deviceLocationId}" 
+            <div class="flex-container">
+                <a href="/admin/device_monitoring/map#${geoMapId};${indoorMapId}"
                    id="open-indoor-device-btn"
-                   class="default-btn" 
+                   class="default-btn"
                    style="color: white; text-decoration: none;">
                      Open Device on Map
-                </a>                   
+                </a>
             </div>
-          </div>    
+          </div>
         </div>
     `;
     floorplanParent.append(openIndoorDeviceBtn);

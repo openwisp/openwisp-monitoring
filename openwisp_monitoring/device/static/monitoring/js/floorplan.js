@@ -62,7 +62,7 @@
     const $floorPlanContainer = createFloorPlanContainer();
     const $floorNavigation = createFloorNavigation();
 
-    updateBackdrop();
+    $(".menu-backdrop").addClass("active");
 
     $("#dashboard-map-overlay").append($floorPlanContainer);
     $("#floorplan-overlay").append($floorNavigation);
@@ -140,16 +140,12 @@
   function closeButtonHandler() {
     $("#floorplan-container, #floorplan-navigation").remove();
     $("#floorplan-overlay").remove();
-    updateBackdrop();
+    $(".menu-backdrop").removeClass("active");
     removeUrlFragment(locationId);
     allResults = {};
     currentFloor = null;
     maps = {};
     locationId = null;
-  }
-
-  function updateBackdrop() {
-    $(".menu-backdrop").toggleClass("active");
   }
 
   function removeUrlFragment(locationId) {
