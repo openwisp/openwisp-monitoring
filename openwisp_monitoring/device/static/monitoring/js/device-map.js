@@ -257,7 +257,11 @@
         });
         $(".floorplan-btn").on("click", function () {
           const floorplanUrl = getIndoorCoordinatesUrl(locationId);
-          window.openFloorPlan(floorplanUrl);
+          window.openFloorPlan(floorplanUrl, locationId);
+        });
+        el.find(".leaflet-popup-close-button").on("click", function () {
+          const id = netjsongraphInstance.config.bookmarkableActions.id;
+          netjsongraphInstance.utils.removeUrlFragment(id);
         });
         loadingOverlay.hide();
       },
@@ -328,6 +332,11 @@
             },
           ],
         },
+      },
+      bookmarkableActions: {
+        enabled: true,
+        id: "dashboard-geo-map",
+        zoomLevel: 10,
       },
       mapTileConfig: tiles,
       nodeCategories: Object.keys(STATUS_COLORS).map((status) => ({
@@ -535,8 +544,32 @@
       },
       // Added to open popup for a specific location Id in selenium tests
       openPopup: function (locationId) {
-        const nodeData = map?.data?.nodes?.find((n) => n.id === locationId);
-        loadPopUpContent(nodeData, map);
+        const index = map?.data?.nodes?.findIndex((n) => n.id === locationId);
+        const nodeData = map?.data?.nodes?.[index];
+        if (index === -1 || !nodeData) {
+          const id = map.config.bookmarkableActions.id;
+          map.utils.removeUrlFragment(id);
+          console.error(`Node with ID "${locationId}" not found.`);
+          return;
+        }
+        const option = map.echarts.getOption();
+        const series = option.series.find(
+          (s) => s.type === "scatter" || "effectScatter",
+        );
+        const seriesIndex = option.series.indexOf(series);
+
+        const params = {
+          componentType: "series",
+          componentSubType: series.type,
+          dataIndex: index,
+          data: {
+            ...series.data[index],
+            node: nodeData,
+          },
+          seriesIndex: seriesIndex,
+          seriesType: series.type,
+        };
+        map.echarts.trigger("click", params);
       },
     });
     map.render();
