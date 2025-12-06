@@ -7,10 +7,10 @@
   position: relative;
   left: 0;
   right: 0;
-  background: #fbfbfb;
+  background: var(--ow-color-fg-ghost);
   border-radius: 2px;
-  border: 1px solid #ccc;
-  color: #6d6357;
+  border: 1px solid var(--border-color);
+  color: var(--ow-color-fg-dark);
   line-height: 20px;
   max-width: 100%;
   min-width: 200px;
@@ -44,20 +44,28 @@
   background-size: 20px 20px !important;
 }
 .njg-container .marker-cluster div {
-  color: #fff;
-  background-color: rgba(53, 60, 68, 0.8) !important;
+  color: var(--ow-color-white);
+  background-color: var(--ow-overlay-gray-70) !important;
 }
 .njg-container .ok div {
-  background-color: rgba(38, 113, 38, 0.8) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--ow-color-success),
+    transparent 20%
+  ) !important;
 }
 .njg-container .problem div {
   background-color: rgba(255, 180, 66, 0.8) !important;
 }
 .njg-container .critical div {
-  background-color: rgba(167, 45, 29, 0.8) !important;
+  background-color: color-mix(
+    in srgb,
+    var(--ow-btn-danger-bg),
+    transparent 20%
+  ) !important;
 }
 .njg-container .unknown div {
-  background-color: rgba(53, 60, 68, 0.8) !important;
+  background-color: var(--ow-overlay-gray-70) !important;
 }
 .njg-container .njg-controls {
   display: flex;
@@ -73,7 +81,7 @@
   display: none;
 }
 .njg-container .njg-tooltip {
-  background: #fff !important;
+  background: var(--ow-color-white) !important;
   border: none !important;
 }
 .njg-container .njg-tooltip-item {
@@ -89,12 +97,12 @@
   flex-wrap: wrap;
   text-transform: capitalize;
   font-weight: 600;
-  color: #000;
+  color: var(--ow-color-black);
 }
 .njg-container .njg-tooltip-value {
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
   flex-basis: 60%;
-  color: #000;
+  color: var(--ow-color-black);
 }

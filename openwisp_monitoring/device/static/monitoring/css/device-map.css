@@ -1,17 +1,17 @@
 .health-deactivated {
-  color: #000;
+  color: var(--ow-color-black);
 }
 .health-unknown {
-  color: grey;
+  color: var(--ow-color-fg-dark);
 }
 .health-ok {
-  color: green;
+  color: var(--ow-color-success);
 }
 .health-problem {
   color: orange;
 }
 .health-critical {
-  color: red;
+  color: var(--ow-btn-danger-bg);
 }
 .health-status {
   font-weight: bold;
@@ -20,14 +20,14 @@
 .map-detail .paginator a {
   padding: 3px 7px;
   margin: 0 3px;
-  background-color: #464646;
-  color: #fff;
+  background-color: var(--ow-paginator-bg);
+  color: var(--ow-paginator-text);
   text-decoration: none;
   cursor: pointer;
 }
 .map-detail .paginator a:hover {
-  background-color: #000000;
-  color: #fff;
+  background-color: var(--ow-paginator-hover);
+  color: var(--ow-paginator-text);
 }
 .map-detail table {
   width: 100%;
@@ -37,7 +37,7 @@
   position: relative;
   height: 300px;
   width: 90%;
-  border: 1px solid rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
 }
 #device-map-container .ow-loading-spinner {
   position: absolute;

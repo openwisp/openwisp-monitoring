@@ -1,5 +1,5 @@
 .njg-container .leaflet-control-fullscreen a {
-  background: #fff url(fullscreen.png) no-repeat 0 0;
+  background: var(--ow-color-white) url(fullscreen.png) no-repeat 0 0;
   background-size: 26px 52px;
 }
 .njg-container .leaflet-touch .leaflet-control-fullscreen a {
@@ -9,7 +9,9 @@
 .njg-container .leaflet-container-fullscreen .leaflet-control-fullscreen a {
   background-position: 0 -26px;
 }
-.njg-container.leaflet-touch.leaflet-fullscreen-on .leaflet-control-fullscreen a,
+.njg-container.leaflet-touch.leaflet-fullscreen-on
+  .leaflet-control-fullscreen
+  a,
 .njg-container
   .leaflet-touch
   .leaflet-container-fullscreen
