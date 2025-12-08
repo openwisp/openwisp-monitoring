@@ -92,6 +92,9 @@ jobs:
         if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
         run: docker compose up -d influxdb
 
+      - name: Debug with tmate
+        uses: mxschmitt/action-tmate@v3
+
       - name: QA checks
         run: |
           ./run-qa-checks
