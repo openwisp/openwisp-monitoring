@@ -1,13 +1,15 @@
+import json
 import uuid
 from urllib.parse import urljoin
 
+from django import forms
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline
 from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
 from django.contrib.contenttypes.models import ContentType
 from django.forms import ModelForm
 from django.templatetags.static import static
-from django.urls import resolve, reverse
+from django.urls import resolve, reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.formats import localize
 from django.utils.html import format_html
@@ -24,6 +26,7 @@ from swapper import load_model
 
 from openwisp_controller.config.admin import DeactivatedDeviceReadOnlyMixin
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
+from openwisp_controller.geo.admin import DeviceLocationInline
 from openwisp_users.multitenancy import MultitenantAdminMixin
 from openwisp_utils.admin import ReadOnlyAdmin
 
@@ -43,6 +46,7 @@ Metric = load_model("monitoring", "Metric")
 Notification = load_model("openwisp_notifications", "Notification")
 Check = load_model("check", "Check")
 Organization = load_model("openwisp_users", "Organization")
+MapPage = load_model("device_monitoring", "Map")
 
 
 class CheckInlineFormSet(BaseGenericInlineFormSet):
@@ -574,6 +578,83 @@ class WifiSessionAdmin(
     def has_delete_permission(self, request, obj=None):
         return super(admin.ModelAdmin, self).has_delete_permission(request, obj)
 
+
+class MapPageAdmin(MultitenantAdminMixin, admin.ModelAdmin):
+    """
+    Overrides the changelist template of proxy Model Map to render
+    a full-screen interactive map using custom template map_page.html.
+    """
+
+    change_list_template = "admin/map/map_page.html"
+
+    class Media:
+        js = [
+            "monitoring/js/lib/netjsongraph.min.js",
+            "monitoring/js/lib/leaflet.fullscreen.min.js",
+        ]
+        css = {
+            "all": [
+                "monitoring/css/device-map.css",
+                "leaflet/leaflet.css",
+                "monitoring/css/leaflet.fullscreen.css",
+                "monitoring/css/netjsongraph.css",
+            ]
+        }
+
+    def has_module_permission(self, request):
+        """Hide the model section from the admin index page."""
+        return False
+
+    def changelist_view(self, request, extra_context=None):
+        loc_geojson_url = reverse_lazy(
+            "monitoring:api_location_geojson", urlconf=MONITORING_API_URLCONF
+        )
+        device_list_url = reverse_lazy(
+            "monitoring:api_location_device_list",
+            urlconf=MONITORING_API_URLCONF,
+            args=["000"],
+        )
+        indoor_coordinates_list_url = reverse_lazy(
+            "monitoring:api_indoor_coordinates_list",
+            urlconf=MONITORING_API_URLCONF,
+            args=["000"],
+        )
+        if MONITORING_API_BASEURL:
+            loc_geojson_url = urljoin(MONITORING_API_BASEURL, str(loc_geojson_url))
+            device_list_url = urljoin(MONITORING_API_BASEURL, str(device_list_url))
+            indoor_coordinates_list_url = urljoin(
+                MONITORING_API_BASEURL, str(indoor_coordinates_list_url)
+            )
+        extra_context = extra_context or {}
+        extra_context.update(
+            {
+                "monitoring_device_list_url": device_list_url,
+                "monitoring_location_geojson_url": loc_geojson_url,
+                "monitoring_indoor_coordinates_list": indoor_coordinates_list_url,
+                "monitoring_labels": json.dumps(app_settings.HEALTH_STATUS_LABELS),
+                # By default shows 'Select Map to change' heading making it empty to hide it
+                "title": "",
+            }
+        )
+        return super().changelist_view(request, extra_context=extra_context)
+
+
+admin.site.register(MapPage, MapPageAdmin)
+
+
+# Adding additional js to add view on map buttons on DeviceLocationInline
+def patch_device_location_inline(self):
+    base = super(DeviceLocationInline, self).media
+    extra = forms.Media(
+        js=(
+            "admin/js/jquery.init.js",
+            "monitoring/js/location-inline.js",
+        )
+    )
+    return base + extra
+
+
+DeviceLocationInline.media = property(patch_device_location_inline)
 
 admin.site.unregister(Device)
 admin.site.register(Device, DeviceAdminExportable)
