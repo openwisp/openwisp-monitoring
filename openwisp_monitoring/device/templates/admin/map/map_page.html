@@ -1,0 +1,55 @@
+{% extends "admin/base_site.html" %}
+
+{% load static leaflet_tags i18n %}
+
+{% block title %} 
+  {% trans 'Map' %} 
+{% endblock title %}
+
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a> › <span>{% trans 'Map' %}</span>
+  </div>
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  {{ media }}
+  <style>
+    #device-map-container {
+      width: 100%;
+      height: 87.7vh;
+      margin: 15px auto 0 auto;
+    }
+  </style>
+{% endblock extrahead %}
+
+{% block content %} 
+  <div id="leaflet-config">
+    {% autoescape on %}{% leaflet_json_config %}{% endautoescape %}
+  </div>
+  <div id="dashboard-map-overlay">
+    <div id="device-map-container">
+      <div class="no-data">
+        <p>{% trans 'No map data to show' %}.</p>
+        <p><a class="button submit" href="#close">Close</a></p>
+      </div>
+      <div class="ow-loading-spinner"></div>
+    </div>
+  </div>
+{% endblock content %}
+
+{% block footer %}
+  {{ block.super }}
+  <script>
+    window._owGeoMapConfig = {
+      geoJsonUrl: '{{ monitoring_location_geojson_url }}',
+      locationDeviceUrl: '{{ monitoring_device_list_url }}',
+      indoorCoordinatesUrl: '{{ monitoring_indoor_coordinates_list }}',
+      labels: {{ monitoring_labels | safe }}
+    }
+  </script>
+  <script src="{% static 'monitoring/js/device-map.js' %}"></script>
+  <script src="{% static 'monitoring/js/floorplan.js' %}"></script>
+{% endblock footer %}
+

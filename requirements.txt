@@ -1,5 +1,4 @@
 openwisp-controller @ https://github.com/openwisp/openwisp-controller/tarball/gsoc25-map
-openwisp-utils[celery,channels] @ https://github.com/openwisp/openwisp-utils/tarball/1.2
 influxdb~=5.3.2
 django-nested-admin~=4.1.6
 python-dateutil>=2.7.0,<3.0.0

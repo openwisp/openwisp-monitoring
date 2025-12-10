@@ -11,9 +11,40 @@
   let selectedIndex = 0;
   let isFullScreen = false;
   let maps = {};
+  let locationId = null;
 
-  async function openFloorPlan(url) {
-    await fetchData(url);
+  // Use case: we support overlaying two maps. The URL hash contains up to two
+  // fragments separated by ';' — one is the geo map and the other is an indoor map.
+  //
+  // The geo map fragment has id="dashboard-geo-map". Any fragment whose id is
+  // NOT "dashboard-geo-map" is treated as the indoor map fragment.
+  //
+  // When switching maps we expect only two maps at most; the previous map should
+  // be removed before adding the new one.
+  // Note: future logic to manage this will be implemented in netjsongraph.js.
+  const rawUrlFragments = window.location.hash.replace(/^#/, "");
+  const fragments = rawUrlFragments.split(";").filter((f) => f.trim() !== "");
+
+  const indoorMapFragment = fragments.find((fragment) => {
+    const params = new URLSearchParams(fragment);
+    return params.get("id") !== "dashboard-geo-map";
+  });
+
+  const params = new URLSearchParams(indoorMapFragment);
+  const fragmentId = params.get("id");
+  // fragments format is expected to be "<locationId>:<floor>"
+  const [fragmentLocationId, fragmentFloor] = fragmentId?.split(":") || [];
+  if (fragmentLocationId && fragmentFloor != null) {
+    const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
+      "000",
+      fragmentLocationId,
+    );
+    openFloorPlan(`${floorplanUrl}`, fragmentLocationId, fragmentFloor);
+  }
+
+  async function openFloorPlan(url, id = null, floor = currentFloor) {
+    locationId = id;
+    await fetchData(url, floor);
 
     selectedIndex = floors.indexOf(currentFloor) || 0;
     // Calculate the starting index of the navigation window so the selected floor is positioned
@@ -31,12 +62,12 @@
     const $floorPlanContainer = createFloorPlanContainer();
     const $floorNavigation = createFloorNavigation();
 
-    updateBackdrop();
+    $(".menu-backdrop").addClass("active");
 
-    $("#device-map-container").append($floorPlanContainer);
+    $("#dashboard-map-overlay").append($floorPlanContainer);
     $("#floorplan-overlay").append($floorNavigation);
 
-    closeButtonHandler();
+    $("#floorplan-close-btn").on("click", closeButtonHandler);
     addFloorButtons(selectedIndex, navWindowStart);
     addNavigationHandlers(url);
     await showFloor(url, currentFloor);
@@ -58,15 +89,12 @@
         dataType: "json",
         xhrFields: { withCredentials: true },
         success: async (data) => {
-          // To make this run only one time as only in the first call floor will not be provided
-          if (!floor) {
-            floors = data.floors;
-            floor = data.results[0].floor;
-          }
           if (!allResults[floor]) {
             allResults[floor] = [];
           }
           allResults[floor] = [...allResults[floor], ...data.results];
+          floors = data.floors;
+          floor = data.results[0].floor;
           if (!currentFloor && data.results.length) {
             currentFloor = data.results[0].floor;
           }
@@ -110,17 +138,21 @@
   }
 
   function closeButtonHandler() {
-    $("#floorplan-close-btn").on("click", () => {
-      $("#floorplan-container, #floorplan-navigation").remove();
-      $("#floorplan-overlay").remove();
-      updateBackdrop();
-      allResults = {};
-      currentFloor = null;
-    });
+    $("#floorplan-container, #floorplan-navigation").remove();
+    $("#floorplan-overlay").remove();
+    $(".menu-backdrop").removeClass("active");
+    removeUrlFragment(locationId);
+    allResults = {};
+    currentFloor = null;
+    maps = {};
+    locationId = null;
   }
 
-  function updateBackdrop() {
-    $(".menu-backdrop").toggleClass("active");
+  function removeUrlFragment(locationId) {
+    if (locationId != null) {
+      const id = maps[currentFloor].config.bookmarkableActions.id;
+      maps[currentFloor].utils.removeUrlFragment(id);
+    }
   }
 
   function addFloorButtons(selectedIndex, navWindowStart) {
@@ -152,6 +184,7 @@
       selectedIndex = +e.currentTarget.dataset.index;
       const center = Math.floor(NAV_WINDOW_SIZE / 2);
       navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
+      removeUrlFragment(locationId);
       addFloorButtons(selectedIndex, navWindowStart);
       currentFloor = floors[selectedIndex];
       await showFloor(url, currentFloor);
@@ -162,6 +195,7 @@
         selectedIndex++;
         const center = Math.floor(NAV_WINDOW_SIZE / 2);
         navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
+        removeUrlFragment(locationId);
         addFloorButtons(selectedIndex, navWindowStart);
         currentFloor = floors[selectedIndex];
         await showFloor(url, currentFloor);
@@ -173,6 +207,7 @@
         selectedIndex--;
         const center = Math.floor(NAV_WINDOW_SIZE / 2);
         navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
+        removeUrlFragment(locationId);
         addFloorButtons(selectedIndex, navWindowStart);
         currentFloor = floors[selectedIndex];
         await showFloor(url, currentFloor);
@@ -203,10 +238,10 @@
     if (!$floorDiv.length) {
       $floorDiv = $(`<div id="floor-content-${floor}" class="floor-content"></div>`);
       root.append($floorDiv);
-      renderIndoorMap(nodesThisFloor, imageUrl, $floorDiv[0].id);
+      renderIndoorMap(nodesThisFloor, imageUrl, $floorDiv[0].id, floor);
     }
     $floorDiv.show();
-    maps[currentFloor]?.invalidateSize();
+    maps[currentFloor]?.leaflet.invalidateSize();
   }
 
   let currentPopup = null;
@@ -249,7 +284,7 @@
       .openOn(map);
   }
 
-  function renderIndoorMap(allResults, imageUrl, divId) {
+  function renderIndoorMap(allResults, imageUrl, divId, floor) {
     const indoorMap = new NetJSONGraph(allResults, {
       el: `#${divId}`,
       render: "map",
@@ -275,12 +310,18 @@
         },
         baseOptions: { media: [{ option: { tooltip: { show: false } } }] },
       },
+      bookmarkableActions: {
+        enabled: true,
+        id: `${locationId}:${floor}`,
+        zoomOnRestore: false,
+      },
       nodeCategories: Object.keys(status_colors).map((status) => ({
         name: status,
         nodeStyle: { color: status_colors[status] },
       })),
       prepareData(data) {
         data.nodes.forEach((node) => {
+          node.location = node.coordinates;
           node.properties = {
             ...node.properties,
             name: node.device_name,
@@ -294,62 +335,66 @@
         return data;
       },
 
-      onReady() {
+      async onReady() {
         const map = this.leaflet;
-        maps[currentFloor] = map;
+        maps[currentFloor] = indoorMap;
         // remove default geo map tiles
         map.eachLayer((layer) => layer._url && map.removeLayer(layer));
         const img = new Image();
         img.src = imageUrl;
+        await img.decode();
         let initialZoom;
-        img.onload = () => {
-          const aspectRatio = img.width / img.height;
-          const h = img.height;
-          const w = h * aspectRatio;
-          const zoom = map.getMaxZoom() - 1;
 
-          // To make the image center in the map at (0,0) coordinates
-          const anchorLatLng = L.latLng(0, 0);
-          const anchorPoint = map.project(anchorLatLng, zoom);
+        const aspectRatio = img.width / img.height;
+        const h = img.height;
+        const w = h * aspectRatio;
+        const zoom = map.getMaxZoom() - 1;
 
-          // Calculate the bounds of the image, with respect to the anchor point (0, 0)
-          // Leaflet's pixel coordinates increase to the right and downwards
-          // Unlike cartesian system where y increases upwards
-          // So top-left will have negative y and bottom-right will have positive y
-          // Similarly left will have negative x and right will have positive x
-          const topLeft = L.point(anchorPoint.x - w / 2, anchorPoint.y - h / 2);
-          const bottomRight = L.point(anchorPoint.x + w / 2, anchorPoint.y + h / 2);
+        // To make the image center in the map at (0,0) coordinates
+        const anchorLatLng = L.latLng(0, 0);
+        const anchorPoint = map.project(anchorLatLng, zoom);
 
-          // Update node coordinates to fit the image overlay
-          // We get the node coordinates from the API in the format for L.CRS.Simple
-          // So the coordinates is in for cartesian system with origin at top left corner
-          // Rendering image in the third quadrant with topLeft as (0,0) and bottomRight as (w,-h)
-          // So we convert py to positive and then project the point to get the corresponding topLeft
-          // Then unproject the point to get the corresponding latlng on the map
-          const mapOptions = this.echarts.getOption();
-          // series[0]: nodes config, series[1]: links config and both are always present
-          mapOptions.series[0].data.forEach((data) => {
-            const node = data.node;
-            const px = Number(node.coordinates.lng);
-            const py = -Number(node.coordinates.lat);
-            const nodeProjected = L.point(topLeft.x + px, topLeft.y + py);
-            // This requrires an map instance to unproject coordinates so it cann't be done in prepareData
-            const nodeLatLng = map.unproject(nodeProjected, zoom);
-            node.properties.location = nodeLatLng;
-            data.value = [nodeLatLng.lng, nodeLatLng.lat];
-          });
-          this.echarts.setOption(mapOptions);
+        // Calculate the bounds of the image, with respect to the anchor point (0, 0)
+        // Leaflet's pixel coordinates increase to the right and downwards
+        // Unlike cartesian system where y increases upwards
+        // So top-left will have negative y and bottom-right will have positive y
+        // Similarly left will have negative x and right will have positive x
+        const topLeft = L.point(anchorPoint.x - w / 2, anchorPoint.y - h / 2);
+        const bottomRight = L.point(anchorPoint.x + w / 2, anchorPoint.y + h / 2);
 
-          // Unproject the topLeft and bottomRight points to get northWest and southEast latlngs
-          const nw = map.unproject(topLeft, zoom);
-          const se = map.unproject(bottomRight, zoom);
-          const bnds = L.latLngBounds(nw, se);
-          L.imageOverlay(imageUrl, bnds).addTo(map);
-          map.fitBounds(bnds);
-          map.setMaxBounds(bnds.pad(1));
-          initialZoom = map.getZoom();
-          map.invalidateSize();
-        };
+        // Update node coordinates to fit the image overlay
+        // We get the node coordinates from the API in the format for L.CRS.Simple
+        // So the coordinates is in for cartesian system with origin at top left corner
+        // Rendering image in the third quadrant with topLeft as (0,0) and bottomRight as (w,-h)
+        // So we convert py to positive and then project the point to get the corresponding topLeft
+        // Then unproject the point to get the corresponding latlng on the map
+        const mapOptions = this.echarts.getOption();
+        const series = mapOptions.series.find((s) => s.type === "scatter");
+        series.data.forEach((data, index) => {
+          const node = data.node;
+          const px = Number(node.coordinates.lng);
+          const py = -Number(node.coordinates.lat);
+          const nodeProjected = L.point(topLeft.x + px, topLeft.y + py);
+          // This requrires an map instance to unproject coordinates so it cann't be done in prepareData
+          const nodeLatLng = map.unproject(nodeProjected, zoom);
+          // Also updating this.data so that after onReady when applyUrlFragmentState is called it whould
+          // have the correct coordinates data points to trigger the popup at right place.
+          this.data.nodes[index].location = nodeLatLng;
+          this.data.nodes[index].properties.location = nodeLatLng;
+          node.properties.location = nodeLatLng;
+          data.value = [nodeLatLng.lng, nodeLatLng.lat];
+        });
+        this.echarts.setOption(mapOptions);
+
+        // Unproject the topLeft and bottomRight points to get northWest and southEast latlngs
+        const nw = map.unproject(topLeft, zoom);
+        const se = map.unproject(bottomRight, zoom);
+        const bnds = L.latLngBounds(nw, se);
+        L.imageOverlay(imageUrl, bnds).addTo(map);
+        map.fitBounds(bnds);
+        map.setMaxBounds(bnds.pad(1));
+        initialZoom = map.getZoom();
+        map.invalidateSize();
 
         map.on("fullscreenchange", () => {
           const floorNavigation = $("#floorplan-navigation");
@@ -375,18 +420,45 @@
       },
     });
     indoorMap.setUtils({
-      // Added to open popup for a specific location Id in selenium tests
+      // Added a utility function to open a specific popup for a device Id in selenium tests
       openPopup: function (deviceId) {
-        const mapOptions = indoorMap.echarts.getOption();
-        const data = mapOptions.series[0].data.find(
-          (data) => data.node.device_id === deviceId,
+        const index = indoorMap?.data?.nodes?.findIndex(
+          (n) => n.device_id === deviceId,
         );
-        loadPopUpContent(data?.node, indoorMap);
+        const nodeData = indoorMap?.data?.nodes?.[index];
+        if (index === -1 || !nodeData) {
+          const id = indoorMap.config.bookmarkableActions.id;
+          indoorMap.utils.removeUrlFragment(id);
+          console.error(`Node with ID "${deviceId}" not found.`);
+          return;
+        }
+        const option = indoorMap.echarts.getOption();
+        const series = option.series.find((s) => s.type === "scatter");
+        const seriesIndex = option.series.indexOf(series);
+
+        const params = {
+          componentType: "series",
+          componentSubType: series.type,
+          dataIndex: index,
+          data: {
+            ...series.data[index],
+            node: nodeData,
+          },
+          seriesIndex: seriesIndex,
+          seriesType: series.type,
+        };
+        indoorMap.echarts.trigger("click", params);
       },
     });
     indoorMap.render();
     $(".ow-loading-spinner").hide();
     window._owIndoorMap = indoorMap;
+    window.addEventListener("popstate", () => {
+      const fragments = indoorMap.utils.parseUrlFragments();
+      if (!fragments[`${locationId}:${floor}`]) {
+        closeButtonHandler();
+      }
+    });
   }
 
   window.openFloorPlan = openFloorPlan;
