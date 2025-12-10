@@ -12,6 +12,7 @@
   let isFullScreen = false;
   let maps = {};
   let locationId = null;
+  let popstateHandler = null;
 
   // Use case: we support overlaying two maps. The URL hash contains up to two
   // fragments separated by ';' — one is the geo map and the other is an indoor map.
@@ -22,19 +23,30 @@
   // When switching maps we expect only two maps at most; the previous map should
   // be removed before adding the new one.
   // Note: future logic to manage this will be implemented in netjsongraph.js.
-  const rawUrlFragments = decodeURIComponent(window.location.hash.replace(/^#/, ""));
-  const fragments = rawUrlFragments.split(";").filter((f) => f.trim() !== "");
-
-  const indoorMapFragment = fragments.find((fragment) => {
-    const params = new URLSearchParams(fragment);
-    return params.get("id") !== "dashboard-geo-map";
-  });
-
-  const params = new URLSearchParams(indoorMapFragment);
-  const fragmentId = params.get("id");
-  // fragments format is expected to be "<locationId>:<floor>"
-  const [fragmentLocationId, fragmentFloor] = fragmentId?.split(":") || [];
-  if (fragmentLocationId && fragmentFloor != null) {
+  function getIndoorMapIdFromUrl() {
+    const rawUrlFragments = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+    const fragments = rawUrlFragments.split(";").filter((f) => f.trim() !== "");
+    const indoorFragment = fragments.find((fragment) => {
+      const params = new URLSearchParams(fragment);
+      const id = params.get("id");
+      // "dashboard-geo-map" is bookmarkableActions.id for geo map
+      return id && id !== "dashboard-geo-map";
+    });
+    if (!indoorFragment) {
+      return null;
+    }
+    const params = new URLSearchParams(indoorFragment);
+    const fragmentId = params.get("id");
+    // fragments format is expected to be "<locationId>:<floor>"
+    const [fragmentLocationId, fragmentFloor] = fragmentId?.split(":") || [];
+    if (!fragmentLocationId || fragmentFloor == null) {
+      return null;
+    }
+    return { fragmentLocationId, fragmentFloor };
+  }
+  const indoorMapId = getIndoorMapIdFromUrl();
+  if (indoorMapId) {
+    const { fragmentLocationId, fragmentFloor } = indoorMapId;
     const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
       "000",
       fragmentLocationId,
@@ -44,8 +56,22 @@
 
   async function openFloorPlan(url, id = null, floor = currentFloor) {
     locationId = id;
-    await fetchData(url, floor);
+    // Handle browser back/forward navigation: close the indoor map overlay
+    // If the indoor map fragment is removed from the URL, close the overlay
+    // should be done before async tasks that are preformed later
+    if (popstateHandler) {
+      window.removeEventListener("popstate", popstateHandler);
+    }
+    popstateHandler = () => {
+      const indoorMapId = getIndoorMapIdFromUrl();
+      const isOverlayOpen = document.getElementById("floorplan-overlay") !== null;
+      if (!indoorMapId && isOverlayOpen) {
+        closeButtonHandler();
+      }
+    };
+    window.addEventListener("popstate", popstateHandler);
 
+    await fetchData(url, floor);
     const idx = floors.indexOf(currentFloor);
     selectedIndex = idx === -1 ? 0 : idx;
     // Calculate the starting index of the navigation window so the selected floor is positioned
@@ -63,12 +89,12 @@
     const $floorPlanContainer = createFloorPlanContainer();
     const $floorNavigation = createFloorNavigation();
 
-    updateBackdrop();
+    $(".menu-backdrop").addClass("active");
 
-    $("#device-map-container").append($floorPlanContainer);
+    $("#dashboard-map-overlay").append($floorPlanContainer);
     $("#floorplan-overlay").append($floorNavigation);
 
-    closeButtonHandler();
+    $("#floorplan-close-btn").on("click", closeButtonHandler);
     addFloorButtons(selectedIndex, navWindowStart);
     addNavigationHandlers(url);
     await showFloor(url, currentFloor);
@@ -139,17 +165,25 @@
   }
 
   function closeButtonHandler() {
-    $("#floorplan-close-btn").on("click", () => {
-      $("#floorplan-container, #floorplan-navigation").remove();
-      $("#floorplan-overlay").remove();
-      updateBackdrop();
-      allResults = {};
-      currentFloor = null;
-    });
+    $("#floorplan-container, #floorplan-navigation").remove();
+    $("#floorplan-overlay").remove();
+    $(".menu-backdrop").removeClass("active");
+    removeUrlFragment(locationId);
+    allResults = {};
+    currentFloor = null;
+    maps = {};
+    locationId = null;
+    if (popstateHandler) {
+      window.removeEventListener("popstate", popstateHandler);
+      popstateHandler = null;
+    }
   }
 
-  function updateBackdrop() {
-    $(".menu-backdrop").toggleClass("active");
+  function removeUrlFragment(locationId) {
+    if (locationId != null && maps[currentFloor]) {
+      const id = maps[currentFloor].config.bookmarkableActions.id;
+      maps[currentFloor].utils.removeUrlFragment(id);
+    }
   }
 
   function addFloorButtons(selectedIndex, navWindowStart) {
@@ -181,6 +215,7 @@
       selectedIndex = +e.currentTarget.dataset.index;
       const center = Math.floor(NAV_WINDOW_SIZE / 2);
       navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
+      removeUrlFragment(locationId);
       addFloorButtons(selectedIndex, navWindowStart);
       currentFloor = floors[selectedIndex];
       await showFloor(url, currentFloor);
@@ -191,6 +226,7 @@
         selectedIndex++;
         const center = Math.floor(NAV_WINDOW_SIZE / 2);
         navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
+        removeUrlFragment(locationId);
         addFloorButtons(selectedIndex, navWindowStart);
         currentFloor = floors[selectedIndex];
         await showFloor(url, currentFloor);
@@ -202,6 +238,7 @@
         selectedIndex--;
         const center = Math.floor(NAV_WINDOW_SIZE / 2);
         navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
+        removeUrlFragment(locationId);
         addFloorButtons(selectedIndex, navWindowStart);
         currentFloor = floors[selectedIndex];
         await showFloor(url, currentFloor);
@@ -219,6 +256,11 @@
     await fetchData(url, floor);
 
     const nodesThisFloor = { nodes: allResults[floor], links: [] };
+    if (!nodesThisFloor.nodes || nodesThisFloor.nodes.length === 0) {
+      $(".floorplan-loading-spinner").hide();
+      console.warn(`No data available for floor "${floor}".`);
+      return;
+    }
 
     $("#floorplan-title").text(nodesThisFloor.nodes[0].floor_name);
     const imageUrl = nodesThisFloor.nodes[0].image;
@@ -232,10 +274,10 @@
     if (!$floorDiv.length) {
       $floorDiv = $(`<div id="floor-content-${floor}" class="floor-content"></div>`);
       root.append($floorDiv);
-      renderIndoorMap(nodesThisFloor, imageUrl, $floorDiv[0].id);
+      renderIndoorMap(nodesThisFloor, imageUrl, $floorDiv[0].id, floor);
     }
     $floorDiv.show();
-    maps[currentFloor]?.invalidateSize();
+    maps[currentFloor]?.leaflet.invalidateSize();
   }
 
   let currentPopup = null;
@@ -277,7 +319,7 @@
       .openOn(map);
   }
 
-  function renderIndoorMap(allResults, imageUrl, divId) {
+  function renderIndoorMap(allResults, imageUrl, divId, floor) {
     const indoorMap = new NetJSONGraph(allResults, {
       el: `#${divId}`,
       render: "map",
@@ -303,12 +345,18 @@
         },
         baseOptions: { media: [{ option: { tooltip: { show: false } } }] },
       },
+      bookmarkableActions: {
+        enabled: true,
+        id: `${locationId}:${floor}`,
+        zoomOnRestore: false,
+      },
       nodeCategories: Object.keys(status_colors).map((status) => ({
         name: status,
         nodeStyle: { color: status_colors[status] },
       })),
       prepareData(data) {
         data.nodes.forEach((node) => {
+          node.location = node.coordinates;
           node.properties = {
             ...node.properties,
             name: node.device_name,
@@ -322,7 +370,7 @@
         return data;
       },
 
-      onReady() {
+      async onReady() {
         const map = this.leaflet;
         maps[floor] = indoorMap;
         // remove default geo map tiles
@@ -338,23 +386,23 @@
           return;
         }
         let initialZoom;
-        img.onload = () => {
-          const aspectRatio = img.width / img.height;
-          const h = img.height;
-          const w = h * aspectRatio;
-          const zoom = map.getMaxZoom() - 1;
 
-          // To make the image center in the map at (0,0) coordinates
-          const anchorLatLng = L.latLng(0, 0);
-          const anchorPoint = map.project(anchorLatLng, zoom);
+        const aspectRatio = img.width / img.height;
+        const h = img.height;
+        const w = h * aspectRatio;
+        const zoom = map.getMaxZoom() - 1;
 
-          // Calculate the bounds of the image, with respect to the anchor point (0, 0)
-          // Leaflet's pixel coordinates increase to the right and downwards
-          // Unlike cartesian system where y increases upwards
-          // So top-left will have negative y and bottom-right will have positive y
-          // Similarly left will have negative x and right will have positive x
-          const topLeft = L.point(anchorPoint.x - w / 2, anchorPoint.y - h / 2);
-          const bottomRight = L.point(anchorPoint.x + w / 2, anchorPoint.y + h / 2);
+        // To make the image center in the map at (0,0) coordinates
+        const anchorLatLng = L.latLng(0, 0);
+        const anchorPoint = map.project(anchorLatLng, zoom);
+
+        // Calculate the bounds of the image, with respect to the anchor point (0, 0)
+        // Leaflet's pixel coordinates increase to the right and downwards
+        // Unlike cartesian system where y increases upwards
+        // So top-left will have negative y and bottom-right will have positive y
+        // Similarly left will have negative x and right will have positive x
+        const topLeft = L.point(anchorPoint.x - w / 2, anchorPoint.y - h / 2);
+        const bottomRight = L.point(anchorPoint.x + w / 2, anchorPoint.y + h / 2);
 
         // Update node coordinates to fit the image overlay
         // We get the node coordinates from the API in the format for L.CRS.Simple
@@ -380,16 +428,15 @@
         });
         this.echarts.setOption(mapOptions);
 
-          // Unproject the topLeft and bottomRight points to get northWest and southEast latlngs
-          const nw = map.unproject(topLeft, zoom);
-          const se = map.unproject(bottomRight, zoom);
-          const bnds = L.latLngBounds(nw, se);
-          L.imageOverlay(imageUrl, bnds).addTo(map);
-          map.fitBounds(bnds);
-          map.setMaxBounds(bnds.pad(1));
-          initialZoom = map.getZoom();
-          map.invalidateSize();
-        };
+        // Unproject the topLeft and bottomRight points to get northWest and southEast latlngs
+        const nw = map.unproject(topLeft, zoom);
+        const se = map.unproject(bottomRight, zoom);
+        const bnds = L.latLngBounds(nw, se);
+        L.imageOverlay(imageUrl, bnds).addTo(map);
+        map.fitBounds(bnds);
+        map.setMaxBounds(bnds.pad(1));
+        initialZoom = map.getZoom();
+        map.invalidateSize();
 
         map.on("fullscreenchange", () => {
           const floorNavigation = $("#floorplan-navigation");
@@ -398,9 +445,7 @@
             map.setZoom(initialZoom + zoomSnap);
             isFullScreen = true;
             floorNavigation.addClass("fullscreen");
-            $(`#floor-content-${floor} .leaflet-container`).append(
-              floorNavigation,
-            );
+            $(`#floor-content-${floor} .leaflet-container`).append(floorNavigation);
           } else {
             isFullScreen = false;
             map.setZoom(initialZoom);
@@ -415,13 +460,34 @@
       },
     });
     indoorMap.setUtils({
-      // Added to open popup for a specific location Id in selenium tests
+      // Added a utility function to open a specific popup for a device Id in selenium tests
       openPopup: function (deviceId) {
-        const mapOptions = indoorMap.echarts.getOption();
-        const data = mapOptions.series[0].data.find(
-          (data) => data.node.device_id === deviceId,
+        const index = indoorMap?.data?.nodes?.findIndex(
+          (n) => n.device_id === deviceId,
         );
-        loadPopUpContent(data?.node, indoorMap);
+        const nodeData = indoorMap?.data?.nodes?.[index];
+        if (index === -1 || !nodeData) {
+          const id = indoorMap.config.bookmarkableActions.id;
+          indoorMap.utils.removeUrlFragment(id);
+          console.error(`Node with ID "${deviceId}" not found.`);
+          return;
+        }
+        const option = indoorMap.echarts.getOption();
+        const series = option.series.find((s) => s.type === "scatter");
+        const seriesIndex = option.series.indexOf(series);
+
+        const params = {
+          componentType: "series",
+          componentSubType: series.type,
+          dataIndex: index,
+          data: {
+            ...series.data[index],
+            node: nodeData,
+          },
+          seriesIndex: seriesIndex,
+          seriesType: series.type,
+        };
+        indoorMap.echarts.trigger("click", params);
       },
     });
     indoorMap.render();
