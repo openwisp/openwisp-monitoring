@@ -308,6 +308,7 @@ if os.environ.get("SAMPLE_APP", False):
     DEVICE_MONITORING_DEVICEMONITORING_MODEL = (
         "sample_device_monitoring.DeviceMonitoring"
     )
+    DEVICE_MONITORING_MAP_MODEL = "sample_device_monitoring.Map"
     # Celery auto detects tasks only from INSTALLED_APPS
     CELERY_IMPORTS = ("openwisp_monitoring.device.tasks",)
 
