@@ -1,3 +1,4 @@
+import json
 from urllib.parse import urljoin
 
 from django.apps import AppConfig
@@ -408,7 +409,7 @@ class DeviceMonitoringConfig(AppConfig):
                     "monitoring_device_list_url": device_list_url,
                     "monitoring_location_geojson_url": loc_geojson_url,
                     "monitoring_indoor_coordinates_list": indoor_coordinates_list_url,
-                    "monitoring_labels": app_settings.HEALTH_STATUS_LABELS,
+                    "monitoring_labels": json.dumps(app_settings.HEALTH_STATUS_LABELS),
                 },
             )
 
