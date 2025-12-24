@@ -1,6 +1,7 @@
 import logging
 from copy import deepcopy
 from datetime import datetime, timedelta
+from django.utils import timezone
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
@@ -60,7 +61,10 @@ class DeviceDataWriter(object):
         )
 
     def write(self, data, time=None, current=False):
-        time = datetime.strptime(time, "%d-%m-%Y_%H:%M:%S.%f").replace(tzinfo=UTC)
+        if time:
+            time = datetime.strptime(time, "%d-%m-%Y_%H:%M:%S.%f").replace(tzinfo=UTC)
+        else:
+            time = timezone.now()
         self._init_previous_data()
         self.device_data.data = data
         # saves raw device data
