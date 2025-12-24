@@ -514,6 +514,23 @@ class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
             else:
                 self.fail("ValidationError not raised")
 
+    def test_disk_size_bytes_zero(self):
+        """Ensures buggy data doesn't crash the writer"""
+        dd = self._create_device_data()
+        data = deepcopy(self._sample_data)
+        data["resources"]["disk"] = [
+            {
+                "used_bytes": 0,
+                "available_bytes": 0,
+                "filesystem": "/dev/root",
+                "mount_point": "/",
+                "used_percent": 100,
+                "size_bytes": 0,
+            }
+        ]
+        dd.writer.write(data)
+        self.assertEqual(dd.data["resources"]["disk"][0]["used_percent"], 100)
+
     def test_resources_no_key(self):
         dd = self._create_device_data()
         with self.subTest("Test No Resources"):

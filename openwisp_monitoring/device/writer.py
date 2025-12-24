@@ -1,10 +1,10 @@
 import logging
 from copy import deepcopy
 from datetime import datetime, timedelta
-from django.utils import timezone
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
+from django.utils import timezone
 from pytz import UTC
 from swapper import load_model
 
@@ -306,9 +306,11 @@ class DeviceDataWriter(object):
         if created:
             self._create_resources_chart(metric, resource="disk")
             self._create_resources_alert_settings(metric, resource="disk")
-        self._append_metric_data(
-            metric, 100 * used_bytes / size_bytes, current, time=time
-        )
+        try:
+            value = 100 * used_bytes / size_bytes
+        except ZeroDivisionError:
+            value = 100
+        self._append_metric_data(metric, value, current, time=time)
 
     def _write_memory(
         self, memory, primary_key, content_type, current=False, time=None
