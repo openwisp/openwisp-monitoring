@@ -300,7 +300,7 @@
     if (Array.isArray(data.features)) {
       data.features.forEach((f) => {
         if (f?.id && f.properties && !f.properties.id) {
-          f.properties.id = f.id
+          f.properties.id = f.id;
         }
       });
     }
@@ -585,22 +585,23 @@
     context: window,
   });
   function listenForLocationUpdates(map) {
-    if(!map){
+    if (!map) {
       return;
     }
     var host = window.location.host,
       protocol = window.location.protocol === "http:" ? "ws" : "wss",
-      ws = new ReconnectingWebSocket(
-        protocol + "://" + host + "/ws/loci/location/all/",
-      );
+      ws = new ReconnectingWebSocket(protocol + "://" + host + "/ws/loci/locations/");
     ws.onmessage = function (e) {
       const data = JSON.parse(e.data);
-      const [lng, lat] = data.geometry.coordinates
-      map.utils.moveNodeInRealTime(map, data.id, {lng, lat})
-      if(currentPopup){
+      const [lng, lat] = data.geometry.coordinates;
+      if (currentPopup) {
+        $(".leaflet-popup").hide();
+      }
+      map.utils.moveNodeInRealTime(map, data.id, { lng, lat });
+      if (currentPopup) {
         currentPopup.setLatLng([lat, lng]);
+        $(".leaflet-popup").show();
       }
     };
   }
-
 })(django.jQuery);

@@ -2,9 +2,13 @@ from time import sleep
 from unittest.mock import patch
 from urllib.parse import quote_plus
 
+from channels.testing import ChannelsLiveServerTestCase
+from django.contrib.auth import get_permission_codename
 from django.contrib.auth.models import Permission
+from django.contrib.gis.geos import Point
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.test import tag
+from django.urls import reverse_lazy
 from django.urls.base import reverse
 from reversion.models import Version
 from selenium.common.exceptions import TimeoutException
@@ -21,10 +25,12 @@ from openwisp_monitoring.device.tests import (
 )
 from openwisp_monitoring.monitoring.configuration import DEFAULT_DASHBOARD_TRAFFIC_CHART
 from openwisp_monitoring.monitoring.migrations import create_general_metrics
+from openwisp_users.tests.utils import TestOrganizationMixin
 from openwisp_utils.admin_theme.dashboard import DASHBOARD_TEMPLATES
 from openwisp_utils.tests import SeleniumTestMixin as BaseSeleniumTestMixin
 
 from ..device import settings as device_app_settings
+from ..settings import MONITORING_API_URLCONF
 
 Device = load_model("config", "Device")
 DeviceConnection = load_model("connection", "DeviceConnection")
@@ -36,6 +42,8 @@ Check = load_model("check", "Check")
 Location = load_model("geo", "Location")
 DeviceLocation = load_model("geo", "DeviceLocation")
 Floorplan = load_model("geo", "Floorplan")
+OrganizationUser = load_model("openwisp_users", "OrganizationUser")
+Group = load_model("openwisp_users", "Group")
 
 
 class SeleniumTestMixin(BaseSeleniumTestMixin):
@@ -59,15 +67,19 @@ class SeleniumTestMixin(BaseSeleniumTestMixin):
         cls._dashboard_map_context = DASHBOARD_TEMPLATES[0][1].copy()
         cls._dashboard_timeseries_context = DASHBOARD_TEMPLATES[55][1].copy()
         DASHBOARD_TEMPLATES[0][1] = {
-            "monitoring_device_list_url": reverse(
+            "monitoring_device_list_url": reverse_lazy(
                 "monitoring:api_location_device_list",
+                urlconf=MONITORING_API_URLCONF,
                 args=["000"],
             ),
-            "monitoring_location_geojson_url": reverse(
-                "monitoring:api_location_geojson"
+            "monitoring_location_geojson_url": reverse_lazy(
+                "monitoring:api_location_geojson",
+                urlconf=MONITORING_API_URLCONF,
             ),
-            "monitoring_indoor_coordinates_list": reverse(
-                "monitoring:api_indoor_coordinates_list", args=["000"]
+            "monitoring_indoor_coordinates_list": reverse_lazy(
+                "monitoring:api_indoor_coordinates_list",
+                urlconf=MONITORING_API_URLCONF,
+                args=["000"],
             ),
             "monitoring_labels": {
                 "ok": device_app_settings.HEALTH_STATUS_LABELS["ok"],
@@ -307,15 +319,21 @@ class TestWifiSessionInlineAdmin(
 
 @tag("selenium_tests")
 class TestDashboardMap(
-    SeleniumTestMixin, TestDeviceMonitoringMixin, TestGeoMixin, StaticLiveServerTestCase
+    SeleniumTestMixin,
+    TestDeviceMonitoringMixin,
+    TestGeoMixin,
+    TestOrganizationMixin,
+    ChannelsLiveServerTestCase,
 ):
+    retry_max = 1
+    serve_static = True
     object_model = Device
     location_model = Location
     floorplan_model = Floorplan
     object_location_model = DeviceLocation
     config_app_label = "config"
 
-    def open_popup(self, mapType, id):
+    def _open_popup(self, mapType, id):
         self.web_driver.execute_script(
             "return window[arguments[0]].utils.openPopup(arguments[1]);",
             mapType,
@@ -338,7 +356,7 @@ class TestDashboardMap(
         )
         self.login()
         self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
-        self.open_popup("_owGeoMap", location.id)
+        self._open_popup("_owGeoMap", location.id)
         self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail", timeout=5)
         table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
         self.assertEqual(len(table_entries), 2)
@@ -444,7 +462,7 @@ class TestDashboardMap(
             )
         self.login()
         self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
-        self.open_popup("_owGeoMap", location.id)
+        self._open_popup("_owGeoMap", location.id)
         self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail", timeout=5)
         table_container = self.find_element(
             By.CSS_SELECTOR, ".map-detail .table-container"
@@ -467,7 +485,7 @@ class TestDashboardMap(
         mapId = "dashboard-geo-map"
 
         with self.subTest("Test setting url fragments on click event of node"):
-            self.open_popup("_owGeoMap", location.id)
+            self._open_popup("_owGeoMap", location.id)
             current_hash = self.web_driver.execute_script(
                 "return window.location.hash;"
             )
@@ -529,7 +547,7 @@ class TestDashboardMap(
         self.login()
         self.wait_for_visibility(By.CSS_SELECTOR, "#device-map-container")
         self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
-        self.open_popup("_owGeoMap", location.id)
+        self._open_popup("_owGeoMap", location.id)
 
         with self.subTest("Test floorplan rendering"):
             self.wait_for(
@@ -580,7 +598,7 @@ class TestDashboardMap(
             self.assertIsNotNone(canvases)
 
         with self.subTest("Test redirecting to device page from indoor map"):
-            self.open_popup("_owIndoorMap", device2.id)
+            self._open_popup("_owIndoorMap", device2.id)
             open_device_btn = self.find_element(
                 By.CSS_SELECTOR,
                 ".open-device-btn-container .open-device-btn",
@@ -625,7 +643,8 @@ class TestDashboardMap(
         self.login()
         self.wait_for_visibility(By.CSS_SELECTOR, "#device-map-container")
         self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
-        self.open_popup("_owGeoMap", location.id)
+        self._open_popup("_owGeoMap", location.id)
+        sleep(0.5)
         self.wait_for(
             "element_to_be_clickable", By.CSS_SELECTOR, ".map-detail .floorplan-btn"
         ).click()
@@ -672,7 +691,7 @@ class TestDashboardMap(
             organization=org,
         )
         self.login()
-        self.open_popup("_owGeoMap", location.id)
+        self._open_popup("_owGeoMap", location.id)
         self.wait_for(
             "element_to_be_clickable",
             By.CSS_SELECTOR,
@@ -684,8 +703,7 @@ class TestDashboardMap(
         indoorMapId = f"{location.id}:{floorplan.floor}"
 
         with self.subTest("Test setting url fragments on click event of node"):
-            self.open_popup("_owIndoorMap", device.id)
-            # import ipdb; ipdb.set_trace()
+            self._open_popup("_owIndoorMap", device.id)
             current_hash = self.web_driver.execute_script(
                 "return window.location.hash;"
             )
@@ -702,7 +720,9 @@ class TestDashboardMap(
             self.web_driver.switch_to.window(tabs[1])
             self.web_driver.get(current_url)
             sleep(0.5)
-            popup = self.find_element(By.CSS_SELECTOR, ".njg-tooltip-inner")
+            popup = self.wait_for_visibility(
+                By.CSS_SELECTOR, ".njg-tooltip-inner", timeout=5
+            )
             self.assertTrue(popup.is_displayed())
             self.assertIn(device.name, popup.get_attribute("innerHTML"))
             self.web_driver.close()
@@ -731,3 +751,187 @@ class TestDashboardMap(
         no_data_div = self.find_element(By.CSS_SELECTOR, ".no-data")
         self.assertTrue(no_data_div.is_displayed())
         self.assertIn("No map data to show.", no_data_div.text)
+
+    def test_mobile_location_updates_on_dashboard_map(self):
+        org = self._get_org()
+        device = self._create_device(organization=org)
+        location = self._create_location(
+            is_mobile=True, name="Test-Location", organization=org
+        )
+        self._create_object_location(
+            content_object=device,
+            location=location,
+            organization=org,
+        )
+        self.login()
+        location.geometry = Point(12.513124, 41.898903)
+        location.full_clean()
+        location.save()
+        sleep(0.5)
+        series_value = WebDriverWait(self.web_driver, 5).until(
+            lambda d: d.execute_script(
+                """
+                const options = window._owGeoMap.echarts.getOption();
+                const series = options.series.find(
+                    (s) => s.type === "scatter" || "effectScatter",
+                );
+                return series.data.find(d => d.name === "Test-Location").value;
+            """
+            )
+        )
+        self.assertEqual([location.geometry.x, location.geometry.y], series_value)
+
+        with self.subTest("Test mobile location with open device list popup"):
+            self._open_popup("_owGeoMap", location.id)
+            self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail", timeout=5)
+            location.geometry = Point(12.511124, 41.898903)
+            location.full_clean()
+            location.save()
+            sleep(0.5)
+            series_value = WebDriverWait(self.web_driver, 5).until(
+                lambda d: d.execute_script(
+                    """
+                    const options = window._owGeoMap.echarts.getOption();
+                    const series = options.series.find(
+                        (s) => s.type === "scatter" || "effectScatter",
+                    );
+                    return series.data.find(d => d.name === "Test-Location").value;
+                """
+                )
+            )
+            self.assertEqual([location.geometry.x, location.geometry.y], series_value)
+
+    def test_mobile_location_updates_on_dashboard_map_with_org_isolation(self):
+        org1 = self._get_org(org_name="test1")
+        org2 = self._get_org(org_name="test2")
+        org1_location = self._create_location(
+            name="Org1-Location",
+            is_mobile=True,
+            organization=org1,
+            geometry="SRID=4326;POINT (12.513124 41.898903)",
+        )
+        org1_device = self._create_device(organization=org1)
+        self._create_object_location(
+            content_object=org1_device,
+            location=org1_location,
+            organization=org1,
+        )
+        org2_location = self._create_location(
+            name="Org2-Location",
+            is_mobile=True,
+            organization=org2,
+            geometry="SRID=4326;POINT (12.515124 41.898903)",
+        )
+        org2_device = self._create_device(organization=org2)
+        self._create_object_location(
+            content_object=org2_device,
+            location=org2_location,
+            organization=org2,
+        )
+        administrator = Group.objects.create(name="Administrator")
+        perm = Permission.objects.filter(
+            codename=get_permission_codename("change", self.location_model._meta),
+        ).first()
+        administrator.permissions.add(perm)
+
+        with self.subTest("Org1 and Org2 location update is broadcast to superuser"):
+            self.login()
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".leaflet-container .ow-loading-spinner"
+            )
+            sleep(0.5)
+            org1_location.geometry = Point(12.515124, 41.898903)
+            org1_location.full_clean()
+            org1_location.save()
+            org2_location.geometry = Point(12.515124, 41.899603)
+            org2_location.full_clean()
+            org2_location.save()
+            series_locations = WebDriverWait(self.web_driver, 5).until(
+                lambda d: d.execute_script(
+                    """
+                    const options = window._owGeoMap.echarts.getOption();
+                    const series = options.series.find(
+                        (s) => s.type === "scatter" || "effectScatter",
+                    );
+                    const org1_location = series.data.find(l => l.name === "Org1-Location")
+                    const org2_location = series.data.find(l => l.name === "Org2-Location")
+                    return {org1_location, org2_location}
+                """
+                )
+            )
+            self.assertEqual(
+                [org1_location.geometry.x, org1_location.geometry.y],
+                series_locations["org1_location"]["value"],
+            )
+            self.assertEqual(
+                [org2_location.geometry.x, org2_location.geometry.y],
+                series_locations["org2_location"]["value"],
+            )
+
+        with self.subTest("Org1 location update is broadcast to org1 user only"):
+            self._create_administrator(
+                organizations=[org1],
+                username="user1",
+                password="password",
+                email="user1@test.org",
+            )
+            org1_driver = self.get_firefox_webdriver()
+            self.login(username="user1", password="password", driver=org1_driver)
+            org1_location.geometry = Point(12.517124, 41.898903)
+            org1_location.full_clean()
+            org1_location.save()
+            try:
+                series_locations = WebDriverWait(org1_driver, 5).until(
+                    lambda d: d.execute_script(
+                        """
+                        const options = window._owGeoMap.echarts.getOption();
+                        const series = options.series.find(
+                            (s) => s.type === "scatter" || "effectScatter",
+                        );
+                        const org1_location = series.data.find(l => l.name === "Org1-Location")
+                        const org2_location = series.data.find(l => l.name === "Org2-Location")
+                        return {org1_location, org2_location}
+                    """
+                    )
+                )
+            finally:
+                org1_driver.quit()
+            self.assertEqual(
+                [org1_location.geometry.x, org1_location.geometry.y],
+                series_locations["org1_location"]["value"],
+            )
+            self.assertIsNone(series_locations["org2_location"])
+
+        with self.subTest("Org2 location update is broadcast to org2 user only"):
+            self._create_administrator(
+                organizations=[org2],
+                username="user2",
+                password="password",
+                email="user2@test.org",
+            )
+            org2_driver = self.get_firefox_webdriver()
+            self.login(username="user2", password="password", driver=org2_driver)
+            org2_location.geometry = Point(12.517124, 41.899603)
+            org2_location.full_clean()
+            org2_location.save()
+            try:
+                series_locations = WebDriverWait(org2_driver, 5).until(
+                    lambda d: d.execute_script(
+                        """
+                        const options = window._owGeoMap.echarts.getOption();
+                        const series = options.series.find(
+                            (s) => s.type === "scatter" || "effectScatter",
+                        );
+                        const org1_location = series.data.find(l => l.name === "Org1-Location")
+                        const org2_location = series.data.find(l => l.name === "Org2-Location")
+                        return {org1_location, org2_location}
+                    """
+                    )
+                )
+            finally:
+                org2_driver.quit()
+            self.assertEqual(
+                [org2_location.geometry.x, org2_location.geometry.y],
+                series_locations["org2_location"]["value"],
+            )
+            self.assertIsNone(series_locations["org1_location"])
