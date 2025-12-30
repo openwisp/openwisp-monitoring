@@ -218,21 +218,15 @@ if TESTING and "--exclude-tag=selenium_tests" not in sys.argv:
             "CONFIG": {"hosts": [f"redis://{redis_host}/7"]},
         }
     }
-else:
+elif TESTING:
     CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {"hosts": [f"redis://{redis_host}/7"]},
-    }
-}
 
 # avoid slowing down the test suite with mac vendor lookups
 if TESTING:
     OPENWISP_MONITORING_MAC_VENDOR_DETECTION = False
     OPENWISP_MONITORING_API_URLCONF = "openwisp_monitoring.urls"
-    OPENWISP_MONITORING_API_BASEURL = ""
+    OPENWISP_MONITORING_API_BASEURL = "http://testserver"
     # for testing AUTO_IPERF3
     OPENWISP_MONITORING_AUTO_IPERF3 = True
 

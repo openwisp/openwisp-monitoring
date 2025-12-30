@@ -321,6 +321,7 @@
         minZoom: leafletConfig.MIN_ZOOM || 1,
         maxZoom: leafletConfig.MAX_ZOOM || 18,
         fullscreenControl: true,
+
         // Force tooltips ON for all viewport widths; override library's
         // responsive media rules that hide tooltips under 851px.
         baseOptions: {
@@ -335,6 +336,7 @@
       bookmarkableActions: {
         enabled: true,
         id: "dashboard-geo-map",
+        zoomLevel: 10,
       },
       mapTileConfig: tiles,
       nodeCategories: Object.keys(STATUS_COLORS).map((status) => ({
@@ -545,6 +547,8 @@
         const index = map?.data?.nodes?.findIndex((n) => n.id === locationId);
         const nodeData = map?.data?.nodes?.[index];
         if (index === -1 || !nodeData) {
+          const id = map.config.bookmarkableActions.id;
+          map.utils.removeUrlFragment(id);
           console.error(`Node with ID "${locationId}" not found.`);
           return;
         }
@@ -563,6 +567,8 @@
             ...series.data[index],
             node: nodeData,
           },
+          seriesIndex: seriesIndex,
+          seriesType: series.type,
         };
         map.echarts.trigger("click", params);
       },

@@ -13,6 +13,15 @@
   let maps = {};
   let locationId = null;
 
+  // Use case: we support overlaying two maps. The URL hash contains up to two
+  // fragments separated by ';' — one is the geo map and the other is an indoor map.
+  //
+  // The geo map fragment has id="dashboard-geo-map". Any fragment whose id is
+  // NOT "dashboard-geo-map" is treated as the indoor map fragment.
+  //
+  // When switching maps we expect only two maps at most; the previous map should
+  // be removed before adding the new one.
+  // Note: future logic to manage this will be implemented in netjsongraph.js.
   const rawUrlFragments = window.location.hash.replace(/^#/, "");
   const fragments = rawUrlFragments.split(";").filter((f) => f.trim() !== "");
 
@@ -23,6 +32,7 @@
 
   const params = new URLSearchParams(indoorMapFragment);
   const fragmentId = params.get("id");
+  // fragments format is expected to be "<locationId>:<floor>"
   const [fragmentLocationId, fragmentFloor] = fragmentId?.split(":") || [];
   if (fragmentLocationId && fragmentFloor != null) {
     const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
@@ -32,8 +42,8 @@
     openFloorPlan(`${floorplanUrl}`, fragmentLocationId, fragmentFloor);
   }
 
-  async function openFloorPlan(url, locId = null, floor = currentFloor) {
-    locationId = locId;
+  async function openFloorPlan(url, id = null, floor = currentFloor) {
+    locationId = id;
     await fetchData(url, floor);
 
     selectedIndex = floors.indexOf(currentFloor) || 0;
@@ -130,8 +140,8 @@
   function closeButtonHandler() {
     $("#floorplan-container, #floorplan-navigation").remove();
     $("#floorplan-overlay").remove();
-    updateBackdrop();
-    removeUrlFragment();
+    $(".menu-backdrop").removeClass("active");
+    removeUrlFragment(locationId);
     allResults = {};
     currentFloor = null;
     maps = {};
@@ -139,20 +149,6 @@
   }
 
   function removeUrlFragment(locationId) {
-    if (locationId != null) {
-      const id = maps[currentFloor].config.bookmarkableActions.id;
-      maps[currentFloor].utils.removeUrlFragment(id);
-    }
-  }
-
-  function removeUrlFragment() {
-    if (locationId != null) {
-      const id = maps[currentFloor].config.bookmarkableActions.id;
-      maps[currentFloor].utils.removeUrlFragment(id);
-    }
-  }
-
-  function removeUrlFragment() {
     if (locationId != null) {
       const id = maps[currentFloor].config.bookmarkableActions.id;
       maps[currentFloor].utils.removeUrlFragment(id);
@@ -188,7 +184,7 @@
       selectedIndex = +e.currentTarget.dataset.index;
       const center = Math.floor(NAV_WINDOW_SIZE / 2);
       navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
-      removeUrlFragment();
+      removeUrlFragment(locationId);
       addFloorButtons(selectedIndex, navWindowStart);
       currentFloor = floors[selectedIndex];
       await showFloor(url, currentFloor);
@@ -199,7 +195,7 @@
         selectedIndex++;
         const center = Math.floor(NAV_WINDOW_SIZE / 2);
         navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
-        removeUrlFragment();
+        removeUrlFragment(locationId);
         addFloorButtons(selectedIndex, navWindowStart);
         currentFloor = floors[selectedIndex];
         await showFloor(url, currentFloor);
@@ -211,7 +207,7 @@
         selectedIndex--;
         const center = Math.floor(NAV_WINDOW_SIZE / 2);
         navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
-        removeUrlFragment();
+        removeUrlFragment(locationId);
         addFloorButtons(selectedIndex, navWindowStart);
         currentFloor = floors[selectedIndex];
         await showFloor(url, currentFloor);
@@ -317,6 +313,7 @@
       bookmarkableActions: {
         enabled: true,
         id: `${locationId}:${floor}`,
+        zoomOnRestore: false,
       },
       nodeCategories: Object.keys(status_colors).map((status) => ({
         name: status,
@@ -338,7 +335,6 @@
         return data;
       },
 
-      async onReady() {
       async onReady() {
         const map = this.leaflet;
         maps[currentFloor] = indoorMap;
@@ -431,6 +427,8 @@
         );
         const nodeData = indoorMap?.data?.nodes?.[index];
         if (index === -1 || !nodeData) {
+          const id = indoorMap.config.bookmarkableActions.id;
+          indoorMap.utils.removeUrlFragment(id);
           console.error(`Node with ID "${deviceId}" not found.`);
           return;
         }
@@ -441,12 +439,13 @@
         const params = {
           componentType: "series",
           componentSubType: series.type,
-          seriesIndex: seriesIndex,
           dataIndex: index,
           data: {
             ...series.data[index],
             node: nodeData,
           },
+          seriesIndex: seriesIndex,
+          seriesType: series.type,
         };
         indoorMap.echarts.trigger("click", params);
       },
