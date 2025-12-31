@@ -130,15 +130,15 @@ class TestAdmin(
         self.assertContains(response, "RAM status")
         self.assertContains(response, "AlertSettings")
         self.assertContains(response, "Is healthy")
-        self.assertContains(response, "http://testserver/api")
+        self.assertContains(response, "/api/")
         self.assertContains(response, check.name)
         self.assertContains(response, check.params)
 
     def test_dashboard_map_on_index(self):
         url = reverse("admin:index")
         response = self.client.get(url)
-        self.assertContains(response, "geoJsonUrl: 'http://testserver/api")
-        self.assertContains(response, "locationDeviceUrl: 'http://testserver/api")
+        self.assertContains(response, "geoJsonUrl: '/api/")
+        self.assertContains(response, "locationDeviceUrl: '/api/")
 
     def test_wifisession_dashboard_chart_query(self):
         url = reverse("admin:index")

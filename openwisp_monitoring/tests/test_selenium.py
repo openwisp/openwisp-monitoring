@@ -30,7 +30,6 @@ from openwisp_utils.admin_theme.dashboard import DASHBOARD_TEMPLATES
 from openwisp_utils.tests import SeleniumTestMixin as BaseSeleniumTestMixin
 
 from ..device import settings as device_app_settings
-from ..settings import MONITORING_API_URLCONF
 
 Device = load_model("config", "Device")
 DeviceConnection = load_model("connection", "DeviceConnection")
@@ -69,16 +68,13 @@ class SeleniumTestMixin(BaseSeleniumTestMixin):
         DASHBOARD_TEMPLATES[0][1] = {
             "monitoring_device_list_url": reverse_lazy(
                 "monitoring:api_location_device_list",
-                urlconf=MONITORING_API_URLCONF,
                 args=["000"],
             ),
             "monitoring_location_geojson_url": reverse_lazy(
                 "monitoring:api_location_geojson",
-                urlconf=MONITORING_API_URLCONF,
             ),
             "monitoring_indoor_coordinates_list": reverse_lazy(
                 "monitoring:api_indoor_coordinates_list",
-                urlconf=MONITORING_API_URLCONF,
                 args=["000"],
             ),
             "monitoring_labels": {
@@ -325,8 +321,6 @@ class TestDashboardMap(
     TestOrganizationMixin,
     ChannelsLiveServerTestCase,
 ):
-    retry_max = 1
-    serve_static = True
     object_model = Device
     location_model = Location
     floorplan_model = Floorplan
@@ -843,9 +837,11 @@ class TestDashboardMap(
             org1_location.geometry = Point(12.515124, 41.898903)
             org1_location.full_clean()
             org1_location.save()
+            sleep(0.5)
             org2_location.geometry = Point(12.515124, 41.899603)
             org2_location.full_clean()
             org2_location.save()
+            sleep(0.5)
             series_locations = WebDriverWait(self.web_driver, 5).until(
                 lambda d: d.execute_script(
                     """
@@ -880,6 +876,7 @@ class TestDashboardMap(
             org1_location.geometry = Point(12.517124, 41.898903)
             org1_location.full_clean()
             org1_location.save()
+            sleep(0.5)
             try:
                 series_locations = WebDriverWait(org1_driver, 5).until(
                     lambda d: d.execute_script(
@@ -914,6 +911,7 @@ class TestDashboardMap(
             org2_location.geometry = Point(12.517124, 41.899603)
             org2_location.full_clean()
             org2_location.save()
+            sleep(0.5)
             try:
                 series_locations = WebDriverWait(org2_driver, 5).until(
                     lambda d: d.execute_script(
