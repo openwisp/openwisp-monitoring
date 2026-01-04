@@ -767,7 +767,7 @@ class TestDashboardMap(
                 """
                 const options = window._owGeoMap.echarts.getOption();
                 const series = options.series.find(
-                    (s) => s.type === "scatter" || "effectScatter",
+                    (s) => s.type === "scatter" || s.type === "effectScatter",
                 );
                 return series.data.find(d => d.name === "Test-Location").value;
             """
@@ -787,7 +787,7 @@ class TestDashboardMap(
                     """
                     const options = window._owGeoMap.echarts.getOption();
                     const series = options.series.find(
-                        (s) => s.type === "scatter" || "effectScatter",
+                        (s) => s.type === "scatter" || s.type === "effectScatter",
                     );
                     return series.data.find(d => d.name === "Test-Location").value;
                 """
@@ -847,7 +847,7 @@ class TestDashboardMap(
                     """
                     const options = window._owGeoMap.echarts.getOption();
                     const series = options.series.find(
-                        (s) => s.type === "scatter" || "effectScatter",
+                        (s) => s.type === "scatter" || s.type === "effectScatter",
                     );
                     const org1_location = series.data.find(l => l.name === "Org1-Location")
                     const org2_location = series.data.find(l => l.name === "Org2-Location")
@@ -883,7 +883,7 @@ class TestDashboardMap(
                         """
                         const options = window._owGeoMap.echarts.getOption();
                         const series = options.series.find(
-                            (s) => s.type === "scatter" || "effectScatter",
+                            (s) => s.type === "scatter" || s.type === "effectScatter",
                         );
                         const org1_location = series.data.find(l => l.name === "Org1-Location")
                         const org2_location = series.data.find(l => l.name === "Org2-Location")
@@ -918,7 +918,7 @@ class TestDashboardMap(
                         """
                         const options = window._owGeoMap.echarts.getOption();
                         const series = options.series.find(
-                            (s) => s.type === "scatter" || "effectScatter",
+                            (s) => s.type === "scatter" || s.type === "effectScatter",
                         );
                         const org1_location = series.data.find(l => l.name === "Org1-Location")
                         const org2_location = series.data.find(l => l.name === "Org2-Location")

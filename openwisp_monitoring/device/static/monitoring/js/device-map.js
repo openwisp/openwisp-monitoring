@@ -554,14 +554,13 @@
         }
         const option = map.echarts.getOption();
         const series = option.series.find(
-          (s) => s.type === "scatter" || "effectScatter",
+          (s) => s.type === "scatter" || s.type === "effectScatter",
         );
         const seriesIndex = option.series.indexOf(series);
 
         const params = {
           componentType: "series",
           componentSubType: series.type,
-          seriesIndex: seriesIndex,
           dataIndex: index,
           data: {
             ...series.data[index],
