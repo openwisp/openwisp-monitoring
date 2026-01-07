@@ -26,6 +26,7 @@ if settings.DEBUG and "debug_toolbar" in settings.INSTALLED_APPS:
 
     urlpatterns.append(path("__debug__/", include(debug_toolbar.urls)))
 
+# ChannelsLiveServerTestCase runs on ASGI, so Django's dev media/static serving is bypassed
 if settings.TESTING and "--exclude-tag=selenium_tests" not in sys.argv:
     urlpatterns += [
         re_path(
