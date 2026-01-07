@@ -3,13 +3,13 @@ from unittest.mock import patch
 from urllib.parse import quote_plus
 
 from channels.testing import ChannelsLiveServerTestCase
+from django.conf import settings
 from django.contrib.auth import get_permission_codename
 from django.contrib.auth.models import Permission
 from django.contrib.gis.geos import Point
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
-from django.test import tag
-from django.urls import reverse_lazy
-from django.urls.base import reverse
+from django.test import override_settings, tag
+from django.urls import reverse
 from reversion.models import Version
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
@@ -25,7 +25,6 @@ from openwisp_monitoring.device.tests import (
 )
 from openwisp_monitoring.monitoring.configuration import DEFAULT_DASHBOARD_TRAFFIC_CHART
 from openwisp_monitoring.monitoring.migrations import create_general_metrics
-from openwisp_users.tests.utils import TestOrganizationMixin
 from openwisp_utils.admin_theme.dashboard import DASHBOARD_TEMPLATES
 from openwisp_utils.tests import SeleniumTestMixin as BaseSeleniumTestMixin
 
@@ -62,18 +61,17 @@ class SeleniumTestMixin(BaseSeleniumTestMixin):
         URLs in the already registered dashboard templates, this method manually
         adjusts the template contexts to ensure they contain the correct URLs.
         """
-        super().setUpClass()
         cls._dashboard_map_context = DASHBOARD_TEMPLATES[0][1].copy()
         cls._dashboard_timeseries_context = DASHBOARD_TEMPLATES[55][1].copy()
         DASHBOARD_TEMPLATES[0][1] = {
-            "monitoring_device_list_url": reverse_lazy(
+            "monitoring_device_list_url": reverse(
                 "monitoring:api_location_device_list",
                 args=["000"],
             ),
-            "monitoring_location_geojson_url": reverse_lazy(
+            "monitoring_location_geojson_url": reverse(
                 "monitoring:api_location_geojson",
             ),
-            "monitoring_indoor_coordinates_list": reverse_lazy(
+            "monitoring_indoor_coordinates_list": reverse(
                 "monitoring:api_indoor_coordinates_list",
                 args=["000"],
             ),
@@ -88,6 +86,7 @@ class SeleniumTestMixin(BaseSeleniumTestMixin):
         DASHBOARD_TEMPLATES[55][1]["api_url"] = reverse(
             "monitoring_general:api_dashboard_timeseries"
         )
+        super().setUpClass()
 
     @classmethod
     def tearDownClass(cls):
@@ -314,11 +313,20 @@ class TestWifiSessionInlineAdmin(
 
 
 @tag("selenium_tests")
+@override_settings(
+    CHANNEL_LAYERS={
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [f"redis://{getattr(settings, 'REDIS_HOST', 'localhost')}/7"]
+            },
+        }
+    },
+)
 class TestDashboardMap(
     SeleniumTestMixin,
     TestDeviceMonitoringMixin,
     TestGeoMixin,
-    TestOrganizationMixin,
     ChannelsLiveServerTestCase,
 ):
     object_model = Device
@@ -833,15 +841,13 @@ class TestDashboardMap(
             self.wait_for_invisibility(
                 By.CSS_SELECTOR, ".leaflet-container .ow-loading-spinner"
             )
-            sleep(0.5)
             org1_location.geometry = Point(12.515124, 41.898903)
             org1_location.full_clean()
             org1_location.save()
-            sleep(0.5)
             org2_location.geometry = Point(12.515124, 41.899603)
             org2_location.full_clean()
             org2_location.save()
-            sleep(0.5)
+            sleep(0.3)
             series_locations = WebDriverWait(self.web_driver, 5).until(
                 lambda d: d.execute_script(
                     """
@@ -871,12 +877,12 @@ class TestDashboardMap(
                 password="password",
                 email="user1@test.org",
             )
-            org1_driver = self.get_firefox_webdriver()
+            org1_driver = self.get_webdriver()
             self.login(username="user1", password="password", driver=org1_driver)
             org1_location.geometry = Point(12.517124, 41.898903)
             org1_location.full_clean()
             org1_location.save()
-            sleep(0.5)
+            sleep(0.3)
             try:
                 series_locations = WebDriverWait(org1_driver, 5).until(
                     lambda d: d.execute_script(
@@ -897,7 +903,7 @@ class TestDashboardMap(
                 [org1_location.geometry.x, org1_location.geometry.y],
                 series_locations["org1_location"]["value"],
             )
-            self.assertIsNone(series_locations["org2_location"])
+            self.assertEqual(series_locations["org2_location"], None)
 
         with self.subTest("Org2 location update is broadcast to org2 user only"):
             self._create_administrator(
@@ -906,12 +912,12 @@ class TestDashboardMap(
                 password="password",
                 email="user2@test.org",
             )
-            org2_driver = self.get_firefox_webdriver()
+            org2_driver = self.get_webdriver()
             self.login(username="user2", password="password", driver=org2_driver)
             org2_location.geometry = Point(12.517124, 41.899603)
             org2_location.full_clean()
             org2_location.save()
-            sleep(0.5)
+            sleep(0.3)
             try:
                 series_locations = WebDriverWait(org2_driver, 5).until(
                     lambda d: d.execute_script(
@@ -932,4 +938,4 @@ class TestDashboardMap(
                 [org2_location.geometry.x, org2_location.geometry.y],
                 series_locations["org2_location"]["value"],
             )
-            self.assertIsNone(series_locations["org1_location"])
+            self.assertEqual(series_locations["org1_location"], None)
