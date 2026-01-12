@@ -1,4 +1,4 @@
-FROM python:3.9.19-slim-bullseye
+FROM python:3.10-slim-bullseye
 
 RUN apt update && \
     apt install --yes zlib1g-dev libjpeg-dev gdal-bin libproj-dev \
