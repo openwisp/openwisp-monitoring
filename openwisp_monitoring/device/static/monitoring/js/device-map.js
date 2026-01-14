@@ -595,7 +595,7 @@
     }
     var host = window.location.host,
       protocol = window.location.protocol === "http:" ? "ws" : "wss",
-      ws = new ReconnectingWebSocket(protocol + "://" + host + "/ws/loci/locations/");
+      ws = new ReconnectingWebSocket(protocol + "://" + host + "/ws/loci/location/");
     ws.onmessage = function (e) {
       const data = JSON.parse(e.data);
       const [lng, lat] = data.geometry.coordinates;
