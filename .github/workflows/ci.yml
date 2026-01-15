@@ -87,6 +87,8 @@ jobs:
           pip uninstall -y Django
           pip install -U ${{ matrix.django-version }}
           sudo npm install -g prettier
+          # Todo: Remove before merge
+          pip install --no-cache-dir https://github.com/openwisp/openwisp-controller/tarball/feature/1157-new-ws-endpoint-for-all-location
 
       - name: Start InfluxDB
         if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
