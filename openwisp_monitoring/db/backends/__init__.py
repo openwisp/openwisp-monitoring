@@ -3,62 +3,116 @@ from importlib import import_module
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.db import DatabaseError
+
+from .registry import (
+    BUILTIN_BACKENDS,
+    DEFAULT_BACKEND_PATH,
+    builtin_backend_paths,
+    default_options_for_backend,
+    required_keys_for_backend,
+    resolve_backend_path,
+)
 
 logger = logging.getLogger(__name__)
 
-TIMESERIES_DB = getattr(settings, "TIMESERIES_DATABASE", None)
-if not TIMESERIES_DB:
-    TIMESERIES_DB = {
-        "BACKEND": "openwisp_monitoring.db.backends.influxdb",
-        "USER": getattr(settings, "INFLUXDB_USER", "openwisp"),
-        "PASSWORD": getattr(settings, "INFLUXDB_PASSWORD", "openwisp"),
-        "NAME": getattr(settings, "INFLUXDB_DATABASE", "openwisp2"),
-        "HOST": getattr(settings, "INFLUXDB_HOST", "localhost"),
-        "PORT": getattr(settings, "INFLUXDB_PORT", "8086"),
-    }
-    logger.warning(
-        "The previous method to define Timeseries Database has been deprecated. Please refer to the docs:\n"
-        "https://github.com/openwisp/openwisp-monitoring#setup-integrate-in-an-existing-django-project"
-    )
+CURRENT_BACKEND = DEFAULT_BACKEND_PATH
+BUILTIN_BACKEND_KEYS = tuple(BUILTIN_BACKENDS.keys())
 
 
-def load_backend_module(backend_name=TIMESERIES_DB["BACKEND"], module=None):
-    """Loads backend module.
-
-    Returns database backend module given a fully qualified database
-    backend name, or raise an error if it doesn't exist or backend is not
-    well defined.
+def _build_timeseries_db():
     """
-    try:
-        assert "BACKEND" in TIMESERIES_DB, "BACKEND"
-        assert "USER" in TIMESERIES_DB, "USER"
-        assert "PASSWORD" in TIMESERIES_DB, "PASSWORD"
-        assert "NAME" in TIMESERIES_DB, "NAME"
-        assert "HOST" in TIMESERIES_DB, "HOST"
-        assert "PORT" in TIMESERIES_DB, "PORT"
-        if module:
-            return import_module(f"{backend_name}.{module}")
-        else:
-            return import_module(backend_name)
-    except AttributeError as e:
-        raise DatabaseError("No TIMESERIES_DATABASE specified in settings") from e
-    except AssertionError as e:
+    Build a FLAT TIMESERIES_DB dict (for backward compatibility).
+
+    - If TIMESERIES_DATABASE is missing: use legacy INFLUXDB_* settings (deprecated)
+    - If TIMESERIES_DATABASE exists: validate/normalize it and resolve BACKEND
+    """
+    raw = getattr(settings, "TIMESERIES_DATABASE", None)
+
+    if not raw:
+        backend_path = CURRENT_BACKEND
+        defaults = default_options_for_backend(backend_path)
+        cfg = {
+            "BACKEND": backend_path,
+            "USER": getattr(
+                settings, "INFLUXDB_USER", defaults.get("USER", "openwisp")
+            ),
+            "PASSWORD": getattr(settings, "INFLUXDB_PASSWORD", "openwisp"),
+            "NAME": getattr(
+                settings, "INFLUXDB_DATABASE", defaults.get("NAME", "openwisp2")
+            ),
+            "HOST": getattr(
+                settings, "INFLUXDB_HOST", defaults.get("HOST", "localhost")
+            ),
+            "PORT": getattr(settings, "INFLUXDB_PORT", defaults.get("PORT", "8086")),
+            "OPTIONS": {},
+        }
+        logger.warning(
+            "Timeseries Database definition method deprecated. "
+            "Please refer to the docs:\n"
+            "https://github.com/openwisp/openwisp-monitoring#setup-integrate-in-an-existing-django-project"
+        )
+        return cfg, "legacy INFLUXDB_* settings"
+
+    # New path: TIMESERIES_DATABASE dict
+    if not isinstance(raw, dict):
+        raise ImproperlyConfigured("TIMESERIES_DATABASE must be a dictionary.")
+    if "BACKEND" not in raw:
+        raise ImproperlyConfigured('TIMESERIES_DATABASE must define "BACKEND".')
+
+    backend_path = resolve_backend_path(raw["BACKEND"])
+
+    cfg = {"BACKEND": backend_path}
+    cfg.update(default_options_for_backend(backend_path))
+
+    # Merge user overrides
+    for k, v in raw.items():
+        if k not in ("BACKEND", "OPTIONS"):
+            cfg[k] = v
+
+    # Normalize OPTIONS
+    options = raw.get("OPTIONS") or {}
+    if not isinstance(options, dict):
         raise ImproperlyConfigured(
-            f'"{e}" field is not declared in TIMESERIES_DATABASE'
-        ) from e
+            'TIMESERIES_DATABASE["OPTIONS"] must be a dictionary.'
+        )
+    cfg["OPTIONS"] = options
+
+    return cfg, "settings.TIMESERIES_DATABASE"
+
+
+TIMESERIES_DB, _TIMESERIES_DB_SOURCE = _build_timeseries_db()
+
+
+def load_backend_module(backend_name=None, module=None):
+    """
+    Loads backend module (root or submodule).
+
+    Backend-specific required keys are validated via registry (only for known built-ins).
+    """
+    backend_path = resolve_backend_path(backend_name or TIMESERIES_DB.get("BACKEND"))
+    if not backend_path:
+        raise ImproperlyConfigured('TIMESERIES_DATABASE must define "BACKEND".')
+
+    # Validate required keys for built-in backends
+    required = required_keys_for_backend(backend_path)
+    missing = [k for k in required if k not in TIMESERIES_DB]
+    if missing:
+        raise ImproperlyConfigured(
+            f"Missing required settings for {backend_path}: {', '.join(missing)} "
+            f"(source: {_TIMESERIES_DB_SOURCE})."
+        )
+
+    try:
+        if module:
+            return import_module(f"{backend_path}.{module}")
+        return import_module(backend_path)
     except ImportError as e:
-        # The database backend wasn't found. Display a helpful error message
-        # listing all built-in database backends.
-        builtin_backends = ["influxdb"]
-        if backend_name not in [
-            f"openwisp_monitoring.db.backends.{b}" for b in builtin_backends
-        ]:
+        if backend_path not in builtin_backend_paths():
             raise ImproperlyConfigured(
-                f"{backend_name} isn't an available database backend.\n"
-                "Try using 'openwisp_monitoring.db.backends.XXX', where XXX is one of:\n"
-                f"{builtin_backends}"
+                f"{backend_path} isn't an available database backend.\n"
+                f"Try one of the built-in backends: {list(BUILTIN_BACKEND_KEYS)}"
             ) from e
+        raise
 
 
 timeseries_db = load_backend_module(module="client").DatabaseClient()
