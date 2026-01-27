@@ -602,7 +602,7 @@
       if (currentPopup) {
         $(".leaflet-popup").hide();
       }
-      map.utils.moveNodeInRealTime(map, data.id, { lng, lat });
+      map.utils.moveNodeInRealTime(data.id, { lng, lat });
       if (currentPopup) {
         currentPopup.setLatLng([lat, lng]);
         $(".leaflet-popup").show();

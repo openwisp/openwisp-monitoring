@@ -707,7 +707,7 @@ class TestDashboardMap(
         with self.subTest("Test setting url fragments on click event of node"):
             self._open_popup("_owIndoorMap", device.id)
             current_hash = self.web_driver.execute_script(
-                "return window.location.hash;"
+                "return decodeURIComponent(window.location.hash);"
             )
             expected_hash = (
                 f"#id={mapId}&nodeId={location.id};"

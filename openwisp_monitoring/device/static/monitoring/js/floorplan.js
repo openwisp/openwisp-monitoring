@@ -22,7 +22,7 @@
   // When switching maps we expect only two maps at most; the previous map should
   // be removed before adding the new one.
   // Note: future logic to manage this will be implemented in netjsongraph.js.
-  const rawUrlFragments = window.location.hash.replace(/^#/, "");
+  const rawUrlFragments = decodeURIComponent(window.location.hash.replace(/^#/, ""));
   const fragments = rawUrlFragments.split(";").filter((f) => f.trim() !== "");
 
   const indoorMapFragment = fragments.find((fragment) => {
