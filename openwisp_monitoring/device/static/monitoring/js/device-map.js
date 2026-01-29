@@ -1,7 +1,7 @@
 "use strict";
 
 (function ($) {
-  const loadingOverlay = $("#device-map-container .ow-loading-spinner");
+  const loadingOverlay = $("#dashboard-map-overlay .ow-loading-spinner");
   const localStorageKey = "ow-map-shown";
   const mapContainer = $("#device-map-container");
   const statuses = ["critical", "problem", "ok", "unknown", "deactivated"];
@@ -51,6 +51,7 @@
   };
 
   let currentPopup = null;
+  let currentPopupLocationId = null;
 
   const loadPopUpContent = function (nodeData, netjsongraphInstance, url) {
     loadingOverlay.show();
@@ -61,7 +62,6 @@
     if (currentPopup) {
       currentPopup.remove();
     }
-    loadingOverlay.show();
 
     $.ajax({
       dataType: "json",
@@ -137,6 +137,7 @@
           </div>
         `;
 
+        currentPopupLocationId = locationId;
         currentPopup = L.popup({
           autoPan: true,
           autoPanPadding: [25, 25],
@@ -262,6 +263,8 @@
         el.find(".leaflet-popup-close-button").on("click", function () {
           const id = netjsongraphInstance.config.bookmarkableActions.id;
           netjsongraphInstance.utils.removeUrlFragment(id);
+          currentPopup = null;
+          currentPopupLocationId = null;
         });
         loadingOverlay.hide();
       },
@@ -599,11 +602,11 @@
     ws.onmessage = function (e) {
       const data = JSON.parse(e.data);
       const [lng, lat] = data.geometry.coordinates;
-      if (currentPopup) {
+      if (currentPopup && data.id === currentPopupLocationId) {
         $(".leaflet-popup").hide();
       }
       map.utils.moveNodeInRealTime(data.id, { lng, lat });
-      if (currentPopup) {
+      if (currentPopup && data.id === currentPopupLocationId) {
         currentPopup.setLatLng([lat, lng]);
         $(".leaflet-popup").show();
       }

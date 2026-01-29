@@ -181,6 +181,7 @@
 
     $nav.off("click");
     $nav.on("click", ".floor-btn", async (e) => {
+      $(".floorplan-loading-spinner").show();
       selectedIndex = +e.currentTarget.dataset.index;
       const center = Math.floor(NAV_WINDOW_SIZE / 2);
       navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
@@ -191,6 +192,7 @@
     });
 
     $nav.on("click", ".right-arrow:not(.disabled)", async () => {
+      $(".floorplan-loading-spinner").show();
       if (selectedIndex < floors.length - 1) {
         selectedIndex++;
         const center = Math.floor(NAV_WINDOW_SIZE / 2);
@@ -203,6 +205,7 @@
     });
 
     $nav.on("click", ".left-arrow:not(.disabled)", async () => {
+      $(".floorplan-loading-spinner").show();
       if (selectedIndex > 0) {
         selectedIndex--;
         const center = Math.floor(NAV_WINDOW_SIZE / 2);
@@ -221,7 +224,6 @@
       .filter(`[data-floor="${floor}"]`)
       .addClass("active selected");
 
-    $(".floorplan-loading-spinner").hide();
     await fetchData(url, floor);
 
     const nodesThisFloor = { nodes: allResults[floor], links: [] };
@@ -342,6 +344,7 @@
         map.eachLayer((layer) => layer._url && map.removeLayer(layer));
         const img = new Image();
         img.src = imageUrl;
+        $(".floorplan-loading-spinner").show();
         await img.decode();
         let initialZoom;
 
@@ -395,6 +398,7 @@
         map.setMaxBounds(bnds.pad(1));
         initialZoom = map.getZoom();
         map.invalidateSize();
+        $(".floorplan-loading-spinner").hide();
 
         map.on("fullscreenchange", () => {
           const floorNavigation = $("#floorplan-navigation");

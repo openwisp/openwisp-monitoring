@@ -744,11 +744,17 @@ class TestDashboardMap(
             self.web_driver.switch_to.window(tabs[0])
 
     def test_dashboard_map_without_permissions(self):
+        org = self._get_org()
         user = self._create_user(
-            username="testuser", password="password", is_staff=True, is_superuser=True
+            username="testuser",
+            password="password",
+            is_staff=True,
+            is_superuser=False,
+            email="user1@email.com",
         )
-        permissions = Permission.objects.filter(codename__endswith="devicelocation")
-        user.user_permissions.remove(*permissions)
+        self._create_org_user(user=user, organization=org, is_admin=True)
+        permissions = Permission.objects.filter(codename__endswith="location")
+        user.user_permissions.add(*permissions)
         self.login(username="testuser", password="password")
         no_data_div = self.find_element(By.CSS_SELECTOR, ".no-data")
         self.assertTrue(no_data_div.is_displayed())
