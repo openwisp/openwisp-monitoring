@@ -117,6 +117,7 @@ td.field-health_status,
   padding: 0 0 0 5px;
   text-transform: capitalize;
   font-size: 14px;
+  border: 0 none;
 }
 #main #content-main .djn-module details .form-row:last-child {
   border-bottom: 1px solid var(--hairline-color);
