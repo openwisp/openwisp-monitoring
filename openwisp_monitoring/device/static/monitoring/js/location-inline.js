@@ -14,7 +14,7 @@
     }
 
     const openLocationBtn = `
-        <div class="form-row field-location-view-button" style="display: block;">
+        <div class="form-row field-location-view-button" style="display: flex;">
           <div>
             <div class="flex-container">
                 <label for="id_devicelocation-0-map">Map:</label>
@@ -22,7 +22,7 @@
                    id="open-location-btn"
                    class="default-btn"
                    style="color: white; text-decoration: none;">
-                     Open Location on Map
+                     View on General Map
                 </a>
             </div>
             <div class="help" id="id_devicelocation-0-map_helptext">
@@ -47,7 +47,7 @@
                    id="open-indoor-device-btn"
                    class="default-btn"
                    style="color: white; text-decoration: none;">
-                     Open Device on Map
+                     View on General Indoor Map
                 </a>
             </div>
             <div class="help" id="id_devicelocation-0-indoor_map_helptext">

@@ -20,6 +20,10 @@ DATABASES = {
         "NAME": "openwisp-monitoring.db",
     }
 }
+if TESTING and "--exclude-tag=selenium_tests" not in sys.argv:
+    DATABASES["default"]["TEST"] = {
+        "NAME": os.path.join(BASE_DIR, "openwisp-monitoring-test.db"),
+    }
 
 TIMESERIES_DATABASE = {
     "BACKEND": "openwisp_monitoring.db.backends.influxdb",

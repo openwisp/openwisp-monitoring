@@ -1,7 +1,7 @@
 "use strict";
 
 (function ($) {
-  const loadingOverlay = $("#device-map-container .ow-loading-spinner");
+  const loadingOverlay = $("#dashboard-map-overlay .ow-loading-spinner");
   const localStorageKey = "ow-map-shown";
   const mapContainer = $("#device-map-container");
   const statuses = ["critical", "problem", "ok", "unknown", "deactivated"];
@@ -51,6 +51,7 @@
   };
 
   let currentPopup = null;
+  let currentPopupLocationId = null;
 
   const loadPopUpContent = function (nodeData, netjsongraphInstance, url) {
     loadingOverlay.show();
@@ -61,7 +62,6 @@
     if (currentPopup) {
       currentPopup.remove();
     }
-    loadingOverlay.show();
 
     $.ajax({
       dataType: "json",
@@ -137,6 +137,7 @@
           </div>
         `;
 
+        currentPopupLocationId = locationId;
         currentPopup = L.popup({
           autoPan: true,
           autoPanPadding: [25, 25],
@@ -262,6 +263,8 @@
         el.find(".leaflet-popup-close-button").on("click", function () {
           const id = netjsongraphInstance.config.bookmarkableActions.id;
           netjsongraphInstance.utils.removeUrlFragment(id);
+          currentPopup = null;
+          currentPopupLocationId = null;
         });
         loadingOverlay.hide();
       },
@@ -554,7 +557,7 @@
         }
         const option = map.echarts.getOption();
         const series = option.series.find(
-          (s) => s.type === "scatter" || "effectScatter",
+          (s) => s.type === "scatter" || s.type === "effectScatter",
         );
         const seriesIndex = option.series.indexOf(series);
 
@@ -573,6 +576,7 @@
       },
     });
     map.render();
+    listenForLocationUpdates(map);
     window._owGeoMap = map;
   }
 
@@ -588,4 +592,24 @@
     success: onAjaxSuccess,
     context: window,
   });
+  function listenForLocationUpdates(map) {
+    if (!map) {
+      return;
+    }
+    var host = window.location.host,
+      protocol = window.location.protocol === "http:" ? "ws" : "wss",
+      ws = new ReconnectingWebSocket(protocol + "://" + host + "/ws/loci/location/");
+    ws.onmessage = function (e) {
+      const data = JSON.parse(e.data);
+      const [lng, lat] = data.geometry.coordinates;
+      if (currentPopup && data.id === currentPopupLocationId) {
+        $(".leaflet-popup").hide();
+      }
+      map.utils.moveNodeInRealTime(data.id, { lng, lat });
+      if (currentPopup && data.id === currentPopupLocationId) {
+        currentPopup.setLatLng([lat, lng]);
+        $(".leaflet-popup").show();
+      }
+    };
+  }
 })(django.jQuery);
