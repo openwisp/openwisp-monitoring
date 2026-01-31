@@ -14,15 +14,19 @@
     }
 
     const openLocationBtn = `
-        <div class="form-row field-location-view-button" style="display: block;">
+        <div class="form-row field-location-view-button" style="display: flex;">
           <div>
             <div class="flex-container">
+                <label for="id_devicelocation-0-map">Map:</label>
                 <a href="/admin/device_monitoring/map#${geoMapId}"
                    id="open-location-btn"
                    class="default-btn"
                    style="color: white; text-decoration: none;">
-                     Open Location on Map
+                     View on General Map
                 </a>
+            </div>
+            <div class="help" id="id_devicelocation-0-type_helptext">
+              <div>Opens the general map view focused on this location</div>
             </div>
           </div>
         </div>
@@ -38,12 +42,16 @@
         <div class="form-row field-indoor-view-button" style="display: block;">
           <div>
             <div class="flex-container">
+                <label for="id_devicelocation-0-map">Map:</label>
                 <a href="/admin/device_monitoring/map#${geoMapId};${indoorMapId}"
                    id="open-indoor-device-btn"
                    class="default-btn"
                    style="color: white; text-decoration: none;">
-                     Open Device on Map
+                     View on General Indoor Map
                 </a>
+            </div>
+            <div class="help" id="id_devicelocation-0-type_helptext">
+              <div>Opens the general indoor map view focused on this device</div>
             </div>
           </div>
         </div>
