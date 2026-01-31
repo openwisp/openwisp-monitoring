@@ -137,8 +137,8 @@ class TestAdmin(
     def test_dashboard_map_on_index(self):
         url = reverse("admin:index")
         response = self.client.get(url)
-        self.assertContains(response, "geoJsonUrl: 'http://testserver/api")
-        self.assertContains(response, "locationDeviceUrl: 'http://testserver/api")
+        self.assertContains(response, "geoJsonUrl: 'http://testserver/api/")
+        self.assertContains(response, "locationDeviceUrl: 'http://testserver/api/")
 
     def test_wifisession_dashboard_chart_query(self):
         url = reverse("admin:index")
