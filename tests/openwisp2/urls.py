@@ -1,9 +1,12 @@
+import sys
+
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
-from django.urls import include, path, reverse_lazy
+from django.urls import include, path, re_path, reverse_lazy
 from django.views.generic import RedirectView
+from django.views.static import serve
 
 redirect_view = RedirectView.as_view(url=reverse_lazy("admin:index"))
 
@@ -22,3 +25,13 @@ if settings.DEBUG and "debug_toolbar" in settings.INSTALLED_APPS:
     import debug_toolbar
 
     urlpatterns.append(path("__debug__/", include(debug_toolbar.urls)))
+
+# ChannelsLiveServerTestCase runs on ASGI, so Django's dev media/static serving is bypassed
+if settings.TESTING and "--exclude-tag=selenium_tests" not in sys.argv:
+    urlpatterns += [
+        re_path(
+            r"^media/(?P<path>.*)$",
+            serve,
+            {"document_root": settings.MEDIA_ROOT},
+        ),
+    ]

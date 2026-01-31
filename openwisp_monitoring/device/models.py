@@ -43,4 +43,3 @@ class Map(BaseLocation):
     class Meta:
         proxy = True
         abstract = False
-        swappable = swappable_setting("device_monitoring", "Map")
