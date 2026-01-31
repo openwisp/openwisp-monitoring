@@ -130,3 +130,12 @@ ul.tabs .charts > .current,
 ul.tabs .status > .current {
   background-color: var(--body-bg);
 }
+
+/* Device Location Inline */
+fieldset.module.aligned .form-row.view-on-map-div {
+  display: block;
+}
+fieldset.module .view-on-map-btn {
+  color: white;
+  text-decoration: none !important;
+}

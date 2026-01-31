@@ -649,7 +649,8 @@ def patch_device_location_inline(self):
         js=(
             "admin/js/jquery.init.js",
             "monitoring/js/location-inline.js",
-        )
+        ),
+        css={"all": ("monitoring/css/monitoring.css",)},
     )
     return base + extra
 

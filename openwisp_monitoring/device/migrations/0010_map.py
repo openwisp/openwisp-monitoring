@@ -17,7 +17,6 @@ class Migration(migrations.Migration):
             options={
                 "abstract": False,
                 "proxy": True,
-                "swappable": "DEVICE_MONITORING_MAP_MODEL",
                 "indexes": [],
                 "constraints": [],
             },

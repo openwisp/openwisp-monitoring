@@ -15,13 +15,6 @@
 {% block extrahead %}
   {{ block.super }}
   {{ media }}
-  <style>
-    #device-map-container {
-      width: 100%;
-      height: 87.7vh;
-      margin: 15px auto 0 auto;
-    }
-  </style>
 {% endblock extrahead %}
 
 {% block content %} 
@@ -29,10 +22,10 @@
     {% autoescape on %}{% leaflet_json_config %}{% endautoescape %}
   </div>
   <div id="dashboard-map-overlay">
-    <div id="device-map-container">
+    <div id="device-map-container" class="dedicated-map-page">
       <div class="no-data">
         <p>{% trans 'No map data to show' %}.</p>
-        <p><a class="button submit" href="#close">Close</a></p>
+        <p><a class="button submit" href="#close">{% trans 'Close' %}</a></p>
       </div>
       <div class="ow-loading-spinner"></div>
     </div>
