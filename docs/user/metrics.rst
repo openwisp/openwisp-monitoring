@@ -1,16 +1,35 @@
-Metrics
-=======
+Metrics & Charts
+================
 
 .. contents:: **Table of contents**:
     :depth: 2
     :local:
+
+Introduction: Passive vs Active Metrics
+---------------------------------------
+
+This page describes the main metrics collected and displayed in the web
+interface as charts.
+
+Let's start by dividing the metrics collected by OpenWISP Monitoring in
+two macro categories:
+
+1. **metrics collected actively by OpenWISP**: these metrics are collected
+   by the :doc:`Active Checks <checks>`;
+2. **metrics collected passively by OpenWISP**: these metrics are sent by
+   the :doc:`OpenWrt Monitoring Agent </openwrt-monitoring-agent/index>`
+   installed on the network devices and are collected by OpenWISP via its
+   REST API.
 
 .. _device_status:
 
 Device Status
 -------------
 
-This metric stores the status of the device for viewing purposes.
+This metric stores the current status of the device for viewing purposes.
+
+**Collected via**: :doc:`OpenWrt Monitoring Agent
+</openwrt-monitoring-agent/index>`.
 
 .. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/device-status-1.png
     :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/device-status-1.png
@@ -33,16 +52,6 @@ This metric stores the status of the device for viewing purposes.
 Ping
 ----
 
-================== ==================================================
-**measurement**:   ``ping``
-**types**:         ``int`` (reachable and loss), ``float`` (rtt)
-**fields**:        ``reachable``, ``loss``, ``rtt_min``, ``rtt_max``,
-                   ``rtt_avg``
-**configuration**: ``ping``
-**charts**:        ``uptime`` (Ping Success Rate), ``packet_loss``,
-                   ``rtt``
-================== ==================================================
-
 **Ping Success Rate**:
 
 .. figure:: https://github.com/openwisp/openwisp-monitoring/raw/docs/docs/1.1/ping-success-rate.png
@@ -61,12 +70,29 @@ Ping
     :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/rtt.png
     :align: center
 
+================== ==================================================
+**collection**:    :ref:`Ping check <ping_check>`
+**alert**:         :ref:`Ping alert <ping_alert>`
+**measurement**:   ``ping``
+**types**:         ``int`` (reachable and loss), ``float`` (rtt)
+**fields**:        ``reachable``, ``loss``, ``rtt_min``, ``rtt_max``,
+                   ``rtt_avg``
+**configuration**: ``ping``
+**charts**:        ``uptime`` (Ping Success Rate), ``packet_loss``,
+                   ``rtt``
+================== ==================================================
+
 .. _traffic:
 
 Traffic
 -------
 
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/traffic.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/traffic.png
+    :align: center
+
 ================== ==========================================================================
+**collection**:    :doc:`OpenWrt Monitoring Agent </openwrt-monitoring-agent/index>`
 **measurement**:   ``traffic``
 **type**:          ``int``
 **fields**:        ``rx_bytes``, ``tx_bytes``
@@ -83,16 +109,17 @@ Traffic
 **charts**:        ``traffic``
 ================== ==========================================================================
 
-.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/traffic.png
-    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/traffic.png
-    :align: center
-
 .. _wifi_clients:
 
 WiFi Clients
 ------------
 
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/wifi-clients.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/wifi-clients.png
+    :align: center
+
 ================== ==========================================================================
+**collection**:    :doc:`OpenWrt Monitoring Agent </openwrt-monitoring-agent/index>`
 **measurement**:   ``wifi_clients``
 **type**:          ``int``
 **fields**:        ``clients``
@@ -109,17 +136,20 @@ WiFi Clients
 **charts**:        ``wifi_clients``
 ================== ==========================================================================
 
-.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/wifi-clients.png
-    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/wifi-clients.png
-    :align: center
-
 .. _memory_usage:
 
 Memory Usage
 ------------
 
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/memory.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/memory.png
+    :align: center
+
 ================== ====================================================
-**measurement**:   ``<memory>``
+**collection**:    :doc:`OpenWrt Monitoring Agent
+                   </openwrt-monitoring-agent/index>`
+**alert**:         :ref:`Memory Usage Alert <memory_usage_alert>`
+**measurement**:   ``memory``
 **type**:          ``float``
 **fields**:        ``percent_used``, ``free_memory``, ``total_memory``,
                    ``buffered_memory``, ``shared_memory``,
@@ -128,16 +158,19 @@ Memory Usage
 **charts**:        ``memory``
 ================== ====================================================
 
-.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/memory.png
-    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/memory.png
+.. _cpu_load_averages:
+
+CPU Load Averages
+-----------------
+
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/cpu-load.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/cpu-load.png
     :align: center
 
-.. _cpu_load:
-
-CPU Load
---------
-
 ================== ==================================================
+**collection**:    :doc:`OpenWrt Monitoring Agent
+                   </openwrt-monitoring-agent/index>`
+**alert**:         :ref:`CPU Load Average Alert <cpu_load_alert>`
 **measurement**:   ``load``
 **type**:          ``float``
 **fields**:        ``cpu_usage``, ``load_1``, ``load_5``, ``load_15``
@@ -145,33 +178,38 @@ CPU Load
 **charts**:        ``load``
 ================== ==================================================
 
-.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/cpu-load.png
-    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/cpu-load.png
-    :align: center
-
 .. _disk_usage:
 
 Disk Usage
 ----------
 
-================== =============
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/disk-usage.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/disk-usage.png
+    :align: center
+
+================== ==========================================
+**collection**:    :doc:`OpenWrt Monitoring Agent
+                   </openwrt-monitoring-agent/index>`
+**alert**:         :ref:`Disk Usage Alert <disk_usage_alert>`
 **measurement**:   ``disk``
 **type**:          ``float``
 **fields**:        ``used_disk``
 **configuration**: ``disk``
 **charts**:        ``disk``
-================== =============
-
-.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/disk-usage.png
-    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/disk-usage.png
-    :align: center
+================== ==========================================
 
 .. _mobile_signal_strength:
 
 Mobile Signal Strength
 ----------------------
 
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/signal-strength.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/signal-strength.png
+    :align: center
+
 ================== =====================================
+**collection**:    :doc:`OpenWrt Monitoring Agent
+                   </openwrt-monitoring-agent/index>`
 **measurement**:   ``signal_strength``
 **type**:          ``float``
 **fields**:        ``signal_strength``, ``signal_power``
@@ -179,16 +217,18 @@ Mobile Signal Strength
 **charts**:        ``signal_strength``
 ================== =====================================
 
-.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/signal-strength.png
-    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/signal-strength.png
-    :align: center
-
 .. _mobile_signal_quality:
 
 Mobile Signal Quality
 ---------------------
 
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/signal-quality.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/signal-quality.png
+    :align: center
+
 ================== ======================================
+**collection**:    :doc:`OpenWrt Monitoring Agent
+                   </openwrt-monitoring-agent/index>`
 **measurement**:   ``signal_quality``
 **type**:          ``float``
 **fields**:        ``signal_quality``, ``signal_quality``
@@ -196,49 +236,29 @@ Mobile Signal Quality
 **charts**:        ``signal_quality``
 ================== ======================================
 
-.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/signal-quality.png
-    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/signal-quality.png
-    :align: center
-
 .. _mobile_access_technology_in_use:
 
 Mobile Access Technology in Use
 -------------------------------
 
-================== ===============
+.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/access-technology.png
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/access-technology.png
+    :align: center
+
+================== ==================================
+**collection**:    :doc:`OpenWrt Monitoring Agent
+                   </openwrt-monitoring-agent/index>`
 **measurement**:   ``access_tech``
 **type**:          ``int``
 **fields**:        ``access_tech``
 **configuration**: ``access_tech``
 **charts**:        ``access_tech``
-================== ===============
-
-.. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/access-technology.png
-    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/access-technology.png
-    :align: center
+================== ==================================
 
 .. _iperf3:
 
 Iperf3
 ------
-
-================== =====================================================
-**measurement**:   ``iperf3``
-**types**:         |   ``int`` (iperf3_result, sent_bytes_tcp,
-                       received_bytes_tcp, retransmits, sent_bytes_udp,
-                       total_packets, lost_packets),
-                   |   ``float`` (sent_bps_tcp, received_bps_tcp,
-                       sent_bps_udp, jitter, lost_percent)
-**fields**:        |   ``iperf3_result``, ``sent_bps_tcp``,
-                       ``received_bps_tcp``, ``sent_bytes_tcp``,
-                       ``received_bytes_tcp``, ``retransmits``,
-                   |   ``sent_bps_udp``, ``sent_bytes_udp``, ``jitter``,
-                       ``total_packets``, ``lost_packets``,
-                       ``lost_percent``
-**configuration**: ``iperf3``
-**charts**:        ``bandwidth``, ``transfer``, ``retransmits``,
-                   ``jitter``, ``datagram``, ``datagram_loss``
-================== =====================================================
 
 **Bandwidth**:
 
@@ -276,6 +296,25 @@ Iperf3
     :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/datagram-loss.png
     :align: center
 
+================== =====================================================
+**collection**:    :ref:`Iperf3 Check <iperf3_check>`
+**measurement**:   ``iperf3``
+**types**:         |   ``int`` (iperf3_result, sent_bytes_tcp,
+                       received_bytes_tcp, retransmits, sent_bytes_udp,
+                       total_packets, lost_packets),
+                   |   ``float`` (sent_bps_tcp, received_bps_tcp,
+                       sent_bps_udp, jitter, lost_percent)
+**fields**:        |   ``iperf3_result``, ``sent_bps_tcp``,
+                       ``received_bps_tcp``, ``sent_bytes_tcp``,
+                       ``received_bytes_tcp``, ``retransmits``,
+                   |   ``sent_bps_udp``, ``sent_bytes_udp``, ``jitter``,
+                       ``total_packets``, ``lost_packets``,
+                       ``lost_percent``
+**configuration**: ``iperf3``
+**charts**:        ``bandwidth``, ``transfer``, ``retransmits``,
+                   ``jitter``, ``datagram``, ``datagram_loss``
+================== =====================================================
+
 For more info on how to configure and use Iperf3, please refer to
 :doc:`configuring-iperf3-check`.
 
@@ -284,21 +323,3 @@ For more info on how to configure and use Iperf3, please refer to
     Iperf3 charts uses ``connect_points=True`` in :ref:`default chart
     configuration <openwisp_monitoring_charts>` that joins it's individual
     chart data points.
-
-Passive vs Active Metric Collection
------------------------------------
-
-The the different :doc:`device metric <./metrics>` collected by OpenWISP
-Monitoring can be divided in two categories:
-
-1. **metrics collected actively by OpenWISP**: these metrics are collected
-   by the celery workers running on the OpenWISP server, which
-   continuously sends network requests to the devices and store the
-   results;
-2. **metrics collected passively by OpenWISP**: these metrics are sent by
-   the :doc:`OpenWrt Monitoring Agent </openwrt-monitoring-agent/index>`
-   installed on the network devices and are collected by OpenWISP via its
-   REST API.
-
-The :doc:`checks` section of the documentation lists the currently
-implemented **active checks**.

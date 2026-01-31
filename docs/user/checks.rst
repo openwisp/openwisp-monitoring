@@ -5,10 +5,30 @@ Checks
     :depth: 2
     :local:
 
+Introduction
+------------
+
+Active checks are periodic background tasks executed by `Celery workers
+<https://docs.celeryq.dev/en/stable/>`_ on the OpenWISP server.
+
+These workers perform the enabled checks and store their results in the
+time series database.
+
+The built-in checks and the related django settings available in OpenWISP
+Monitoring are described below.
+
+.. include:: /partials/settings-note.rst
+
 .. _ping_check:
 
 Ping
 ----
+
+**Check enabled by default?** Yes.
+
+**Alert**: :ref:`Ping Alert <ping_alert>`.
+
+**Charts**: :ref:`Ping Charts <ping>`.
 
 This check returns information on Ping Success Rate and RTT (Round trip
 time). It creates charts like Ping Success Rate, Packet Loss and RTT.
@@ -26,6 +46,10 @@ This check also :ref:`sends an alert when the device becomes unreachable
 
 Configuration Applied
 ---------------------
+
+**Check enabled by default?** Yes.
+
+**Alert**: :ref:`Config Applied Alert <configuration_applied_alert>`.
 
 This check ensures that the :doc:`openwisp-config agent
 </openwrt-config-agent/index>` is running and applying configuration
@@ -46,6 +70,10 @@ This check also :ref:`sends an alert if configuration is not being applied
 Monitoring Data Collected
 -------------------------
 
+**Check enabled by default?** Yes.
+
+**Alert**: :ref:`Data Collected Alert <monitoring_data_collected_alert>`.
+
 This check ensures that the server is receiving metrics from network
 devices in a timely manner. You may choose to disable auto creation of
 this check by using the setting
@@ -59,13 +87,16 @@ device <monitoring_data_collected_alert>`.
 Iperf3
 ------
 
+**Check enabled by default?** No.
+
+**Charts**: :ref:`Iperf3 Charts <iperf3>`.
+
 This check provides network performance measurements such as maximum
 achievable bandwidth, jitter, datagram loss etc of the device using
 `iperf3 utility <https://iperf.fr/>`_.
 
 This check is **disabled by default**. You can enable auto creation of
-this check by setting the :ref:`openwisp_monitoring_auto_iperf3` to
-``True``.
+this check by setting :ref:`openwisp_monitoring_auto_iperf3` to ``True``.
 
 You can also :doc:`add the iperf3 check
 <device-checks-and-alert-settings>` directly from the device page.
@@ -87,6 +118,10 @@ parameters used for iperf3 checks (e.g. timing, port, username, password,
 WiFi Clients
 ------------
 
+**Check enabled by default?** No.
+
+**Alerts**: :ref:`WiFi Clients Alerts (Max/Min) <wifi_clients_alert>`.
+
 This check sends alerts based on the total number of WiFi Clients
 connected to a device. It sends two types of alerts:
 
@@ -102,14 +137,7 @@ connected to a device. It sends two types of alerts:
   connectivity.
 
 This check is **disabled by default**. To enable auto creation of this
-check, set :ref:`openwisp_monitoring_auto_wifi_clients_check` to ``True``
-and configure the task scheduling in your Django project:
-
-.. code-block:: python
-
-    from datetime import timedelta
-
-    OPENWISP_MONITORING_AUTO_WIFI_CLIENTS_CHECK = True
+check, set :ref:`openwisp_monitoring_auto_wifi_clients_check` to ``True``.
 
 You can also :doc:`add the WiFi Clients check
 <device-checks-and-alert-settings>` directly from the device page.
@@ -119,5 +147,7 @@ You can use the
 disable this check on specific dates, such as during scheduled
 maintenance, to avoid generating unnecessary alerts.
 
-This check also :ref:`sends alerts based on WiFi client thresholds
-<wifi_clients_alert>`.
+Other related settings:
+
+- :ref:`openwisp_monitoring_wifi_clients_max_check_interval`
+- :ref:`openwisp_monitoring_wifi_clients_min_check_interval`

@@ -63,9 +63,7 @@ td.field-health_status,
 .wifi-clients th.wps {
   cursor: default;
 }
-#monitoring-metric-content_type-object_id-group .inline-related h3 {
-  padding: 10px 20px;
-}
+/* Adjustments for django-nested-admin */
 #monitoring-metric-content_type-object_id-group
   .djn-group-nested
   fieldset.djn-fieldset.module
@@ -83,14 +81,52 @@ td.field-health_status,
 #monitoring-metric-content_type-object_id-group fieldset .form-row:last-child {
   border-bottom: 0 none;
 }
+#monitoring-metric-content_type-object_id-0 h3 {
+  border-top: 0 none !important;
+}
 .form-row.field-health_checks div.readonly {
   margin-left: 0px !important;
 }
-.form-row.field-health_checks
-  div
-  div.flex-container
-  div.readonly
-  ul.health_checks {
+.form-row.field-health_checks div div.flex-container div.readonly ul.health_checks {
   margin-left: 0px !important;
   padding-left: 0px !important;
+}
+.djn-module .vCheckboxLabel {
+  line-height: 24px;
+  padding-left: 8px;
+  min-width: 140px;
+  width: auto;
+}
+.djn-module .flex-container {
+  flex-wrap: wrap;
+}
+.djn-module .help {
+  width: 100%;
+}
+.djn-module .field-is_active .help {
+  margin-left: 0 !important;
+  width: auto;
+}
+#main #content-main .djn-module summary {
+  background: var(--ow-color-fg-ghost);
+}
+#main #content-main .djn-module details[open] {
+  border: 1px solid var(--hairline-color);
+}
+#main #content-main .djn-module summary h4 {
+  padding: 0 0 0 5px;
+  text-transform: capitalize;
+  font-size: 14px;
+  border: 0 none;
+}
+#main #content-main .djn-module details .form-row:last-child {
+  border-bottom: 1px solid var(--hairline-color);
+}
+.field-custom_threshold input[type="number"] {
+  width: 5em;
+}
+/* Active monitoring tabs color adjustment */
+ul.tabs .charts > .current,
+ul.tabs .status > .current {
+  background-color: var(--body-bg);
 }

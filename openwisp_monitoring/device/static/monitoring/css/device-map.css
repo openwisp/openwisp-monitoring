@@ -29,6 +29,9 @@
   background-color: #000000;
   color: #fff;
 }
+.map-detail table {
+  width: 100%;
+}
 #device-map-container {
   margin: 50px auto;
   position: relative;

@@ -191,10 +191,7 @@
 
       if (data.summary_labels) {
         if (data.trace_order) {
-          summaryLabels.push([
-            key,
-            data.summary_labels[data.trace_order.indexOf(key)],
-          ]);
+          summaryLabels.push([key, data.summary_labels[data.trace_order.indexOf(key)]]);
         } else {
           summaryLabels.push([key, data.summary_labels[i]]);
         }
@@ -392,8 +389,7 @@
         if (data.colorscale && data.colorscale.map) {
           mapped = findInColorMap(value);
           percircleOptions.progressBarColor = mapped.color;
-          percircleOptions.htmlTitle =
-            percircleOptions.htmlTitle + ": " + mapped.desc;
+          percircleOptions.htmlTitle = percircleOptions.htmlTitle + ": " + mapped.desc;
         }
         if (data.trace_order) {
           percircleOptions.progressBarColor =
@@ -411,9 +407,7 @@
       percircles = sortByTraceOrder(data.trace_order, percircles, "_key");
       for (i = 0; i < percircles.length; ++i) {
         percircleContainer.append(
-          '<div class="small circle" title="' +
-            percircles[i].htmlTitle +
-            '"></div>',
+          '<div class="small circle" title="' + percircles[i].htmlTitle + '"></div>',
         );
         percircleContainer.find(".circle").eq(-1).percircle(percircles[i]);
       }

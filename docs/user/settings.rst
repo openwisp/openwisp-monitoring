@@ -861,10 +861,10 @@ E.g.:
 
     **Date or Time Omission**:
 
-        - If you omit the date, the time range will be considered for
-          **every day**.
-        - If you omit the time, the exclusion will apply to the **entire
-          day**.
+    - If you omit the date, the time range will be considered for **every
+      day**.
+    - If you omit the time, the exclusion will apply to the **entire
+      day**.
 
 .. _openwisp_monitoring_wifi_clients_max_check_interval:
 

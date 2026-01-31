@@ -102,14 +102,13 @@ class DeviceMonitoringConfig(AppConfig):
         post_save.connect(
             DeviceMetricView.invalidate_get_charts_cache,
             sender=Metric,
-            dispatch_uid=("metric_post_save_invalidate_view_charts_cache"),
+            dispatch_uid="metric_post_save_invalidate_view_charts_cache",
         )
         post_save.connect(
             DeviceMetricView.invalidate_get_charts_cache,
             sender=Chart,
-            dispatch_uid=("chart_post_save_invalidate_view_charts_cache"),
+            dispatch_uid="chart_post_save_invalidate_view_charts_cache",
         )
-
         post_delete.connect(
             self.device_post_delete_receiver,
             sender=Device,
@@ -118,22 +117,22 @@ class DeviceMonitoringConfig(AppConfig):
         post_delete.connect(
             DeviceMetricView.invalidate_get_device_cache,
             sender=Device,
-            dispatch_uid=("device_post_delete_invalidate_view_device_cache"),
+            dispatch_uid="device_post_delete_invalidate_view_device_cache",
         )
         post_delete.connect(
             DeviceMetricView.invalidate_get_charts_cache,
             sender=Device,
-            dispatch_uid=("device_post_delete_invalidate_view_charts_cache"),
+            dispatch_uid="device_post_delete_invalidate_view_charts_cache",
         )
         post_delete.connect(
             DeviceMetricView.invalidate_get_charts_cache,
             sender=Metric,
-            dispatch_uid=("metric_post_delete_invalidate_view_charts_cache"),
+            dispatch_uid="metric_post_delete_invalidate_view_charts_cache",
         )
         post_delete.connect(
             DeviceMetricView.invalidate_get_charts_cache,
             sender=Chart,
-            dispatch_uid=("chart_post_delete_invalidate_view_charts_cache"),
+            dispatch_uid="chart_post_delete_invalidate_view_charts_cache",
         )
         post_delete.connect(
             DeviceData.invalidate_cache,
@@ -158,7 +157,7 @@ class DeviceMonitoringConfig(AppConfig):
         device_deactivated.connect(
             DeviceMetricView.invalidate_get_device_cache,
             sender=Device,
-            dispatch_uid=("device_deactivated_invalidate_view_device_cache"),
+            dispatch_uid="device_deactivated_invalidate_view_device_cache",
         )
         device_activated.connect(
             DeviceMonitoring.handle_activated_device,
@@ -168,7 +167,7 @@ class DeviceMonitoringConfig(AppConfig):
         device_activated.connect(
             DeviceMetricView.invalidate_get_device_cache,
             sender=Device,
-            dispatch_uid=("device_activated_invalidate_view_device_cache"),
+            dispatch_uid="device_activated_invalidate_view_device_cache",
         )
 
     @classmethod
