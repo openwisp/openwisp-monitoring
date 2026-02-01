@@ -2,9 +2,9 @@
   padding: 0 1px;
 }
 #ow-device-status h2 {
-  color: #333;
-  background-color: rgba(0, 0, 0, 0.05);
-  outline: 1px solid rgba(0, 0, 0, 0.3);
+  color: var(--ow-color-fg-darker);
+  background-color: var(--ow-overlay-5);
+  outline: 1px solid var(--ow-overlay-25);
   padding: 15px;
 }
 #ow-device-status .form-row,
@@ -31,7 +31,7 @@
 }
 #ow-device-status th {
   border-top: 0 none;
-  background: #f9f9f9 !important;
+  background: var(--ow-color-fg-lightest) !important;
 }
 td.field-health_status,
 .field-health_status .readonly {
@@ -39,19 +39,19 @@ td.field-health_status,
   text-transform: uppercase;
 }
 .health-deactivated {
-  color: #000;
+  color: var(--ow-color-black);
 }
 .health-unknown {
-  color: grey;
+  color: var(--ow-color-fg-dark);
 }
 .health-ok {
-  color: green;
+  color: var(--ow-color-success);
 }
 .health-problem {
   color: orange;
 }
 .health-critical {
-  color: red;
+  color: var(--ow-btn-danger-bg);
 }
 #ow-device-status table.addresses td {
   width: 50%;
@@ -87,7 +87,11 @@ td.field-health_status,
 .form-row.field-health_checks div.readonly {
   margin-left: 0px !important;
 }
-.form-row.field-health_checks div div.flex-container div.readonly ul.health_checks {
+.form-row.field-health_checks
+  div
+  div.flex-container
+  div.readonly
+  ul.health_checks {
   margin-left: 0px !important;
   padding-left: 0px !important;
 }
@@ -129,4 +133,46 @@ td.field-health_status,
 ul.tabs .charts > .current,
 ul.tabs .status > .current {
   background-color: var(--body-bg);
+}
+
+/* Percircle Theme Overrides */
+.percircle {
+  background-color: var(--ow-color-fg-medium);
+}
+.percircle:after {
+  background-color: var(--ow-color-fg-lighter);
+}
+.percircle > span {
+  color: var(--ow-color-fg-medium);
+}
+.percircle:hover > span {
+  color: var(--link-selected-fg);
+}
+.percircle.red .bar,
+.percircle.red .fill {
+  border-color: var(--ow-btn-danger-bg);
+}
+.percircle.red:hover > span {
+  color: var(--ow-btn-danger-bg);
+}
+.percircle.blue .bar,
+.percircle.blue .fill {
+  border-color: var(--link-selected-fg);
+}
+.percircle.blue:hover > span {
+  color: var(--link-selected-fg);
+}
+.percircle.green .bar,
+.percircle.green .fill {
+  border-color: var(--ow-color-success);
+}
+.percircle.green:hover > span {
+  color: var(--ow-color-success);
+}
+.percircle.orange .bar,
+.percircle.orange .fill {
+  border-color: orange;
+}
+.percircle.orange:hover > span {
+  color: orange;
 }
