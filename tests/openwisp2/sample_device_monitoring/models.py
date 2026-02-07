@@ -10,6 +10,7 @@ from openwisp_monitoring.device.base.models import (
 )
 
 BaseDevice = load_model("config", "Device", require_ready=False)
+BaseLocation = load_model("geo", "Location", require_ready=False)
 
 
 class DetailsModel(models.Model):
@@ -42,4 +43,10 @@ class WifiClient(DetailsModel, AbstractWifiClient):
 
 class WifiSession(DetailsModel, AbstractWifiSession):
     class Meta(AbstractWifiSession.Meta):
+        abstract = False
+
+
+class Map(BaseLocation):
+    class Meta:
+        proxy = True
         abstract = False
