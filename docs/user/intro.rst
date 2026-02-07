@@ -16,6 +16,10 @@ OpenWISP provides the following monitoring capabilities:
   like uptime, RAM status, CPU load averages, Interface properties and
   addresses, WiFi interface status and associated clients, Neighbors
   information, DHCP Leases, Disk/Flash status
+- Provides advanced geographic and indoor map visualizations, including
+  floor-based indoor maps, shareable map URLs and navigation, and
+  real-time device position updates as described in :doc:`Geographic
+  andIndoor Maps <geo-indoor-map>`.
 - Monitoring charts for :ref:`ping success rate <ping>`, :ref:`packet loss
   <ping>`, :ref:`round trip time (latency) <ping>`, :ref:`associated wifi
   clients <wifi_clients>`, :ref:`interface traffic <traffic>`, :ref:`RAM
