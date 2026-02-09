@@ -20,6 +20,10 @@ DATABASES = {
         "NAME": "openwisp-monitoring.db",
     }
 }
+if TESTING and "--exclude-tag=selenium_tests" not in sys.argv:
+    DATABASES["default"]["TEST"] = {
+        "NAME": os.path.join(BASE_DIR, "openwisp-monitoring-test.db"),
+    }
 
 TIMESERIES_DATABASE = {
     "BACKEND": "openwisp_monitoring.db.backends.influxdb",
@@ -308,6 +312,7 @@ if os.environ.get("SAMPLE_APP", False):
     DEVICE_MONITORING_DEVICEMONITORING_MODEL = (
         "sample_device_monitoring.DeviceMonitoring"
     )
+    DEVICE_MONITORING_MAP_MODEL = "sample_device_monitoring.Map"
     # Celery auto detects tasks only from INSTALLED_APPS
     CELERY_IMPORTS = ("openwisp_monitoring.device.tasks",)
 
