@@ -12,6 +12,12 @@
   let maps = {};
   let locationId = null;
   let popstateHandler = null;
+  const escapeHtml = function (text) {
+    if (!text) return "";
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+  };
   // Use case: we support overlaying two maps. The URL hash contains up to two
   // fragments separated by ';' — one is the geo map and the other is an indoor map.
   //
@@ -53,10 +59,13 @@
   }
 
   async function openFloorPlan(url, id = null, floor = currentFloor) {
+    if ($("#floorplan-overlay")) {
+      closeButtonHandler();
+    }
     locationId = id;
     // Handle browser back/forward navigation: close the indoor map overlay
     // If the indoor map fragment is removed from the URL, close the overlay
-    // should be done before async tasks that are preformed later
+    // should be done before async tasks that are performed later
     if (popstateHandler) {
       window.removeEventListener("popstate", popstateHandler);
     }
@@ -97,7 +106,11 @@
   }
 
   function fetchData(url, floor = null) {
-    const reqUrl = floor ? `${url}?floor=${floor}` : url;
+    const reqUrl = new URL(url, window.location.origin);
+    // Prevent adding params if already exists
+    if (floor != null && !reqUrl.searchParams.has("floor")) {
+      reqUrl.searchParams.set("floor", floor);
+    }
     return new Promise((resolve, reject) => {
       // If data for the requested floor already exists in allResults,
       // skip the API call to avoid redundant requests.
@@ -107,29 +120,35 @@
         return;
       }
       $.ajax({
-        url: reqUrl,
+        url: reqUrl.toString(),
         method: "GET",
         dataType: "json",
         xhrFields: { withCredentials: true },
         success: async (data) => {
-          const actualFloor = data.results.length ? data.results[0].floor : floor;
-          if (!allResults[actualFloor]) {
-            allResults[actualFloor] = [];
+          try {
+            const actualFloor = data.results.length ? data.results[0].floor : floor;
+            if (!allResults[actualFloor]) {
+              allResults[actualFloor] = [];
+            }
+            allResults[actualFloor] = [...allResults[actualFloor], ...data.results];
+            floors = data.floors;
+            if (!currentFloor && data.results.length) {
+              currentFloor = actualFloor;
+            }
+            if (data.next) {
+              await fetchData(data.next, actualFloor);
+            }
+            resolve();
+          } catch (e) {
+            alert(gettext("Error loading floorplan coordinates."));
+            $(".floorplan-loading-spinner").hide();
+            reject(e);
           }
-          allResults[actualFloor] = [...allResults[actualFloor], ...data.results];
-          floors = data.floors;
-          if (!currentFloor && data.results.length) {
-            currentFloor = actualFloor;
-          }
-          if (data.next) {
-            await fetchData(data.next, actualFloor);
-          }
-          resolve();
         },
-        error: () => {
+        error: (xhr, status, err) => {
           alert(gettext("Error loading floorplan coordinates."));
           $(".floorplan-loading-spinner").hide();
-          reject();
+          reject(new Error(`${status}: ${err}`));
         },
       });
     });
@@ -274,7 +293,7 @@
       renderIndoorMap(nodesThisFloor, imageUrl, $floorDiv[0].id, floor);
     }
     $floorDiv.show();
-    maps[currentFloor]?.leaflet.invalidateSize();
+    maps[currentFloor]?.leaflet?.invalidateSize();
   }
 
   let currentPopup = null;
@@ -287,11 +306,11 @@
       <div class="njg-tooltip-inner">
         <div class="njg-tooltip-item">
           <span class="njg-tooltip-key">${gettext("name")}</span>
-          <span class="njg-tooltip-value">${node?.device_name}</span>
+          <span class="njg-tooltip-value">${escapeHtml(node?.device_name)}</span>
         </div>
         <div class="njg-tooltip-item">
           <span class="njg-tooltip-key">${gettext("mac address")}</span>
-          <span class="njg-tooltip-value">${node?.mac_address}</span>
+          <span class="njg-tooltip-value">${escapeHtml(node?.mac_address)}</span>
         </div>
         <div class="njg-tooltip-item">
           <span class="njg-tooltip-key">${gettext("status")}</span>
@@ -383,10 +402,8 @@
           return;
         }
         let initialZoom;
-
-        const aspectRatio = img.width / img.height;
         const h = img.height;
-        const w = h * aspectRatio;
+        const w = h * (img.width / img.height);
         const zoom = map.getMaxZoom() - 1;
 
         // To make the image center in the map at (0,0) coordinates
@@ -416,7 +433,7 @@
           const nodeProjected = L.point(topLeft.x + px, topLeft.y + py);
           // This requires a map instance to unproject coordinates so it can't be done in prepareData
           const nodeLatLng = map.unproject(nodeProjected, zoom);
-          // Also updating this.data so that after onReady when applyUrlFragmentState is called it whould
+          // Also updating this.data so that after onReady when applyUrlFragmentState is called it would
           // have the correct coordinates data points to trigger the popup at right place.
           this.data.nodes[index].location = nodeLatLng;
           this.data.nodes[index].properties.location = nodeLatLng;

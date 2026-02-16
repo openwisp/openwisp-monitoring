@@ -255,22 +255,22 @@ Here's a few examples:
 List Device Indoor Coordinates in a Location
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Returns a list of indoor coordinates of network devices deployed in the
-specified location, along with device details and available floors.
-
 .. code-block:: text
 
     GET /api/v1/monitoring/location/{pk}/indoor-coordinates/
 
+Returns a list of indoor coordinates of network devices deployed in the
+specified location, along with device details and available floors.
+
 **Available filters**
 
-- ``floor`` (floor number of the floorplan)
+- ``floor`` (floor number of the floor plan)
 
 Here's a few examples:
 
 .. code-block:: text
 
-    GET /api/v1/monitoring/location/5/indoor-coordinates/?floor=2
+    GET /api/v1/monitoring/location/{pk}/indoor-coordinates/?floor=2
 
 List WiFi Session
 ~~~~~~~~~~~~~~~~~

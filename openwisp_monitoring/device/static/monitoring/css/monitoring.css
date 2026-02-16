@@ -139,3 +139,10 @@ fieldset.module .view-on-map-btn {
   color: white;
   text-decoration: none !important;
 }
+
+/* Map Page */
+.dedicated-map-page {
+  width: 100%;
+  height: calc(100vh - 126px) !important;
+  margin: 15px auto 0 auto !important;
+}
