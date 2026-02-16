@@ -237,7 +237,7 @@ Returns a list of network devices deployed in the specified location.
 
 **Available filters**
 
-- ``search`` (search by device name)
+- ``search`` (search by device name or MAC address)
 - ``status`` (monitoring status of the device; multiple statuses can be
   provided and will be treated as OR filters)
 
