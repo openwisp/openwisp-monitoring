@@ -39,6 +39,7 @@ the OpenWISP architecture.
     ./user/intro.rst
     ./user/quickstart.rst
     ./user/device-health-status.rst
+    ./user/geo-indoor-maps.rst
     ./user/metrics.rst
     ./user/checks.rst
     ./user/alerts.rst
