@@ -12,8 +12,6 @@ from openwisp_users.api.mixins import FilterSerializerByOrgManaged
 Device = load_model("config", "Device")
 DeviceMonitoring = load_model("device_monitoring", "DeviceMonitoring")
 DeviceData = load_model("device_monitoring", "DeviceData")
-Device = load_model("config", "Device")
-DeviceLocation = load_model("geo", "DeviceLocation")
 WifiSession = load_model("device_monitoring", "WifiSession")
 WifiClient = load_model("device_monitoring", "WifiClient")
 

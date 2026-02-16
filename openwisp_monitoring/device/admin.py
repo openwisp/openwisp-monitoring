@@ -1,4 +1,3 @@
-import json
 import uuid
 from urllib.parse import urljoin
 
@@ -9,7 +8,7 @@ from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
 from django.contrib.contenttypes.models import ContentType
 from django.forms import ModelForm
 from django.templatetags.static import static
-from django.urls import resolve, reverse, reverse_lazy
+from django.urls import resolve, reverse
 from django.utils import timezone
 from django.utils.formats import localize
 from django.utils.html import format_html
@@ -598,6 +597,7 @@ class MapPageAdmin(MultitenantAdminMixin, admin.ModelAdmin):
                 "leaflet/leaflet.css",
                 "monitoring/css/leaflet.fullscreen.css",
                 "monitoring/css/netjsongraph.css",
+                "monitoring/css/monitoring.css",
             ]
         }
 
@@ -606,32 +606,10 @@ class MapPageAdmin(MultitenantAdminMixin, admin.ModelAdmin):
         return False
 
     def changelist_view(self, request, extra_context=None):
-        loc_geojson_url = reverse_lazy(
-            "monitoring:api_location_geojson", urlconf=MONITORING_API_URLCONF
-        )
-        device_list_url = reverse_lazy(
-            "monitoring:api_location_device_list",
-            urlconf=MONITORING_API_URLCONF,
-            args=["000"],
-        )
-        indoor_coordinates_list_url = reverse_lazy(
-            "monitoring:api_indoor_coordinates_list",
-            urlconf=MONITORING_API_URLCONF,
-            args=["000"],
-        )
-        if MONITORING_API_BASEURL:
-            loc_geojson_url = urljoin(MONITORING_API_BASEURL, str(loc_geojson_url))
-            device_list_url = urljoin(MONITORING_API_BASEURL, str(device_list_url))
-            indoor_coordinates_list_url = urljoin(
-                MONITORING_API_BASEURL, str(indoor_coordinates_list_url)
-            )
         extra_context = extra_context or {}
         extra_context.update(
             {
-                "monitoring_device_list_url": device_list_url,
-                "monitoring_location_geojson_url": loc_geojson_url,
-                "monitoring_indoor_coordinates_list": indoor_coordinates_list_url,
-                "monitoring_labels": json.dumps(app_settings.HEALTH_STATUS_LABELS),
+                "monitoring_labels": app_settings.HEALTH_STATUS_LABELS,
                 # By default shows 'Select Map to change' heading making it empty to hide it
                 "title": "",
             }
