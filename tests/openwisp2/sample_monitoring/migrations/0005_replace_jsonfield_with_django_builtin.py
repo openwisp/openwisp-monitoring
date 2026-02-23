@@ -3,6 +3,7 @@
 
 from django.db import migrations, models
 
+
 class Migration(migrations.Migration):
     dependencies = [
         ("sample_monitoring", "0004_alter_metric_field_name"),
