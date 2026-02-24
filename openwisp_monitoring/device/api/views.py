@@ -120,7 +120,7 @@ class DeviceMetricView(
         )
         .all()
     )
-    serializer_class = serializers.Serializer
+    serializer_class = MonitoringDeviceDetailSerializer
     permission_classes = [DevicePermission]
     schema = schema
 
