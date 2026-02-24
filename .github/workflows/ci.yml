@@ -92,20 +92,6 @@ jobs:
         if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
         run: docker compose up -d influxdb
 
-      - name: Wait for InfluxDB
-        if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
-        run: |
-          for i in {1..20}; do
-            if curl -sI http://localhost:8086/ping | grep "204" > /dev/null; then
-              echo "InfluxDB is ready!"
-              exit 0
-            fi
-            echo "Waiting for InfluxDB to initialize..."
-            sleep 3
-          done
-          echo "Error: InfluxDB timed out"
-          exit 1
-
       - name: QA checks
         run: |
           ./run-qa-checks

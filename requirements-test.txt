@@ -3,6 +3,3 @@ django-redis~=6.0.0
 mock-ssh-server~=0.9.1
 channels_redis~=4.3.0
 freezegun~=1.5.5
-commitizen~=4.13.0
-prompt-toolkit!=3.0.52
-django-filter<25.0
