@@ -122,6 +122,7 @@ jobs:
           format: cobertura
           flag-name: python-${{ matrix.python-version }}-${{ matrix.django-version }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-error: false
 
   deploy:
     name: Deploy Docker Image
