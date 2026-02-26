@@ -44,7 +44,7 @@ def remove_config_applied_checks(apps, schema_editor):
     Check = apps.get_model("check", "Check")
     Metric = apps.get_model("monitoring", "Metric")
     Check.objects.filter(
-        check="openwisp_monitoring.check.classes.ConfigApplied"
+        check_type="openwisp_monitoring.check.classes.ConfigApplied"
     ).delete()
     Metric.objects.filter(configuration="config_applied").delete()
 
