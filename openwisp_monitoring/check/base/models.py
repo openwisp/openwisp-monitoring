@@ -1,12 +1,9 @@
-from collections import OrderedDict
-
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext_lazy as _
-from jsonfield import JSONField
 
 from openwisp_utils.base import TimeStampedEditableModel
 
@@ -37,13 +34,11 @@ class AbstractCheck(TimeStampedEditableModel):
         db_index=True,
         max_length=128,
     )
-    params = JSONField(
+    params = models.JSONField(
         _("parameters"),
         default=dict,
         blank=True,
         help_text=_("parameters needed to perform the check"),
-        load_kwargs={"object_pairs_hook": OrderedDict},
-        dump_kwargs={"indent": 4},
     )
 
     class Meta:
