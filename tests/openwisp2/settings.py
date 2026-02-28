@@ -18,8 +18,15 @@ DATABASES = {
     "default": {
         "ENGINE": "openwisp_utils.db.backends.spatialite",
         "NAME": "openwisp-monitoring.db",
+        # minimize sqlite concurrency issues
+        "OPTIONS": {"timeout": 10},
     }
 }
+if TESTING and "--exclude-tag=selenium_tests" not in sys.argv:
+    # Use file DB for selenium tests (in-memory DB not shared across processes)
+    DATABASES["default"]["TEST"] = {
+        "NAME": os.path.join(BASE_DIR, "openwisp-monitoring-tests.db"),
+    }
 
 TIMESERIES_DATABASE = {
     "BACKEND": "openwisp_monitoring.db.backends.influxdb",
@@ -308,6 +315,7 @@ if os.environ.get("SAMPLE_APP", False):
     DEVICE_MONITORING_DEVICEMONITORING_MODEL = (
         "sample_device_monitoring.DeviceMonitoring"
     )
+    DEVICE_MONITORING_MAP_MODEL = "sample_device_monitoring.Map"
     # Celery auto detects tasks only from INSTALLED_APPS
     CELERY_IMPORTS = ("openwisp_monitoring.device.tasks",)
 

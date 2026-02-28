@@ -7,7 +7,6 @@ from django.test import TransactionTestCase
 from swapper import load_model
 
 from openwisp_controller.connection.connectors.ssh import Ssh
-from openwisp_controller.connection.models import DeviceConnection
 from openwisp_controller.connection.settings import CONNECTORS, UPDATE_STRATEGIES
 from openwisp_controller.connection.tests.utils import CreateConnectionsMixin, SshServer
 from openwisp_monitoring.check.classes.iperf3 import get_iperf3_schema
@@ -26,6 +25,7 @@ from .iperf3_test_utils import (
     TEST_RSA_KEY,
 )
 
+DeviceConnection = load_model("connection", "DeviceConnection")
 Check = load_model("check", "Check")
 Chart = load_model("monitoring", "Chart")
 Metric = load_model("monitoring", "Metric")
