@@ -480,51 +480,6 @@
         } catch (err) {
           console.error(gettext("Unable to fit NetJSON bounds:"), err);
         }
-
-        // Restrict horizontal panning to three wrapped worlds
-        map.leaflet.setMaxBounds(
-          L.latLngBounds(L.latLng(-90, -540), L.latLng(90, 540)),
-        );
-
-        map.leaflet.on("moveend", (event) => {
-          const netjsonGraph = map; // alias for clarity
-          const bounds = event.target.getBounds();
-
-          // Ensure data.features exists; otherwise skip wrap logic
-          if (!netjsonGraph.data || !Array.isArray(netjsonGraph.data.features)) {
-            return; // nothing to wrap
-          }
-
-          // When panning west past the dateline, clone features shifted −360°
-          if (bounds._southWest.lng < -180 && !netjsonGraph.westWorldFeaturesAppended) {
-            const westWorld = structuredClone(netjsonGraph.data);
-            westWorld.features = westWorld.features.filter(
-              (f) => !f.geometry || f.geometry.coordinates[0] <= 180,
-            );
-            westWorld.features.forEach((f) => {
-              if (f.geometry) {
-                f.geometry.coordinates[0] -= 360;
-              }
-            });
-            netjsonGraph.utils.appendData(westWorld, netjsonGraph);
-            netjsonGraph.westWorldFeaturesAppended = true;
-          }
-
-          // When panning east past the dateline, clone features shifted +360°
-          if (bounds._northEast.lng > 180 && !netjsonGraph.eastWorldFeaturesAppended) {
-            const eastWorld = structuredClone(netjsonGraph.data);
-            eastWorld.features = eastWorld.features.filter(
-              (f) => !f.geometry || f.geometry.coordinates[0] >= -180,
-            );
-            eastWorld.features.forEach((f) => {
-              if (f.geometry) {
-                f.geometry.coordinates[0] += 360;
-              }
-            });
-            netjsonGraph.utils.appendData(eastWorld, netjsonGraph);
-            netjsonGraph.eastWorldFeaturesAppended = true;
-          }
-        });
       },
     });
 
