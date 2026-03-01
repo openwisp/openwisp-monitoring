@@ -3,3 +3,6 @@ django-redis~=6.0.0
 mock-ssh-server~=0.9.1
 channels_redis~=4.3.0
 freezegun~=1.5.5
+commitizen~=4.13.0  # required by openwisp-qa-check commit validation
+prompt-toolkit!=3.0.52  # avoid questionary regression (questionary#454), fixed in 2.1.1+
+django-filter>=24.0,<25.0  # 25.x removed deprecated DRF schema helpers used in our stack
