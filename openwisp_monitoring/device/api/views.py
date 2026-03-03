@@ -13,7 +13,7 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
 from pytz import UTC
-from rest_framework import pagination, serializers, status
+from rest_framework import pagination, status
 from rest_framework.generics import (
     GenericAPIView,
     ListAPIView,
