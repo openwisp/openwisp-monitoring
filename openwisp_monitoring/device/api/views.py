@@ -36,7 +36,6 @@ from openwisp_users.api.mixins import FilterByOrganizationManaged
 
 from ...settings import CACHE_TIMEOUT
 from ...views import MonitoringApiViewMixin
-from ..schema import schema
 from ..signals import device_metrics_received
 from ..tasks import write_device_metrics
 from .filters import (
@@ -124,9 +123,8 @@ class DeviceMetricView(
         )
         .all()
     )
-    serializer_class = serializers.Serializer
+    serializer_class = MonitoringDeviceDetailSerializer
     permission_classes = [DevicePermission]
-    schema = schema
 
     @classmethod
     def invalidate_get_device_cache(cls, instance, **kwargs):
