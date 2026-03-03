@@ -1,6 +1,7 @@
 import uuid
 from urllib.parse import urljoin
 
+from django import forms
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline
 from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
@@ -24,6 +25,7 @@ from swapper import load_model
 
 from openwisp_controller.config.admin import DeactivatedDeviceReadOnlyMixin
 from openwisp_controller.config.admin import DeviceAdmin as BaseDeviceAdmin
+from openwisp_controller.geo.admin import DeviceLocationInline
 from openwisp_users.multitenancy import MultitenantAdminMixin
 from openwisp_utils.admin import ReadOnlyAdmin
 
@@ -43,6 +45,7 @@ Metric = load_model("monitoring", "Metric")
 Notification = load_model("openwisp_notifications", "Notification")
 Check = load_model("check", "Check")
 Organization = load_model("openwisp_users", "Organization")
+MapPage = load_model("device_monitoring", "Map")
 
 
 class CheckInlineFormSet(BaseGenericInlineFormSet):
@@ -574,6 +577,63 @@ class WifiSessionAdmin(
     def has_delete_permission(self, request, obj=None):
         return super(admin.ModelAdmin, self).has_delete_permission(request, obj)
 
+
+class MapPageAdmin(MultitenantAdminMixin, admin.ModelAdmin):
+    """
+    Overrides the changelist template of proxy Model Map to render
+    a full-screen interactive map using custom template map_page.html.
+    """
+
+    change_list_template = "admin/map/map_page.html"
+
+    class Media:
+        js = [
+            "monitoring/js/lib/netjsongraph.min.js",
+            "monitoring/js/lib/leaflet.fullscreen.min.js",
+        ]
+        css = {
+            "all": [
+                "monitoring/css/device-map.css",
+                "leaflet/leaflet.css",
+                "monitoring/css/leaflet.fullscreen.css",
+                "monitoring/css/netjsongraph.css",
+                "monitoring/css/monitoring.css",
+            ]
+        }
+
+    def has_module_permission(self, request):
+        """Hide the model section from the admin index page."""
+        return False
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context.update(
+            {
+                "monitoring_labels": app_settings.HEALTH_STATUS_LABELS,
+                # By default shows 'Select Map to change' heading making it empty to hide it
+                "title": "",
+            }
+        )
+        return super().changelist_view(request, extra_context=extra_context)
+
+
+admin.site.register(MapPage, MapPageAdmin)
+
+
+# Adding additional js to add view on map buttons on DeviceLocationInline
+def patch_device_location_inline(self):
+    base = super(DeviceLocationInline, self).media
+    extra = forms.Media(
+        js=(
+            "admin/js/jquery.init.js",
+            "monitoring/js/location-inline.js",
+        ),
+        css={"all": ("monitoring/css/monitoring.css",)},
+    )
+    return base + extra
+
+
+DeviceLocationInline.media = property(patch_device_location_inline)
 
 admin.site.unregister(Device)
 admin.site.register(Device, DeviceAdminExportable)

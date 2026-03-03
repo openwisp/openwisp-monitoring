@@ -1,0 +1,29 @@
+{% extends "admin/base_site.html" %}
+
+{% load static leaflet_tags i18n %}
+
+{% block title %} 
+  {% trans 'Map' %} 
+{% endblock title %}
+
+{% block breadcrumbs %}
+  <div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a> › <span>{% trans 'Map' %}</span>
+  </div>
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  {{ media }}
+{% endblock extrahead %}
+
+{% block content %} 
+  {% include "admin/map/base_map.html" %}
+{% endblock content %}
+
+{% block footer %}
+  {{ block.super }}
+  <script src="{% static 'monitoring/js/device-map.js' %}"></script>
+  <script src="{% static 'monitoring/js/floorplan.js' %}"></script>
+{% endblock footer %}
+
