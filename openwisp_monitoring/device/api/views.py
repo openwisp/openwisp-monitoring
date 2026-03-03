@@ -155,7 +155,7 @@ class DeviceMetricView(
         response = super().get(request, pk)
         if not request.query_params.get("csv"):
             charts_data = dict(response.data)
-            device_metrics_data = MonitoringDeviceDetailSerializer(self.instance).data
+            device_metrics_data = self.serializer_class(self.instance).data
             return Response(
                 {**device_metrics_data, **charts_data}, status=status.HTTP_200_OK
             )
