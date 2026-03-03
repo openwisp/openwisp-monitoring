@@ -363,3 +363,4 @@ class WifiSessionDetailView(
 
 
 wifi_session_detail = WifiSessionDetailView.as_view()
+
