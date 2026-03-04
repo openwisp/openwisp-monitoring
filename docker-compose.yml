@@ -12,6 +12,7 @@ services:
 
   influxdb:
     image: influxdb:1.8-alpine
+    platform: linux/amd64
     volumes:
       - influxdb-data:/var/lib/influxdb
       - ./tests/influxdb.conf:/etc/influxdb/influxdb.conf
@@ -27,7 +28,7 @@ services:
       INFLUXDB_USER_PASSWORD: openwisp
 
   redis:
-    image: redis:5.0-alpine
+    image: redis:7
     ports:
       - "6379:6379"
     entrypoint: redis-server --appendonly yes
