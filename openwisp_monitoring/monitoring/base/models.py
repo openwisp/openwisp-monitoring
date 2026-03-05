@@ -11,12 +11,12 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.indexes import GinIndex
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import IntegrityError, models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-from jsonfield import JSONField
 from openwisp_notifications.signals import notify
 from pytz import timezone as tz
 from pytz import utc
@@ -91,20 +91,16 @@ class AbstractMetric(TimeStampedEditableModel):
     )
     object_id = models.CharField(max_length=36, db_index=True, blank=True, null=True)
     content_object = GenericForeignKey("content_type", "object_id")
-    main_tags = JSONField(
+    main_tags = models.JSONField(
         _("main tags"),
         default=dict,
         blank=True,
-        load_kwargs={"object_pairs_hook": OrderedDict},
-        dump_kwargs={"indent": 4},
         db_index=True,
     )
-    extra_tags = JSONField(
+    extra_tags = models.JSONField(
         _("extra tags"),
         default=dict,
         blank=True,
-        load_kwargs={"object_pairs_hook": OrderedDict},
-        dump_kwargs={"indent": 4},
     )
     # NULL means the health has yet to be assessed
     is_healthy = models.BooleanField(default=None, null=True, blank=True, db_index=True)
@@ -120,6 +116,10 @@ class AbstractMetric(TimeStampedEditableModel):
             "object_id",
             "main_tags",
         )
+        indexes = [
+            GinIndex(fields=["main_tags"], name="main_tags_gin_idx"),
+            GinIndex(fields=["extra_tags"], name="extra_tags_gin_idx"),
+        ]
 
     def __str__(self):
         obj = self.content_object
