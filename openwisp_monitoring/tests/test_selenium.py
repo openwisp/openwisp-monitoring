@@ -760,15 +760,13 @@ class TestDashboardMap(
         location.full_clean()
         location.save()
         series_value = WebDriverWait(self.web_driver, 5).until(
-            lambda d: d.execute_script(
-                """
+            lambda d: d.execute_script("""
                 const options = window._owGeoMap.echarts.getOption();
                 const series = options.series.find(
                     (s) => s.type === "scatter" || s.type === "effectScatter",
                 );
                 return series.data.find(d => d.name === "Test-Location").value;
-            """
-            )
+            """)
         )
         self.assertEqual([location.geometry.x, location.geometry.y], series_value)
 
@@ -779,15 +777,13 @@ class TestDashboardMap(
             location.full_clean()
             location.save()
             series_value = WebDriverWait(self.web_driver, 5).until(
-                lambda d: d.execute_script(
-                    """
+                lambda d: d.execute_script("""
                     const options = window._owGeoMap.echarts.getOption();
                     const series = options.series.find(
                         (s) => s.type === "scatter" || s.type === "effectScatter",
                     );
                     return series.data.find(d => d.name === "Test-Location").value;
-                """
-                )
+                """)
             )
             self.assertEqual([location.geometry.x, location.geometry.y], series_value)
 
@@ -837,8 +833,7 @@ class TestDashboardMap(
             org2_location.save()
             sleep(0.3)  # Wait for JS animation
             series_locations = WebDriverWait(self.web_driver, 5).until(
-                lambda d: d.execute_script(
-                    """
+                lambda d: d.execute_script("""
                     const options = window._owGeoMap.echarts.getOption();
                     const series = options.series.find(
                         (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -846,8 +841,7 @@ class TestDashboardMap(
                     const org1_location = series.data.find(l => l.name === "Org1-Location")
                     const org2_location = series.data.find(l => l.name === "Org2-Location")
                     return {org1_location, org2_location}
-                """
-                )
+                """)
             )
             self.assertEqual(
                 [org1_location.geometry.x, org1_location.geometry.y],
@@ -873,8 +867,7 @@ class TestDashboardMap(
             sleep(0.3)  # Wait for JS animation
             try:
                 series_locations = WebDriverWait(org1_driver, 5).until(
-                    lambda d: d.execute_script(
-                        """
+                    lambda d: d.execute_script("""
                         const options = window._owGeoMap.echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -882,8 +875,7 @@ class TestDashboardMap(
                         const org1_location = series.data.find(l => l.name === "Org1-Location")
                         const org2_location = series.data.find(l => l.name === "Org2-Location")
                         return {org1_location, org2_location}
-                    """
-                    )
+                    """)
                 )
             finally:
                 org1_driver.quit()
@@ -908,8 +900,7 @@ class TestDashboardMap(
             sleep(0.3)  # Wait for JS animation
             try:
                 series_locations = WebDriverWait(org2_driver, 5).until(
-                    lambda d: d.execute_script(
-                        """
+                    lambda d: d.execute_script("""
                         const options = window._owGeoMap.echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -917,8 +908,7 @@ class TestDashboardMap(
                         const org1_location = series.data.find(l => l.name === "Org1-Location")
                         const org2_location = series.data.find(l => l.name === "Org2-Location")
                         return {org1_location, org2_location}
-                    """
-                    )
+                    """)
                 )
             finally:
                 org2_driver.quit()

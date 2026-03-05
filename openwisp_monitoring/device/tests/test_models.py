@@ -449,6 +449,18 @@ class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
         dd.data = data
         dd.validate_data()
 
+    def test_wireless_ssid_not_required(self):
+        """Regression test for https://github.com/openwisp/openwisp-monitoring/issues/729
+
+        Verifies that wireless interface data without an SSID
+        (e.g. when an AP is disabled) passes schema validation.
+        """
+        dd = self._create_device_data()
+        data = deepcopy(self._sample_data)
+        del data["interfaces"][0]["wireless"]["ssid"]
+        dd.data = data
+        dd.validate_data()
+
     @patch("openwisp_monitoring.device.settings.MAC_VENDOR_DETECTION", True)
     def test_mac_vendor_info(self):
         dd = self.test_save_data()
