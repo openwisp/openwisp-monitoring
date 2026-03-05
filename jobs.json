@@ -1,0 +1,1837 @@
+{
+  "total_count": 13,
+  "jobs": [
+    {
+      "id": 65673850603,
+      "run_id": 22658692125,
+      "workflow_name": "OpenWISP Monitoring CI Build",
+      "head_branch": "fix/716-device-monitoring-api-schema",
+      "run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/runs/22658692125",
+      "run_attempt": 1,
+      "node_id": "CR_kwDODtHmKM8AAAAPSndu6w",
+      "head_sha": "8b3d8953611e07242ededcccd0289c918522b6dc",
+      "url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/jobs/65673850603",
+      "html_url": "https://github.com/openwisp/openwisp-monitoring/actions/runs/22658692125/job/65673850603",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-03-04T06:59:52Z",
+      "started_at": "2026-03-04T06:59:54Z",
+      "completed_at": "2026-03-04T07:13:02Z",
+      "name": "Python==3.13 | django~=5.1.0",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-03-04T06:59:55Z",
+          "completed_at": "2026-03-04T06:59:57Z"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-03-04T06:59:57Z",
+          "completed_at": "2026-03-04T07:00:03Z"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-03-04T07:00:03Z",
+          "completed_at": "2026-03-04T07:00:04Z"
+        },
+        {
+          "name": "Cache APT packages",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-03-04T07:00:04Z",
+          "completed_at": "2026-03-04T07:00:04Z"
+        },
+        {
+          "name": "Disable man page auto-update",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-03-04T07:00:04Z",
+          "completed_at": "2026-03-04T07:00:05Z"
+        },
+        {
+          "name": "Set up and Cache Python 3.13",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-03-04T07:00:05Z",
+          "completed_at": "2026-03-04T07:00:10Z"
+        },
+        {
+          "name": "Install Dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-03-04T07:00:10Z",
+          "completed_at": "2026-03-04T07:01:39Z"
+        },
+        {
+          "name": "Start InfluxDB",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-03-04T07:01:39Z",
+          "completed_at": "2026-03-04T07:01:43Z"
+        },
+        {
+          "name": "QA checks",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 9,
+          "started_at": "2026-03-04T07:01:43Z",
+          "completed_at": "2026-03-04T07:01:55Z"
+        },
+        {
+          "name": "Tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-03-04T07:01:55Z",
+          "completed_at": "2026-03-04T07:12:58Z"
+        },
+        {
+          "name": "Show gecko web driver log on failures",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-03-04T07:12:58Z",
+          "completed_at": "2026-03-04T07:12:58Z"
+        },
+        {
+          "name": "Upload Coverage",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 12,
+          "started_at": "2026-03-04T07:12:58Z",
+          "completed_at": "2026-03-04T07:12:58Z"
+        },
+        {
+          "name": "Post Set up and Cache Python 3.13",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-03-04T07:12:58Z",
+          "completed_at": "2026-03-04T07:12:58Z"
+        },
+        {
+          "name": "Post Cache APT packages",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 22,
+          "started_at": "2026-03-04T07:12:58Z",
+          "completed_at": "2026-03-04T07:12:58Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-03-04T07:12:58Z",
+          "completed_at": "2026-03-04T07:12:58Z"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-03-04T07:12:58Z",
+          "completed_at": "2026-03-04T07:12:59Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-03-04T07:12:59Z",
+          "completed_at": "2026-03-04T07:12:59Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/check-runs/65673850603",
+      "labels": ["ubuntu-24.04"],
+      "runner_id": 1000077824,
+      "runner_name": "GitHub Actions 1000077824",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 65673850607,
+      "run_id": 22658692125,
+      "workflow_name": "OpenWISP Monitoring CI Build",
+      "head_branch": "fix/716-device-monitoring-api-schema",
+      "run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/runs/22658692125",
+      "run_attempt": 1,
+      "node_id": "CR_kwDODtHmKM8AAAAPSndu7w",
+      "head_sha": "8b3d8953611e07242ededcccd0289c918522b6dc",
+      "url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/jobs/65673850607",
+      "html_url": "https://github.com/openwisp/openwisp-monitoring/actions/runs/22658692125/job/65673850607",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-03-04T06:59:52Z",
+      "started_at": "2026-03-04T06:59:55Z",
+      "completed_at": "2026-03-04T07:13:15Z",
+      "name": "Python==3.10 | django~=5.1.0",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-03-04T06:59:56Z",
+          "completed_at": "2026-03-04T06:59:57Z"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-03-04T06:59:57Z",
+          "completed_at": "2026-03-04T07:00:02Z"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-03-04T07:00:02Z",
+          "completed_at": "2026-03-04T07:00:03Z"
+        },
+        {
+          "name": "Cache APT packages",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-03-04T07:00:03Z",
+          "completed_at": "2026-03-04T07:00:04Z"
+        },
+        {
+          "name": "Disable man page auto-update",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-03-04T07:00:04Z",
+          "completed_at": "2026-03-04T07:00:05Z"
+        },
+        {
+          "name": "Set up and Cache Python 3.10",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-03-04T07:00:05Z",
+          "completed_at": "2026-03-04T07:00:10Z"
+        },
+        {
+          "name": "Install Dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-03-04T07:00:10Z",
+          "completed_at": "2026-03-04T07:01:41Z"
+        },
+        {
+          "name": "Start InfluxDB",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-03-04T07:01:41Z",
+          "completed_at": "2026-03-04T07:01:48Z"
+        },
+        {
+          "name": "QA checks",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 9,
+          "started_at": "2026-03-04T07:01:48Z",
+          "completed_at": "2026-03-04T07:01:59Z"
+        },
+        {
+          "name": "Tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-03-04T07:01:59Z",
+          "completed_at": "2026-03-04T07:13:11Z"
+        },
+        {
+          "name": "Show gecko web driver log on failures",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-03-04T07:13:11Z",
+          "completed_at": "2026-03-04T07:13:11Z"
+        },
+        {
+          "name": "Upload Coverage",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 12,
+          "started_at": "2026-03-04T07:13:11Z",
+          "completed_at": "2026-03-04T07:13:11Z"
+        },
+        {
+          "name": "Post Set up and Cache Python 3.10",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-03-04T07:13:11Z",
+          "completed_at": "2026-03-04T07:13:11Z"
+        },
+        {
+          "name": "Post Cache APT packages",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 22,
+          "started_at": "2026-03-04T07:13:11Z",
+          "completed_at": "2026-03-04T07:13:11Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-03-04T07:13:11Z",
+          "completed_at": "2026-03-04T07:13:11Z"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-03-04T07:13:11Z",
+          "completed_at": "2026-03-04T07:13:11Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-03-04T07:13:11Z",
+          "completed_at": "2026-03-04T07:13:11Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/check-runs/65673850607",
+      "labels": ["ubuntu-24.04"],
+      "runner_id": 1000077825,
+      "runner_name": "GitHub Actions 1000077825",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 65673850609,
+      "run_id": 22658692125,
+      "workflow_name": "OpenWISP Monitoring CI Build",
+      "head_branch": "fix/716-device-monitoring-api-schema",
+      "run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/runs/22658692125",
+      "run_attempt": 1,
+      "node_id": "CR_kwDODtHmKM8AAAAPSndu8Q",
+      "head_sha": "8b3d8953611e07242ededcccd0289c918522b6dc",
+      "url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/jobs/65673850609",
+      "html_url": "https://github.com/openwisp/openwisp-monitoring/actions/runs/22658692125/job/65673850609",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-03-04T06:59:52Z",
+      "started_at": "2026-03-04T06:59:54Z",
+      "completed_at": "2026-03-04T07:12:01Z",
+      "name": "Python==3.12 | django~=4.2.0",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-03-04T06:59:54Z",
+          "completed_at": "2026-03-04T06:59:56Z"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-03-04T06:59:56Z",
+          "completed_at": "2026-03-04T07:00:02Z"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-03-04T07:00:02Z",
+          "completed_at": "2026-03-04T07:00:02Z"
+        },
+        {
+          "name": "Cache APT packages",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-03-04T07:00:02Z",
+          "completed_at": "2026-03-04T07:00:03Z"
+        },
+        {
+          "name": "Disable man page auto-update",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-03-04T07:00:03Z",
+          "completed_at": "2026-03-04T07:00:04Z"
+        },
+        {
+          "name": "Set up and Cache Python 3.12",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-03-04T07:00:04Z",
+          "completed_at": "2026-03-04T07:00:07Z"
+        },
+        {
+          "name": "Install Dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-03-04T07:00:07Z",
+          "completed_at": "2026-03-04T07:01:49Z"
+        },
+        {
+          "name": "Start InfluxDB",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-03-04T07:01:49Z",
+          "completed_at": "2026-03-04T07:01:52Z"
+        },
+        {
+          "name": "QA checks",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 9,
+          "started_at": "2026-03-04T07:01:52Z",
+          "completed_at": "2026-03-04T07:02:05Z"
+        },
+        {
+          "name": "Tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-03-04T07:02:05Z",
+          "completed_at": "2026-03-04T07:11:58Z"
+        },
+        {
+          "name": "Show gecko web driver log on failures",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-03-04T07:11:58Z",
+          "completed_at": "2026-03-04T07:11:58Z"
+        },
+        {
+          "name": "Upload Coverage",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 12,
+          "started_at": "2026-03-04T07:11:58Z",
+          "completed_at": "2026-03-04T07:11:58Z"
+        },
+        {
+          "name": "Post Set up and Cache Python 3.12",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-03-04T07:11:58Z",
+          "completed_at": "2026-03-04T07:11:58Z"
+        },
+        {
+          "name": "Post Cache APT packages",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 22,
+          "started_at": "2026-03-04T07:11:58Z",
+          "completed_at": "2026-03-04T07:11:58Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-03-04T07:11:58Z",
+          "completed_at": "2026-03-04T07:11:58Z"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-03-04T07:11:58Z",
+          "completed_at": "2026-03-04T07:11:59Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-03-04T07:11:59Z",
+          "completed_at": "2026-03-04T07:11:59Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/check-runs/65673850609",
+      "labels": ["ubuntu-24.04"],
+      "runner_id": 1000077826,
+      "runner_name": "GitHub Actions 1000077826",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 65673850610,
+      "run_id": 22658692125,
+      "workflow_name": "OpenWISP Monitoring CI Build",
+      "head_branch": "fix/716-device-monitoring-api-schema",
+      "run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/runs/22658692125",
+      "run_attempt": 1,
+      "node_id": "CR_kwDODtHmKM8AAAAPSndu8g",
+      "head_sha": "8b3d8953611e07242ededcccd0289c918522b6dc",
+      "url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/jobs/65673850610",
+      "html_url": "https://github.com/openwisp/openwisp-monitoring/actions/runs/22658692125/job/65673850610",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-03-04T06:59:52Z",
+      "started_at": "2026-03-04T06:59:54Z",
+      "completed_at": "2026-03-04T07:07:35Z",
+      "name": "Python==3.11 | django~=5.2.0",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-03-04T06:59:54Z",
+          "completed_at": "2026-03-04T06:59:56Z"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-03-04T06:59:56Z",
+          "completed_at": "2026-03-04T07:00:00Z"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-03-04T07:00:00Z",
+          "completed_at": "2026-03-04T07:00:01Z"
+        },
+        {
+          "name": "Cache APT packages",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-03-04T07:00:01Z",
+          "completed_at": "2026-03-04T07:00:01Z"
+        },
+        {
+          "name": "Disable man page auto-update",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-03-04T07:00:01Z",
+          "completed_at": "2026-03-04T07:00:02Z"
+        },
+        {
+          "name": "Set up and Cache Python 3.11",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-03-04T07:00:02Z",
+          "completed_at": "2026-03-04T07:00:05Z"
+        },
+        {
+          "name": "Install Dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-03-04T07:00:05Z",
+          "completed_at": "2026-03-04T07:01:35Z"
+        },
+        {
+          "name": "Start InfluxDB",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-03-04T07:01:35Z",
+          "completed_at": "2026-03-04T07:01:40Z"
+        },
+        {
+          "name": "QA checks",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 9,
+          "started_at": "2026-03-04T07:01:40Z",
+          "completed_at": "2026-03-04T07:01:50Z"
+        },
+        {
+          "name": "Tests",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 10,
+          "started_at": "2026-03-04T07:01:50Z",
+          "completed_at": "2026-03-04T07:07:32Z"
+        },
+        {
+          "name": "Show gecko web driver log on failures",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-03-04T07:07:32Z",
+          "completed_at": "2026-03-04T07:07:33Z"
+        },
+        {
+          "name": "Upload Coverage",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 12,
+          "started_at": "2026-03-04T07:07:33Z",
+          "completed_at": "2026-03-04T07:07:33Z"
+        },
+        {
+          "name": "Post Set up and Cache Python 3.11",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-03-04T07:07:33Z",
+          "completed_at": "2026-03-04T07:07:33Z"
+        },
+        {
+          "name": "Post Cache APT packages",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 22,
+          "started_at": "2026-03-04T07:07:33Z",
+          "completed_at": "2026-03-04T07:07:33Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-03-04T07:07:33Z",
+          "completed_at": "2026-03-04T07:07:33Z"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-03-04T07:07:33Z",
+          "completed_at": "2026-03-04T07:07:33Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-03-04T07:07:33Z",
+          "completed_at": "2026-03-04T07:07:34Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/check-runs/65673850610",
+      "labels": ["ubuntu-24.04"],
+      "runner_id": 1000077827,
+      "runner_name": "GitHub Actions 1000077827",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 65673850616,
+      "run_id": 22658692125,
+      "workflow_name": "OpenWISP Monitoring CI Build",
+      "head_branch": "fix/716-device-monitoring-api-schema",
+      "run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/runs/22658692125",
+      "run_attempt": 1,
+      "node_id": "CR_kwDODtHmKM8AAAAPSndu-A",
+      "head_sha": "8b3d8953611e07242ededcccd0289c918522b6dc",
+      "url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/jobs/65673850616",
+      "html_url": "https://github.com/openwisp/openwisp-monitoring/actions/runs/22658692125/job/65673850616",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-03-04T06:59:52Z",
+      "started_at": "2026-03-04T06:59:54Z",
+      "completed_at": "2026-03-04T07:13:36Z",
+      "name": "Python==3.10 | django~=5.2.0",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-03-04T06:59:55Z",
+          "completed_at": "2026-03-04T06:59:56Z"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-03-04T06:59:56Z",
+          "completed_at": "2026-03-04T07:00:01Z"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-03-04T07:00:01Z",
+          "completed_at": "2026-03-04T07:00:01Z"
+        },
+        {
+          "name": "Cache APT packages",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-03-04T07:00:01Z",
+          "completed_at": "2026-03-04T07:00:02Z"
+        },
+        {
+          "name": "Disable man page auto-update",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-03-04T07:00:02Z",
+          "completed_at": "2026-03-04T07:00:03Z"
+        },
+        {
+          "name": "Set up and Cache Python 3.10",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-03-04T07:00:03Z",
+          "completed_at": "2026-03-04T07:00:06Z"
+        },
+        {
+          "name": "Install Dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-03-04T07:00:06Z",
+          "completed_at": "2026-03-04T07:01:41Z"
+        },
+        {
+          "name": "Start InfluxDB",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-03-04T07:01:41Z",
+          "completed_at": "2026-03-04T07:01:46Z"
+        },
+        {
+          "name": "QA checks",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 9,
+          "started_at": "2026-03-04T07:01:46Z",
+          "completed_at": "2026-03-04T07:01:57Z"
+        },
+        {
+          "name": "Tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-03-04T07:01:57Z",
+          "completed_at": "2026-03-04T07:13:34Z"
+        },
+        {
+          "name": "Show gecko web driver log on failures",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-03-04T07:13:34Z",
+          "completed_at": "2026-03-04T07:13:34Z"
+        },
+        {
+          "name": "Upload Coverage",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 12,
+          "started_at": "2026-03-04T07:13:34Z",
+          "completed_at": "2026-03-04T07:13:34Z"
+        },
+        {
+          "name": "Post Set up and Cache Python 3.10",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-03-04T07:13:34Z",
+          "completed_at": "2026-03-04T07:13:34Z"
+        },
+        {
+          "name": "Post Cache APT packages",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 22,
+          "started_at": "2026-03-04T07:13:34Z",
+          "completed_at": "2026-03-04T07:13:34Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-03-04T07:13:34Z",
+          "completed_at": "2026-03-04T07:13:34Z"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-03-04T07:13:34Z",
+          "completed_at": "2026-03-04T07:13:34Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-03-04T07:13:34Z",
+          "completed_at": "2026-03-04T07:13:34Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/check-runs/65673850616",
+      "labels": ["ubuntu-24.04"],
+      "runner_id": 1000077832,
+      "runner_name": "GitHub Actions 1000077832",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 65673850619,
+      "run_id": 22658692125,
+      "workflow_name": "OpenWISP Monitoring CI Build",
+      "head_branch": "fix/716-device-monitoring-api-schema",
+      "run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/runs/22658692125",
+      "run_attempt": 1,
+      "node_id": "CR_kwDODtHmKM8AAAAPSndu-w",
+      "head_sha": "8b3d8953611e07242ededcccd0289c918522b6dc",
+      "url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/jobs/65673850619",
+      "html_url": "https://github.com/openwisp/openwisp-monitoring/actions/runs/22658692125/job/65673850619",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-03-04T06:59:52Z",
+      "started_at": "2026-03-04T06:59:54Z",
+      "completed_at": "2026-03-04T07:01:49Z",
+      "name": "Python==3.13 | django~=5.2.0",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-03-04T06:59:54Z",
+          "completed_at": "2026-03-04T06:59:56Z"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-03-04T06:59:56Z",
+          "completed_at": "2026-03-04T06:59:59Z"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-03-04T06:59:59Z",
+          "completed_at": "2026-03-04T06:59:59Z"
+        },
+        {
+          "name": "Cache APT packages",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-03-04T06:59:59Z",
+          "completed_at": "2026-03-04T07:00:00Z"
+        },
+        {
+          "name": "Disable man page auto-update",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-03-04T07:00:00Z",
+          "completed_at": "2026-03-04T07:00:01Z"
+        },
+        {
+          "name": "Set up and Cache Python 3.13",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-03-04T07:00:01Z",
+          "completed_at": "2026-03-04T07:00:04Z"
+        },
+        {
+          "name": "Install Dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-03-04T07:00:04Z",
+          "completed_at": "2026-03-04T07:01:32Z"
+        },
+        {
+          "name": "Start InfluxDB",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-03-04T07:01:32Z",
+          "completed_at": "2026-03-04T07:01:37Z"
+        },
+        {
+          "name": "QA checks",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 9,
+          "started_at": "2026-03-04T07:01:37Z",
+          "completed_at": "2026-03-04T07:01:46Z"
+        },
+        {
+          "name": "Tests",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 10,
+          "started_at": "2026-03-04T07:01:46Z",
+          "completed_at": "2026-03-04T07:01:46Z"
+        },
+        {
+          "name": "Show gecko web driver log on failures",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 11,
+          "started_at": "2026-03-04T07:01:46Z",
+          "completed_at": "2026-03-04T07:01:46Z"
+        },
+        {
+          "name": "Upload Coverage",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 12,
+          "started_at": "2026-03-04T07:01:46Z",
+          "completed_at": "2026-03-04T07:01:46Z"
+        },
+        {
+          "name": "Post Set up and Cache Python 3.13",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-03-04T07:01:46Z",
+          "completed_at": "2026-03-04T07:01:46Z"
+        },
+        {
+          "name": "Post Cache APT packages",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 22,
+          "started_at": "2026-03-04T07:01:46Z",
+          "completed_at": "2026-03-04T07:01:46Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-03-04T07:01:46Z",
+          "completed_at": "2026-03-04T07:01:47Z"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-03-04T07:01:47Z",
+          "completed_at": "2026-03-04T07:01:47Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-03-04T07:01:47Z",
+          "completed_at": "2026-03-04T07:01:47Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/check-runs/65673850619",
+      "labels": ["ubuntu-24.04"],
+      "runner_id": 1000077831,
+      "runner_name": "GitHub Actions 1000077831",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 65673850620,
+      "run_id": 22658692125,
+      "workflow_name": "OpenWISP Monitoring CI Build",
+      "head_branch": "fix/716-device-monitoring-api-schema",
+      "run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/runs/22658692125",
+      "run_attempt": 1,
+      "node_id": "CR_kwDODtHmKM8AAAAPSndu_A",
+      "head_sha": "8b3d8953611e07242ededcccd0289c918522b6dc",
+      "url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/jobs/65673850620",
+      "html_url": "https://github.com/openwisp/openwisp-monitoring/actions/runs/22658692125/job/65673850620",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-03-04T06:59:52Z",
+      "started_at": "2026-03-04T06:59:54Z",
+      "completed_at": "2026-03-04T07:12:31Z",
+      "name": "Python==3.12 | django~=5.1.0",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-03-04T06:59:55Z",
+          "completed_at": "2026-03-04T06:59:58Z"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-03-04T06:59:58Z",
+          "completed_at": "2026-03-04T07:00:03Z"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-03-04T07:00:03Z",
+          "completed_at": "2026-03-04T07:00:04Z"
+        },
+        {
+          "name": "Cache APT packages",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-03-04T07:00:04Z",
+          "completed_at": "2026-03-04T07:00:04Z"
+        },
+        {
+          "name": "Disable man page auto-update",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-03-04T07:00:04Z",
+          "completed_at": "2026-03-04T07:00:05Z"
+        },
+        {
+          "name": "Set up and Cache Python 3.12",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-03-04T07:00:05Z",
+          "completed_at": "2026-03-04T07:00:10Z"
+        },
+        {
+          "name": "Install Dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-03-04T07:00:10Z",
+          "completed_at": "2026-03-04T07:01:43Z"
+        },
+        {
+          "name": "Start InfluxDB",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-03-04T07:01:43Z",
+          "completed_at": "2026-03-04T07:01:49Z"
+        },
+        {
+          "name": "QA checks",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 9,
+          "started_at": "2026-03-04T07:01:49Z",
+          "completed_at": "2026-03-04T07:02:00Z"
+        },
+        {
+          "name": "Tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-03-04T07:02:00Z",
+          "completed_at": "2026-03-04T07:12:27Z"
+        },
+        {
+          "name": "Show gecko web driver log on failures",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-03-04T07:12:27Z",
+          "completed_at": "2026-03-04T07:12:27Z"
+        },
+        {
+          "name": "Upload Coverage",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 12,
+          "started_at": "2026-03-04T07:12:27Z",
+          "completed_at": "2026-03-04T07:12:27Z"
+        },
+        {
+          "name": "Post Set up and Cache Python 3.12",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-03-04T07:12:27Z",
+          "completed_at": "2026-03-04T07:12:27Z"
+        },
+        {
+          "name": "Post Cache APT packages",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 22,
+          "started_at": "2026-03-04T07:12:27Z",
+          "completed_at": "2026-03-04T07:12:27Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-03-04T07:12:27Z",
+          "completed_at": "2026-03-04T07:12:27Z"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-03-04T07:12:27Z",
+          "completed_at": "2026-03-04T07:12:28Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-03-04T07:12:28Z",
+          "completed_at": "2026-03-04T07:12:28Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/check-runs/65673850620",
+      "labels": ["ubuntu-24.04"],
+      "runner_id": 1000077828,
+      "runner_name": "GitHub Actions 1000077828",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 65673850623,
+      "run_id": 22658692125,
+      "workflow_name": "OpenWISP Monitoring CI Build",
+      "head_branch": "fix/716-device-monitoring-api-schema",
+      "run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/runs/22658692125",
+      "run_attempt": 1,
+      "node_id": "CR_kwDODtHmKM8AAAAPSndu_w",
+      "head_sha": "8b3d8953611e07242ededcccd0289c918522b6dc",
+      "url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/jobs/65673850623",
+      "html_url": "https://github.com/openwisp/openwisp-monitoring/actions/runs/22658692125/job/65673850623",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-03-04T06:59:52Z",
+      "started_at": "2026-03-04T06:59:54Z",
+      "completed_at": "2026-03-04T07:01:39Z",
+      "name": "Python==3.12 | django~=5.2.0",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-03-04T06:59:54Z",
+          "completed_at": "2026-03-04T06:59:56Z"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-03-04T06:59:56Z",
+          "completed_at": "2026-03-04T06:59:58Z"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-03-04T06:59:58Z",
+          "completed_at": "2026-03-04T06:59:59Z"
+        },
+        {
+          "name": "Cache APT packages",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-03-04T06:59:59Z",
+          "completed_at": "2026-03-04T06:59:59Z"
+        },
+        {
+          "name": "Disable man page auto-update",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-03-04T06:59:59Z",
+          "completed_at": "2026-03-04T07:00:00Z"
+        },
+        {
+          "name": "Set up and Cache Python 3.12",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-03-04T07:00:00Z",
+          "completed_at": "2026-03-04T07:00:03Z"
+        },
+        {
+          "name": "Install Dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-03-04T07:00:03Z",
+          "completed_at": "2026-03-04T07:01:26Z"
+        },
+        {
+          "name": "Start InfluxDB",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-03-04T07:01:26Z",
+          "completed_at": "2026-03-04T07:01:29Z"
+        },
+        {
+          "name": "QA checks",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 9,
+          "started_at": "2026-03-04T07:01:29Z",
+          "completed_at": "2026-03-04T07:01:37Z"
+        },
+        {
+          "name": "Tests",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 10,
+          "started_at": "2026-03-04T07:01:37Z",
+          "completed_at": "2026-03-04T07:01:37Z"
+        },
+        {
+          "name": "Show gecko web driver log on failures",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 11,
+          "started_at": "2026-03-04T07:01:37Z",
+          "completed_at": "2026-03-04T07:01:37Z"
+        },
+        {
+          "name": "Upload Coverage",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 12,
+          "started_at": "2026-03-04T07:01:37Z",
+          "completed_at": "2026-03-04T07:01:37Z"
+        },
+        {
+          "name": "Post Set up and Cache Python 3.12",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-03-04T07:01:37Z",
+          "completed_at": "2026-03-04T07:01:37Z"
+        },
+        {
+          "name": "Post Cache APT packages",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 22,
+          "started_at": "2026-03-04T07:01:37Z",
+          "completed_at": "2026-03-04T07:01:37Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-03-04T07:01:37Z",
+          "completed_at": "2026-03-04T07:01:37Z"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-03-04T07:01:37Z",
+          "completed_at": "2026-03-04T07:01:38Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-03-04T07:01:38Z",
+          "completed_at": "2026-03-04T07:01:38Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/check-runs/65673850623",
+      "labels": ["ubuntu-24.04"],
+      "runner_id": 1000077830,
+      "runner_name": "GitHub Actions 1000077830",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 65673850634,
+      "run_id": 22658692125,
+      "workflow_name": "OpenWISP Monitoring CI Build",
+      "head_branch": "fix/716-device-monitoring-api-schema",
+      "run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/runs/22658692125",
+      "run_attempt": 1,
+      "node_id": "CR_kwDODtHmKM8AAAAPSndvCg",
+      "head_sha": "8b3d8953611e07242ededcccd0289c918522b6dc",
+      "url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/jobs/65673850634",
+      "html_url": "https://github.com/openwisp/openwisp-monitoring/actions/runs/22658692125/job/65673850634",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-03-04T06:59:52Z",
+      "started_at": "2026-03-04T06:59:54Z",
+      "completed_at": "2026-03-04T07:11:26Z",
+      "name": "Python==3.11 | django~=4.2.0",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-03-04T06:59:55Z",
+          "completed_at": "2026-03-04T06:59:56Z"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-03-04T06:59:56Z",
+          "completed_at": "2026-03-04T07:00:01Z"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-03-04T07:00:01Z",
+          "completed_at": "2026-03-04T07:00:02Z"
+        },
+        {
+          "name": "Cache APT packages",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-03-04T07:00:02Z",
+          "completed_at": "2026-03-04T07:00:02Z"
+        },
+        {
+          "name": "Disable man page auto-update",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-03-04T07:00:02Z",
+          "completed_at": "2026-03-04T07:00:03Z"
+        },
+        {
+          "name": "Set up and Cache Python 3.11",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-03-04T07:00:03Z",
+          "completed_at": "2026-03-04T07:00:05Z"
+        },
+        {
+          "name": "Install Dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-03-04T07:00:05Z",
+          "completed_at": "2026-03-04T07:01:23Z"
+        },
+        {
+          "name": "Start InfluxDB",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-03-04T07:01:23Z",
+          "completed_at": "2026-03-04T07:01:26Z"
+        },
+        {
+          "name": "QA checks",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 9,
+          "started_at": "2026-03-04T07:01:26Z",
+          "completed_at": "2026-03-04T07:01:37Z"
+        },
+        {
+          "name": "Tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-03-04T07:01:37Z",
+          "completed_at": "2026-03-04T07:11:23Z"
+        },
+        {
+          "name": "Show gecko web driver log on failures",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-03-04T07:11:23Z",
+          "completed_at": "2026-03-04T07:11:23Z"
+        },
+        {
+          "name": "Upload Coverage",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 12,
+          "started_at": "2026-03-04T07:11:23Z",
+          "completed_at": "2026-03-04T07:11:23Z"
+        },
+        {
+          "name": "Post Set up and Cache Python 3.11",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-03-04T07:11:23Z",
+          "completed_at": "2026-03-04T07:11:23Z"
+        },
+        {
+          "name": "Post Cache APT packages",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 22,
+          "started_at": "2026-03-04T07:11:23Z",
+          "completed_at": "2026-03-04T07:11:23Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-03-04T07:11:23Z",
+          "completed_at": "2026-03-04T07:11:23Z"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-03-04T07:11:23Z",
+          "completed_at": "2026-03-04T07:11:24Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-03-04T07:11:24Z",
+          "completed_at": "2026-03-04T07:11:24Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/check-runs/65673850634",
+      "labels": ["ubuntu-24.04"],
+      "runner_id": 1000077829,
+      "runner_name": "GitHub Actions 1000077829",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 65673850635,
+      "run_id": 22658692125,
+      "workflow_name": "OpenWISP Monitoring CI Build",
+      "head_branch": "fix/716-device-monitoring-api-schema",
+      "run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/runs/22658692125",
+      "run_attempt": 1,
+      "node_id": "CR_kwDODtHmKM8AAAAPSndvCw",
+      "head_sha": "8b3d8953611e07242ededcccd0289c918522b6dc",
+      "url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/jobs/65673850635",
+      "html_url": "https://github.com/openwisp/openwisp-monitoring/actions/runs/22658692125/job/65673850635",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-03-04T06:59:52Z",
+      "started_at": "2026-03-04T06:59:54Z",
+      "completed_at": "2026-03-04T07:12:06Z",
+      "name": "Python==3.10 | django~=4.2.0",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-03-04T06:59:55Z",
+          "completed_at": "2026-03-04T06:59:56Z"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-03-04T06:59:56Z",
+          "completed_at": "2026-03-04T06:59:59Z"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-03-04T06:59:59Z",
+          "completed_at": "2026-03-04T06:59:59Z"
+        },
+        {
+          "name": "Cache APT packages",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-03-04T06:59:59Z",
+          "completed_at": "2026-03-04T06:59:59Z"
+        },
+        {
+          "name": "Disable man page auto-update",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-03-04T06:59:59Z",
+          "completed_at": "2026-03-04T07:00:00Z"
+        },
+        {
+          "name": "Set up and Cache Python 3.10",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-03-04T07:00:00Z",
+          "completed_at": "2026-03-04T07:00:04Z"
+        },
+        {
+          "name": "Install Dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-03-04T07:00:04Z",
+          "completed_at": "2026-03-04T07:01:28Z"
+        },
+        {
+          "name": "Start InfluxDB",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-03-04T07:01:28Z",
+          "completed_at": "2026-03-04T07:01:32Z"
+        },
+        {
+          "name": "QA checks",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 9,
+          "started_at": "2026-03-04T07:01:32Z",
+          "completed_at": "2026-03-04T07:01:43Z"
+        },
+        {
+          "name": "Tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-03-04T07:01:43Z",
+          "completed_at": "2026-03-04T07:12:05Z"
+        },
+        {
+          "name": "Show gecko web driver log on failures",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-03-04T07:12:05Z",
+          "completed_at": "2026-03-04T07:12:05Z"
+        },
+        {
+          "name": "Upload Coverage",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 12,
+          "started_at": "2026-03-04T07:12:05Z",
+          "completed_at": "2026-03-04T07:12:05Z"
+        },
+        {
+          "name": "Post Set up and Cache Python 3.10",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-03-04T07:12:05Z",
+          "completed_at": "2026-03-04T07:12:05Z"
+        },
+        {
+          "name": "Post Cache APT packages",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 22,
+          "started_at": "2026-03-04T07:12:05Z",
+          "completed_at": "2026-03-04T07:12:05Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-03-04T07:12:05Z",
+          "completed_at": "2026-03-04T07:12:05Z"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-03-04T07:12:05Z",
+          "completed_at": "2026-03-04T07:12:05Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-03-04T07:12:05Z",
+          "completed_at": "2026-03-04T07:12:05Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/check-runs/65673850635",
+      "labels": ["ubuntu-24.04"],
+      "runner_id": 1000077833,
+      "runner_name": "GitHub Actions 1000077833",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 65673850646,
+      "run_id": 22658692125,
+      "workflow_name": "OpenWISP Monitoring CI Build",
+      "head_branch": "fix/716-device-monitoring-api-schema",
+      "run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/runs/22658692125",
+      "run_attempt": 1,
+      "node_id": "CR_kwDODtHmKM8AAAAPSndvFg",
+      "head_sha": "8b3d8953611e07242ededcccd0289c918522b6dc",
+      "url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/jobs/65673850646",
+      "html_url": "https://github.com/openwisp/openwisp-monitoring/actions/runs/22658692125/job/65673850646",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-03-04T06:59:52Z",
+      "started_at": "2026-03-04T06:59:54Z",
+      "completed_at": "2026-03-04T07:12:28Z",
+      "name": "Python==3.11 | django~=5.1.0",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-03-04T06:59:55Z",
+          "completed_at": "2026-03-04T06:59:56Z"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-03-04T06:59:56Z",
+          "completed_at": "2026-03-04T07:00:02Z"
+        },
+        {
+          "name": "Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-03-04T07:00:02Z",
+          "completed_at": "2026-03-04T07:00:03Z"
+        },
+        {
+          "name": "Cache APT packages",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-03-04T07:00:03Z",
+          "completed_at": "2026-03-04T07:00:03Z"
+        },
+        {
+          "name": "Disable man page auto-update",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-03-04T07:00:03Z",
+          "completed_at": "2026-03-04T07:00:04Z"
+        },
+        {
+          "name": "Set up and Cache Python 3.11",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-03-04T07:00:04Z",
+          "completed_at": "2026-03-04T07:00:07Z"
+        },
+        {
+          "name": "Install Dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-03-04T07:00:07Z",
+          "completed_at": "2026-03-04T07:01:27Z"
+        },
+        {
+          "name": "Start InfluxDB",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-03-04T07:01:27Z",
+          "completed_at": "2026-03-04T07:01:33Z"
+        },
+        {
+          "name": "QA checks",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 9,
+          "started_at": "2026-03-04T07:01:33Z",
+          "completed_at": "2026-03-04T07:01:44Z"
+        },
+        {
+          "name": "Tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-03-04T07:01:44Z",
+          "completed_at": "2026-03-04T07:12:26Z"
+        },
+        {
+          "name": "Show gecko web driver log on failures",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-03-04T07:12:26Z",
+          "completed_at": "2026-03-04T07:12:26Z"
+        },
+        {
+          "name": "Upload Coverage",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 12,
+          "started_at": "2026-03-04T07:12:26Z",
+          "completed_at": "2026-03-04T07:12:26Z"
+        },
+        {
+          "name": "Post Set up and Cache Python 3.11",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 21,
+          "started_at": "2026-03-04T07:12:26Z",
+          "completed_at": "2026-03-04T07:12:26Z"
+        },
+        {
+          "name": "Post Cache APT packages",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 22,
+          "started_at": "2026-03-04T07:12:26Z",
+          "completed_at": "2026-03-04T07:12:26Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-03-04T07:12:26Z",
+          "completed_at": "2026-03-04T07:12:26Z"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-03-04T07:12:26Z",
+          "completed_at": "2026-03-04T07:12:26Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-03-04T07:12:26Z",
+          "completed_at": "2026-03-04T07:12:26Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/check-runs/65673850646",
+      "labels": ["ubuntu-24.04"],
+      "runner_id": 1000077834,
+      "runner_name": "GitHub Actions 1000077834",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 65674924356,
+      "run_id": 22658692125,
+      "workflow_name": "OpenWISP Monitoring CI Build",
+      "head_branch": "fix/716-device-monitoring-api-schema",
+      "run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/runs/22658692125",
+      "run_attempt": 1,
+      "node_id": "CR_kwDODtHmKM8AAAAPSofRRA",
+      "head_sha": "8b3d8953611e07242ededcccd0289c918522b6dc",
+      "url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/jobs/65674924356",
+      "html_url": "https://github.com/openwisp/openwisp-monitoring/actions/runs/22658692125/job/65674924356",
+      "status": "completed",
+      "conclusion": "skipped",
+      "created_at": "2026-03-04T07:13:36Z",
+      "started_at": "2026-03-04T07:13:36Z",
+      "completed_at": "2026-03-04T07:13:36Z",
+      "name": "Deploy Docker Image",
+      "steps": [],
+      "check_run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/check-runs/65674924356",
+      "labels": ["ubuntu-24.04"],
+      "runner_id": null,
+      "runner_name": null,
+      "runner_group_id": null,
+      "runner_group_name": null
+    },
+    {
+      "id": 65674924414,
+      "run_id": 22658692125,
+      "workflow_name": "OpenWISP Monitoring CI Build",
+      "head_branch": "fix/716-device-monitoring-api-schema",
+      "run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/runs/22658692125",
+      "run_attempt": 1,
+      "node_id": "CR_kwDODtHmKM8AAAAPSofRfg",
+      "head_sha": "8b3d8953611e07242ededcccd0289c918522b6dc",
+      "url": "https://api.github.com/repos/openwisp/openwisp-monitoring/actions/jobs/65674924414",
+      "html_url": "https://github.com/openwisp/openwisp-monitoring/actions/runs/22658692125/job/65674924414",
+      "status": "completed",
+      "conclusion": "skipped",
+      "created_at": "2026-03-04T07:13:36Z",
+      "started_at": "2026-03-04T07:13:36Z",
+      "completed_at": "2026-03-04T07:13:36Z",
+      "name": "coveralls",
+      "steps": [],
+      "check_run_url": "https://api.github.com/repos/openwisp/openwisp-monitoring/check-runs/65674924414",
+      "labels": ["ubuntu-latest"],
+      "runner_id": null,
+      "runner_name": null,
+      "runner_group_id": null,
+      "runner_group_name": null
+    }
+  ]
+}

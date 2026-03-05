@@ -19,7 +19,8 @@ from openwisp_utils.tests import capture_any_output, catch_signal
 
 from ... import settings as monitoring_settings
 from ...monitoring.signals import post_metric_write, pre_metric_write
-from ..api.serializers import WifiSessionSerializer
+from ..api.serializers import MonitoringDeviceDetailSerializer, WifiSessionSerializer
+from ..api.views import DeviceMetricView
 from ..signals import device_metrics_received
 from . import DeviceMonitoringTestCase, TestWifiClientSessionMixin
 
@@ -1432,6 +1433,31 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         points = self._read_metric(m, limit=1, extra_fields=["tx_bytes"])
         self.assertEqual(points[0].get("rx_bytes"), 324)
         self.assertEqual(points[0].get("tx_bytes"), 0)
+
+    def test_device_metric_view_schema_not_empty(self):
+        """
+        Ensures DeviceMetricView uses a proper serializer (not blank)
+        and does not shadow DRF's schema attribute with a plain dict.
+        """
+
+        # serializer_class must be the concrete serializer, not blank
+        self.assertIs(
+            DeviceMetricView.serializer_class,
+            MonitoringDeviceDetailSerializer,
+        )
+        # Serializer must expose real fields
+        fields = MonitoringDeviceDetailSerializer().get_fields()
+        self.assertTrue(len(fields) > 0, "Serializer should declare fields")
+        for expected in ("id", "name", "monitoring"):
+            self.assertIn(expected, fields)
+        # The view must NOT shadow DRF's schema with a plain dict
+        schema_attr = getattr(DeviceMetricView, "schema", None)
+        if schema_attr is not None:
+            self.assertFalse(
+                isinstance(schema_attr, dict),
+                "DeviceMetricView.schema must not be a plain dict; "
+                "it would shadow DRF's APIView.schema and break API docs.",
+            )
 
 
 class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):

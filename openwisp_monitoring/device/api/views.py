@@ -13,7 +13,7 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
 from pytz import UTC
-from rest_framework import pagination, serializers, status
+from rest_framework import pagination, status
 from rest_framework.generics import (
     GenericAPIView,
     ListAPIView,
@@ -36,7 +36,6 @@ from openwisp_users.api.mixins import FilterByOrganizationManaged
 
 from ...settings import CACHE_TIMEOUT
 from ...views import MonitoringApiViewMixin
-from ..schema import schema
 from ..signals import device_metrics_received
 from ..tasks import write_device_metrics
 from .filters import (
@@ -124,9 +123,8 @@ class DeviceMetricView(
         )
         .all()
     )
-    serializer_class = serializers.Serializer
+    serializer_class = MonitoringDeviceDetailSerializer
     permission_classes = [DevicePermission]
-    schema = schema
 
     @classmethod
     def invalidate_get_device_cache(cls, instance, **kwargs):
