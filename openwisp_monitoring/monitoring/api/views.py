@@ -1,5 +1,28 @@
 from cache_memoize import cache_memoize
 from django.db.models import Q
+
+try:
+    from drf_yasg import openapi
+    from drf_yasg.utils import swagger_auto_schema
+except ImportError:
+
+    class _OpenApiShim:
+        IN_QUERY = "query"
+        TYPE_STRING = "string"
+
+        @staticmethod
+        def Parameter(*args, **kwargs):
+            return None
+
+    openapi = _OpenApiShim()
+
+    def swagger_auto_schema(*args, **kwargs):
+        def _decorator(func):
+            return func
+
+        return _decorator
+
+
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -181,6 +204,64 @@ class DashboardTimeseriesView(ProtectedAPIMixin, MonitoringApiViewMixin, APIView
             return []
         return orgs
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                "organization_slug",
+                openapi.IN_QUERY,
+                description="Comma-separated list of organization slugs",
+                type=openapi.TYPE_STRING,
+            ),
+            openapi.Parameter(
+                "location_id",
+                openapi.IN_QUERY,
+                description="Comma-separated list of location UUIDs",
+                type=openapi.TYPE_STRING,
+            ),
+            openapi.Parameter(
+                "floorplan_id",
+                openapi.IN_QUERY,
+                description="Comma-separated list of floorplan UUIDs",
+                type=openapi.TYPE_STRING,
+            ),
+            openapi.Parameter(
+                "time",
+                openapi.IN_QUERY,
+                description=(
+                    "Timeframe for chart data " "(e.g. 1d, 3d, 7d, 30d, 365d)"
+                ),
+                type=openapi.TYPE_STRING,
+            ),
+            openapi.Parameter(
+                "start",
+                openapi.IN_QUERY,
+                description=(
+                    "Start date/time in YYYY-MM-DD H:M:S format " '(use with "end")'
+                ),
+                type=openapi.TYPE_STRING,
+            ),
+            openapi.Parameter(
+                "end",
+                openapi.IN_QUERY,
+                description=(
+                    "End date/time in YYYY-MM-DD H:M:S format " '(use with "start")'
+                ),
+                type=openapi.TYPE_STRING,
+            ),
+            openapi.Parameter(
+                "timezone",
+                openapi.IN_QUERY,
+                description="Timezone name (e.g. UTC, Europe/Rome)",
+                type=openapi.TYPE_STRING,
+            ),
+            openapi.Parameter(
+                "csv",
+                openapi.IN_QUERY,
+                description="Set to export data as CSV",
+                type=openapi.TYPE_STRING,
+            ),
+        ]
+    )
     def get(self, request, *args, **kwargs):
         response = super().get(request, *args, **kwargs)
         if not request.GET.get("csv"):

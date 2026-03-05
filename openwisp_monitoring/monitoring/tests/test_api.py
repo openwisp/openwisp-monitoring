@@ -724,3 +724,37 @@ class TestDashboardTimeseriesView(
                 response.data["organizations"],
                 [{"id": org.slug, "text": org.name} for org in [org1, org2]],
             )
+
+    def test_dashboard_api_filters_in_schema(self):
+        """Regression test for https://github.com/openwisp/openwisp-monitoring/issues/715
+
+        Verifies that DashboardTimeseriesView exposes the expected
+        query parameters via @swagger_auto_schema so they are
+        visible in the browsable API docs.
+        """
+        from openwisp_monitoring.monitoring.api.views import DashboardTimeseriesView
+
+        swagger_decorator = getattr(
+            DashboardTimeseriesView.get, "_swagger_auto_schema", None
+        )
+        self.assertIsNotNone(
+            swagger_decorator,
+            "DashboardTimeseriesView.get is missing @swagger_auto_schema",
+        )
+        manual_parameters = swagger_decorator.get("manual_parameters", [])
+        param_names = {p.name for p in manual_parameters}
+        expected_params = {
+            "organization_slug",
+            "location_id",
+            "floorplan_id",
+            "time",
+            "start",
+            "end",
+            "timezone",
+            "csv",
+        }
+        self.assertEqual(
+            param_names,
+            expected_params,
+            f"Missing or extra swagger parameters: {expected_params - param_names}",
+        )
