@@ -105,7 +105,7 @@ Run tests with (make sure you have the :ref:`selenium dependencies
 
 .. code-block:: shell
 
-    ./runtests.py  # using --parallel is not supported in this module
+    ./runtests  # using --parallel is not supported in this module
 
 Run quality assurance tests with:
 
