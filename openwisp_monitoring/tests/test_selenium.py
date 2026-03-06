@@ -727,6 +727,10 @@ class TestDashboardMap(
             self.web_driver.close()
             self.web_driver.switch_to.window(tabs[0])
 
+        if len(self.web_driver.window_handles) > 1:
+            self.web_driver.close()
+            self.web_driver.switch_to.window(self.web_driver.window_handles[0])
+
     def test_dashboard_map_without_permissions(self):
         org = self._get_org()
         user = self._create_user(
@@ -1004,3 +1008,143 @@ class TestDashboardMap(
             self.assertTrue(floorplan_overlay.is_displayed())
             self.assertTrue(popup.is_displayed())
             self.assertIn(device.name, popup.get_attribute("innerHTML"))
+
+    def test_indoor_map_fragment_added_on_map_ready_without_node_click(self):
+        org = self._get_org()
+        location = self._create_location(type="indoor", organization=org)
+        floorplan1 = self._create_floorplan(floor=1, location=location)
+        floorplan2 = self._create_floorplan(floor=2, location=location)
+        device1 = self._create_device(
+            name="Test-Device1", mac_address="00:00:00:00:00:01", organization=org
+        )
+        device2 = self._create_device(
+            name="Test-Device2", mac_address="00:00:00:00:00:02", organization=org
+        )
+        device_location1 = self._create_object_location(
+            content_object=device1,
+            location=location,
+            floorplan=floorplan1,
+            organization=org,
+        )
+        device_location2 = self._create_object_location(
+            content_object=device2,
+            location=location,
+            floorplan=floorplan2,
+            organization=org,
+        )
+        self.login()
+        self._open_popup("_owGeoMap", location.id)
+        mapId = "dashboard-geo-map"
+        indoorMapId1 = f"{location.id}:{floorplan1.floor}"
+        indoorMapId2 = f"{location.id}:{floorplan2.floor}"
+
+        with self.subTest(
+            "Test setting url fragments on just opening floorplan overlay"
+        ):
+            self.wait_for(
+                "element_to_be_clickable",
+                By.CSS_SELECTOR,
+                ".map-detail .floorplan-btn",
+                timeout=5,
+            ).click()
+            # Required wait as the id param is added inside onReady of the indoor map
+            WebDriverWait(self.web_driver, 5).until(
+                lambda d: f"id={quote_plus(indoorMapId1)}"
+                in d.execute_script("return decodeURIComponent(window.location.hash);")
+            )
+            current_hash = self.web_driver.execute_script(
+                "return decodeURIComponent(window.location.hash);"
+            )
+            expected_hash = (
+                f"#id={mapId}&nodeId={location.id};" f"id={quote_plus(indoorMapId1)}"
+            )
+            self.assertIn(expected_hash, current_hash)
+
+        with self.subTest("Test nodeId param added and removed on popup open or close"):
+            self._open_popup("_owIndoorMap", device1.id)
+            current_hash = self.web_driver.execute_script(
+                "return decodeURIComponent(window.location.hash);"
+            )
+            expected_hash = (
+                f"#id={mapId}&nodeId={location.id};"
+                f"id={quote_plus(indoorMapId1)}&nodeId={device_location1.id}"
+            )
+            self.assertIn(expected_hash, current_hash)
+            self.wait_for(
+                "element_to_be_clickable",
+                By.CSS_SELECTOR,
+                "#floorplan-container .leaflet-popup-close-button",
+                timeout=5,
+            ).click()
+            current_hash = self.web_driver.execute_script(
+                "return decodeURIComponent(window.location.hash);"
+            )
+            expected_hash = (
+                f"#id={mapId}&nodeId={location.id};" f"id={quote_plus(indoorMapId1)}"
+            )
+            self.assertIn(expected_hash, current_hash)
+
+        with self.subTest("Test params change on switching floor on indoor map"):
+            self.wait_for(
+                "element_to_be_clickable",
+                By.CSS_SELECTOR,
+                "#floorplan-navigation .right-arrow",
+                timeout=5,
+            ).click()
+            WebDriverWait(self.web_driver, 5).until(
+                lambda d: f"id={quote_plus(indoorMapId2)}"
+                in d.execute_script("return decodeURIComponent(window.location.hash);")
+            )
+            current_hash = self.web_driver.execute_script(
+                "return decodeURIComponent(window.location.hash);"
+            )
+            expected_hash = (
+                f"#id={mapId}&nodeId={location.id};" f"id={quote_plus(indoorMapId2)}"
+            )
+            self.assertIn(expected_hash, current_hash)
+            self._open_popup("_owIndoorMap", device2.id)
+            current_hash = self.web_driver.execute_script(
+                "return decodeURIComponent(window.location.hash);"
+            )
+            expected_hash = (
+                f"#id={mapId}&nodeId={location.id};"
+                f"id={quote_plus(indoorMapId2)}&nodeId={device_location2.id}"
+            )
+            self.assertIn(expected_hash, current_hash)
+            self.wait_for(
+                "element_to_be_clickable",
+                By.CSS_SELECTOR,
+                "#floorplan-container .leaflet-popup-close-button",
+                timeout=5,
+            ).click()
+            current_hash = self.web_driver.execute_script(
+                "return decodeURIComponent(window.location.hash);"
+            )
+            expected_hash = (
+                f"#id={mapId}&nodeId={location.id};" f"id={quote_plus(indoorMapId2)}"
+            )
+            self.assertIn(expected_hash, current_hash)
+
+        with self.subTest("Test applying url fragments with only nodeId param"):
+            current_url = self.web_driver.current_url
+            self.web_driver.switch_to.new_window("tab")
+            tabs = self.web_driver.window_handles
+            self.web_driver.switch_to.window(tabs[1])
+            self.web_driver.get(current_url)
+            floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
+            self.assertIn("2nd floor", floor_heading.text.lower())
+            canvases = self.find_elements(
+                By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
+            )
+            self.assertGreater(len(canvases), 0)
+            popup_not_displayed = self.wait_for_invisibility(
+                By.CSS_SELECTOR,
+                ".njg-tooltip-inner",
+            )
+            self.assertTrue(popup_not_displayed)
+            self.web_driver.close()
+            self.web_driver.switch_to.window(tabs[0])
+
+        if len(self.web_driver.window_handles) > 1:
+            self.web_driver.close()
+            self.web_driver.switch_to.window(self.web_driver.window_handles[0])
