@@ -49,7 +49,6 @@ class TestAdmin(
 
     resources_fields = TestImportExportMixin.resource_fields
     resources_fields.append("monitoring_status")
-    app_label = "config"
     _device_params = {
         "group": "",
         "management_ip": "",
@@ -912,7 +911,7 @@ class TestWifiSessionAdmin(
     TestWifiClientSessionMixin,
     TestCase,
 ):
-    config_app_label = "config"
+    config_app_label = Device._meta.app_label
     wifi_session_app_label = WifiSession._meta.app_label
     wifi_session_model_name = WifiSession._meta.model_name
 
