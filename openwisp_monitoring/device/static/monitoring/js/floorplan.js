@@ -310,6 +310,9 @@
     if (!fragments || !indoorMapId) {
       return;
     }
+    if (fragments[indoorMapId]?.get("nodeId")) {
+      return;
+    }
     const indoorParams = new URLSearchParams();
     indoorParams.set("id", `${locationId}:${floor}`);
     fragments[indoorMapId] = indoorParams;
@@ -481,6 +484,7 @@
         initialZoom = map.getZoom();
         map.invalidateSize();
         $(".floorplan-loading-spinner").hide();
+
         map.on("fullscreenchange", () => {
           const floorNavigation = $("#floorplan-navigation");
           const zoomSnap = map.options.zoomSnap || 1;
