@@ -294,6 +294,29 @@
     }
     $floorDiv.show();
     maps[currentFloor]?.leaflet?.invalidateSize();
+    // Since the div containing the indoor map is saved after the first render
+    // and later floors are shown or hidden instead of re-rendered, onReady is not
+    // triggered again. Therefore we need to push the URL fragment manually
+    // when switching floors.
+    pushIndoorMapIdFragment(maps[currentFloor], locationId, floor);
+  }
+
+  function pushIndoorMapIdFragment(indoorMap, locationId, floor) {
+    if (!indoorMap) {
+      return;
+    }
+    const fragments = indoorMap?.utils?.parseUrlFragments();
+    const indoorMapId = indoorMap?.config?.bookmarkableActions?.id;
+    if (!fragments || !indoorMapId) {
+      return;
+    }
+    if (fragments[indoorMapId]?.get("nodeId")) {
+      return;
+    }
+    const indoorParams = new URLSearchParams();
+    indoorParams.set("id", `${locationId}:${floor}`);
+    fragments[indoorMapId] = indoorParams;
+    indoorMap?.utils?.updateUrlFragments(fragments);
   }
 
   let currentPopup = null;
@@ -333,6 +356,15 @@
       .setLatLng(node?.properties.location)
       .setContent(popupContent)
       .openOn(map);
+    currentPopup.on("remove", () => {
+      const fragments = netjsongraphInstance.utils.parseUrlFragments();
+      const { id } = netjsongraphInstance.config.bookmarkableActions;
+      if (fragments[id]) {
+        fragments[id].delete("nodeId");
+        netjsongraphInstance.utils.updateUrlFragments(fragments);
+      }
+      currentPopup = null;
+    });
   }
 
   function renderIndoorMap(allResults, imageUrl, divId, floor) {
@@ -469,6 +501,10 @@
           }
           map.invalidateSize();
         });
+        // Push the indoor map fragment id=<locationId>:<floor> to the URL once the map
+        // instance is ready, so the indoor map can be opened directly from the URL
+        // without requiring a node click to add the fragment.
+        pushIndoorMapIdFragment(this, locationId, floor);
       },
       onClickElement: function (type, data) {
         loadPopUpContent(data, this);
