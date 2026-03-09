@@ -82,10 +82,9 @@ jobs:
             spatialite-bin \
             libsqlite3-mod-spatialite
           pip install -U pip wheel setuptools
+          pip install -U ${{ matrix.django-version }}
           pip install -r requirements-test.txt
           pip install -U -I -e .
-          pip uninstall -y Django
-          pip install -U ${{ matrix.django-version }}
           sudo npm install -g prettier
 
       - name: Start InfluxDB
