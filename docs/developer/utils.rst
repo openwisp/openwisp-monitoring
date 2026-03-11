@@ -66,11 +66,11 @@ An example usage has been shown below.
                             [0.1, "cb7222"],
                             [0.5, "#deed0e"],
                             [0.9, "#7db201"],
-                            [1, "#498b26"],
+                            [1, "var(--ow-color-success)"],
                         ],
                     ],
                     "map": [
-                        [100, "#498b26", _("Flawless")],
+                        [100, "var(--ow-color-success)", _("Flawless")],
                         [90, "#7db201", _("Mostly Reachable")],
                         [50, "#deed0e", _("Partly Reachable")],
                         [10, "#cb7222", _("Mostly Unreachable")],

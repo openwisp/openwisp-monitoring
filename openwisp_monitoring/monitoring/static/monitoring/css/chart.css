@@ -110,12 +110,12 @@
 #ow-chart-contents .circle > span {
   font-size: 0.15em;
   word-spacing: -0.75px;
-  color: rgba(0, 0, 0, 0.6) !important;
+  color: var(--ow-overlay-60) !important;
   font-size: 13px;
   font-weight: bold;
 }
 #ow-chart-contents b {
-  background-color: #000 !important;
+  background-color: var(--ow-color-black) !important;
 }
 .chart-heading {
   margin: 0;
@@ -133,7 +133,7 @@
 .tooltip {
   position: absolute;
   background-color: rgba(0, 0, 0, 0.7);
-  color: #fff;
+  color:var(--ow-color-white);
   padding: 15px !important;
   max-width: 500px;
   line-height: 1.6em;

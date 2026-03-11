@@ -353,7 +353,7 @@
           label: {
             show: true,
             color: "#ffffff",
-            backgroundColor: "#000000",
+            backgroundColor: "var(--ow-color-black)000",
             borderWidth: 1,
             borderRadius: 8,
             opacity: 1,
