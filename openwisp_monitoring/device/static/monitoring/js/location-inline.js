@@ -36,7 +36,7 @@
       return;
     }
 
-    const indoorMapId = `id=${locationId}:${floor}&nodeId=${deviceLocationId}`;
+    const indoorMapId = `id=${locationId}_${floor}&nodeId=${deviceLocationId}`;
     const openIndoorDeviceBtn = `
       <div class="form-row field-indoor-view-button view-on-map-div">
         <div>
