@@ -354,7 +354,7 @@ class DeviceMonitoringConfig(AppConfig):
                     "problem": "#ffb442",
                     "critical": "#a72d1d",
                     "unknown": "#353c44",
-                    "deactivated": "var(--ow-color-black)",
+                    "deactivated": "#000",
                 },
                 "labels": {
                     "ok": app_settings.HEALTH_STATUS_LABELS["ok"],
