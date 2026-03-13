@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+
+coverage run runtests.py
+
+# the next test runs focus on specific backend features, therefore
+# we can skip selenium tests to improve speed and test consistency
+SAMPLE_APP=1 coverage run runtests.py --exclude-tag=selenium_tests
+TIMESERIES_UDP=1 coverage run runtests.py --exclude-tag=selenium_tests
+
+coverage combine
+coverage xml
