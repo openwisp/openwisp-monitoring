@@ -1,7 +1,7 @@
 .daterangepicker {
   position: absolute;
   color: inherit;
-  background-color:var(--ow-color-white);
+  background-color: var(--ow-color-white);
   border-radius: 4px;
   border: 1px solid #ddd;
   width: 278px;
@@ -32,7 +32,7 @@
 .daterangepicker:after {
   top: -6px;
   border-right: 6px solid transparent;
-  border-bottom: 6px solidvar(--ow-color-white);
+  border-bottom: 6px solid var(--ow-color-white);
   border-left: 6px solid transparent;
 }
 .daterangepicker.opensleft:before {
@@ -107,7 +107,7 @@
 }
 .daterangepicker .calendar-table .next span,
 .daterangepicker .calendar-table .prev span {
-  color:var(--ow-color-white);
+  color: var(--ow-color-white);
   border: solid black;
   border-width: 0 2px 2px 0;
   border-radius: 0;
@@ -140,7 +140,7 @@
 .daterangepicker .calendar-table {
   border: 1px solidvar(--ow-color-white);
   border-radius: 4px;
-  background-color:var(--ow-color-white);
+  background-color: var(--ow-color-white);
 }
 .daterangepicker .calendar-table table {
   width: 100%;
@@ -163,7 +163,7 @@
 .daterangepicker td.off.in-range,
 .daterangepicker td.off.start-date,
 .daterangepicker td.off.end-date {
-  background-color:var(--ow-color-white);
+  background-color: var(--ow-color-white);
   border-color: transparent;
   color: #999;
 }
@@ -186,7 +186,7 @@
 .daterangepicker td.active:hover {
   background-color: #357ebd;
   border-color: transparent;
-  color:var(--ow-color-white);
+  color: var(--ow-color-white);
 }
 .daterangepicker th.month {
   width: auto;
@@ -290,7 +290,7 @@
 }
 .daterangepicker .ranges li.active {
   background-color: #08c;
-  color:var(--ow-color-white);
+  color: var(--ow-color-white);
 }
 .daterangepicker {
   width: auto;
@@ -349,7 +349,7 @@
 }
 .daterangepicker .drp-buttons button.btn {
   margin: 0 2px;
-  color:var(--ow-color-white);
+  color: var(--ow-color-white);
   background-color: #666;
   padding: 5px 15px;
   text-decoration: none;
@@ -361,7 +361,7 @@
 .daterangepicker td.active,
 .daterangepicker td.active:hover {
   border-radius: 1.25px;
-  color:var(--ow-color-white);
+  color: var(--ow-color-white);
   background-color: var(--ow-color-primary);
   border-color: transparent;
 }
@@ -388,7 +388,7 @@
 .daterangepicker td.off.in-range,
 .daterangepicker td.off.start-date,
 .daterangepicker td.off.end-date :hover {
-  background-color:var(--ow-color-white);
+  background-color: var(--ow-color-white);
   color: rgba(119, 119, 119, 0.56);
 }
 .daterangepicker .drp-selected {

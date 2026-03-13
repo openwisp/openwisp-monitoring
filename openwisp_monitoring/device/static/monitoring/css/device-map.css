@@ -60,7 +60,7 @@
   padding-top: 115px;
 }
 .no-data a.button {
-  color:var(--ow-color-white);
+  color: var(--ow-color-white);
   padding: 5px 10px;
   font-weight: bold;
   text-decoration: none !important;
@@ -240,7 +240,7 @@
   flex-direction: column;
   box-shadow: 0 3px 14px var(--ow-overlay-40);
   pointer-events: all;
-  background:var(--ow-color-white);
+  background: var(--ow-color-white);
   flex-grow: 1;
 }
 #floorplan-close-btn {

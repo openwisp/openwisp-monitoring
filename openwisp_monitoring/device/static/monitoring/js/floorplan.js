@@ -12,6 +12,7 @@
   let maps = {};
   let locationId = null;
   let popstateHandler = null;
+  let hashchangeHandler = null;
   const escapeHtml = function (text) {
     if (!text) return "";
     const div = document.createElement("div");
@@ -41,8 +42,8 @@
     }
     const params = new URLSearchParams(indoorFragment);
     const fragmentId = params.get("id");
-    // fragments format is expected to be "<locationId>:<floor>"
-    const [fragmentLocationId, fragmentFloor] = fragmentId?.split(":") || [];
+    // fragments format is expected to be "<locationId>_<floor>"
+    const [fragmentLocationId, fragmentFloor] = fragmentId?.split("_") || [];
     if (!fragmentLocationId || fragmentFloor == null) {
       return null;
     }
@@ -55,19 +56,14 @@
       "000",
       fragmentLocationId,
     );
-    openFloorPlan(`${floorplanUrl}`, fragmentLocationId, fragmentFloor);
+    openFloorPlan(floorplanUrl, fragmentLocationId, fragmentFloor);
   }
 
-  async function openFloorPlan(url, id = null, floor = currentFloor) {
-    if ($("#floorplan-overlay")) {
-      closeButtonHandler();
-    }
-    locationId = id;
-    // Handle browser back/forward navigation: close the indoor map overlay
-    // If the indoor map fragment is removed from the URL, close the overlay
-    // should be done before async tasks that are performed later
+  // Handle browser back/forward navigation
+  function setupPopstateHandler() {
     if (popstateHandler) {
       window.removeEventListener("popstate", popstateHandler);
+      popstateHandler = null;
     }
     popstateHandler = () => {
       const indoorMapId = getIndoorMapIdFromUrl();
@@ -77,6 +73,44 @@
       }
     };
     window.addEventListener("popstate", popstateHandler);
+  }
+
+  // Handle manual URL fragment changes (e.g., pasting URL in address bar)
+  function setupHashChangeHandler() {
+    if (hashchangeHandler) {
+      window.removeEventListener("hashchange", hashchangeHandler);
+      hashchangeHandler = null;
+    }
+    hashchangeHandler = () => {
+      const indoorMapId = getIndoorMapIdFromUrl();
+      const isOverlayOpen = $("#floorplan-overlay").length > 0;
+      if (indoorMapId) {
+        const { fragmentLocationId, fragmentFloor } = indoorMapId;
+        const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
+          "000",
+          fragmentLocationId,
+        );
+        openFloorPlan(floorplanUrl, fragmentLocationId, fragmentFloor);
+      } else if (isOverlayOpen) {
+        closeButtonHandler();
+      }
+    };
+    window.addEventListener("hashchange", hashchangeHandler);
+  }
+
+  async function openFloorPlan(url, id = null, floor = currentFloor) {
+    if ($("#floorplan-overlay").length) {
+      closeButtonHandler();
+    }
+    // coerce url to string
+    url = String(url);
+    locationId = id;
+    // Handle browser back/forward navigation: close the indoor map overlay
+    // If the indoor map fragment is removed from the URL, close the overlay
+    // should be done before async tasks that are performed later
+    setupPopstateHandler();
+    // Handle manual url changes like pasting new url after the initial load
+    setupHashChangeHandler();
 
     await fetchData(url, floor);
     const idx = floors.indexOf(currentFloor);
@@ -294,6 +328,28 @@
     }
     $floorDiv.show();
     maps[currentFloor]?.leaflet?.invalidateSize();
+    // Since the div containing the indoor map is saved after the first render
+    // and later floors are shown or hidden instead of re-rendered, onReady is not
+    // triggered again. Therefore we need to push the URL fragment manually
+    // when switching floors.
+    pushIndoorMapIdFragment(maps[currentFloor], locationId, floor);
+  }
+
+  function pushIndoorMapIdFragment(indoorMap, locationId, floor) {
+    if (!indoorMap) {
+      return;
+    }
+    const fragments = indoorMap?.utils?.parseUrlFragments();
+    const indoorMapId = indoorMap?.config?.bookmarkableActions?.id;
+    if (!fragments || !indoorMapId) {
+      return;
+    }
+    const indoorParams = fragments[indoorMapId] || new URLSearchParams();
+    if (!indoorParams.get("id")) {
+      indoorParams.set("id", `${locationId}_${floor}`);
+    }
+    fragments[indoorMapId] = indoorParams;
+    indoorMap?.utils?.updateUrlFragments(fragments);
   }
 
   let currentPopup = null;
@@ -333,6 +389,15 @@
       .setLatLng(node?.properties.location)
       .setContent(popupContent)
       .openOn(map);
+    currentPopup.on("remove", () => {
+      const fragments = netjsongraphInstance.utils.parseUrlFragments();
+      const { id } = netjsongraphInstance.config.bookmarkableActions;
+      if (fragments[id]) {
+        fragments[id].delete("nodeId");
+        netjsongraphInstance.utils.updateUrlFragments(fragments);
+      }
+      currentPopup = null;
+    });
   }
 
   function renderIndoorMap(allResults, imageUrl, divId, floor) {
@@ -352,8 +417,8 @@
         nodeConfig: {
           label: {
             show: true,
-            color: "#ffffff",
-            backgroundColor: "var(--ow-color-black)000",
+            color: "var(--ow-color-white)",
+            backgroundColor: "var(--ow-color-black)",
             borderWidth: 1,
             borderRadius: 8,
             opacity: 1,
@@ -363,7 +428,7 @@
       },
       bookmarkableActions: {
         enabled: true,
-        id: `${locationId}:${floor}`,
+        id: `${locationId}_${floor}`,
         zoomOnRestore: false,
       },
       nodeCategories: Object.keys(status_colors).map((status) => ({
@@ -469,6 +534,10 @@
           }
           map.invalidateSize();
         });
+        // Push the indoor map fragment id=<locationId>:<floor> to the URL once the map
+        // instance is ready, so the indoor map can be opened directly from the URL
+        // without requiring a node click to add the fragment.
+        pushIndoorMapIdFragment(this, locationId, floor);
       },
       onClickElement: function (type, data) {
         loadPopUpContent(data, this);

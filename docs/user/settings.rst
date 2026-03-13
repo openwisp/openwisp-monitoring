@@ -516,7 +516,7 @@ do it:
 
 .. code-block:: python
 
-    OPENWISP_MONITORING_CHARTS = {"traffic": {"colors": ["var(--ow-color-black)000", "#cccccc", "#111111"]}}
+    OPENWISP_MONITORING_CHARTS = {"traffic": {"colors": ["#000000", "#cccccc", "#111111"]}}
 
 Adaptive Size Charts
 ~~~~~~~~~~~~~~~~~~~~

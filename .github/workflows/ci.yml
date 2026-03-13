@@ -85,6 +85,7 @@ jobs:
           pip install -U ${{ matrix.django-version }}
           pip install -r requirements-test.txt
           pip install -U -I -e .
+          pip install -U ${{ matrix.django-version }}
           sudo npm install -g prettier
 
       - name: Start InfluxDB

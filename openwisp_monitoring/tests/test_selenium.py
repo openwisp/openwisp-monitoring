@@ -480,6 +480,13 @@ class TestDashboardMap(
 
         with self.subTest("Test setting url fragments on click event of node"):
             self._open_popup("_owGeoMap", location.id)
+            try:
+                WebDriverWait(self.web_driver, 5).until(
+                    lambda d: f"nodeId={location.id}"
+                    in d.execute_script("return window.location.hash;")
+                )
+            except TimeoutException:
+                self.fail("URL fragment was not updated after opening geo map popup")
             current_hash = self.web_driver.execute_script(
                 "return window.location.hash;"
             )
@@ -588,6 +595,12 @@ class TestDashboardMap(
             self.assertGreater(len(canvases), 0)
 
         with self.subTest("Test redirecting to device page from indoor map"):
+            try:
+                WebDriverWait(self.web_driver, 5).until(
+                    lambda d: d.execute_script("return window._owIndoorMap != null")
+                )
+            except TimeoutException:
+                self.fail("Indoor map was not initialized")
             self._open_popup("_owIndoorMap", device2.id)
             open_device_btn = self.find_element(
                 By.CSS_SELECTOR,
@@ -687,11 +700,32 @@ class TestDashboardMap(
             ".map-detail .floorplan-btn",
             timeout=5,
         ).click()
+        canvases = self.find_elements(
+            By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
+        )
+        try:
+            WebDriverWait(self.web_driver, 5).until(
+                lambda d: d.execute_script("return window._owIndoorMap != null")
+            )
+        except TimeoutException:
+            self.fail("Indoor map was not initialized")
+        self.assertGreater(len(canvases), 0)
         mapId = "dashboard-geo-map"
-        indoorMapId = f"{location.id}:{floorplan.floor}"
+        indoorMapId = f"{location.id}_{floorplan.floor}"
 
         with self.subTest("Test setting url fragments on click event of node"):
             self._open_popup("_owIndoorMap", device.id)
+            try:
+                WebDriverWait(self.web_driver, 5).until(
+                    lambda d: f"id={quote_plus(indoorMapId)}&nodeId={device_location.id}"
+                    in d.execute_script(
+                        "return decodeURIComponent(window.location.hash);"
+                    )
+                )
+            except TimeoutException:
+                self.fail(
+                    "URL fragment was not updated after opening indoor map node popup"
+                )
             current_hash = self.web_driver.execute_script(
                 "return decodeURIComponent(window.location.hash);"
             )
@@ -723,9 +757,20 @@ class TestDashboardMap(
             tabs = self.web_driver.window_handles
             self.web_driver.switch_to.window(tabs[1])
             self.web_driver.get(incorrect_url)
-            self.wait_for_invisibility(By.CSS_SELECTOR, ".njg-tooltip-inner")
+            popup_not_displayed = self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".njg-tooltip-inner"
+            )
+            self.assertTrue(popup_not_displayed)
             self.web_driver.close()
             self.web_driver.switch_to.window(tabs[0])
+
+        # Cleanup in case of failure to ensure the it does not end up with multiple tabs open
+        if len(self.web_driver.window_handles) > 1:
+            primary_tab = self.web_driver.window_handles[0]
+            for tab in self.web_driver.window_handles[1:]:
+                self.web_driver.switch_to.window(tab)
+                self.web_driver.close()
+            self.web_driver.switch_to.window(primary_tab)
 
     def test_dashboard_map_without_permissions(self):
         org = self._get_org()
@@ -759,17 +804,22 @@ class TestDashboardMap(
         location.geometry = Point(12.513124, 41.898903)
         location.full_clean()
         location.save()
-        series_value = WebDriverWait(self.web_driver, 5).until(
-            lambda d: d.execute_script(
+        try:
+            series_value = WebDriverWait(self.web_driver, 5).until(
+                lambda d: d.execute_script(
+                    """
+                    const options = window._owGeoMap.echarts.getOption();
+                    const series = options.series.find(
+                        (s) => s.type === "scatter" || s.type === "effectScatter",
+                    );
+                    const item = series.data.find(d => d.name === "Test-Location");
+                    if (!item) return false;
+                    return item.value;
                 """
-                const options = window._owGeoMap.echarts.getOption();
-                const series = options.series.find(
-                    (s) => s.type === "scatter" || s.type === "effectScatter",
-                );
-                return series.data.find(d => d.name === "Test-Location").value;
-            """
+                )
             )
-        )
+        except TimeoutException:
+            self.fail("Failed to retrieve mobile location data")
         self.assertEqual([location.geometry.x, location.geometry.y], series_value)
 
         with self.subTest("Test mobile location with open device list popup"):
@@ -778,17 +828,22 @@ class TestDashboardMap(
             location.geometry = Point(12.511124, 41.898903)
             location.full_clean()
             location.save()
-            series_value = WebDriverWait(self.web_driver, 5).until(
-                lambda d: d.execute_script(
+            try:
+                series_value = WebDriverWait(self.web_driver, 5).until(
+                    lambda d: d.execute_script(
+                        """
+                        const options = window._owGeoMap.echarts.getOption();
+                        const series = options.series.find(
+                            (s) => s.type === "scatter" || s.type === "effectScatter",
+                        );
+                        const item = series.data.find(d => d.name === "Test-Location");
+                        if (!item) return false;
+                        return item.value;
                     """
-                    const options = window._owGeoMap.echarts.getOption();
-                    const series = options.series.find(
-                        (s) => s.type === "scatter" || s.type === "effectScatter",
-                    );
-                    return series.data.find(d => d.name === "Test-Location").value;
-                """
+                    )
                 )
-            )
+            except TimeoutException:
+                self.fail("Failed to retrieve updated mobile location data")
             self.assertEqual([location.geometry.x, location.geometry.y], series_value)
 
     def test_mobile_location_updates_on_dashboard_map_with_org_isolation(self):
@@ -836,19 +891,23 @@ class TestDashboardMap(
             org2_location.full_clean()
             org2_location.save()
             sleep(0.3)  # Wait for JS animation
-            series_locations = WebDriverWait(self.web_driver, 5).until(
-                lambda d: d.execute_script(
+            try:
+                series_locations = WebDriverWait(self.web_driver, 5).until(
+                    lambda d: d.execute_script(
+                        """
+                        const options = window._owGeoMap.echarts.getOption();
+                        const series = options.series.find(
+                            (s) => s.type === "scatter" || s.type === "effectScatter",
+                        );
+                        const org1_location = series.data.find(l => l.name === "Org1-Location")
+                        const org2_location = series.data.find(l => l.name === "Org2-Location")
+                        if (!org1_location || !org2_location) return false;
+                        return {org1_location, org2_location}
                     """
-                    const options = window._owGeoMap.echarts.getOption();
-                    const series = options.series.find(
-                        (s) => s.type === "scatter" || s.type === "effectScatter",
-                    );
-                    const org1_location = series.data.find(l => l.name === "Org1-Location")
-                    const org2_location = series.data.find(l => l.name === "Org2-Location")
-                    return {org1_location, org2_location}
-                """
+                    )
                 )
-            )
+            except TimeoutException:
+                self.fail("Failed to retrieve org location data from superuser")
             self.assertEqual(
                 [org1_location.geometry.x, org1_location.geometry.y],
                 series_locations["org1_location"]["value"],
@@ -881,10 +940,14 @@ class TestDashboardMap(
                         );
                         const org1_location = series.data.find(l => l.name === "Org1-Location")
                         const org2_location = series.data.find(l => l.name === "Org2-Location")
+                        if (!org1_location) return false;
+                        if (org2_location !== undefined) return false;
                         return {org1_location, org2_location}
                     """
                     )
                 )
+            except TimeoutException:
+                self.fail("Failed to retrieve org1 location data from org1 user")
             finally:
                 org1_driver.quit()
             self.assertEqual(
@@ -916,10 +979,14 @@ class TestDashboardMap(
                         );
                         const org1_location = series.data.find(l => l.name === "Org1-Location")
                         const org2_location = series.data.find(l => l.name === "Org2-Location")
+                        if (org1_location !== undefined) return false;
+                        if (!org2_location) return false;
                         return {org1_location, org2_location}
                     """
                     )
                 )
+            except TimeoutException:
+                self.fail("Failed to retrieve org2 location data from org2 user")
             finally:
                 org2_driver.quit()
             self.assertEqual(
@@ -941,7 +1008,7 @@ class TestDashboardMap(
         )
         self.login()
         mapId = "dashboard-geo-map"
-        indoorMapId = f"{location.id}:{floorplan.floor}"
+        indoorMapId = f"{location.id}_{floorplan.floor}"
 
         with self.subTest("Open geographic location on full map page"):
             url = reverse(
@@ -959,6 +1026,15 @@ class TestDashboardMap(
                 "#open-location-btn",
                 timeout=5,
             ).click()
+            try:
+                WebDriverWait(self.web_driver, 5).until(
+                    lambda d: f"nodeId={location.id}"
+                    in d.execute_script("return window.location.hash;")
+                )
+            except TimeoutException:
+                self.fail(
+                    "URL fragment was not updated after opening location from device page"
+                )
             current_hash = self.web_driver.execute_script(
                 "return window.location.hash;"
             )
@@ -993,14 +1069,240 @@ class TestDashboardMap(
             popup = self.wait_for_visibility(
                 By.CSS_SELECTOR, ".njg-tooltip-inner", timeout=5
             )
+            try:
+                WebDriverWait(self.web_driver, 5).until(
+                    lambda d: f"nodeId={device_location.id}"
+                    in d.execute_script(
+                        "return decodeURIComponent(window.location.hash);"
+                    )
+                )
+            except TimeoutException:
+                self.fail(
+                    "URL fragment was not updated after opening indoor device from device page"
+                )
             current_hash = self.web_driver.execute_script(
                 "return decodeURIComponent(window.location.hash);"
             )
             expected_hash = (
                 f"#id={mapId}&nodeId={location.id};"
-                f"id={indoorMapId}&nodeId={device_location.id}"
+                f"id={quote_plus(indoorMapId)}&nodeId={device_location.id}"
             )
             self.assertIn(expected_hash, current_hash)
             self.assertTrue(floorplan_overlay.is_displayed())
             self.assertTrue(popup.is_displayed())
             self.assertIn(device.name, popup.get_attribute("innerHTML"))
+
+    def test_indoor_map_fragment_added_on_map_ready_without_node_click(self):
+        org = self._get_org()
+        location = self._create_location(type="indoor", organization=org)
+        floorplan1 = self._create_floorplan(floor=1, location=location)
+        floorplan2 = self._create_floorplan(floor=2, location=location)
+        device1 = self._create_device(
+            name="Test-Device1", mac_address="00:00:00:00:00:01", organization=org
+        )
+        device2 = self._create_device(
+            name="Test-Device2", mac_address="00:00:00:00:00:02", organization=org
+        )
+        device_location1 = self._create_object_location(
+            content_object=device1,
+            location=location,
+            floorplan=floorplan1,
+            organization=org,
+        )
+        device_location2 = self._create_object_location(
+            content_object=device2,
+            location=location,
+            floorplan=floorplan2,
+            organization=org,
+        )
+        self.login()
+        self._open_popup("_owGeoMap", location.id)
+        mapId = "dashboard-geo-map"
+        indoorMapId1 = f"{location.id}_{floorplan1.floor}"
+        indoorMapId2 = f"{location.id}_{floorplan2.floor}"
+
+        with self.subTest("Test URL fragment set when floorplan overlay is opened"):
+            self.wait_for(
+                "element_to_be_clickable",
+                By.CSS_SELECTOR,
+                ".map-detail .floorplan-btn",
+                timeout=5,
+            ).click()
+            try:
+                WebDriverWait(self.web_driver, 5).until(
+                    lambda d: f"id={quote_plus(indoorMapId1)}"
+                    in d.execute_script(
+                        "return decodeURIComponent(window.location.hash);"
+                    )
+                )
+            except TimeoutException:
+                self.fail(
+                    "URL fragment was not updated after opening floorplan overlay"
+                )
+            current_hash = self.web_driver.execute_script(
+                "return decodeURIComponent(window.location.hash);"
+            )
+            expected_hash = (
+                f"#id={mapId}&nodeId={location.id};" f"id={quote_plus(indoorMapId1)}"
+            )
+            self.assertIn(expected_hash, current_hash)
+
+        with self.subTest(
+            "Test nodeId param added on indoor map popup open and removed on close"
+        ):
+            try:
+                WebDriverWait(self.web_driver, 5).until(
+                    lambda d: d.execute_script("return window._owIndoorMap != null")
+                )
+            except TimeoutException:
+                self.fail("Indoor map was not initialized")
+            self._open_popup("_owIndoorMap", device1.id)
+            try:
+                WebDriverWait(self.web_driver, 5).until(
+                    lambda d: f"nodeId={device_location1.id}"
+                    in d.execute_script(
+                        "return decodeURIComponent(window.location.hash);"
+                    )
+                )
+            except TimeoutException:
+                self.fail(
+                    "URL fragment was not updated after opening indoor map node popup"
+                )
+            current_hash = self.web_driver.execute_script(
+                "return decodeURIComponent(window.location.hash);"
+            )
+            expected_hash = (
+                f"#id={mapId}&nodeId={location.id};"
+                f"id={quote_plus(indoorMapId1)}&nodeId={device_location1.id}"
+            )
+            self.assertIn(expected_hash, current_hash)
+            self.wait_for(
+                "element_to_be_clickable",
+                By.CSS_SELECTOR,
+                "#floorplan-container .leaflet-popup-close-button",
+                timeout=5,
+            ).click()
+            try:
+                WebDriverWait(self.web_driver, 5).until(
+                    lambda d: f"id={quote_plus(indoorMapId1)}"
+                    in d.execute_script(
+                        "return decodeURIComponent(window.location.hash);"
+                    )
+                )
+            except TimeoutException:
+                self.fail(
+                    "URL fragment nodeId was not removed after closing indoor map popup"
+                )
+            current_hash = self.web_driver.execute_script(
+                "return decodeURIComponent(window.location.hash);"
+            )
+            expected_hash = (
+                f"#id={mapId}&nodeId={location.id};" f"id={quote_plus(indoorMapId1)}"
+            )
+            self.assertIn(expected_hash, current_hash)
+
+        with self.subTest(
+            "Test URL fragment updates when switching floors on indoor map and device popup opened/closed"
+        ):
+            self.wait_for(
+                "element_to_be_clickable",
+                By.CSS_SELECTOR,
+                "#floorplan-navigation .right-arrow",
+                timeout=5,
+            ).click()
+            try:
+                WebDriverWait(self.web_driver, 5).until(
+                    lambda d: f"id={quote_plus(indoorMapId2)}"
+                    in d.execute_script(
+                        "return decodeURIComponent(window.location.hash);"
+                    )
+                )
+            except TimeoutException:
+                self.fail("URL fragment was not updated after switching to floor 2")
+            current_hash = self.web_driver.execute_script(
+                "return decodeURIComponent(window.location.hash);"
+            )
+            expected_hash = (
+                f"#id={mapId}&nodeId={location.id};" f"id={quote_plus(indoorMapId2)}"
+            )
+            self.assertIn(expected_hash, current_hash)
+            try:
+                WebDriverWait(self.web_driver, 5).until(
+                    lambda d: d.execute_script("return window._owIndoorMap != null")
+                )
+            except TimeoutException:
+                self.fail("Indoor map was not initialized after opening floorplan")
+            self._open_popup("_owIndoorMap", device2.id)
+            try:
+                WebDriverWait(self.web_driver, 5).until(
+                    lambda d: f"nodeId={device_location2.id}"
+                    in d.execute_script(
+                        "return decodeURIComponent(window.location.hash);"
+                    )
+                )
+            except TimeoutException:
+                self.fail(
+                    "URL fragment was not updated after opening device2 popup on floor 2"
+                )
+            current_hash = self.web_driver.execute_script(
+                "return decodeURIComponent(window.location.hash);"
+            )
+            expected_hash = (
+                f"#id={mapId}&nodeId={location.id};"
+                f"id={quote_plus(indoorMapId2)}&nodeId={device_location2.id}"
+            )
+            self.assertIn(expected_hash, current_hash)
+            self.wait_for(
+                "element_to_be_clickable",
+                By.CSS_SELECTOR,
+                "#floorplan-container .leaflet-popup-close-button",
+                timeout=5,
+            ).click()
+            try:
+                WebDriverWait(self.web_driver, 5).until(
+                    lambda d: f"id={quote_plus(indoorMapId2)}"
+                    in d.execute_script(
+                        "return decodeURIComponent(window.location.hash);"
+                    )
+                )
+            except TimeoutException:
+                self.fail(
+                    "URL fragment nodeId was not removed after closing device2 popup"
+                )
+            current_hash = self.web_driver.execute_script(
+                "return decodeURIComponent(window.location.hash);"
+            )
+            expected_hash = (
+                f"#id={mapId}&nodeId={location.id};" f"id={quote_plus(indoorMapId2)}"
+            )
+            self.assertIn(expected_hash, current_hash)
+
+        with self.subTest(
+            "Test URL fragment with only nodeId param: state applied on new tab, popup not shown"
+        ):
+            current_url = self.web_driver.current_url
+            self.web_driver.switch_to.new_window("tab")
+            tabs = self.web_driver.window_handles
+            self.web_driver.switch_to.window(tabs[1])
+            self.web_driver.get(current_url)
+            floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
+            self.assertIn("2nd floor", floor_heading.text.lower())
+            canvases = self.find_elements(
+                By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
+            )
+            self.assertGreater(len(canvases), 0)
+            popup_not_displayed = self.wait_for_invisibility(
+                By.CSS_SELECTOR,
+                ".njg-tooltip-inner",
+            )
+            self.assertTrue(popup_not_displayed)
+            self.web_driver.close()
+            self.web_driver.switch_to.window(tabs[0])
+
+        # Cleanup in case of failure to ensure the it does not end up with multiple tabs open
+        if len(self.web_driver.window_handles) > 1:
+            primary_tab = self.web_driver.window_handles[0]
+            for tab in self.web_driver.window_handles[1:]:
+                self.web_driver.switch_to.window(tab)
+                self.web_driver.close()
+            self.web_driver.switch_to.window(primary_tab)
