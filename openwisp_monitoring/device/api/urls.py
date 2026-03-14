@@ -40,4 +40,9 @@ urlpatterns = [
         views.wifi_session_detail,
         name="api_wifi_session_detail",
     ),
+    re_path(
+        r"^api/v1/monitoring/location/(?P<pk>[^/]+)/indoor-coordinates/$",
+        views.monitoring_indoor_coordinates_list,
+        name="api_indoor_coordinates_list",
+    ),
 ]

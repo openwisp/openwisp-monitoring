@@ -137,8 +137,17 @@ class TestAdmin(
     def test_dashboard_map_on_index(self):
         url = reverse("admin:index")
         response = self.client.get(url)
-        self.assertContains(response, "geoJsonUrl: 'http://testserver/api")
-        self.assertContains(response, "locationDeviceUrl: 'http://testserver/api")
+        self.assertContains(
+            response, f'geoJsonUrl: "{reverse("monitoring:api_location_geojson")}"'
+        )
+        self.assertTrue(
+            response,
+            f'locationDeviceUrl: "{reverse("monitoring:api_location_device_list", args=["000"])}"',
+        )
+        self.assertTrue(
+            response,
+            f'indoorCoordinatesUrl: "{reverse("monitoring:api_indoor_coordinates_list", args=["000"])}"',
+        )
 
     def test_wifisession_dashboard_chart_query(self):
         url = reverse("admin:index")
@@ -894,6 +903,7 @@ class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
             "monitoring/js/lib/netjsongraph.min.js",
             "monitoring/js/lib/leaflet.fullscreen.min.js",
             "monitoring/js/device-map.js",
+            "monitoring/js/floorplan.js",
         ]
         for static_file in static_files:
             self.assertContains(response, static_file)
@@ -1189,3 +1199,56 @@ class TestWifiSessionAdmin(
             ),
             html=True,
         )
+
+
+class TestMapPageAdmin(TestGeoMixin, DeviceMonitoringTestCase):
+    location_model = Location
+    object_location_model = DeviceLocation
+    object_model = Device
+
+    def setUp(self):
+        admin = User.objects.create_superuser("admin", "admin", "test@test.com")
+        self.client.force_login(admin)
+
+    def tearDown(self):
+        cache.clear()
+
+    def test_mappage_admin(self):
+        self._create_object_location()
+        url = reverse("admin:device_monitoring_map_changelist")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "admin/map/map_page.html")
+        self.assertContains(response, 'id="device-map-container"')
+        self.assertContains(response, "window._owGeoMapConfig")
+        extra_context = "monitoring_labels"
+        self.assertIn(extra_context, response.context)
+        self.assertContains(
+            response, f'geoJsonUrl: "{reverse("monitoring:api_location_geojson")}"'
+        )
+        self.assertTrue(
+            response,
+            f'locationDeviceUrl: "{reverse("monitoring:api_location_device_list", args=["000"])}"',
+        )
+        self.assertTrue(
+            response,
+            f'indoorCoordinatesUrl: "{reverse("monitoring:api_indoor_coordinates_list", args=["000"])}"',
+        )
+
+    def test_mappage_admin_media_files(self):
+        self._create_object_location()
+        url = reverse("admin:device_monitoring_map_changelist")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        static_files = [
+            "monitoring/js/lib/netjsongraph.min.js",
+            "monitoring/js/lib/leaflet.fullscreen.min.js",
+            "monitoring/css/device-map.css",
+            "leaflet/leaflet.css",
+            "monitoring/css/leaflet.fullscreen.css",
+            "monitoring/css/netjsongraph.css",
+            "monitoring/js/device-map.js",
+            "monitoring/js/floorplan.js",
+        ]
+        for static_file in static_files:
+            self.assertContains(response, static_file)

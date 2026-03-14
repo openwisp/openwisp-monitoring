@@ -84,7 +84,6 @@ jobs:
           pip install -U pip wheel setuptools
           pip install -r requirements-test.txt
           pip install -U -I -e .
-          pip uninstall -y Django
           pip install -U ${{ matrix.django-version }}
           sudo npm install -g prettier
 
@@ -99,13 +98,7 @@ jobs:
       - name: Tests
         if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
         run: |
-          coverage run runtests.py
-          # the next test runs focus on specific backend features, therefore
-          # we can skip selenium tests to improve speed and test consistency
-          SAMPLE_APP=1 coverage run runtests.py --exclude-tag=selenium_tests
-          TIMESERIES_UDP=1 coverage run runtests.py --exclude-tag=selenium_tests
-          coverage combine
-          coverage xml
+          ./runtests
         env:
           SELENIUM_HEADLESS: 1
           GECKO_LOG: 1
@@ -122,6 +115,7 @@ jobs:
           format: cobertura
           flag-name: python-${{ matrix.python-version }}-${{ matrix.django-version }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-error: false
 
   deploy:
     name: Deploy Docker Image
@@ -154,3 +148,4 @@ jobs:
         uses: coverallsapp/github-action@v2
         with:
           parallel-finished: true
+          fail-on-error: false
