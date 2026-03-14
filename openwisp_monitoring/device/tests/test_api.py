@@ -654,6 +654,26 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             self.assertEqual(r.status_code, 400)
             self.assertIn("Unkown Time Zone", r.data)
 
+    def test_get_device_metrics_deprecated_timezone_normalized(self):
+        # Deprecated IANA timezone aliases such as Asia/Calcutta are accepted
+        # by pytz but may not be recognised by the InfluxDB Go runtime, which
+        # would produce a 500 error.  The view should silently normalise them
+        # to their canonical equivalents and return 200.
+        dd = self.create_test_data(no_resources=True)
+        d = self.device_model.objects.get(pk=dd.pk)
+        deprecated_tz_values = (
+            "Asia/Calcutta",
+            "Asia/Katmandu",
+            "Asia/Dacca",
+            "Asia/Rangoon",
+            "Asia/Ulan_Bator",
+        )
+        for tz_value in deprecated_tz_values:
+            with self.subTest(timezone=tz_value):
+                url = "{0}&timezone={1}".format(self._url(d.pk, d.key), tz_value)
+                r = self.client.get(url)
+                self.assertEqual(r.status_code, 200)
+
     def test_device_metrics_received_signal(self):
         d = self._create_device(organization=self._create_org())
         dd = DeviceData(name="test-device", pk=d.pk)
