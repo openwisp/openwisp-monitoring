@@ -378,8 +378,8 @@ class DeviceMonitoringConfig(AppConfig):
                         "monitoring/css/netjsongraph.css",
                     ),
                     "js": (
-                        "monitoring/js/lib/netjsongraph.min.js",
                         "monitoring/js/lib/leaflet.fullscreen.min.js",
+                        "monitoring/js/lib/netjsongraph.echarts.min.js",
                         "monitoring/js/device-map.js",
                         "monitoring/js/floorplan.js",
                     ),
