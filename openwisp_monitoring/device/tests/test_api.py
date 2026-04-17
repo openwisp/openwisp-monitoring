@@ -654,6 +654,26 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             self.assertEqual(r.status_code, 400)
             self.assertIn("Unkown Time Zone", r.data)
 
+    def test_get_device_metrics_deprecated_timezone_normalized(self):
+        # Deprecated IANA timezone aliases such as Asia/Calcutta are accepted
+        # by pytz but may not be recognised by the InfluxDB Go runtime, which
+        # would produce a 500 error.  The view should silently normalise them
+        # to their canonical equivalents and return 200.
+        dd = self.create_test_data(no_resources=True)
+        d = self.device_model.objects.get(pk=dd.pk)
+        deprecated_tz_values = (
+            "Asia/Calcutta",
+            "Asia/Katmandu",
+            "Asia/Dacca",
+            "Asia/Rangoon",
+            "Asia/Ulan_Bator",
+        )
+        for tz_value in deprecated_tz_values:
+            with self.subTest(timezone=tz_value):
+                url = "{0}&timezone={1}".format(self._url(d.pk, d.key), tz_value)
+                r = self.client.get(url)
+                self.assertEqual(r.status_code, 200)
+
     def test_device_metrics_received_signal(self):
         d = self._create_device(organization=self._create_org())
         dd = DeviceData(name="test-device", pk=d.pk)
@@ -864,16 +884,6 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 "operator_code": "50502",
                 "operator_name": "YES OPTUS",
                 "power_status": "on",
-                "signal": {"lte": {"rsrp": -75}},
-            },
-            {
-                "connection_status": "connected",
-                "imei": "300000001234567",
-                "manufacturer": "Sierra Wireless, Incorporated",
-                "model": "MC7430",
-                "operator_code": "50502",
-                "operator_name": "YES OPTUS",
-                "power_status": "on",
                 "signal": {
                     "lte": {"rsrp": "-75", "rsrq": "-8", "rssi": "-51", "snr": "13"}
                 },
@@ -892,6 +902,54 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             number += 1
             with self.subTest(interface_data["name"]):
                 self.assertEqual(r.status_code, 400)
+
+    def test_partial_mobile_signal_data(self):
+        """Regression test for https://github.com/openwisp/openwisp-monitoring/issues/540
+
+        5G and LTE modules do not always report every signal metric (e.g. rssi
+        may be absent on 5G hardware). Schema validation must not reject data
+        when only a subset of signal fields is present.
+        """
+        o = self._create_org()
+        d = self._create_device(organization=o)
+        base_mobile = {
+            "connection_status": "connected",
+            "imei": "300000001234567",
+            "manufacturer": "Sierra Wireless, Incorporated",
+            "model": "MC7430",
+            "operator_code": "50502",
+            "operator_name": "YES OPTUS",
+            "power_status": "on",
+        }
+        partial_signal_cases = [
+            # LTE without rssi (5G modules using LTE fallback may omit rssi)
+            {"lte": {"rsrp": -75}},
+            # LTE without rssi and snr
+            {"lte": {"rsrp": -75, "rsrq": -8}},
+            # 5g without rssi (rssi is not used in 5G NR)
+            {"5g": {"rsrp": -70, "rsrq": -7}},
+            # gsm without rssi (modem may not expose it)
+            {"gsm": {}},
+        ]
+        for signal in partial_signal_cases:
+            mobile_data = dict(base_mobile, signal=signal)
+            interface_data = {
+                "name": "mobile0",
+                "mac": "00:00:00:00:00:00",
+                "mtu": 1900,
+                "multicast": True,
+                "txqueuelen": 1000,
+                "type": "modem-manager",
+                "up": True,
+                "mobile": mobile_data,
+            }
+            r = self._post_data(
+                d.id,
+                d.key,
+                {"type": "DeviceMonitoring", "interfaces": [interface_data]},
+            )
+            with self.subTest(signal=signal):
+                self.assertEqual(r.status_code, 200)
 
     def test_mobile_charts(self):
         org = self._create_org()

@@ -296,13 +296,11 @@ schema = {
                                     "gsm": {
                                         "type": "object",
                                         "additionalProperties": True,
-                                        "required": ["rssi"],
                                         "properties": {"rssi": {"type": "number"}},
                                     },
                                     "cdma1x": {
                                         "type": "object",
                                         "additionalProperties": True,
-                                        "required": ["rssi", "ecio"],
                                         "properties": {
                                             "rssi": {"type": "number"},
                                             "ecio": {"type": "number"},
@@ -311,7 +309,6 @@ schema = {
                                     "evdo": {
                                         "type": "object",
                                         "additionalProperties": True,
-                                        "required": ["rssi", "ecio", "io", "sinr"],
                                         "properties": {
                                             "rssi": {"type": "number"},
                                             "ecio": {"type": "number"},
@@ -322,7 +319,6 @@ schema = {
                                     "umts": {
                                         "type": "object",
                                         "additionalProperties": True,
-                                        "required": ["ecio"],
                                         "properties": {
                                             "rssi": {"type": "number"},
                                             "rscp": {"type": "number"},
@@ -332,7 +328,6 @@ schema = {
                                     "lte": {
                                         "type": "object",
                                         "additionalProperties": True,
-                                        "required": ["rssi", "rsrp", "rsrq", "snr"],
                                         "properties": {
                                             "rssi": {"type": "number"},
                                             "rsrp": {"type": "number"},
@@ -343,7 +338,6 @@ schema = {
                                     "5g": {
                                         "type": "object",
                                         "additionalProperties": True,
-                                        "required": ["rsrp", "rsrq", "snr"],
                                         "properties": {
                                             "rsrp": {"type": "number"},
                                             "rsrq": {"type": "number"},
