@@ -66,7 +66,7 @@ class DatabaseClient(object):
     ]
 
     def __init__(self, db_name=None):
-        self.db_name = db_name or TIMESERIES_DB['NAME']
+        self.db_name = db_name or TIMESERIES_DB["NAME"]
         self.client_error = InfluxDBClientError
 
     @retry
@@ -346,7 +346,7 @@ class DatabaseClient(object):
             q = f"{q} LIMIT {limit}"
         return list(self.query(q, precision=precision).get_points())
 
-    def get_list_query(self, query, precision='s', **kwargs):
+    def get_list_query(self, query, precision="s", **kwargs):
         result = self.query(query, precision=precision)
         if not len(result.keys()) or result.keys()[0][1] is None:
             return list(result.get_points())
@@ -533,7 +533,7 @@ class DatabaseClient(object):
         Returns top fields if ``get_fields`` set to ``True`` (default)
         else it returns points containing the top fields.
         """
-        q = default_query.replace('{field_name}', '{fields}')
+        q = default_query.replace("{field_name}", "{fields}")
         q = self.get_query(
             query=q,
             params=params,
@@ -554,7 +554,7 @@ class DatabaseClient(object):
         keys = list(sorted_dict.keys())
         keys.reverse()
         top = keys[0:number]
-        top_fields = [item.replace('sum_', '') for item in top]
+        top_fields = [item.replace("sum_", "") for item in top]
         if get_fields:
             return top_fields
         query = self.get_query(
@@ -568,7 +568,7 @@ class DatabaseClient(object):
             timezone=timezone,
         )
         return self.get_list_query(query)
-    
+
     def default_chart_query(self, tags):
         q = "SELECT {field_name} FROM {key} WHERE time >= '{time}'"
         if tags:
@@ -576,7 +576,7 @@ class DatabaseClient(object):
         return q
 
     def _device_data(self, key, tags, rp, **kwargs):
-        """ returns last snapshot of ``device_data`` """
+        """returns last snapshot of ``device_data``"""
         query = (
             f"SELECT data FROM {rp}.{key} WHERE pk = '{tags['pk']}' "
             "ORDER BY time DESC LIMIT 1"

@@ -1,15 +1,19 @@
-from datetime import timezone
 import os
+from datetime import timezone
 
 from celery import shared_task
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
+from django.utils.dateparse import parse_date
 from swapper import load_model
 
+from openwisp_monitoring.db.backends.influxdb2.client import (
+    DatabaseClient as InfluxDB2Client,
+)
+from openwisp_monitoring.db.backends.influxdb.client import (
+    DatabaseClient as InfluxDB1Client,
+)
 from openwisp_utils.tasks import OpenwispCeleryTask
-
-from openwisp_monitoring.db.backends.influxdb.client import DatabaseClient as InfluxDB1Client
-from openwisp_monitoring.db.backends.influxdb2.client import DatabaseClient as InfluxDB2Client
 
 from ..db import timeseries_db
 from ..db.exceptions import TimeseriesWriteException
@@ -17,10 +21,6 @@ from .migrations.influxdb import influxdb_alter_structure_0006 as influxdb_migra
 from .migrations.influxdb2 import influxdb2_alter_structure_0006 as influxdb2_migration
 from .settings import RETRY_OPTIONS
 from .signals import post_metric_write
-from openwisp_monitoring.db.backends.influxdb.client import DatabaseClient as InfluxDB1Client
-from openwisp_monitoring.db.backends.influxdb2.client import DatabaseClient as InfluxDB2Client
-from django.utils.dateparse import parse_date
-
 
 
 def _metric_post_write(name, values, metric, check_threshold_kwargs=None, **kwargs):
@@ -50,7 +50,7 @@ def _metric_post_write(name, values, metric, check_threshold_kwargs=None, **kwar
     base=OpenwispCeleryTask,
     bind=True,
     autoretry_for=(TimeseriesWriteException,),
-    **RETRY_OPTIONS
+    **RETRY_OPTIONS,
 )
 def timeseries_write(
     self, name, values, metric=None, check_threshold_kwargs=None, **kwargs
@@ -65,11 +65,11 @@ def _timeseries_write(name, values, metric=None, check_threshold_kwargs=None, **
     If the timeseries database is using UDP to write data,
     then write data synchronously.
     """
-    if hasattr(timeseries_db, 'use_udp') and timeseries_db.use_udp:
+    if hasattr(timeseries_db, "use_udp") and timeseries_db.use_udp:
         # InfluxDB 1.x with UDP support
         func = timeseries_write
         args = (name, values, metric, check_threshold_kwargs)
-    elif hasattr(timeseries_db, 'write'):
+    elif hasattr(timeseries_db, "write"):
         # InfluxDB 2.0 or InfluxDB 1.x without UDP support
         func = timeseries_db.write(name, values, **kwargs)
         _metric_post_write(name, values, metric, check_threshold_kwargs, **kwargs)
@@ -84,7 +84,7 @@ def _timeseries_write(name, values, metric=None, check_threshold_kwargs=None, **
     base=OpenwispCeleryTask,
     bind=True,
     autoretry_for=(TimeseriesWriteException,),
-    **RETRY_OPTIONS
+    **RETRY_OPTIONS,
 )
 def timeseries_batch_write(self, data):
     """Writes data in batches.
@@ -109,18 +109,19 @@ def _timeseries_batch_write(data):
 
 @shared_task(base=OpenwispCeleryTask)
 def delete_timeseries(key, tags):
-    backend = settings.TIMESERIES_DATABASE['BACKEND']
+    backend = settings.TIMESERIES_DATABASE["BACKEND"]
 
-    if backend == 'openwisp_monitoring.db.backends.influxdb':
+    if backend == "openwisp_monitoring.db.backends.influxdb":
         # InfluxDB 1.x
         client = InfluxDB1Client()
         client.delete_series(key=key, tags=tags)
-    elif backend == 'openwisp_monitoring.db.backends.influxdb2':
+    elif backend == "openwisp_monitoring.db.backends.influxdb2":
         # InfluxDB 2.x
         # No need to perform any action for InfluxDB 2.x
         pass
     else:
         raise ValueError(f"Unsupported backend: {backend}")
+
 
 @shared_task
 def migrate_timeseries_database():
@@ -131,7 +132,7 @@ def migrate_timeseries_database():
 
     To be removed in a future release.
     """
-    if os.environ.get('USE_INFLUXDB2', 'False') == 'True':
+    if os.environ.get("USE_INFLUXDB2", "False") == "True":
         influxdb2_migration.migrate_influxdb_structure()
     else:
         influxdb_migration.migrate_influxdb_structure()

@@ -13,18 +13,18 @@ SELECT_QUERY_LIMIT = 1000
 WRITE_BATCH_SIZE = 1000
 CHUNK_SIZE = 1000
 EXCLUDED_MEASUREMENTS = [
-    'ping',
-    'config_applied',
-    'clients',
-    'disk',
-    'memory',
-    'cpu',
-    'signal_strength',
-    'signal_quality',
-    'access_tech',
-    'device_data',
-    'traffic',
-    'wifi_clients',
+    "ping",
+    "config_applied",
+    "clients",
+    "disk",
+    "memory",
+    "cpu",
+    "signal_strength",
+    "signal_quality",
+    "access_tech",
+    "device_data",
+    "traffic",
+    "wifi_clients",
 ]
 
 
@@ -33,10 +33,10 @@ logger = logging.getLogger(__name__)
 
 def get_influxdb_client():
     db_config = {
-        'bucket': 'mybucket',
-        'org': 'myorg',
-        'token': 'dltiEmsmMKU__9SoBE0ingFdMTS3UksrESwIQDNtW_3WOgn8bQGdyYzPcx_aDtvZkqvR8RbMkwVVlzUJxpm62w==',
-        'url': 'http://localhost:8086',
+        "bucket": "mybucket",
+        "org": "myorg",
+        "token": "dltiEmsmMKU__9SoBE0ingFdMTS3UksrESwIQDNtW_3WOgn8bQGdyYzPcx_aDtvZkqvR8RbMkwVVlzUJxpm62w==",
+        "url": "http://localhost:8086",
     }
     return DatabaseClient(**db_config)
 
@@ -56,36 +56,36 @@ def requires_migration():
 def migrate_influxdb_structure():
     if not requires_migration():
         logger.info(
-            'Timeseries data migration is already migrated. Skipping migration!'
+            "Timeseries data migration is already migrated. Skipping migration!"
         )
         return
 
     # Implement your data migration logic here
-    logger.info('Starting migration for InfluxDB 2.0...')
+    logger.info("Starting migration for InfluxDB 2.0...")
     migrate_wifi_clients()
     migrate_traffic_data()
-    logger.info('Timeseries data migration completed.')
+    logger.info("Timeseries data migration completed.")
 
 
 def migrate_influxdb_data(query_api, write_api, read_query, measurement, tags):
-    logger.debug(f'Executing query: {read_query}')
-    result = query_api.query(org='myorg', query=read_query)
+    logger.debug(f"Executing query: {read_query}")
+    result = query_api.query(org="myorg", query=read_query)
     points = []
 
     for table in result:
         for record in table.records:
             point = {
-                'measurement': measurement,
-                'tags': tags,
-                'fields': record.values,
-                'time': record.get_time(),
+                "measurement": measurement,
+                "tags": tags,
+                "fields": record.values,
+                "time": record.get_time(),
             }
             points.append(point)
 
     write_api.write(
-        bucket='mybucket', org='myorg', record=points, write_options=SYNCHRONOUS
+        bucket="mybucket", org="myorg", record=points, write_options=SYNCHRONOUS
     )
-    logger.info(f'Migrated data for measurement: {measurement}')
+    logger.info(f"Migrated data for measurement: {measurement}")
 
 
 def migrate_wifi_clients():
@@ -94,9 +94,9 @@ def migrate_wifi_clients():
     write_api = client.client.write_api(write_options=SYNCHRONOUS)
 
     read_query = 'from(bucket: "mybucket") |> range(start: -30d) |> filter(fn: (r) => r._measurement == "wifi_clients")'
-    tags = {'source': 'migration'}
+    tags = {"source": "migration"}
 
-    migrate_influxdb_data(query_api, write_api, read_query, 'wifi_clients', tags)
+    migrate_influxdb_data(query_api, write_api, read_query, "wifi_clients", tags)
     logger.info('"wifi_clients" measurements successfully migrated.')
 
 
@@ -106,7 +106,7 @@ def migrate_traffic_data():
     write_api = client.client.write_api(write_options=SYNCHRONOUS)
 
     read_query = 'from(bucket: "mybucket") |> range(start: -30d) |> filter(fn: (r) => r._measurement == "traffic")'
-    tags = {'source': 'migration'}
+    tags = {"source": "migration"}
 
-    migrate_influxdb_data(query_api, write_api, read_query, 'traffic', tags)
+    migrate_influxdb_data(query_api, write_api, read_query, "traffic", tags)
     logger.info('"traffic" measurements successfully migrated.')

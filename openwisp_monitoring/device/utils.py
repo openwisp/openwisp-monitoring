@@ -20,6 +20,7 @@ def manage_default_retention_policy():
     duration = app_settings.DEFAULT_RETENTION_POLICY
     _manage_retention_policy(DEFAULT_RP, duration)
 
+
 def _manage_retention_policy(name, duration):
     # For InfluxDB 2.x, we're not managing retention policies directly
     # Instead, we ensure the bucket exists

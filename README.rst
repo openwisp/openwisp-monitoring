@@ -86,6 +86,7 @@ Documentation
 - `Usage documentation <https://openwisp.io/docs/stable/monitoring/>`_
 - `Developer documentation
   <https://openwisp.io/docs/stable/monitoring/developer/>`_
+
 ------------
 
 .. contents:: **Table of Contents**:
@@ -261,7 +262,7 @@ Run the docker container:
 Setup (integrate in an existing Django project)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Follow the setup instructions of `openwisp-controller
+Follow the setup instructions of `openwisp-controller repository
 <https://github.com/openwisp/openwisp-controller>`_, then add the settings described below.
 
 .. code-block:: python
@@ -885,20 +886,21 @@ Example taken from the default configuration of the traffic chart:
 
 .. code-block:: python
 
-    'traffic': {
-        # other configurations for this chart
+    CHARTS = {
+        'traffic': {
+            # other configurations for this chart
 
-        # traffic measured in 'B' (bytes)
-        # unit B, KB, MB, GB, TB
-        'unit': 'adaptive_prefix+B',
-    },
-
-    'bandwidth': {
-        # adaptive unit for bandwidth related charts
-        # bandwidth measured in 'bps'(bits/sec)
-        # unit bps, Kbps, Mbps, Gbps, Tbps
-        'unit': 'adaptive_prefix+bps',
-    },
+            # traffic measured in 'B' (bytes)
+            # unit B, KB, MB, GB, TB
+            'unit': 'adaptive_prefix+B',
+        },
+        'bandwidth': {
+            # adaptive unit for bandwidth related charts
+            # bandwidth measured in 'bps' (bits/sec)
+            # unit bps, Kbps, Mbps, Gbps, Tbps
+            'unit': 'adaptive_prefix+bps',
+        },
+    }
 
 Monitoring WiFi Sessions
 ------------------------

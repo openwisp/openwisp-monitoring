@@ -4,10 +4,8 @@ from collections import OrderedDict
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 
-from dateutil.parser import parse
-from django.utils.timezone import make_aware, is_aware
-
 from cache_memoize import cache_memoize
+from dateutil.parser import parse
 from dateutil.parser import parse as parse_date
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -17,6 +15,7 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import MaxValueValidator
 from django.db import IntegrityError, models
 from django.utils import timezone
+from django.utils.timezone import is_aware, make_aware
 from django.utils.translation import gettext_lazy as _
 from jsonfield import JSONField
 from openwisp_notifications.signals import notify
@@ -706,14 +705,16 @@ class AbstractChart(TimeStampedEditableModel):
         additional_params = additional_params or {}
         params = self._get_query_params(time, start_date, end_date)
         params.update(additional_params)
-        params.update({
-            'start_date': start_date, 
-            'end_date': end_date,
-            # 'measurement': self.config_dict.get('measurement', self.metric.key),
-            # 'field_name': fields or self.config_dict.get('field_name'),
-        })
-        if not params.get('organization_id') and self.config_dict.get('__all__', False):
-            params['organization_id'] = ['__all__']
+        params.update(
+            {
+                "start_date": start_date,
+                "end_date": end_date,
+                # 'measurement': self.config_dict.get('measurement', self.metric.key),
+                # 'field_name': fields or self.config_dict.get('field_name'),
+            }
+        )
+        if not params.get("organization_id") and self.config_dict.get("__all__", False):
+            params["organization_id"] = ["__all__"]
         return timeseries_db.get_query(
             chart_type=self.type,
             params=params,
@@ -724,7 +725,7 @@ class AbstractChart(TimeStampedEditableModel):
             query=query,
             timezone=timezone,
         )
-    
+
     def get_top_fields(self, number):
         """Returns the top fields.
 
@@ -793,7 +794,7 @@ class AbstractChart(TimeStampedEditableModel):
         additional_query_kwargs = additional_query_kwargs or {}
         traces = {}
         x = []
-        result = {'traces': [], 'summary': {}}  # Initialize result dictionary
+        result = {"traces": [], "summary": {}}  # Initialize result dictionary
 
         try:
             query_kwargs = dict(
@@ -816,7 +817,7 @@ class AbstractChart(TimeStampedEditableModel):
             raise e
 
         for point in points:
-            time_value = point.get('time')
+            time_value = point.get("time")
             try:
                 formatted_time = self._parse_and_format_time(time_value, timezone)
             except ValueError as e:
@@ -824,7 +825,7 @@ class AbstractChart(TimeStampedEditableModel):
                 continue
 
             for key, value in point.items():
-                if key in ('time', 'result', 'table', 'content_type', 'object_id'):
+                if key in ("time", "result", "table", "content_type", "object_id"):
                     continue
                 traces.setdefault(key, [])
                 if decimal_places and isinstance(value, (int, float)):
@@ -835,23 +836,23 @@ class AbstractChart(TimeStampedEditableModel):
                 x.append(formatted_time)
 
         # Prepare result
-        result['traces'] = sorted(traces.items())
+        result["traces"] = sorted(traces.items())
         if x_axys:
-            result['x'] = x
+            result["x"] = x
 
         # Handle summary calculation
         if summary:
             for key, value in summary[0].items():
-                if key in ('time', 'result', 'table', 'content_type', 'object_id'):
+                if key in ("time", "result", "table", "content_type", "object_id"):
                     continue
                 if not timeseries_db.validate_query(self.query):
                     value = None
                 elif value is not None:
                     value = self._round(value, decimal_places)
-                result['summary'][key] = 'N/A' if value is None else value
+                result["summary"][key] = "N/A" if value is None else value
 
         return result
-    
+
     def _round(self, value, decimal_places):
         logger.debug(f"Rounding value: {value}, type: {type(value)}")
         if value is None:
@@ -865,12 +866,12 @@ class AbstractChart(TimeStampedEditableModel):
         except (ValueError, TypeError) as e:
             logger.warning(f"Could not round value: {value}. Error: {e}")
             return value
-    
+
     def _parse_and_format_time(self, time_str, timezone):
         time_obj = parse(time_str)
         if not is_aware(time_obj):
             time_obj = make_aware(time_obj, timezone=tz(timezone))
-        return time_obj.strftime('%Y-%m-%d %H:%M')
+        return time_obj.strftime("%Y-%m-%d %H:%M")
 
     def _safe_round(self, value, decimal_places):
         if isinstance(value, (int, float)):
@@ -879,7 +880,7 @@ class AbstractChart(TimeStampedEditableModel):
 
     def _round(self, value, decimal_places):
         try:
-            control = 10 ** decimal_places
+            control = 10**decimal_places
             return round(float(value) * control) / control
         except (ValueError, TypeError):
             return value

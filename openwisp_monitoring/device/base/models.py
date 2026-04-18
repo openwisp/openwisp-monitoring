@@ -3,10 +3,10 @@ import random
 from collections import OrderedDict
 from datetime import datetime
 
-from django.conf import settings
 import swapper
 from cache_memoize import cache_memoize
 from dateutil.relativedelta import relativedelta
+from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -152,11 +152,11 @@ class AbstractDeviceData(object):
         """Retrieves last data snapshot from Timeseries Database."""
         if self.__data:
             return self.__data
-        cache_key = get_device_cache_key(device=self, context='current-data')
+        cache_key = get_device_cache_key(device=self, context="current-data")
         points = cache.get(cache_key)
         if not points:
             points = timeseries_db._device_data(
-                rp=SHORT_RP, tags={'pk': self.pk}, key=self.__key, fields='data'
+                rp=SHORT_RP, tags={"pk": self.pk}, key=self.__key, fields="data"
             )
         if not points:
             return None
@@ -371,9 +371,9 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         self.full_clean()
         self.save()
         # clear device management_ip when device is offline
-        if self.status == '' and app_settings.AUTO_CLEAR_MANAGEMENT_IP:
+        if self.status == "" and app_settings.AUTO_CLEAR_MANAGEMENT_IP:
             self.device.management_ip = None
-            self.device.save(update_fields=['management_ip'])
+            self.device.save(update_fields=["management_ip"])
 
         health_status_changed.send(sender=self.__class__, instance=self, status=value)
 
