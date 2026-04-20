@@ -1,5 +1,7 @@
 from cache_memoize import cache_memoize
 from django.db.models import Q
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -181,6 +183,52 @@ class DashboardTimeseriesView(ProtectedAPIMixin, MonitoringApiViewMixin, APIView
             return []
         return orgs
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                "organization_slug",
+                openapi.IN_QUERY,
+                description="Organization slug (e.g. PHYTunes)",
+                type=openapi.TYPE_STRING,
+                required=False,
+            ),
+            openapi.Parameter(
+                "location_id",
+                openapi.IN_QUERY,
+                description="Location ID",
+                type=openapi.TYPE_STRING,
+                required=False,
+            ),
+            openapi.Parameter(
+                "floorplan_id",
+                openapi.IN_QUERY,
+                description="Floor plan ID.",
+                type=openapi.TYPE_STRING,
+                required=False,
+            ),
+            openapi.Parameter(
+                "time",
+                openapi.IN_QUERY,
+                description="Timeframe in days (e.g. 1d means 1 day and same goes with higher)",
+                type=openapi.TYPE_STRING,
+                required=False,
+            ),
+            openapi.Parameter(
+                "start",
+                openapi.IN_QUERY,
+                description="Start time in YYYY-MM-DD H:M:S format",
+                type=openapi.TYPE_STRING,
+                required=False,
+            ),
+            openapi.Parameter(
+                "end",
+                openapi.IN_QUERY,
+                description="End time in YYYY-MM-DD H:M:S format",
+                type=openapi.TYPE_STRING,
+                required=False,
+            ),
+        ]
+    )
     def get(self, request, *args, **kwargs):
         response = super().get(request, *args, **kwargs)
         if not request.GET.get("csv"):
