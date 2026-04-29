@@ -326,6 +326,12 @@
                       {% endif %}
                       {% if interface.mobile.signal.5g %}
                       <div class="form-row">
+                          <label>{% trans 'Signal Strength' %} (5G):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.5g.rssi }} dBm
+                          </div>
+                      </div>
+                      <div class="form-row">
                           <label>{% trans 'Signal Power' %} (5G):</label>
                           <div class="readonly">
                               {{ interface.mobile.signal.5g.rsrp }} dBm

@@ -332,7 +332,12 @@ schema = {
                                     "lte": {
                                         "type": "object",
                                         "additionalProperties": True,
-                                        "required": ["rssi", "rsrp", "rsrq", "snr"],
+                                        "anyOf": [
+                                            {"required": ["rssi"]},
+                                            {"required": ["rsrp"]},
+                                            {"required": ["rsrq"]},
+                                            {"required": ["snr"]},
+                                        ],
                                         "properties": {
                                             "rssi": {"type": "number"},
                                             "rsrp": {"type": "number"},
@@ -343,8 +348,14 @@ schema = {
                                     "5g": {
                                         "type": "object",
                                         "additionalProperties": True,
-                                        "required": ["rsrp", "rsrq", "snr"],
+                                        "anyOf": [
+                                            {"required": ["rssi"]},
+                                            {"required": ["rsrp"]},
+                                            {"required": ["rsrq"]},
+                                            {"required": ["snr"]},
+                                        ],
                                         "properties": {
+                                            "rssi": {"type": "number"},
                                             "rsrp": {"type": "number"},
                                             "rsrq": {"type": "number"},
                                             "snr": {"type": "number"},
