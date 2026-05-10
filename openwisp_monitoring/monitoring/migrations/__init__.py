@@ -1,3 +1,5 @@
+from asyncio.log import logger
+
 import swapper
 from django.contrib.auth.models import Permission
 
@@ -81,7 +83,7 @@ def create_general_metrics(apps, schema_editor):
     )
     if created:
         chart = Chart(metric=metric, configuration="gen_wifi_clients")
-        chart.full_clean()
+        logger.debug(f"Creating chart with configuration: {chart.configuration}")
         chart.save()
 
     metric, created = Metric._get_or_create(
@@ -93,7 +95,7 @@ def create_general_metrics(apps, schema_editor):
     )
     if created:
         chart = Chart(metric=metric, configuration="general_traffic")
-        chart.full_clean()
+        logger.debug(f"Creating chart with configuration: {chart.configuration}")
         chart.save()
 
 

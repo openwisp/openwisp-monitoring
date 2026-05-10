@@ -7,7 +7,6 @@ from celery.schedules import crontab
 TESTING = "test" in sys.argv
 SHELL = "shell" in sys.argv or "shell_plus" in sys.argv
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
@@ -28,7 +27,7 @@ if TESTING and "--exclude-tag=selenium_tests" not in sys.argv:
         "NAME": os.path.join(BASE_DIR, "openwisp-monitoring-tests.db"),
     }
 
-TIMESERIES_DATABASE = {
+INFLUXDB_1x_DATABASE = {
     "BACKEND": "openwisp_monitoring.db.backends.influxdb",
     "USER": "openwisp",
     "PASSWORD": "openwisp",
@@ -38,6 +37,22 @@ TIMESERIES_DATABASE = {
     # UDP writes are disabled by default
     "OPTIONS": {"udp_writes": False, "udp_port": 8089},
 }
+
+# For InfluxDB 2.x
+INFLUXDB_2x_DATABASE = {
+    "BACKEND": "openwisp_monitoring.db.backends.influxdb2",
+    "TOKEN": "dltiEmsmMKU__9SoBE0ingFdMTS3UksrESwIQDNtW_3WOgn8bQGdyYzPcx_aDtvZkqvR8RbMkwVVlzUJxpm62w==",
+    "ORG": "myorg",
+    "BUCKET": "mybucket",
+    "HOST": os.getenv("INFLUXDB_HOST", "localhost"),
+    "PORT": "8086",
+}
+
+if os.environ.get("USE_INFLUXDB2", "False") == "True":
+    TIMESERIES_DATABASE = INFLUXDB_2x_DATABASE
+else:
+    TIMESERIES_DATABASE = INFLUXDB_1x_DATABASE
+
 if TESTING:
     if os.environ.get("TIMESERIES_UDP", False):
         TIMESERIES_DATABASE["OPTIONS"] = {"udp_writes": True, "udp_port": 8091}

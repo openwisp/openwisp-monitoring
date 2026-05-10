@@ -37,8 +37,12 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=get_install_requires(),
+    extras_require={
+        "influxdb": ["influxdb>=5.2,<5.3"],
+        "influxdb2": ["influxdb-client>=1.17.0,<2.0.0"],
+    },
     classifiers=[
-        "Development Status :: 5 - Production/Stable",
+        "Development Status :: 3 - Alpha",
         "Environment :: Web Environment",
         "Topic :: Internet :: WWW/HTTP",
         "Topic :: System :: Networking",
@@ -46,7 +50,10 @@ setup(
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: OS Independent",
         "Framework :: Django",
-        "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.4",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
 )
