@@ -6,6 +6,15 @@ Version 1.3.0 [unreleased]
 
 Work in progress.
 
+Version 1.2.1 [2026-04-09]
+--------------------------
+
+Bugfixes
+~~~~~~~~
+
+- Handled ``ZeroDivisionError`` in ``DeviceDataWriter._write_disk``
+- Handled ``time=None`` in ``DeviceDataWriter.write()``
+
 Version 1.2.0 [2025-10-24]
 --------------------------
 
