@@ -1,0 +1,34 @@
+{% load static i18n leaflet_tags %}
+
+{# Safe JSON injection for labels #}
+{{ monitoring_labels | json_script:"monitoring-labels" }}
+
+<script>
+  // Parse labels safely from JSON script tag
+  const labels = JSON.parse(
+    document.getElementById("monitoring-labels").textContent
+  );
+  window._owGeoMapConfig = {
+    geoJsonUrl: "{% url 'monitoring:api_location_geojson' %}",
+    locationDeviceUrl: "{% url 'monitoring:api_location_device_list' '000' %}",
+    indoorCoordinatesUrl: "{% url 'monitoring:api_indoor_coordinates_list' '000' %}",
+    labels
+  };
+</script>
+
+{% block map_extra_head %}{% endblock %}
+{% block map_container %}
+
+<div id="leaflet-config">
+  {% autoescape on %}{% leaflet_json_config %}{% endautoescape %}
+</div>
+<div id="dashboard-map-overlay">
+  <div id="device-map-container" class="dedicated-map-page">
+    <div class="no-data">
+      <p>{% trans "No map data to show" %}.</p>
+      <p><a class="button submit" href="#close">{% trans "Close" %}</a></p>
+    </div>
+  </div>
+  <div class="ow-loading-spinner"></div>
+</div>
+{% endblock %}

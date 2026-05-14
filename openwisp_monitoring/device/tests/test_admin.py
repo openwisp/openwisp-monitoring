@@ -43,9 +43,12 @@ class TestAdmin(
 ):
     """Test the additions of openwisp-monitoring to DeviceAdmin"""
 
+    # Since TestImportExportMixin expects app_label for config app
+    app_label = Device._meta.app_label
+    config_app_label = Device._meta.app_label
+
     resources_fields = TestImportExportMixin.resource_fields
     resources_fields.append("monitoring_status")
-    app_label = "config"
     _device_params = {
         "group": "",
         "management_ip": "",
@@ -118,7 +121,7 @@ class TestAdmin(
             content_object=dd,
             params={},
         )
-        url = reverse("admin:config_device_change", args=[dd.pk])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[dd.pk])
         response = self.client.get(url)
         self.assertContains(response, "<h2>Status</h2>")
         self.assertContains(response, "<h2>Charts</h2>")
@@ -137,8 +140,17 @@ class TestAdmin(
     def test_dashboard_map_on_index(self):
         url = reverse("admin:index")
         response = self.client.get(url)
-        self.assertContains(response, "geoJsonUrl: 'http://testserver/api")
-        self.assertContains(response, "locationDeviceUrl: 'http://testserver/api")
+        self.assertContains(
+            response, f'geoJsonUrl: "{reverse("monitoring:api_location_geojson")}"'
+        )
+        self.assertTrue(
+            response,
+            f'locationDeviceUrl: "{reverse("monitoring:api_location_device_list", args=["000"])}"',
+        )
+        self.assertTrue(
+            response,
+            f'indoorCoordinatesUrl: "{reverse("monitoring:api_indoor_coordinates_list", args=["000"])}"',
+        )
 
     def test_wifisession_dashboard_chart_query(self):
         url = reverse("admin:index")
@@ -189,7 +201,7 @@ class TestAdmin(
         )
         data["interfaces"][2]["wireless"]["mode"] = "station"
         self._post_data(d.id, d.key, data)
-        url = reverse("admin:config_device_change", args=[d.pk])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[d.pk])
         r = self.client.get(url)
         with self.subTest("DHCP lease MAC is shown"):
             self.assertContains(r, "f2:f1:3e:56:d2:77")
@@ -229,7 +241,7 @@ class TestAdmin(
     def test_status_data_contains_wifi_version(self):
         data = self._data()
         d = self._create_device(organization=self._create_org())
-        url = reverse("admin:config_device_change", args=[d.pk])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[d.pk])
         self._post_data(d.id, d.key, data)
         response = self.client.get(url)
         self.assertContains(
@@ -254,7 +266,7 @@ class TestAdmin(
     def test_status_data_contains_wifi_client_he_vht_ht_unknown(self):
         data = deepcopy(self._data())
         d = self._create_device(organization=self._create_org())
-        url = reverse("admin:config_device_change", args=[d.pk])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[d.pk])
         wireless_interface = data["interfaces"][0]["wireless"]
         client = data["interfaces"][0]["wireless"]["clients"][0]
 
@@ -329,13 +341,13 @@ class TestAdmin(
 
     def test_no_device_data(self):
         d = self._create_device(organization=self._create_org())
-        url = reverse("admin:config_device_change", args=[d.pk])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[d.pk])
         r = self.client.get(url)
         self.assertNotContains(r, "<h2>Status</h2>")
         self.assertNotContains(r, "AlertSettings")
 
     def test_device_add_view(self):
-        url = reverse("admin:config_device_add")
+        url = reverse(f"admin:{self.config_app_label}_device_add")
         r = self.client.get(url)
         self.assertNotContains(r, "AlertSettings")
         self.assertContains(
@@ -356,7 +368,7 @@ class TestAdmin(
         org = device.organization
         org.is_active = False
         org.save()
-        url = reverse("admin:config_device_change", args=[device.pk])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[device.pk])
         response = self.client.get(url)
         self.assertContains(response, "<h2>Status</h2>")
         self.assertContains(response, "<h2>Charts</h2>")
@@ -375,19 +387,19 @@ class TestAdmin(
             d.key,
             {"type": "DeviceMonitoring", "interfaces": [{"name": "br-lan"}]},
         )
-        url = reverse("admin:config_device_change", args=[dd.pk])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[dd.pk])
         self.client.get(url)
 
     def test_wifi_clients_admin(self):
         dd = self.create_test_data(no_resources=True)
-        url = reverse("admin:config_device_change", args=[dd.id])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[dd.id])
         r1 = self.client.get(url, follow=True)
         self.assertEqual(r1.status_code, 200)
         self.assertContains(r1, "00:ee:ad:34:f5:3b")
 
     def test_interface_properties_admin(self):
         dd = self.create_test_data(no_resources=True)
-        url = reverse("admin:config_device_change", args=[dd.id])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[dd.id])
         r1 = self.client.get(url, follow=True)
         self.assertEqual(r1.status_code, 200)
         self.assertContains(r1, "44:d1:fa:4b:38:44")
@@ -416,7 +428,7 @@ class TestAdmin(
                 ],
             },
         )
-        url = reverse("admin:config_device_change", args=[dd.id])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[dd.id])
         r1 = self.client.get(url, follow=True)
         self.assertEqual(r1.status_code, 200)
         self.assertContains(r1, "Bridge Members")
@@ -484,7 +496,7 @@ class TestAdmin(
                 ],
             },
         )
-        url = reverse("admin:config_device_change", args=[d.id])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[d.id])
         r1 = self.client.get(url, follow=True)
         self.assertEqual(r1.status_code, 200)
         self.assertContains(r1, "Signal Strength (LTE)")
@@ -495,7 +507,7 @@ class TestAdmin(
     def test_uuid_bug(self):
         dd = self.create_test_data(no_resources=True)
         uuid = str(dd.pk).replace("-", "")
-        url = reverse("admin:config_device_change", args=[uuid])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[uuid])
         r = self.client.get(url)
         self.assertContains(r, "<h2>Status</h2>")
 
@@ -531,7 +543,7 @@ class TestAdmin(
 
     def test_health_checks_list(self):
         dd = self.create_test_data()
-        url = reverse("admin:config_device_change", args=[dd.pk])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[dd.pk])
         r = self.client.get(url)
         self.assertNotContains(r, "<label>Health checks:</label>")
         m = Metric.objects.filter(configuration="disk").first()
@@ -560,7 +572,7 @@ class TestAdmin(
 
     def test_wifisession_inline(self):
         device = self._create_device()
-        path = reverse("admin:config_device_change", args=[device.id])
+        path = reverse(f"admin:{self.config_app_label}_device_change", args=[device.id])
 
         with self.subTest("Test inline absent when no WiFiSession is present"):
             response = self.client.get(path)
@@ -605,7 +617,7 @@ class TestAdmin(
         )
         ping_check.full_clean()
         ping_check.save()
-        url = reverse("admin:config_device_change", args=[device.pk])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[device.pk])
         metric = self._create_general_metric(
             name="", content_object=device, configuration="ping"
         )
@@ -748,7 +760,7 @@ class TestAdmin(
         metric = self._create_general_metric(
             name="", content_object=device, configuration="iperf3"
         )
-        url = reverse("admin:config_device_change", args=[device.pk])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[device.pk])
         alertsettings = self._create_alert_settings(metric=metric)
         test_inline_params = {
             "name": device.name,
@@ -863,13 +875,14 @@ class TestAdmin(
 
     def test_device_admin_recover_button_visibility(self):
         self._create_device(organization=self._create_org())
-        url = reverse("admin:config_device_changelist")
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
         response = self.client.get(url)
         self.assertContains(
             response,
-            """
+            f"""
                 <li>
-                    <a href="/admin/config/device/recover/" class="recoverlink">Recover deleted Devices</a>
+                    <a href="/admin/{self.config_app_label}/device/recover/" """
+            """class="recoverlink">Recover deleted Devices</a>
                 </li>
             """,
             html=True,
@@ -894,6 +907,7 @@ class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
             "monitoring/js/lib/netjsongraph.min.js",
             "monitoring/js/lib/leaflet.fullscreen.min.js",
             "monitoring/js/device-map.js",
+            "monitoring/js/floorplan.js",
         ]
         for static_file in static_files:
             self.assertContains(response, static_file)
@@ -907,6 +921,7 @@ class TestWifiSessionAdmin(
     TestWifiClientSessionMixin,
     TestCase,
 ):
+    config_app_label = Device._meta.app_label
     wifi_session_app_label = WifiSession._meta.app_label
     wifi_session_model_name = WifiSession._meta.model_name
 
@@ -1051,7 +1066,9 @@ class TestWifiSessionAdmin(
         device_data = self._save_device_data()
         device = Device.objects.first()
         device.deactivate()
-        path = reverse("admin:config_device_delete", args=[device_data.pk])
+        path = reverse(
+            f"admin:{self.config_app_label}_device_delete", args=[device_data.pk]
+        )
         response = self.client.post(path, {"post": "yes"}, follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Device.objects.count(), 0)
@@ -1076,7 +1093,9 @@ class TestWifiSessionAdmin(
         device = Device.objects.all().first()
 
         with self.subTest("Test device wifi session inline"):
-            url = reverse("admin:config_device_change", args=[device.id])
+            url = reverse(
+                f"admin:{self.config_app_label}_device_change", args=[device.id]
+            )
             response = self.client.get(url)
             self.assertContains(
                 response,
@@ -1189,3 +1208,56 @@ class TestWifiSessionAdmin(
             ),
             html=True,
         )
+
+
+class TestMapPageAdmin(TestGeoMixin, DeviceMonitoringTestCase):
+    location_model = Location
+    object_location_model = DeviceLocation
+    object_model = Device
+
+    def setUp(self):
+        admin = User.objects.create_superuser("admin", "admin", "test@test.com")
+        self.client.force_login(admin)
+
+    def tearDown(self):
+        cache.clear()
+
+    def test_mappage_admin(self):
+        self._create_object_location()
+        url = reverse("admin:device_monitoring_map_changelist")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "admin/map/map_page.html")
+        self.assertContains(response, 'id="device-map-container"')
+        self.assertContains(response, "window._owGeoMapConfig")
+        extra_context = "monitoring_labels"
+        self.assertIn(extra_context, response.context)
+        self.assertContains(
+            response, f'geoJsonUrl: "{reverse("monitoring:api_location_geojson")}"'
+        )
+        self.assertTrue(
+            response,
+            f'locationDeviceUrl: "{reverse("monitoring:api_location_device_list", args=["000"])}"',
+        )
+        self.assertTrue(
+            response,
+            f'indoorCoordinatesUrl: "{reverse("monitoring:api_indoor_coordinates_list", args=["000"])}"',
+        )
+
+    def test_mappage_admin_media_files(self):
+        self._create_object_location()
+        url = reverse("admin:device_monitoring_map_changelist")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        static_files = [
+            "monitoring/js/lib/netjsongraph.min.js",
+            "monitoring/js/lib/leaflet.fullscreen.min.js",
+            "monitoring/css/device-map.css",
+            "leaflet/leaflet.css",
+            "monitoring/css/leaflet.fullscreen.css",
+            "monitoring/css/netjsongraph.css",
+            "monitoring/js/device-map.js",
+            "monitoring/js/floorplan.js",
+        ]
+        for static_file in static_files:
+            self.assertContains(response, static_file)
