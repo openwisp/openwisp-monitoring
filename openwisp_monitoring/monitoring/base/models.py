@@ -12,6 +12,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.serializers.json import DjangoJSONEncoder
 from django.core.validators import MaxValueValidator
 from django.db import IntegrityError, models
 from django.utils import timezone
@@ -95,11 +96,13 @@ class AbstractMetric(TimeStampedEditableModel):
         default=dict,
         blank=True,
         db_index=True,
+        encoder=DjangoJSONEncoder,
     )
     extra_tags = models.JSONField(
         _("extra tags"),
         default=dict,
         blank=True,
+        encoder=DjangoJSONEncoder,
     )
     # NULL means the health has yet to be assessed
     is_healthy = models.BooleanField(default=None, null=True, blank=True, db_index=True)

@@ -1,5 +1,6 @@
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
@@ -39,6 +40,7 @@ class AbstractCheck(TimeStampedEditableModel):
         default=dict,
         blank=True,
         help_text=_("parameters needed to perform the check"),
+        encoder=DjangoJSONEncoder,
     )
 
     class Meta:
