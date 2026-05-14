@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -33,6 +33,17 @@ class TestModels(TestMonitoringMixin, TestCase):
     def test_general_metric_str(self):
         m = Metric(name="Test metric")
         self.assertEqual(str(m), m.name)
+
+    def test_tags_support_django_json_encoder_values(self):
+        # date requires DjangoJSONEncoder, default JSONEncoder cannot serialize it.
+        metric = Metric.objects.create(
+            name="Test metric",
+            main_tags={"date": date(2026, 5, 14)},
+            extra_tags={"date": date(2026, 5, 14)},
+        )
+        metric.refresh_from_db()
+        self.assertEqual(metric.main_tags["date"], "2026-05-14")
+        self.assertEqual(metric.extra_tags["date"], "2026-05-14")
 
     def test_chart_str(self):
         c = self._create_chart()
