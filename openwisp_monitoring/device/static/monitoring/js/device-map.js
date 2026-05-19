@@ -56,68 +56,70 @@
     });
   };
 
-  let currentPopup = null;
-  let currentPopupLocationId = null;
-
-  const loadPopUpContent = function (nodeData, netjsongraphInstance, url) {
+  async function loadPopUpContent(nodeData, netjsongraphInstance) {
     loadingOverlay.show();
     const map = netjsongraphInstance.leaflet;
     const locationId = nodeData?.properties?.id || nodeData.id;
-    url = url || getLocationDeviceUrl(locationId);
+    let popupContent = null;
+    const url = getLocationDeviceUrl(locationId);
 
-    if (currentPopup) {
-      currentPopup.remove();
-    }
+    try {
+      const data = await $.ajax({
+        dataType: "json",
+        url: url,
+        xhrFields: { withCredentials: true },
+      });
+      let devices = data.results;
 
-    $.ajax({
-      dataType: "json",
-      url: url,
-      xhrFields: { withCredentials: true },
-      success: function (data) {
-        let devices = data.results;
-        let nextUrl = data.next;
-        let statusFilterButtons = "";
-        Object.entries(STATUS_LABELS).forEach(([status_key, status_label]) => {
-          statusFilterButtons += `<span
+      let nextUrl = data.next;
+      let statusFilterButtons = "";
+      netjsongraphInstance.leaflet._popupState = {
+        devices,
+        nextUrl,
+        url,
+        locationId,
+      };
+      Object.entries(STATUS_LABELS).forEach(([status_key, status_label]) => {
+        statusFilterButtons += `<span
               class="health-status health-${status_key} status-filter"
               data-status="${status_key}"
             >
               ${gettext(status_label)}
               <span class="remove-icon">&times;</span>
             </span>`;
-        });
-        const has_floorplan = data.has_floorplan;
-        const buttonText = gettext("Switch to Indoor View");
-        const floorplan_btn = has_floorplan
-          ? `<button class="default-btn floorplan-btn">
+      });
+      const has_floorplan = data.has_floorplan;
+      const buttonText = gettext("Switch to Indoor View");
+      const floorplan_btn = has_floorplan
+        ? `<button class="default-btn floorplan-btn">
           <span class="ow-floor floor-icon"></span> ${buttonText}
         </button>`
-          : "";
+        : "";
 
-        const popupTitle = nodeData.label;
+      const popupTitle = nodeData.label;
 
-        // Determine coordinates for the popup. We support:
-        // 1. NetJSONGraph objects (nodeData.location)
-        // 2. GeoJSON Point array (nodeData.coordinates)
-        // 3. GeoJSON Feature geometry (nodeData.geometry.coordinates)
-        // This fallback chain ensures the popup always plots at the correct
-        // position regardless of datasource format.
-        let latLng;
-        if (nodeData.location && typeof nodeData.location.lat === "number") {
-          latLng = [nodeData.location.lat, nodeData.location.lng];
-        } else if (Array.isArray(nodeData.coordinates)) {
-          latLng = [nodeData.coordinates[1], nodeData.coordinates[0]];
-        } else if (nodeData.geometry?.coordinates?.length >= 2) {
-          latLng = [nodeData.geometry.coordinates[1], nodeData.geometry.coordinates[0]];
-        }
+      // Determine coordinates for the popup. We support:
+      // 1. NetJSONGraph objects (nodeData.location)
+      // 2. GeoJSON Point array (nodeData.coordinates)
+      // 3. GeoJSON Feature geometry (nodeData.geometry.coordinates)
+      // This fallback chain ensures the popup always plots at the correct
+      // position regardless of datasource format.
+      let latLng;
+      if (nodeData.location && typeof nodeData.location.lat === "number") {
+        latLng = [nodeData.location.lat, nodeData.location.lng];
+      } else if (Array.isArray(nodeData.coordinates)) {
+        latLng = [nodeData.coordinates[1], nodeData.coordinates[0]];
+      } else if (nodeData.geometry?.coordinates?.length >= 2) {
+        latLng = [nodeData.geometry.coordinates[1], nodeData.geometry.coordinates[0]];
+      }
 
-        if (!latLng || isNaN(latLng[0]) || isNaN(latLng[1])) {
-          console.warn(gettext("Could not determine coordinates for popup"), nodeData);
-          loadingOverlay.hide();
-          return;
-        }
+      if (!latLng || isNaN(latLng[0]) || isNaN(latLng[1])) {
+        console.warn(gettext("Could not determine coordinates for popup"), nodeData);
+        loadingOverlay.hide();
+        return;
+      }
 
-        const popupContent = `
+      popupContent = `
           <div class="map-detail">
             <h2>${escapeHtml(popupTitle)} (${data.count})</h2>
             <div class="input-container">
@@ -135,151 +137,150 @@
                     <th class="th-status"><span class ="health-status-heading">${gettext("status")}</span></th>
                   </tr>
                 </thead>
-                <tbody>${renderRows()}</tbody>
+                <tbody>${renderRows(netjsongraphInstance)}</tbody>
               </table>
               <div class="ow-loading-spinner table-spinner"></div>
             </div>
             ${floorplan_btn}
           </div>
         `;
+      loadingOverlay.hide();
+      return popupContent;
+    } catch (error) {
+      loadingOverlay.hide();
+      alert(gettext("Error while retrieving data"));
+      console.error(error);
+      return null;
+    }
+  }
 
-        currentPopupLocationId = locationId;
-        currentPopup = L.popup({
-          autoPan: true,
-          autoPanPadding: [25, 25],
-        })
-          .setLatLng(latLng)
-          .setContent(popupContent)
-          .openOn(map);
-        const el = $(currentPopup.getElement());
-        function renderRows(deviceList) {
-          deviceList = deviceList || devices;
-          const popup = $(".map-detail");
-          if (deviceList.length === 0) {
-            popup.find("tbody").html(`
-              <tr>
-                <td class="no-devices" colspan="2">
-                  ${gettext("No devices found")}
-                </td>
-              </tr>
-            `);
-            return "";
-          }
-          const rows = deviceList
-            .map(
-              (device) => `
-            <tr>
-              <td class="col-name"><a href="${device.admin_edit_url}">${escapeHtml(device.name)}</a></td>
-              <td class="col-status">
-                <span class="health-status health-${device.monitoring.status}">
-                  ${escapeHtml(gettext(device.monitoring.status_label))}
-                </span>
-              </td>
-            </tr>
-          `,
-            )
-            .join("");
-          popup.find("tbody").html(rows);
-          return rows;
+  function renderRows(netjsongraphInstance, deviceList) {
+    deviceList = deviceList || netjsongraphInstance.leaflet._popupState.devices;
+    // deviceList = deviceList || devices;
+    const popup = $(".map-detail");
+    if (deviceList.length === 0) {
+      popup.find("tbody").html(`
+        <tr>
+          <td class="no-devices" colspan="2">
+            ${gettext("No devices found")}
+          </td>
+        </tr>
+      `);
+      return "";
+    }
+    const rows = deviceList
+      .map(
+        (device) => `
+      <tr>
+        <td class="col-name"><a href="${device.admin_edit_url}">${escapeHtml(device.name)}</a></td>
+        <td class="col-status">
+          <span class="health-status health-${device.monitoring.status}">
+            ${escapeHtml(gettext(device.monitoring.status_label))}
+          </span>
+        </td>
+      </tr>
+    `,
+      )
+      .join("");
+    popup.find("tbody").html(rows);
+    return rows;
+  }
+
+  function bindPopupEventListener(netjsongraphInstance) {
+    const currentPopup = netjsongraphInstance.leaflet.currentPopup;
+    if (!currentPopup) {
+      console.error("Popup not found, cann't bind event listeners");
+      return;
+    }
+    let { devices, nextUrl, url, locationId } =
+      netjsongraphInstance.leaflet._popupState;
+    const el = $(currentPopup.getElement());
+    let fetchDevicesTimeout;
+    let loading = false;
+    function fetchDevices(url, ms = 0, append) {
+      if (!url || loading) return;
+      clearTimeout(fetchDevicesTimeout);
+      loading = true;
+      const spinner = el.find(".table-spinner");
+      const table = el.find(".table-container table");
+      spinner.show();
+      table.hide();
+      fetchDevicesTimeout = setTimeout(() => {
+        let params = new URLSearchParams();
+        const searchParam = el.find("#device-search").val().toLowerCase().trim();
+        const statusParam = el.find("#status-filter").val();
+        if (searchParam) {
+          params.append("search", searchParam);
         }
-        let fetchDevicesTimeout;
-        let loading = false;
-        function fetchDevices(url, ms = 0, append) {
-          if (!url || loading) return;
-          clearTimeout(fetchDevicesTimeout);
-          loading = true;
-          const spinner = el.find(".table-spinner");
-          const table = el.find(".table-container table");
-          spinner.show();
-          table.hide();
-          fetchDevicesTimeout = setTimeout(() => {
-            let params = new URLSearchParams();
-            const searchParam = el.find("#device-search").val().toLowerCase().trim();
-            const statusParam = el.find("#status-filter").val();
-            if (searchParam) {
-              params.append("search", searchParam);
-            }
 
-            if (statusParam) {
-              statusParam.split(",").forEach((status) => {
-                params.append("status", status);
-              });
-            }
-            const queryString = params.toString();
-            let fetchUrl;
-            // if append is true, that means we are fetching for infinite scroll
+        if (statusParam) {
+          statusParam.split(",").forEach((status) => {
+            params.append("status", status);
+          });
+        }
+        const queryString = params.toString();
+        let fetchUrl;
+        // if append is true, that means we are fetching for infinite scroll
+        if (append) {
+          fetchUrl = url; // url is nextUrl, already contains params
+        } else {
+          fetchUrl = queryString ? `${url}?${queryString}` : url;
+        }
+        $.ajax({
+          dataType: "json",
+          url: fetchUrl,
+          xhrFields: { withCredentials: true },
+          success(data) {
+            debugger;
             if (append) {
-              fetchUrl = url; // url is nextUrl, already contains params
+              devices = devices.concat(data.results);
             } else {
-              fetchUrl = queryString ? `${url}?${queryString}` : url;
+              devices = data.results;
             }
-            $.ajax({
-              dataType: "json",
-              url: fetchUrl,
-              xhrFields: { withCredentials: true },
-              success(data) {
-                if (append) {
-                  devices = devices.concat(data.results);
-                } else {
-                  devices = data.results;
-                }
-                nextUrl = data.next;
-                renderRows(devices);
-              },
-              error() {
-                console.error(gettext("Could not load more devices from"), url);
-                alert(gettext("Could not load more devices."));
-              },
-              complete() {
-                loading = false;
-                spinner.hide();
-                table.show();
-              },
-            });
-          }, ms);
-        }
-        el.find("#device-search").on("input", function () {
-          fetchDevices(url, 300);
+            nextUrl = data.next;
+            renderRows(netjsongraphInstance, devices);
+          },
+          error() {
+            console.error(gettext("Could not load more devices from"), url);
+            alert(gettext("Could not load more devices."));
+          },
+          complete() {
+            loading = false;
+            spinner.hide();
+            table.show();
+          },
         });
-        let activeStatuses = [];
-        el.find(".status-filter").on("click", function (e) {
-          e.stopPropagation();
-          const btn = $(this);
-          const status = btn.data("status");
-
-          if (btn.hasClass("active")) {
-            btn.removeClass("active");
-            activeStatuses = activeStatuses.filter((s) => s !== status);
-          } else {
-            btn.addClass("active");
-            activeStatuses.push(status);
-          }
-          $(`#status-filter`).val(activeStatuses.join(","));
-          fetchDevices(url);
-        });
-        el.find(".table-container").on("scroll", function () {
-          if (this.scrollTop + this.clientHeight >= this.scrollHeight - 10) {
-            fetchDevices(nextUrl, 100, true);
-          }
-        });
-        el.find(".floorplan-btn").on("click", function () {
-          const floorplanUrl = getIndoorCoordinatesUrl(locationId);
-          window.openFloorPlan(floorplanUrl, locationId);
-        });
-        el.find(".leaflet-popup-close-button").on("click", function () {
-          const id = netjsongraphInstance.config.bookmarkableActions.id;
-          netjsongraphInstance.utils.removeUrlFragment(id);
-          currentPopup = null;
-          currentPopupLocationId = null;
-        });
-        loadingOverlay.hide();
-      },
-      error: function () {
-        loadingOverlay.hide();
-        alert(gettext("Error while retrieving data"));
-      },
+      }, ms);
+    }
+    el.find("#device-search").on("input", function () {
+      fetchDevices(url, 300);
     });
-  };
+    let activeStatuses = [];
+    el.find(".status-filter").on("click", function (e) {
+      e.stopPropagation();
+      const btn = $(this);
+      const status = btn.data("status");
+
+      if (btn.hasClass("active")) {
+        btn.removeClass("active");
+        activeStatuses = activeStatuses.filter((s) => s !== status);
+      } else {
+        btn.addClass("active");
+        activeStatuses.push(status);
+      }
+      $(`#status-filter`).val(activeStatuses.join(","));
+      fetchDevices(url);
+    });
+    el.find(".table-container").on("scroll", function () {
+      if (this.scrollTop + this.clientHeight >= this.scrollHeight - 10) {
+        fetchDevices(nextUrl, 100, true);
+      }
+    });
+    el.find(".floorplan-btn").on("click", function () {
+      const floorplanUrl = getIndoorCoordinatesUrl(locationId);
+      window.openFloorPlan(floorplanUrl, locationId);
+    });
+  }
 
   const leafletConfig = JSON.parse($("#leaflet-config").text());
   const tiles = leafletConfig.TILES.map((tile) => {
@@ -341,6 +342,17 @@
             },
           ],
         },
+        nodePopup: {
+          show: true,
+          content: loadPopUpContent,
+          onOpen: bindPopupEventListener,
+          config: {
+            closeOnClick: false,
+            autoPan: true,
+            autoPanPadding: [25, 25],
+            offset: [0, 0],
+          },
+        },
       },
       bookmarkableActions: {
         enabled: true,
@@ -353,7 +365,7 @@
         nodeStyle: { color: STATUS_COLORS[status] },
       })),
       // Hide ECharts node labels completely at any zoom level
-      showLabelsAtZoomLevel: 0,
+      showMapLabelsAtZoom: 0,
       echartsOption: {
         tooltip: {
           show: false, // Completely disable tooltips
@@ -422,11 +434,7 @@
           });
         },
       },
-      onClickElement: function (type, data) {
-        if (type === "node") {
-          loadPopUpContent(data, this);
-        }
-      },
+      onClickElement: function () {},
       onReady: function () {
         const map = this;
         let scale = { imperial: false, metric: false };
