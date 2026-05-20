@@ -102,7 +102,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "main_tags",
-                    models.JSONField(
+                    models.TextField(
                         blank=True,
                         db_index=True,
                         default=dict,
@@ -111,7 +111,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "extra_tags",
-                    models.JSONField(
+                    models.TextField(
                         blank=True,
                         default=dict,
                         verbose_name="extra tags",

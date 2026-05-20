@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="metric",
             name="main_tags",
-            field=models.JSONField(
+            field=models.TextField(
                 blank=True,
                 db_index=True,
                 default=dict,
@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="metric",
             name="extra_tags",
-            field=models.JSONField(
+            field=models.TextField(
                 blank=True,
                 default=dict,
                 verbose_name="extra tags",
