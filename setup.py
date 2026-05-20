@@ -19,12 +19,6 @@ def get_install_requires():
         # add line to requirements
         requirements.append(line)
 
-    # --- TEMPORARY HACK FOR CI TESTING ---
-    requirements.append(
-        "openwisp-utils @ git+https://github.com/kunalverma2512/"
-        "openwisp-utils.git@feature/517-add-netjsongraph-static"
-    )
-
     return requirements
 
 
