@@ -65,7 +65,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "params",
-                    models.JSONField(
+                    models.TextField(
                         blank=True,
                         default=dict,
                         help_text="parameters needed to perform the check",
