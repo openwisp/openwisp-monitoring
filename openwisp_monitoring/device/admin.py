@@ -588,6 +588,7 @@ class MapPageAdmin(MultitenantAdminMixin, admin.ModelAdmin):
 
     class Media:
         js = [
+            "lib/netjsongraph/js/echarts.min.js",
             "lib/netjsongraph/js/netjsongraph.echarts.min.js",
             "monitoring/js/lib/leaflet.fullscreen.min.js",
         ]
