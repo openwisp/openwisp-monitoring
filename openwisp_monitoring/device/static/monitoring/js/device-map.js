@@ -10,7 +10,7 @@
     problem: "#ffb442",
     critical: "#a72d1d",
     unknown: "#353c44",
-    deactivated: "#000000",
+    deactivated: "000",
   };
   const STATUS_COLORS = window._owGeoMapConfig.STATUS_COLORS;
   const STATUS_LABELS = window._owGeoMapConfig.labels;

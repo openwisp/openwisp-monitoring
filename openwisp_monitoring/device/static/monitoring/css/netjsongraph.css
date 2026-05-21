@@ -45,7 +45,7 @@
   background-size: 20px 20px !important;
 }
 .njg-container .marker-cluster div {
-  color: #fff;
+  color: var(--ow-color-white);
   background-color: rgba(53, 60, 68, 0.8) !important;
 }
 .njg-container .ok div {
@@ -74,7 +74,7 @@
   display: none;
 }
 .njg-container .njg-tooltip {
-  background: #fff !important;
+  background: var(--ow-color-white) !important;
   border: none !important;
 }
 .njg-container .njg-tooltip-item {
@@ -90,12 +90,12 @@
   flex-wrap: wrap;
   text-transform: capitalize;
   font-weight: 600;
-  color: #000;
+  color: var(--ow-color-black);
 }
 .njg-container .njg-tooltip-value {
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
   flex-basis: 60%;
-  color: #000;
+  color: var(--ow-color-black);
 }

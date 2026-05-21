@@ -417,8 +417,8 @@
         nodeConfig: {
           label: {
             show: true,
-            color: "#ffffff",
-            backgroundColor: "#000000",
+            color: "var(--ow-color-white)",
+            backgroundColor: "var(--ow-color-black)",
             borderWidth: 1,
             borderRadius: 8,
             opacity: 1,
