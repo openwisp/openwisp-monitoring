@@ -13,6 +13,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from swapper import load_model
 
+from .legacy_tz_utils import normalize_timezone
 from .monitoring.exceptions import InvalidChartConfigException
 
 logger = logging.getLogger(__name__)
@@ -54,7 +55,8 @@ class MonitoringApiViewMixin:
         start_date = request.query_params.get("start", None)
         end_date = request.query_params.get("end", None)
         # try to read timezone
-        timezone = request.query_params.get("timezone", settings.TIME_ZONE)
+        raw_timezone = request.query_params.get("timezone", settings.TIME_ZONE)
+        timezone = normalize_timezone(raw_timezone)
         try:
             tz(timezone)
         except UnknownTimeZoneError:

@@ -1,12 +1,13 @@
 import uuid
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from swapper import load_model
 
 from openwisp_controller.config.tests.utils import CreateConfigTemplateMixin
 from openwisp_controller.geo.tests.utils import TestGeoMixin
+from openwisp_monitoring.legacy_tz_utils import normalize_timezone
 
 from ..configuration import DEFAULT_DASHBOARD_TRAFFIC_CHART
 from . import TestMonitoringMixin
@@ -678,6 +679,39 @@ class TestDashboardTimeseriesView(
         with self.subTest("Test with invalid group time"):
             response = self.client.get(path, {"time": "3w"})
             self.assertEqual(response.status_code, 400)
+
+    def test_legacy_timezone_fallback(self):
+        """
+        Pass a legacy timezone, without crashing the API
+        with a 500 error when OS zoneinfo is missing. fix for monitoring#728
+        """
+        admin = self._create_admin()
+        self.client.force_login(admin)
+        path = reverse("monitoring_general:api_dashboard_timeseries")
+
+        with self.subTest(
+            "Test legacy timezone that isn't in modern tzdata (Asia/Calcutta)"
+        ):
+            response = self.client.get(
+                path, {"timezone": "Asia/Calcutta", "time": "7d"}
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIsInstance(response.data.get("charts"), list)
+
+        with self.subTest("Test invalid timezone still raises validation error"):
+            response = self.client.get(
+                path, {"timezone": "Antarctica/Banana", "time": "7d"}
+            )
+            self.assertEqual(response.status_code, 400)
+            self.assertIn("Unkown Time Zone", response.data)
+
+    def test_timezone_fallback_cache_not_polluted(self):
+        """Ensure the fallback TIME_ZONE is read dynamically for empty values."""
+        with override_settings(TIME_ZONE="UTC"):
+            self.assertEqual(normalize_timezone(None), "UTC")
+
+        with override_settings(TIME_ZONE="Europe/Rome"):
+            self.assertEqual(normalize_timezone(None), "Europe/Rome")
 
     def test_organizations_list(self):
         path = reverse("monitoring_general:api_dashboard_timeseries")

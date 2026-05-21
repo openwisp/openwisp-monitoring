@@ -654,6 +654,15 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             self.assertEqual(r.status_code, 400)
             self.assertIn("Unkown Time Zone", r.data)
 
+    def test_get_device_metrics_legacy_timezone_fallback(self):
+        dd = self.create_test_data(no_resources=True)
+        d = self.device_model.objects.get(pk=dd.pk)
+        url = "{0}&timezone={1}".format(self._url(d.pk, d.key), "Asia/Calcutta")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("charts", response.data)
+        self.assertIsInstance(response.data["charts"], list)
+
     def test_device_metrics_received_signal(self):
         d = self._create_device(organization=self._create_org())
         dd = DeviceData(name="test-device", pk=d.pk)
