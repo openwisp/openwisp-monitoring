@@ -324,6 +324,26 @@
                           </div>
                       </div>
                       {% endif %}
+                      {% if interface.mobile.signal.5g %}
+                      <div class="form-row">
+                          <label>{% trans 'Signal Power' %} (5G):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.5g.rsrp }} dBm
+                          </div>
+                      </div>
+                      <div class="form-row">
+                          <label>{% trans 'Signal Quality' %} (5G):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.5g.rsrq }} dB
+                          </div>
+                      </div>
+                      <div class="form-row">
+                          <label>{% trans 'Signal to noise ratio' %} (5G):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.5g.snr }} dB
+                          </div>
+                      </div>
+                      {% endif %}
                       {% if interface.mobile.signal.umts %}
                       <div class="form-row">
                           <label>{% trans 'Signal Strength' %} (UMTS):</label>
