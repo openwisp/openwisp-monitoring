@@ -84,6 +84,7 @@ jobs:
           pip install -U -I -e .
           pip install -U ${{ matrix.django-version }}
           sudo npm install -g prettier
+          pip install --force-reinstall --no-deps https://github.com/kunalverma2512/openwisp-utils/tarball/feature/517-add-netjsongraph-static
 
       - name: Start InfluxDB
         if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}

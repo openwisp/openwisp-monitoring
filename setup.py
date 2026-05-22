@@ -18,7 +18,6 @@ def get_install_requires():
             continue
         # add line to requirements
         requirements.append(line)
-
     return requirements
 
 
