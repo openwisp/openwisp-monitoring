@@ -24,13 +24,16 @@ class TestApps(TestCase):
                 "monitoring/css/device-map.css",
                 "leaflet/leaflet.css",
                 "monitoring/css/leaflet.fullscreen.css",
-                "monitoring/css/netjsongraph.css",
+                "lib/netjsongraph/css/netjsongraph.css",
+                "lib/netjsongraph/css/netjsongraph-theme.css",
             ),
         )
         self.assertEqual(
             template_config[0].get("js"),
             (
-                "monitoring/js/lib/netjsongraph.min.js",
+                "leaflet/leaflet.js",
+                "lib/netjsongraph/js/echarts.min.js",
+                "lib/netjsongraph/js/netjsongraph.echarts.min.js",
                 "monitoring/js/lib/leaflet.fullscreen.min.js",
                 "monitoring/js/device-map.js",
                 "monitoring/js/floorplan.js",
