@@ -426,6 +426,7 @@
           map.leaflet.addControl(new L.control.scale(scale));
         }
 
+
         try {
           const features = (map.data && map.data.features) || [];
           if (features.length) {
