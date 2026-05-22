@@ -420,6 +420,7 @@
         enabled: true,
         id: `${locationId}_${floor}`,
         zoomOnRestore: false,
+        preserveFragment: true,
       },
       nodeCategories: Object.keys(status_colors).map((status) => ({
         name: status,
@@ -528,6 +529,8 @@
         // without requiring a node click to add the fragment.
         pushIndoorMapIdFragment(this, locationId, floor);
       },
+      // Popup handling is delegated to nodePopup.content,
+      // so disable the default onClickElement popup behavior.
       onClickElement: function () {},
     });
     indoorMap.setUtils({

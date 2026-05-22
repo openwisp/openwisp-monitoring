@@ -56,9 +56,10 @@
     });
   };
 
-  async function loadPopUpContent(nodeData, netjsongraphInstance) {
+  async function loadPopUpContent(nodeData) {
+    const netjsongraphInstance = this;
     loadingOverlay.show();
-    const map = netjsongraphInstance.leaflet;
+    const map = netjsongraphInstance?.leaflet;
     const locationId = nodeData?.properties?.id || nodeData.id;
     let popupContent = null;
     const url = getLocationDeviceUrl(locationId);
@@ -73,7 +74,7 @@
 
       let nextUrl = data.next;
       let statusFilterButtons = "";
-      netjsongraphInstance.leaflet._popupState = {
+      map._popupState = {
         devices,
         nextUrl,
         url,
@@ -156,17 +157,17 @@
 
   function renderRows(netjsongraphInstance, deviceList) {
     deviceList = deviceList || netjsongraphInstance.leaflet._popupState.devices;
-    // deviceList = deviceList || devices;
     const popup = $(".map-detail");
     if (deviceList.length === 0) {
-      popup.find("tbody").html(`
+      const emptyRow = `
         <tr>
           <td class="no-devices" colspan="2">
             ${gettext("No devices found")}
           </td>
         </tr>
-      `);
-      return "";
+      `;
+      popup.find("tbody").html(emptyRow);
+      return emptyRow;
     }
     const rows = deviceList
       .map(
@@ -186,14 +187,15 @@
     return rows;
   }
 
-  function bindPopupEventListener(netjsongraphInstance) {
-    const currentPopup = netjsongraphInstance.leaflet.currentPopup;
+  function bindPopupEventListener() {
+    const netjsongraphInstance = this;
+    const currentPopup = netjsongraphInstance?.leaflet?.currentPopup;
     if (!currentPopup) {
-      console.error("Popup not found, cann't bind event listeners");
+      console.error("Popup not found, can't bind event listeners");
       return;
     }
     let { devices, nextUrl, url, locationId } =
-      netjsongraphInstance.leaflet._popupState;
+      netjsongraphInstance?.leaflet?._popupState;
     const el = $(currentPopup.getElement());
     let fetchDevicesTimeout;
     let loading = false;
@@ -231,7 +233,6 @@
           url: fetchUrl,
           xhrFields: { withCredentials: true },
           success(data) {
-            debugger;
             if (append) {
               devices = devices.concat(data.results);
             } else {
@@ -350,7 +351,7 @@
             closeOnClick: false,
             autoPan: true,
             autoPanPadding: [25, 25],
-            offset: [0, 0],
+            offset: [0, 8],
           },
         },
       },
@@ -403,37 +404,9 @@
             fillOpacity: 0.7,
           };
         },
-        onEachFeature: function (feature, layer) {
-          const color = getColor(feature.properties);
-          feature.properties.status = Object.keys(STATUS_COLORS).find(
-            (key) => STATUS_COLORS[key] === color,
-          );
-
-          layer.on("mouseover", function () {
-            if (layer._tooltipDisabled) return;
-            layer.unbindTooltip();
-            if (!layer.isPopupOpen()) {
-              layer.bindTooltip(feature.properties.name).openTooltip();
-            }
-          });
-
-          layer.on("click", function () {
-            const clickedLayer = this;
-            // Close any open Leaflet tooltip before showing the popup
-            clickedLayer.closeTooltip();
-            clickedLayer.unbindTooltip();
-            clickedLayer.unbindPopup();
-            clickedLayer._tooltipDisabled = true; // block future hovers for this marker
-
-            loadPopUpContent(feature, map);
-
-            // Re-enable tooltip when the popup is closed
-            map.leaflet.once("popupclose", function () {
-              clickedLayer._tooltipDisabled = false;
-            });
-          });
-        },
       },
+      // Popup handling is delegated to nodePopup.content,
+      // so disable the default onClickElement popup behavior.
       onClickElement: function () {},
       onReady: function () {
         const map = this;
@@ -452,7 +425,7 @@
 
         try {
           const initialZoom = map.leaflet.getZoom();
-          const showLabel = initialZoom >= map.config.showLabelsAtZoomLevel;
+          const showLabel = initialZoom >= map.config.showMapLabelsAtZoom;
           map.echarts.setOption({
             series: [
               {
@@ -520,7 +493,7 @@
         const nodeData = map?.data?.nodes?.[index];
         if (index == null || index === -1 || !nodeData) {
           const id = map.config.bookmarkableActions.id;
-          map.utils.removeUrlFragment(id);
+          map.utils.removeUrlFragment(id, "nodeId");
           console.error(`Node with ID "${locationId}" not found.`);
           return;
         }
@@ -571,6 +544,8 @@
     ws.onmessage = function (e) {
       const data = JSON.parse(e.data);
       const [lng, lat] = data.geometry.coordinates;
+      const currentPopup = window._owGeoMap?.leaflet?.currentPopup;
+      const currentPopupLocationId = window._owGeoMap?.leaflet?._popupState?.locationId;
       if (currentPopup && data.id === currentPopupLocationId) {
         $(currentPopup.getElement()).hide();
       }
