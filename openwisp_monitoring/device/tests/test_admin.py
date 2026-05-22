@@ -939,9 +939,12 @@ class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
         static_files = [
             "monitoring/css/device-map.css",
             "monitoring/css/leaflet.fullscreen.css",
-            "monitoring/css/netjsongraph.css",
+            "lib/netjsongraph/css/netjsongraph.css",
+            "lib/netjsongraph/css/netjsongraph-theme.css",
             "leaflet/leaflet.css",
-            "monitoring/js/lib/netjsongraph.min.js",
+            "leaflet/leaflet.js",
+            "lib/netjsongraph/js/echarts.min.js",
+            "lib/netjsongraph/js/netjsongraph.echarts.min.js",
             "monitoring/js/lib/leaflet.fullscreen.min.js",
             "monitoring/js/device-map.js",
             "monitoring/js/floorplan.js",
@@ -1287,12 +1290,15 @@ class TestMapPageAdmin(TestGeoMixin, DeviceMonitoringTestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         static_files = [
-            "monitoring/js/lib/netjsongraph.min.js",
+            "lib/netjsongraph/js/echarts.min.js",
+            "lib/netjsongraph/js/netjsongraph.echarts.min.js",
             "monitoring/js/lib/leaflet.fullscreen.min.js",
             "monitoring/css/device-map.css",
             "leaflet/leaflet.css",
             "monitoring/css/leaflet.fullscreen.css",
-            "monitoring/css/netjsongraph.css",
+            "lib/netjsongraph/css/netjsongraph.css",
+            "lib/netjsongraph/css/netjsongraph-theme.css",
+            "monitoring/css/monitoring.css",
             "monitoring/js/device-map.js",
             "monitoring/js/floorplan.js",
         ]

@@ -588,15 +588,15 @@ class MapPageAdmin(MultitenantAdminMixin, admin.ModelAdmin):
 
     class Media:
         js = [
-            "monitoring/js/lib/netjsongraph.min.js",
-            "monitoring/js/lib/leaflet.fullscreen.min.js",
+            "lib/netjsongraph/js/echarts.min.js",
+            "lib/netjsongraph/js/netjsongraph.echarts.min.js",
         ]
         css = {
             "all": [
                 "monitoring/css/device-map.css",
-                "leaflet/leaflet.css",
                 "monitoring/css/leaflet.fullscreen.css",
-                "monitoring/css/netjsongraph.css",
+                "lib/netjsongraph/css/netjsongraph.css",
+                "lib/netjsongraph/css/netjsongraph-theme.css",
                 "monitoring/css/monitoring.css",
             ]
         }
