@@ -14,6 +14,8 @@
 
 {% block extrahead %}
   {{ block.super }}
+  {% leaflet_js %}
+  {% leaflet_css %}
   {{ media }}
 {% endblock extrahead %}
 
@@ -23,6 +25,7 @@
 
 {% block footer %}
   {{ block.super }}
+  <script src="{% static 'monitoring/js/lib/leaflet.fullscreen.min.js' %}"></script>
   <script src="{% static 'monitoring/js/device-map.js' %}"></script>
   <script src="{% static 'monitoring/js/floorplan.js' %}"></script>
 {% endblock footer %}

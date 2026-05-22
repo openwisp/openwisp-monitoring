@@ -902,7 +902,9 @@ class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
         static_files = [
             "monitoring/css/device-map.css",
             "monitoring/css/leaflet.fullscreen.css",
-            "monitoring/css/netjsongraph.css",
+            "lib/netjsongraph/css/netjsongraph.css",
+            "lib/netjsongraph/css/netjsongraph-theme.css",
+            "monitoring/css/monitoring.css",
             "leaflet/leaflet.css",
             "lib/netjsongraph/js/echarts.min.js",
             "lib/netjsongraph/js/netjsongraph.echarts.min.js",
@@ -1257,7 +1259,9 @@ class TestMapPageAdmin(TestGeoMixin, DeviceMonitoringTestCase):
             "monitoring/css/device-map.css",
             "leaflet/leaflet.css",
             "monitoring/css/leaflet.fullscreen.css",
-            "monitoring/css/netjsongraph.css",
+            "lib/netjsongraph/css/netjsongraph.css",
+            "lib/netjsongraph/css/netjsongraph-theme.css",
+            "monitoring/css/monitoring.css",
             "monitoring/js/device-map.js",
             "monitoring/js/floorplan.js",
         ]
