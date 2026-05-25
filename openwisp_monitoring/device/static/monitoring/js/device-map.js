@@ -149,9 +149,9 @@
       return popupContent;
     } catch (error) {
       loadingOverlay.hide();
+      map._popupState = null;
       alert(gettext("Error while retrieving data"));
-      console.error(error);
-      return null;
+      throw error;
     }
   }
 
@@ -281,6 +281,9 @@
       const floorplanUrl = getIndoorCoordinatesUrl(locationId);
       window.openFloorPlan(floorplanUrl, locationId);
     });
+    currentPopup.on("remove", () => {
+      netjsongraphInstance.leaflet._popupState = null;
+    });
   }
 
   const leafletConfig = JSON.parse($("#leaflet-config").text());
@@ -366,7 +369,7 @@
         nodeStyle: { color: STATUS_COLORS[status] },
       })),
       // Hide ECharts node labels completely at any zoom level
-      showMapLabelsAtZoom: 0,
+      showMapLabelsAtZoom: 8,
       echartsOption: {
         tooltip: {
           show: false, // Completely disable tooltips
