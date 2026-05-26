@@ -28,18 +28,31 @@ if TESTING and "--exclude-tag=selenium_tests" not in sys.argv:
         "NAME": os.path.join(BASE_DIR, "openwisp-monitoring-tests.db"),
     }
 
-TIMESERIES_DATABASE = {
-    "BACKEND": "openwisp_monitoring.db.backends.influxdb",
-    "USER": "openwisp",
-    "PASSWORD": "openwisp",
-    "NAME": "openwisp2",
-    "HOST": os.getenv("INFLUXDB_HOST", "localhost"),
-    "PORT": "8086",
-    # UDP writes are disabled by default
-    "OPTIONS": {"udp_writes": False, "udp_port": 8089},
-}
+TIMESERIES_BACKEND = os.getenv("TIMESERIES_BACKEND", "influxdb")
+if TIMESERIES_BACKEND == "influxdb":
+    TIMESERIES_DATABASE = {
+        "BACKEND": "openwisp_monitoring.db.backends.influxdb",
+        "USER": "openwisp",
+        "PASSWORD": "openwisp",
+        "NAME": "openwisp2",
+        "HOST": os.getenv("INFLUXDB_HOST", "localhost"),
+        "PORT": "8086",
+        # UDP writes are disabled by default
+        "OPTIONS": {"udp_writes": False, "udp_port": 8089},
+    }
+elif TIMESERIES_BACKEND == "influxdb2":
+    TIMESERIES_DATABASE = {
+        "BACKEND": "openwisp_monitoring.db.backends.influxdb2",
+        "NAME": os.getenv("INFLUXDB2_BUCKET", "openwisp2"),
+        "HOST": os.getenv("INFLUXDB2_HOST", "localhost"),
+        "PORT": os.getenv("INFLUXDB2_PORT", "8087"),
+        "ORG": os.getenv("INFLUXDB2_ORG", "openwisp"),
+        "TOKEN": os.getenv("INFLUXDB2_TOKEN", "openwisp-token"),
+    }
+else:
+    raise ValueError(f'Unsupported TIMESERIES_BACKEND "{TIMESERIES_BACKEND}"')
 if TESTING:
-    if os.environ.get("TIMESERIES_UDP", False):
+    if TIMESERIES_BACKEND == "influxdb" and os.environ.get("TIMESERIES_UDP", False):
         TIMESERIES_DATABASE["OPTIONS"] = {"udp_writes": True, "udp_port": 8091}
 
 SECRET_KEY = "fn)t*+$)ugeyip6-#txyy$5wf2ervc0d2n#h)qb)y5@ly$t*@w"
