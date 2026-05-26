@@ -3,6 +3,11 @@ from django.db import migrations
 
 
 def forward_migration(apps, schema_editor):
+    from openwisp_monitoring.db import timeseries_db
+
+    if timeseries_db.backend_name != "influxdb":
+        return
+
     from ..tasks import migrate_timeseries_database
 
     migrate_timeseries_database.delay()
