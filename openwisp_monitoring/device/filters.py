@@ -23,3 +23,5 @@ class DeviceFilter(AutocompleteFilter):
     field_name = "device"
     parameter_name = "device"
     title = _("device")
+
+#Hello world
