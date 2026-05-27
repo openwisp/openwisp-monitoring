@@ -203,10 +203,19 @@
       if (!url || loading) return;
       clearTimeout(fetchDevicesTimeout);
       loading = true;
+      const container = el.find(".table-container");
       const spinner = el.find(".table-spinner");
-      const table = el.find(".table-container table");
       spinner.show();
-      table.hide();
+      // Avoid layout flicker: don't collapse the table while loading.
+      // For filter/search requests, freeze current height and disable interaction.
+      if (!append) {
+        const currentHeight = container.outerHeight();
+        if (currentHeight) container.css("min-height", `${currentHeight}px`);
+        container.addClass("is-loading");
+      } else {
+        // Infinite scroll append: dim the table but keep it scrollable.
+        container.addClass("is-loading-append");
+      }
       fetchDevicesTimeout = setTimeout(() => {
         let params = new URLSearchParams();
         const searchParam = el.find("#device-search").val().toLowerCase().trim();
@@ -240,6 +249,7 @@
             }
             nextUrl = data.next;
             renderRows(netjsongraphInstance, devices);
+            if (!append) container.scrollTop(0);
           },
           error() {
             console.error(gettext("Could not load more devices from"), url);
@@ -248,7 +258,9 @@
           complete() {
             loading = false;
             spinner.hide();
-            table.show();
+            container.removeClass("is-loading");
+            container.removeClass("is-loading-append");
+            container.css("min-height", "");
           },
         });
       }, ms);
