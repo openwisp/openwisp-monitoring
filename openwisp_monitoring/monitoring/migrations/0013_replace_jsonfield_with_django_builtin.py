@@ -11,6 +11,28 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # First change the fields to TextField so Django drops the old
+        # text_pattern_ops LIKE indexes created for the previous
+        # text-backed JSONField implementation.
+        migrations.AlterField(
+            model_name="metric",
+            name="main_tags",
+            field=models.TextField(
+                blank=True,
+                default=dict,
+                verbose_name="main tags",
+            ),
+        ),
+        migrations.AlterField(
+            model_name="metric",
+            name="extra_tags",
+            field=models.TextField(
+                blank=True,
+                default=dict,
+                verbose_name="extra tags",
+            ),
+        ),
+        # Then convert to native PostgreSQL jsonb-backed JSONField.
         migrations.AlterField(
             model_name="metric",
             name="main_tags",
