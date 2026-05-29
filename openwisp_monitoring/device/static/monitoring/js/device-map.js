@@ -56,68 +56,71 @@
     });
   };
 
-  let currentPopup = null;
-  let currentPopupLocationId = null;
-
-  const loadPopUpContent = function (nodeData, netjsongraphInstance, url) {
+  async function loadPopUpContent(nodeData) {
+    const netjsongraphInstance = this;
     loadingOverlay.show();
-    const map = netjsongraphInstance.leaflet;
+    const map = netjsongraphInstance?.leaflet;
     const locationId = nodeData?.properties?.id || nodeData.id;
-    url = url || getLocationDeviceUrl(locationId);
+    let popupContent = null;
+    const url = getLocationDeviceUrl(locationId);
 
-    if (currentPopup) {
-      currentPopup.remove();
-    }
+    try {
+      const data = await $.ajax({
+        dataType: "json",
+        url: url,
+        xhrFields: { withCredentials: true },
+      });
+      let devices = data.results;
 
-    $.ajax({
-      dataType: "json",
-      url: url,
-      xhrFields: { withCredentials: true },
-      success: function (data) {
-        let devices = data.results;
-        let nextUrl = data.next;
-        let statusFilterButtons = "";
-        Object.entries(STATUS_LABELS).forEach(([status_key, status_label]) => {
-          statusFilterButtons += `<span
+      let nextUrl = data.next;
+      let statusFilterButtons = "";
+      map._popupState = {
+        devices,
+        nextUrl,
+        url,
+        locationId,
+      };
+      Object.entries(STATUS_LABELS).forEach(([status_key, status_label]) => {
+        statusFilterButtons += `<span
               class="health-status health-${status_key} status-filter"
               data-status="${status_key}"
             >
               ${gettext(status_label)}
               <span class="remove-icon">&times;</span>
             </span>`;
-        });
-        const has_floorplan = data.has_floorplan;
-        const buttonText = gettext("Switch to Indoor View");
-        const floorplan_btn = has_floorplan
-          ? `<button class="default-btn floorplan-btn">
+      });
+      const has_floorplan = data.has_floorplan;
+      const buttonText = gettext("Switch to Indoor View");
+      const floorplan_btn = has_floorplan
+        ? `<button class="default-btn floorplan-btn">
           <span class="ow-floor floor-icon"></span> ${buttonText}
         </button>`
-          : "";
+        : "";
 
-        const popupTitle = nodeData.label;
+      const popupTitle = nodeData.label;
 
-        // Determine coordinates for the popup. We support:
-        // 1. NetJSONGraph objects (nodeData.location)
-        // 2. GeoJSON Point array (nodeData.coordinates)
-        // 3. GeoJSON Feature geometry (nodeData.geometry.coordinates)
-        // This fallback chain ensures the popup always plots at the correct
-        // position regardless of datasource format.
-        let latLng;
-        if (nodeData.location && typeof nodeData.location.lat === "number") {
-          latLng = [nodeData.location.lat, nodeData.location.lng];
-        } else if (Array.isArray(nodeData.coordinates)) {
-          latLng = [nodeData.coordinates[1], nodeData.coordinates[0]];
-        } else if (nodeData.geometry?.coordinates?.length >= 2) {
-          latLng = [nodeData.geometry.coordinates[1], nodeData.geometry.coordinates[0]];
-        }
+      // Determine coordinates for the popup. We support:
+      // 1. NetJSONGraph objects (nodeData.location)
+      // 2. GeoJSON Point array (nodeData.coordinates)
+      // 3. GeoJSON Feature geometry (nodeData.geometry.coordinates)
+      // This fallback chain ensures the popup always plots at the correct
+      // position regardless of datasource format.
+      let latLng;
+      if (nodeData.location && typeof nodeData.location.lat === "number") {
+        latLng = [nodeData.location.lat, nodeData.location.lng];
+      } else if (Array.isArray(nodeData.coordinates)) {
+        latLng = [nodeData.coordinates[1], nodeData.coordinates[0]];
+      } else if (nodeData.geometry?.coordinates?.length >= 2) {
+        latLng = [nodeData.geometry.coordinates[1], nodeData.geometry.coordinates[0]];
+      }
 
-        if (!latLng || isNaN(latLng[0]) || isNaN(latLng[1])) {
-          console.warn(gettext("Could not determine coordinates for popup"), nodeData);
-          loadingOverlay.hide();
-          return;
-        }
+      if (!latLng || isNaN(latLng[0]) || isNaN(latLng[1])) {
+        console.warn(gettext("Could not determine coordinates for popup"), nodeData);
+        loadingOverlay.hide();
+        return;
+      }
 
-        const popupContent = `
+      popupContent = `
           <div class="map-detail">
             <h2>${escapeHtml(popupTitle)} (${data.count})</h2>
             <div class="input-container">
@@ -135,151 +138,153 @@
                     <th class="th-status"><span class ="health-status-heading">${gettext("status")}</span></th>
                   </tr>
                 </thead>
-                <tbody>${renderRows()}</tbody>
+                <tbody>${renderRows(netjsongraphInstance)}</tbody>
               </table>
               <div class="ow-loading-spinner table-spinner"></div>
             </div>
             ${floorplan_btn}
           </div>
         `;
+      loadingOverlay.hide();
+      return popupContent;
+    } catch (error) {
+      loadingOverlay.hide();
+      map._popupState = null;
+      alert(gettext("Error while retrieving data"));
+      throw error;
+    }
+  }
 
-        currentPopupLocationId = locationId;
-        currentPopup = L.popup({
-          autoPan: true,
-          autoPanPadding: [25, 25],
-        })
-          .setLatLng(latLng)
-          .setContent(popupContent)
-          .openOn(map);
-        const el = $(currentPopup.getElement());
-        function renderRows(deviceList) {
-          deviceList = deviceList || devices;
-          const popup = $(".map-detail");
-          if (deviceList.length === 0) {
-            popup.find("tbody").html(`
-              <tr>
-                <td class="no-devices" colspan="2">
-                  ${gettext("No devices found")}
-                </td>
-              </tr>
-            `);
-            return "";
-          }
-          const rows = deviceList
-            .map(
-              (device) => `
-            <tr>
-              <td class="col-name"><a href="${device.admin_edit_url}">${escapeHtml(device.name)}</a></td>
-              <td class="col-status">
-                <span class="health-status health-${device.monitoring.status}">
-                  ${escapeHtml(gettext(device.monitoring.status_label))}
-                </span>
-              </td>
-            </tr>
-          `,
-            )
-            .join("");
-          popup.find("tbody").html(rows);
-          return rows;
+  function renderRows(netjsongraphInstance, deviceList) {
+    deviceList = deviceList || netjsongraphInstance.leaflet._popupState.devices;
+    const popup = $(".map-detail");
+    if (deviceList.length === 0) {
+      const emptyRow = `
+        <tr>
+          <td class="no-devices" colspan="2">
+            ${gettext("No devices found")}
+          </td>
+        </tr>
+      `;
+      popup.find("tbody").html(emptyRow);
+      return emptyRow;
+    }
+    const rows = deviceList
+      .map(
+        (device) => `
+      <tr>
+        <td class="col-name"><a href="${device.admin_edit_url}">${escapeHtml(device.name)}</a></td>
+        <td class="col-status">
+          <span class="health-status health-${device.monitoring.status}">
+            ${escapeHtml(gettext(device.monitoring.status_label))}
+          </span>
+        </td>
+      </tr>
+    `,
+      )
+      .join("");
+    popup.find("tbody").html(rows);
+    return rows;
+  }
+
+  function bindPopupEventListener() {
+    const netjsongraphInstance = this;
+    const currentPopup = netjsongraphInstance?.leaflet?.currentPopup;
+    if (!currentPopup) {
+      console.error("Popup not found, can't bind event listeners");
+      return;
+    }
+    let { devices, nextUrl, url, locationId } =
+      netjsongraphInstance?.leaflet?._popupState;
+    const el = $(currentPopup.getElement());
+    let fetchDevicesTimeout;
+    let loading = false;
+    function fetchDevices(url, ms = 0, append) {
+      if (!url || loading) return;
+      clearTimeout(fetchDevicesTimeout);
+      loading = true;
+      const spinner = el.find(".table-spinner");
+      const table = el.find(".table-container table");
+      spinner.show();
+      table.hide();
+      fetchDevicesTimeout = setTimeout(() => {
+        let params = new URLSearchParams();
+        const searchParam = el.find("#device-search").val().toLowerCase().trim();
+        const statusParam = el.find("#status-filter").val();
+        if (searchParam) {
+          params.append("search", searchParam);
         }
-        let fetchDevicesTimeout;
-        let loading = false;
-        function fetchDevices(url, ms = 0, append) {
-          if (!url || loading) return;
-          clearTimeout(fetchDevicesTimeout);
-          loading = true;
-          const spinner = el.find(".table-spinner");
-          const table = el.find(".table-container table");
-          spinner.show();
-          table.hide();
-          fetchDevicesTimeout = setTimeout(() => {
-            let params = new URLSearchParams();
-            const searchParam = el.find("#device-search").val().toLowerCase().trim();
-            const statusParam = el.find("#status-filter").val();
-            if (searchParam) {
-              params.append("search", searchParam);
-            }
 
-            if (statusParam) {
-              statusParam.split(",").forEach((status) => {
-                params.append("status", status);
-              });
-            }
-            const queryString = params.toString();
-            let fetchUrl;
-            // if append is true, that means we are fetching for infinite scroll
+        if (statusParam) {
+          statusParam.split(",").forEach((status) => {
+            params.append("status", status);
+          });
+        }
+        const queryString = params.toString();
+        let fetchUrl;
+        // if append is true, that means we are fetching for infinite scroll
+        if (append) {
+          fetchUrl = url; // url is nextUrl, already contains params
+        } else {
+          fetchUrl = queryString ? `${url}?${queryString}` : url;
+        }
+        $.ajax({
+          dataType: "json",
+          url: fetchUrl,
+          xhrFields: { withCredentials: true },
+          success(data) {
             if (append) {
-              fetchUrl = url; // url is nextUrl, already contains params
+              devices = devices.concat(data.results);
             } else {
-              fetchUrl = queryString ? `${url}?${queryString}` : url;
+              devices = data.results;
             }
-            $.ajax({
-              dataType: "json",
-              url: fetchUrl,
-              xhrFields: { withCredentials: true },
-              success(data) {
-                if (append) {
-                  devices = devices.concat(data.results);
-                } else {
-                  devices = data.results;
-                }
-                nextUrl = data.next;
-                renderRows(devices);
-              },
-              error() {
-                console.error(gettext("Could not load more devices from"), url);
-                alert(gettext("Could not load more devices."));
-              },
-              complete() {
-                loading = false;
-                spinner.hide();
-                table.show();
-              },
-            });
-          }, ms);
-        }
-        el.find("#device-search").on("input", function () {
-          fetchDevices(url, 300);
+            nextUrl = data.next;
+            renderRows(netjsongraphInstance, devices);
+          },
+          error() {
+            console.error(gettext("Could not load more devices from"), url);
+            alert(gettext("Could not load more devices."));
+          },
+          complete() {
+            loading = false;
+            spinner.hide();
+            table.show();
+          },
         });
-        let activeStatuses = [];
-        el.find(".status-filter").on("click", function (e) {
-          e.stopPropagation();
-          const btn = $(this);
-          const status = btn.data("status");
-
-          if (btn.hasClass("active")) {
-            btn.removeClass("active");
-            activeStatuses = activeStatuses.filter((s) => s !== status);
-          } else {
-            btn.addClass("active");
-            activeStatuses.push(status);
-          }
-          $(`#status-filter`).val(activeStatuses.join(","));
-          fetchDevices(url);
-        });
-        el.find(".table-container").on("scroll", function () {
-          if (this.scrollTop + this.clientHeight >= this.scrollHeight - 10) {
-            fetchDevices(nextUrl, 100, true);
-          }
-        });
-        el.find(".floorplan-btn").on("click", function () {
-          const floorplanUrl = getIndoorCoordinatesUrl(locationId);
-          window.openFloorPlan(floorplanUrl, locationId);
-        });
-        el.find(".leaflet-popup-close-button").on("click", function () {
-          const id = netjsongraphInstance.config.bookmarkableActions.id;
-          netjsongraphInstance.utils.removeUrlFragment(id);
-          currentPopup = null;
-          currentPopupLocationId = null;
-        });
-        loadingOverlay.hide();
-      },
-      error: function () {
-        loadingOverlay.hide();
-        alert(gettext("Error while retrieving data"));
-      },
+      }, ms);
+    }
+    el.find("#device-search").on("input", function () {
+      fetchDevices(url, 300);
     });
-  };
+    let activeStatuses = [];
+    el.find(".status-filter").on("click", function (e) {
+      e.stopPropagation();
+      const btn = $(this);
+      const status = btn.data("status");
+
+      if (btn.hasClass("active")) {
+        btn.removeClass("active");
+        activeStatuses = activeStatuses.filter((s) => s !== status);
+      } else {
+        btn.addClass("active");
+        activeStatuses.push(status);
+      }
+      $(`#status-filter`).val(activeStatuses.join(","));
+      fetchDevices(url);
+    });
+    el.find(".table-container").on("scroll", function () {
+      if (this.scrollTop + this.clientHeight >= this.scrollHeight - 10) {
+        fetchDevices(nextUrl, 100, true);
+      }
+    });
+    el.find(".floorplan-btn").on("click", function () {
+      const floorplanUrl = getIndoorCoordinatesUrl(locationId);
+      window.openFloorPlan(floorplanUrl, locationId);
+    });
+    currentPopup.on("remove", () => {
+      netjsongraphInstance.leaflet._popupState = null;
+    });
+  }
 
   const leafletConfig = JSON.parse($("#leaflet-config").text());
   const tiles = leafletConfig.TILES.map((tile) => {
@@ -341,6 +346,17 @@
             },
           ],
         },
+        nodePopup: {
+          show: true,
+          content: loadPopUpContent,
+          onOpen: bindPopupEventListener,
+          config: {
+            closeOnClick: false,
+            autoPan: true,
+            autoPanPadding: [25, 25],
+            offset: [0, 8],
+          },
+        },
       },
       bookmarkableActions: {
         enabled: true,
@@ -352,8 +368,8 @@
         name: status,
         nodeStyle: { color: STATUS_COLORS[status] },
       })),
-      // Hide ECharts node labels completely at any zoom level
-      showLabelsAtZoomLevel: 0,
+      // Only shows fixed node lable on zoom >= 10
+      showMapLabelsAtZoom: 10,
       echartsOption: {
         tooltip: {
           show: false, // Completely disable tooltips
@@ -391,42 +407,10 @@
             fillOpacity: 0.7,
           };
         },
-        onEachFeature: function (feature, layer) {
-          const color = getColor(feature.properties);
-          feature.properties.status = Object.keys(STATUS_COLORS).find(
-            (key) => STATUS_COLORS[key] === color,
-          );
-
-          layer.on("mouseover", function () {
-            if (layer._tooltipDisabled) return;
-            layer.unbindTooltip();
-            if (!layer.isPopupOpen()) {
-              layer.bindTooltip(feature.properties.name).openTooltip();
-            }
-          });
-
-          layer.on("click", function () {
-            const clickedLayer = this;
-            // Close any open Leaflet tooltip before showing the popup
-            clickedLayer.closeTooltip();
-            clickedLayer.unbindTooltip();
-            clickedLayer.unbindPopup();
-            clickedLayer._tooltipDisabled = true; // block future hovers for this marker
-
-            loadPopUpContent(feature, map);
-
-            // Re-enable tooltip when the popup is closed
-            map.leaflet.once("popupclose", function () {
-              clickedLayer._tooltipDisabled = false;
-            });
-          });
-        },
       },
-      onClickElement: function (type, data) {
-        if (type === "node") {
-          loadPopUpContent(data, this);
-        }
-      },
+      // Popup handling is delegated to nodePopup.content,
+      // so disable the default onClickElement popup behavior.
+      onClickElement: function () {},
       onReady: function () {
         const map = this;
         let scale = { imperial: false, metric: false };
@@ -440,21 +424,6 @@
         }
         if (leafletConfig.SCALE) {
           map.leaflet.addControl(new L.control.scale(scale));
-        }
-
-        try {
-          const initialZoom = map.leaflet.getZoom();
-          const showLabel = initialZoom >= map.config.showLabelsAtZoomLevel;
-          map.echarts.setOption({
-            series: [
-              {
-                label: { show: false },
-                emphasis: { label: { show: showLabel } },
-              },
-            ],
-          });
-        } catch (e) {
-          console.warn(gettext("Unable to set initial label visibility"), e);
         }
 
         try {
@@ -512,7 +481,7 @@
         const nodeData = map?.data?.nodes?.[index];
         if (index == null || index === -1 || !nodeData) {
           const id = map.config.bookmarkableActions.id;
-          map.utils.removeUrlFragment(id);
+          map.utils.removeUrlFragment(id, "nodeId");
           console.error(`Node with ID "${locationId}" not found.`);
           return;
         }
@@ -563,6 +532,8 @@
     ws.onmessage = function (e) {
       const data = JSON.parse(e.data);
       const [lng, lat] = data.geometry.coordinates;
+      const currentPopup = window._owGeoMap?.leaflet?.currentPopup;
+      const currentPopupLocationId = window._owGeoMap?.leaflet?._popupState?.locationId;
       if (currentPopup && data.id === currentPopupLocationId) {
         $(currentPopup.getElement()).hide();
       }
