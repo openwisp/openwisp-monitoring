@@ -153,11 +153,12 @@ class QueryResultSet:
 
 
 class DatabaseClient(object):
-    """InfluxDB 2.x client for timeseries database operations."""
+    """InfluxDB 2.0 client for timeseries database operations."""
 
     _AGGREGATE = ["mean", "sum", "count", "max", "min", "stddev"]
     backend_name = "influxdb2"
     _FORBIDDEN = ["drop", "delete", "alter", "create", "into"]
+    _OPERATORS = ["=", "!=", "<", ">", "<=", ">="]
 
     def __init__(self, db_name=None):
         """Initialize InfluxDB 2 client.
@@ -219,7 +220,9 @@ class DatabaseClient(object):
     @cached_property
     def _write_api(self):
         """Returns write API instance."""
-        from influxdb_client.client.write_api import (  # docs https://influxdb-client.readthedocs.io/en/stable/api.html#influxdb_client.WriteApi
+        # docs:
+        # https://influxdb-client.readthedocs.io/en/stable/api.html#influxdb_client.WriteApi
+        from influxdb_client.client.write_api import (
             SYNCHRONOUS,
         )
 
@@ -246,7 +249,7 @@ class DatabaseClient(object):
 
         if name != "autogen":
             logger.warning(
-                f'InfluxDB 2.x manages retention at bucket level; ignoring "{name}"'
+                f'InfluxDB 2.0 manages retention at bucket level; ignoring "{name}"'
             )
             return
         api = self.db.buckets_api()
@@ -284,6 +287,23 @@ class DatabaseClient(object):
             return timestamp.isoformat()
         return timestamp
 
+    def _clean_operator(self, op):
+        if op not in self._OPERATORS:
+            raise self.client_error(
+                f'Invalid operator "{op}" passed.\n'
+                f"Valid operators are: {', '.join(self._OPERATORS)}"
+            )
+        return op
+
+    def _format_flux_value(self, value):
+        if isinstance(value, datetime):
+            return f'"{self._get_timestamp(value)}"'
+        if isinstance(value, str):
+            return f'"{value}"'
+        if isinstance(value, bool):
+            return str(value).lower()
+        return value
+
     def validate_query(self, query):
         for word in self._FORBIDDEN:
             if word in query.lower():
@@ -300,12 +320,12 @@ class DatabaseClient(object):
         # Log ignored v1 options because v2 manages these at bucket level.
         if kwargs.get("database") and kwargs.get("database") != self.db_name:
             logger.warning(
-                f'Parameter "database" is ignored in InfluxDB 2.x. '
+                f'Parameter "database" is ignored in InfluxDB 2.0. '
                 f'Using bucket "{self.db_name}"'
             )
         if kwargs.get("retention_policy"):
             logger.warning(
-                'Parameter "retention_policy" is managed at bucket level in InfluxDB 2.x'
+                'Parameter "retention_policy" is managed at bucket level in InfluxDB 2.0'
             )
         point = {
             "measurement": name,
@@ -328,12 +348,12 @@ class DatabaseClient(object):
         for data in metric_data:
             if data.get("database") and data.get("database") != self.db_name:
                 logger.warning(
-                    f'Parameter "database" is ignored in InfluxDB 2.7'
+                    f'Parameter "database" is ignored in InfluxDB 2.0. '
                     f'Writing to bucket "{self.db_name}"'
                 )
             if data.get("retention_policy"):
                 logger.warning(
-                    'Parameter "retention_policy" is managed at bucket level in InfluxDB 2.x. '
+                    'Parameter "retention_policy" is managed at bucket level in InfluxDB 2.0. '
                     "All data uses bucket retention policy."
                 )
         points = []
@@ -381,13 +401,12 @@ class DatabaseClient(object):
         Note: InfluxDB 2.x with Flux does not support some v1 features.
         Raises NotImplementedError if unsupported parameters are used.
         """
+        distinct_fields = kwargs.get("distinct_fields", [])
+        count_fields = kwargs.get("count_fields", [])
+        where = kwargs.get("where", [])
         # Check for unsupported parameters and raise explicit errors
         unsupported_params = {
             "extra_fields": "Flux requires explicit field selection instead of wildcard expansion",
-            "distinct_fields": "Use COUNT(DISTINCT) in Flux or custom queries",
-            "count_fields": "Use COUNT aggregation in Flux or custom queries",
-            "retention_policy": "InfluxDB 2.x uses buckets instead of retention policies",
-            "where": "Use custom Flux query instead of WHERE clause shortcuts",
             "precision": "InfluxDB 2.x uses ISO8601 timestamps; precision parameter not supported",
         }
         for param, reason in unsupported_params.items():
@@ -397,6 +416,20 @@ class DatabaseClient(object):
                     f"Reason: {reason}. "
                     f"For complex queries, use timeseries_db.query() with custom Flux instead."
                 )
+        if kwargs.get("retention_policy"):
+            logger.warning(
+                'Parameter "retention_policy" is managed at bucket level in InfluxDB 2.0'
+            )
+        supports_count_distinct = (
+            len(distinct_fields) == 1
+            and len(count_fields) == 1
+            and distinct_fields[0] == count_fields[0]
+        )
+        if (distinct_fields or count_fields) and not supports_count_distinct:
+            raise NotImplementedError(
+                "InfluxDB 2.0 read() currently supports only single-field "
+                "COUNT(DISTINCT(field)) queries."
+            )
         # Build Flux query
         flux_query = f'from(bucket: "{self.db_name}")'
         # Add time range
@@ -406,8 +439,19 @@ class DatabaseClient(object):
             flux_query += f" |> range(start: {timestamp})"
         else:
             flux_query += " |> range(start: -24h)"
-        # Filter by measurement
-        flux_query += f' |> filter(fn: (r) => r._measurement == "{key}")'
+        # Filter by measurement. InfluxDB 1.x allows comma-separated measurements.
+        measurements = [
+            measurement.strip() for measurement in key.split(",") if measurement.strip()
+        ]
+        if len(measurements) == 1:
+            flux_query += (
+                f' |> filter(fn: (r) => r._measurement == "{measurements[0]}")'
+            )
+        elif measurements:
+            measurement_filter = " or ".join(
+                [f'r._measurement == "{measurement}"' for measurement in measurements]
+            )
+            flux_query += f" |> filter(fn: (r) => {measurement_filter})"
         # Filter by tags
         if tags:
             for tag_key, tag_value in tags.items():
@@ -415,10 +459,19 @@ class DatabaseClient(object):
         # Filter by fields
         if isinstance(fields, str):
             fields = [fields]
-        field_filter = " or ".join([f'r._field == "{field}"' for field in fields])
-        flux_query += f" |> filter(fn: (r) => {field_filter})"
+        if fields != ["*"]:
+            field_filter = " or ".join([f'r._field == "{field}"' for field in fields])
+            flux_query += f" |> filter(fn: (r) => {field_filter})"
+        for field, op, value in where:
+            op = self._clean_operator(op)
+            flux_query += (
+                f' |> filter(fn: (r) => r._field == "{field}" '
+                f"and r._value {op} {self._format_flux_value(value)})"
+            )
+        if supports_count_distinct:
+            flux_query += ' |> distinct(column: "_value") |> count()'
         # Apply ordering
-        order = kwargs.get("order")
+        order = kwargs.get("order") or kwargs.get("order_by")
         if order:
             if order == "time":
                 flux_query += ' |> sort(columns: ["_time"])'
@@ -428,7 +481,22 @@ class DatabaseClient(object):
         limit = kwargs.get("limit")
         if limit:
             flux_query += f" |> limit(n: {limit})"
-        return self._normalize_read_points(list(self.query(flux_query).get_points()))
+        result = list(self.query(flux_query).get_points())
+        if supports_count_distinct:
+            return [
+                {
+                    "count": point.get("_value"),
+                    **{
+                        key: value
+                        for key, value in point.items()
+                        if key not in {"_measurement", "_field", "_value", "time"}
+                        and key not in FLUX_METADATA_FIELDS
+                    },
+                    "time": point.get("time"),
+                }
+                for point in result
+            ]
+        return self._normalize_read_points(result)
 
     def _normalize_read_points(self, points):
         normalized = {}
@@ -447,27 +515,45 @@ class DatabaseClient(object):
             normalized[key][field] = point.get("_value")
         return list(normalized.values())
 
+    def _build_delete_predicate(self, key: str = None, tags: dict = None):
+        predicates = []
+        if key:
+            predicates.append(f'_measurement="{key}"')
+        if tags:
+            for tag_key, tag_value in tags.items():
+                predicates.append(f'{tag_key}="{tag_value}"')
+        return " AND ".join(predicates)
+
+    @retry
+    def _delete_range(self, predicate=""):
+        start = datetime(1970, 1, 1, tzinfo=timezone.utc)
+        stop = datetime.now(timezone.utc)
+        self._delete_api.delete(
+            start,
+            stop,
+            predicate,
+            bucket=self.db_name,
+            org=self.org,
+        )
+
+    @retry
+    def delete_series(self, key=None, tags=None):
+        """
+        Backward-compatible InfluxDB 1.8 style series deletion.
+
+        In InfluxDB 2.0 this is implemented as a predicate-based delete over
+        the full time range of the bucket.
+        """
+        predicate = self._build_delete_predicate(key=key, tags=tags)
+        if not predicate:
+            raise ValueError("delete_series requires at least one of key or tags")
+        self._delete_range(predicate)
+
     def delete_metric_data(self, key=None, tags=None):
         """Deletes metric data based on measurement and tags."""
         try:
-            # Delete from epoch to now
-            start = datetime(1970, 1, 1, tzinfo=timezone.utc)
-            stop = datetime.now(timezone.utc)
-            # Build predicates for deletion
-            predicates = []
-            if key:
-                predicates.append(f'_measurement="{key}"')
-            if tags:
-                for tag_key, tag_value in tags.items():
-                    predicates.append(f'{tag_key}="{tag_value}"')
-            predicate = " AND ".join(predicates) if predicates else ""
-            self._delete_api.delete(
-                start,
-                stop,
-                predicate,
-                bucket=self.db_name,
-                org=self.org,
-            )
+            predicate = self._build_delete_predicate(key=key, tags=tags)
+            self._delete_range(predicate)
             logger.debug(f"Deleted metric data: key={key}, tags={tags}")
         except Exception as exception:
             logger.warning(f"Error deleting metric data: {exception}")
@@ -536,6 +622,73 @@ class DatabaseClient(object):
         except self.client_error:
             return []
 
+    def _build_chart_base_query(self, params: dict, time, group_map: dict):
+        flux_query = f'from(bucket: "{self.db_name}")'
+        time_val = group_map.get(time, "1h") if group_map else "1h"
+        start_range = f"-{time_val}"
+        if params.get("end_date"):
+            end_range = params["end_date"]
+            flux_query += f" |> range(start: {start_range}, stop: {end_range})"
+        else:
+            flux_query += f" |> range(start: {start_range})"
+
+        measurement = params.get("key")
+        if measurement:
+            flux_query += f' |> filter(fn: (r) => r._measurement == "{measurement}")'
+
+        if params.get("content_type") and params.get("object_id"):
+            content_type = params["content_type"]
+            object_id = params["object_id"]
+            flux_query += (
+                f' |> filter(fn: (r) => r.content_type == "{content_type}" '
+                f'and r.object_id == "{object_id}")'
+            )
+
+        if params.get("ifname"):
+            ifname = params["ifname"]
+            flux_query += f' |> filter(fn: (r) => r.ifname == "{ifname}")'
+
+        if params.get("organization_id"):
+            org_id = params["organization_id"]
+            if isinstance(org_id, list):
+                org_id = org_id[0]
+            if org_id != "__all__":
+                flux_query += f' |> filter(fn: (r) => r.organization_id == "{org_id}")'
+
+        if params.get("location_id"):
+            location_id = params["location_id"]
+            flux_query += f' |> filter(fn: (r) => r.location_id == "{location_id}")'
+
+        if params.get("floorplan_id"):
+            floorplan_id = params["floorplan_id"]
+            flux_query += f' |> filter(fn: (r) => r.floorplan_id == "{floorplan_id}")'
+
+        return flux_query
+
+    def _get_top_fields(
+        self,
+        query,
+        params,
+        chart_type,
+        group_map,
+        number,
+        time,
+        timezone=settings.TIME_ZONE,
+    ):
+        del query, chart_type, timezone
+        if number <= 0:
+            return []
+
+        flux_query = self._build_chart_base_query(params, time, group_map)
+        flux_query += (
+            ' |> group(columns: ["_field"])'
+            " |> sum()"
+            ' |> sort(columns: ["_value"], desc: true)'
+            f" |> limit(n: {number})"
+        )
+        result = list(self.query(flux_query).get_points())
+        return [point["_field"] for point in result if point.get("_field")]
+
     def get_query(
         self,
         chart_type,
@@ -557,48 +710,7 @@ class DatabaseClient(object):
         Supports chart_type: uptime, packet_loss, rtt, wifi_clients,
                              general_wifi_clients, traffic, general_traffic
         """
-        flux_query = f'from(bucket: "{self.db_name}")'
-        # 1. TIME RANGE: Use params for start and end dates
-        time_val = group_map.get(time, "1h") if group_map else "1h"
-        start_range = f"-{time_val}"
-        # Check for custom end_date from params
-        if params.get("end_date"):
-            end_range = params["end_date"]
-            flux_query += f" |> range(start: {start_range}, stop: {end_range})"
-        else:
-            flux_query += f" |> range(start: {start_range})"
-        # 2. MEASUREMENT FILTER: Use params["key"]
-        measurement = params.get("key")
-        if measurement:
-            flux_query += f' |> filter(fn: (r) => r._measurement == "{measurement}")'
-        # 3. DEVICE-SPECIFIC FILTERS: Use content_type + object_id
-        if params.get("content_type") and params.get("object_id"):
-            content_type = params["content_type"]
-            object_id = params["object_id"]
-            flux_query += (
-                f' |> filter(fn: (r) => r.content_type == "{content_type}" '
-                f'and r.object_id == "{object_id}")'
-            )
-        # 4. INTERFACE FILTER: Use ifname from params
-        if params.get("ifname"):
-            ifname = params["ifname"]
-            flux_query += f' |> filter(fn: (r) => r.ifname == "{ifname}")'
-        # 5. ORGANIZATION FILTER: Use organization_id from params
-        if params.get("organization_id"):
-            org_id = params["organization_id"]
-            # Handle list format (e.g., ["org1"] or "__all__")
-            if isinstance(org_id, list):
-                org_id = org_id[0]
-            if org_id != "__all__":
-                flux_query += f' |> filter(fn: (r) => r.organization_id == "{org_id}")'
-        # 6. LOCATION FILTER - Use location_id from params
-        if params.get("location_id"):
-            location_id = params["location_id"]
-            flux_query += f' |> filter(fn: (r) => r.location_id == "{location_id}")'
-        # 7. FLOORPLAN FILTER - Use floorplan_id from params
-        if params.get("floorplan_id"):
-            floorplan_id = params["floorplan_id"]
-            flux_query += f' |> filter(fn: (r) => r.floorplan_id == "{floorplan_id}")'
+        flux_query = self._build_chart_base_query(params, time, group_map)
         # 8. FIELD NAME FILTER: Use field_name from params if not overridden by fields
         if not fields and params.get("field_name"):
             field_name = params["field_name"]
