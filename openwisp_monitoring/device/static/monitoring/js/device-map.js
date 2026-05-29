@@ -214,6 +214,8 @@
         container.addClass("is-loading");
       } else {
         // Infinite scroll append: dim the table but keep it scrollable.
+        const spinnerTop = container.scrollTop() + container.innerHeight() * 0.35;
+        container.css("--table-spinner-top", `${spinnerTop}px`);
         container.addClass("is-loading-append");
       }
       fetchDevicesTimeout = setTimeout(() => {
@@ -261,6 +263,7 @@
             container.removeClass("is-loading");
             container.removeClass("is-loading-append");
             container.css("min-height", "");
+            container.css("--table-spinner-top", "");
           },
         });
       }, ms);
