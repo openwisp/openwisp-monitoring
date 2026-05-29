@@ -13,7 +13,7 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
 from pytz import UTC
-from rest_framework import pagination, serializers, status
+from rest_framework import serializers, status
 from rest_framework.generics import (
     GenericAPIView,
     ListAPIView,
@@ -33,6 +33,7 @@ from openwisp_controller.geo.api.views import (
     ProtectedAPIMixin,
 )
 from openwisp_users.api.mixins import FilterByOrganizationManaged
+from openwisp_utils.api.pagination import OpenWispPagination
 
 from ...settings import CACHE_TIMEOUT
 from ...views import MonitoringApiViewMixin
@@ -65,12 +66,6 @@ DeviceData = load_model("device_monitoring", "DeviceData")
 DeviceLocation = load_model("geo", "DeviceLocation")
 Location = load_model("geo", "Location")
 WifiSession = load_model("device_monitoring", "WifiSession")
-
-
-class ListViewPagination(pagination.PageNumberPagination):
-    page_size = 10
-    page_size_query_param = "page_size"
-    max_page_size = 100
 
 
 def get_device_args_rewrite(view, pk):
@@ -285,7 +280,7 @@ class MonitoringNearbyDeviceList(
     DeviceKeyAuthenticationMixin, FilterByOrganizationManaged, ListAPIView
 ):
     serializer_class = MonitoringNearbyDeviceSerializer
-    pagination_class = ListViewPagination
+    pagination_class = OpenWispPagination
     filter_backends = [DjangoFilterBackend]
     filterset_class = MonitoringNearbyDeviceFilter
     permission_classes = []
@@ -344,7 +339,7 @@ class WifiSessionListView(ProtectedAPIMixin, FilterByOrganizationManaged, ListAP
     )
     organization_field = "device__organization"
     filter_backends = [DjangoFilterBackend]
-    pagination_class = ListViewPagination
+    pagination_class = OpenWispPagination
     filterset_class = WifiSessionFilter
     serializer_class = WifiSessionSerializer
 
