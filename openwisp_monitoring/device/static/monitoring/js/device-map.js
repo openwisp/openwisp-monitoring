@@ -368,8 +368,8 @@
         name: status,
         nodeStyle: { color: STATUS_COLORS[status] },
       })),
-      // Hide ECharts node labels completely at any zoom level
-      showMapLabelsAtZoom: 8,
+      // Only shows fixed node lable on zoom >= 10
+      showMapLabelsAtZoom: 10,
       echartsOption: {
         tooltip: {
           show: false, // Completely disable tooltips
@@ -424,21 +424,6 @@
         }
         if (leafletConfig.SCALE) {
           map.leaflet.addControl(new L.control.scale(scale));
-        }
-
-        try {
-          const initialZoom = map.leaflet.getZoom();
-          const showLabel = initialZoom >= map.config.showMapLabelsAtZoom;
-          map.echarts.setOption({
-            series: [
-              {
-                label: { show: false },
-                emphasis: { label: { show: showLabel } },
-              },
-            ],
-          });
-        } catch (e) {
-          console.warn(gettext("Unable to set initial label visibility"), e);
         }
 
         try {
