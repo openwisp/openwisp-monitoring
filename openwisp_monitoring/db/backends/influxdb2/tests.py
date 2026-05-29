@@ -237,6 +237,116 @@ class TestInfluxDB2Client(TestCase):
         generated_points = list(points_gen)
         self.assertEqual(len(generated_points), 1)
 
+    def test_read_count_distinct_single_field(self):
+        """Test read() supports COUNT(DISTINCT(field)) for wifi clients."""
+        result = QueryResultSet(
+            [
+                {
+                    "_measurement": "wifi_clients",
+                    "_field": "clients",
+                    "_value": 3,
+                    "time": "2024-03-25T12:00:00Z",
+                    "content_type": "test.device",
+                    "object_id": "1",
+                },
+            ]
+        )
+        with patch.object(
+            self.timeseries_db, "query", return_value=result
+        ) as mock_query:
+            values = self.timeseries_db.read(
+                key="wifi_clients",
+                fields=["clients"],
+                distinct_fields=["clients"],
+                count_fields=["clients"],
+                tags={"content_type": "test.device", "object_id": "1"},
+            )
+            self.assertEqual(values[0]["count"], 3)
+            flux_query = mock_query.call_args[0][0]
+            self.assertIn('distinct(column: "_value")', flux_query)
+            self.assertIn("|> count()", flux_query)
+
+    def test_read_count_distinct_unsupported_shape(self):
+        """Test read() still rejects unsupported distinct/count combinations."""
+        with self.assertRaises(NotImplementedError):
+            self.timeseries_db.read(
+                key="wifi_clients",
+                fields=["clients"],
+                distinct_fields=["clients"],
+                count_fields=[],
+                tags={},
+            )
+
+    def test_read_supports_order_by_alias(self):
+        """Test read() accepts order_by as an alias for order."""
+        with patch.object(
+            self.timeseries_db, "query", return_value=QueryResultSet([])
+        ) as mock_query:
+            self.timeseries_db.read(
+                key="cpu",
+                fields=["usage"],
+                tags={},
+                order_by="-time",
+            )
+            flux_query = mock_query.call_args[0][0]
+            self.assertIn('|> sort(columns: ["_time"], desc: true)', flux_query)
+
+    def test_read_supports_where_filters(self):
+        """Test read() translates simple WHERE conditions into Flux filters."""
+        with patch.object(
+            self.timeseries_db, "query", return_value=QueryResultSet([])
+        ) as mock_query:
+            self.timeseries_db.read(
+                key="cpu",
+                fields=["usage"],
+                tags={},
+                where=[("usage", ">=", 80)],
+            )
+            flux_query = mock_query.call_args[0][0]
+            self.assertIn('r._field == "usage" and r._value >= 80', flux_query)
+
+    def test_read_supports_wildcard_fields(self):
+        """Test read() treats '*' as all fields and skips field filtering."""
+        with patch.object(
+            self.timeseries_db, "query", return_value=QueryResultSet([])
+        ) as mock_query:
+            self.timeseries_db.read(
+                key="cpu",
+                fields="*",
+                tags={},
+            )
+            flux_query = mock_query.call_args[0][0]
+            self.assertNotIn('r._field == "*"', flux_query)
+
+    def test_read_supports_multiple_measurements(self):
+        """Test read() translates comma-separated measurements to Flux OR filter."""
+        with patch.object(
+            self.timeseries_db, "query", return_value=QueryResultSet([])
+        ) as mock_query:
+            self.timeseries_db.read(
+                key="cpu,memory,disk",
+                fields="*",
+                tags={},
+            )
+            flux_query = mock_query.call_args[0][0]
+            self.assertIn('r._measurement == "cpu" or', flux_query)
+            self.assertIn('r._measurement == "memory" or', flux_query)
+            self.assertIn('r._measurement == "disk"', flux_query)
+
+    def test_read_accepts_retention_policy_with_warning(self):
+        """Test read() accepts retention_policy and logs compatibility warning."""
+        with patch.object(self.timeseries_db, "query", return_value=QueryResultSet([])):
+            with patch(
+                "openwisp_monitoring.db.backends.influxdb2.client.logger"
+            ) as mock_logger:
+                self.timeseries_db.read(
+                    key="cpu",
+                    fields=["usage"],
+                    tags={},
+                    retention_policy="short",
+                )
+                mock_logger.warning.assert_called()
+
     def test_delete_metric_data_all(self):
         """Test deleting all metric data."""
         with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
@@ -264,6 +374,80 @@ class TestInfluxDB2Client(TestCase):
             call_args = mock_delete_api.delete.call_args
             predicate = call_args[0][2]
             self.assertIn('host="server1"', predicate)
+
+    def test_delete_series_by_key(self):
+        """Test InfluxDB 1.x compatible delete_series by measurement."""
+        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
+            self.timeseries_db.delete_series(key="cpu")
+            mock_delete_api.delete.assert_called()
+            call_args = mock_delete_api.delete.call_args
+            predicate = call_args[0][2]
+            self.assertIn('_measurement="cpu"', predicate)
+
+    def test_delete_series_requires_filter(self):
+        """Test delete_series rejects unfiltered deletes."""
+        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
+            with self.assertRaises(ValueError):
+                self.timeseries_db.delete_series()
+            mock_delete_api.delete.assert_not_called()
+
+    def test_get_top_fields(self):
+        """Test top field selection uses summed field values."""
+        result = QueryResultSet(
+            [
+                {
+                    "_measurement": "applications",
+                    "_field": "http2",
+                    "_value": 100,
+                    "time": "2024-03-25T12:00:00Z",
+                },
+                {
+                    "_measurement": "applications",
+                    "_field": "ssh",
+                    "_value": 90,
+                    "time": "2024-03-25T12:00:00Z",
+                },
+                {
+                    "_measurement": "applications",
+                    "_field": "udp",
+                    "_value": 80,
+                    "time": "2024-03-25T12:00:00Z",
+                },
+            ]
+        )
+        with patch.object(
+            self.timeseries_db, "query", return_value=result
+        ) as mock_query:
+            fields = self.timeseries_db._get_top_fields(
+                query="ignored",
+                params={
+                    "key": "applications",
+                    "content_type": "test",
+                    "object_id": "1",
+                },
+                chart_type="histogram",
+                group_map={"30d": "30d"},
+                number=2,
+                time="30d",
+            )
+            self.assertEqual(fields, ["http2", "ssh"])
+            flux_query = mock_query.call_args[0][0]
+            self.assertIn('group(columns: ["_field"])', flux_query)
+            self.assertIn("sum()", flux_query)
+            self.assertIn("limit(n: 2)", flux_query)
+
+    def test_get_top_fields_empty_result(self):
+        """Test top field selection returns empty list when no data is found."""
+        with patch.object(self.timeseries_db, "query", return_value=QueryResultSet([])):
+            fields = self.timeseries_db._get_top_fields(
+                query="ignored",
+                params={"key": "applications"},
+                chart_type="histogram",
+                group_map={"30d": "30d"},
+                number=3,
+                time="30d",
+            )
+            self.assertEqual(fields, [])
 
     def test_get_list_retention_policies(self):
         """Test retrieving list of retention policies."""
