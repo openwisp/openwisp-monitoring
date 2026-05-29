@@ -222,9 +222,7 @@ class DatabaseClient(object):
         """Returns write API instance."""
         # docs:
         # https://influxdb-client.readthedocs.io/en/stable/api.html#influxdb_client.WriteApi
-        from influxdb_client.client.write_api import (
-            SYNCHRONOUS,
-        )
+        from influxdb_client.client.write_api import SYNCHRONOUS
 
         return self.db.write_api(write_options=SYNCHRONOUS)
 
