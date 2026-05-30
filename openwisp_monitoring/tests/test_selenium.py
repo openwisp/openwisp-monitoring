@@ -806,7 +806,8 @@ class TestDashboardMap(
         location.save()
         try:
             series_value = WebDriverWait(self.web_driver, 5).until(
-                lambda d: d.execute_script("""
+                lambda d: d.execute_script(
+                    """
                     const options = window._owGeoMap.echarts.getOption();
                     const series = options.series.find(
                         (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -814,7 +815,8 @@ class TestDashboardMap(
                     const item = series.data.find(d => d.name === "Test-Location");
                     if (!item) return false;
                     return item.value;
-                """)
+                """
+                )
             )
         except TimeoutException:
             self.fail("Failed to retrieve mobile location data")
@@ -828,7 +830,8 @@ class TestDashboardMap(
             location.save()
             try:
                 series_value = WebDriverWait(self.web_driver, 5).until(
-                    lambda d: d.execute_script("""
+                    lambda d: d.execute_script(
+                        """
                         const options = window._owGeoMap.echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -836,7 +839,8 @@ class TestDashboardMap(
                         const item = series.data.find(d => d.name === "Test-Location");
                         if (!item) return false;
                         return item.value;
-                    """)
+                    """
+                    )
                 )
             except TimeoutException:
                 self.fail("Failed to retrieve updated mobile location data")
@@ -889,7 +893,8 @@ class TestDashboardMap(
             sleep(0.3)  # Wait for JS animation
             try:
                 series_locations = WebDriverWait(self.web_driver, 5).until(
-                    lambda d: d.execute_script("""
+                    lambda d: d.execute_script(
+                        """
                         const options = window._owGeoMap.echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -898,7 +903,8 @@ class TestDashboardMap(
                         const org2_location = series.data.find(l => l.name === "Org2-Location")
                         if (!org1_location || !org2_location) return false;
                         return {org1_location, org2_location}
-                    """)
+                    """
+                    )
                 )
             except TimeoutException:
                 self.fail("Failed to retrieve org location data from superuser")
@@ -926,7 +932,8 @@ class TestDashboardMap(
             sleep(0.3)  # Wait for JS animation
             try:
                 series_locations = WebDriverWait(org1_driver, 5).until(
-                    lambda d: d.execute_script("""
+                    lambda d: d.execute_script(
+                        """
                         const options = window._owGeoMap.echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -936,7 +943,8 @@ class TestDashboardMap(
                         if (!org1_location) return false;
                         if (org2_location !== undefined) return false;
                         return {org1_location, org2_location}
-                    """)
+                    """
+                    )
                 )
             except TimeoutException:
                 self.fail("Failed to retrieve org1 location data from org1 user")
@@ -963,7 +971,8 @@ class TestDashboardMap(
             sleep(0.3)  # Wait for JS animation
             try:
                 series_locations = WebDriverWait(org2_driver, 5).until(
-                    lambda d: d.execute_script("""
+                    lambda d: d.execute_script(
+                        """
                         const options = window._owGeoMap.echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -973,7 +982,8 @@ class TestDashboardMap(
                         if (org1_location !== undefined) return false;
                         if (!org2_location) return false;
                         return {org1_location, org2_location}
-                    """)
+                    """
+                    )
                 )
             except TimeoutException:
                 self.fail("Failed to retrieve org2 location data from org2 user")
