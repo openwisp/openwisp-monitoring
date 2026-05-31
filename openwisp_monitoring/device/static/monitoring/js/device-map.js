@@ -197,9 +197,12 @@
     let activeRequest = null;
     let loading = false;
     function fetchDevices(url, ms = 0, append) {
+      // Nothing to fetch if there's no URL (e.g. last page reached).
       if (!url) return;
+      // Skip duplicate scroll fetches; abort stale filter fetches.
       if (append && loading) return;
       clearTimeout(fetchDevicesTimeout);
+      // Abort pending filter/search to prevent stale data.
       if (!append && activeRequest) {
         activeRequest.abort();
       }
@@ -219,6 +222,7 @@
         container.css("--table-spinner-top", `${spinnerTop}px`);
         container.addClass("is-loading-append");
       }
+      // Debounce — wait ms (0/100/300ms) so rapid events (scroll/input) coalesce before the AJAX call.
       fetchDevicesTimeout = setTimeout(() => {
         let params = new URLSearchParams();
         const searchParam = el.find("#device-search").val().toLowerCase().trim();
@@ -226,17 +230,18 @@
         if (searchParam) {
           params.append("search", searchParam);
         }
-
         if (statusParam) {
           statusParam.split(",").forEach((status) => {
             params.append("status", status);
           });
         }
         const queryString = params.toString();
+        // Two fetch paths:
+        // 1. Infinite scroll (append=true): use the pagination URL passed as-is.
+        // 2. Filter/search (append=false): build URL by appending query params to base URL.
         let fetchUrl;
-        // if append is true, that means we are fetching for infinite scroll
         if (append) {
-          fetchUrl = url; // url is nextUrl, already contains params
+          fetchUrl = url;
         } else {
           fetchUrl = queryString ? `${url}?${queryString}` : url;
         }
@@ -255,6 +260,7 @@
             if (!append) container.scrollTop(0);
           },
           error(_jqXHR, textStatus) {
+            // Ignore aborted requests.
             if (textStatus === "abort") return;
             console.error(gettext("Could not load more devices from"), url);
             alert(gettext("Could not load more devices."));

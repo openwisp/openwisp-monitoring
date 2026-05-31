@@ -527,6 +527,7 @@
             // Don't touch map/echarts/DOM: this continuation is stale.
             return;
           }
+          const isActiveFloor = latestState.state.currentFloor === floor;
           let initialZoom;
           const h = img.height;
           const w = h * (img.width / img.height);
@@ -577,7 +578,9 @@
           map.setMaxBounds(bnds.pad(1));
           initialZoom = map.getZoom();
           map.invalidateSize();
-          $(".floorplan-loading-spinner").hide();
+          if (isActiveFloor) {
+            $(".floorplan-loading-spinner").hide();
+          }
           map.on("fullscreenchange", () => {
             const floorplanState = getFloorplanState();
             if (!floorplanState?.state) return;
@@ -600,7 +603,9 @@
           // Push the indoor map fragment id=<locationId>:<floor> to the URL once the map
           // instance is ready, so the indoor map can be opened directly from the URL
           // without requiring a node click to add the fragment.
-          pushIndoorMapIdFragment(this, floor);
+          if (isActiveFloor) {
+            pushIndoorMapIdFragment(this, floor);
+          }
         },
         // Popup handling is delegated to nodePopup.content,
         // so disable the default onClickElement popup behavior.
