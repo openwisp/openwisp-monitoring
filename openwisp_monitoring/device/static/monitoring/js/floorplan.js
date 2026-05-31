@@ -31,7 +31,7 @@
       selectedIndex: 0,
       isFullScreen: false,
       // Used to ignore late ajax responses from older sessions.
-      _sessionId: `${Date.now()}_${Math.random()}`,
+      _sessionId: window.crypto.randomUUID(),
       popstateHandler: null,
       hashchangeHandler: null,
     };
@@ -140,7 +140,10 @@
     setFloorplanState(floorplanState);
   }
 
-  async function openFloorPlan(url, id = null, floor = null) {
+  async function openFloorPlan(url, id, floor = null) {
+    if (id == null) {
+      throw new Error("openFloorPlan requires a locationId");
+    }
     if (document.getElementById("floorplan-overlay")) {
       destroyFloorplan();
     }
@@ -290,7 +293,27 @@
       floorplanState.maps[floorplanState.state.currentFloor].utils.removeUrlFragment(
         id,
       );
+      return;
     }
+
+    // Fallback: if the overlay is closed before the indoor map instance is
+    // initialized, ensure any indoor fragment is removed from the URL so a
+    // reload/back-navigation doesn't reopen the overlay unexpectedly.
+    const raw = window.location.hash.replace(/^#/, "");
+    if (!raw) return;
+    const fragments = decodeURIComponent(raw)
+      .split(";")
+      .map((f) => f.trim())
+      .filter(Boolean);
+    if (!fragments.length) return;
+    const kept = fragments.filter((fragment) => {
+      const params = new URLSearchParams(fragment);
+      const id = params.get("id");
+      return id === "dashboard-geo-map";
+    });
+    const nextHash = kept.length ? `#${encodeURIComponent(kept.join(";"))}` : "";
+    const nextUrl = `${window.location.pathname}${window.location.search}${nextHash}`;
+    window.history.replaceState(null, "", nextUrl);
   }
 
   function addFloorButtons() {
@@ -476,6 +499,9 @@
         async onReady() {
           const floorplanState = getFloorplanState();
           if (!floorplanState?.state) return;
+          // Guard against stale async continuation if the overlay is closed or a
+          // newer floorplan session replaces the current one while awaiting.
+          const sessionId = floorplanState._sessionId;
           const map = this.leaflet;
           floorplanState.maps[floor] = indoorMap;
           setFloorplanState(floorplanState);
@@ -489,6 +515,16 @@
           } catch (e) {
             console.error("Failed to load floorplan image:", e);
             $(".floorplan-loading-spinner").hide();
+            return;
+          }
+
+          const latestState = getFloorplanState();
+          if (
+            !latestState?.state ||
+            latestState._sessionId !== sessionId ||
+            latestState.maps[floor] !== indoorMap
+          ) {
+            // Don't touch map/echarts/DOM: this continuation is stale.
             return;
           }
           let initialZoom;

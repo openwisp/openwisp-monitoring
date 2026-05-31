@@ -121,30 +121,30 @@
       }
 
       popupContent = `
-          <div class="map-detail">
-            <h2>${escapeHtml(popupTitle)} (${data.count})</h2>
-            <div class="input-container">
-              <input id="device-search" placeholder="${gettext("Search for devices")}" />
-            </div>
-            <div class="label-container">
-              ${statusFilterButtons}
-              <input id="status-filter" type="hidden" />
-            </div>
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>${gettext("name")}</th>
-                    <th class="th-status"><span class ="health-status-heading">${gettext("status")}</span></th>
-                  </tr>
-                </thead>
-                <tbody>${renderRows(netjsongraphInstance)}</tbody>
-              </table>
-              <div class="ow-loading-spinner table-spinner"></div>
-            </div>
-            ${floorplan_btn}
-          </div>
-        `;
+           <div class="map-detail">
+             <h2>${escapeHtml(popupTitle)} (${data.count})</h2>
+             <div class="input-container">
+               <input id="device-search" placeholder="${gettext("Search for devices")}" />
+             </div>
+             <div class="label-container">
+               ${statusFilterButtons}
+               <input id="status-filter" type="hidden" />
+             </div>
+             <div class="table-container">
+               <table>
+                 <thead>
+                   <tr>
+                     <th>${gettext("name")}</th>
+                     <th class="th-status"><span class ="health-status-heading">${gettext("status")}</span></th>
+                   </tr>
+                 </thead>
+                 <tbody>${renderRows(devices)}</tbody>
+               </table>
+               <div class="ow-loading-spinner table-spinner"></div>
+             </div>
+             ${floorplan_btn}
+           </div>
+         `;
       loadingOverlay.hide();
       return popupContent;
     } catch (error) {
@@ -155,9 +155,7 @@
     }
   }
 
-  function renderRows(netjsongraphInstance, deviceList) {
-    deviceList = deviceList || netjsongraphInstance.leaflet._popupState.devices;
-    const popup = $(".map-detail");
+  function renderRows(deviceList) {
     if (deviceList.length === 0) {
       const emptyRow = `
         <tr>
@@ -166,7 +164,6 @@
           </td>
         </tr>
       `;
-      popup.find("tbody").html(emptyRow);
       return emptyRow;
     }
     const rows = deviceList
@@ -183,7 +180,6 @@
     `,
       )
       .join("");
-    popup.find("tbody").html(rows);
     return rows;
   }
 
@@ -198,10 +194,15 @@
       netjsongraphInstance?.leaflet?._popupState;
     const el = $(currentPopup.getElement());
     let fetchDevicesTimeout;
+    let activeRequest = null;
     let loading = false;
     function fetchDevices(url, ms = 0, append) {
-      if (!url || loading) return;
+      if (!url) return;
+      if (append && loading) return;
       clearTimeout(fetchDevicesTimeout);
+      if (!append && activeRequest) {
+        activeRequest.abort();
+      }
       loading = true;
       const container = el.find(".table-container");
       const spinner = el.find(".table-spinner");
@@ -239,7 +240,7 @@
         } else {
           fetchUrl = queryString ? `${url}?${queryString}` : url;
         }
-        $.ajax({
+        activeRequest = $.ajax({
           dataType: "json",
           url: fetchUrl,
           xhrFields: { withCredentials: true },
@@ -250,14 +251,16 @@
               devices = data.results;
             }
             nextUrl = data.next;
-            renderRows(netjsongraphInstance, devices);
+            el.find("tbody").html(renderRows(devices));
             if (!append) container.scrollTop(0);
           },
-          error() {
+          error(_jqXHR, textStatus) {
+            if (textStatus === "abort") return;
             console.error(gettext("Could not load more devices from"), url);
             alert(gettext("Could not load more devices."));
           },
           complete() {
+            activeRequest = null;
             loading = false;
             spinner.hide();
             container.removeClass("is-loading");
@@ -284,7 +287,7 @@
         btn.addClass("active");
         activeStatuses.push(status);
       }
-      $(`#status-filter`).val(activeStatuses.join(","));
+      el.find("#status-filter").val(activeStatuses.join(","));
       fetchDevices(url);
     });
     el.find(".table-container").on("scroll", function () {
@@ -297,6 +300,8 @@
       window.openFloorPlan(floorplanUrl, locationId);
     });
     currentPopup.on("remove", () => {
+      clearTimeout(fetchDevicesTimeout);
+      activeRequest?.abort();
       netjsongraphInstance.leaflet._popupState = null;
     });
   }
@@ -440,7 +445,6 @@
         if (leafletConfig.SCALE) {
           map.leaflet.addControl(new L.control.scale(scale));
         }
-
 
         try {
           const features = (map.data && map.data.features) || [];

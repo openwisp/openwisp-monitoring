@@ -330,6 +330,27 @@ class TestDashboardMap(
             str(id),
         )
 
+    def _wait_for_popup_table_ready(self, timeout=5):
+        # The popup keeps the table mounted during replace/append fetches, so
+        # these loading-state classes are the most reliable signal that row
+        # updates have finished.
+        try:
+            WebDriverWait(self.web_driver, timeout).until(
+                lambda d: all(
+                    cls
+                    not in (
+                        d.find_element(
+                            By.CSS_SELECTOR, ".map-detail .table-container"
+                        ).get_attribute("class")
+                        or ""
+                    )
+                    for cls in ("is-loading", "is-loading-append")
+                )
+            )
+        except TimeoutException as e:
+            print(self.get_browser_logs())
+            self.fail(f"Popup table did not finish loading within {timeout}s: {e}")
+
     def test_features_on_device_popup(self):
         org = self._get_org()
         d1 = self._create_device(
@@ -368,9 +389,7 @@ class TestDashboardMap(
             self.assertFalse(status_ok_close_btn.is_displayed())
             status_ok.click()
             self.assertTrue(status_ok_close_btn.is_displayed())
-            self.wait_for_invisibility(
-                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
-            )
+            self._wait_for_popup_table_ready()
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 1)
             self.assertIn(d2.name, table_entries[0].text)
@@ -385,35 +404,27 @@ class TestDashboardMap(
             self.assertFalse(status_unknown_close_btn.is_displayed())
             status_unknown.click()
             self.assertTrue(status_unknown_close_btn.is_displayed())
-            self.wait_for_invisibility(
-                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
-            )
+            self._wait_for_popup_table_ready()
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 2)
 
         with self.subTest("Test removing filters by clicking close button"):
             status_ok_close_btn.click()
             self.assertFalse(status_ok_close_btn.is_displayed())
-            self.wait_for_invisibility(
-                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner", timeout=5
-            )
+            self._wait_for_popup_table_ready()
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 1)
             self.assertIn(d1.name, table_entries[0].text)
             status_unknown.click()
             self.assertFalse(status_unknown_close_btn.is_displayed())
-            self.wait_for_invisibility(
-                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
-            )
+            self._wait_for_popup_table_ready()
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 2)
 
         with self.subTest("Test search field"):
             input_field = self.find_element(By.CSS_SELECTOR, "#device-search")
             input_field.send_keys("device1")
-            self.wait_for_invisibility(
-                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
-            )
+            self._wait_for_popup_table_ready()
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 1)
             self.assertIn(d1.name, table_entries[0].text)
@@ -422,17 +433,13 @@ class TestDashboardMap(
             input_field.clear()
             # Just clearing the input field does not trigger the event listeners
             input_field.send_keys(" ")
-            self.wait_for_invisibility(
-                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
-            )
+            self._wait_for_popup_table_ready()
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 2)
 
         with self.subTest("Test filtering to get no results"):
             input_field.send_keys("Non-Existent-Device")
-            self.wait_for_invisibility(
-                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
-            )
+            self._wait_for_popup_table_ready()
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 1)
             self.assertIn("No devices found", table_entries[0].text)
@@ -467,7 +474,9 @@ class TestDashboardMap(
         self.web_driver.execute_script(
             "arguments[0].scrollTop = arguments[0].scrollHeight", table_container
         )
-        self.wait_for_invisibility(By.CSS_SELECTOR, ".map-detail .ow-loading-spinner")
+        # Allow scroll animation to trigger infinite scroll fetch.
+        sleep(0.3)
+        self._wait_for_popup_table_ready()
         table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
         self.assertEqual(len(table_entries), 20)
 
