@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 from unittest import SkipTest
 from unittest.mock import MagicMock, patch
 
-from django.contrib.contenttypes.models import ContentType
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.test import TestCase, TransactionTestCase, tag
 from django.utils.timezone import now
@@ -17,6 +17,10 @@ from swapper import load_model
 
 from openwisp_monitoring.check import settings as check_settings
 from openwisp_monitoring.check.tests import AutoDataCollectedCheck, AutoWifiClientCheck
+from openwisp_monitoring.db.backends.influxdb2.client import (
+    DatabaseClient,
+    QueryResultSet,
+)
 from openwisp_monitoring.device import tasks as device_tasks
 from openwisp_monitoring.device.tests import TestDeviceMonitoringMixin
 from openwisp_monitoring.device.utils import (
@@ -31,10 +35,6 @@ from openwisp_utils.tests import capture_stderr
 
 from ... import timeseries_db
 from ...exceptions import TimeseriesWriteException
-from openwisp_monitoring.db.backends.influxdb2.client import (
-    DatabaseClient,
-    QueryResultSet,
-)
 
 Chart = load_model("monitoring", "Chart")
 Check = load_model("check", "Check")
@@ -865,10 +865,14 @@ class TestInfluxDB2CheckIntegration(
         sample_data = self._data()
         sample_data.pop("resources")
         device_data.writer.write(sample_data, current=False)
-        raw_metric = Metric.objects.filter(key="wifi_clients", object_id=device.pk).first()
+        raw_metric = Metric.objects.filter(
+            key="wifi_clients", object_id=device.pk
+        ).first()
         self.assertIsNotNone(
             raw_metric,
-            list(Metric.objects.filter(object_id=device.pk).values_list("key", flat=True)),
+            list(
+                Metric.objects.filter(object_id=device.pk).values_list("key", flat=True)
+            ),
         )
         self.assertGreaterEqual(len(self._read_metric(raw_metric, limit=None)), 1)
         check = Check.objects.create(
