@@ -196,7 +196,7 @@ jobs:
       - name: InfluxDB 2 tests
         if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
         run: |
-          ./runtests openwisp_monitoring.db.backends.influxdb2.tests --exclude-tag=selenium_tests
+          ./runtests-influxdb2
         env:
           TIMESERIES_BACKEND: influxdb2
 
