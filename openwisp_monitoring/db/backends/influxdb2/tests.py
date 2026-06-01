@@ -861,6 +861,7 @@ class TestInfluxDB2CheckIntegration(
     def test_wifi_clients_check_round_trip(self):
         device = self._create_device()
         device_data = DeviceData(pk=device.pk)
+        device_data.data = {}
         sample_data = self._data()
         sample_data.pop("resources")
         device_data.writer.write(sample_data, current=False)
@@ -889,6 +890,7 @@ class TestInfluxDB2CheckIntegration(
     def test_data_collected_check_round_trip(self):
         device = self._create_device()
         device_data = DeviceData(pk=device.pk)
+        device_data.data = {}
         sample_data = self._data()
         sample_data.pop("resources")
         device_data.writer.write(sample_data, current=False)
