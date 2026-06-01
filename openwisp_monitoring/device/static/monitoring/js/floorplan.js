@@ -32,24 +32,9 @@
       isFullScreen: false,
       // Used to ignore late ajax responses from older sessions.
       _sessionId: window.crypto.randomUUID(),
-      popstateHandler: null,
-      hashchangeHandler: null,
     };
   }
 
-  function cleanupEventHandlers() {
-    const floorplanState = getFloorplanState();
-    if (!floorplanState) return;
-    if (floorplanState.popstateHandler) {
-      window.removeEventListener("popstate", floorplanState.popstateHandler);
-      floorplanState.popstateHandler = null;
-    }
-    if (floorplanState.hashchangeHandler) {
-      window.removeEventListener("hashchange", floorplanState.hashchangeHandler);
-      floorplanState.hashchangeHandler = null;
-    }
-    setFloorplanState(floorplanState);
-  }
   // Use case: we support overlaying two maps. The URL hash contains up to two
   // fragments separated by ';' — one is the geo map and the other is an indoor map.
   //
@@ -79,40 +64,6 @@
       return null;
     }
     return { fragmentLocationId, fragmentFloor };
-  }
-
-  function setupNavigationHandlers() {
-    const floorplanState = getFloorplanState();
-    if (!floorplanState) return;
-    // Handle browser back/forward navigation
-    cleanupEventHandlers();
-    floorplanState.popstateHandler = () => {
-      const indoorMapId = getIndoorMapIdFromUrl();
-      const isOverlayOpen = document.getElementById("floorplan-overlay") !== null;
-      if (!indoorMapId && isOverlayOpen) {
-        destroyFloorplan();
-      }
-    };
-    window.addEventListener("popstate", floorplanState.popstateHandler);
-
-    // Handle manual URL fragment changes (e.g., pasting URL in address bar)
-    floorplanState.hashchangeHandler = () => {
-      const indoorMapId = getIndoorMapIdFromUrl();
-      const isOverlayOpen = $("#floorplan-overlay").length > 0;
-      if (indoorMapId) {
-        const { fragmentLocationId, fragmentFloor } = indoorMapId;
-        const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
-          "000",
-          fragmentLocationId,
-        );
-        openFloorPlan(floorplanUrl, fragmentLocationId, fragmentFloor);
-      } else if (isOverlayOpen) {
-        destroyFloorplan();
-      }
-    };
-    window.addEventListener("hashchange", floorplanState.hashchangeHandler);
-
-    setFloorplanState(floorplanState);
   }
 
   // Initialize floorplan on page load if URL contains indoor map fragment
@@ -156,7 +107,6 @@
     $("#floorplan-overlay").append($floorNavigation);
 
     setFloorplanState(buildInitialFloorplanState(url, id, floor));
-    setupNavigationHandlers();
 
     await fetchData(url, floor);
     const floorplanState = getFloorplanState();
@@ -268,52 +218,33 @@
           indoorMap.echarts.dispose();
         }
       });
-      removeUrlFragment();
     }
 
-    // Remove any listeners while the state is still available.
-    cleanupEventHandlers();
+    // Remove DOM and state first — ensures fragmentchange handler
+    // sees overlay is closed and doesn't re-trigger destroyFloorplan.
     $("#floorplan-container, #floorplan-navigation").remove();
     $("#floorplan-overlay").removeData("floorplanState");
     $("#floorplan-overlay").remove();
     $(".menu-backdrop").removeClass("active");
-  }
 
-  function removeUrlFragment() {
-    const floorplanState = getFloorplanState();
-    if (!floorplanState) return;
-    if (
-      floorplanState.state &&
-      floorplanState.state.locationId != null &&
-      floorplanState.maps[floorplanState.state.currentFloor]
-    ) {
-      const id =
-        floorplanState.maps[floorplanState.state.currentFloor].config
-          .bookmarkableActions.id;
-      floorplanState.maps[floorplanState.state.currentFloor].utils.removeUrlFragment(
-        id,
-      );
-      return;
-    }
-
-    // Fallback: if the overlay is closed before the indoor map instance is
-    // initialized, ensure any indoor fragment is removed from the URL so a
-    // reload/back-navigation doesn't reopen the overlay unexpectedly.
+    // Strip any indoor fragment from the URL using direct replaceState,
+    // avoiding the library's updateUrlFragments (which dispatches fragmentchange).
     const raw = window.location.hash.replace(/^#/, "");
-    if (!raw) return;
-    const fragments = decodeURIComponent(raw)
-      .split(";")
-      .map((f) => f.trim())
-      .filter(Boolean);
-    if (!fragments.length) return;
-    const kept = fragments.filter((fragment) => {
-      const params = new URLSearchParams(fragment);
-      const id = params.get("id");
-      return id === "dashboard-geo-map";
-    });
-    const nextHash = kept.length ? `#${encodeURIComponent(kept.join(";"))}` : "";
-    const nextUrl = `${window.location.pathname}${window.location.search}${nextHash}`;
-    window.history.replaceState(null, "", nextUrl);
+    if (raw) {
+      const fragments = decodeURIComponent(raw)
+        .split(";")
+        .map((f) => f.trim())
+        .filter(Boolean);
+      if (fragments.length) {
+        const kept = fragments.filter((fragment) => {
+          const params = new URLSearchParams(fragment);
+          return params.get("id") === "dashboard-geo-map";
+        });
+        const nextHash = kept.length ? `#${encodeURIComponent(kept.join(";"))}` : "";
+        const nextUrl = `${window.location.pathname}${window.location.search}${nextHash}`;
+        window.history.replaceState(null, "", nextUrl);
+      }
+    }
   }
 
   function addFloorButtons() {
@@ -385,7 +316,7 @@
     pushIndoorMapIdFragment(nextState.maps[nextState.state.currentFloor], floor);
   }
 
-  function pushIndoorMapIdFragment(indoorMap, floor) {
+  function pushIndoorMapIdFragment(indoorMap, floor, replace = true) {
     if (!indoorMap) {
       return;
     }
@@ -397,11 +328,9 @@
       return;
     }
     const indoorParams = fragments[indoorMapId] || new URLSearchParams();
-    if (!indoorParams.get("id")) {
-      indoorParams.set("id", `${floorplanState.state.locationId}_${floor}`);
-    }
+    indoorParams.set("id", `${floorplanState.state.locationId}_${floor}`);
     fragments[indoorMapId] = indoorParams;
-    indoorMap?.utils?.updateUrlFragments(fragments);
+    indoorMap?.utils?.updateUrlFragments(fragments, null, replace);
   }
 
   function loadPopUpContent(node, netjsongraphInstance) {
@@ -657,7 +586,6 @@
       0,
       Math.min(floorplanState.selectedIndex - center, maxStart),
     );
-    removeUrlFragment();
     addFloorButtons();
     floorplanState.state.currentFloor =
       floorplanState.floors[floorplanState.selectedIndex];
@@ -703,6 +631,26 @@
       navigateToFloor(floorplanState.selectedIndex - 1);
     },
   );
+
+  // React to URL fragment changes from the library (pushState, replaceState,
+  // or browser back/forward navigation). Persistent at module level —
+  // not tied to the overlay lifecycle.
+  window.addEventListener("fragmentchange", () => {
+    const indoorMapId = getIndoorMapIdFromUrl();
+    const isOverlayOpen = document.getElementById("floorplan-overlay") !== null;
+    if (indoorMapId) {
+      if (!isOverlayOpen) {
+        const { fragmentLocationId, fragmentFloor } = indoorMapId;
+        const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
+          "000",
+          fragmentLocationId,
+        );
+        openFloorPlan(floorplanUrl, fragmentLocationId, fragmentFloor);
+      }
+    } else if (isOverlayOpen) {
+      destroyFloorplan();
+    }
+  });
 
   window.openFloorPlan = openFloorPlan;
 })(django.jQuery);
