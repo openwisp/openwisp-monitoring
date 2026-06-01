@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
@@ -30,6 +30,16 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
     def test_check_str(self):
         c = Check(name="Test check")
         self.assertEqual(str(c), c.name)
+
+    def test_params_support_django_json_encoder_values(self):
+        # date requires DjangoJSONEncoder, default JSONEncoder cannot serialize it.
+        check = Check.objects.create(
+            name="Test check",
+            check_type=self._PING,
+            params={"date": date(2026, 5, 14)},
+        )
+        check.refresh_from_db()
+        self.assertEqual(check.params["date"], "2026-05-14")
 
     def test_check_no_content_type(self):
         c = Check(name="Ping class check", check_type=self._PING)

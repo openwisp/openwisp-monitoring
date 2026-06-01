@@ -352,12 +352,7 @@
     indoorMap?.utils?.updateUrlFragments(fragments);
   }
 
-  let currentPopup = null;
   function loadPopUpContent(node, netjsongraphInstance) {
-    const map = netjsongraphInstance.leaflet;
-    if (currentPopup) {
-      currentPopup.remove();
-    }
     const popupContent = `
       <div class="njg-tooltip-inner">
         <div class="njg-tooltip-item">
@@ -382,29 +377,14 @@
         </div>
       </div>
     `;
-    // Popup does not show on closeOnClick: true (default)
-    currentPopup = L.popup({
-      closeOnClick: false,
-    })
-      .setLatLng(node?.properties.location)
-      .setContent(popupContent)
-      .openOn(map);
-    currentPopup.on("remove", () => {
-      const fragments = netjsongraphInstance.utils.parseUrlFragments();
-      const { id } = netjsongraphInstance.config.bookmarkableActions;
-      if (fragments[id]) {
-        fragments[id].delete("nodeId");
-        netjsongraphInstance.utils.updateUrlFragments(fragments);
-      }
-      currentPopup = null;
-    });
+    return popupContent;
   }
 
   function renderIndoorMap(allResults, imageUrl, divId, floor) {
     const indoorMap = new NetJSONGraph(allResults, {
       el: `#${divId}`,
       render: "map",
-      showLabelsAtZoomLevel: 0,
+      showMapLabelsAtZoom: 0,
       mapOptions: {
         center: [0, 0],
         zoom: 0,
@@ -425,11 +405,22 @@
           },
         },
         baseOptions: { media: [{ option: { tooltip: { show: false } } }] },
+        nodePopup: {
+          show: true,
+          content: loadPopUpContent,
+          config: {
+            closeOnClick: false,
+            autoPan: true,
+            autoPanPadding: [25, 25],
+            offset: null,
+          },
+        },
       },
       bookmarkableActions: {
         enabled: true,
         id: `${locationId}_${floor}`,
         zoomOnRestore: false,
+        preserveFragment: true,
       },
       nodeCategories: Object.keys(status_colors).map((status) => ({
         name: status,
@@ -517,7 +508,6 @@
         initialZoom = map.getZoom();
         map.invalidateSize();
         $(".floorplan-loading-spinner").hide();
-
         map.on("fullscreenchange", () => {
           const floorNavigation = $("#floorplan-navigation");
           const zoomSnap = map.options.zoomSnap || 1;
@@ -539,9 +529,9 @@
         // without requiring a node click to add the fragment.
         pushIndoorMapIdFragment(this, locationId, floor);
       },
-      onClickElement: function (type, data) {
-        loadPopUpContent(data, this);
-      },
+      // Popup handling is delegated to nodePopup.content,
+      // so disable the default onClickElement popup behavior.
+      onClickElement: function () {},
     });
     indoorMap.setUtils({
       // Added a utility function to open a specific popup for a device Id in selenium tests
