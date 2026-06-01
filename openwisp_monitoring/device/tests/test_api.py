@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 from datetime import datetime, timedelta
 from unittest.mock import patch
 from uuid import uuid4
@@ -804,6 +805,21 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 mobile_data["signal"],
                 {"lte": {"rsrp": -75.00, "rsrq": -8.00, "rssi": -51.00, "snr": 13.00}},
             )
+        with self.subTest("accept each single LTE metric on its own"):
+            for metric, value in [
+                ("rssi", -52),
+                ("rsrp", -75),
+                ("rsrq", -8),
+                ("snr", 13),
+            ]:
+                minimal_data = deepcopy(data)
+                minimal_data["interfaces"][0]["mobile"]["signal"] = {
+                    "lte": {metric: value}
+                }
+                response = self._post_data(device.id, device.key, minimal_data)
+                self.assertEqual(
+                    response.status_code, 200, f"Failed for single metric: {metric}"
+                )
 
     def test_5g_mobile_properties(self):
         org = self._create_org()
@@ -855,6 +871,21 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 mobile_data["signal"],
                 {"5g": {"rsrp": -75.00, "rsrq": -8.00, "rssi": -52.00, "snr": 13.00}},
             )
+        with self.subTest("accept each single 5G metric on its own"):
+            for metric, value in [
+                ("rssi", -52),
+                ("rsrp", -75),
+                ("rsrq", -8),
+                ("snr", 13),
+            ]:
+                minimal_data = deepcopy(data)
+                minimal_data["interfaces"][0]["mobile"]["signal"] = {
+                    "5g": {metric: value}
+                }
+                response = self._post_data(device.id, device.key, minimal_data)
+                self.assertEqual(
+                    response.status_code, 200, f"Failed for single metric: {metric}"
+                )
 
     def test_empty_mobile_signal_data(self):
         org = self._create_org()
