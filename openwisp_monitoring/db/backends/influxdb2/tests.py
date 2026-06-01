@@ -407,12 +407,6 @@ class TestInfluxDB2Client(TestCase):
                     "_value": 90,
                     "time": "2024-03-25T12:00:00Z",
                 },
-                {
-                    "_measurement": "applications",
-                    "_field": "udp",
-                    "_value": 80,
-                    "time": "2024-03-25T12:00:00Z",
-                },
             ]
         )
         with patch.object(
