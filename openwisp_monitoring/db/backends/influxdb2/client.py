@@ -302,6 +302,13 @@ class DatabaseClient(object):
             return str(value).lower()
         return value
 
+    def _format_flux_time(self, value):
+        if isinstance(value, datetime):
+            value = self._get_timestamp(value)
+        if isinstance(value, str):
+            return f'time(v: "{value}")'
+        return value
+
     def validate_query(self, query):
         for word in self._FORBIDDEN:
             if word in query.lower():
@@ -377,10 +384,13 @@ class DatabaseClient(object):
             results = []
             for table in tables:
                 for record in table.records:
+                    record_time = record.values.get("_time")
                     result = {
-                        "time": record.get_time(),
-                        "_measurement": record.get_measurement(),
-                        "_field": record.get_field(),
+                        "time": (
+                            record_time.timestamp() if isinstance(record_time, datetime) else record_time
+                        ),
+                        "_measurement": record.values.get("_measurement"),
+                        "_field": record.values.get("_field"),
                         "_value": record.get_value(),
                     }
                     # Add tags
@@ -408,7 +418,7 @@ class DatabaseClient(object):
             "precision": "InfluxDB 2.x uses ISO8601 timestamps; precision parameter not supported",
         }
         for param, reason in unsupported_params.items():
-            if param in kwargs:
+            if kwargs.get(param):
                 raise NotImplementedError(
                     f"InfluxDB 2.x read() does not support '{param}' parameter. "
                     f"Reason: {reason}. "
@@ -433,7 +443,7 @@ class DatabaseClient(object):
         # Add time range
         since = kwargs.get("since")
         if since:
-            timestamp = self._get_timestamp(since)
+            timestamp = self._format_flux_time(since)
             flux_query += f" |> range(start: {timestamp})"
         else:
             flux_query += " |> range(start: -24h)"
@@ -467,7 +477,7 @@ class DatabaseClient(object):
                 f"and r._value {op} {self._format_flux_value(value)})"
             )
         if supports_count_distinct:
-            flux_query += ' |> distinct(column: "_value") |> count()'
+            flux_query += ' |> group(columns: []) |> distinct(column: "_value") |> count()'
         # Apply ordering
         order = kwargs.get("order") or kwargs.get("order_by")
         if order:
@@ -496,18 +506,20 @@ class DatabaseClient(object):
             ]
         return self._normalize_read_points(result)
 
-    def _normalize_read_points(self, points):
+    def _normalize_read_points(self, points, include_tags=True):
         normalized = {}
         special_fields = {"_measurement", "_field", "_value", "time"}
         for point in points:
             field = point.get("_field")
             if not field:
                 continue
-            tags = {
-                key: value
-                for key, value in point.items()
-                if key not in special_fields and key not in FLUX_METADATA_FIELDS
-            }
+            tags = {}
+            if include_tags:
+                tags = {
+                    key: value
+                    for key, value in point.items()
+                    if key not in special_fields and key not in FLUX_METADATA_FIELDS
+                }
             key = (point.get("time"), tuple(sorted(tags.items())))
             normalized.setdefault(key, {"time": point.get("time"), **tags})
             normalized[key][field] = point.get("_value")
@@ -568,9 +580,13 @@ class DatabaseClient(object):
         """
         # Execute the query and get QueryResultSet wrapper
         result = self.query(query)
-        # If no results or no tag grouping, return flattened points as-is
-        if not result.keys() or result.keys()[0][1] is None:
-            return list(result.get_points())
+        # Ordinary chart reads should ignore object/interface tags and just
+        # return field values. Only keep the group-by-tag path when the Flux
+        # query explicitly groups by columns.
+        if "group(columns:" not in query or not result.keys() or result.keys()[0][1] is None:
+            return self._normalize_read_points(
+                list(result.get_points()), include_tags=False
+            )
         # Handle queries with GROUP BY TAG clause
         # Group results by time and merge tag-specific values into single record
         result_points = {}
@@ -622,10 +638,14 @@ class DatabaseClient(object):
 
     def _build_chart_base_query(self, params: dict, time, group_map: dict):
         flux_query = f'from(bucket: "{self.db_name}")'
-        time_val = group_map.get(time, "1h") if group_map else "1h"
-        start_range = f"-{time_val}"
+        start_range = params.get("time")
+        if start_range:
+            start_range = self._format_flux_time(start_range)
+        else:
+            time_val = group_map.get(time, time) if group_map else time
+            start_range = f"-{time_val}"
         if params.get("end_date"):
-            end_range = params["end_date"]
+            end_range = self._format_flux_time(params["end_date"])
             flux_query += f" |> range(start: {start_range}, stop: {end_range})"
         else:
             flux_query += f" |> range(start: {start_range})"
@@ -720,10 +740,10 @@ class DatabaseClient(object):
         # 10. CHART TYPE SPECIFIC AGGREGATIONS AND TRANSFORMATIONS
         if chart_type == "wifi_clients":
             # WiFi clients: COUNT(DISTINCT) simulation with distinct() + count()
-            flux_query += ' |> distinct(column: "clients") |> count()'
+            flux_query += ' |> distinct(column: "_value") |> count()'
         elif chart_type == "general_wifi_clients":
             # General WiFi clients: COUNT(DISTINCT) at org level
-            flux_query += ' |> distinct(column: "clients") |> count()'
+            flux_query += ' |> distinct(column: "_value") |> count()'
         elif chart_type == "traffic":
             # Traffic: Convert bytes to GB (divide by 1e9)
             flux_query += (
