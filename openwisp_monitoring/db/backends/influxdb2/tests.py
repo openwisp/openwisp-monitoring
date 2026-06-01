@@ -3,18 +3,45 @@ InfluxDB 2.x Database Client Tests
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest import SkipTest
 from unittest.mock import MagicMock, patch
 
+from django.contrib.contenttypes.models import ContentType
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.test import TestCase, tag
+from django.test import TestCase, TransactionTestCase, tag
+from django.utils.timezone import now
+from freezegun import freeze_time
+from swapper import load_model
 
+from openwisp_monitoring.check import settings as check_settings
+from openwisp_monitoring.check.tests import AutoDataCollectedCheck, AutoWifiClientCheck
+from openwisp_monitoring.device import tasks as device_tasks
+from openwisp_monitoring.device.tests import TestDeviceMonitoringMixin
+from openwisp_monitoring.device.utils import (
+    SHORT_RP,
+    manage_default_retention_policy,
+    manage_short_retention_policy,
+)
+from openwisp_monitoring.monitoring import settings as monitoring_settings
+from openwisp_monitoring.monitoring import tasks as monitoring_tasks
+from openwisp_monitoring.monitoring.tests import TestMonitoringMixin
+from openwisp_utils.tests import capture_stderr
+
+from ... import timeseries_db
+from ...exceptions import TimeseriesWriteException
 from openwisp_monitoring.db.backends.influxdb2.client import (
     DatabaseClient,
     QueryResultSet,
 )
+
+Chart = load_model("monitoring", "Chart")
+Check = load_model("check", "Check")
+Device = load_model("config", "Device")
+DeviceData = load_model("device_monitoring", "DeviceData")
+Metric = load_model("monitoring", "Metric")
+Notification = load_model("openwisp_notifications", "Notification")
 
 
 @tag("timeseries_client")
@@ -541,7 +568,7 @@ class TestInfluxDB2Client(TestCase):
         self.assertIn('_measurement == "wifi_clients"', query)
         self.assertIn('ifname == "wlan0"', query)
         # Check for COUNT(DISTINCT) simulation: distinct() + count()
-        self.assertIn('|> distinct(column: "clients")', query)
+        self.assertIn('|> distinct(column: "_value")', query)
         self.assertIn("|> count()", query)
 
     def test_get_query_general_wifi_clients_count_distinct(self):
@@ -562,7 +589,7 @@ class TestInfluxDB2Client(TestCase):
         self.assertIn('location_id == "loc1"', query)
         self.assertIn('floorplan_id == "fp1"', query)
         # Check for COUNT(DISTINCT) simulation
-        self.assertIn('|> distinct(column: "clients")', query)
+        self.assertIn('|> distinct(column: "_value")', query)
         self.assertIn("|> count()", query)
 
     def test_get_query_rtt_multiple_fields(self):
@@ -616,3 +643,279 @@ class TestInfluxDB2Client(TestCase):
         self.assertEqual(fields_found["rtt_avg"], 25.5)
         self.assertEqual(fields_found["rtt_max"], 35.2)
         self.assertEqual(fields_found["rtt_min"], 20.1)
+
+
+@tag("timeseries_client")
+class TestInfluxDB2ClientIntegration(TestMonitoringMixin, TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if os.environ.get("TIMESERIES_BACKEND") != "influxdb2":
+            raise SkipTest('Set TIMESERIES_BACKEND="influxdb2" to run InfluxDB2 tests.')
+        cls._write_delay_patcher = patch.object(
+            monitoring_tasks.timeseries_write,
+            "delay",
+            side_effect=monitoring_tasks.timeseries_write.run,
+        )
+        cls._batch_write_delay_patcher = patch.object(
+            monitoring_tasks.timeseries_batch_write,
+            "delay",
+            side_effect=monitoring_tasks.timeseries_batch_write.run,
+        )
+        cls._device_write_delay_patcher = patch.object(
+            device_tasks.write_device_metrics,
+            "delay",
+            side_effect=device_tasks.write_device_metrics.run,
+        )
+        cls._write_delay_patcher.start()
+        cls._batch_write_delay_patcher.start()
+        cls._device_write_delay_patcher.start()
+        super().setUpClass()
+        assert settings.TIMESERIES_DATABASE["BACKEND"].endswith("influxdb2")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._device_write_delay_patcher.stop()
+        cls._batch_write_delay_patcher.stop()
+        cls._write_delay_patcher.stop()
+        super().tearDownClass()
+
+    def test_metric_write_and_read_round_trip(self):
+        metric = self._create_general_metric(name="load")
+
+        self._write_metric(metric, 50, check=False)
+
+        points = self._read_metric(metric)
+        self.assertEqual(len(points), 1)
+        self.assertEqual(points[0][metric.field_name], 50)
+
+    def test_metric_read_order_and_same_key_different_fields(self):
+        metric = self._create_general_metric(name="load")
+
+        self._write_metric(metric, 30, check=False)
+        self._write_metric(metric, 40, check=False, time=now() - timedelta(hours=2))
+
+        ascending = self._read_metric(metric, limit=2, order="time")
+        descending = self._read_metric(metric, limit=2, order="-time")
+        self.assertEqual([point["value"] for point in ascending], [40, 30])
+        self.assertEqual([point["value"] for point in descending], [30, 40])
+
+        download = self._create_general_metric(
+            name="traffic (download)",
+            key="traffic",
+            field_name="download",
+        )
+        upload = self._create_general_metric(
+            name="traffic (upload)",
+            key="traffic",
+            field_name="upload",
+        )
+        timestamp = now() - timedelta(hours=1)
+        self._write_metric(download, 200, check=False, time=timestamp)
+        self._write_metric(upload, 100, check=False, time=timestamp)
+
+        self.assertEqual(self._read_metric(download, order="-time")[0]["download"], 200)
+        self.assertEqual(self._read_metric(upload, order="-time")[0]["upload"], 100)
+
+    def test_metric_batch_write_round_trip(self):
+        metric = self._create_general_metric(name="batch-load")
+
+        Metric.batch_write(
+            [
+                (
+                    metric,
+                    {
+                        "value": 11,
+                        "time": now() - timedelta(minutes=5),
+                        "current": False,
+                    },
+                ),
+                (
+                    metric,
+                    {
+                        "value": 22,
+                        "time": now(),
+                        "current": False,
+                    },
+                ),
+            ]
+        )
+
+        values = self._read_metric(metric, limit=2, order="time")
+        self.assertEqual([point["value"] for point in values], [11, 22])
+
+    @patch.object(monitoring_settings, "TOLERANCE_INTERVAL", 300)
+    def test_alert_tolerance_uses_read_contract(self):
+        self._create_admin()
+        metric = self._create_general_metric(name="load")
+        self._create_alert_settings(
+            metric=metric,
+            custom_operator=">",
+            custom_threshold=90,
+            custom_tolerance=5,
+        )
+
+        with freeze_time("2024-03-25 10:00:00"):
+            metric.write(99)
+        with freeze_time("2024-03-25 10:02:00"):
+            metric.write(99)
+        metric.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
+        self.assertEqual(metric.is_healthy, False)
+        self.assertEqual(metric.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
+
+        with freeze_time("2024-03-25 10:06:00"):
+            metric.write(99)
+        metric.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
+        self.assertEqual(metric.is_healthy, False)
+        self.assertEqual(metric.is_healthy_tolerant, False)
+        self.assertEqual(Notification.objects.count(), 1)
+
+    def test_chart_read_default_query_round_trip(self):
+        chart = self._create_chart(configuration="dummy")
+
+        data = self._read_chart(chart)
+
+        self.assertIn("x", data)
+        self.assertIn("traces", data)
+        self.assertEqual(len(data["x"]), 3)
+        self.assertEqual(data["traces"], [("value", [3, 6, 9])])
+        self.assertEqual(data["summary"], {"value": None})
+
+    def test_delete_metric_data_and_delete_series_round_trip(self):
+        general_metric = self._create_general_metric(name="delete-general")
+        object_metric = self._create_object_metric(name="delete-object")
+
+        self._write_metric(general_metric, 100, check=False)
+        self._write_metric(object_metric, 50, check=False)
+
+        self.assertEqual(self._read_metric(general_metric)[0]["value"], 100)
+        self.assertEqual(self._read_metric(object_metric)[0]["value"], 50)
+
+        timeseries_db.delete_series(key=object_metric.key, tags=object_metric.tags)
+        self.assertEqual(self._read_metric(object_metric), [])
+        self.assertEqual(self._read_metric(general_metric)[0]["value"], 100)
+
+        timeseries_db.delete_metric_data(key=general_metric.key)
+        self.assertEqual(self._read_metric(general_metric), [])
+
+    def test_retention_policy_utilities_match_current_backend_behavior(self):
+        manage_default_retention_policy()
+        policies = timeseries_db.get_list_retention_policies()
+        self.assertEqual(len(policies), 1)
+        self.assertEqual(policies[0]["name"], "default")
+
+        with patch("openwisp_monitoring.db.backends.influxdb2.client.logger") as logger:
+            manage_short_retention_policy()
+        logger.warning.assert_called_once()
+
+    @capture_stderr()
+    def test_write_failure_raises_timeseries_exception(self):
+        with patch.object(timeseries_db, "_write_api") as mock_write_api:
+            mock_write_api.write.side_effect = RuntimeError("write failed")
+
+            with self.assertRaises(TimeseriesWriteException):
+                timeseries_db.write("test_write", {"value": 1})
+
+
+@tag("timeseries_client")
+class TestInfluxDB2CheckIntegration(
+    AutoWifiClientCheck,
+    AutoDataCollectedCheck,
+    TestDeviceMonitoringMixin,
+    TransactionTestCase,
+):
+    _WIFI_CLIENTS = check_settings.CHECK_CLASSES[3][0]
+    _DATA_COLLECTED = check_settings.CHECK_CLASSES[4][0]
+
+    @classmethod
+    def setUpClass(cls):
+        if os.environ.get("TIMESERIES_BACKEND") != "influxdb2":
+            raise SkipTest('Set TIMESERIES_BACKEND="influxdb2" to run InfluxDB2 tests.')
+        cls._write_delay_patcher = patch.object(
+            monitoring_tasks.timeseries_write,
+            "delay",
+            side_effect=monitoring_tasks.timeseries_write.run,
+        )
+        cls._batch_write_delay_patcher = patch.object(
+            monitoring_tasks.timeseries_batch_write,
+            "delay",
+            side_effect=monitoring_tasks.timeseries_batch_write.run,
+        )
+        cls._write_delay_patcher.start()
+        cls._batch_write_delay_patcher.start()
+        super().setUpClass()
+        assert settings.TIMESERIES_DATABASE["BACKEND"].endswith("influxdb2")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._batch_write_delay_patcher.stop()
+        cls._write_delay_patcher.stop()
+        super().tearDownClass()
+
+    def _create_device(self, monitoring_status="ok", *args, **kwargs):
+        device = super()._create_device(*args, **kwargs)
+        device.monitoring.status = monitoring_status
+        device.monitoring.save()
+        return device
+
+    def test_wifi_clients_check_round_trip(self):
+        device = self._create_device()
+        device_data = DeviceData(pk=device.pk)
+        sample_data = self._data()
+        sample_data.pop("resources")
+        device_data.writer.write(sample_data, current=False)
+        raw_metric = Metric.objects.filter(key="wifi_clients", object_id=device.pk).first()
+        self.assertIsNotNone(
+            raw_metric,
+            list(Metric.objects.filter(object_id=device.pk).values_list("key", flat=True)),
+        )
+        self.assertGreaterEqual(len(self._read_metric(raw_metric, limit=None)), 1)
+        check = Check.objects.create(
+            name="WiFi Clients",
+            check_type=self._WIFI_CLIENTS,
+            content_type=ContentType.objects.get_for_model(Device),
+            object_id=device.pk,
+        )
+
+        result = check.perform_check()
+
+        self.assertEqual(result, {"wifi_clients_min": 3, "wifi_clients_max": 3})
+        for key in ("wifi_clients_min", "wifi_clients_max"):
+            metric = Metric.objects.get(key=key, object_id=device_data.id)
+            points = self._read_metric(metric, limit=None)
+            self.assertEqual(len(points), 1)
+            self.assertEqual(points[0]["clients"], 3)
+
+    def test_data_collected_check_round_trip(self):
+        device = self._create_device()
+        device_data = DeviceData(pk=device.pk)
+        sample_data = self._data()
+        sample_data.pop("resources")
+        device_data.writer.write(sample_data, current=False)
+        passive_metric = device.monitoring.related_metrics.exclude(
+            configuration__in=device.monitoring.get_active_metrics()
+        ).first()
+        self.assertIsNotNone(
+            passive_metric,
+            list(
+                device.monitoring.related_metrics.values_list(
+                    "configuration",
+                    "key",
+                )
+            ),
+        )
+        self.assertGreaterEqual(len(self._read_metric(passive_metric, limit=None)), 1)
+        check = Check.objects.create(
+            name="Data Collected",
+            check_type=self._DATA_COLLECTED,
+            content_type=ContentType.objects.get_for_model(Device),
+            object_id=device.pk,
+        )
+
+        result = check.perform_check()
+
+        self.assertEqual(result, {"data_collected": 1})
+        metric = Metric.objects.get(key="data_collected", object_id=device_data.id)
+        points = self._read_metric(metric, retention_policy=SHORT_RP)
+        self.assertEqual(len(points), 1)
+        self.assertEqual(points[0]["data_collected"], 1)
