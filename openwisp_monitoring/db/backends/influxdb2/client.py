@@ -387,7 +387,9 @@ class DatabaseClient(object):
                     record_time = record.values.get("_time")
                     result = {
                         "time": (
-                            record_time.timestamp() if isinstance(record_time, datetime) else record_time
+                            record_time.timestamp()
+                            if isinstance(record_time, datetime)
+                            else record_time
                         ),
                         "_measurement": record.values.get("_measurement"),
                         "_field": record.values.get("_field"),
@@ -477,7 +479,9 @@ class DatabaseClient(object):
                 f"and r._value {op} {self._format_flux_value(value)})"
             )
         if supports_count_distinct:
-            flux_query += ' |> group(columns: []) |> distinct(column: "_value") |> count()'
+            flux_query += (
+                ' |> group(columns: []) |> distinct(column: "_value") |> count()'
+            )
         # Apply ordering
         order = kwargs.get("order") or kwargs.get("order_by")
         if order:
@@ -583,7 +587,11 @@ class DatabaseClient(object):
         # Ordinary chart reads should ignore object/interface tags and just
         # return field values. Only keep the group-by-tag path when the Flux
         # query explicitly groups by columns.
-        if "group(columns:" not in query or not result.keys() or result.keys()[0][1] is None:
+        if (
+            "group(columns:" not in query
+            or not result.keys()
+            or result.keys()[0][1] is None
+        ):
             return self._normalize_read_points(
                 list(result.get_points()), include_tags=False
             )
