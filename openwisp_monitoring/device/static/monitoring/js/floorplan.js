@@ -276,7 +276,7 @@
     );
   }
 
-  async function showFloor(url, floor) {
+  async function showFloor(url, floor, { updateUrl = true } = {}) {
     const floorplanState = getFloorplanState();
     if (!floorplanState?.state) return;
 
@@ -313,7 +313,14 @@
     // and later floors are shown or hidden instead of re-rendered, onReady is not
     // triggered again. Therefore we need to push the URL fragment manually
     // when switching floors.
-    pushIndoorMapIdFragment(nextState.maps[nextState.state.currentFloor], floor);
+    if (updateUrl) {
+      // Use pushState so Back/Forward navigates across floor changes.
+      pushIndoorMapIdFragment(
+        nextState.maps[nextState.state.currentFloor],
+        floor,
+        false,
+      );
+    }
   }
 
   function pushIndoorMapIdFragment(indoorMap, floor, replace = true) {
@@ -323,13 +330,23 @@
     const floorplanState = getFloorplanState();
     if (!floorplanState?.state) return;
     const fragments = indoorMap?.utils?.parseUrlFragments();
-    const indoorMapId = indoorMap?.config?.bookmarkableActions?.id;
-    if (!fragments || !indoorMapId) {
+    if (!fragments) {
       return;
     }
-    const indoorParams = fragments[indoorMapId] || new URLSearchParams();
-    indoorParams.set("id", `${floorplanState.state.locationId}_${floor}`);
-    fragments[indoorMapId] = indoorParams;
+    const geoMapId = "dashboard-geo-map";
+    const fragmentId = `${floorplanState.state.locationId}_${floor}`;
+
+    // Ensure we never accumulate multiple indoor fragments when switching floors.
+    // Keep the geo map fragment and replace any existing indoor fragment(s).
+    Object.keys(fragments).forEach((key) => {
+      if (key !== geoMapId && key !== fragmentId) {
+        delete fragments[key];
+      }
+    });
+
+    const indoorParams = fragments[fragmentId] || new URLSearchParams();
+    indoorParams.set("id", fragmentId);
+    fragments[fragmentId] = indoorParams;
     indoorMap?.utils?.updateUrlFragments(fragments, null, replace);
   }
 
@@ -533,7 +550,19 @@
           // instance is ready, so the indoor map can be opened directly from the URL
           // without requiring a node click to add the fragment.
           if (isActiveFloor) {
-            pushIndoorMapIdFragment(this, floor);
+            // Use pushState the first time we add the indoor fragment so Back
+            // returns to the geo-map-only state (with popup restored)
+            // If the fragment for this exact floor is already present (page-load
+            // restore or history navigation), use replaceState to avoid creating
+            // duplicate entries.
+            // Otherwise (initial open or floor switch), use pushState so Back/Forward
+            // can navigate across floor changes.
+            const fragments = this.utils?.parseUrlFragments?.();
+            const indoorMapId = this.config?.bookmarkableActions?.id;
+            const hasThisFloorFragment = Boolean(
+              fragments && indoorMapId && fragments[indoorMapId],
+            );
+            pushIndoorMapIdFragment(this, floor, hasThisFloorFragment);
           }
         },
         // Popup handling is delegated to nodePopup.content,
@@ -594,6 +623,27 @@
     await showFloor(floorplanState.state.url, floorplanState.state.currentFloor);
   }
 
+  async function navigateToFloorFromUrl(newIndex) {
+    // Like navigateToFloor, but avoids pushing a new history entry.
+    const floorplanState = getFloorplanState();
+    if (!floorplanState?.state) return;
+    floorplanState.selectedIndex = newIndex;
+    const maxStart = Math.max(0, floorplanState.floors.length - NAV_WINDOW_SIZE);
+    const center = Math.floor(NAV_WINDOW_SIZE / 2);
+    floorplanState.navWindowStart = Math.max(
+      0,
+      Math.min(floorplanState.selectedIndex - center, maxStart),
+    );
+    addFloorButtons();
+    floorplanState.state.currentFloor =
+      floorplanState.floors[floorplanState.selectedIndex];
+    setFloorplanState(floorplanState);
+    $(".floorplan-loading-spinner").show();
+    await showFloor(floorplanState.state.url, floorplanState.state.currentFloor, {
+      updateUrl: false,
+    });
+  }
+
   // Delegated event handlers (set up once at module init)
   $(document).on("click", "#floorplan-close-btn", destroyFloorplan);
 
@@ -638,18 +688,49 @@
   window.addEventListener("fragmentchange", () => {
     const indoorMapId = getIndoorMapIdFromUrl();
     const isOverlayOpen = document.getElementById("floorplan-overlay") !== null;
-    if (indoorMapId) {
-      if (!isOverlayOpen) {
-        const { fragmentLocationId, fragmentFloor } = indoorMapId;
-        const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
-          "000",
-          fragmentLocationId,
-        );
-        openFloorPlan(floorplanUrl, fragmentLocationId, fragmentFloor);
+
+    // No indoor fragment → close overlay if open, then bail.
+    if (!indoorMapId) {
+      // Overlay is open but URL has no indoor fragment → destroy.
+      if (isOverlayOpen) {
+        destroyFloorplan();
       }
-    } else if (isOverlayOpen) {
-      destroyFloorplan();
+      return;
     }
+
+    const { fragmentLocationId, fragmentFloor } = indoorMapId;
+    // Indoor fragment present but overlay not open → open it.
+    if (!isOverlayOpen) {
+      const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
+        "000",
+        fragmentLocationId,
+      );
+      openFloorPlan(floorplanUrl, fragmentLocationId, fragmentFloor);
+      return;
+    }
+    // Overlay already open: keep it in sync with the URL floor fragment.
+    const floorplanState = getFloorplanState();
+    // No floorplan state → bail.
+    if (!floorplanState?.state) {
+      return;
+    }
+    // Different location id → don't interfere with another location's overlay.
+    if (String(fragmentLocationId) !== String(floorplanState.state.locationId)) {
+      return;
+    }
+    const targetFloor = String(fragmentFloor);
+    // Already showing the target floor → nothing to do.
+    if (String(floorplanState.state.currentFloor) === targetFloor) {
+      return;
+    }
+    const idx = floorplanState.floors.findIndex((f) => String(f) === targetFloor);
+    // Target floor not in the available floors list → bail.
+    if (idx === -1) {
+      return;
+    }
+    // Popstate/history navigation already changed the URL.
+    // Do not push a new history entry while syncing UI.
+    navigateToFloorFromUrl(idx);
   });
 
   window.openFloorPlan = openFloorPlan;
