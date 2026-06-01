@@ -207,8 +207,8 @@ class TestMonitoringMixin(TestOrganizationMixin):
         # By default timeseries_db.db shall connect to the database
         # defined in settings when apps are loaded. We don't want that while testing
         timeseries_db.db_name = cls.TEST_DB
-        del timeseries_db.db
-        del timeseries_db.dbs
+        for attr in ("db", "dbs", "_write_api", "_query_api", "_delete_api", "use_udp"):
+            timeseries_db.__dict__.pop(attr, None)
         timeseries_db.create_database()
         for key, value in metrics.items():
             register_metric(key, value)
