@@ -21,4 +21,7 @@ if __name__ == "__main__":
     args.extend(base_args)
     if os.environ.get("TIMESERIES_UDP", False):
         args.extend(["--exclude-tag", "timeseries_client"])
+    # Keep sys.argv aligned with the final Django command so settings that
+    # inspect argv during import can detect test mode correctly.
+    sys.argv = args[:]
     execute_from_command_line(args)
