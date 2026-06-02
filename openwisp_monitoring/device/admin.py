@@ -279,6 +279,9 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
 
     def get_extra_context(self, pk=None):
         ctx = super().get_extra_context(pk)
+        ctx["map_changelist_url"] = reverse(
+            f"admin:{MapPage._meta.app_label}_{MapPage._meta.model_name}_changelist"
+        )
         if pk:
             device_data = DeviceData(pk=uuid.UUID(pk))
             api_url = reverse(

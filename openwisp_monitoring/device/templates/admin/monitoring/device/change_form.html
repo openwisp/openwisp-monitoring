@@ -611,6 +611,6 @@
 {% block admin_change_form_document_ready %}
 {{ block.super }}
 <script>
-    window._owMapPageUrl = "{% url 'admin:device_monitoring_map_changelist' %}";
+    window._owMapPageUrl = "{{ map_changelist_url }}";
 </script>
 {% endblock %}

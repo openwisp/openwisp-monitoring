@@ -27,6 +27,7 @@ AlertSettings = load_model("monitoring", "AlertSettings")
 DeviceData = load_model("device_monitoring", "DeviceData")
 WifiClient = load_model("device_monitoring", "WifiClient")
 WifiSession = load_model("device_monitoring", "WifiSession")
+MapPage = load_model("device_monitoring", "Map")
 User = get_user_model()
 Check = load_model("check", "Check")
 # needed for config.geo
@@ -1251,6 +1252,8 @@ class TestMapPageAdmin(TestGeoMixin, DeviceMonitoringTestCase):
     location_model = Location
     object_location_model = DeviceLocation
     object_model = Device
+    map_app_label = MapPage._meta.app_label
+    map_model_name = MapPage._meta.model_name
 
     def setUp(self):
         admin = User.objects.create_superuser("admin", "admin", "test@test.com")
@@ -1259,9 +1262,12 @@ class TestMapPageAdmin(TestGeoMixin, DeviceMonitoringTestCase):
     def tearDown(self):
         cache.clear()
 
+    def _map_changelist_url(self):
+        return reverse(f"admin:{self.map_app_label}_{self.map_model_name}_changelist")
+
     def test_mappage_admin(self):
         self._create_object_location()
-        url = reverse("admin:device_monitoring_map_changelist")
+        url = self._map_changelist_url()
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "admin/map/map_page.html")
@@ -1283,7 +1289,7 @@ class TestMapPageAdmin(TestGeoMixin, DeviceMonitoringTestCase):
 
     def test_mappage_admin_media_files(self):
         self._create_object_location()
-        url = reverse("admin:device_monitoring_map_changelist")
+        url = self._map_changelist_url()
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         static_files = [
