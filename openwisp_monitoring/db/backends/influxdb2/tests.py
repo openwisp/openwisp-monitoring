@@ -875,7 +875,7 @@ class TestInfluxDB2CheckIntegration(
             ),
         )
         self.assertGreaterEqual(len(self._read_metric(raw_metric, limit=None)), 1)
-        check = Check.objects.create(
+        check = Check.objects.get(
             name="WiFi Clients",
             check_type=self._WIFI_CLIENTS,
             content_type=ContentType.objects.get_for_model(Device),
