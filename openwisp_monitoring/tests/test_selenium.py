@@ -492,12 +492,14 @@ class TestDashboardMap(
             try:
                 WebDriverWait(self.web_driver, 5).until(
                     lambda d: f"nodeId={location.id}"
-                    in d.execute_script("return window.location.hash;")
+                    in d.execute_script(
+                        "return decodeURIComponent(window.location.hash);"
+                    )
                 )
             except TimeoutException:
                 self.fail("URL fragment was not updated after opening geo map popup")
             current_hash = self.web_driver.execute_script(
-                "return window.location.hash;"
+                "return decodeURIComponent(window.location.hash);"
             )
             expected_hash = f"id={mapId}&nodeId={location.id}"
             self.assertIn(expected_hash, current_hash)

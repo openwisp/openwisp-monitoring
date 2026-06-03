@@ -80,7 +80,9 @@
   function calculateNavigationState(currentFloor) {
     const floorplanState = getFloorplanState();
     if (!floorplanState) return;
-    const idx = floorplanState.floors.indexOf(currentFloor);
+    const idx = floorplanState.floors.findIndex(
+      (f) => String(f) === String(currentFloor),
+    );
     floorplanState.selectedIndex = idx === -1 ? 0 : idx;
     const maxStart = Math.max(0, floorplanState.floors.length - NAV_WINDOW_SIZE);
     const center = Math.floor(NAV_WINDOW_SIZE / 2);
@@ -206,7 +208,7 @@
     `);
   }
 
-  function destroyFloorplan() {
+  function destroyFloorplan({ replace: useReplace = true } = {}) {
     const floorplanState = getFloorplanState();
     if (floorplanState?.maps) {
       Object.values(floorplanState.maps).forEach((indoorMap) => {
@@ -227,8 +229,8 @@
     $("#floorplan-overlay").remove();
     $(".menu-backdrop").removeClass("active");
 
-    // Strip any indoor fragment from the URL using direct replaceState,
-    // avoiding the library's updateUrlFragments (which dispatches fragmentchange).
+    // Strip any indoor fragment from the URL.
+    // Close/escape use pushState (Forward restores indoor map).
     const raw = window.location.hash.replace(/^#/, "");
     if (raw) {
       const fragments = decodeURIComponent(raw)
@@ -242,7 +244,7 @@
         });
         const nextHash = kept.length ? `#${encodeURIComponent(kept.join(";"))}` : "";
         const nextUrl = `${window.location.pathname}${window.location.search}${nextHash}`;
-        window.history.replaceState(null, "", nextUrl);
+        window.history[useReplace ? "replaceState" : "pushState"](null, "", nextUrl);
       }
     }
   }
@@ -563,6 +565,9 @@
               fragments && indoorMapId && fragments[indoorMapId],
             );
             pushIndoorMapIdFragment(this, floor, hasThisFloorFragment);
+            if (hasThisFloorFragment) {
+              this.utils.applyUrlFragmentState(this);
+            }
           }
         },
         // Popup handling is delegated to nodePopup.content,
@@ -628,11 +633,14 @@
   }
 
   // Delegated event handlers (set up once at module init)
-  $(document).on("click", "#floorplan-close-btn", destroyFloorplan);
+  // Close/escape use pushState so Forward restores the indoor map.
+  $(document).on("click", "#floorplan-close-btn", () => {
+    destroyFloorplan({ replace: false });
+  });
 
   $(document).on("keydown", function (e) {
     if (e.key === "Escape" && document.getElementById("floorplan-overlay")) {
-      destroyFloorplan();
+      destroyFloorplan({ replace: false });
     }
   });
 
