@@ -605,28 +605,11 @@
     window._owIndoorMap = indoorMap;
   }
 
-  async function navigateToFloor(newIndex) {
+  async function navigateToFloor(newIndex, { updateUrl = true } = {}) {
     const floorplanState = getFloorplanState();
-    if (!floorplanState?.state) return;
-    floorplanState.selectedIndex = newIndex;
-    const maxStart = Math.max(0, floorplanState.floors.length - NAV_WINDOW_SIZE);
-    const center = Math.floor(NAV_WINDOW_SIZE / 2);
-    floorplanState.navWindowStart = Math.max(
-      0,
-      Math.min(floorplanState.selectedIndex - center, maxStart),
-    );
-    addFloorButtons();
-    floorplanState.state.currentFloor =
-      floorplanState.floors[floorplanState.selectedIndex];
-    setFloorplanState(floorplanState);
-    $(".floorplan-loading-spinner").show();
-    await showFloor(floorplanState.state.url, floorplanState.state.currentFloor);
-  }
-
-  async function navigateToFloorFromUrl(newIndex) {
-    // Like navigateToFloor, but avoids pushing a new history entry.
-    const floorplanState = getFloorplanState();
-    if (!floorplanState?.state) return;
+    if (!floorplanState?.state) {
+      return;
+    }
     floorplanState.selectedIndex = newIndex;
     const maxStart = Math.max(0, floorplanState.floors.length - NAV_WINDOW_SIZE);
     const center = Math.floor(NAV_WINDOW_SIZE / 2);
@@ -640,7 +623,7 @@
     setFloorplanState(floorplanState);
     $(".floorplan-loading-spinner").show();
     await showFloor(floorplanState.state.url, floorplanState.state.currentFloor, {
-      updateUrl: false,
+      updateUrl,
     });
   }
 
@@ -682,25 +665,21 @@
     },
   );
 
-  // React to URL fragment changes from the library (pushState, replaceState,
-  // or browser back/forward navigation). Persistent at module level —
-  // not tied to the overlay lifecycle.
+  // React to URL fragment changes from the library or browser back/forward.
   window.addEventListener("fragmentchange", () => {
-    const indoorMapId = getIndoorMapIdFromUrl();
-    const isOverlayOpen = document.getElementById("floorplan-overlay") !== null;
-
-    // No indoor fragment → close overlay if open, then bail.
-    if (!indoorMapId) {
-      // Overlay is open but URL has no indoor fragment → destroy.
-      if (isOverlayOpen) {
+    const indoorFragment = getIndoorMapIdFromUrl();
+    const $overlay = document.getElementById("floorplan-overlay");
+    const floorplanState = getFloorplanState();
+    // Back/forward removed the indoor fragment → close overlay if open.
+    if (!indoorFragment) {
+      if ($overlay) {
         destroyFloorplan();
       }
       return;
     }
-
-    const { fragmentLocationId, fragmentFloor } = indoorMapId;
-    // Indoor fragment present but overlay not open → open it.
-    if (!isOverlayOpen) {
+    const { fragmentLocationId, fragmentFloor } = indoorFragment;
+    // Forward/restore added an indoor fragment while overlay is closed → open it.
+    if (!$overlay) {
       const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
         "000",
         fragmentLocationId,
@@ -708,29 +687,28 @@
       openFloorPlan(floorplanUrl, fragmentLocationId, fragmentFloor);
       return;
     }
-    // Overlay already open: keep it in sync with the URL floor fragment.
-    const floorplanState = getFloorplanState();
-    // No floorplan state → bail.
+    // No floorplan state to sync with.
     if (!floorplanState?.state) {
       return;
     }
-    // Different location id → don't interfere with another location's overlay.
+    // Indoor fragment belongs to a different location → ignore.
     if (String(fragmentLocationId) !== String(floorplanState.state.locationId)) {
       return;
     }
-    const targetFloor = String(fragmentFloor);
-    // Already showing the target floor → nothing to do.
-    if (String(floorplanState.state.currentFloor) === targetFloor) {
+    // Already showing the target floor → nothing to do (avoids re-entry loop
+    // when the library dispatches fragmentchange after our own URL update).
+    if (String(floorplanState.state.currentFloor) === String(fragmentFloor)) {
       return;
     }
-    const idx = floorplanState.floors.findIndex((f) => String(f) === targetFloor);
-    // Target floor not in the available floors list → bail.
+    // Target floor not in the available floors → ignore.
+    const idx = floorplanState.floors.findIndex(
+      (f) => String(f) === String(fragmentFloor),
+    );
     if (idx === -1) {
       return;
     }
-    // Popstate/history navigation already changed the URL.
-    // Do not push a new history entry while syncing UI.
-    navigateToFloorFromUrl(idx);
+    // URL already changed via popstate/library → sync floor without pushing history.
+    navigateToFloor(idx, { updateUrl: false });
   });
 
   window.openFloorPlan = openFloorPlan;
