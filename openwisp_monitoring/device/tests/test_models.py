@@ -890,7 +890,7 @@ class TestDeviceMonitoring(
         dm1.device.delete(check_deactivated=False)
         # Only the metric related to the deleted device
         # is deleted
-        self.assertEqual(self._read_metric(ping1), [])
+        self.assertEqual(self._read_metric(ping1, allow_empty=True), [])
         self.assertNotEqual(self._read_metric(ping2), [])
 
     def test_handle_disabled_organization(self):

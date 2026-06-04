@@ -269,14 +269,40 @@ class TestMonitoringMixin(TestOrganizationMixin):
         c.save()
         return c
 
+    # When UDP writes are enabled the InfluxDB listener flushes points
+    # asynchronously, so a just-written point may not be queryable yet. A fixed
+    # sleep is racy under CI load, so reads are polled until data appears.
+    _udp_read_max_retries = 15
+    _udp_read_retry_delay = 0.2
+
     @property
     def _is_timeseries_udp_writes(self):
         return TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False)
 
+    @staticmethod
+    def _is_timeseries_read_empty(result):
+        # chart reads return a dict ("traces"/"x"), metric reads return a list
+        if isinstance(result, dict):
+            return not result.get("traces") and not result.get("x")
+        return not result
+
     def _read_chart_or_metric(self, obj, *args, **kwargs):
-        if self._is_timeseries_udp_writes:
-            time.sleep(0.12)
-        return obj.read(*args, **kwargs)
+        # callers that legitimately expect no data (e.g. after a metric is
+        # deleted) pass allow_empty=True to skip the polling and return at once
+        allow_empty = kwargs.pop("allow_empty", False)
+        if not self._is_timeseries_udp_writes:
+            return obj.read(*args, **kwargs)
+        result = obj.read(*args, **kwargs)
+        retries = 0
+        while (
+            not allow_empty
+            and self._is_timeseries_read_empty(result)
+            and retries < self._udp_read_max_retries
+        ):
+            time.sleep(self._udp_read_retry_delay)
+            result = obj.read(*args, **kwargs)
+            retries += 1
+        return result
 
     def _read_metric(self, metric, *args, **kwargs):
         return self._read_chart_or_metric(metric, *args, **kwargs)
@@ -287,4 +313,6 @@ class TestMonitoringMixin(TestOrganizationMixin):
     def _write_metric(self, metric, *args, **kwargs):
         metric.write(*args, **kwargs)
         if self._is_timeseries_udp_writes:
-            time.sleep(0.12)
+            # poll until the written point is queryable instead of sleeping a
+            # fixed amount of time, which is racy under load
+            self._read_chart_or_metric(metric)

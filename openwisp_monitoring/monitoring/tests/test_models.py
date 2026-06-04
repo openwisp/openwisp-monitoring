@@ -438,7 +438,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertNotEqual(self._read_metric(metric1), [])
         self.assertNotEqual(self._read_metric(metric2), [])
         metric1.delete()
-        self.assertEqual(self._read_metric(metric1), [])
+        self.assertEqual(self._read_metric(metric1, allow_empty=True), [])
         # Only the timeseries data related to the deleted metric
         # should be deleted
         self.assertNotEqual(self._read_metric(metric2), [])
