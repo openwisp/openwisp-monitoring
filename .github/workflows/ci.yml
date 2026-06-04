@@ -6,11 +6,12 @@ on:
     branches:
       - master
       - "1.2"
+      - "gsoc26-*"
   pull_request:
     branches:
       - master
       - "1.2"
-      - gsoc26-add-more-tsdb
+      - "gsoc26-*"
 
 jobs:
   build:
