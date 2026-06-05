@@ -6,7 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.test import TestCase
+from django.test import TestCase, tag
 from django.utils import timezone
 from freezegun import freeze_time
 from swapper import load_model
@@ -374,6 +374,9 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertIsNone(alert_s.custom_tolerance)
 
     @patch.object(app_settings, "TOLERANCE_INTERVAL", 300)
+    # the tolerance check runs inside Metric.write() and reads back the
+    # just-written point, which is not reliably queryable under async UDP writes
+    @tag("flaky_with_udp_writes")
     def test_tolerance(self):
         self._create_admin()
         m = self._create_general_metric(name="load")

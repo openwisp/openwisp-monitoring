@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
-from django.test import TransactionTestCase
+from django.test import TransactionTestCase, tag
 from swapper import load_model
 
 from ... import settings as monitoring_settings
@@ -19,6 +19,9 @@ Metric = load_model("monitoring", "Metric")
 Check = load_model("check", "Check")
 
 
+# the check reads back data right after it is written, which is not reliably
+# queryable under async UDP writes, so these tests run only in the TCP test runs
+@tag("flaky_with_udp_writes")
 class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
     _PING = app_settings.CHECK_CLASSES[0][0]
     _RESULT_KEYS = ["reachable", "loss", "rtt_min", "rtt_avg", "rtt_max"]

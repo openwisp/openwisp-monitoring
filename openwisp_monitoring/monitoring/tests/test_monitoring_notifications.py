@@ -1,6 +1,7 @@
 from datetime import timedelta
 from unittest.mock import patch
 
+from django.test import tag
 from django.utils import timezone
 from freezegun import freeze_time
 from swapper import load_model
@@ -24,6 +25,11 @@ ten_minutes_ago = start_time - timedelta(minutes=10)
 ten_minutes_after = start_time + timedelta(minutes=10)
 
 
+# These tests assert on state set by the automatic threshold check that runs
+# inside Metric.write(): the check reads back the just-written point, which is
+# not reliably queryable under asynchronous UDP writes. They are fully covered
+# in the TCP test runs, so they are excluded from the UDP run.
+@tag("flaky_with_udp_writes")
 class TestMonitoringNotifications(DeviceMonitoringTestCase):
     device_model = Device
     config_model = Config
@@ -644,6 +650,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(Notification.objects.count(), 0)
 
 
+@tag("flaky_with_udp_writes")
 class TestTransactionMonitoringNotifications(DeviceMonitoringTransactionTestcase):
     device_model = Device
     config_model = Config

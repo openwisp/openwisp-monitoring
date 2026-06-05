@@ -2,7 +2,7 @@ from datetime import date, timedelta
 from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
-from django.test import TransactionTestCase
+from django.test import TransactionTestCase, tag
 from django.utils.timezone import now
 from freezegun import freeze_time
 from swapper import load_model
@@ -20,6 +20,10 @@ Device = load_model("config", "device")
 Notification = load_model("openwisp_notifications", "Notification")
 
 
+# checks run the automatic threshold check on write, which reads back the
+# just-written point; this is not reliably queryable under async UDP writes, so
+# these tests run only in the TCP test runs
+@tag("flaky_with_udp_writes")
 class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTestCase):
     _PING = app_settings.CHECK_CLASSES[0][0]
     _CONFIG_APPLIED = app_settings.CHECK_CLASSES[1][0]

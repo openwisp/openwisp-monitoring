@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from django.test import TransactionTestCase
+from django.test import TransactionTestCase, tag
 from django.utils import timezone
 from freezegun import freeze_time
 from swapper import load_model
@@ -18,6 +18,9 @@ Check = load_model("check", "Check")
 Device = load_model("config", "Device")
 
 
+# the check reads back data right after it is written, which is not reliably
+# queryable under async UDP writes, so these tests run only in the TCP test runs
+@tag("flaky_with_udp_writes")
 class TestDataCollected(
     AutoDataCollectedCheck,
     TestDeviceMonitoringMixin,

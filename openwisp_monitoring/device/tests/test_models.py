@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.test import TestCase
+from django.test import TestCase, tag
 from django.utils.timezone import now, timedelta
 from freezegun import freeze_time
 from swapper import load_model
@@ -1114,6 +1114,9 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         self.assertEqual(WifiSession.objects.count(), 0)
 
     @patch.object(monitoring_settings, "TOLERANCE_INTERVAL", 60)
+    # closing the session runs the wifi clients check, which reads back the
+    # just-written points; not reliably queryable under async UDP writes
+    @tag("flaky_with_udp_writes")
     def test_device_offline_close_session(self):
         start_time = now()
         device_monitoring = self._create_device_monitoring()

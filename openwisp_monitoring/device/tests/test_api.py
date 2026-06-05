@@ -6,6 +6,7 @@ from uuid import uuid4
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
+from django.test import tag
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
@@ -998,6 +999,9 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         )
         self.assertEqual(self.chart_queryset.count(), charts_count + 3)
 
+    # asserts on chart summary values read from the timeseries right after the
+    # data is posted; not reliably queryable under async UDP writes
+    @tag("flaky_with_udp_writes")
     def test_5g_charts(self):
         org = self._create_org()
         device = self._create_device(organization=org)
@@ -1039,6 +1043,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(charts[1]["summary"]["signal_to_noise_ratio"], 12.0)
         self.assertEqual(charts[2]["summary"]["access_tech"], 5)
 
+    @tag("flaky_with_udp_writes")
     def test_umts_rscp_missing(self):
         org = self._create_org()
         device = self._create_device(organization=org)
@@ -1117,6 +1122,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(charts[1]["summary"]["signal_to_noise_ratio"], -4)
         self.assertEqual(charts[2]["summary"]["access_tech"], 3.0)
 
+    @tag("flaky_with_udp_writes")
     def test_cdma_charts(self):
         org = self._create_org()
         device = self._create_device(organization=org)

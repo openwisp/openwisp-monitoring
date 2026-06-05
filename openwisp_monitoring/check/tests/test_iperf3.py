@@ -3,7 +3,7 @@ from unittest.mock import call, patch
 
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from django.test import TransactionTestCase
+from django.test import TransactionTestCase, tag
 from swapper import load_model
 
 from openwisp_controller.connection.connectors.ssh import Ssh
@@ -32,6 +32,9 @@ Metric = load_model("monitoring", "Metric")
 AlertSettings = load_model("monitoring", "AlertSettings")
 
 
+# the check reads back data right after it is written, which is not reliably
+# queryable under async UDP writes, so these tests run only in the TCP test runs
+@tag("flaky_with_udp_writes")
 class TestIperf3(
     CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTestCase
 ):
