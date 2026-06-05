@@ -286,6 +286,16 @@ class TestMonitoringMixin(TestOrganizationMixin):
             return not result.get("traces") and not result.get("x")
         return not result
 
+    @staticmethod
+    def _timeseries_read_length(result):
+        # number of data points in a read result (chart dict or metric list)
+        if isinstance(result, dict):
+            x = result.get("x")
+            if x is not None:
+                return len(x)
+            return sum(len(values) for _, values in result.get("traces") or [])
+        return len(result)
+
     def _read_chart_or_metric(self, obj, *args, **kwargs):
         # callers that legitimately expect no data (e.g. after a metric is
         # deleted) pass allow_empty=True to skip the polling and return at once
@@ -293,14 +303,22 @@ class TestMonitoringMixin(TestOrganizationMixin):
         if not self._is_timeseries_udp_writes:
             return obj.read(*args, **kwargs)
         result = obj.read(*args, **kwargs)
+        if allow_empty:
+            return result
+        # UDP points are flushed asynchronously and a batch can be partially
+        # flushed, so poll until the data is present and its length is stable
+        # across two consecutive reads. A plain "non-empty" check would mistake
+        # a partial read (for example 2 of 4 points) for the complete result.
         retries = 0
-        while (
-            not allow_empty
-            and self._is_timeseries_read_empty(result)
-            and retries < self._udp_read_max_retries
-        ):
+        while retries < self._udp_read_max_retries:
             time.sleep(self._udp_read_retry_delay)
-            result = obj.read(*args, **kwargs)
+            new_result = obj.read(*args, **kwargs)
+            if not self._is_timeseries_read_empty(new_result) and (
+                self._timeseries_read_length(new_result)
+                == self._timeseries_read_length(result)
+            ):
+                return new_result
+            result = new_result
             retries += 1
         return result
 
