@@ -186,6 +186,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(r.status_code, 200)
         mocked_task.assert_called_once()
 
+    @tag("flaky_with_udp_writes")
     def test_200_traffic_counter_incremented(self):
         dd = self.create_test_data(no_resources=True)
         d = self.device_model.objects.first()
@@ -218,6 +219,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             points = self._read_metric(m, limit=10, order="-time")
             self.assertEqual(len(points), len(iface["wireless"]["clients"]) * 2)
 
+    @tag("flaky_with_udp_writes")
     def test_200_traffic_counter_reset(self):
         dd = self.create_test_data(no_resources=True)
         d = self.device_model.objects.first()
@@ -250,6 +252,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             points = self._read_metric(m, limit=10, order="-time")
             self.assertEqual(len(points), len(iface["wireless"]["clients"]) * 2)
 
+    @tag("flaky_with_udp_writes")
     def test_device_with_location(self):
         self.create_test_data(no_resources=True)
         device = self.device_model.objects.first()
@@ -285,6 +288,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 self.assertEqual(point["location_id"], str(location.id))
                 self.assertEqual(point["floorplan_id"], str(floorplan.id))
 
+    @tag("flaky_with_udp_writes")
     def test_200_multiple_measurements(self):
         dd = self._create_multiple_measurements(no_resources=True)
         # Add 1 for general metric and chart
@@ -515,6 +519,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 data=r.data["results"][0], detail=False, charts=False
             )
 
+    @tag("flaky_with_udp_writes")
     def test_get_device_metrics_histogram_ignore_x(self):
         o = self._create_org()
         d = self._create_device(organization=o)
