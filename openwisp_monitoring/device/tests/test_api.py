@@ -1008,8 +1008,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         )
         self.assertEqual(self.chart_queryset.count(), charts_count + 3)
 
-    # asserts on chart summary values read from the timeseries right after the
-    # data is posted; not reliably queryable under async UDP writes
+    # This test reads chart summaries immediately after posting data. That is
+    # unreliable with UDP writes.
     @tag("flaky_with_udp_writes")
     def test_5g_charts(self):
         org = self._create_org()

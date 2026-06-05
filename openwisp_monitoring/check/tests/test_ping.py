@@ -19,8 +19,8 @@ Metric = load_model("monitoring", "Metric")
 Check = load_model("check", "Check")
 
 
-# the check reads back data right after it is written, which is not reliably
-# queryable under async UDP writes, so these tests run only in the TCP test runs
+# These checks read data immediately after writing it, which is unreliable with
+# UDP writes. Keep them in the TCP runs only.
 @tag("flaky_with_udp_writes")
 class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
     _PING = app_settings.CHECK_CLASSES[0][0]

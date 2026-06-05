@@ -374,8 +374,8 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertIsNone(alert_s.custom_tolerance)
 
     @patch.object(app_settings, "TOLERANCE_INTERVAL", 300)
-    # the tolerance check runs inside Metric.write() and reads back the
-    # just-written point, which is not reliably queryable under async UDP writes
+    # The tolerance check runs inside Metric.write() and reads the new point
+    # immediately, which is unreliable with UDP writes.
     @tag("flaky_with_udp_writes")
     def test_tolerance(self):
         self._create_admin()

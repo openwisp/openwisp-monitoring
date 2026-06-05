@@ -20,9 +20,9 @@ Device = load_model("config", "device")
 Notification = load_model("openwisp_notifications", "Notification")
 
 
-# checks run the automatic threshold check on write, which reads back the
-# just-written point; this is not reliably queryable under async UDP writes, so
-# these tests run only in the TCP test runs
+# These tests trigger threshold checks inside Metric.write(), which read the new
+# point immediately. That is unreliable with UDP writes, so keep them in the TCP
+# runs only.
 @tag("flaky_with_udp_writes")
 class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTestCase):
     _PING = app_settings.CHECK_CLASSES[0][0]

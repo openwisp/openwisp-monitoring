@@ -269,9 +269,9 @@ class TestMonitoringMixin(TestOrganizationMixin):
         c.save()
         return c
 
-    # When UDP writes are enabled the InfluxDB listener flushes points
-    # asynchronously, so a just-written point may not be queryable yet. A fixed
-    # sleep is racy under CI load, so reads are polled until data appears.
+    # UDP writes are flushed by InfluxDB in the background, so a point may not
+    # be readable immediately after being written. Polling is safer than a fixed
+    # sleep under CI load.
     _udp_read_max_retries = 15
     _udp_read_retry_delay = 0.2
 
@@ -287,19 +287,17 @@ class TestMonitoringMixin(TestOrganizationMixin):
         return not result
 
     def _read_chart_or_metric(self, obj, *args, **kwargs):
-        # callers that legitimately expect no data (e.g. after a metric is
-        # deleted) pass allow_empty=True to skip the polling and return at once
+        # Some callers expect an empty result, for example after deleting a
+        # metric. In those cases, return immediately instead of polling.
         allow_empty = kwargs.pop("allow_empty", False)
         if not self._is_timeseries_udp_writes:
             return obj.read(*args, **kwargs)
         result = obj.read(*args, **kwargs)
         if allow_empty:
             return result
-        # UDP points are flushed asynchronously and a batch can be partially
-        # flushed (missing points, or a latest value not written yet), so poll
-        # until the read is non-empty and identical across two consecutive reads.
-        # Comparing the whole result (not just its length) also catches a partial
-        # read (for example 2 of 4 points) and a trailing null value.
+        # A UDP batch can become visible in pieces. Wait until two consecutive
+        # non-empty reads match, so partial results and trailing null values do
+        # not make the test proceed too early.
         retries = 0
         while retries < self._udp_read_max_retries:
             time.sleep(self._udp_read_retry_delay)
@@ -319,6 +317,6 @@ class TestMonitoringMixin(TestOrganizationMixin):
     def _write_metric(self, metric, *args, **kwargs):
         metric.write(*args, **kwargs)
         if self._is_timeseries_udp_writes:
-            # poll until the written point is queryable instead of sleeping a
-            # fixed amount of time, which is racy under load
+            # Wait for InfluxDB to expose the point instead of relying on a
+            # fixed sleep, which is unreliable under load.
             self._read_chart_or_metric(metric)

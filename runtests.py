@@ -18,9 +18,8 @@ if __name__ == "__main__":
         args.insert(2, "openwisp2")
     if os.environ.get("TIMESERIES_UDP", False):
         args.extend(["--exclude-tag", "timeseries_client"])
-        # these tests read back data right after writing it (for example the
-        # automatic threshold check that runs inside Metric.write), which is not
-        # reliably queryable under asynchronous UDP writes; they are fully
-        # covered by the TCP test runs
+        # These tests read immediately after writing, sometimes inside product
+        # code such as Metric.write(). That is unreliable with UDP writes, and
+        # the same behavior is already covered by the TCP test runs.
         args.extend(["--exclude-tag", "flaky_with_udp_writes"])
     execute_from_command_line(args)

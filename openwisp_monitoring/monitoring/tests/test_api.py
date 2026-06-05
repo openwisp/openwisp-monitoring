@@ -21,9 +21,8 @@ Location = load_model("geo", "Location")
 Device = load_model("config", "Device")
 
 
-# these tests assert on chart values read through the dashboard API right after
-# the data is written, which is not reliably queryable under async UDP writes;
-# they run in full in the TCP test runs
+# These tests assert on dashboard chart data immediately after writes. That is
+# unreliable with UDP writes, so keep them in the TCP runs only.
 @tag("flaky_with_udp_writes")
 @patch.dict(DEFAULT_DASHBOARD_TRAFFIC_CHART, {"__all__": ["wan"]})
 class TestDashboardTimeseriesView(

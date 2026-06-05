@@ -1114,8 +1114,8 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         self.assertEqual(WifiSession.objects.count(), 0)
 
     @patch.object(monitoring_settings, "TOLERANCE_INTERVAL", 60)
-    # closing the session runs the wifi clients check, which reads back the
-    # just-written points; not reliably queryable under async UDP writes
+    # Closing the session runs the wifi clients check, which reads the new
+    # points immediately. That is unreliable with UDP writes.
     @tag("flaky_with_udp_writes")
     def test_device_offline_close_session(self):
         start_time = now()

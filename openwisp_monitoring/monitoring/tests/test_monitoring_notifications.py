@@ -25,10 +25,9 @@ ten_minutes_ago = start_time - timedelta(minutes=10)
 ten_minutes_after = start_time + timedelta(minutes=10)
 
 
-# These tests assert on state set by the automatic threshold check that runs
-# inside Metric.write(): the check reads back the just-written point, which is
-# not reliably queryable under asynchronous UDP writes. They are fully covered
-# in the TCP test runs, so they are excluded from the UDP run.
+# These tests assert on threshold state set inside Metric.write(), which reads
+# the new point immediately. That is unreliable with UDP writes, so keep them in
+# the TCP runs only.
 @tag("flaky_with_udp_writes")
 class TestMonitoringNotifications(DeviceMonitoringTestCase):
     device_model = Device
