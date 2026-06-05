@@ -8,6 +8,18 @@ TESTING = "test" in sys.argv
 SHELL = "shell" in sys.argv or "shell_plus" in sys.argv
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+if TESTING:
+    # Limit Daphne's thread pool to a single worker during tests.
+    # ChannelsLiveServerTestCase (used by the dashboard map selenium test) runs
+    # Daphne in a separate process against the file-based SQLite test DB. With
+    # the default pool of several worker threads, SQLite connections get opened
+    # and closed concurrently across those threads, which intermittently
+    # corrupts the C heap ("double free or corruption" -> segfault) and kills
+    # the live server, cascading into connectionFailure test errors. Serializing
+    # to one thread avoids the race. Daphne reads this variable at import time,
+    # so it must be set before daphne.server is imported (hence: here, early).
+    os.environ.setdefault("ASGI_THREADS", "1")
+
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
