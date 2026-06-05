@@ -686,6 +686,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         response = self.client.get(self._url(d.pk.hex, d.key))
         self.assertEqual(response.status_code, 200)
 
+    @tag("flaky_with_udp_writes")
     def test_available_memory(self):
         o = self._create_org()
         d = self._create_device(organization=o)
