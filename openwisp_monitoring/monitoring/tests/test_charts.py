@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ValidationError
-from django.test import TestCase
+from django.test import TestCase, tag
 from django.utils.timezone import now
 from swapper import load_model
 
@@ -99,6 +99,11 @@ class TestCharts(TestMonitoringMixin, TestCase):
         data = self._read_chart(c)
         self.assertEqual(data["summary"], {"google": 200.0, "facebook": 0.0061})
 
+    # The summary asserts an exact MEAN over four written points. Over UDP a
+    # dropped write silently averages over fewer points (e.g. 4/3 too high), and
+    # a dropped packet cannot be recovered by polling. Run it only in the TCP
+    # passes, which are lossless.
+    @tag("flaky_with_udp_writes")
     def test_read_summary_top_fields_acid(self):
         m = self._create_object_metric(
             name="applications", configuration="top_fields_mean"
