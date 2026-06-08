@@ -27,16 +27,6 @@ if TESTING and "--exclude-tag=selenium_tests" not in sys.argv:
     DATABASES["default"]["TEST"] = {
         "NAME": os.path.join(BASE_DIR, "openwisp-monitoring-tests.db"),
     }
-    # The selenium live-server tests (WSGI StaticLiveServer and the Daphne/ASGI
-    # ChannelsLiveServerTestCase) serve requests from several threads, so SQLite
-    # connections get opened and closed concurrently. On Python 3.13 this
-    # intermittently crashes with "double free or corruption" / segfault. The
-    # patch below memoizes ctypes find_library (the SpatiaLite backend otherwise
-    # forks an ldconfig subprocess on every new connection) and serializes
-    # connection open/close, removing the race. Test-only, no product change.
-    from openwisp2.sqlite_threadsafe import make_sqlite_threadsafe
-
-    make_sqlite_threadsafe()
 
 TIMESERIES_DATABASE = {
     "BACKEND": "openwisp_monitoring.db.backends.influxdb",
