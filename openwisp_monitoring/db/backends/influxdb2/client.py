@@ -7,6 +7,10 @@ from django.core.exceptions import ValidationError
 from django.utils.functional import cached_property
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
+from influxdb_client import InfluxDBClient
+from influxdb_client.client.exceptions import InfluxDBError
+from influxdb_client.client.write_api import SYNCHRONOUS
+from influxdb_client.domain import BucketRetentionRules
 
 from openwisp_monitoring.utils import retry
 
@@ -55,7 +59,6 @@ class QueryResultSet:
         if self._series_cache is not None:
             return self._series_cache
         series_dict = {}
-
         for point in self.points:
             measurement = point.get("_measurement", "results")
             # Extract tags (all keys except special fields)
@@ -117,7 +120,6 @@ class QueryResultSet:
         """
         series_dict = self._group_by_measurement_tags()
         items = []
-
         for (measurement, tags_frozen), points in series_dict.items():
             tags_dict = dict(tags_frozen) if tags_frozen else None
             key = (measurement, tags_dict)
@@ -157,6 +159,7 @@ class DatabaseClient(object):
 
     _AGGREGATE = ["mean", "sum", "count", "max", "min", "stddev"]
     backend_name = "influxdb2"
+    client_error = InfluxDBError
     _FORBIDDEN = ["drop", "delete", "alter", "create", "into"]
     _OPERATORS = ["=", "!=", "<", ">", "<=", ">="]
 
@@ -170,17 +173,6 @@ class DatabaseClient(object):
         self.db_name = db_name or TIMESERIES_DB["NAME"]
         self.org = TIMESERIES_DB.get("ORG", "openwisp")
         self.token = TIMESERIES_DB.get("TOKEN", "")
-        try:
-            from influxdb_client import InfluxDBClient
-            from influxdb_client.client.exceptions import InfluxDBError
-
-            self.InfluxDBClient = InfluxDBClient
-            self.client_error = InfluxDBError
-        except ImportError:
-            raise ImportError(
-                "influxdb-client is required for InfluxDB 2.x support. "
-                "Install it with: pip install influxdb-client"
-            )
 
     @retry
     def create_database(self):
@@ -198,15 +190,16 @@ class DatabaseClient(object):
 
     @retry
     def drop_database(self):
-        """Drops bucket if it exists."""
+        """Drops known buckets if they exist."""
         api = self.db.buckets_api()
-        try:
-            bucket = api.find_bucket_by_name(self.db_name)
-            if bucket:
-                api.delete_bucket(bucket)
-                logger.debug(f'Dropped InfluxDB2 bucket "{self.db_name}"')
-        except self.client_error:
-            logger.debug(f'InfluxDB2 bucket "{self.db_name}" not found')
+        for bucket_name in self._get_known_bucket_names():
+            try:
+                bucket = api.find_bucket_by_name(bucket_name)
+                if bucket:
+                    api.delete_bucket(bucket)
+                    logger.debug(f'Dropped InfluxDB2 bucket "{bucket_name}"')
+            except self.client_error:
+                logger.debug(f'InfluxDB2 bucket "{bucket_name}" not found')
 
     @cached_property
     def db(self):
@@ -215,15 +208,13 @@ class DatabaseClient(object):
             TIMESERIES_DB.get("URL")
             or f"http://{TIMESERIES_DB['HOST']}:{TIMESERIES_DB['PORT']}"
         )
-        return self.InfluxDBClient(url=url, token=self.token, org=self.org)
+        return InfluxDBClient(url=url, token=self.token, org=self.org)
 
     @cached_property
     def _write_api(self):
         """Returns write API instance."""
         # docs:
         # https://influxdb-client.readthedocs.io/en/stable/api.html#influxdb_client.WriteApi
-        from influxdb_client.client.write_api import SYNCHRONOUS
-
         return self.db.write_api(write_options=SYNCHRONOUS)
 
     @cached_property
@@ -240,34 +231,63 @@ class DatabaseClient(object):
     def use_udp(self):
         return False
 
+    def _get_bucket_name(self, retention_policy=None):
+        if not retention_policy or retention_policy == "autogen":
+            return self.db_name
+        return f"{self.db_name}_{retention_policy}"
+
+    def _get_known_bucket_names(self):
+        return [self._get_bucket_name(), self._get_bucket_name("short")]
+
+    def _get_retention_policy_name(self, bucket_name):
+        if bucket_name == self.db_name:
+            return "autogen"
+        prefix = f"{self.db_name}_"
+        if bucket_name.startswith(prefix):
+            return bucket_name[len(prefix) :]
+        return bucket_name
+
+    def _get_bucket_retention_duration(self, bucket):
+        if bucket and bucket.retention_rules:
+            return f"{bucket.retention_rules[0].every_seconds}s"
+        return "0s"
+
     @retry
     def create_or_alter_retention_policy(self, name, duration):
-        """Creates or alters retention policy on a bucket."""
-        from influxdb_client.domain import BucketRetentionRules
-
-        if name != "autogen":
-            logger.warning(
-                f'InfluxDB 2.0 manages retention at bucket level; ignoring "{name}"'
-            )
-            return
+        """Creates or alters a bucket matching the retention policy."""
         api = self.db.buckets_api()
-        try:
-            bucket = api.find_bucket_by_name(self.db_name)
-        except self.client_error:
-            logger.warning(f'Bucket "{self.db_name}" not found. Create database first.')
-            return
+        bucket_name = self._get_bucket_name(name)
         duration_seconds = self._duration_to_seconds(duration)
-        bucket.retention_rules = [
+        retention_rules = [
             BucketRetentionRules(type="expire", every_seconds=duration_seconds)
         ]
-
+        try:
+            bucket = api.find_bucket_by_name(bucket_name)
+        except self.client_error as exception:
+            logger.warning(
+                f'Could not inspect InfluxDB2 bucket "{bucket_name}": {exception}'
+            )
+            return
+        if not bucket:
+            api.create_bucket(
+                bucket_name=bucket_name,
+                org=self.org,
+                retention_rules=retention_rules,
+            )
+            logger.debug(
+                f'Created InfluxDB2 bucket "{bucket_name}" for retention policy '
+                f'"{name}" with duration {duration}'
+            )
+            return
+        bucket.retention_rules = retention_rules
         try:
             api.update_bucket(bucket=bucket)
         except self.client_error as exception:
             logger.warning(f"Could not update InfluxDB2 bucket retention: {exception}")
             return
         logger.debug(
-            f'Created/updated InfluxDB2 retention policy "{name}" with duration {duration}'
+            f'Created/updated InfluxDB2 bucket "{bucket_name}" for retention policy '
+            f'"{name}" with duration {duration}'
         )
 
     def _duration_to_seconds(self, duration):
@@ -322,16 +342,12 @@ class DatabaseClient(object):
 
     def write(self, name, values, **kwargs):
         timestamp = self._get_timestamp(timestamp=kwargs.get("timestamp"))
-        # Log ignored v1 options because v2 manages these at bucket level.
         if kwargs.get("database") and kwargs.get("database") != self.db_name:
             logger.warning(
                 f'Parameter "database" is ignored in InfluxDB 2.0. '
                 f'Using bucket "{self.db_name}"'
             )
-        if kwargs.get("retention_policy"):
-            logger.warning(
-                'Parameter "retention_policy" is managed at bucket level in InfluxDB 2.0'
-            )
+        bucket = self._get_bucket_name(kwargs.get("retention_policy"))
         point = {
             "measurement": name,
             "tags": kwargs.get("tags", {}),
@@ -340,7 +356,7 @@ class DatabaseClient(object):
         }
         try:
             self._write_api.write(
-                bucket=self.db_name,
+                bucket=bucket,
                 org=self.org,
                 record=point,
             )
@@ -350,19 +366,14 @@ class DatabaseClient(object):
 
     def batch_write(self, metric_data):
         """Write multiple data points in batch."""
+        points_by_bucket = {}
         for data in metric_data:
             if data.get("database") and data.get("database") != self.db_name:
                 logger.warning(
                     f'Parameter "database" is ignored in InfluxDB 2.0. '
                     f'Writing to bucket "{self.db_name}"'
                 )
-            if data.get("retention_policy"):
-                logger.warning(
-                    'Parameter "retention_policy" is managed at bucket level in InfluxDB 2.0. '
-                    "All data uses bucket retention policy."
-                )
-        points = []
-        for data in metric_data:
+            bucket = self._get_bucket_name(data.get("retention_policy"))
             timestamp = self._get_timestamp(timestamp=data.get("timestamp"))
             point = {
                 "measurement": data.get("name"),
@@ -370,9 +381,10 @@ class DatabaseClient(object):
                 "fields": data.get("values"),
                 "time": timestamp,
             }
-            points.append(point)
+            points_by_bucket.setdefault(bucket, []).append(point)
         try:
-            self._write_api.write(bucket=self.db_name, org=self.org, record=points)
+            for bucket, points in points_by_bucket.items():
+                self._write_api.write(bucket=bucket, org=self.org, record=points)
         except Exception as exception:
             logger.warning(f"Error batch writing to InfluxDB2: {exception}")
             raise TimeseriesWriteException
@@ -426,10 +438,6 @@ class DatabaseClient(object):
                     f"Reason: {reason}. "
                     f"For complex queries, use timeseries_db.query() with custom Flux instead."
                 )
-        if kwargs.get("retention_policy"):
-            logger.warning(
-                'Parameter "retention_policy" is managed at bucket level in InfluxDB 2.0'
-            )
         supports_count_distinct = (
             len(distinct_fields) == 1
             and len(count_fields) == 1
@@ -441,7 +449,8 @@ class DatabaseClient(object):
                 "COUNT(DISTINCT(field)) queries."
             )
         # Build Flux query
-        flux_query = f'from(bucket: "{self.db_name}")'
+        bucket = self._get_bucket_name(kwargs.get("retention_policy"))
+        flux_query = f'from(bucket: "{bucket}")'
         # Add time range
         since = kwargs.get("since")
         if since:
@@ -539,35 +548,41 @@ class DatabaseClient(object):
         return " AND ".join(predicates)
 
     @retry
-    def _delete_range(self, predicate=""):
+    def _delete_range(self, predicate="", bucket=None):
         start = datetime(1970, 1, 1, tzinfo=timezone.utc)
         stop = datetime.now(timezone.utc)
-        self._delete_api.delete(
-            start,
-            stop,
-            predicate,
-            bucket=self.db_name,
-            org=self.org,
-        )
+        try:
+            self._delete_api.delete(
+                start,
+                stop,
+                predicate,
+                bucket=bucket or self.db_name,
+                org=self.org,
+            )
+        except self.client_error as exception:
+            logger.debug(
+                f"Could not delete InfluxDB2 data from bucket {bucket}: {exception}"
+            )
 
     @retry
     def delete_series(self, key=None, tags=None):
         """
         Backward-compatible InfluxDB 1.8 style series deletion.
-
         In InfluxDB 2.0 this is implemented as a predicate-based delete over
         the full time range of the bucket.
         """
         predicate = self._build_delete_predicate(key=key, tags=tags)
         if not predicate:
             raise ValueError("delete_series requires at least one of key or tags")
-        self._delete_range(predicate)
+        for bucket in self._get_known_bucket_names():
+            self._delete_range(predicate, bucket=bucket)
 
     def delete_metric_data(self, key=None, tags=None):
         """Deletes metric data based on measurement and tags."""
         try:
             predicate = self._build_delete_predicate(key=key, tags=tags)
-            self._delete_range(predicate)
+            for bucket in self._get_known_bucket_names():
+                self._delete_range(predicate, bucket=bucket)
             logger.debug(f"Deleted metric data: key={key}, tags={tags}")
         except Exception as exception:
             logger.warning(f"Error deleting metric data: {exception}")
@@ -626,20 +641,23 @@ class DatabaseClient(object):
 
     @retry
     def get_list_retention_policies(self):
-        """Returns list of retention policies for the bucket."""
+        """Returns v1-compatible retention policy records for known buckets."""
         try:
             api = self.db.buckets_api()
-            bucket = api.find_bucket_by_name(self.db_name)
             policies = []
-            if bucket.retention_rules:
-                for rule in bucket.retention_rules:
-                    policies.append(
-                        {
-                            "name": "default",
-                            "duration": f"{rule.every_seconds}s",
-                            "replication": 1,
-                        }
-                    )
+            for bucket_name in self._get_known_bucket_names():
+                bucket = api.find_bucket_by_name(bucket_name)
+                if not bucket:
+                    continue
+                policy_name = self._get_retention_policy_name(bucket_name)
+                policies.append(
+                    {
+                        "name": policy_name,
+                        "default": policy_name == "autogen",
+                        "duration": self._get_bucket_retention_duration(bucket),
+                        "replication": 1,
+                    }
+                )
             return policies
         except self.client_error:
             return []
@@ -657,11 +675,9 @@ class DatabaseClient(object):
             flux_query += f" |> range(start: {start_range}, stop: {end_range})"
         else:
             flux_query += f" |> range(start: {start_range})"
-
         measurement = params.get("key")
         if measurement:
             flux_query += f' |> filter(fn: (r) => r._measurement == "{measurement}")'
-
         if params.get("content_type") and params.get("object_id"):
             content_type = params["content_type"]
             object_id = params["object_id"]
@@ -669,27 +685,91 @@ class DatabaseClient(object):
                 f' |> filter(fn: (r) => r.content_type == "{content_type}" '
                 f'and r.object_id == "{object_id}")'
             )
-
         if params.get("ifname"):
             ifname = params["ifname"]
             flux_query += f' |> filter(fn: (r) => r.ifname == "{ifname}")'
-
         if params.get("organization_id"):
             org_id = params["organization_id"]
             if isinstance(org_id, list):
                 org_id = org_id[0]
             if org_id != "__all__":
                 flux_query += f' |> filter(fn: (r) => r.organization_id == "{org_id}")'
-
         if params.get("location_id"):
             location_id = params["location_id"]
             flux_query += f' |> filter(fn: (r) => r.location_id == "{location_id}")'
-
         if params.get("floorplan_id"):
             floorplan_id = params["floorplan_id"]
             flux_query += f' |> filter(fn: (r) => r.floorplan_id == "{floorplan_id}")'
-
         return flux_query
+
+    def _format_filter(self, field, value):
+        if value in (None, "", "__all__"):
+            return ""
+        if isinstance(value, (list, tuple)):
+            items = [item for item in value if item != "__all__"]
+            if not items:
+                return ""
+            values = ", ".join([f'"{item}"' for item in items])
+            return f" |> filter(fn: (r) => contains(value: r.{field}, set: [{values}]))"
+        return f' |> filter(fn: (r) => r.{field} == "{value}")'
+
+    def _format_field_filter(self, fields, field_name):
+        if fields:
+            field_list = ", ".join([f'"{field}"' for field in fields])
+            return f" |> filter(fn: (r) => r._field in ({field_list}))"
+        if field_name:
+            return f' |> filter(fn: (r) => r._field == "{field_name}")'
+        return ""
+
+    def _format_chart_query(self, query, params, time, group_map, summary, fields):
+        start_range = params.get("time")
+        if start_range:
+            time_start = self._format_flux_time(start_range)
+        else:
+            time_val = group_map.get(time, time) if group_map else time
+            time_start = f"-{time_val}"
+        end_range = ""
+        if params.get("end_date"):
+            end_range = f', stop: {self._format_flux_time(params["end_date"])}'
+        window = group_map.get(time, time) if group_map else time
+        formatted = query.format(
+            bucket=self.db_name,
+            key=params.get("key", ""),
+            time_start=time_start,
+            end_range=end_range,
+            window=window,
+            field_name=params.get("field_name", ""),
+            content_type=params.get("content_type", ""),
+            object_id=params.get("object_id", ""),
+            ifname=params.get("ifname", ""),
+            organization_id=params.get("organization_id", ""),
+            location_id=params.get("location_id", ""),
+            floorplan_id=params.get("floorplan_id", ""),
+            content_type_filter=self._format_filter(
+                "content_type", params.get("content_type")
+            ),
+            object_id_filter=self._format_filter("object_id", params.get("object_id")),
+            ifname_filter=self._format_filter("ifname", params.get("ifname")),
+            organization_id_filter=self._format_filter(
+                "organization_id", params.get("organization_id")
+            ),
+            location_id_filter=self._format_filter(
+                "location_id", params.get("location_id")
+            ),
+            floorplan_id_filter=self._format_filter(
+                "floorplan_id", params.get("floorplan_id")
+            ),
+            field_filter=self._format_field_filter(
+                fields, params.get("field_name", "")
+            ),
+        )
+        if summary:
+            formatted = re.sub(
+                r"\s\|> aggregateWindow\(every: [^,]+, fn: (\w+)\)",
+                r" |> \1()",
+                formatted,
+            )
+        return formatted
 
     def _get_top_fields(
         self,
@@ -704,7 +784,6 @@ class DatabaseClient(object):
         del query, chart_type, timezone
         if number <= 0:
             return []
-
         flux_query = self._build_chart_base_query(params, time, group_map)
         flux_query += (
             ' |> group(columns: ["_field"])'
@@ -736,6 +815,10 @@ class DatabaseClient(object):
         Supports chart_type: uptime, packet_loss, rtt, wifi_clients,
                              general_wifi_clients, traffic, general_traffic
         """
+        if query and "{bucket}" in query:
+            return self._format_chart_query(
+                query, params, time, group_map, summary, fields
+            )
         flux_query = self._build_chart_base_query(params, time, group_map)
         # 8. FIELD NAME FILTER: Use field_name from params if not overridden by fields
         if not fields and params.get("field_name"):
