@@ -1,97 +1,236 @@
 """
 InfluxDB 2.x Flux queries for monitoring charts.
-These queries follow the Flux query language syntax.
 """
 
-from openwisp_monitoring.db.backends.influxdb.queries import (
-    chart_query as v1_chart_query,
-)
-
-_default_flux_query = (
+_range = (
     'from(bucket: "{bucket}")'
-    " |> range(start: {time_start})"
+    " |> range(start: {time_start}{end_range})"
     ' |> filter(fn: (r) => r._measurement == "{key}")'
 )
 
+_object_filters = (
+    "{content_type_filter}"
+    "{object_id_filter}"
+    "{ifname_filter}"
+    "{organization_id_filter}"
+    "{location_id_filter}"
+    "{floorplan_id_filter}"
+)
+
+_window_mean = " |> aggregateWindow(every: {window}, fn: mean)"
+_window_sum = " |> aggregateWindow(every: {window}, fn: sum)"
+_window_count = " |> aggregateWindow(every: {window}, fn: count)"
+_window_mode = " |> aggregateWindow(every: {window}, fn: mode)"
+
 chart_query = {
-    chart_type: {"influxdb2": _default_flux_query} for chart_type in v1_chart_query
+    "uptime": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + ' |> filter(fn: (r) => r._field == "{field_name}")'
+            + _window_mean
+            + " |> map(fn: (r) => "
+            + '({{r with _field: "uptime", _value: float(v: r._value) * 100.0}}))'
+        )
+    },
+    "packet_loss": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + ' |> filter(fn: (r) => r._field == "loss")'
+            + _window_mean
+            + ' |> map(fn: (r) => ({{r with _field: "packet_loss"}}))'
+        )
+    },
+    "rtt": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + " |> filter(fn: (r) => r._field =~ /^rtt_(avg|max|min)$/)"
+            + _window_mean
+            + " |> map(fn: (r) => ({{r with _field: "
+            + 'if r._field == "rtt_avg" then "RTT_average" '
+            + 'else if r._field == "rtt_max" then "RTT_max" '
+            + 'else "RTT_min"}}))'
+        )
+    },
+    "wifi_clients": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + ' |> filter(fn: (r) => r._field == "{field_name}")'
+            + ' |> group(columns: ["_time"])'
+            + ' |> distinct(column: "_value")'
+            + _window_count
+            + ' |> map(fn: (r) => ({{r with _field: "wifi_clients"}}))'
+        )
+    },
+    "general_wifi_clients": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + ' |> filter(fn: (r) => r._field == "{field_name}")'
+            + ' |> group(columns: ["_time"])'
+            + ' |> distinct(column: "_value")'
+            + _window_count
+            + ' |> map(fn: (r) => ({{r with _field: "wifi_clients"}}))'
+        )
+    },
+    "traffic": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + " |> filter(fn: (r) => r._field =~ /^(tx_bytes|rx_bytes)$/)"
+            + _window_sum
+            + " |> map(fn: (r) => ({{r with "
+            + '_field: if r._field == "tx_bytes" then "upload" else "download", '
+            + "_value: float(v: r._value) / 1000000000.0}}))"
+        )
+    },
+    "general_traffic": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + " |> filter(fn: (r) => r._field =~ /^(tx_bytes|rx_bytes)$/)"
+            + _window_sum
+            + " |> map(fn: (r) => ({{r with "
+            + '_field: if r._field == "tx_bytes" then "upload" else "download", '
+            + "_value: float(v: r._value) / 1000000000.0}}))"
+        )
+    },
+    "memory": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + ' |> filter(fn: (r) => r._field == "percent_used")'
+            + _window_mean
+            + ' |> map(fn: (r) => ({{r with _field: "memory_usage"}}))'
+        )
+    },
+    "cpu": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + ' |> filter(fn: (r) => r._field == "cpu_usage")'
+            + _window_mean
+            + ' |> map(fn: (r) => ({{r with _field: "CPU_load"}}))'
+        )
+    },
+    "disk": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + ' |> filter(fn: (r) => r._field == "used_disk")'
+            + _window_mean
+            + ' |> map(fn: (r) => ({{r with _field: "disk_usage"}}))'
+        )
+    },
+    "signal_strength": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + " |> filter(fn: (r) => r._field =~ /^(signal_strength|signal_power)$/)"
+            + _window_mean
+            + " |> map(fn: (r) => ({{r with _value: float(v: int(v: r._value))}}))"
+        )
+    },
+    "signal_quality": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + " |> filter(fn: (r) => r._field =~ /^(signal_quality|snr)$/)"
+            + _window_mean
+            + " |> map(fn: (r) => ({{r with "
+            + '_field: if r._field == "snr" then "signal_to_noise_ratio" '
+            + 'else "signal_quality", '
+            + "_value: float(v: int(v: r._value))}}))"
+        )
+    },
+    "access_tech": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + ' |> filter(fn: (r) => r._field == "access_tech")'
+            + _window_mode
+        )
+    },
+    "bandwidth": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + " |> filter(fn: (r) => r._field =~ /^(sent_bps_tcp|sent_bps_udp)$/)"
+            + _window_mean
+            + " |> map(fn: (r) => ({{r with "
+            + '_field: if r._field == "sent_bps_tcp" then "TCP" else "UDP", '
+            + "_value: float(v: r._value) / 1000000000.0}}))"
+        )
+    },
+    "transfer": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + " |> filter(fn: (r) => r._field =~ /^(sent_bytes_tcp|sent_bytes_udp)$/)"
+            + _window_sum
+            + " |> map(fn: (r) => ({{r with "
+            + '_field: if r._field == "sent_bytes_tcp" then "TCP" else "UDP", '
+            + "_value: float(v: r._value) / 1000000000.0}}))"
+        )
+    },
+    "retransmits": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + ' |> filter(fn: (r) => r._field == "retransmits")'
+            + _window_mean
+        )
+    },
+    "jitter": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + ' |> filter(fn: (r) => r._field == "jitter")'
+            + _window_mean
+        )
+    },
+    "datagram": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + " |> filter(fn: (r) => r._field =~ /^(lost_packets|total_packets)$/)"
+            + _window_mean
+            + " |> map(fn: (r) => ({{r with _field: "
+            + 'if r._field == "lost_packets" then "lost_datagram" '
+            + 'else "total_datagram"}}))'
+        )
+    },
+    "datagram_loss": {
+        "influxdb2": (
+            _range
+            + _object_filters
+            + ' |> filter(fn: (r) => r._field == "lost_percent")'
+            + _window_mean
+            + ' |> map(fn: (r) => ({{r with _field: "datagram_loss"}}))'
+        )
+    },
 }
 
-chart_query.update(
-    {
-        "uptime": {
-            "influxdb2": (
-                'from(bucket: "{bucket}")'
-                " |> range(start: {time_start})"
-                ' |> filter(fn: (r) => r._measurement == "{key}")'
-                ' |> filter(fn: (r) => r.content_type == "{content_type}")'
-                ' |> filter(fn: (r) => r.object_id == "{object_id}")'
-                ' |> filter(fn: (r) => r._field == "{field_name}")'
-                " |> aggregateWindow(every: 1d, fn: mean)"
-                " |> map(fn: (r) => ({{r with _value: r._value * 100}}))"
-            )
-        },
-        "packet_loss": {
-            "influxdb2": (
-                'from(bucket: "{bucket}")'
-                " |> range(start: {time_start})"
-                ' |> filter(fn: (r) => r._measurement == "{key}")'
-                ' |> filter(fn: (r) => r.content_type == "{content_type}")'
-                ' |> filter(fn: (r) => r.object_id == "{object_id}")'
-                ' |> filter(fn: (r) => r._field == "loss")'
-                " |> aggregateWindow(every: 1d, fn: mean)"
-            )
-        },
-        "rtt": {
-            "influxdb2": (
-                'from(bucket: "{bucket}")'
-                " |> range(start: {time_start})"
-                ' |> filter(fn: (r) => r._measurement == "{key}")'
-                ' |> filter(fn: (r) => r.content_type == "{content_type}")'
-                ' |> filter(fn: (r) => r.object_id == "{object_id}")'
-                " |> filter(fn: (r) => r._field =~ /^rtt_(avg|max|min)$/)"
-                " |> aggregateWindow(every: 1d, fn: mean)"
-            )
-        },
-        "wifi_clients": {
-            "influxdb2": (
-                'from(bucket: "{bucket}")'
-                " |> range(start: {time_start})"
-                ' |> filter(fn: (r) => r._measurement == "{key}")'
-                ' |> filter(fn: (r) => r.content_type == "{content_type}")'
-                ' |> filter(fn: (r) => r.object_id == "{object_id}")'
-                ' |> filter(fn: (r) => r.ifname == "{ifname}")'
-                ' |> filter(fn: (r) => r._field == "{field_name}")'
-                " |> aggregateWindow(every: 1d, fn: count)"
-            )
-        },
-        "traffic": {
-            "influxdb2": (
-                'from(bucket: "{bucket}")'
-                " |> range(start: {time_start})"
-                ' |> filter(fn: (r) => r._measurement == "{key}")'
-                ' |> filter(fn: (r) => r.content_type == "{content_type}")'
-                ' |> filter(fn: (r) => r.object_id == "{object_id}")'
-                ' |> filter(fn: (r) => r.ifname == "{ifname}")'
-                " |> filter(fn: (r) => r._field =~ /^(tx_bytes|rx_bytes)$/)"
-                " |> aggregateWindow(every: 1d, fn: sum)"
-            )
-        },
-    }
-)
+default_chart_query = [
+    (_range + "{content_type_filter}" + "{object_id_filter}" + "{field_filter}"),
+    "",
+]
 
-field_mappings = {
-    "uptime": "uptime",
-    "packet_loss": "loss",
-    "rtt": "rtt_avg",
-    "traffic": ["tx_bytes", "rx_bytes"],
-    "wifi_clients": "num_clients",
-}
 
-default_chart_query = [_default_flux_query, ""]
+class DeviceDataQuery:
+    def format(self, retention_policy, measurement, pk):
+        from openwisp_monitoring.db import timeseries_db
 
-device_data_query = (
-    'from(bucket: "{0}") |> range(start: -24h) '
-    '|> filter(fn: (r) => r._measurement == "{1}" and r.pk == "{2}") '
-    "|> last()"
-)
+        bucket = timeseries_db._get_bucket_name(retention_policy)
+        return (
+            f'from(bucket: "{bucket}") |> range(start: -24h) '
+            f'|> filter(fn: (r) => r._measurement == "{measurement}" '
+            f'and r.pk == "{pk}") '
+            "|> last()"
+        )
+
+
+device_data_query = DeviceDataQuery()
