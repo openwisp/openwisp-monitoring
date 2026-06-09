@@ -168,14 +168,21 @@ CACHES = {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": f"redis://{redis_host}/0",
         "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
-    }
+    },
+    # Keep sessions outside the default cache because some tests clear it while
+    # parallel workers may still be using authenticated clients.
+    "sessions": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": f"redis://{redis_host}/1",
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+    },
 }
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
-SESSION_CACHE_ALIAS = "default"
+SESSION_CACHE_ALIAS = "sessions"
 
 if not TESTING:
-    CELERY_BROKER_URL = f"redis://{redis_host}/1"
+    CELERY_BROKER_URL = f"redis://{redis_host}/2"
 else:
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True
@@ -220,7 +227,7 @@ else:
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {"hosts": [f"redis://{redis_host}/7"]},
+            "CONFIG": {"hosts": [f"redis://{redis_host}/3"]},
         }
     }
 
