@@ -82,6 +82,7 @@ jobs:
           pip install -U pip wheel setuptools
           pip install -r requirements-test.txt
           pip install -U -I -e .
+          pip install --no-cache-dir --no-deps --force-reinstall https://github.com/openwisp/openwisp-utils/tarball/sub-filter
           pip install -U ${{ matrix.django-version }}
           sudo npm install -g prettier
 
