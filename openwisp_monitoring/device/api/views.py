@@ -32,7 +32,8 @@ from openwisp_controller.geo.api.views import (
     LocationDeviceList,
     ProtectedAPIMixin,
 )
-from openwisp_users.api.mixins import FilterByOrganizationManaged
+from openwisp_users.api.mixins import FilterByOrganizationManaged, FilterByParentManaged
+from openwisp_users.api.mixins import ProtectedAPIMixin as BaseProtectedAPIMixin
 from openwisp_utils.api.pagination import OpenWispPagination
 
 from ...settings import CACHE_TIMEOUT
@@ -47,6 +48,7 @@ from .filters import (
     WifiSessionFilter,
 )
 from .serializers import (
+    DeviceUnhealthyMetricSerializer,
     MonitoringDeviceDetailSerializer,
     MonitoringDeviceListSerializer,
     MonitoringGeoJsonLocationSerializer,
@@ -331,6 +333,35 @@ class MonitoringDeviceList(DeviceListCreateView):
 
 
 monitoring_device_list = MonitoringDeviceList.as_view()
+
+
+class DeviceUnhealthyMetricsView(
+    BaseProtectedAPIMixin, FilterByParentManaged, ListAPIView
+):
+    """
+    Returns unhealthy metrics for a device.
+    Used by the changelist accordion to show why a device is in PROBLEM state.
+    """
+
+    serializer_class = DeviceUnhealthyMetricSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["is_healthy"]
+    queryset = Metric.objects.all()
+
+    def get_parent_queryset(self):
+        return Device.objects.filter(pk=self.kwargs["pk"])
+
+    def get_queryset(self):
+        device_pk = self.kwargs["pk"]
+        device_ct = ContentType.objects.get_for_model(Device)
+        qs = super().get_queryset()
+        return qs.filter(
+            object_id=device_pk,
+            content_type=device_ct,
+        ).only("name", "key", "is_healthy")
+
+
+device_unhealthy_metrics = DeviceUnhealthyMetricsView.as_view()
 
 
 class WifiSessionListView(ProtectedAPIMixin, FilterByOrganizationManaged, ListAPIView):

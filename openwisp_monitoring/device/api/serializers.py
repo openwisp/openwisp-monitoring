@@ -12,6 +12,7 @@ from openwisp_users.api.mixins import FilterSerializerByOrgManaged
 Device = load_model("config", "Device")
 DeviceMonitoring = load_model("device_monitoring", "DeviceMonitoring")
 DeviceData = load_model("device_monitoring", "DeviceData")
+Metric = load_model("monitoring", "Metric")
 WifiSession = load_model("device_monitoring", "WifiSession")
 WifiClient = load_model("device_monitoring", "WifiClient")
 
@@ -85,6 +86,12 @@ class MonitoringNearbyDeviceSerializer(
 
     def get_monitoring_data(self, obj):
         return DeviceData.objects.only("id").get(id=obj.id).data
+
+
+class DeviceUnhealthyMetricSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Metric
+        fields = ["name", "key", "is_healthy"]
 
 
 class MonitoringDeviceListSerializer(DeviceListSerializer):

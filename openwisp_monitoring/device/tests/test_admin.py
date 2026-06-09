@@ -4,6 +4,7 @@ import django
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.forms import generic_inlineformset_factory
+from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.db import connection
 from django.test import TestCase, override_settings
@@ -214,13 +215,13 @@ class TestAdmin(
         with self.subTest("Wireless client table header is shown"):
             self.assertContains(
                 r,
-                '<th class="mac">\n\nAssociated client\n\nMAC address\n\n' "</th>",
+                '<th class="mac">\n\nAssociated client\n\nMAC address\n\n</th>',
                 html=True,
                 count=2,
             )
             self.assertContains(
                 r,
-                '<th class="mac">\n\nAccess Point\n\nMAC address\n\n' "</th>",
+                '<th class="mac">\n\nAccess Point\n\nMAC address\n\n</th>',
                 html=True,
                 count=1,
             )
@@ -666,7 +667,7 @@ class TestAdmin(
             self.assertEqual(user.user_permissions.count(), 0)
             device_permissions = Permission.objects.filter(codename__endswith="device")
             # Permissions required to access device page
-            user.user_permissions.add(*device_permissions),
+            user.user_permissions.add(*device_permissions)
             self.assertEqual(user.user_permissions.count(), 4)
 
         def _add_user_permissions(user, permission_query, expected_perm_count):
@@ -924,6 +925,225 @@ class TestAdmin(
             """,
             html=True,
         )
+
+    def test_unhealthy_metric_filter_hidden_without_problem_status(self):
+        org = self._create_org()
+        device = self._create_device(organization=org, name="test-device")
+        dm = device.monitoring
+        dm.status = "ok"
+        dm.save()
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        with self.subTest("filter hidden when monitoring__status is not set"):
+            response = self.client.get(url)
+            self.assertContains(response, "ow-sub-filter")
+            self.assertContains(
+                response,
+                'data-sub-filter-active-values="problem,critical" style="display: none;"',
+            )
+        with self.subTest("filter hidden when monitoring__status=ok"):
+            response = self.client.get(url, {"monitoring__status": "ok"})
+            self.assertContains(response, "ow-sub-filter")
+            self.assertContains(
+                response,
+                'data-sub-filter-active-values="problem,critical" style="display: none;"',
+            )
+
+    def test_unhealthy_metric_filter_shown_for_problem_status(self):
+        org = self._create_org()
+        self._create_device(organization=org, name="test-device")
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        response = self.client.get(url, {"monitoring__status": "problem"})
+        self.assertContains(response, "ow-filter by-problematic-metric ow-sub-filter")
+        self.assertNotContains(
+            response,
+            'data-sub-filter-active-values="problem,critical" style="display: none;"',
+        )
+        self.assertContains(response, "Ping")
+
+    def test_unhealthy_metric_filter_queryset(self):
+        org_ping = self._create_org(name="org-ping")
+        org_memory = self._create_org(name="org-memory")
+        org_cpu = self._create_org(name="org-cpu")
+        org_ping_critical = self._create_org(name="org-ping-critical")
+        device_ping = self._create_device(
+            organization=org_ping, name="ping-problem-device"
+        )
+        dm_ping = device_ping.monitoring
+        dm_ping.status = "problem"
+        dm_ping.save()
+        device_memory = self._create_device(
+            organization=org_memory, name="memory-problem-device"
+        )
+        dm_memory = device_memory.monitoring
+        dm_memory.status = "problem"
+        dm_memory.save()
+        device_cpu_critical = self._create_device(
+            organization=org_cpu, name="cpu-critical-device"
+        )
+        dm_cpu_critical = device_cpu_critical.monitoring
+        dm_cpu_critical.status = "critical"
+        dm_cpu_critical.save()
+        device_ping_critical = self._create_device(
+            organization=org_ping_critical, name="ping-critical-device"
+        )
+        dm_ping_critical = device_ping_critical.monitoring
+        dm_ping_critical.status = "critical"
+        dm_ping_critical.save()
+        device_ct = ContentType.objects.get_for_model(Device)
+        Metric.objects.create(
+            content_type=device_ct,
+            object_id=device_ping.pk,
+            name="Ping",
+            key="ping",
+            is_healthy=False,
+            configuration="ping",
+        )
+        Metric.objects.create(
+            content_type=device_ct,
+            object_id=device_memory.pk,
+            name="Memory",
+            key="memory",
+            is_healthy=False,
+            configuration="memory",
+        )
+        Metric.objects.create(
+            content_type=device_ct,
+            object_id=device_cpu_critical.pk,
+            name="CPU",
+            key="cpu",
+            is_healthy=False,
+            configuration="cpu",
+        )
+        Metric.objects.create(
+            content_type=device_ct,
+            object_id=device_ping_critical.pk,
+            name="Ping",
+            key="ping",
+            is_healthy=False,
+            configuration="ping",
+        )
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        with self.subTest("filter by ping shows only ping-problem-device"):
+            response = self.client.get(
+                url,
+                {"monitoring__status": "problem", "unhealthy_metric": "ping"},
+            )
+            self.assertContains(response, "ping-problem-device")
+            self.assertNotContains(response, "memory-problem-device")
+        with self.subTest(
+            "filter by cpu with critical exact status shows only cpu-critical-device"
+        ):
+            response = self.client.get(
+                url,
+                {
+                    "monitoring__status__exact": "critical",
+                    "unhealthy_metric": "cpu",
+                },
+            )
+            self.assertContains(response, "cpu-critical-device")
+            self.assertNotContains(response, "ping-critical-device")
+
+    def test_unhealthy_metric_filter_rejected_without_problem_status(self):
+        org = self._create_org()
+        device = self._create_device(organization=org, name="test-device")
+        self._create_device(
+            organization=org,
+            name="other-device",
+            mac_address="00:11:22:33:44:57",
+        )
+        dm = device.monitoring
+        dm.status = "ok"
+        dm.save()
+        device_ct = ContentType.objects.get_for_model(Device)
+        Metric.objects.create(
+            content_type=device_ct,
+            object_id=device.pk,
+            name="Ping",
+            key="ping",
+            is_healthy=False,
+            configuration="ping",
+        )
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        with self.subTest("unhealthy_metric rejected when monitoring__status=ok"):
+            response = self.client.get(
+                url, {"monitoring__status": "ok", "unhealthy_metric": "ping"}
+            )
+            self.assertEqual(response.status_code, 302)
+            self.assertRedirects(response, url + "?e=1")
+        with self.subTest("unhealthy_metric rejected when no status filter"):
+            response = self.client.get(url, {"unhealthy_metric": "ping"})
+            self.assertEqual(response.status_code, 302)
+            self.assertRedirects(response, url + "?e=1")
+
+    def test_accordion_visible_for_problem_device(self):
+        org = self._create_org()
+        device = self._create_device(organization=org, name="problem-device")
+        dm = device.monitoring
+        dm.status = "problem"
+        dm.save()
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        response = self.client.get(url)
+        self.assertContains(
+            response,
+            '<span class="health-problem">problem</span>',
+        )
+        self.assertContains(
+            response,
+            '<a href="#" class="issues-toggle" data-device-id="{0}">'.format(device.pk),
+        )
+        self.assertContains(response, "show issues")
+
+    def test_accordion_hidden_for_ok_device(self):
+        org = self._create_org()
+        device = self._create_device(organization=org, name="ok-device")
+        dm = device.monitoring
+        dm.status = "ok"
+        dm.save()
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        response = self.client.get(url)
+        self.assertContains(
+            response,
+            '<span class="health-ok">ok</span>',
+        )
+        self.assertNotContains(response, "issues-toggle")
+        self.assertNotContains(response, "show issues")
+
+    def test_accordion_hidden_for_unknown_device(self):
+        org = self._create_org()
+        device = self._create_device(organization=org, name="unknown-device")
+        dm = device.monitoring
+        dm.status = "unknown"
+        dm.save()
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        response = self.client.get(url)
+        self.assertNotContains(response, "issues-toggle")
+
+    def test_accordion_hidden_for_deactivated_device(self):
+        org = self._create_org()
+        device = self._create_device(organization=org, name="deactivated-device")
+        dm = device.monitoring
+        dm.status = "deactivated"
+        dm.save()
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        response = self.client.get(url)
+        self.assertNotContains(response, "issues-toggle")
+
+    def test_accordion_hidden_for_critical_device(self):
+        org = self._create_org()
+        device = self._create_device(organization=org, name="critical-device")
+        dm = device.monitoring
+        dm.status = "critical"
+        dm.save()
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        response = self.client.get(url)
+        self.assertNotContains(response, "issues-toggle")
+
+    def test_accordion_js_media_included(self):
+        org = self._create_org()
+        self._create_device(organization=org, name="test-device")
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        response = self.client.get(url)
+        self.assertContains(response, "monitoring/js/device-changelist.js")
 
 
 class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):

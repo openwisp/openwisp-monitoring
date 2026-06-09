@@ -33,7 +33,12 @@ from ..monitoring.admin import MetricAdmin
 from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from . import settings as app_settings
 from .exportable import DeviceMonitoringResource
-from .filters import DeviceFilter, DeviceGroupFilter, DeviceOrganizationFilter
+from .filters import (
+    DeviceFilter,
+    DeviceGroupFilter,
+    DeviceOrganizationFilter,
+    UnhealthyMetricFilter,
+)
 
 DeviceData = load_model("device_monitoring", "DeviceData")
 WifiSession = load_model("device_monitoring", "WifiSession")
@@ -251,7 +256,10 @@ class MetricInline(
 
 class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
     change_form_template = "admin/monitoring/device/change_form.html"
-    list_filter = ["monitoring__status"] + BaseDeviceAdmin.list_filter
+    list_filter = [
+        "monitoring__status",
+        UnhealthyMetricFilter,
+    ] + BaseDeviceAdmin.list_filter
     list_select_related = ["monitoring"] + list(BaseDeviceAdmin.list_select_related)
     list_display = list(BaseDeviceAdmin.list_display)
     list_display.insert(list_display.index("config_status"), "health_status")
@@ -268,11 +276,13 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
             + ("monitoring/js/chart-utils.js",)
             + ("monitoring/js/lib/moment.min.js",)
             + ("monitoring/js/lib/daterangepicker.min.js",)
+            + ("monitoring/js/device-changelist.js",)
         )
         css = {
             "all": (
                 "monitoring/css/percircle.min.css",
                 "monitoring/css/daterangepicker.css",
+                "monitoring/css/device-changelist.css",
             )
             + MetricAdmin.Media.css["all"]
         }
@@ -304,7 +314,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
             health = "yes" if metric.is_healthy else "no"
             icon_url = static(f"admin/img/icon-{health}.svg")
             metric_rows.append(
-                f'<li><img src="{icon_url}" ' f'alt="health"> {metric.name}</li>'
+                f'<li><img src="{icon_url}" alt="health"> {metric.name}</li>'
             )
         return format_html(
             mark_safe(f'<ul class="health_checks">{"".join(metric_rows)}</ul>')
@@ -313,11 +323,23 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
     health_checks.short_description = _("health checks")
 
     def health_status(self, obj):
-        return format_html(
-            mark_safe('<span class="health-{0}">{1}</span>'),
-            obj.monitoring.status,
-            obj.monitoring.get_status_display(),
+        status = obj.monitoring.status
+        status_display = obj.monitoring.get_status_display()
+        html = format_html(
+            '<span class="health-{0}">{1}</span>', status, status_display
         )
+        if status == "problem":
+            html += format_html(
+                '<div class="device-issues-accordion">'
+                '<div class="issues-content" style="display:none;"></div>'
+                '<a href="#" class="issues-toggle" data-device-id="{0}">'
+                "{1}"
+                "</a>"
+                "</div>",
+                obj.pk,
+                _("show issues"),
+            )
+        return html
 
     health_status.short_description = _("health status")
 

@@ -44,7 +44,6 @@ Group = load_model("openwisp_users", "Group")
 
 
 class SeleniumTestMixin(BaseSeleniumTestMixin):
-
     @classmethod
     def setUpClass(cls):
         """
@@ -1141,7 +1140,7 @@ class TestDashboardMap(
                 "return decodeURIComponent(window.location.hash);"
             )
             expected_hash = (
-                f"#id={mapId}&nodeId={location.id};" f"id={quote_plus(indoorMapId1)}"
+                f"#id={mapId}&nodeId={location.id};id={quote_plus(indoorMapId1)}"
             )
             self.assertIn(expected_hash, current_hash)
 
@@ -1195,7 +1194,7 @@ class TestDashboardMap(
                 "return decodeURIComponent(window.location.hash);"
             )
             expected_hash = (
-                f"#id={mapId}&nodeId={location.id};" f"id={quote_plus(indoorMapId1)}"
+                f"#id={mapId}&nodeId={location.id};id={quote_plus(indoorMapId1)}"
             )
             self.assertIn(expected_hash, current_hash)
 
@@ -1221,7 +1220,7 @@ class TestDashboardMap(
                 "return decodeURIComponent(window.location.hash);"
             )
             expected_hash = (
-                f"#id={mapId}&nodeId={location.id};" f"id={quote_plus(indoorMapId2)}"
+                f"#id={mapId}&nodeId={location.id};id={quote_plus(indoorMapId2)}"
             )
             self.assertIn(expected_hash, current_hash)
             try:
@@ -1271,7 +1270,7 @@ class TestDashboardMap(
                 "return decodeURIComponent(window.location.hash);"
             )
             expected_hash = (
-                f"#id={mapId}&nodeId={location.id};" f"id={quote_plus(indoorMapId2)}"
+                f"#id={mapId}&nodeId={location.id};id={quote_plus(indoorMapId2)}"
             )
             self.assertIn(expected_hash, current_hash)
 
@@ -1304,3 +1303,54 @@ class TestDashboardMap(
                 self.web_driver.switch_to.window(tab)
                 self.web_driver.close()
             self.web_driver.switch_to.window(primary_tab)
+
+
+@tag("selenium_tests")
+class TestDeviceIssuesAccordion(
+    SeleniumTestMixin, TestDeviceMonitoringMixin, StaticLiveServerTestCase
+):
+    config_app_label = "config"
+
+    def test_device_issues_accordion_interaction(self):
+        org = self._get_org()
+        device = self._create_device(organization=org, name="problem-device")
+        dm = device.monitoring
+        dm.status = "problem"
+        dm.save()
+        self._create_object_metric(
+            name="ping", configuration="ping", content_object=device
+        )
+        self.login()
+        self.open(reverse(f"admin:{self.config_app_label}_device_changelist"))
+
+        with self.subTest("expand accordion and verify metric name"):
+            toggle = self.find_element(By.CSS_SELECTOR, ".issues-toggle")
+            self.assertEqual(toggle.text, "show issues")
+            toggle.click()
+            self.wait_for_visibility(
+                By.CSS_SELECTOR,
+                ".device-issues-accordion.expanded .issues-content li",
+                timeout=5,
+            )
+            content = self.find_element(By.CSS_SELECTOR, ".issues-content")
+            self.assertIn("Test Connectivity", content.text)
+
+        with self.subTest("collapse accordion"):
+            toggle = self.find_element(By.CSS_SELECTOR, ".issues-toggle")
+            self.assertEqual(toggle.text, "hide issues")
+            toggle.click()
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".device-issues-accordion.expanded", timeout=5
+            )
+
+        with self.subTest("re-expand accordion with cached DOM content"):
+            toggle = self.find_element(By.CSS_SELECTOR, ".issues-toggle")
+            self.assertEqual(toggle.text, "show issues")
+            toggle.click()
+            self.wait_for_visibility(
+                By.CSS_SELECTOR,
+                ".device-issues-accordion.expanded .issues-content li",
+                timeout=5,
+            )
+            content = self.find_element(By.CSS_SELECTOR, ".issues-content")
+            self.assertIn("Test Connectivity", content.text)

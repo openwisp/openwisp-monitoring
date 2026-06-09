@@ -4,6 +4,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.test import tag
@@ -1499,6 +1500,109 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         points = self._read_metric(m, limit=1, extra_fields=["tx_bytes"])
         self.assertEqual(points[0].get("rx_bytes"), 324)
         self.assertEqual(points[0].get("tx_bytes"), 0)
+
+    def test_unhealthy_metrics_endpoint_ok_device(self):
+        self.create_test_data(no_resources=True)
+        device = Device.objects.first()
+        url = reverse("monitoring:api_device_unhealthy_metrics", args=[device.pk])
+        response = self.client.get(url, {"is_healthy": "false"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, [])
+
+    def test_unhealthy_metrics_endpoint_with_unhealthy_metrics(self):
+        self.create_test_data()
+        device = Device.objects.first()
+        m = Metric.objects.filter(configuration="disk").first()
+        m.write(m.alertsettings.threshold + 0.1)
+        m.refresh_from_db()
+        self.assertEqual(m.is_healthy, False)
+        url = reverse("monitoring:api_device_unhealthy_metrics", args=[device.pk])
+        response = self.client.get(url, {"is_healthy": "false"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["name"], m.name)
+        self.assertEqual(response.data[0]["key"], m.key)
+        self.assertEqual(response.data[0]["is_healthy"], False)
+
+    def test_unhealthy_metrics_endpoint_filter_unhealthy(self):
+        self.create_test_data()
+        device = Device.objects.first()
+        m = Metric.objects.filter(configuration="disk").first()
+        m.write(m.alertsettings.threshold + 0.1)
+        m.refresh_from_db()
+        self.assertEqual(m.is_healthy, False)
+        url = reverse("monitoring:api_device_unhealthy_metrics", args=[device.pk])
+        response = self.client.get(url, {"is_healthy": "false"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["name"], m.name)
+        self.assertEqual(response.data[0]["key"], m.key)
+        self.assertEqual(response.data[0]["is_healthy"], False)
+
+    def test_unhealthy_metrics_endpoint_permissions(self):
+        org = self._create_org(name="org1")
+        device = self._create_device(organization=org, name="test-device")
+        device_ct = ContentType.objects.get_for_model(Device)
+        Metric.objects.create(
+            content_type=device_ct,
+            object_id=device.pk,
+            name="Test Metric",
+            key="test",
+            is_healthy=False,
+            configuration="test_config",
+        )
+        url = reverse("monitoring:api_device_unhealthy_metrics", args=[device.pk])
+        self.client.logout()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 401)
+
+    def test_unhealthy_metrics_endpoint_wrong_device(self):
+        url = reverse(
+            "monitoring:api_device_unhealthy_metrics",
+            args=["00000000-0000-0000-0000-000000000000"],
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_unhealthy_metrics_endpoint_multitenancy(self):
+        org1 = self._create_org(name="org1")
+        org2 = self._create_org(name="org2")
+        org1_device = self._create_device(organization=org1, name="device-org1")
+        org2_device = self._create_device(organization=org2, name="device-org2")
+        device_ct = ContentType.objects.get_for_model(Device)
+        for device in [org1_device, org2_device]:
+            Metric.objects.create(
+                content_type=device_ct,
+                object_id=device.pk,
+                name="Test Metric",
+                key="test",
+                is_healthy=False,
+                configuration="test_config",
+            )
+        metric_ct = ContentType.objects.get_for_model(Metric)
+        view_metric = Permission.objects.get(
+            content_type=metric_ct, codename="view_metric"
+        )
+        operator = self._create_operator(
+            organizations=[org1],
+            username="org1-operator",
+        )
+        operator.user_permissions.add(view_metric)
+        self.client.force_login(operator)
+        org1_url = reverse(
+            "monitoring:api_device_unhealthy_metrics", args=[org1_device.pk]
+        )
+        with self.subTest("operator can access device in own org"):
+            response = self.client.get(org1_url, {"is_healthy": "false"})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(len(response.data), 1)
+
+        org2_url = reverse(
+            "monitoring:api_device_unhealthy_metrics", args=[org2_device.pk]
+        )
+        with self.subTest("operator cannot access device in other org"):
+            response = self.client.get(org2_url, {"is_healthy": "false"})
+            self.assertEqual(response.status_code, 404)
 
 
 class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):

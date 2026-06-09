@@ -164,6 +164,24 @@ slug, you can use the ``organization_slug``.
 
     GET /api/v1/monitoring/device/?organization_slug={organization_slug}
 
+List Device Metrics
+~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: text
+
+    GET /api/v1/monitoring/device/{pk}/metrics/
+
+Returns a list of metrics for the specified device.
+
+**Available filters**
+
+Data can be filtered by health status using the ``is_healthy`` filter, for
+example, to retrieve the list of unhealthy metrics:
+
+.. code-block:: text
+
+    GET /api/v1/monitoring/device/{pk}/metrics/?is_healthy=false
+
 Collect Device Metrics and Status
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
