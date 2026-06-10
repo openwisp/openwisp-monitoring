@@ -347,14 +347,13 @@ class DeviceUnhealthyMetricsView(
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["is_healthy"]
     queryset = Metric.objects.all()
-    device_content_type = ContentType.objects.get_for_model(Device)
 
     def get_parent_queryset(self):
         return Device.objects.filter(pk=self.kwargs["pk"])
 
     def get_queryset(self):
         device_pk = self.kwargs["pk"]
-        device_ct = self.device_content_type
+        device_ct = ContentType.objects.get_for_model(Device)
         qs = super().get_queryset()
         return qs.filter(
             object_id=device_pk,
