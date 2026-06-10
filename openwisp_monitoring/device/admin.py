@@ -341,21 +341,29 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
     def health_status_changelist(self, obj):
         status = obj.monitoring.status
         status_display = obj.monitoring.get_status_display()
-        html = format_html(
-            '<span class="health-{0}">{1}</span>', status, status_display
-        )
+
         if status == "problem":
-            html += format_html(
+            html = format_html(
+                '<div class="health-status-container">'
+                '<span class="health-{0}">{1}</span>'
                 '<div class="device-issues-accordion">'
-                '<div class="issues-content" id="issues-content-{0}"></div>'
-                '<a href="#" class="issues-toggle" data-device-id="{0}" '
+                '<div class="issues-content" id="issues-content-{2}"></div>'
+                '<div class="spinner-wrapper"></div>'
+                '<a href="#" class="issues-toggle" data-device-id="{2}" '
                 'aria-expanded="false" '
-                'aria-controls="issues-content-{0}">'
-                "{1}"
+                'aria-controls="issues-content-{2}">'
+                "{3}"
                 "</a>"
+                "</div>"
                 "</div>",
+                status,
+                status_display,
                 obj.pk,
                 _("show issues"),
+            )
+        else:
+            html = format_html(
+                '<span class="health-{0}">{1}</span>', status, status_display
             )
         return html
 

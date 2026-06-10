@@ -45,17 +45,20 @@
             url: apiUrl,
             type: "GET",
             beforeSend: function () {
-              $content.html(
+              var $spinnerWrapper = $btn.siblings(".spinner-wrapper");
+              $spinnerWrapper.html(
                 '<div class="ow-loading-spinner issues-loading-spinner"></div>',
               );
-              $btn.hide();
             },
             success: function (data) {
-              $btn.show();
+              var $spinnerWrapper = $btn.siblings(".spinner-wrapper");
+              $spinnerWrapper.empty();
               renderIssues($content, data);
               $btn.data("loaded", true);
             },
             error: function (jqXHR, textStatus, errorThrown) {
+              var $spinnerWrapper = $btn.siblings(".spinner-wrapper");
+              $spinnerWrapper.empty();
               $content.html("<p>" + gettext("Failed to load issues.") + "</p>");
               console.error(
                 "Failed to load unhealthy metrics for device " + deviceId + ":",
