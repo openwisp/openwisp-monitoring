@@ -57,6 +57,7 @@
       }
       var html = "<ul>";
       $.each(metrics, function (i, metric) {
+        // Escape HTML in metric.name to prevent XSS: .text() escapes, .html() retrieves the escaped string
         html += "<li>" + $("<span>").text(metric.name).html() + "</li>";
       });
       html += "</ul>";

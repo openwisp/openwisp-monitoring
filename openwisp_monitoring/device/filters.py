@@ -15,7 +15,7 @@ class UnhealthyMetricFilter(SubFilterMixin, admin.SimpleListFilter):
     parameter_name = "unhealthy_metric"
     title = _("by problematic metric")
     parent_parameter_name = "monitoring__status"
-    parent_active_values = ("problem", "critical")
+    parent_active_values = ("problem",)
     device_content_type = ContentType.objects.get_for_model(Device)
 
     def lookups(self, request, model_admin):
@@ -28,11 +28,10 @@ class UnhealthyMetricFilter(SubFilterMixin, admin.SimpleListFilter):
 
     def filter_queryset(self, request, queryset):
         if self.value():
-            device_ct = self.device_content_type
             unhealthy_device_ids = list(
                 Metric.objects.filter(
                     is_healthy=False,
-                    content_type=device_ct,
+                    content_type=self.device_content_type,
                     key=self.value(),
                 ).values_list("object_id", flat=True)
             )

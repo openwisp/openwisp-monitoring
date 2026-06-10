@@ -26,6 +26,7 @@ Chart = load_model("monitoring", "Chart")
 Metric = load_model("monitoring", "Metric")
 AlertSettings = load_model("monitoring", "AlertSettings")
 DeviceData = load_model("device_monitoring", "DeviceData")
+DeviceMonitoring = load_model("device_monitoring", "DeviceMonitoring")
 WifiClient = load_model("device_monitoring", "WifiClient")
 WifiSession = load_model("device_monitoring", "WifiSession")
 User = get_user_model()
@@ -938,7 +939,7 @@ class TestAdmin(
             self.assertContains(response, "ow-sub-filter")
             self.assertContains(
                 response,
-                'data-sub-filter-active-values="problem,critical"',
+                'data-sub-filter-active-values="problem"',
             )
             self.assertContains(response, "ow-sub-filter hidden")
         with self.subTest("filter hidden when monitoring__status=ok"):
@@ -946,7 +947,7 @@ class TestAdmin(
             self.assertContains(response, "ow-sub-filter")
             self.assertContains(
                 response,
-                'data-sub-filter-active-values="problem,critical"',
+                'data-sub-filter-active-values="problem"',
             )
             self.assertContains(response, "ow-sub-filter hidden")
 
@@ -963,7 +964,6 @@ class TestAdmin(
         org_ping = self._create_org(name="org-ping")
         org_memory = self._create_org(name="org-memory")
         org_cpu = self._create_org(name="org-cpu")
-        org_ping_critical = self._create_org(name="org-ping-critical")
         device_ping = self._create_device(
             organization=org_ping, name="ping-problem-device"
         )
@@ -976,18 +976,6 @@ class TestAdmin(
         dm_memory = device_memory.monitoring
         dm_memory.status = "problem"
         dm_memory.save()
-        device_cpu_critical = self._create_device(
-            organization=org_cpu, name="cpu-critical-device"
-        )
-        dm_cpu_critical = device_cpu_critical.monitoring
-        dm_cpu_critical.status = "critical"
-        dm_cpu_critical.save()
-        device_ping_critical = self._create_device(
-            organization=org_ping_critical, name="ping-critical-device"
-        )
-        dm_ping_critical = device_ping_critical.monitoring
-        dm_ping_critical.status = "critical"
-        dm_ping_critical.save()
         device_ct = ContentType.objects.get_for_model(Device)
         Metric.objects.create(
             content_type=device_ct,
@@ -1005,22 +993,6 @@ class TestAdmin(
             is_healthy=False,
             configuration="memory",
         )
-        Metric.objects.create(
-            content_type=device_ct,
-            object_id=device_cpu_critical.pk,
-            name="CPU",
-            key="cpu",
-            is_healthy=False,
-            configuration="cpu",
-        )
-        Metric.objects.create(
-            content_type=device_ct,
-            object_id=device_ping_critical.pk,
-            name="Ping",
-            key="ping",
-            is_healthy=False,
-            configuration="ping",
-        )
         url = reverse(f"admin:{self.config_app_label}_device_changelist")
         with self.subTest("filter by ping shows only ping-problem-device"):
             response = self.client.get(
@@ -1029,18 +1001,6 @@ class TestAdmin(
             )
             self.assertContains(response, "ping-problem-device")
             self.assertNotContains(response, "memory-problem-device")
-        with self.subTest(
-            "filter by cpu with critical exact status shows only cpu-critical-device"
-        ):
-            response = self.client.get(
-                url,
-                {
-                    "monitoring__status__exact": "critical",
-                    "unhealthy_metric": "cpu",
-                },
-            )
-            self.assertContains(response, "cpu-critical-device")
-            self.assertNotContains(response, "ping-critical-device")
 
     def test_unhealthy_metric_filter_rejected_without_problem_status(self):
         org = self._create_org()
@@ -1073,6 +1033,40 @@ class TestAdmin(
             response = self.client.get(url, {"unhealthy_metric": "ping"})
             self.assertEqual(response.status_code, 302)
             self.assertRedirects(response, url + "?e=1")
+
+    def test_unhealthy_metric_filter_tenant_isolation_for_org_admin(self):
+        org1 = self._create_org(name="org1", slug="org1")
+        org2 = self._create_org(name="org2", slug="org2")
+        device_org1 = self._create_device(
+            organization=org1, name="org1-device", mac_address="00:11:22:33:44:55"
+        )
+        device_org2 = self._create_device(
+            organization=org2, name="org2-device", mac_address="00:11:22:33:44:56"
+        )
+        self._create_object_metric(
+            content_object=device_org1,
+            name="Ping",
+            key="ping",
+            configuration="ping",
+            is_healthy=False,
+        )
+        self._create_object_metric(
+            content_object=device_org2,
+            name="Ping",
+            key="ping",
+            configuration="ping",
+            is_healthy=False,
+        )
+        DeviceMonitoring.objects.update(status="problem")
+        operator = self._create_operator(organizations=[org1])
+        self.client.force_login(operator)
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        response = self.client.get(
+            url,
+            {"monitoring__status": "problem", "unhealthy_metric": "ping"},
+        )
+        self.assertContains(response, "org1-device")
+        self.assertNotContains(response, "org2-device")
 
     def test_accordion_visible_for_problem_device(self):
         org = self._create_org()
