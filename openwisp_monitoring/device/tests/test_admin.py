@@ -938,15 +938,17 @@ class TestAdmin(
             self.assertContains(response, "ow-sub-filter")
             self.assertContains(
                 response,
-                'data-sub-filter-active-values="problem,critical" style="display: none;"',
+                'data-sub-filter-active-values="problem,critical"',
             )
+            self.assertContains(response, "ow-sub-filter hidden")
         with self.subTest("filter hidden when monitoring__status=ok"):
             response = self.client.get(url, {"monitoring__status": "ok"})
             self.assertContains(response, "ow-sub-filter")
             self.assertContains(
                 response,
-                'data-sub-filter-active-values="problem,critical" style="display: none;"',
+                'data-sub-filter-active-values="problem,critical"',
             )
+            self.assertContains(response, "ow-sub-filter hidden")
 
     def test_unhealthy_metric_filter_shown_for_problem_status(self):
         org = self._create_org()
@@ -954,10 +956,7 @@ class TestAdmin(
         url = reverse(f"admin:{self.config_app_label}_device_changelist")
         response = self.client.get(url, {"monitoring__status": "problem"})
         self.assertContains(response, "ow-filter by-problematic-metric ow-sub-filter")
-        self.assertNotContains(
-            response,
-            'data-sub-filter-active-values="problem,critical" style="display: none;"',
-        )
+        self.assertNotContains(response, "ow-sub-filter hidden")
         self.assertContains(response, "Ping")
 
     def test_unhealthy_metric_filter_queryset(self):

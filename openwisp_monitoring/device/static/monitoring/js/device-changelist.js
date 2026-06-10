@@ -6,6 +6,18 @@
     };
   }
   $(function () {
+    function showContent($content, $accordion, $btn) {
+      $accordion.addClass("expanded");
+      $btn.text(gettext("hide issues"));
+      $btn.data("expanded", true);
+    }
+
+    function hideContent($content, $accordion, $btn) {
+      $accordion.removeClass("expanded");
+      $btn.text(gettext("show issues"));
+      $btn.data("expanded", false);
+    }
+
     $(document).on("click", ".issues-toggle", function (e) {
       e.preventDefault();
       var $btn = $(this);
@@ -15,31 +27,19 @@
       var isExpanded = $btn.data("expanded");
 
       if (isExpanded) {
-        $content.slideUp(200, function () {
-          $accordion.removeClass("expanded");
-        });
-        $btn.text(gettext("show issues"));
-        $btn.data("expanded", false);
+        hideContent($content, $accordion, $btn);
       } else {
         if ($content.children().length > 0) {
-          $content.slideDown(200, function () {
-            $accordion.addClass("expanded");
-          });
-          $btn.text(gettext("hide issues"));
-          $btn.data("expanded", true);
+          showContent($content, $accordion, $btn);
         } else {
           var apiUrl =
             "/api/v1/monitoring/device/" + deviceId + "/metrics/?is_healthy=false";
           $.get(apiUrl, function (data) {
             renderIssues($content, data);
-            $content.slideDown(200, function () {
-              $accordion.addClass("expanded");
-            });
-            $btn.text(gettext("hide issues"));
-            $btn.data("expanded", true);
+            showContent($content, $accordion, $btn);
           }).fail(function (jqXHR, textStatus, errorThrown) {
             $content.html("<p>" + gettext("Failed to load issues.") + "</p>");
-            $content.slideDown(200);
+            showContent($content, $accordion, $btn);
             console.error(
               "Failed to load unhealthy metrics for device " + deviceId + ":",
               textStatus,

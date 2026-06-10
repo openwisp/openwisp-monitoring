@@ -331,7 +331,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         if status == "problem":
             html += format_html(
                 '<div class="device-issues-accordion">'
-                '<div class="issues-content" style="display:none;"></div>'
+                '<div class="issues-content"></div>'
                 '<a href="#" class="issues-toggle" data-device-id="{0}">'
                 "{1}"
                 "</a>"

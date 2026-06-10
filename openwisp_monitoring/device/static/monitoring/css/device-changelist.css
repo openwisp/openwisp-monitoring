@@ -21,6 +21,12 @@
 .device-issues-accordion .issues-content {
   font-size: 12px;
   font-weight: lighter;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-height 0.3s ease,
+    opacity 0.3s ease;
 }
 .device-issues-accordion .issues-content ul {
   margin: 0;
@@ -28,4 +34,9 @@
 }
 .device-issues-accordion .issues-content ul li {
   list-style: none;
+}
+
+.device-issues-accordion.expanded .issues-content {
+  max-height: 500px;
+  opacity: 1;
 }
