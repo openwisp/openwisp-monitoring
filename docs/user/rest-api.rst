@@ -173,6 +173,13 @@ List Device Metrics
 
 Returns a list of metrics for the specified device.
 
+.. note::
+
+    - The response contains a list of metrics with their ``name``, ``key``,
+      and ``is_healthy`` status.
+    - This endpoint can be accessed with session authentication and token
+      authentication.
+
 **Available filters**
 
 Data can be filtered by health status using the ``is_healthy`` filter, for
