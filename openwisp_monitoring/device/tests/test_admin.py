@@ -961,17 +961,15 @@ class TestAdmin(
         self.assertContains(response, "Ping")
 
     def test_unhealthy_metric_filter_queryset(self):
-        org_ping = self._create_org(name="org-ping")
-        org_memory = self._create_org(name="org-memory")
-        org_cpu = self._create_org(name="org-cpu")
-        device_ping = self._create_device(
-            organization=org_ping, name="ping-problem-device"
-        )
+        org = self._get_org()
+        device_ping = self._create_device(organization=org, name="ping-problem-device")
         dm_ping = device_ping.monitoring
         dm_ping.status = "problem"
         dm_ping.save()
         device_memory = self._create_device(
-            organization=org_memory, name="memory-problem-device"
+            organization=org,
+            name="memory-problem-device",
+            mac_address="00:11:22:33:44:57",
         )
         dm_memory = device_memory.monitoring
         dm_memory.status = "problem"
