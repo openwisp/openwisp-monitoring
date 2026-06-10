@@ -10,12 +10,14 @@
       $accordion.addClass("expanded");
       $btn.text(gettext("hide issues"));
       $btn.data("expanded", true);
+      $btn.attr("aria-expanded", "true");
     }
 
     function hideContent($content, $accordion, $btn) {
       $accordion.removeClass("expanded");
       $btn.text(gettext("show issues"));
       $btn.data("expanded", false);
+      $btn.attr("aria-expanded", "false");
     }
 
     $(document).on("click", ".issues-toggle", function (e) {
@@ -25,26 +27,42 @@
       var $content = $btn.siblings(".issues-content");
       var $accordion = $btn.closest(".device-issues-accordion");
       var isExpanded = $btn.data("expanded");
+      var loaded = $btn.data("loaded");
 
       if (isExpanded) {
         hideContent($content, $accordion, $btn);
       } else {
-        if ($content.children().length > 0) {
+        if (loaded) {
           showContent($content, $accordion, $btn);
         } else {
+          showContent($content, $accordion, $btn);
           var apiUrl =
-            "/api/v1/monitoring/device/" + deviceId + "/metrics/?is_healthy=false";
-          $.get(apiUrl, function (data) {
-            renderIssues($content, data);
-            showContent($content, $accordion, $btn);
-          }).fail(function (jqXHR, textStatus, errorThrown) {
-            $content.html("<p>" + gettext("Failed to load issues.") + "</p>");
-            showContent($content, $accordion, $btn);
-            console.error(
-              "Failed to load unhealthy metrics for device " + deviceId + ":",
-              textStatus,
-              errorThrown,
-            );
+            window.deviceMetricsApiBaseUrl.replace(
+              "00000000-0000-0000-0000-000000000000",
+              deviceId,
+            ) + "?is_healthy=false";
+          $.ajax({
+            url: apiUrl,
+            type: "GET",
+            beforeSend: function () {
+              $content.html(
+                '<div class="ow-loading-spinner issues-loading-spinner"></div>',
+              );
+              $btn.hide()
+            },
+            success: function (data) {
+              $btn.show();
+              renderIssues($content, data);
+              $btn.data("loaded", true);
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+              $content.html("<p>" + gettext("Failed to load issues.") + "</p>");
+              console.error(
+                "Failed to load unhealthy metrics for device " + deviceId + ":",
+                textStatus,
+                errorThrown,
+              );
+            },
           });
         }
       }

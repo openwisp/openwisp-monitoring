@@ -1524,21 +1524,6 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(response.data[0]["key"], m.key)
         self.assertEqual(response.data[0]["is_healthy"], False)
 
-    def test_unhealthy_metrics_endpoint_filter_unhealthy(self):
-        self.create_test_data()
-        device = Device.objects.first()
-        m = Metric.objects.filter(configuration="disk").first()
-        m.write(m.alertsettings.threshold + 0.1)
-        m.refresh_from_db()
-        self.assertEqual(m.is_healthy, False)
-        url = reverse("monitoring:api_device_metrics", args=[device.pk])
-        response = self.client.get(url, {"is_healthy": "false"})
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["name"], m.name)
-        self.assertEqual(response.data[0]["key"], m.key)
-        self.assertEqual(response.data[0]["is_healthy"], False)
-
     def test_unhealthy_metrics_endpoint_permissions(self):
         org = self._create_org(name="org1")
         device = self._create_device(organization=org, name="test-device")

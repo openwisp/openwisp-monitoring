@@ -31,7 +31,7 @@ class UnhealthyMetricFilter(SubFilterMixin, admin.SimpleListFilter):
                 Metric.objects.filter(
                     is_healthy=False,
                     content_type=ContentType.objects.get_for_model(Device),
-                    key=self.value(),
+                    configuration=self.value(),
                 ).values_list("object_id", flat=True)
             )
             return queryset.filter(id__in=unhealthy_device_ids)

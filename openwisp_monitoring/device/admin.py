@@ -276,16 +276,23 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
             + ("monitoring/js/chart-utils.js",)
             + ("monitoring/js/lib/moment.min.js",)
             + ("monitoring/js/lib/daterangepicker.min.js",)
-            + ("monitoring/js/device-changelist.js",)
         )
         css = {
             "all": (
                 "monitoring/css/percircle.min.css",
                 "monitoring/css/daterangepicker.css",
-                "monitoring/css/device-changelist.css",
             )
             + MetricAdmin.Media.css["all"]
         }
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context["api_url_base"] = reverse(
+            "monitoring:api_device_metrics",
+            urlconf=MONITORING_API_URLCONF,
+            args=["00000000-0000-0000-0000-000000000000"],
+        )
+        return super().changelist_view(request, extra_context)
 
     def get_extra_context(self, pk=None):
         ctx = super().get_extra_context(pk)
@@ -331,8 +338,10 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         if status == "problem":
             html += format_html(
                 '<div class="device-issues-accordion">'
-                '<div class="issues-content"></div>'
-                '<a href="#" class="issues-toggle" data-device-id="{0}">'
+                '<div class="issues-content" id="issues-content-{0}"></div>'
+                '<a href="#" class="issues-toggle" data-device-id="{0}" '
+                'aria-expanded="false" '
+                'aria-controls="issues-content-{0}">'
                 "{1}"
                 "</a>"
                 "</div>",
@@ -407,7 +416,7 @@ class DeviceAdminExportable(ImportExportMixin, DeviceAdmin):
     export_form_class = ExportForm
     resource_class = DeviceMonitoringResource
     # Added to support both reversion and import-export
-    change_list_template = "admin/config/change_list_device.html"
+    change_list_template = "admin/monitoring/device/changelist.html"
 
 
 class WifiSessionAdminHelperMixin:

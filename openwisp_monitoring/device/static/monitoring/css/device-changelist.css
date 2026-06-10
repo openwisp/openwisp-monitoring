@@ -40,3 +40,7 @@
   max-height: 500px;
   opacity: 1;
 }
+.device-issues-accordion .issues-content .ow-loading-spinner.issues-loading-spinner {
+  width: 1.25rem;
+  height: 1.25rem;
+}

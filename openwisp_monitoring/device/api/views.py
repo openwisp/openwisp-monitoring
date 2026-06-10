@@ -337,7 +337,7 @@ monitoring_device_list = MonitoringDeviceList.as_view()
 
 class DeviceMetricsView(BaseProtectedAPIMixin, FilterByParentManaged, ListAPIView):
     """
-    Returns unhealthy metrics for a device.
+    Returns metrics for a device, optionally filtered by ``is_healthy``.
     Used by the changelist accordion to show why a device is in PROBLEM state.
     """
 

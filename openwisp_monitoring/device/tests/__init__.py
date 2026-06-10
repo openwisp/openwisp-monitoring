@@ -87,7 +87,7 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
         self.assertDictEqual(dd_data, data)
 
     def create_test_data(self, no_resources=False, data=None, assertions=True):
-        o = self._get_org()
+        o = self._create_org()
         d = self._create_device(organization=o)
         if not data:
             data = self._data()

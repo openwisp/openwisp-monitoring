@@ -1080,7 +1080,7 @@ class TestAdmin(
         )
         self.assertContains(
             response,
-            '<a href="#" class="issues-toggle" data-device-id="{0}">'.format(device.pk),
+            '<a href="#" class="issues-toggle" data-device-id="{0}"'.format(device.pk),
         )
         self.assertContains(response, "show issues")
 
