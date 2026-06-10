@@ -175,8 +175,8 @@ Returns a list of metrics for the specified device.
 
 .. note::
 
-    - The response contains a list of metrics with their ``name``, ``key``,
-      and ``is_healthy`` status.
+    - The response contains a list of metrics with their ``name``,
+      ``key``, and ``is_healthy`` status.
     - This endpoint can be accessed with session authentication and token
       authentication.
 

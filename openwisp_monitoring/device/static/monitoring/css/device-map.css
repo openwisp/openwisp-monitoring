@@ -23,7 +23,8 @@
   background-color: #fef3f2;
   border: 1px solid #fecdca;
 }
-.health-status {
+.health-status,
+.health-status-changelist {
   font-weight: bold;
   text-transform: uppercase;
 }
@@ -128,7 +129,8 @@
 .status-filter {
   cursor: pointer;
 }
-.health-status {
+.health-status,
+.health-status-changelist {
   padding: 3px 7px;
   border-radius: 12px;
   white-space: nowrap;
@@ -136,7 +138,8 @@
   opacity: 0.8;
   letter-spacing: -0.25px;
 }
-.health-status.active {
+.health-status.active,
+.health-status-changelist .active {
   opacity: 1;
 }
 .remove-icon {

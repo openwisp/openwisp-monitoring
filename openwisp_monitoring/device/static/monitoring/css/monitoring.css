@@ -34,7 +34,9 @@
   background: #f9f9f9 !important;
 }
 td.field-health_status,
-.field-health_status .readonly {
+.field-health_status .readonly,
+td.field-health_status_changelist,
+.field-health_status_changelist .readonly {
   font-weight: bold;
   text-transform: uppercase;
 }

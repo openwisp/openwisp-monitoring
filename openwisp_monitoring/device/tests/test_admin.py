@@ -593,6 +593,9 @@ class TestAdmin(
         self.assertEqual(dd.monitoring.status, "problem")
         r = self.client.get(url)
         self.assertContains(r, "<label>Health checks:</label>")
+        with self.subTest("accordion should not be present on detail page"):
+            self.assertNotContains(r, "device-issues-accordion")
+            self.assertNotContains(r, "issues-toggle")
         # Clients and Traffic metrics
         interface_metrics = dd.metrics.filter(alertsettings__isnull=True)
         interface_metric = interface_metrics.first()

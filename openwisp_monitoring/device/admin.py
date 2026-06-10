@@ -262,7 +262,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
     ] + BaseDeviceAdmin.list_filter
     list_select_related = ["monitoring"] + list(BaseDeviceAdmin.list_select_related)
     list_display = list(BaseDeviceAdmin.list_display)
-    list_display.insert(list_display.index("config_status"), "health_status")
+    list_display.insert(list_display.index("config_status"), "health_status_changelist")
     readonly_fields = ["health_status"] + BaseDeviceAdmin.readonly_fields
 
     class Media:
@@ -332,6 +332,15 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
     def health_status(self, obj):
         status = obj.monitoring.status
         status_display = obj.monitoring.get_status_display()
+        return format_html(
+            '<span class="health-{0}">{1}</span>', status, status_display
+        )
+
+    health_status.short_description = _("health status")
+
+    def health_status_changelist(self, obj):
+        status = obj.monitoring.status
+        status_display = obj.monitoring.get_status_display()
         html = format_html(
             '<span class="health-{0}">{1}</span>', status, status_display
         )
@@ -350,7 +359,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
             )
         return html
 
-    health_status.short_description = _("health status")
+    health_status_changelist.short_description = _("health status")
 
     def get_object(self, request, object_id, from_field=None):
         obj = super().get_object(request, object_id, from_field=from_field)

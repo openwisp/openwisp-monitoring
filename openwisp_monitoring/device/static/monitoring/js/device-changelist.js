@@ -48,7 +48,7 @@
               $content.html(
                 '<div class="ow-loading-spinner issues-loading-spinner"></div>',
               );
-              $btn.hide()
+              $btn.hide();
             },
             success: function (data) {
               $btn.show();
