@@ -48,7 +48,7 @@ from .filters import (
     WifiSessionFilter,
 )
 from .serializers import (
-    DeviceUnhealthyMetricSerializer,
+    DeviceMetricSerializer,
     MonitoringDeviceDetailSerializer,
     MonitoringDeviceListSerializer,
     MonitoringGeoJsonLocationSerializer,
@@ -335,15 +335,13 @@ class MonitoringDeviceList(DeviceListCreateView):
 monitoring_device_list = MonitoringDeviceList.as_view()
 
 
-class DeviceUnhealthyMetricsView(
-    BaseProtectedAPIMixin, FilterByParentManaged, ListAPIView
-):
+class DeviceMetricsView(BaseProtectedAPIMixin, FilterByParentManaged, ListAPIView):
     """
     Returns unhealthy metrics for a device.
     Used by the changelist accordion to show why a device is in PROBLEM state.
     """
 
-    serializer_class = DeviceUnhealthyMetricSerializer
+    serializer_class = DeviceMetricSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["is_healthy"]
     queryset = Metric.objects.all()
@@ -361,7 +359,7 @@ class DeviceUnhealthyMetricsView(
         ).only("name", "key", "is_healthy")
 
 
-device_unhealthy_metrics = DeviceUnhealthyMetricsView.as_view()
+device_metrics = DeviceMetricsView.as_view()
 
 
 class WifiSessionListView(ProtectedAPIMixin, FilterByOrganizationManaged, ListAPIView):

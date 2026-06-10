@@ -88,7 +88,7 @@ class MonitoringNearbyDeviceSerializer(
         return DeviceData.objects.only("id").get(id=obj.id).data
 
 
-class DeviceUnhealthyMetricSerializer(serializers.ModelSerializer):
+class DeviceMetricSerializer(serializers.ModelSerializer):
     class Meta:
         model = Metric
         fields = ["name", "key", "is_healthy"]
