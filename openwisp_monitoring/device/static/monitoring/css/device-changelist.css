@@ -17,12 +17,9 @@
 #content .device-issues-accordion .issues-toggle,
 #content .device-issues-accordion .issues-toggle:visited {
   color: var(--ow-link-highlighted);
-  text-decoration: underline;
 }
 #content .device-issues-accordion .issues-toggle:hover,
-#content .device-issues-accordion .issues-toggle:focus,
 #content .device-issues-accordion .issues-toggle:active {
-  color: var(--ow-link-highlighted-hover);
   text-decoration: underline;
 }
 .device-issues-accordion .issues-content {
