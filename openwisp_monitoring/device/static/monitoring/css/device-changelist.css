@@ -48,7 +48,7 @@
 
 .spinner-wrapper {
   position: absolute;
-  right: 0%;
+  right: 0;
   top: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
