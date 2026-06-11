@@ -6,18 +6,64 @@
     };
   }
   $(function () {
+    function updateButtonText($btn) {
+      if ($btn.attr("aria-expanded") === "true") {
+        if ($btn.data("error")) {
+          $btn.text(gettext("retry"));
+        } else {
+          $btn.text(gettext("hide issues"));
+        }
+      } else {
+        $btn.text(gettext("show issues"));
+      }
+    }
+
     function showContent($content, $accordion, $btn) {
       $accordion.addClass("expanded");
-      $btn.text(gettext("hide issues"));
-      $btn.data("expanded", true);
       $btn.attr("aria-expanded", "true");
+      updateButtonText($btn);
     }
 
     function hideContent($content, $accordion, $btn) {
       $accordion.removeClass("expanded");
-      $btn.text(gettext("show issues"));
-      $btn.data("expanded", false);
       $btn.attr("aria-expanded", "false");
+      updateButtonText($btn);
+    }
+
+    function fetchIssues($btn, $content, deviceId) {
+      var apiUrl =
+        window.deviceMetricsApiBaseUrl.replace(
+          "00000000-0000-0000-0000-000000000000",
+          deviceId,
+        ) + "?is_healthy=false";
+      $.ajax({
+        url: apiUrl,
+        type: "GET",
+        beforeSend: function () {
+          var $spinnerWrapper = $btn.siblings(".spinner-wrapper");
+          $spinnerWrapper.html(
+            '<div class="ow-loading-spinner issues-loading-spinner"></div>',
+          );
+        },
+        success: function (data) {
+          var $spinnerWrapper = $btn.siblings(".spinner-wrapper");
+          $spinnerWrapper.empty();
+          renderIssues($content, data);
+          $btn.data("loaded", true);
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+          var $spinnerWrapper = $btn.siblings(".spinner-wrapper");
+          $spinnerWrapper.empty();
+          $content.html("<p>" + gettext("Failed to load issues.") + "</p>");
+          $btn.data("error", true);
+          updateButtonText($btn);
+          console.error(
+            "Failed to load unhealthy metrics for device " + deviceId + ":",
+            textStatus,
+            errorThrown,
+          );
+        },
+      });
     }
 
     $(document).on("click", ".issues-toggle", function (e) {
@@ -26,47 +72,25 @@
       var deviceId = $btn.data("device-id");
       var $content = $btn.siblings(".issues-content");
       var $accordion = $btn.closest(".device-issues-accordion");
-      var isExpanded = $btn.data("expanded");
-      var loaded = $btn.data("loaded");
+      var isExpanded = $btn.attr("aria-expanded") === "true";
+      var hasError = $btn.data("error");
 
       if (isExpanded) {
-        hideContent($content, $accordion, $btn);
-      } else {
-        if (loaded) {
-          showContent($content, $accordion, $btn);
+        if (hasError) {
+          // Retry: clear error and fetch again
+          $btn.data("error", false);
+          $content.empty();
+          updateButtonText($btn);
+          fetchIssues($btn, $content, deviceId);
         } else {
-          showContent($content, $accordion, $btn);
-          var apiUrl =
-            window.deviceMetricsApiBaseUrl.replace(
-              "00000000-0000-0000-0000-000000000000",
-              deviceId,
-            ) + "?is_healthy=false";
-          $.ajax({
-            url: apiUrl,
-            type: "GET",
-            beforeSend: function () {
-              var $spinnerWrapper = $btn.siblings(".spinner-wrapper");
-              $spinnerWrapper.html(
-                '<div class="ow-loading-spinner issues-loading-spinner"></div>',
-              );
-            },
-            success: function (data) {
-              var $spinnerWrapper = $btn.siblings(".spinner-wrapper");
-              $spinnerWrapper.empty();
-              renderIssues($content, data);
-              $btn.data("loaded", true);
-            },
-            error: function (jqXHR, textStatus, errorThrown) {
-              var $spinnerWrapper = $btn.siblings(".spinner-wrapper");
-              $spinnerWrapper.empty();
-              $content.html("<p>" + gettext("Failed to load issues.") + "</p>");
-              console.error(
-                "Failed to load unhealthy metrics for device " + deviceId + ":",
-                textStatus,
-                errorThrown,
-              );
-            },
-          });
+          // Normal collapse
+          hideContent($content, $accordion, $btn);
+        }
+      } else {
+        showContent($content, $accordion, $btn);
+        var loaded = $btn.data("loaded");
+        if (!loaded) {
+          fetchIssues($btn, $content, deviceId);
         }
       }
     });

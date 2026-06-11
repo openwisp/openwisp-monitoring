@@ -341,7 +341,6 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
     def health_status_changelist(self, obj):
         status = obj.monitoring.status
         status_display = obj.monitoring.get_status_display()
-
         if status == "problem":
             html = format_html(
                 '<div class="health-status-container">'
