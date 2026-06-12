@@ -351,7 +351,8 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
                 '<a href="#" class="issues-toggle" data-device-id="{2}" '
                 'aria-expanded="false" '
                 'aria-controls="issues-content-{2}">'
-                "{3}"
+                '<span class="mg-arrow"></span>'
+                '<span class="issues-toggle-label">{3}</span>'
                 "</a>"
                 "</div>"
                 "</div>",

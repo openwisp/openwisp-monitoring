@@ -7,14 +7,15 @@
   }
   $(function () {
     function updateButtonText($btn) {
+      var $label = $btn.find(".issues-toggle-label");
       if ($btn.attr("aria-expanded") === "true") {
         if ($btn.data("error")) {
-          $btn.text(gettext("retry"));
+          $label.text(gettext("retry"));
         } else {
-          $btn.text(gettext("hide issues"));
+          $label.text(gettext("hide issues"));
         }
       } else {
-        $btn.text(gettext("show issues"));
+        $label.text(gettext("show issues"));
       }
     }
 
