@@ -34,6 +34,7 @@ from openwisp_controller.geo.api.views import (
 )
 from openwisp_users.api.mixins import FilterByOrganizationManaged, FilterByParentManaged
 from openwisp_users.api.mixins import ProtectedAPIMixin as BaseProtectedAPIMixin
+from openwisp_users.api.permissions import DjangoModelPermissions, IsOrganizationManager
 from openwisp_utils.api.pagination import OpenWispPagination
 
 from ...settings import CACHE_TIMEOUT
@@ -335,7 +336,17 @@ class MonitoringDeviceList(DeviceListCreateView):
 monitoring_device_list = MonitoringDeviceList.as_view()
 
 
-class DeviceMetricsView(BaseProtectedAPIMixin, FilterByParentManaged, ListAPIView):
+class DeviceModelPermissions(DjangoModelPermissions):
+    """
+    Checks model-level permissions against the ``Device`` model
+    instead of the model of the view's queryset.
+    """
+
+    def _queryset(self, view):
+        return Device.objects.filter(pk=view.kwargs.get("pk"))
+
+
+class DeviceMetricListView(BaseProtectedAPIMixin, FilterByParentManaged, ListAPIView):
     """
     Returns metrics for a device, optionally filtered by ``is_healthy``.
     Used by the changelist accordion to show why a device is in PROBLEM state.
@@ -345,6 +356,9 @@ class DeviceMetricsView(BaseProtectedAPIMixin, FilterByParentManaged, ListAPIVie
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["is_healthy"]
     queryset = Metric.objects.all()
+    # Access to this view is granted based on the permissions the user has
+    # on the parent ``Device``, not on the ``Metric`` model.
+    permission_classes = (IsOrganizationManager, DeviceModelPermissions)
 
     def get_parent_queryset(self):
         return Device.objects.filter(pk=self.kwargs["pk"])
@@ -359,7 +373,7 @@ class DeviceMetricsView(BaseProtectedAPIMixin, FilterByParentManaged, ListAPIVie
         ).only("name", "key", "is_healthy")
 
 
-device_metrics = DeviceMetricsView.as_view()
+device_metric_list = DeviceMetricListView.as_view()
 
 
 class WifiSessionListView(ProtectedAPIMixin, FilterByOrganizationManaged, ListAPIView):
