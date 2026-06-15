@@ -614,12 +614,19 @@ class TestInfluxDB2Client(TestCase):
         )
 
         self.assertIn(f'from(bucket: "{self.timeseries_db.db_name}")', query)
-        self.assertIn('stop: time(v: "2024-03-26 00:00:00")', query)
+        self.assertIn('start: time(v: "2024-03-25T00:00:00Z")', query)
+        self.assertIn('stop: time(v: "2024-03-26T00:00:00Z")', query)
         self.assertIn('r.content_type == "config.device"', query)
         self.assertIn('r.object_id == "device-id"', query)
         self.assertIn('r._field == "cpu_usage"', query)
         self.assertIn("aggregateWindow(every: 10m, fn: mean)", query)
         self.assertIn('_field: "CPU_load"', query)
+
+    def test_format_flux_time_date_only(self):
+        self.assertEqual(
+            self.timeseries_db._format_flux_time("2024-03-26"),
+            'time(v: "2024-03-26T00:00:00Z")',
+        )
 
     def test_get_query_summary_uses_whole_range_aggregate(self):
         from openwisp_monitoring.db.backends.influxdb2.queries import chart_query
