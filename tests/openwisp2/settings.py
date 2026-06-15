@@ -337,3 +337,6 @@ try:
     from openwisp2.local_settings import *
 except ImportError:
     pass
+
+if "EXTRA_MIDDLEWARE" in globals():
+    MIDDLEWARE = [*EXTRA_MIDDLEWARE, *MIDDLEWARE]

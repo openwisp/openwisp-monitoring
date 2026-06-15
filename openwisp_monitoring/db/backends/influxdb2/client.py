@@ -326,8 +326,36 @@ class DatabaseClient(object):
         if isinstance(value, datetime):
             value = self._get_timestamp(value)
         if isinstance(value, str):
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+                value = f"{value}T00:00:00"
+            if "T" not in value and " " in value:
+                value = value.replace(" ", "T", 1)
+            if value.endswith("Z"):
+                return f'time(v: "{value}")'
+            if (
+                "+" not in value[10:]
+                and "-" not in value[10:]
+                and not value.endswith("Z")
+            ):
+                value = f"{value}Z"
             return f'time(v: "{value}")'
         return value
+
+    def _normalize_record_time(self, record_time, precision="s"):
+        if not isinstance(record_time, datetime):
+            return record_time
+        if precision is None:
+            return record_time.isoformat().replace("+00:00", "Z")
+        timestamp = record_time.timestamp()
+        if precision == "s":
+            return timestamp
+        if precision == "ms":
+            return int(timestamp * 1000)
+        if precision == "u":
+            return int(timestamp * 1000000)
+        if precision == "ns":
+            return int(timestamp * 1000000000)
+        return timestamp
 
     def validate_query(self, query):
         for word in self._FORBIDDEN:
@@ -389,7 +417,7 @@ class DatabaseClient(object):
             logger.warning(f"Error batch writing to InfluxDB2: {exception}")
             raise TimeseriesWriteException
 
-    def query(self, query, **kwargs):
+    def query(self, query, precision="s", **kwargs):
         """Execute a Flux query and return ResultSet-like object for backward compatibility."""
         try:
             tables = self._query_api.query(query, org=self.org)
@@ -398,10 +426,8 @@ class DatabaseClient(object):
                 for record in table.records:
                     record_time = record.values.get("_time")
                     result = {
-                        "time": (
-                            record_time.timestamp()
-                            if isinstance(record_time, datetime)
-                            else record_time
+                        "time": self._normalize_record_time(
+                            record_time, precision=precision
                         ),
                         "_measurement": record.values.get("_measurement"),
                         "_field": record.values.get("_field"),
@@ -598,7 +624,7 @@ class DatabaseClient(object):
             list: List of point dictionaries with time-indexed values, sorted by time
         """
         # Execute the query and get QueryResultSet wrapper
-        result = self.query(query)
+        result = self.query(query, precision=precision)
         # Ordinary chart reads should ignore object/interface tags and just
         # return field values. Only keep the group-by-tag path when the Flux
         # query explicitly groups by columns.
