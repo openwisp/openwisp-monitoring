@@ -244,7 +244,7 @@ class DatabaseClient(object):
             return "autogen"
         prefix = f"{self.db_name}_"
         if bucket_name.startswith(prefix):
-            return bucket_name[len(prefix):]
+            return bucket_name[len(prefix) :]
         return bucket_name
 
     def _get_bucket_retention_duration(self, bucket):
