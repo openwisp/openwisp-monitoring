@@ -121,30 +121,30 @@
       }
 
       popupContent = `
-          <div class="map-detail">
-            <h2>${escapeHtml(popupTitle)} (${data.count})</h2>
-            <div class="input-container">
-              <input id="device-search" placeholder="${gettext("Search for devices")}" />
-            </div>
-            <div class="label-container">
-              ${statusFilterButtons}
-              <input id="status-filter" type="hidden" />
-            </div>
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>${gettext("name")}</th>
-                    <th class="th-status"><span class ="health-status-heading">${gettext("status")}</span></th>
-                  </tr>
-                </thead>
-                <tbody>${renderRows(netjsongraphInstance)}</tbody>
-              </table>
-              <div class="ow-loading-spinner table-spinner"></div>
-            </div>
-            ${floorplan_btn}
-          </div>
-        `;
+           <div class="map-detail">
+             <h2>${escapeHtml(popupTitle)} (${data.count})</h2>
+             <div class="input-container">
+               <input id="device-search" placeholder="${gettext("Search for devices")}" />
+             </div>
+             <div class="label-container">
+               ${statusFilterButtons}
+               <input id="status-filter" type="hidden" />
+             </div>
+             <div class="table-container">
+               <table>
+                 <thead>
+                   <tr>
+                     <th>${gettext("name")}</th>
+                     <th class="th-status"><span class ="health-status-heading">${gettext("status")}</span></th>
+                   </tr>
+                 </thead>
+                 <tbody>${renderRows(devices)}</tbody>
+               </table>
+               <div class="ow-loading-spinner table-spinner"></div>
+             </div>
+             ${floorplan_btn}
+           </div>
+         `;
       loadingOverlay.hide();
       return popupContent;
     } catch (error) {
@@ -155,9 +155,7 @@
     }
   }
 
-  function renderRows(netjsongraphInstance, deviceList) {
-    deviceList = deviceList || netjsongraphInstance.leaflet._popupState.devices;
-    const popup = $(".map-detail");
+  function renderRows(deviceList) {
     if (deviceList.length === 0) {
       const emptyRow = `
         <tr>
@@ -166,7 +164,6 @@
           </td>
         </tr>
       `;
-      popup.find("tbody").html(emptyRow);
       return emptyRow;
     }
     const rows = deviceList
@@ -183,7 +180,6 @@
     `,
       )
       .join("");
-    popup.find("tbody").html(rows);
     return rows;
   }
 
@@ -198,15 +194,35 @@
       netjsongraphInstance?.leaflet?._popupState;
     const el = $(currentPopup.getElement());
     let fetchDevicesTimeout;
+    let activeRequest = null;
     let loading = false;
     function fetchDevices(url, ms = 0, append) {
-      if (!url || loading) return;
+      // Nothing to fetch if there's no URL (e.g. last page reached).
+      if (!url) return;
+      // Skip duplicate scroll fetches; abort stale filter fetches.
+      if (append && loading) return;
       clearTimeout(fetchDevicesTimeout);
+      // Abort pending filter/search to prevent stale data.
+      if (!append && activeRequest) {
+        activeRequest.abort();
+      }
       loading = true;
+      const container = el.find(".table-container");
       const spinner = el.find(".table-spinner");
-      const table = el.find(".table-container table");
       spinner.show();
-      table.hide();
+      // Avoid layout flicker: don't collapse the table while loading.
+      // For filter/search requests, freeze current height and disable interaction.
+      if (!append) {
+        const currentHeight = container.outerHeight();
+        if (currentHeight) container.css("min-height", `${currentHeight}px`);
+        container.addClass("is-loading");
+      } else {
+        // Infinite scroll append: dim the table but keep it scrollable.
+        const spinnerTop = container.scrollTop() + container.innerHeight() * 0.35;
+        container.css("--table-spinner-top", `${spinnerTop}px`);
+        container.addClass("is-loading-append");
+      }
+      // Debounce — wait ms (0/100/300ms) so rapid events (scroll/input) coalesce before the AJAX call.
       fetchDevicesTimeout = setTimeout(() => {
         let params = new URLSearchParams();
         const searchParam = el.find("#device-search").val().toLowerCase().trim();
@@ -214,21 +230,22 @@
         if (searchParam) {
           params.append("search", searchParam);
         }
-
         if (statusParam) {
           statusParam.split(",").forEach((status) => {
             params.append("status", status);
           });
         }
         const queryString = params.toString();
+        // Two fetch paths:
+        // 1. Infinite scroll (append=true): use the pagination URL passed as-is.
+        // 2. Filter/search (append=false): build URL by appending query params to base URL.
         let fetchUrl;
-        // if append is true, that means we are fetching for infinite scroll
         if (append) {
-          fetchUrl = url; // url is nextUrl, already contains params
+          fetchUrl = url;
         } else {
           fetchUrl = queryString ? `${url}?${queryString}` : url;
         }
-        $.ajax({
+        activeRequest = $.ajax({
           dataType: "json",
           url: fetchUrl,
           xhrFields: { withCredentials: true },
@@ -239,16 +256,23 @@
               devices = data.results;
             }
             nextUrl = data.next;
-            renderRows(netjsongraphInstance, devices);
+            el.find("tbody").html(renderRows(devices));
+            if (!append) container.scrollTop(0);
           },
-          error() {
+          error(_jqXHR, textStatus) {
+            // Ignore aborted requests.
+            if (textStatus === "abort") return;
             console.error(gettext("Could not load more devices from"), url);
             alert(gettext("Could not load more devices."));
           },
           complete() {
+            activeRequest = null;
             loading = false;
             spinner.hide();
-            table.show();
+            container.removeClass("is-loading");
+            container.removeClass("is-loading-append");
+            container.css("min-height", "");
+            container.css("--table-spinner-top", "");
           },
         });
       }, ms);
@@ -269,7 +293,7 @@
         btn.addClass("active");
         activeStatuses.push(status);
       }
-      $(`#status-filter`).val(activeStatuses.join(","));
+      el.find("#status-filter").val(activeStatuses.join(","));
       fetchDevices(url);
     });
     el.find(".table-container").on("scroll", function () {
@@ -282,6 +306,8 @@
       window.openFloorPlan(floorplanUrl, locationId);
     });
     currentPopup.on("remove", () => {
+      clearTimeout(fetchDevicesTimeout);
+      activeRequest?.abort();
       netjsongraphInstance.leaflet._popupState = null;
     });
   }

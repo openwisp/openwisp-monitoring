@@ -13,12 +13,20 @@
       return;
     }
 
+    const mapPageUrl = window._owMapPageUrl;
+    if (!mapPageUrl) {
+      console.error(
+        "location-inline.js: window._owMapPageUrl is not set." +
+          " Map links will not be rendered.",
+      );
+      return;
+    }
     const openLocationBtn = `
       <div class="form-row field-location-view-button view-on-map-div">
         <div>
           <div class="flex-container">
             <label for="id_devicelocation-0-map">${gettext("Map:")}</label>
-            <a href="/admin/device_monitoring/map#${geoMapId}"
+            <a href="${mapPageUrl}#${geoMapId}"
               id="open-location-btn"
               class="default-btn view-on-map-btn">
                 ${gettext("View on General Map")}
@@ -42,7 +50,7 @@
         <div>
           <div class="flex-container">
             <label for="id_devicelocation-0-indoor_map">${gettext("Map:")}</label>
-            <a href="/admin/device_monitoring/map#${geoMapId};${indoorMapId}"
+            <a href="${mapPageUrl}#${geoMapId};${indoorMapId}"
               id="open-indoor-device-btn"
               class="default-btn view-on-map-btn">
                 ${gettext("View on General Indoor Map")}

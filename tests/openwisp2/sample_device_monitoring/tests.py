@@ -3,6 +3,9 @@ from openwisp_monitoring.device.tests import (
 )
 from openwisp_monitoring.device.tests.test_admin import TestAdmin as BaseTestAdmin
 from openwisp_monitoring.device.tests.test_admin import (
+    TestMapPageAdmin as BaseTestMapPageAdmin,
+)
+from openwisp_monitoring.device.tests.test_admin import (
     TestWifiSessionAdmin as BaseTestWifiSessionAdmin,
 )
 from openwisp_monitoring.device.tests.test_api import TestDeviceApi as BaseTestDeviceApi
@@ -71,6 +74,10 @@ class TestWifiSessionAdmin(BaseTestWifiSessionAdmin):
     pass
 
 
+class TestMapPageAdmin(BaseTestMapPageAdmin):
+    pass
+
+
 # this is necessary to avoid excuting the base test suites
 del BaseTestRecovery
 del DeviceMonitoringTestCase
@@ -83,3 +90,4 @@ del BaseTestAdmin
 del BaseTestApps
 del BaseTestWifiClientSession
 del BaseTestWifiSessionAdmin
+del BaseTestMapPageAdmin

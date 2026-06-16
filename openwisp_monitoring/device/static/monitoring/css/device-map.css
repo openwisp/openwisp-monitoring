@@ -147,10 +147,18 @@
   display: inline-block;
 }
 .table-container {
+  position: relative;
   max-height: 181px;
   overflow-y: auto;
   box-sizing: border-box;
   margin: 10px 0;
+}
+.table-container.is-loading table {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.table-container.is-loading-append table {
+  opacity: 0.75;
 }
 .table-container table {
   width: 100%;
@@ -178,8 +186,13 @@
   display: none;
   position: absolute;
   z-index: 99;
-  top: 60% !important;
+  top: 30%;
   left: 45% !important;
+}
+.table-container.is-loading-append .table-spinner {
+  top: var(--table-spinner-top) !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%);
 }
 .no-devices {
   font-weight: bold;

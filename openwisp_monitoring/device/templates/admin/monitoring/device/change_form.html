@@ -1,5 +1,5 @@
 {% extends "admin/config/device/change_form.html" %}
-{% load i18n static %}
+{% load i18n static admin_urls %}
 {% block after_field_sets %}
 {% if not add and device_data %}
 <div class="inline-group" id="ow-device-status">
@@ -606,4 +606,11 @@
   }
 </script>
 {% endif %}
+{% endblock %}
+
+{% block admin_change_form_document_ready %}
+{{ block.super }}
+<script>
+    window._owMapPageUrl = "{{ map_changelist_url }}";
+</script>
 {% endblock %}
