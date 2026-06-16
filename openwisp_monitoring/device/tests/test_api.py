@@ -1528,13 +1528,11 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         org = self._create_org(name="org1")
         device = self._create_device(organization=org, name="test-device")
         device_ct = ContentType.objects.get_for_model(Device)
-        Metric.objects.create(
+        self._create_object_metric(
             content_type=device_ct,
             object_id=device.pk,
-            name="Test Metric",
-            key="test",
+            content_object=device,
             is_healthy=False,
-            configuration="test_config",
         )
         url = reverse("monitoring:api_device_metrics", args=[device.pk])
         self.client.logout()
@@ -1559,10 +1557,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             self._create_object_metric(
                 content_type=device_ct,
                 object_id=device.pk,
-                name="Test Metric",
-                key="test",
-                is_healthy=True,
-                configuration="test_config",
+                content_object=device,
+                is_healthy=False,
             )
         operator = self._create_operator(
             organizations=[org1],
@@ -1587,10 +1583,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self._create_object_metric(
             content_type=device_ct,
             object_id=device.pk,
-            name="Test Metric",
-            key="test",
+            content_object=device,
             is_healthy=False,
-            configuration="test_config",
         )
         # operator is not added to any organization, so they do not
         # manage any organization
@@ -1607,10 +1601,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self._create_object_metric(
             content_type=device_ct,
             object_id=device.pk,
-            name="Test Metric",
-            key="test",
+            content_object=device,
             is_healthy=False,
-            configuration="test_config",
         )
         operator = self._create_operator(
             organizations=[org1],

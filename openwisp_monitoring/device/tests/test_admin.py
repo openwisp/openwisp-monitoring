@@ -959,7 +959,7 @@ class TestAdmin(
         self._create_device(organization=org, name="test-device")
         url = reverse(f"admin:{self.config_app_label}_device_changelist")
         response = self.client.get(url, {"monitoring__status": "problem"})
-        self.assertContains(response, "ow-filter by-problematic-metric ow-sub-filter")
+        self.assertContains(response, "ow-filter problematic-metric ow-sub-filter")
         self.assertNotContains(response, "ow-sub-filter hidden")
         self.assertContains(response, "Ping")
 
