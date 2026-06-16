@@ -50,7 +50,6 @@
 .device-issues-accordion .issues-content li {
   list-style: none;
   font-size: 12px;
-  line-height: 14px;
 }
 
 .device-issues-accordion.expanded .issues-content {
@@ -60,8 +59,8 @@
 
 .spinner-wrapper {
   position: absolute;
-  right: 0;
-  top: 50%;
+  left: 40%;
+  top: 46%;
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
