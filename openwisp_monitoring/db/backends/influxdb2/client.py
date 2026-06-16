@@ -366,7 +366,14 @@ class DatabaseClient(object):
 
     def _is_aggregate(self, query):
         query = query.lower()
-        return any(f"{word}(" in query for word in self._AGGREGATE)
+        if any(f"{word}(" in query for word in self._AGGREGATE):
+            return True
+        return any(
+            re.search(
+                rf"aggregatewindow\([^)]*fn:\s*{word}(?:\s*[,)])", query, re.IGNORECASE
+            )
+            for word in self._AGGREGATE
+        )
 
     def write(self, name, values, **kwargs):
         timestamp = self._get_timestamp(timestamp=kwargs.get("timestamp"))
