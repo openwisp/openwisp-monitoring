@@ -1,11 +1,11 @@
 from django.contrib import admin
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
-from openwisp_users.multitenancy import MultitenantOrgFilter
-from openwisp_utils.admin_theme.filters import AutocompleteFilter, SubFilterMixin
 from swapper import load_model
 
 from openwisp_monitoring.monitoring.configuration import get_metric_configuration
+from openwisp_users.multitenancy import MultitenantOrgFilter
+from openwisp_utils.admin_theme.filters import AutocompleteFilter, SubFilterMixin
 
 Device = load_model("config", "Device")
 Metric = load_model("monitoring", "Metric")

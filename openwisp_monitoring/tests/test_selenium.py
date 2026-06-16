@@ -1428,12 +1428,12 @@ class TestDeviceAdmin(
 
         with self.subTest("apply disk usage sub-filter"):
             self.wait_for_visibility(
-                By.CSS_SELECTOR, "#by-problematic-metric:not(.hidden)", timeout=5
+                By.CSS_SELECTOR, "#problematic-metric:not(.hidden)", timeout=5
             )
-            self.find_element(By.CSS_SELECTOR, "#by-problematic-metric > div").click()
+            self.find_element(By.CSS_SELECTOR, "#problematic-metric > div").click()
             self.find_element(
                 By.CSS_SELECTOR,
-                '#choices-by-problematic-metric a[title="Disk usage"]',
+                '#choices-problematic-metric a[title="Disk usage"]',
             ).click()
             self.find_element(By.CSS_SELECTOR, "#ow-apply-filter").click()
             self.wait_for_visibility(By.CSS_SELECTOR, "#result_list", timeout=10)
