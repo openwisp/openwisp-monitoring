@@ -95,6 +95,16 @@ class TestInfluxDB2Client(TestCase):
             result = self.timeseries_db.validate_query(query)
             self.assertTrue(result, f"Query should be detected as aggregate: {query}")
 
+    def test_validate_query_aggregate_window(self):
+        aggregate_queries = [
+            'from(bucket: "test") |> aggregateWindow(every: 10m, fn: mean)',
+            'from(bucket: "test") |> aggregateWindow(every: 10m, fn: sum)',
+            'from(bucket: "test") |> aggregateWindow(every: 10m, fn: count)',
+        ]
+        for query in aggregate_queries:
+            result = self.timeseries_db.validate_query(query)
+            self.assertTrue(result, f"aggregateWindow query not detected: {query}")
+
     def test_duration_to_seconds(self):
         """Test duration string conversion to seconds."""
         test_cases = [
@@ -930,6 +940,32 @@ class TestInfluxDB2ClientIntegration(TestMonitoringMixin, TestCase):
         self.assertEqual(len(data["x"]), 3)
         self.assertEqual(data["traces"], [("value", [3, 6, 9])])
         self.assertEqual(data["summary"], {"value": None})
+
+    def test_ping_uptime_chart_summary_round_trip(self):
+        metric = self._create_object_metric(name="ping", configuration="ping")
+        timestamp = now()
+        metric.write(
+            1,
+            extra_values={"loss": 0, "rtt_min": 1.2, "rtt_avg": 2.4, "rtt_max": 3.6},
+            time=timestamp - timedelta(days=2),
+        )
+        metric.write(
+            1,
+            extra_values={"loss": 0, "rtt_min": 1.1, "rtt_avg": 2.1, "rtt_max": 3.1},
+            time=timestamp - timedelta(days=1),
+        )
+        metric.write(
+            1,
+            extra_values={"loss": 0, "rtt_min": 1.0, "rtt_avg": 2.0, "rtt_max": 3.0},
+            time=timestamp,
+        )
+        chart = Chart(metric=metric, configuration="uptime")
+        chart.full_clean()
+        chart.save()
+
+        data = self._read_chart(chart, time="7d")
+
+        self.assertEqual(data["summary"], {"uptime": 100.0})
 
     def test_delete_metric_data_and_delete_series_round_trip(self):
         general_metric = self._create_general_metric(name="delete-general")
