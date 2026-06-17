@@ -31,6 +31,7 @@ WifiClient = load_model("device_monitoring", "WifiClient")
 WifiSession = load_model("device_monitoring", "WifiSession")
 User = get_user_model()
 Check = load_model("check", "Check")
+ZERO_UUID = "00000000-0000-0000-0000-000000000000"
 # needed for config.geo
 Device = load_model("config", "Device")
 DeviceLocation = load_model("geo", "DeviceLocation")
@@ -145,13 +146,23 @@ class TestAdmin(
         self.assertContains(
             response, f'geoJsonUrl: "{reverse("monitoring:api_location_geojson")}"'
         )
-        self.assertTrue(
+        self.assertContains(
             response,
-            f'locationDeviceUrl: "{reverse("monitoring:api_location_device_list", args=["00000000-0000-0000-0000-000000000000"])}"',
+            'locationDeviceUrl: "{0}"'.format(
+                reverse(
+                    "monitoring:api_location_device_list",
+                    args=[ZERO_UUID],
+                )
+            ),
         )
-        self.assertTrue(
+        self.assertContains(
             response,
-            f'indoorCoordinatesUrl: "{reverse("monitoring:api_indoor_coordinates_list", args=["00000000-0000-0000-0000-000000000000"])}"',
+            'indoorCoordinatesUrl: "{0}"'.format(
+                reverse(
+                    "monitoring:api_indoor_coordinates_list",
+                    args=[ZERO_UUID],
+                )
+            ),
         )
 
     def test_wifisession_dashboard_chart_query(self):
@@ -1486,13 +1497,23 @@ class TestMapPageAdmin(TestGeoMixin, DeviceMonitoringTestCase):
         self.assertContains(
             response, f'geoJsonUrl: "{reverse("monitoring:api_location_geojson")}"'
         )
-        self.assertTrue(
+        self.assertContains(
             response,
-            f'locationDeviceUrl: "{reverse("monitoring:api_location_device_list", args=["00000000-0000-0000-0000-000000000000"])}"',
+            'locationDeviceUrl: "{0}"'.format(
+                reverse(
+                    "monitoring:api_location_device_list",
+                    args=[ZERO_UUID],
+                )
+            ),
         )
-        self.assertTrue(
+        self.assertContains(
             response,
-            f'indoorCoordinatesUrl: "{reverse("monitoring:api_indoor_coordinates_list", args=["00000000-0000-0000-0000-000000000000"])}"',
+            'indoorCoordinatesUrl: "{0}"'.format(
+                reverse(
+                    "monitoring:api_indoor_coordinates_list",
+                    args=[ZERO_UUID],
+                )
+            ),
         )
 
     def test_mappage_admin_media_files(self):
