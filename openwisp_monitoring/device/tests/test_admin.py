@@ -147,11 +147,11 @@ class TestAdmin(
         )
         self.assertTrue(
             response,
-            f'locationDeviceUrl: "{reverse("monitoring:api_location_device_list", args=["000"])}"',
+            f'locationDeviceUrl: "{reverse("monitoring:api_location_device_list", args=["00000000-0000-0000-0000-000000000000"])}"',
         )
         self.assertTrue(
             response,
-            f'indoorCoordinatesUrl: "{reverse("monitoring:api_indoor_coordinates_list", args=["000"])}"',
+            f'indoorCoordinatesUrl: "{reverse("monitoring:api_indoor_coordinates_list", args=["00000000-0000-0000-0000-000000000000"])}"',
         )
 
     def test_wifisession_dashboard_chart_query(self):
@@ -1488,11 +1488,11 @@ class TestMapPageAdmin(TestGeoMixin, DeviceMonitoringTestCase):
         )
         self.assertTrue(
             response,
-            f'locationDeviceUrl: "{reverse("monitoring:api_location_device_list", args=["000"])}"',
+            f'locationDeviceUrl: "{reverse("monitoring:api_location_device_list", args=["00000000-0000-0000-0000-000000000000"])}"',
         )
         self.assertTrue(
             response,
-            f'indoorCoordinatesUrl: "{reverse("monitoring:api_indoor_coordinates_list", args=["000"])}"',
+            f'indoorCoordinatesUrl: "{reverse("monitoring:api_indoor_coordinates_list", args=["00000000-0000-0000-0000-000000000000"])}"',
         )
 
     def test_mappage_admin_media_files(self):

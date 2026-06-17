@@ -1,5 +1,4 @@
 import logging
-import uuid
 from datetime import datetime
 
 from cache_memoize import cache_memoize
@@ -73,10 +72,6 @@ WifiSession = load_model("device_monitoring", "WifiSession")
 
 def get_device_args_rewrite(view, pk):
     """Use only the PK parameter for calculating the cache key"""
-    try:
-        pk = uuid.UUID(pk)
-    except ValueError:
-        return pk
     return pk.hex
 
 
@@ -130,7 +125,7 @@ class DeviceMetricView(
     def invalidate_get_device_cache(cls, instance, **kwargs):
         """Called from signal receiver which performs cache invalidation"""
         view = cls()
-        view.get_object.invalidate(view, str(instance.pk))
+        view.get_object.invalidate(view, instance.pk)
         logger.debug(f"invalidated view cache for device ID {instance.pk}")
 
     @classmethod
@@ -144,11 +139,6 @@ class DeviceMetricView(
         cls._get_charts.invalidate(None, None, pk)
 
     def get(self, request, pk):
-        # ensure valid UUID
-        try:
-            pk = str(uuid.UUID(pk))
-        except ValueError:
-            return Response({"detail": "not found"}, status=404)
         self.instance = self.get_object(pk)
         response = super().get(request, pk)
         if not request.query_params.get("csv"):

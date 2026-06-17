@@ -1,4 +1,4 @@
-from django.urls import path, re_path
+from django.urls import path
 
 from . import views
 
@@ -15,13 +15,13 @@ urlpatterns = [
         views.device_metric_list,
         name="api_device_metric_list",
     ),
-    re_path(
-        r"^api/v1/monitoring/device/(?P<pk>[^/]+)/$",
+    path(
+        "api/v1/monitoring/device/<uuid:pk>/",
         views.device_metric,
         name="api_device_metric",
     ),
-    re_path(
-        r"^api/v1/monitoring/device/(?P<pk>[^/]+)/nearby-devices/$",
+    path(
+        "api/v1/monitoring/device/<uuid:pk>/nearby-devices/",
         views.monitoring_nearby_device_list,
         name="api_monitoring_nearby_device_list",
     ),
@@ -30,8 +30,8 @@ urlpatterns = [
         views.monitoring_geojson_location_list,
         name="api_location_geojson",
     ),
-    re_path(
-        r"^api/v1/monitoring/location/(?P<pk>[^/]+)/device/$",
+    path(
+        "api/v1/monitoring/location/<uuid:pk>/device/",
         views.monitoring_location_device_list,
         name="api_location_device_list",
     ),
@@ -40,13 +40,13 @@ urlpatterns = [
         views.wifi_session_list,
         name="api_wifi_session_list",
     ),
-    re_path(
-        r"^api/v1/monitoring/wifi-session/(?P<pk>[^/]+)/$",
+    path(
+        "api/v1/monitoring/wifi-session/<uuid:pk>/",
         views.wifi_session_detail,
         name="api_wifi_session_detail",
     ),
-    re_path(
-        r"^api/v1/monitoring/location/(?P<pk>[^/]+)/indoor-coordinates/$",
+    path(
+        "api/v1/monitoring/location/<uuid:pk>/indoor-coordinates/",
         views.monitoring_indoor_coordinates_list,
         name="api_indoor_coordinates_list",
     ),

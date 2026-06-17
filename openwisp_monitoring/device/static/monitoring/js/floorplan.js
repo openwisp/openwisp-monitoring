@@ -53,7 +53,7 @@
   if (indoorMapId) {
     const { fragmentLocationId, fragmentFloor } = indoorMapId;
     const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
-      "000",
+      "00000000-0000-0000-0000-000000000000",
       fragmentLocationId,
     );
     openFloorPlan(floorplanUrl, fragmentLocationId, fragmentFloor);
@@ -87,7 +87,7 @@
       if (indoorMapId) {
         const { fragmentLocationId, fragmentFloor } = indoorMapId;
         const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
-          "000",
+          "00000000-0000-0000-0000-000000000000",
           fragmentLocationId,
         );
         openFloorPlan(floorplanUrl, fragmentLocationId, fragmentFloor);
