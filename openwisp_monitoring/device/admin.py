@@ -287,11 +287,14 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
-        extra_context["api_url_base"] = reverse(
-            "monitoring:api_device_metrics",
+        device_metric_list = reverse(
+            "monitoring:api_device_metric_list",
             urlconf=MONITORING_API_URLCONF,
             args=["00000000-0000-0000-0000-000000000000"],
         )
+        if MONITORING_API_BASEURL:
+            device_metric_list = urljoin(MONITORING_API_BASEURL, device_metric_list)
+        extra_context["device_metric_list"] = device_metric_list
         return super().changelist_view(request, extra_context)
 
     def get_extra_context(self, pk=None):

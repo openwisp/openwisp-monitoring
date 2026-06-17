@@ -1504,7 +1504,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     def test_device_metric_list_endpoint_ok_device(self):
         self.create_test_data(no_resources=True)
         device = Device.objects.first()
-        url = reverse("monitoring:api_device_metrics", args=[device.pk])
+        url = reverse("monitoring:api_device_metric_list", args=[device.pk])
         response = self.client.get(url, {"is_healthy": "false"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data, [])
@@ -1516,7 +1516,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         m.write(m.alertsettings.threshold + 0.1)
         m.refresh_from_db()
         self.assertEqual(m.is_healthy, False)
-        url = reverse("monitoring:api_device_metrics", args=[device.pk])
+        url = reverse("monitoring:api_device_metric_list", args=[device.pk])
         response = self.client.get(url, {"is_healthy": "false"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 1)
@@ -1534,14 +1534,14 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             content_object=device,
             is_healthy=False,
         )
-        url = reverse("monitoring:api_device_metrics", args=[device.pk])
+        url = reverse("monitoring:api_device_metric_list", args=[device.pk])
         self.client.logout()
         response = self.client.get(url)
         self.assertEqual(response.status_code, 401)
 
     def test_device_metric_list_endpoint_wrong_device(self):
         url = reverse(
-            "monitoring:api_device_metrics",
+            "monitoring:api_device_metric_list",
             args=["00000000-0000-0000-0000-000000000000"],
         )
         response = self.client.get(url)
@@ -1565,13 +1565,13 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             username="org1-operator",
         )
         self.client.force_login(operator)
-        org1_url = reverse("monitoring:api_device_metrics", args=[org1_device.pk])
+        org1_url = reverse("monitoring:api_device_metric_list", args=[org1_device.pk])
         with self.subTest("operator can access device in own org"):
             response = self.client.get(org1_url, {"is_healthy": "false"})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(len(response.data), 1)
 
-        org2_url = reverse("monitoring:api_device_metrics", args=[org2_device.pk])
+        org2_url = reverse("monitoring:api_device_metric_list", args=[org2_device.pk])
         with self.subTest("operator cannot access device in other org"):
             response = self.client.get(org2_url, {"is_healthy": "false"})
             self.assertEqual(response.status_code, 404)
@@ -1590,7 +1590,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         # manage any organization
         operator = self._create_operator(username="org1-operator")
         self.client.force_login(operator)
-        url = reverse("monitoring:api_device_metrics", args=[device.pk])
+        url = reverse("monitoring:api_device_metric_list", args=[device.pk])
         response = self.client.get(url, {"is_healthy": "false"})
         self.assertEqual(response.status_code, 403)
 
@@ -1615,7 +1615,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         operator_group = Group.objects.get(name="Operator")
         operator_group.permissions.remove(*device_permissions)
         self.client.force_login(operator)
-        url = reverse("monitoring:api_device_metrics", args=[device.pk])
+        url = reverse("monitoring:api_device_metric_list", args=[device.pk])
         response = self.client.get(url, {"is_healthy": "false"})
         self.assertEqual(response.status_code, 403)
 

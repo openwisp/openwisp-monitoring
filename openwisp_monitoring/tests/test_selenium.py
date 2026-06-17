@@ -1311,11 +1311,15 @@ class TestDeviceAdmin(
 ):
     config_app_label = "config"
 
+    @patch("openwisp_monitoring.device.admin.MONITORING_API_BASEURL", None)
     def test_device_issues_accordion_interaction(self):
         self.create_test_data()
         device = Device.objects.first()
         # Ensure device has an unhealthy metric to make the issues accordion visible
-        disk_metric = Metric.objects.filter(configuration="disk").first()
+        disk_metric = Metric.objects.filter(
+            configuration="disk", object_id=device.id
+        ).first()
+        self.assertNotEqual(disk_metric, None)
         disk_metric.write(disk_metric.alertsettings.threshold + 0.1)
         disk_metric.refresh_from_db()
         self.assertEqual(disk_metric.is_healthy, False)
@@ -1324,8 +1328,11 @@ class TestDeviceAdmin(
         self.login()
         self.open(reverse(f"admin:{self.config_app_label}_device_changelist"))
 
+        row = self.find_element(
+            By.XPATH, f"//tr[.//a[contains(@href, '/{device.id}/change/')]]"
+        )
         with self.subTest("expand accordion and verify metric name"):
-            toggle = self.find_element(By.CSS_SELECTOR, ".issues-toggle")
+            toggle = row.find_element(By.CSS_SELECTOR, ".issues-toggle")
             self.assertEqual(toggle.text, "show issues")
             toggle.click()
             self.wait_for_visibility(
@@ -1333,11 +1340,11 @@ class TestDeviceAdmin(
                 ".device-issues-accordion.expanded .issues-content li",
                 timeout=5,
             )
-            content = self.find_element(By.CSS_SELECTOR, ".issues-content")
+            content = row.find_element(By.CSS_SELECTOR, ".issues-content")
             self.assertIn("Disk usage", content.text)
 
         with self.subTest("collapse accordion"):
-            toggle = self.find_element(By.CSS_SELECTOR, ".issues-toggle")
+            toggle = row.find_element(By.CSS_SELECTOR, ".issues-toggle")
             self.assertEqual(toggle.text, "hide issues")
             toggle.click()
             self.wait_for_invisibility(
@@ -1345,7 +1352,7 @@ class TestDeviceAdmin(
             )
 
         with self.subTest("re-expand accordion with cached DOM content"):
-            toggle = self.find_element(By.CSS_SELECTOR, ".issues-toggle")
+            toggle = row.find_element(By.CSS_SELECTOR, ".issues-toggle")
             self.assertEqual(toggle.text, "show issues")
             toggle.click()
             self.wait_for_visibility(
@@ -1353,7 +1360,7 @@ class TestDeviceAdmin(
                 ".device-issues-accordion.expanded .issues-content li",
                 timeout=5,
             )
-            content = self.find_element(By.CSS_SELECTOR, ".issues-content")
+            content = row.find_element(By.CSS_SELECTOR, ".issues-content")
             self.assertIn("Disk usage", content.text)
 
     def test_unhealthy_metric_sub_filter(self):

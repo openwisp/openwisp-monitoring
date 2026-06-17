@@ -11,9 +11,9 @@ urlpatterns = [
         name="api_monitoring_device_list",
     ),
     re_path(
-        r"^api/v1/monitoring/device/(?P<pk>[^/]+)/metrics/$",
+        r"^api/v1/monitoring/device/(?P<pk>[^/]+)/metric/$",
         views.device_metric_list,
-        name="api_device_metrics",
+        name="api_device_metric_list",
     ),
     re_path(
         r"^api/v1/monitoring/device/(?P<pk>[^/]+)/$",

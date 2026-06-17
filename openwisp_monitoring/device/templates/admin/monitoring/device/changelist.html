@@ -10,7 +10,7 @@
   {{ block.super }}
   <script>
     (function() {
-        window.deviceMetricsApiBaseUrl = "{{ api_url_base }}";
+        window.deviceMetricsApiBaseUrl = "{{ device_metric_list }}";
     })();
   </script>
   <script src="{% static 'monitoring/js/device-changelist.js' %}"></script>
