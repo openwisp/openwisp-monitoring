@@ -670,6 +670,14 @@ class TestDashboardMap(
             "#floorplan-navigation .right-arrow",
             timeout=5,
         ).click()
+        # Switching floors exits fullscreen on the previous floor. Wait until
+        # the class is removed before asserting.
+        WebDriverWait(self.web_driver, 5).until(
+            lambda driver: "leaflet-fullscreen-on"
+            not in driver.find_element(
+                By.CSS_SELECTOR, "#floor-content-1 .leaflet-container"
+            ).get_attribute("class")
+        )
         container = self.find_element(
             By.CSS_SELECTOR, "#floor-content-1 .leaflet-container", wait_for="presence"
         )
