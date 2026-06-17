@@ -172,8 +172,9 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         # Add 1 for general metric and chart
         self.assertEqual(self.metric_queryset.count(), 0)
         self.assertEqual(self.chart_queryset.count(), 0)
+        device_id = d.id
         d.delete(check_deactivated=False)
-        r = self._post_data(d.id, d.key, data)
+        r = self._post_data(device_id, d.key, data)
         self.assertEqual(r.status_code, 404)
 
     def test_200_create(self):
@@ -410,13 +411,13 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         dd = self.create_test_data()
         d = self.device_model.objects.get(pk=dd.pk)
         with self.assertNumQueries(17):
-            r = self.client.get(self._url(d.pk.hex, d.key))
+            r = self.client.get(self._url(d.pk, d.key))
         with self.assertNumQueries(16):
-            r = self.client.get(self._url(d.pk.hex, d.key))
+            r = self.client.get(self._url(d.pk, d.key))
         self.assertEqual(r.status_code, 200)
 
         with self.subTest("Test device metrics 200 without the device key"):
-            r1 = self.client.get(self._url(d.pk.hex))
+            r1 = self.client.get(self._url(d.pk))
             self.assertEqual(r1.status_code, 200)
             for key in self._RESPONSE_KEYS:
                 self.assertIn(key, r.data.keys())
@@ -527,7 +528,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         m = self._create_object_metric(content_object=d, name="applications")
         self._create_chart(metric=m, configuration="histogram")
         self._create_multiple_measurements(create=False, no_resources=True, count=2)
-        r = self.client.get(self._url(d.pk.hex, d.key))
+        r = self.client.get(self._url(d.pk, d.key))
         self.assertEqual(r.status_code, 200)
         self.assertTrue(len(r.data["x"]) > 50)
 
@@ -539,7 +540,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertIsInstance(r.data["charts"], list)
 
     def test_get_device_metrics_404(self):
-        r = self.client.get(self._url("WRONG", "MADEUP"))
+        r = self.client.get(self._url(uuid4(), "MADEUP"))
         self.assertEqual(r.status_code, 404)
 
     def test_get_device_metrics_401(self):
@@ -645,7 +646,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         c.save()
         # Add 1 for general chart
         self.assertEqual(self.chart_queryset.count(), 1)
-        response = self.client.get(self._url(d.pk.hex, d.key))
+        response = self.client.get(self._url(d.pk, d.key))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["charts"], [])
 
@@ -689,7 +690,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         c = self._create_chart(metric=m, test_data=None)
         c.configuration = "invalid"
         c.save()
-        response = self.client.get(self._url(d.pk.hex, d.key))
+        response = self.client.get(self._url(d.pk, d.key))
         self.assertEqual(response.status_code, 200)
 
     @tag("flaky_with_udp_writes")
@@ -725,7 +726,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     def test_get_device_status_200(self):
         dd = self.create_test_data(no_resources=True)
         d = self.device_model.objects.get(pk=dd.pk)
-        url = self._url(d.pk.hex, d.key)
+        url = self._url(d.pk, d.key)
         # status not requested
         r = self.client.get(url)
         self.assertEqual(r.status_code, 200)
@@ -987,7 +988,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             {"umts": {"ecio": 2, "rscp": -14, "rssi": -80}}
         )
         self._post_data(device.id, device.key, data)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data["charts"]
         self.assertEqual(charts[0]["summary"]["signal_strength"], -51.0)
@@ -1044,7 +1045,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         }
         response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 200)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data["charts"]
         self.assertEqual(charts[0]["summary"]["signal_power"], -70.0)
@@ -1083,7 +1084,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         }
         response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 200)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data["charts"]
         self.assertEqual(len(charts), 3)
@@ -1123,7 +1124,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         }
         response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 200)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data["charts"]
         self.assertEqual(len(charts), 3)
@@ -1163,7 +1164,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         }
         response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 200)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data["charts"]
         self.assertEqual(len(charts), 3)
@@ -1205,7 +1206,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         }
         response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 200)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data["charts"]
         self.assertEqual(len(charts), 3)
@@ -1245,7 +1246,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         }
         response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 200)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data["charts"]
         self.assertEqual(len(charts), 2)
@@ -1280,7 +1281,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             ],
         }
         self._post_data(device.id, device.key, data)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["charts"], [])
         dd = DeviceData(name=device.name, pk=device.pk)

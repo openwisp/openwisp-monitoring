@@ -300,11 +300,12 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
     def get_extra_context(self, pk=None):
         ctx = super().get_extra_context(pk)
         if pk:
-            device_data = DeviceData(pk=uuid.UUID(pk))
+            device_pk = uuid.UUID(pk)
+            device_data = DeviceData(pk=device_pk)
             api_url = reverse(
                 "monitoring:api_device_metric",
                 urlconf=MONITORING_API_URLCONF,
-                args=[pk],
+                args=[device_pk],
             )
             if MONITORING_API_BASEURL:
                 api_url = urljoin(MONITORING_API_BASEURL, api_url)
