@@ -364,11 +364,10 @@ class DeviceMetricListView(BaseProtectedAPIMixin, FilterByParentManaged, ListAPI
         return Device.objects.filter(pk=self.kwargs["pk"])
 
     def get_queryset(self):
-        device_pk = self.kwargs["pk"]
         device_ct = ContentType.objects.get_for_model(Device)
         qs = super().get_queryset()
         return qs.filter(
-            object_id=device_pk,
+            object_id=self.kwargs["pk"],
             content_type=device_ct,
         ).only("name", "key", "is_healthy")
 

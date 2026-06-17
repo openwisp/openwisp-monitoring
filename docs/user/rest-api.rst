@@ -169,7 +169,7 @@ List Device Metrics
 
 .. code-block:: text
 
-    GET /api/v1/monitoring/device/{pk}/metrics/
+    GET /api/v1/monitoring/device/{pk}/metric/
 
 Returns a list of metrics for the specified device.
 
@@ -187,7 +187,7 @@ example, to retrieve the list of unhealthy metrics:
 
 .. code-block:: text
 
-    GET /api/v1/monitoring/device/{pk}/metrics/?is_healthy=false
+    GET /api/v1/monitoring/device/{pk}/metric/?is_healthy=false
 
 Collect Device Metrics and Status
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

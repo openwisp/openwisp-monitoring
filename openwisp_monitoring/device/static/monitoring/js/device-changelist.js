@@ -1,10 +1,10 @@
 (function ($) {
   "use strict";
-  if (typeof gettext === "undefined") {
-    var gettext = function (word) {
+  window.gettext =
+    window.gettext ||
+    function (word) {
       return word;
     };
-  }
   $(function () {
     function updateButtonText($btn) {
       var $label = $btn.find(".issues-toggle-label");
