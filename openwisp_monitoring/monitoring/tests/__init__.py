@@ -2,6 +2,7 @@ import time
 from datetime import timedelta
 
 from django.core.cache import cache
+from django.core.exceptions import ImproperlyConfigured
 from django.utils.timezone import now
 from swapper import load_model
 
@@ -9,6 +10,7 @@ from openwisp_users.tests.utils import TestOrganizationMixin
 
 from ...db import timeseries_db
 from ...db.backends import TIMESERIES_DB
+from ...device.utils import manage_short_retention_policy
 from ..configuration import (
     register_chart,
     register_metric,
@@ -91,7 +93,14 @@ charts = {
                 "SELECT {fields|SUM|/ 1} FROM {key} "
                 "WHERE time >= '{time}' AND content_type = "
                 "'{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            "influxdb2": (
+                'from(bucket: "{bucket}") |> range(start: {time_start}) '
+                '|> filter(fn: (r) => r._measurement == "{key}")'
+                "{content_type_filter}{object_id_filter}{field_filter}"
+                " |> sum()"
+                " |> map(fn: (r) => ({{r with _value: float(v: r._value)}}))"
+            ),
         },
     },
     "dummy": {
@@ -108,7 +117,7 @@ charts = {
         "description": "Bugged chart for testing purposes.",
         "unit": "bugs",
         "order": 999,
-        "query": {"influxdb": "BAD"},
+        "query": {"influxdb": "BAD", "influxdb2": "BAD"},
     },
     "default": {
         "type": "line",
@@ -120,7 +129,12 @@ charts = {
             "influxdb": (
                 "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            "influxdb2": (
+                'from(bucket: "{bucket}") |> range(start: {time_start}) '
+                '|> filter(fn: (r) => r._measurement == "{key}")'
+                "{content_type_filter}{object_id_filter}{field_filter}"
+            ),
         },
     },
     "multiple_test": {
@@ -133,7 +147,13 @@ charts = {
             "influxdb": (
                 "SELECT {field_name}, value2 FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            "influxdb2": (
+                'from(bucket: "{bucket}") |> range(start: {time_start}) '
+                '|> filter(fn: (r) => r._measurement == "{key}")'
+                "{content_type_filter}{object_id_filter}"
+                ' |> filter(fn: (r) => r._field == "{field_name}" or r._field == "value2")'
+            ),
         },
     },
     "group_by_tag": {
@@ -146,13 +166,28 @@ charts = {
             "influxdb": (
                 "SELECT CUMULATIVE_SUM(SUM({field_name})) FROM {key} WHERE time >= '{time}'"
                 " GROUP BY time(1d), metric_num"
-            )
+            ),
+            "influxdb2": (
+                'from(bucket: "{bucket}") |> range(start: {time_start}) '
+                '|> filter(fn: (r) => r._measurement == "{key}")'
+                ' |> filter(fn: (r) => r._field == "{field_name}")'
+                ' |> group(columns: ["metric_num"])'
+                " |> aggregateWindow(every: {window}, fn: sum, createEmpty: false)"
+                " |> cumulativeSum()"
+            ),
         },
         "summary_query": {
             "influxdb": (
                 "SELECT SUM({field_name}) FROM {key} WHERE time >= '{time}'"
                 " GROUP BY time(30d), metric_num"
-            )
+            ),
+            "influxdb2": (
+                'from(bucket: "{bucket}") |> range(start: {time_start}) '
+                '|> filter(fn: (r) => r._measurement == "{key}")'
+                ' |> filter(fn: (r) => r._field == "{field_name}")'
+                ' |> group(columns: ["metric_num"])'
+                " |> sum()"
+            ),
         },
     },
     "mean_test": {
@@ -165,7 +200,14 @@ charts = {
             "influxdb": (
                 "SELECT MEAN({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            "influxdb2": (
+                'from(bucket: "{bucket}") |> range(start: {time_start}) '
+                '|> filter(fn: (r) => r._measurement == "{key}")'
+                "{content_type_filter}{object_id_filter}{field_filter}"
+                " |> mean()"
+                ' |> duplicate(column: "_stop", as: "_time")'
+            ),
         },
     },
     "sum_test": {
@@ -178,7 +220,14 @@ charts = {
             "influxdb": (
                 "SELECT SUM({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            "influxdb2": (
+                'from(bucket: "{bucket}") |> range(start: {time_start}) '
+                '|> filter(fn: (r) => r._measurement == "{key}")'
+                "{content_type_filter}{object_id_filter}{field_filter}"
+                " |> sum()"
+                ' |> duplicate(column: "_stop", as: "_time")'
+            ),
         },
     },
     "top_fields_mean": {
@@ -192,7 +241,13 @@ charts = {
                 "SELECT {fields|MEAN} FROM {key} "
                 "WHERE time >= '{time}' AND content_type = "
                 "'{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            "influxdb2": (
+                'from(bucket: "{bucket}") |> range(start: {time_start}) '
+                '|> filter(fn: (r) => r._measurement == "{key}")'
+                "{content_type_filter}{object_id_filter}{field_filter}"
+                " |> mean()"
+            ),
         },
     },
 }
@@ -210,6 +265,17 @@ class TestMonitoringMixin(TestOrganizationMixin):
         for attr in ("db", "dbs", "_write_api", "_query_api", "_delete_api", "use_udp"):
             timeseries_db.__dict__.pop(attr, None)
         timeseries_db.create_database()
+        manage_short_retention_policy()
+        for key in metrics.keys():
+            try:
+                unregister_metric(key)
+            except ImproperlyConfigured:
+                pass
+        for key in charts.keys():
+            try:
+                unregister_chart(key)
+            except ImproperlyConfigured:
+                pass
         for key, value in metrics.items():
             register_metric(key, value)
         for key, value in charts.items():
@@ -221,9 +287,15 @@ class TestMonitoringMixin(TestOrganizationMixin):
     def tearDownClass(cls):
         timeseries_db.drop_database()
         for metric_name in metrics.keys():
-            unregister_metric(metric_name)
+            try:
+                unregister_metric(metric_name)
+            except ImproperlyConfigured:
+                pass
         for key in charts.keys():
-            unregister_chart(key)
+            try:
+                unregister_chart(key)
+            except ImproperlyConfigured:
+                pass
         cache.clear()
         super().tearDownClass()
 

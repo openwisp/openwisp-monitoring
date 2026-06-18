@@ -1,4 +1,6 @@
+import os
 from datetime import datetime, timedelta
+from unittest import SkipTest
 from unittest.mock import patch
 
 from celery.exceptions import Retry
@@ -32,8 +34,14 @@ Chart = load_model("monitoring", "Chart")
 Notification = load_model("openwisp_notifications", "Notification")
 
 
-@tag("timeseries_client")
+@tag("timeseries_client", "tsdb_influxdb")
 class TestDatabaseClient(TestMonitoringMixin, TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if os.environ.get("TIMESERIES_BACKEND", "influxdb") != "influxdb":
+            raise SkipTest('Set TIMESERIES_BACKEND="influxdb" to run InfluxDB tests.')
+        super().setUpClass()
+
     def test_forbidden_queries(self):
         queries = [
             "DROP DATABASE openwisp2",
@@ -404,7 +412,14 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
             )
 
 
+@tag("timeseries_client", "tsdb_influxdb")
 class TestDatabaseClientUdp(TestMonitoringMixin, TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if os.environ.get("TIMESERIES_BACKEND", "influxdb") != "influxdb":
+            raise SkipTest('Set TIMESERIES_BACKEND="influxdb" to run InfluxDB tests.')
+        super().setUpClass()
+
     def test_exceed_udp_packet_limit(self):
         # When using UDP to write data to InfluxDB, writing
         # huge data that exceeds UDP packet limit should not raise

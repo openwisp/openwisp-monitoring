@@ -59,9 +59,10 @@ chart_query = {
             _range
             + _object_filters
             + ' |> filter(fn: (r) => r._field == "{field_name}")'
-            + ' |> group(columns: ["_time"])'
-            + ' |> distinct(column: "_value")'
-            + _window_count
+            + " |> window(every: {window}, createEmpty: true)"
+            + ' |> unique(column: "_value")'
+            + " |> count()"
+            + ' |> duplicate(column: "_start", as: "_time")'
             + ' |> map(fn: (r) => ({{r with _field: "wifi_clients"}}))'
         )
     },
@@ -70,9 +71,10 @@ chart_query = {
             _range
             + _object_filters
             + ' |> filter(fn: (r) => r._field == "{field_name}")'
-            + ' |> group(columns: ["_time"])'
-            + ' |> distinct(column: "_value")'
-            + _window_count
+            + " |> window(every: {window}, createEmpty: true)"
+            + ' |> unique(column: "_value")'
+            + " |> count()"
+            + ' |> duplicate(column: "_start", as: "_time")'
             + ' |> map(fn: (r) => ({{r with _field: "wifi_clients"}}))'
         )
     },
@@ -131,7 +133,10 @@ chart_query = {
             + _object_filters
             + " |> filter(fn: (r) => r._field =~ /^(signal_strength|signal_power)$/)"
             + _window_mean
-            + " |> map(fn: (r) => ({{r with _value: float(v: int(v: r._value))}}))"
+            + " |> map(fn: (r) => ({{r with _value: "
+            + "if r._value >= 0.0 "
+            + "then float(v: int(v: r._value + 0.5)) "
+            + "else float(v: int(v: r._value - 0.5))}}))"
         )
     },
     "signal_quality": {
@@ -143,7 +148,9 @@ chart_query = {
             + " |> map(fn: (r) => ({{r with "
             + '_field: if r._field == "snr" then "signal_to_noise_ratio" '
             + 'else "signal_quality", '
-            + "_value: float(v: int(v: r._value))}}))"
+            + "_value: if r._value >= 0.0 "
+            + "then float(v: int(v: r._value + 0.5)) "
+            + "else float(v: int(v: r._value - 0.5))}}))"
         )
     },
     "access_tech": {
