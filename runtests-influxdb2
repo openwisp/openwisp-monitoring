@@ -1,9 +1,4 @@
 #!/bin/bash
 set -e
 
-PYTHON_BIN="${PYTHON_BIN:-python3}"
-if [ -x "./.venv/bin/python" ]; then
-  PYTHON_BIN="./.venv/bin/python"
-fi
-
-"$PYTHON_BIN" runtests.py openwisp_monitoring.db.backends.influxdb2.tests --exclude-tag=selenium_tests
+TIMESERIES_BACKEND=influxdb2 coverage run runtests.py --exclude-tag=selenium_tests
