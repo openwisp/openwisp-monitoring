@@ -1,6 +1,6 @@
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -62,7 +62,7 @@ class QueryResultSet:
         for point in self.points:
             measurement = point.get("_measurement", "results")
             # Extract tags (all keys except special fields)
-            special_fields = {"_measurement", "_field", "_value", "time"}
+            special_fields = {"_measurement", "_field", "_value", "time", "__raw_time"}
             tags = {}
             for key, value in point.items():
                 if key not in special_fields:
@@ -157,7 +157,7 @@ class QueryResultSet:
 class DatabaseClient(object):
     """InfluxDB 2.0 client for timeseries database operations."""
 
-    _AGGREGATE = ["mean", "sum", "count", "max", "min", "stddev"]
+    _AGGREGATE = ["mean", "sum", "count", "max", "min", "mode", "stddev"]
     backend_name = "influxdb2"
     client_error = InfluxDBError
     _FORBIDDEN = ["drop", "delete", "alter", "create", "into"]
@@ -341,6 +341,27 @@ class DatabaseClient(object):
             return f'time(v: "{value}")'
         return value
 
+    def _get_open_range_stop(self, since):
+        if isinstance(since, datetime):
+            return since + timedelta(days=3650)
+        return datetime(2100, 1, 1, tzinfo=timezone.utc)
+
+    def _normalize_chart_window(self, time_value, group_map=None):
+        if group_map and time_value in group_map:
+            return group_map[time_value]
+        if isinstance(time_value, (int, float)):
+            return f"{max(int(time_value), 1)}m"
+        if isinstance(time_value, str) and re.fullmatch(r"\d+", time_value):
+            return f"{max(int(time_value), 1)}m"
+        return time_value
+
+    def _normalize_chart_start_range(self, time_value, group_map=None):
+        if isinstance(time_value, (int, float)):
+            return f"-{self._normalize_chart_window(time_value, group_map)}"
+        if isinstance(time_value, str) and re.fullmatch(r"\d+", time_value):
+            return f"-{self._normalize_chart_window(time_value, group_map)}"
+        return self._format_flux_time(time_value)
+
     def _normalize_record_time(self, record_time, precision="s"):
         if not isinstance(record_time, datetime):
             return record_time
@@ -348,7 +369,7 @@ class DatabaseClient(object):
             return record_time.isoformat().replace("+00:00", "Z")
         timestamp = record_time.timestamp()
         if precision == "s":
-            return timestamp
+            return int(timestamp)
         if precision == "ms":
             return int(timestamp * 1000)
         if precision == "u":
@@ -357,9 +378,41 @@ class DatabaseClient(object):
             return int(timestamp * 1000000000)
         return timestamp
 
+    def _get_record_time(self, record):
+        return (
+            record.values.get("_time")
+            or record.values.get("_stop")
+            or record.values.get("_start")
+        )
+
+    def _is_retention_policy_violation(self, exception):
+        message = str(exception).lower()
+        return "retention policy" in message and "dropped" in message
+
+    def _is_bucket_not_found(self, exception):
+        message = str(exception).lower()
+        return "could not find bucket" in message
+
+    def _extract_bucket_name(self, query):
+        match = re.search(r'from\(bucket: "([^"]+)"\)', query)
+        if match:
+            return match.group(1)
+        return None
+
+    def _ensure_bucket_exists(self, bucket_name):
+        if bucket_name == self.db_name:
+            self.create_database()
+            return
+        if bucket_name == self._get_bucket_name("short"):
+            from openwisp_monitoring.device import settings as device_settings
+
+            self.create_or_alter_retention_policy(
+                "short", device_settings.SHORT_RETENTION_POLICY
+            )
+
     def validate_query(self, query):
         for word in self._FORBIDDEN:
-            if word in query.lower():
+            if re.search(rf"\b{word}\b", query, re.IGNORECASE):
                 msg = _(f'the word "{word.upper()}" is not allowed')
                 raise ValidationError({"configuration": msg})
         return self._is_aggregate(query)
@@ -396,6 +449,12 @@ class DatabaseClient(object):
                 record=point,
             )
         except Exception as exception:
+            if self._is_retention_policy_violation(exception):
+                logger.warning(
+                    "Ignoring InfluxDB2 write dropped by retention policy: %s",
+                    exception,
+                )
+                return
             logger.warning(f"Error writing to InfluxDB2: {exception}")
             raise TimeseriesWriteException
 
@@ -421,6 +480,12 @@ class DatabaseClient(object):
             for bucket, points in points_by_bucket.items():
                 self._write_api.write(bucket=bucket, org=self.org, record=points)
         except Exception as exception:
+            if self._is_retention_policy_violation(exception):
+                logger.warning(
+                    "Ignoring InfluxDB2 batch write dropped by retention policy: %s",
+                    exception,
+                )
+                return
             logger.warning(f"Error batch writing to InfluxDB2: {exception}")
             raise TimeseriesWriteException
 
@@ -431,11 +496,12 @@ class DatabaseClient(object):
             results = []
             for table in tables:
                 for record in table.records:
-                    record_time = record.values.get("_time")
+                    record_time = self._get_record_time(record)
                     result = {
                         "time": self._normalize_record_time(
                             record_time, precision=precision
                         ),
+                        "__raw_time": record_time,
                         "_measurement": record.values.get("_measurement"),
                         "_field": record.values.get("_field"),
                         "_value": record.get_value(),
@@ -448,6 +514,18 @@ class DatabaseClient(object):
             # Return wrapped ResultSet for backward compatibility with v1
             return QueryResultSet(results)
         except Exception as exception:
+            bucket_name = self._extract_bucket_name(query)
+            if (
+                not kwargs.get("_retried_missing_bucket")
+                and bucket_name in self._get_known_bucket_names()
+                and self._is_bucket_not_found(exception)
+            ):
+                self._ensure_bucket_exists(bucket_name)
+                return self.query(
+                    query,
+                    precision=precision,
+                    _retried_missing_bucket=True,
+                )
             logger.warning(f"Error querying InfluxDB2: {exception}")
             raise
 
@@ -460,10 +538,7 @@ class DatabaseClient(object):
         count_fields = kwargs.get("count_fields", [])
         where = kwargs.get("where", [])
         # Check for unsupported parameters and raise explicit errors
-        unsupported_params = {
-            "extra_fields": "Flux requires explicit field selection instead of wildcard expansion",
-            "precision": "InfluxDB 2.x uses ISO8601 timestamps; precision parameter not supported",
-        }
+        unsupported_params = {}
         for param, reason in unsupported_params.items():
             if kwargs.get(param):
                 raise NotImplementedError(
@@ -488,7 +563,8 @@ class DatabaseClient(object):
         since = kwargs.get("since")
         if since:
             timestamp = self._format_flux_time(since)
-            flux_query += f" |> range(start: {timestamp})"
+            stop = self._format_flux_time(self._get_open_range_stop(since))
+            flux_query += f" |> range(start: {timestamp}, stop: {stop})"
         else:
             flux_query += " |> range(start: -24h)"
         # Filter by measurement. InfluxDB 1.x allows comma-separated measurements.
@@ -511,6 +587,27 @@ class DatabaseClient(object):
         # Filter by fields
         if isinstance(fields, str):
             fields = [fields]
+        else:
+            fields = list(fields)
+        extra_fields = kwargs.get("extra_fields")
+        if extra_fields and extra_fields != "*":
+            if isinstance(extra_fields, str):
+                extra_fields = [extra_fields]
+            fields.extend(extra_fields)
+        elif extra_fields == "*":
+            fields = ["*"]
+        if fields != ["*"]:
+            requested_fields = []
+            seen_fields = set()
+            for field in fields:
+                if field not in seen_fields:
+                    requested_fields.append(field)
+                    seen_fields.add(field)
+            for field, _op, _value in where:
+                if field not in seen_fields:
+                    requested_fields.append(field)
+                    seen_fields.add(field)
+            fields = requested_fields
         if fields != ["*"]:
             field_filter = " or ".join([f'r._field == "{field}"' for field in fields])
             flux_query += f" |> filter(fn: (r) => {field_filter})"
@@ -531,11 +628,21 @@ class DatabaseClient(object):
                 flux_query += ' |> sort(columns: ["_time"])'
             elif order == "-time":
                 flux_query += ' |> sort(columns: ["_time"], desc: true)'
+            else:
+                raise self.client_error(
+                    f'Invalid order "{order}" passed.\n'
+                    'You may pass "time" / "-time" to get result sorted '
+                    "in ascending /descending order respectively."
+                )
+        else:
+            flux_query += ' |> sort(columns: ["_time"])'
         # Apply limit
         limit = kwargs.get("limit")
         if limit:
             flux_query += f" |> limit(n: {limit})"
-        result = list(self.query(flux_query).get_points())
+        result = list(
+            self.query(flux_query, precision=kwargs.get("precision", "s")).get_points()
+        )
         if supports_count_distinct:
             return [
                 {
@@ -554,7 +661,7 @@ class DatabaseClient(object):
 
     def _normalize_read_points(self, points, include_tags=True):
         normalized = {}
-        special_fields = {"_measurement", "_field", "_value", "time"}
+        special_fields = {"_measurement", "_field", "_value", "time", "__raw_time"}
         for point in points:
             field = point.get("_field")
             if not field:
@@ -566,10 +673,64 @@ class DatabaseClient(object):
                     for key, value in point.items()
                     if key not in special_fields and key not in FLUX_METADATA_FIELDS
                 }
-            key = (point.get("time"), tuple(sorted(tags.items())))
+            key = (
+                point.get("__raw_time", point.get("time")),
+                tuple(sorted(tags.items())),
+            )
             normalized.setdefault(key, {"time": point.get("time"), **tags})
-            normalized[key][field] = point.get("_value")
+            existing_value = normalized[key].get(field)
+            point_value = point.get("_value")
+            if (
+                not include_tags
+                and existing_value is not None
+                and isinstance(existing_value, (int, float))
+                and isinstance(point_value, (int, float))
+            ):
+                normalized[key][field] = existing_value + point_value
+            else:
+                normalized[key][field] = point_value
         return list(normalized.values())
+
+    def _extract_expected_fields(self, query):
+        expected_fields = []
+
+        def add_field(field):
+            if field and field not in expected_fields:
+                expected_fields.append(field)
+
+        has_field_remap = "_field:" in query
+        if has_field_remap:
+            for match in re.findall(r'_field:\s*"([^"]+)"', query):
+                add_field(match)
+            for match in re.findall(r'then\s*"([^"]+)"', query):
+                add_field(match)
+            for match in re.findall(r'else\s*"([^"]+)"', query):
+                add_field(match)
+            return expected_fields
+
+        for match in re.findall(r'r\._field == "([^"]+)"', query):
+            add_field(match)
+
+        field_in_match = re.search(r"r\._field in \(([^)]+)\)", query)
+        if field_in_match:
+            for match in re.findall(r'"([^"]+)"', field_in_match.group(1)):
+                add_field(match)
+
+        field_regex_match = re.search(r"r\._field =~ /\^\(([^)]+)\)\$/", query)
+        if field_regex_match:
+            for match in field_regex_match.group(1).split("|"):
+                add_field(match)
+
+        return expected_fields
+
+    def _backfill_expected_fields(self, points, query):
+        expected_fields = self._extract_expected_fields(query)
+        if not expected_fields:
+            return points
+        for point in points:
+            for field in expected_fields:
+                point.setdefault(field, None)
+        return points
 
     def _build_delete_predicate(self, key: str = None, tags: dict = None):
         predicates = []
@@ -614,11 +775,32 @@ class DatabaseClient(object):
         """Deletes metric data based on measurement and tags."""
         try:
             predicate = self._build_delete_predicate(key=key, tags=tags)
+            if not predicate:
+                self._reset_known_buckets()
+                logger.debug("Reset InfluxDB2 buckets for full metric data cleanup")
+                return
             for bucket in self._get_known_bucket_names():
                 self._delete_range(predicate, bucket=bucket)
             logger.debug(f"Deleted metric data: key={key}, tags={tags}")
         except Exception as exception:
             logger.warning(f"Error deleting metric data: {exception}")
+
+    def _reset_known_buckets(self):
+        api = self.db.buckets_api()
+        for bucket_name in self._get_known_bucket_names():
+            bucket = api.find_bucket_by_name(bucket_name)
+            if not bucket:
+                self._ensure_bucket_exists(bucket_name)
+                continue
+            retention_rules = bucket.retention_rules
+            api.delete_bucket(bucket)
+            create_kwargs = {
+                "bucket_name": bucket_name,
+                "org": self.org,
+            }
+            if retention_rules:
+                create_kwargs["retention_rules"] = retention_rules
+            api.create_bucket(**create_kwargs)
 
     def get_list_query(self, query, precision="s"):
         """Execute a query and flatten GROUP BY TAG results for chart rendering.
@@ -640,9 +822,10 @@ class DatabaseClient(object):
             or not result.keys()
             or result.keys()[0][1] is None
         ):
-            return self._normalize_read_points(
+            points = self._normalize_read_points(
                 list(result.get_points()), include_tags=False
             )
+            return self._backfill_expected_fields(points, query)
         # Handle queries with GROUP BY TAG clause
         # Group results by time and merge tag-specific values into single record
         result_points = {}
@@ -655,14 +838,10 @@ class DatabaseClient(object):
                 point_time = point.get("time")
                 if not point_time:
                     continue
-                # Extract non-time values and prefix with tag suffix
-                # This allows multiple tags to coexist in the same time bucket
-                values = {}
-                for key, value in point.items():
-                    if key != "time":
-                        # Create field with tag suffix to avoid collisions
-                        values[tag_suffix] = value
-                values["time"] = point_time
+                values = {
+                    "time": point_time,
+                    tag_suffix: point.get("_value"),
+                }
                 # Merge into result dictionary (keyed by time)
                 # If time already exists, update with new tag values
                 if point_time in result_points:
@@ -670,7 +849,8 @@ class DatabaseClient(object):
                 else:
                     result_points[point_time] = values
         # Return sorted by time (ascending)
-        return sorted(result_points.values(), key=lambda p: p.get("time", ""))
+        points = sorted(result_points.values(), key=lambda p: p.get("time", ""))
+        return points
 
     @retry
     def get_list_retention_policies(self):
@@ -699,9 +879,9 @@ class DatabaseClient(object):
         flux_query = f'from(bucket: "{self.db_name}")'
         start_range = params.get("time")
         if start_range:
-            start_range = self._format_flux_time(start_range)
+            start_range = self._normalize_chart_start_range(start_range, group_map)
         else:
-            time_val = group_map.get(time, time) if group_map else time
+            time_val = self._normalize_chart_window(time, group_map)
             start_range = f"-{time_val}"
         if params.get("end_date"):
             end_range = self._format_flux_time(params["end_date"])
@@ -749,7 +929,10 @@ class DatabaseClient(object):
     def _format_field_filter(self, fields, field_name):
         if fields:
             field_list = ", ".join([f'"{field}"' for field in fields])
-            return f" |> filter(fn: (r) => r._field in ({field_list}))"
+            return (
+                " |> filter(fn: (r) => "
+                f"contains(value: r._field, set: [{field_list}]))"
+            )
         if field_name:
             return f' |> filter(fn: (r) => r._field == "{field_name}")'
         return ""
@@ -757,14 +940,14 @@ class DatabaseClient(object):
     def _format_chart_query(self, query, params, time, group_map, summary, fields):
         start_range = params.get("time")
         if start_range:
-            time_start = self._format_flux_time(start_range)
+            time_start = self._normalize_chart_start_range(start_range, group_map)
         else:
-            time_val = group_map.get(time, time) if group_map else time
+            time_val = self._normalize_chart_window(time, group_map)
             time_start = f"-{time_val}"
         end_range = ""
         if params.get("end_date"):
             end_range = f', stop: {self._format_flux_time(params["end_date"])}'
-        window = group_map.get(time, time) if group_map else time
+        window = self._normalize_chart_window(time, group_map)
         formatted = query.format(
             bucket=self.db_name,
             key=params.get("key", ""),
@@ -798,8 +981,23 @@ class DatabaseClient(object):
         )
         if summary:
             formatted = re.sub(
-                r"\s\|> aggregateWindow\(every: [^,]+, fn: (\w+)\)",
-                r" |> \1()",
+                r"\s\|> window\(every: [^)]+\)\s*"
+                r'\|> unique\(column: "_value"\)\s*'
+                r"\|> count\(\)\s*"
+                r'\|> duplicate\(column: "_start", as: "_time"\)',
+                ' |> unique(column: "_value") |> count()',
+                formatted,
+            )
+
+            def replace_summary_window(match):
+                aggregate_fn = match.group(1)
+                if aggregate_fn == "mode":
+                    return " |> last()"
+                return f" |> {aggregate_fn}()"
+
+            formatted = re.sub(
+                r"\s\|> aggregateWindow\(every: [^,]+, fn: (\w+)(?:, [^)]+)?\)",
+                replace_summary_window,
                 formatted,
             )
         return formatted
@@ -818,14 +1016,10 @@ class DatabaseClient(object):
         if number <= 0:
             return []
         flux_query = self._build_chart_base_query(params, time, group_map)
-        flux_query += (
-            ' |> group(columns: ["_field"])'
-            " |> sum()"
-            ' |> sort(columns: ["_value"], desc: true)'
-            f" |> limit(n: {number})"
-        )
+        flux_query += ' |> group(columns: ["_field"]) |> sum()'
         result = list(self.query(flux_query).get_points())
-        return [point["_field"] for point in result if point.get("_field")]
+        result.sort(key=lambda point: point.get("_value", 0), reverse=True)
+        return [point["_field"] for point in result[:number] if point.get("_field")]
 
     def get_query(
         self,
@@ -848,7 +1042,7 @@ class DatabaseClient(object):
         Supports chart_type: uptime, packet_loss, rtt, wifi_clients,
                              general_wifi_clients, traffic, general_traffic
         """
-        if query and "{bucket}" in query:
+        if query:
             return self._format_chart_query(
                 query, params, time, group_map, summary, fields
             )
@@ -860,7 +1054,10 @@ class DatabaseClient(object):
         # 9. EXPLICIT FIELDS FILTER: Use fields parameter if provided
         if fields:
             field_list = ", ".join([f'"{f}"' for f in fields])
-            flux_query += f" |> filter(fn: (r) => r._field in ({field_list}))"
+            flux_query += (
+                " |> filter(fn: (r) => "
+                f"contains(value: r._field, set: [{field_list}]))"
+            )
         # 10. CHART TYPE SPECIFIC AGGREGATIONS AND TRANSFORMATIONS
         if chart_type == "wifi_clients":
             # WiFi clients: COUNT(DISTINCT) simulation with distinct() + count()

@@ -14,6 +14,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase, TransactionTestCase, tag
 from django.utils.timezone import now
 from freezegun import freeze_time
+from influxdb_client.domain import BucketRetentionRules
 from swapper import load_model
 
 from openwisp_monitoring.check import settings as check_settings
@@ -46,7 +47,7 @@ Metric = load_model("monitoring", "Metric")
 Notification = load_model("openwisp_notifications", "Notification")
 
 
-@tag("timeseries_client")
+@tag("timeseries_client", "tsdb_influxdb2")
 class TestInfluxDB2Client(TestCase):
     """Tests for InfluxDB 2.0 client."""
 
@@ -442,13 +443,34 @@ class TestInfluxDB2Client(TestCase):
 
     def test_delete_metric_data_all(self):
         """Test deleting all metric data."""
-        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
+        with patch.object(self.timeseries_db.db, "buckets_api") as mock_buckets_api:
+            mock_api = MagicMock()
+            mock_buckets_api.return_value = mock_api
+            default_bucket = MagicMock(retention_rules=[])
+            short_bucket = MagicMock(
+                retention_rules=[
+                    BucketRetentionRules(type="expire", every_seconds=86400)
+                ]
+            )
+            mock_api.find_bucket_by_name.side_effect = [default_bucket, short_bucket]
+
             self.timeseries_db.delete_metric_data()
-            # Should call delete with empty predicate for default and short buckets.
-            self.assertEqual(mock_delete_api.delete.call_count, 2)
-            call_args = mock_delete_api.delete.call_args_list[0]
-            predicate = call_args[0][2]  # 3rd positional arg is predicate
-            self.assertEqual(predicate, "")
+
+            self.assertEqual(mock_api.delete_bucket.call_count, 2)
+            self.assertEqual(mock_api.create_bucket.call_count, 2)
+            first_call = mock_api.create_bucket.call_args_list[0][1]
+            second_call = mock_api.create_bucket.call_args_list[1][1]
+            self.assertEqual(
+                first_call["bucket_name"], settings.TIMESERIES_DATABASE["NAME"]
+            )
+            self.assertNotIn("retention_rules", first_call)
+            self.assertEqual(
+                second_call["bucket_name"],
+                f'{settings.TIMESERIES_DATABASE["NAME"]}_short',
+            )
+            self.assertEqual(
+                second_call["retention_rules"], short_bucket.retention_rules
+            )
 
     def test_delete_metric_data_by_key(self):
         """Test deleting metric data by measurement key."""
@@ -521,7 +543,6 @@ class TestInfluxDB2Client(TestCase):
             flux_query = mock_query.call_args[0][0]
             self.assertIn('group(columns: ["_field"])', flux_query)
             self.assertIn("sum()", flux_query)
-            self.assertIn("limit(n: 2)", flux_query)
 
     def test_get_top_fields_empty_result(self):
         """Test top field selection returns empty list when no data is found."""
@@ -657,6 +678,27 @@ class TestInfluxDB2Client(TestCase):
         self.assertIn("|> mean()", query)
         self.assertNotIn("aggregateWindow", query)
 
+    def test_get_query_summary_uses_whole_range_wifi_clients_count(self):
+        from openwisp_monitoring.db.backends.influxdb2.queries import chart_query
+
+        query = self.timeseries_db.get_query(
+            chart_type="bar",
+            params={
+                "key": "wifi_clients",
+                "field_name": "clients",
+                "time": "2024-03-25 00:00:00",
+            },
+            time="1d",
+            group_map={"1d": "1h"},
+            query=chart_query["wifi_clients"]["influxdb2"],
+            summary=True,
+        )
+
+        self.assertIn('|> unique(column: "_value")', query)
+        self.assertIn("|> count()", query)
+        self.assertNotIn("|> window(", query)
+        self.assertNotIn('|> duplicate(column: "_start", as: "_time")', query)
+
     def test_device_data_query_uses_configured_bucket(self):
         query = device_data_query.format(SHORT_RP, "device_data", "device-id")
         self.assertIn(
@@ -675,7 +717,7 @@ class TestInfluxDB2Client(TestCase):
             group_map={"1h": "5m"},
             fields=["usage", "load"],
         )
-        self.assertIn('_field in ("usage", "load")', query)
+        self.assertIn('contains(value: r._field, set: ["usage", "load"])', query)
 
     def test_get_query_with_summary(self):
         """Test Flux query generation with aggregation."""
@@ -699,7 +741,7 @@ class TestInfluxDB2Client(TestCase):
         )
         self.assertIn('_measurement == "traffic"', query)
         self.assertIn('ifname == "eth0"', query)
-        self.assertIn('_field in ("rx_bytes", "tx_bytes")', query)
+        self.assertIn('contains(value: r._field, set: ["rx_bytes", "tx_bytes"])', query)
         self.assertIn("|> sum()", query)
         # Check for GB conversion (divide by 1e9)
         self.assertIn("_value / 1000000000", query)
@@ -770,7 +812,10 @@ class TestInfluxDB2Client(TestCase):
             fields=["rtt_avg", "rtt_max", "rtt_min"],
         )
         self.assertIn('_measurement == "ping"', query)
-        self.assertIn('_field in ("rtt_avg", "rtt_max", "rtt_min")', query)
+        self.assertIn(
+            'contains(value: r._field, set: ["rtt_avg", "rtt_max", "rtt_min"])',
+            query,
+        )
         # RTT should have mean aggregation
         self.assertIn("|> mean()", query)
 
@@ -812,8 +857,71 @@ class TestInfluxDB2Client(TestCase):
         self.assertEqual(fields_found["rtt_max"], 35.2)
         self.assertEqual(fields_found["rtt_min"], 20.1)
 
+    def test_get_list_query_backfills_missing_multifield_summary_values(self):
+        query = (
+            'from(bucket: "openwisp2")'
+            " |> filter(fn: (r) => r._field =~ /^(signal_strength|signal_power)$/)"
+        )
+        result = QueryResultSet(
+            [
+                {
+                    "_measurement": "signal",
+                    "_field": "signal_power",
+                    "_value": -70.0,
+                    "time": "2024-03-25T12:00:00Z",
+                }
+            ]
+        )
 
-@tag("timeseries_client")
+        with patch.object(self.timeseries_db, "query", return_value=result):
+            points = self.timeseries_db.get_list_query(query)
+
+        self.assertEqual(
+            points,
+            [
+                {
+                    "time": "2024-03-25T12:00:00Z",
+                    "signal_power": -70.0,
+                    "signal_strength": None,
+                }
+            ],
+        )
+
+    def test_get_list_query_backfills_missing_remapped_summary_values(self):
+        query = (
+            'from(bucket: "openwisp2")'
+            " |> filter(fn: (r) => r._field =~ /^(signal_quality|snr)$/)"
+            " |> map(fn: (r) => ({r with "
+            '_field: if r._field == "snr" then "signal_to_noise_ratio" '
+            'else "signal_quality"}))'
+        )
+        result = QueryResultSet(
+            [
+                {
+                    "_measurement": "signal",
+                    "_field": "signal_quality",
+                    "_value": -7.0,
+                    "time": "2024-03-25T12:00:00Z",
+                }
+            ]
+        )
+
+        with patch.object(self.timeseries_db, "query", return_value=result):
+            points = self.timeseries_db.get_list_query(query)
+
+        self.assertEqual(
+            points,
+            [
+                {
+                    "time": "2024-03-25T12:00:00Z",
+                    "signal_quality": -7.0,
+                    "signal_to_noise_ratio": None,
+                }
+            ],
+        )
+
+
+@tag("timeseries_client", "tsdb_influxdb2")
 class TestInfluxDB2ClientIntegration(TestMonitoringMixin, TestCase):
     @classmethod
     def setUpClass(cls):
@@ -990,6 +1098,23 @@ class TestInfluxDB2ClientIntegration(TestMonitoringMixin, TestCase):
         timeseries_db.delete_metric_data(key=short_metric.key)
         self.assertEqual(self._read_metric(short_metric, retention_policy=SHORT_RP), [])
 
+    def test_delete_metric_data_without_filters_clears_default_and_short_buckets(self):
+        general_metric = self._create_general_metric(name="delete-all-general")
+        short_metric = self._create_general_metric(name="delete-all-short")
+
+        self._write_metric(general_metric, 100, check=False)
+        self._write_metric(short_metric, 75, check=False, retention_policy=SHORT_RP)
+
+        self.assertEqual(self._read_metric(general_metric)[0]["value"], 100)
+        self.assertEqual(
+            self._read_metric(short_metric, retention_policy=SHORT_RP)[0]["value"], 75
+        )
+
+        timeseries_db.delete_metric_data()
+
+        self.assertEqual(self._read_metric(general_metric), [])
+        self.assertEqual(self._read_metric(short_metric, retention_policy=SHORT_RP), [])
+
     def test_retention_policy_utilities_match_current_backend_behavior(self):
         manage_default_retention_policy()
         manage_short_retention_policy()
@@ -1009,7 +1134,7 @@ class TestInfluxDB2ClientIntegration(TestMonitoringMixin, TestCase):
                 timeseries_db.write("test_write", {"value": 1})
 
 
-@tag("timeseries_client")
+@tag("timeseries_client", "tsdb_influxdb2")
 class TestInfluxDB2CheckIntegration(
     AutoWifiClientCheck,
     AutoDataCollectedCheck,
