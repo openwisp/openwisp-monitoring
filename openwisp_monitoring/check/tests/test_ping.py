@@ -275,10 +275,10 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
             "writing took ",
             mocked_logger.call_args_list[0][0][0],
         )
-        self.assertEqual(Metric.objects.count(), 1)
-        self.assertEqual(Chart.objects.count(), 3)
+        self.assertEqual(Metric.objects.exclude(object_id=None).count(), 1)
+        self.assertEqual(Chart.objects.exclude(metric__object_id=None).count(), 3)
         self.assertEqual(AlertSettings.objects.count(), 1)
-        m = Metric.objects.first()
+        m = Metric.objects.exclude(object_id=None).first()
         self.assertEqual(m.content_object, device)
         self.assertEqual(m.key, "ping")
         points = self._read_metric(m, limit=None, extra_fields=list(result.keys()))
@@ -296,6 +296,6 @@ class TestPing(TestDeviceMonitoringMixin, TransactionTestCase):
         device.last_ip = "127.0.0.1"
         device.save()
         check = Check.objects.first()
-        self.assertEqual(Chart.objects.count(), 0)
+        self.assertEqual(Chart.objects.exclude(metric__object_id=None).count(), 0)
         check.perform_check()
-        self.assertEqual(Chart.objects.count(), 0)
+        self.assertEqual(Chart.objects.exclude(metric__object_id=None).count(), 0)

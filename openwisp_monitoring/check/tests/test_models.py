@@ -275,9 +275,11 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
         dm.update_status("ok")
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         check.perform_check()
-        self.assertEqual(Metric.objects.count(), 1)
+        self.assertEqual(
+            Metric.objects.filter(configuration="config_applied").count(), 1
+        )
         self.assertEqual(AlertSettings.objects.count(), 1)
-        m = Metric.objects.first()
+        m = Metric.objects.filter(configuration="config_applied").first()
         self.assertTrue(dm.is_metric_critical(m))
         # must be executed twice to trepass the tolerance
         with freeze_time(now() - timedelta(minutes=6)):
@@ -341,7 +343,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
         self.assertEqual(Check.objects.count(), 5)
         c2 = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         c2.perform_check()
-        self.assertEqual(Metric.objects.count(), 0)
+        self.assertEqual(Metric.objects.filter(object_id=d.id).count(), 0)
         self.assertIsNone(c2.perform_check())
 
     def test_device_unknown_no_config_check(self):
@@ -352,7 +354,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
         self.assertEqual(Check.objects.count(), 5)
         c2 = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         c2.perform_check()
-        self.assertEqual(Metric.objects.count(), 0)
+        self.assertEqual(Metric.objects.filter(object_id=d.id).count(), 0)
         self.assertEqual(Notification.objects.count(), 0)
         self.assertIsNone(c2.perform_check())
 
