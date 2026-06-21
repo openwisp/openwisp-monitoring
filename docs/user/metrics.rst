@@ -207,15 +207,25 @@ Mobile Signal Strength
     :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/signal-strength.png
     :align: center
 
-================== =====================================
-**collection**:    :doc:`OpenWrt Monitoring Agent
-                   </openwrt-monitoring-agent/index>`
-**measurement**:   ``signal_strength``
+================== ==========================================================================
+**collection**:    :doc:`OpenWrt Monitoring Agent </openwrt-monitoring-agent/index>`
+**measurement**:   ``signal``
 **type**:          ``float``
 **fields**:        ``signal_strength``, ``signal_power``
+**tags**:          .. code-block:: python
+
+                       {
+                           "organization_id": "<organization-id-of-the-related-device>",
+                           "ifname": "<interface-name>",
+                           # optional
+                           "location_id": "<location-id-of-the-related-device-if-present>",
+                           "floorplan_id": "<floorplan-id-of-the-related-device-if-present>",
+                       }
 **configuration**: ``signal_strength``
 **charts**:        ``signal_strength``
-================== =====================================
+================== ==========================================================================
+
+If a device has multiple mobile interfaces, a separate chart will be created for each interface, with its name appended to the chart title (e.g. ``Signal Strength (RSSI): mobile0``).
 
 .. _mobile_signal_quality:
 
@@ -226,15 +236,25 @@ Mobile Signal Quality
     :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/signal-quality.png
     :align: center
 
-================== ======================================
-**collection**:    :doc:`OpenWrt Monitoring Agent
-                   </openwrt-monitoring-agent/index>`
-**measurement**:   ``signal_quality``
+================== ==========================================================================
+**collection**:    :doc:`OpenWrt Monitoring Agent </openwrt-monitoring-agent/index>`
+**measurement**:   ``signal``
 **type**:          ``float``
-**fields**:        ``signal_quality``, ``signal_quality``
+**fields**:        ``signal_quality``, ``snr``
+**tags**:          .. code-block:: python
+
+                       {
+                           "organization_id": "<organization-id-of-the-related-device>",
+                           "ifname": "<interface-name>",
+                           # optional
+                           "location_id": "<location-id-of-the-related-device-if-present>",
+                           "floorplan_id": "<floorplan-id-of-the-related-device-if-present>",
+                       }
 **configuration**: ``signal_quality``
 **charts**:        ``signal_quality``
-================== ======================================
+================== ==========================================================================
+
+If a device has multiple mobile interfaces, a separate chart will be created for each interface, with its name appended to the chart title (e.g. ``Signal Quality (RSRQ): mobile0``).
 
 .. _mobile_access_technology_in_use:
 
@@ -245,15 +265,25 @@ Mobile Access Technology in Use
     :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/access-technology.png
     :align: center
 
-================== ==================================
-**collection**:    :doc:`OpenWrt Monitoring Agent
-                   </openwrt-monitoring-agent/index>`
-**measurement**:   ``access_tech``
+================== ==========================================================================
+**collection**:    :doc:`OpenWrt Monitoring Agent </openwrt-monitoring-agent/index>`
+**measurement**:   ``signal``
 **type**:          ``int``
 **fields**:        ``access_tech``
+**tags**:          .. code-block:: python
+
+                       {
+                           "organization_id": "<organization-id-of-the-related-device>",
+                           "ifname": "<interface-name>",
+                           # optional
+                           "location_id": "<location-id-of-the-related-device-if-present>",
+                           "floorplan_id": "<floorplan-id-of-the-related-device-if-present>",
+                       }
 **configuration**: ``access_tech``
 **charts**:        ``access_tech``
-================== ==================================
+================== ==========================================================================
+
+If a device has multiple mobile interfaces, a separate chart will be created for each interface, with its name appended to the chart title (e.g. ``Access Technology: mobile0``).
 
 .. _iperf3:
 

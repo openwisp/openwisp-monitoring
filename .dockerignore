@@ -1,0 +1,8 @@
+venv/
+.git/
+.github/
+.tox/
+htmlcov/
+build/
+dist/
+*.egg-info/
