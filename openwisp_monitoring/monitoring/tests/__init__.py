@@ -266,6 +266,9 @@ class TestMonitoringMixin(TestOrganizationMixin):
             timeseries_db.__dict__.pop(attr, None)
         timeseries_db.create_database()
         manage_short_retention_policy()
+        timeseries_db.delete_metric_data()
+        timeseries_db.create_database()
+        manage_short_retention_policy()
         for key in metrics.keys():
             try:
                 unregister_metric(key)
@@ -300,6 +303,7 @@ class TestMonitoringMixin(TestOrganizationMixin):
         super().tearDownClass()
 
     def tearDown(self):
+        cache.clear()
         timeseries_db.delete_metric_data()
         super().tearDown()
 
