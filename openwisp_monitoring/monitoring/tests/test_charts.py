@@ -10,6 +10,7 @@ from django.test import TestCase, tag
 from django.utils.timezone import now
 from swapper import load_model
 
+from openwisp_monitoring.db import timeseries_db
 from openwisp_utils.tests import capture_stderr
 
 from .. import settings as app_settings
@@ -233,6 +234,18 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertIn(m.content_type_key, query)
         self.assertIn(str(m.object_id), query)
         self.assertIn(str(time)[0:10], query)
+
+    def test_default_query_uses_backend_contract(self):
+        chart = self._create_chart(test_data=False)
+        self.assertEqual(
+            chart._default_query,
+            timeseries_db.get_default_chart_query(has_object_scope=True),
+        )
+        chart.metric.object_id = None
+        self.assertEqual(
+            chart._default_query,
+            timeseries_db.get_default_chart_query(has_object_scope=False),
+        )
 
     def test_description(self):
         c = self._create_chart(test_data=False)

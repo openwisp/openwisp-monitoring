@@ -56,7 +56,7 @@ class TestInfluxDB2Client(TestCase):
         if os.environ.get("TIMESERIES_BACKEND") != "influxdb2":
             raise SkipTest('Set TIMESERIES_BACKEND="influxdb2" to run InfluxDB2 tests.')
         super().setUpClass()
-        cls.timeseries_db = DatabaseClient()
+        cls.timeseries_db = DatabaseClient().attach_queries(timeseries_db.queries)
         assert settings.TIMESERIES_DATABASE["BACKEND"].endswith("influxdb2")
         assert cls.timeseries_db.backend_name == "influxdb2"
 
@@ -610,19 +610,9 @@ class TestInfluxDB2Client(TestCase):
         self.assertIn("range(start: -5m)", query)
         self.assertIn('_measurement == "cpu"', query)
 
-    def test_flux_chart_query_catalog_matches_influxdb_catalog(self):
-        from openwisp_monitoring.db.backends.influxdb2.queries import (
-            chart_query as influxdb2_chart_query,
-        )
-        from openwisp_monitoring.db.backends.influxdb.queries import (
-            chart_query as influxdb_chart_query,
-        )
-
-        self.assertEqual(
-            set(influxdb2_chart_query.keys()),
-            set(influxdb_chart_query.keys()),
-        )
-        for config in influxdb2_chart_query.values():
+    def test_query_bundle_matches_backend_contract(self):
+        self.timeseries_db.queries.validate(self.timeseries_db.backend_name)
+        for config in self.timeseries_db.queries.chart_query.values():
             self.assertIn("influxdb2", config)
             self.assertIn('from(bucket: "{bucket}")', config["influxdb2"])
 

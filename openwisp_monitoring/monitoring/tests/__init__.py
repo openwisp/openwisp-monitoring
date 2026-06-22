@@ -266,6 +266,9 @@ class TestMonitoringMixin(TestOrganizationMixin):
             timeseries_db.__dict__.pop(attr, None)
         timeseries_db.create_database()
         manage_short_retention_policy()
+        timeseries_db.delete_metric_data()
+        timeseries_db.create_database()
+        manage_short_retention_policy()
         for key in metrics.keys():
             try:
                 unregister_metric(key)
@@ -300,6 +303,7 @@ class TestMonitoringMixin(TestOrganizationMixin):
         super().tearDownClass()
 
     def tearDown(self):
+        cache.clear()
         timeseries_db.delete_metric_data()
         super().tearDown()
 
@@ -346,9 +350,15 @@ class TestMonitoringMixin(TestOrganizationMixin):
         return TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False)
 
     def _read_chart_or_metric(self, obj, *args, **kwargs):
-        if self._is_timeseries_udp_writes:
-            time.sleep(0.12)
-        return obj.read(*args, **kwargs)
+        attempts = 3 if self._is_timeseries_udp_writes else 1
+        result = None
+        for attempt in range(attempts):
+            if self._is_timeseries_udp_writes:
+                time.sleep(0.12)
+            result = obj.read(*args, **kwargs)
+            if result:
+                break
+        return result
 
     def _read_metric(self, metric, *args, **kwargs):
         return self._read_chart_or_metric(metric, *args, **kwargs)
