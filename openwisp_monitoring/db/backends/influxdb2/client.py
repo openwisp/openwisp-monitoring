@@ -15,6 +15,7 @@ from influxdb_client.domain import BucketRetentionRules
 from openwisp_monitoring.utils import retry
 
 from ...exceptions import TimeseriesWriteException
+from ..base import BaseTimeseriesClient
 from .. import TIMESERIES_DB
 
 logger = logging.getLogger(__name__)
@@ -154,12 +155,13 @@ class QueryResultSet:
         return "ResultSet({%s})" % ", ".join(items)
 
 
-class DatabaseClient(object):
+class DatabaseClient(BaseTimeseriesClient):
     """InfluxDB 2.0 client for timeseries database operations."""
 
     _AGGREGATE = ["mean", "sum", "count", "max", "min", "mode", "stddev"]
     backend_name = "influxdb2"
     client_error = InfluxDBError
+    required_settings = ("BACKEND", "TOKEN", "NAME", "ORG", "HOST", "PORT")
     _FORBIDDEN = ["drop", "delete", "alter", "create", "into"]
     _OPERATORS = ["=", "!=", "<", ">", "<=", ">="]
 
