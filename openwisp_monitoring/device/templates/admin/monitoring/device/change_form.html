@@ -299,50 +299,72 @@
                       </div>
                       {% endif %}
                       {% if interface.mobile.signal.lte %}
+                          {% if interface.mobile.signal.lte.rssi %}
                       <div class="form-row">
                           <label>{% trans 'Signal Strength' %} (LTE):</label>
                           <div class="readonly">
                               {{ interface.mobile.signal.lte.rssi }} dBm
                           </div>
                       </div>
+                          {% endif %}
+                          {% if interface.mobile.signal.lte.rsrp %}
                       <div class="form-row">
                           <label>{% trans 'Signal Power' %} (LTE):</label>
                           <div class="readonly">
                               {{ interface.mobile.signal.lte.rsrp }} dBm
                           </div>
                       </div>
+                          {% endif %}
+                          {% if interface.mobile.signal.lte.rsrq %}
                       <div class="form-row">
                           <label>{% trans 'Signal Quality' %} (LTE):</label>
                           <div class="readonly">
                               {{ interface.mobile.signal.lte.rsrq }} dB
                           </div>
                       </div>
+                          {% endif %}
+                          {% if interface.mobile.signal.lte.snr %}
                       <div class="form-row">
                           <label>{% trans 'Signal to noise ratio' %} (LTE):</label>
                           <div class="readonly">
                               {{ interface.mobile.signal.lte.snr }} dB
                           </div>
                       </div>
+                          {% endif %}
                       {% endif %}
                       {% if interface.mobile.signal.5g %}
+                          {% if interface.mobile.signal.5g.rssi %}
+                      <div class="form-row">
+                          <label>{% trans 'Signal Strength' %} (5G):</label>
+                          <div class="readonly">
+                              {{ interface.mobile.signal.5g.rssi }} dBm
+                          </div>
+                      </div>
+                          {% endif %}
+                          {% if interface.mobile.signal.5g.rsrp %}
                       <div class="form-row">
                           <label>{% trans 'Signal Power' %} (5G):</label>
                           <div class="readonly">
                               {{ interface.mobile.signal.5g.rsrp }} dBm
                           </div>
                       </div>
+                          {% endif %}
+                          {% if interface.mobile.signal.5g.rsrq %}
                       <div class="form-row">
                           <label>{% trans 'Signal Quality' %} (5G):</label>
                           <div class="readonly">
                               {{ interface.mobile.signal.5g.rsrq }} dB
                           </div>
                       </div>
+                          {% endif %}
+                          {%  if interface.mobile.signal.5g.snr %}
                       <div class="form-row">
                           <label>{% trans 'Signal to noise ratio' %} (5G):</label>
                           <div class="readonly">
                               {{ interface.mobile.signal.5g.snr }} dB
                           </div>
                       </div>
+                          {% endif %}
                       {% endif %}
                       {% if interface.mobile.signal.umts %}
                       <div class="form-row">
