@@ -180,6 +180,13 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     def test_200_create(self):
         self.create_test_data(no_resources=True)
 
+    def test_200_create_uuid_without_dashes(self):
+        organization = self._create_org()
+        device = self._create_device(organization=organization)
+        data = {"type": "DeviceMonitoring", "interfaces": []}
+        response = self._post_data(device.pk.hex, device.key, data)
+        self.assertEqual(response.status_code, 200)
+
     @patch("openwisp_monitoring.device.tasks.write_device_metrics.delay")
     def test_background_write(self, mocked_task):
         device = self._create_device(organization=self._create_org())
