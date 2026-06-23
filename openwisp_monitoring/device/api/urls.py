@@ -16,7 +16,7 @@ urlpatterns = [
         name="api_device_metric_list",
     ),
     path(
-        "api/v1/monitoring/device/<uuid:pk>/",
+        "api/v1/monitoring/device/<uuid_any:pk>/",
         views.device_metric,
         name="api_device_metric",
     ),
