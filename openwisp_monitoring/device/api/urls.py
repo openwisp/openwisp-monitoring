@@ -16,6 +16,7 @@ urlpatterns = [
         name="api_device_metric_list",
     ),
     path(
+        # uuid_any is registered by openwisp-controller
         "api/v1/monitoring/device/<uuid_any:pk>/",
         views.device_metric,
         name="api_device_metric",
