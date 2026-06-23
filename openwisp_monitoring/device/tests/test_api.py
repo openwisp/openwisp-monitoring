@@ -1017,6 +1017,71 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         )
         self.assertEqual(self.chart_queryset.count(), charts_count + 3)
 
+    @tag("flaky_with_udp_writes")
+    def test_multiple_mobile_charts(self):
+        org = self._create_org()
+        device = self._create_device(organization=org)
+        charts_count = self.chart_queryset.count()
+        data = {
+            "type": "DeviceMonitoring",
+            "interfaces": [
+                {
+                    "name": "mobile0",
+                    "mac": "00:00:00:00:00:00",
+                    "mtu": 1900,
+                    "multicast": True,
+                    "txqueuelen": 1000,
+                    "type": "modem-manager",
+                    "up": True,
+                    "mobile": {
+                        "connection_status": "connected",
+                        "imei": "300000001234567",
+                        "manufacturer": "Sierra Wireless, Incorporated",
+                        "model": "MC7430",
+                        "operator_code": "50502",
+                        "operator_name": "YES OPTUS",
+                        "power_status": "on",
+                        "signal": {
+                            "lte": {"rsrp": -75, "rsrq": -8, "rssi": -51, "snr": 13},
+                        },
+                    },
+                },
+                {
+                    "name": "mobile1",
+                    "mac": "00:00:00:00:00:01",
+                    "mtu": 1900,
+                    "multicast": True,
+                    "txqueuelen": 1000,
+                    "type": "modem-manager",
+                    "up": True,
+                    "mobile": {
+                        "connection_status": "connected",
+                        "imei": "300000001234568",
+                        "manufacturer": "Sierra Wireless, Incorporated",
+                        "model": "MC7430",
+                        "operator_code": "50502",
+                        "operator_name": "YES OPTUS",
+                        "power_status": "on",
+                        "signal": {
+                            "lte": {"rsrp": -80, "rsrq": -10, "rssi": -55, "snr": 11},
+                        },
+                    },
+                },
+            ],
+        }
+        self._post_data(device.id, device.key, data)
+        response = self.client.get(self._url(device.pk.hex, device.key))
+        self.assertEqual(response.status_code, 200)
+        charts = response.data["charts"]
+        self.assertEqual(self.chart_queryset.count(), charts_count + 6)
+        chart_titles = [chart["title"] for chart in charts]
+        self.assertIn("Signal Strength (RSSI): mobile0", chart_titles)
+        self.assertIn("Signal Strength (RSSI): mobile1", chart_titles)
+        self.assertIn("Signal Quality (RSRQ): mobile0", chart_titles)
+        self.assertIn("Signal Quality (RSRQ): mobile1", chart_titles)
+        self.assertIn("Access Technology: mobile0", chart_titles)
+        self.assertIn("Access Technology: mobile1", chart_titles)
+
     # This test reads chart summaries immediately after posting data. That is
     # unreliable with UDP writes.
     @tag("flaky_with_udp_writes")
