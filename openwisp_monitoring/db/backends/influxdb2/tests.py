@@ -640,7 +640,11 @@ class TestInfluxDB2Client(TestCase):
         self.assertIn('r.content_type == "config.device"', query)
         self.assertIn('r.object_id == "device-id"', query)
         self.assertIn('r._field == "cpu_usage"', query)
-        self.assertIn("aggregateWindow(every: 10m, fn: mean)", query)
+        self.assertIn('aggregateWindow(every: 10m, fn: mean, timeSrc: "_start")', query)
+        self.assertIn(
+            "date.truncate(t: r._time, unit: 10m)",
+            query,
+        )
         self.assertIn('_field: "CPU_load"', query)
 
     def test_format_flux_time_date_only(self):
@@ -667,6 +671,27 @@ class TestInfluxDB2Client(TestCase):
 
         self.assertIn("|> mean()", query)
         self.assertNotIn("aggregateWindow", query)
+        self.assertNotIn("date.truncate", query)
+        self.assertNotIn('|> duplicate(column: "_start", as: "_time")', query)
+
+    def test_get_query_chart_uses_window_start_as_time(self):
+        from openwisp_monitoring.db.backends.influxdb2.queries import chart_query
+
+        query = self.timeseries_db.get_query(
+            chart_type="bar",
+            params={
+                "key": "ping",
+                "field_name": "reachable",
+                "time": "2024-03-25 00:00:00",
+            },
+            time="1d",
+            group_map={"1d": "10m"},
+            query=chart_query["uptime"]["influxdb2"],
+        )
+
+        self.assertIn('aggregateWindow(every: 10m, fn: mean, timeSrc: "_start")', query)
+        self.assertIn('timeSrc: "_start"', query)
+        self.assertIn("date.truncate(t: r._time, unit: 10m)", query)
 
     def test_get_query_summary_uses_whole_range_wifi_clients_count(self):
         from openwisp_monitoring.db.backends.influxdb2.queries import chart_query
@@ -1063,6 +1088,59 @@ class TestInfluxDB2ClientIntegration(TestMonitoringMixin, TestCase):
 
         data = self._read_chart(chart, time="7d")
 
+        self.assertEqual(data["summary"], {"uptime": 100.0})
+
+    def test_ping_uptime_chart_uses_uniform_10_minute_buckets_for_1d(self):
+        metric = self._create_object_metric(name="ping", configuration="ping")
+        base_time = now().replace(
+            year=2024, month=3, day=25, hour=10, minute=5, second=0, microsecond=0
+        )
+        timestamps = [
+            base_time - timedelta(minutes=30),
+            base_time - timedelta(minutes=20),
+            base_time - timedelta(minutes=10),
+            base_time,
+        ]
+        for timestamp in timestamps:
+            metric.write(
+                1,
+                extra_values={
+                    "loss": 0,
+                    "rtt_min": 1.0,
+                    "rtt_avg": 2.0,
+                    "rtt_max": 3.0,
+                },
+                time=timestamp,
+            )
+        chart = Chart(metric=metric, configuration="uptime")
+        chart.full_clean()
+        chart.save()
+
+        data = self._read_chart(
+            chart,
+            time="1d",
+            start_date="2024-03-24 10:07:00",
+            end_date="2024-03-25 10:07:00",
+            timezone="UTC",
+        )
+
+        non_null_points = [
+            datetime.strptime(timestamp, "%Y-%m-%d %H:%M")
+            for timestamp, value in zip(data["x"], data["traces"][0][1])
+            if value is not None
+        ]
+
+        self.assertGreaterEqual(len(non_null_points), 1)
+        self.assertTrue(all(point.minute % 10 == 0 for point in non_null_points))
+        if len(non_null_points) > 1:
+            self.assertEqual(
+                {
+                    int((current - previous).total_seconds())
+                    for previous, current in zip(non_null_points, non_null_points[1:])
+                },
+                {600},
+            )
+        self.assertEqual(non_null_points[-1].strftime("%Y-%m-%d %H:%M"), "2024-03-25 10:00")
         self.assertEqual(data["summary"], {"uptime": 100.0})
 
     def test_delete_metric_data_and_delete_series_round_trip(self):
