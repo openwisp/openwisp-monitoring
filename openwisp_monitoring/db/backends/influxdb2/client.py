@@ -246,7 +246,8 @@ class DatabaseClient(BaseTimeseriesClient):
             return "autogen"
         prefix = f"{self.db_name}_"
         if bucket_name.startswith(prefix):
-            return bucket_name[len(prefix) :]
+            prefix_length = len(prefix)
+            return bucket_name[prefix_length:]
         return bucket_name
 
     def _get_bucket_retention_duration(self, bucket):
