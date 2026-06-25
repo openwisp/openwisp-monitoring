@@ -998,7 +998,9 @@ class DatabaseClient(BaseTimeseriesClient):
                 return f" |> {aggregate_fn}()"
 
             formatted = re.sub(
-                r"\s\|> aggregateWindow\(every: [^,]+, fn: (\w+)(?:, [^)]+)?\)",
+                r"\s\|> aggregateWindow\(every: [^,]+, fn: (\w+)(?:, [^)]+)?\)"
+                r"(?:\s*\|> map\(fn: \(r\) => \(\{r with _time: "
+                r"date\.truncate\(t: r\._time, unit: [^)]+\)\}\)\))?",
                 replace_summary_window,
                 formatted,
             )
