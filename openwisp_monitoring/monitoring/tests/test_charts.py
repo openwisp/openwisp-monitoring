@@ -4,7 +4,6 @@ from datetime import date, timedelta
 from unittest import SkipTest
 from unittest.mock import patch
 
-from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.test import TestCase, tag
 from django.utils.timezone import now
