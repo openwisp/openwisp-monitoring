@@ -131,7 +131,9 @@ class TestBackendContract(SimpleTestCase):
                 backend_module.queries.validate(
                     backend_module.DatabaseClient.backend_name
                 )
-                self.assertTrue(callable(backend_module.queries.device_data_query.format))
+                self.assertTrue(
+                    callable(backend_module.queries.device_data_query.format)
+                )
                 self.assertTrue(
                     required_chart_keys.issubset(
                         set(backend_module.queries.chart_query.keys())

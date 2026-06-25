@@ -17,8 +17,8 @@ from influxdb.line_protocol import make_lines
 from openwisp_monitoring.utils import retry
 
 from ...exceptions import TimeseriesWriteException
-from ..base import BaseTimeseriesClient
 from .. import TIMESERIES_DB
+from ..base import BaseTimeseriesClient
 
 logger = logging.getLogger(__name__)
 
