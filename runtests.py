@@ -10,12 +10,18 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "openwisp2.settings")
 if __name__ == "__main__":
     from django.core.management import execute_from_command_line
 
-    args = sys.argv
-    args.insert(1, "test")
-    if not os.environ.get("SAMPLE_APP", False):
-        args.insert(2, "openwisp_monitoring")
-    else:
-        args.insert(2, "openwisp2")
+    base_args = sys.argv[1:]
+    args = [sys.argv[0], "test"]
+    has_test_labels = any(not arg.startswith("-") for arg in base_args)
+    if not has_test_labels:
+        if not os.environ.get("SAMPLE_APP", False):
+            args.append("openwisp_monitoring")
+        else:
+            args.append("openwisp2")
+    args.extend(base_args)
     if os.environ.get("TIMESERIES_UDP", False):
         args.extend(["--exclude-tag", "timeseries_client"])
+    # Keep sys.argv aligned with the final Django command so settings that
+    # inspect argv during import can detect test mode correctly.
+    sys.argv = args[:]
     execute_from_command_line(args)

@@ -1,13 +1,15 @@
 import json
+import os
 from datetime import date, timedelta
+from unittest import SkipTest
 from unittest.mock import patch
 
-from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ValidationError
-from django.test import TestCase
+from django.test import TestCase, tag
 from django.utils.timezone import now
 from swapper import load_model
 
+from openwisp_monitoring.db import timeseries_db
 from openwisp_utils.tests import capture_stderr
 
 from .. import settings as app_settings
@@ -216,13 +218,9 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertDictEqual(json.loads(c.json()), data)
 
     def test_read_bad_query(self):
-        try:
+        with self.assertRaises(ValidationError) as context:
             self._create_chart(configuration="bad_test")
-        except ValidationError as e:
-            self.assertIn("configuration", e.message_dict)
-            self.assertIn("error parsing query: found BAD", str(e.message_dict))
-        else:
-            self.fail("ValidationError not raised")
+        self.assertIn("configuration", context.exception.message_dict)
 
     def test_get_query(self):
         c = self._create_chart(test_data=False)
@@ -230,16 +228,23 @@ class TestCharts(TestMonitoringMixin, TestCase):
         now_ = now()
         today = date(now_.year, now_.month, now_.day)
         time = today - timedelta(days=6)
-        expected = c.query.format(
-            field_name=m.field_name,
-            key=m.key,
-            content_type=m.content_type_key,
-            object_id=m.object_id,
-            time=str(time),
-            end_date="",
+        query = c.get_query()
+        self.assertIn(m.key, query)
+        self.assertIn(m.content_type_key, query)
+        self.assertIn(str(m.object_id), query)
+        self.assertIn(str(time)[0:10], query)
+
+    def test_default_query_uses_backend_contract(self):
+        chart = self._create_chart(test_data=False)
+        self.assertEqual(
+            chart._default_query,
+            timeseries_db.get_default_chart_query(has_object_scope=True),
         )
-        expected = "{0} tz('{1}')".format(expected, settings.TIME_ZONE)
-        self.assertEqual(c.get_query(), expected)
+        chart.metric.object_id = None
+        self.assertEqual(
+            chart._default_query,
+            timeseries_db.get_default_chart_query(has_object_scope=False),
+        )
 
     def test_description(self):
         c = self._create_chart(test_data=False)
@@ -294,19 +299,6 @@ class TestCharts(TestMonitoringMixin, TestCase):
         c.save()
         self.assertNotIn("GROUP BY time", c.get_query())
 
-    @capture_stderr()
-    def test_bad_json_query_returns_none(self):
-        m = self._create_object_metric(
-            name="wifi associations",
-            key="hostapd",
-            field_name="mac",
-            extra_tags={"ifname": "wlan0"},
-        )
-        c = self._create_chart(metric=m, test_data=False, configuration="wifi_clients")
-        m.write("00:14:5c:00:00:00")
-        c.save()
-        self.assertIsNone(c.json(time=1))
-
     def test_register_invalid_chart_configuration(self):
         with self.subTest("Registering with incomplete chart configuration."):
             with self.assertRaises(AssertionError):
@@ -352,3 +344,59 @@ class TestCharts(TestMonitoringMixin, TestCase):
             self.assertDictEqual(
                 DEFAULT_DASHBOARD_TRAFFIC_CHART, {"__all__": ["wan", "eth1", "eth0_2"]}
             )
+
+
+class _TestChartsBackendMixin(TestMonitoringMixin, TestCase):
+    expected_backend = None
+
+    @classmethod
+    def setUpClass(cls):
+        if os.environ.get("TIMESERIES_BACKEND") != cls.expected_backend:
+            raise SkipTest(
+                f'Set TIMESERIES_BACKEND="{cls.expected_backend}" to run these tests.'
+            )
+        super().setUpClass()
+
+    def _create_wifi_clients_chart(self):
+        m = self._create_object_metric(
+            name="wifi associations",
+            key="hostapd",
+            field_name="mac",
+            extra_tags={"ifname": "wlan0"},
+        )
+        c = self._create_chart(metric=m, test_data=False, configuration="wifi_clients")
+        m.write("00:14:5c:00:00:00")
+        c.save()
+        return c
+
+
+@tag("tsdb_influxdb")
+class TestChartsInfluxDB(_TestChartsBackendMixin):
+    expected_backend = "influxdb"
+
+    def test_read_bad_query_message(self):
+        with self.assertRaises(ValidationError) as context:
+            self._create_chart(configuration="bad_test")
+        self.assertIn(
+            "error parsing query: found BAD", str(context.exception.message_dict)
+        )
+
+    @capture_stderr()
+    def test_bad_json_query_returns_none(self):
+        c = self._create_wifi_clients_chart()
+        self.assertIsNone(c.json(time=1))
+
+
+@tag("tsdb_influxdb2")
+class TestChartsInfluxDB2(_TestChartsBackendMixin):
+    expected_backend = "influxdb2"
+
+    def test_read_bad_query_message(self):
+        with self.assertRaises(ValidationError) as context:
+            self._create_chart(configuration="bad_test")
+        self.assertIn("undefined identifier BAD", str(context.exception.message_dict))
+
+    @capture_stderr()
+    def test_bad_json_query_returns_value(self):
+        c = self._create_wifi_clients_chart()
+        self.assertIsNotNone(c.json(time=1))

@@ -150,6 +150,13 @@ default_chart_query = [
     " AND content_type = '{content_type}' AND object_id = '{object_id}'",
 ]
 
-device_data_query = (
-    "SELECT data FROM {0}.{1} WHERE pk = '{2}' " "ORDER BY time DESC LIMIT 1"
-)
+
+class DeviceDataQuery:
+    def format(self, retention_policy, measurement, pk):
+        return (
+            f"SELECT data FROM {retention_policy}.{measurement} WHERE pk = '{pk}' "
+            "ORDER BY time DESC LIMIT 1"
+        )
+
+
+device_data_query = DeviceDataQuery()

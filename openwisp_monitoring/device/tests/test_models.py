@@ -747,6 +747,7 @@ class TestDeviceMonitoring(
         load.check_threshold(80)
         self.assertEqual(dm.status, "ok")
 
+    @patch("openwisp_monitoring.device.settings.AUTO_CLEAR_MANAGEMENT_IP", True)
     @patch.object(
         app_settings,
         "CRITICAL_DEVICE_METRICS",

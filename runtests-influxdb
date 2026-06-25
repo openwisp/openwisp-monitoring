@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+
+TIMESERIES_BACKEND=influxdb coverage run runtests.py --exclude-tag=selenium_tests
+SAMPLE_APP=1 TIMESERIES_BACKEND=influxdb coverage run runtests.py --exclude-tag=selenium_tests
+TIMESERIES_UDP=1 TIMESERIES_BACKEND=influxdb coverage run runtests.py --exclude-tag=selenium_tests

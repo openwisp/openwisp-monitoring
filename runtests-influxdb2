@@ -1,0 +1,4 @@
+#!/bin/bash
+set -e
+
+TIMESERIES_BACKEND=influxdb2 coverage run runtests.py --exclude-tag=selenium_tests
