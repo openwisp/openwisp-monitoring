@@ -3,7 +3,7 @@ InfluxDB 2.x Flux queries for monitoring charts.
 """
 
 _range = (
-    'from(bucket: "{bucket}")'
+    'import "date"\nfrom(bucket: "{bucket}")'
     " |> range(start: {time_start}{end_range})"
     ' |> filter(fn: (r) => r._measurement == "{key}")'
 )
@@ -17,10 +17,19 @@ _object_filters = (
     "{floorplan_id_filter}"
 )
 
-_window_mean = " |> aggregateWindow(every: {window}, fn: mean)"
-_window_sum = " |> aggregateWindow(every: {window}, fn: sum)"
-_window_count = " |> aggregateWindow(every: {window}, fn: count)"
-_window_mode = " |> aggregateWindow(every: {window}, fn: mode)"
+
+def _window(fn):
+    return (
+        f' |> aggregateWindow(every: {{window}}, fn: {fn}, timeSrc: "_start")'
+        " |> map(fn: (r) => "
+        "({{r with _time: date.truncate(t: r._time, unit: {window})}}))"
+    )
+
+
+_window_mean = _window("mean")
+_window_sum = _window("sum")
+_window_count = _window("count")
+_window_mode = _window("mode")
 
 chart_query = {
     "uptime": {
