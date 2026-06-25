@@ -1140,7 +1140,9 @@ class TestInfluxDB2ClientIntegration(TestMonitoringMixin, TestCase):
                 },
                 {600},
             )
-        self.assertEqual(non_null_points[-1].strftime("%Y-%m-%d %H:%M"), "2024-03-25 10:00")
+        self.assertEqual(
+            non_null_points[-1].strftime("%Y-%m-%d %H:%M"), "2024-03-25 10:00"
+        )
         self.assertEqual(data["summary"], {"uptime": 100.0})
 
     def test_delete_metric_data_and_delete_series_round_trip(self):
