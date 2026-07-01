@@ -257,6 +257,14 @@ charts = {
 class TestMonitoringMixin(TestOrganizationMixin):
     ORIGINAL_DB = TIMESERIES_DB["NAME"]
     TEST_DB = f"{ORIGINAL_DB}_test"
+    _TIMESERIES_CLIENT_ATTRS = (
+        "db",
+        "dbs",
+        "_write_api",
+        "_query_api",
+        "_delete_api",
+        "use_udp",
+    )
 
     @classmethod
     def _unregister_test_metrics(cls):
@@ -271,17 +279,27 @@ class TestMonitoringMixin(TestOrganizationMixin):
                 unregister_chart(key)
 
     @classmethod
+    def _reset_timeseries_client_state(cls):
+        # The global timeseries client caches backend handles lazily, so test
+        # classes must reset those cached objects whenever the test database
+        # lifecycle changes.
+        timeseries_db.db_name = cls.TEST_DB
+        for attr in cls._TIMESERIES_CLIENT_ATTRS:
+            timeseries_db.__dict__.pop(attr, None)
+
+    @classmethod
+    def _recreate_timeseries_storage(cls):
+        cls._reset_timeseries_client_state()
+        timeseries_db.drop_database()
+        cls._reset_timeseries_client_state()
+        timeseries_db.create_database()
+        manage_short_retention_policy()
+
+    @classmethod
     def setUpClass(cls):
         # By default timeseries_db.db shall connect to the database
         # defined in settings when apps are loaded. We don't want that while testing
-        timeseries_db.db_name = cls.TEST_DB
-        for attr in ("db", "dbs", "_write_api", "_query_api", "_delete_api", "use_udp"):
-            timeseries_db.__dict__.pop(attr, None)
-        timeseries_db.create_database()
-        manage_short_retention_policy()
-        timeseries_db.delete_metric_data()
-        timeseries_db.create_database()
-        manage_short_retention_policy()
+        cls._recreate_timeseries_storage()
         cls._unregister_test_metrics()
         cls._unregister_test_charts()
         for key, value in metrics.items():
@@ -293,7 +311,9 @@ class TestMonitoringMixin(TestOrganizationMixin):
 
     @classmethod
     def tearDownClass(cls):
+        cls._reset_timeseries_client_state()
         timeseries_db.drop_database()
+        cls._reset_timeseries_client_state()
         cls._unregister_test_metrics()
         cls._unregister_test_charts()
         cache.clear()
