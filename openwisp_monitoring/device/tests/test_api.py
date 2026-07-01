@@ -4,8 +4,10 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
+from django.test import tag
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
@@ -170,12 +172,20 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         # Add 1 for general metric and chart
         self.assertEqual(self.metric_queryset.count(), 0)
         self.assertEqual(self.chart_queryset.count(), 0)
+        device_id = d.id
         d.delete(check_deactivated=False)
-        r = self._post_data(d.id, d.key, data)
+        r = self._post_data(device_id, d.key, data)
         self.assertEqual(r.status_code, 404)
 
     def test_200_create(self):
         self.create_test_data(no_resources=True)
+
+    def test_200_create_uuid_without_dashes(self):
+        organization = self._create_org()
+        device = self._create_device(organization=organization)
+        data = {"type": "DeviceMonitoring", "interfaces": []}
+        response = self._post_data(device.pk.hex, device.key, data)
+        self.assertEqual(response.status_code, 200)
 
     @patch("openwisp_monitoring.device.tasks.write_device_metrics.delay")
     def test_background_write(self, mocked_task):
@@ -185,6 +195,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(r.status_code, 200)
         mocked_task.assert_called_once()
 
+    @tag("flaky_with_udp_writes")
     def test_200_traffic_counter_incremented(self):
         dd = self.create_test_data(no_resources=True)
         d = self.device_model.objects.first()
@@ -217,6 +228,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             points = self._read_metric(m, limit=10, order="-time")
             self.assertEqual(len(points), len(iface["wireless"]["clients"]) * 2)
 
+    @tag("flaky_with_udp_writes")
     def test_200_traffic_counter_reset(self):
         dd = self.create_test_data(no_resources=True)
         d = self.device_model.objects.first()
@@ -249,6 +261,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             points = self._read_metric(m, limit=10, order="-time")
             self.assertEqual(len(points), len(iface["wireless"]["clients"]) * 2)
 
+    @tag("flaky_with_udp_writes")
     def test_device_with_location(self):
         self.create_test_data(no_resources=True)
         device = self.device_model.objects.first()
@@ -284,6 +297,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 self.assertEqual(point["location_id"], str(location.id))
                 self.assertEqual(point["floorplan_id"], str(floorplan.id))
 
+    @tag("flaky_with_udp_writes")
     def test_200_multiple_measurements(self):
         dd = self._create_multiple_measurements(no_resources=True)
         # Add 1 for general metric and chart
@@ -404,13 +418,13 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         dd = self.create_test_data()
         d = self.device_model.objects.get(pk=dd.pk)
         with self.assertNumQueries(17):
-            r = self.client.get(self._url(d.pk.hex, d.key))
+            r = self.client.get(self._url(d.pk, d.key))
         with self.assertNumQueries(16):
-            r = self.client.get(self._url(d.pk.hex, d.key))
+            r = self.client.get(self._url(d.pk, d.key))
         self.assertEqual(r.status_code, 200)
 
         with self.subTest("Test device metrics 200 without the device key"):
-            r1 = self.client.get(self._url(d.pk.hex))
+            r1 = self.client.get(self._url(d.pk))
             self.assertEqual(r1.status_code, 200)
             for key in self._RESPONSE_KEYS:
                 self.assertIn(key, r.data.keys())
@@ -514,13 +528,14 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 data=r.data["results"][0], detail=False, charts=False
             )
 
+    @tag("flaky_with_udp_writes")
     def test_get_device_metrics_histogram_ignore_x(self):
         o = self._create_org()
         d = self._create_device(organization=o)
         m = self._create_object_metric(content_object=d, name="applications")
         self._create_chart(metric=m, configuration="histogram")
         self._create_multiple_measurements(create=False, no_resources=True, count=2)
-        r = self.client.get(self._url(d.pk.hex, d.key))
+        r = self.client.get(self._url(d.pk, d.key))
         self.assertEqual(r.status_code, 200)
         self.assertTrue(len(r.data["x"]) > 50)
 
@@ -532,7 +547,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertIsInstance(r.data["charts"], list)
 
     def test_get_device_metrics_404(self):
-        r = self.client.get(self._url("WRONG", "MADEUP"))
+        r = self.client.get(self._url(uuid4(), "MADEUP"))
         self.assertEqual(r.status_code, 404)
 
     def test_get_device_metrics_401(self):
@@ -558,6 +573,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         r = self.client.get(url)
         self.assertEqual(r.status_code, 400)
 
+    @tag("flaky_with_udp_writes")
     def test_get_device_metrics_csv(self):
         d = self._create_device(organization=self._create_org())
         self._create_multiple_measurements(create=False, count=2)
@@ -607,6 +623,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(rows[-2].strip().split(","), ["ssh", "100.0"])
         self.assertEqual(rows[-1].strip().split(","), ["http2", "90.0"])
 
+    @tag("flaky_with_udp_writes")
     def test_histogram_csv_none_value(self):
         d = self._create_device(organization=self._create_org())
         m = self._create_object_metric(content_object=d, name="applications")
@@ -636,7 +653,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         c.save()
         # Add 1 for general chart
         self.assertEqual(self.chart_queryset.count(), 1)
-        response = self.client.get(self._url(d.pk.hex, d.key))
+        response = self.client.get(self._url(d.pk, d.key))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["charts"], [])
 
@@ -680,9 +697,10 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         c = self._create_chart(metric=m, test_data=None)
         c.configuration = "invalid"
         c.save()
-        response = self.client.get(self._url(d.pk.hex, d.key))
+        response = self.client.get(self._url(d.pk, d.key))
         self.assertEqual(response.status_code, 200)
 
+    @tag("flaky_with_udp_writes")
     def test_available_memory(self):
         o = self._create_org()
         d = self._create_device(organization=o)
@@ -715,7 +733,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     def test_get_device_status_200(self):
         dd = self.create_test_data(no_resources=True)
         d = self.device_model.objects.get(pk=dd.pk)
-        url = self._url(d.pk.hex, d.key)
+        url = self._url(d.pk, d.key)
         # status not requested
         r = self.client.get(url)
         self.assertEqual(r.status_code, 200)
@@ -941,6 +959,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             with self.subTest(interface_data["name"]):
                 self.assertEqual(r.status_code, 400)
 
+    @tag("flaky_with_udp_writes")
     def test_mobile_charts(self):
         org = self._create_org()
         device = self._create_device(organization=org)
@@ -976,7 +995,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             {"umts": {"ecio": 2, "rscp": -14, "rssi": -80}}
         )
         self._post_data(device.id, device.key, data)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data["charts"]
         self.assertEqual(charts[0]["summary"]["signal_strength"], -51.0)
@@ -998,6 +1017,9 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         )
         self.assertEqual(self.chart_queryset.count(), charts_count + 3)
 
+    # This test reads chart summaries immediately after posting data. That is
+    # unreliable with UDP writes.
+    @tag("flaky_with_udp_writes")
     def test_5g_charts(self):
         org = self._create_org()
         device = self._create_device(organization=org)
@@ -1030,7 +1052,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         }
         response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 200)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data["charts"]
         self.assertEqual(charts[0]["summary"]["signal_power"], -70.0)
@@ -1039,6 +1061,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(charts[1]["summary"]["signal_to_noise_ratio"], 12.0)
         self.assertEqual(charts[2]["summary"]["access_tech"], 5)
 
+    @tag("flaky_with_udp_writes")
     def test_umts_rscp_missing(self):
         org = self._create_org()
         device = self._create_device(organization=org)
@@ -1068,7 +1091,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         }
         response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 200)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data["charts"]
         self.assertEqual(len(charts), 3)
@@ -1078,6 +1101,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(charts[1]["summary"]["signal_to_noise_ratio"], -5.0)
         self.assertEqual(charts[2]["summary"]["access_tech"], 3.0)
 
+    @tag("flaky_with_udp_writes")
     def test_umts_rssi_missing(self):
         org = self._create_org()
         device = self._create_device(organization=org)
@@ -1107,7 +1131,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         }
         response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 200)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data["charts"]
         self.assertEqual(len(charts), 3)
@@ -1117,6 +1141,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(charts[1]["summary"]["signal_to_noise_ratio"], -4)
         self.assertEqual(charts[2]["summary"]["access_tech"], 3.0)
 
+    @tag("flaky_with_udp_writes")
     def test_cdma_charts(self):
         org = self._create_org()
         device = self._create_device(organization=org)
@@ -1146,7 +1171,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         }
         response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 200)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data["charts"]
         self.assertEqual(len(charts), 3)
@@ -1156,6 +1181,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(charts[1]["summary"]["signal_to_noise_ratio"], -5.0)
         self.assertEqual(charts[2]["summary"]["access_tech"], 1.0)
 
+    @tag("flaky_with_udp_writes")
     def test_evdo_charts(self):
         org = self._create_org()
         device = self._create_device(organization=org)
@@ -1187,7 +1213,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         }
         response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 200)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data["charts"]
         self.assertEqual(len(charts), 3)
@@ -1197,6 +1223,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(charts[1]["summary"]["signal_to_noise_ratio"], -11.0)
         self.assertEqual(charts[2]["summary"]["access_tech"], 2.0)
 
+    @tag("flaky_with_udp_writes")
     def test_gsm_charts(self):
         org = self._create_org()
         device = self._create_device(organization=org)
@@ -1226,7 +1253,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         }
         response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 200)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data["charts"]
         self.assertEqual(len(charts), 2)
@@ -1261,7 +1288,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             ],
         }
         self._post_data(device.id, device.key, data)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["charts"], [])
         dd = DeviceData(name=device.name, pk=device.pk)
@@ -1324,6 +1351,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         )
         self.assertEqual(signal_calls[0][1], expected_arguments)
 
+    @tag("flaky_with_udp_writes")
     def test_device_custom_date_metrics(self):
         now = datetime.now()
         dd = self.create_test_data()
@@ -1480,6 +1508,124 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         points = self._read_metric(m, limit=1, extra_fields=["tx_bytes"])
         self.assertEqual(points[0].get("rx_bytes"), 324)
         self.assertEqual(points[0].get("tx_bytes"), 0)
+
+    def test_device_metric_list_endpoint_ok_device(self):
+        self.create_test_data(no_resources=True)
+        device = Device.objects.first()
+        url = reverse("monitoring:api_device_metric_list", args=[device.pk])
+        response = self.client.get(url, {"is_healthy": "false"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, [])
+
+    def test_device_metric_list_endpoint_with_device_metric_list(self):
+        self.create_test_data()
+        device = Device.objects.first()
+        m = Metric.objects.filter(configuration="disk").first()
+        m.write(m.alertsettings.threshold + 0.1)
+        m.refresh_from_db()
+        self.assertEqual(m.is_healthy, False)
+        url = reverse("monitoring:api_device_metric_list", args=[device.pk])
+        response = self.client.get(url, {"is_healthy": "false"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["name"], m.name)
+        self.assertEqual(response.data[0]["key"], m.key)
+        self.assertEqual(response.data[0]["is_healthy"], False)
+
+    def test_device_metric_list_endpoint_permissions(self):
+        org = self._create_org(name="org1")
+        device = self._create_device(organization=org, name="test-device")
+        device_ct = ContentType.objects.get_for_model(Device)
+        self._create_object_metric(
+            content_type=device_ct,
+            object_id=device.pk,
+            content_object=device,
+            is_healthy=False,
+        )
+        url = reverse("monitoring:api_device_metric_list", args=[device.pk])
+        self.client.logout()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 401)
+
+    def test_device_metric_list_endpoint_wrong_device(self):
+        url = reverse(
+            "monitoring:api_device_metric_list",
+            args=["00000000-0000-0000-0000-000000000000"],
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_device_metric_list_endpoint_multitenancy(self):
+        org1 = self._create_org(name="org1")
+        org2 = self._create_org(name="org2")
+        org1_device = self._create_device(organization=org1, name="device-org1")
+        org2_device = self._create_device(organization=org2, name="device-org2")
+        device_ct = ContentType.objects.get_for_model(Device)
+        for device in [org1_device, org2_device]:
+            self._create_object_metric(
+                content_type=device_ct,
+                object_id=device.pk,
+                content_object=device,
+                is_healthy=False,
+            )
+        operator = self._create_operator(
+            organizations=[org1],
+            username="org1-operator",
+        )
+        self.client.force_login(operator)
+        org1_url = reverse("monitoring:api_device_metric_list", args=[org1_device.pk])
+        with self.subTest("operator can access device in own org"):
+            response = self.client.get(org1_url, {"is_healthy": "false"})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(len(response.data), 1)
+
+        org2_url = reverse("monitoring:api_device_metric_list", args=[org2_device.pk])
+        with self.subTest("operator cannot access device in other org"):
+            response = self.client.get(org2_url, {"is_healthy": "false"})
+            self.assertEqual(response.status_code, 404)
+
+    def test_device_metric_list_endpoint_operator_not_org_manager(self):
+        org1 = self._create_org(name="org1")
+        device = self._create_device(organization=org1, name="device-org1")
+        device_ct = ContentType.objects.get_for_model(Device)
+        self._create_object_metric(
+            content_type=device_ct,
+            object_id=device.pk,
+            content_object=device,
+            is_healthy=False,
+        )
+        # operator is not added to any organization, so they do not
+        # manage any organization
+        operator = self._create_operator(username="org1-operator")
+        self.client.force_login(operator)
+        url = reverse("monitoring:api_device_metric_list", args=[device.pk])
+        response = self.client.get(url, {"is_healthy": "false"})
+        self.assertEqual(response.status_code, 403)
+
+    def test_device_metric_list_endpoint_operator_without_device_permission(self):
+        org1 = self._create_org(name="org1")
+        device = self._create_device(organization=org1, name="device-org1")
+        device_ct = ContentType.objects.get_for_model(Device)
+        self._create_object_metric(
+            content_type=device_ct,
+            object_id=device.pk,
+            content_object=device,
+            is_healthy=False,
+        )
+        operator = self._create_operator(
+            organizations=[org1],
+            username="org1-operator",
+        )
+        device_permissions = Permission.objects.filter(
+            content_type__app_label="config",
+            codename__in=["view_device", "change_device"],
+        )
+        operator_group = Group.objects.get(name="Operator")
+        operator_group.permissions.remove(*device_permissions)
+        self.client.force_login(operator)
+        url = reverse("monitoring:api_device_metric_list", args=[device.pk])
+        response = self.client.get(url, {"is_healthy": "false"})
+        self.assertEqual(response.status_code, 403)
 
 
 class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):

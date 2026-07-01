@@ -33,7 +33,12 @@ from ..monitoring.admin import MetricAdmin
 from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from . import settings as app_settings
 from .exportable import DeviceMonitoringResource
-from .filters import DeviceFilter, DeviceGroupFilter, DeviceOrganizationFilter
+from .filters import (
+    DeviceFilter,
+    DeviceGroupFilter,
+    DeviceOrganizationFilter,
+    UnhealthyMetricFilter,
+)
 
 DeviceData = load_model("device_monitoring", "DeviceData")
 WifiSession = load_model("device_monitoring", "WifiSession")
@@ -251,10 +256,13 @@ class MetricInline(
 
 class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
     change_form_template = "admin/monitoring/device/change_form.html"
-    list_filter = ["monitoring__status"] + BaseDeviceAdmin.list_filter
+    list_filter = [
+        "monitoring__status",
+        UnhealthyMetricFilter,
+    ] + BaseDeviceAdmin.list_filter
     list_select_related = ["monitoring"] + list(BaseDeviceAdmin.list_select_related)
     list_display = list(BaseDeviceAdmin.list_display)
-    list_display.insert(list_display.index("config_status"), "health_status")
+    list_display.insert(list_display.index("config_status"), "health_status_changelist")
     readonly_fields = ["health_status"] + BaseDeviceAdmin.readonly_fields
 
     class Media:
@@ -277,14 +285,27 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
             + MetricAdmin.Media.css["all"]
         }
 
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        device_metric_list = reverse(
+            "monitoring:api_device_metric_list",
+            urlconf=MONITORING_API_URLCONF,
+            args=["00000000-0000-0000-0000-000000000000"],
+        )
+        if MONITORING_API_BASEURL:
+            device_metric_list = urljoin(MONITORING_API_BASEURL, device_metric_list)
+        extra_context["device_metric_list"] = device_metric_list
+        return super().changelist_view(request, extra_context)
+
     def get_extra_context(self, pk=None):
         ctx = super().get_extra_context(pk)
         if pk:
-            device_data = DeviceData(pk=uuid.UUID(pk))
+            device_pk = uuid.UUID(pk)
+            device_data = DeviceData(pk=device_pk)
             api_url = reverse(
                 "monitoring:api_device_metric",
                 urlconf=MONITORING_API_URLCONF,
-                args=[pk],
+                args=[device_pk],
             )
             if MONITORING_API_BASEURL:
                 api_url = urljoin(MONITORING_API_BASEURL, api_url)
@@ -304,7 +325,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
             health = "yes" if metric.is_healthy else "no"
             icon_url = static(f"admin/img/icon-{health}.svg")
             metric_rows.append(
-                f'<li><img src="{icon_url}" ' f'alt="health"> {metric.name}</li>'
+                f'<li><img src="{icon_url}" alt="health"> {metric.name}</li>'
             )
         return format_html(
             mark_safe(f'<ul class="health_checks">{"".join(metric_rows)}</ul>')
@@ -313,13 +334,44 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
     health_checks.short_description = _("health checks")
 
     def health_status(self, obj):
+        status = obj.monitoring.status
+        status_display = obj.monitoring.get_status_display()
         return format_html(
-            mark_safe('<span class="health-{0}">{1}</span>'),
-            obj.monitoring.status,
-            obj.monitoring.get_status_display(),
+            '<span class="health-{0}">{1}</span>', status, status_display
         )
 
     health_status.short_description = _("health status")
+
+    def health_status_changelist(self, obj):
+        status = obj.monitoring.status
+        status_display = obj.monitoring.get_status_display()
+        if status == "problem":
+            html = format_html(
+                '<div class="health-status-container">'
+                '<span class="health-{0}">{1}</span>'
+                '<div class="device-issues-accordion">'
+                '<div class="issues-content" id="issues-content-{2}"></div>'
+                '<div class="spinner-wrapper"></div>'
+                '<a href="#" class="issues-toggle" data-device-id="{2}" '
+                'aria-expanded="false" '
+                'aria-controls="issues-content-{2}">'
+                '<span class="mg-arrow"></span>'
+                '<span class="issues-toggle-label">{3}</span>'
+                "</a>"
+                "</div>"
+                "</div>",
+                status,
+                status_display,
+                obj.pk,
+                _("show issues"),
+            )
+        else:
+            html = format_html(
+                '<span class="health-{0}">{1}</span>', status, status_display
+            )
+        return html
+
+    health_status_changelist.short_description = _("health status")
 
     def get_object(self, request, object_id, from_field=None):
         obj = super().get_object(request, object_id, from_field=from_field)
@@ -385,7 +437,7 @@ class DeviceAdminExportable(ImportExportMixin, DeviceAdmin):
     export_form_class = ExportForm
     resource_class = DeviceMonitoringResource
     # Added to support both reversion and import-export
-    change_list_template = "admin/config/change_list_device.html"
+    change_list_template = "admin/monitoring/device/changelist.html"
 
 
 class WifiSessionAdminHelperMixin:
