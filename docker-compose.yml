@@ -28,7 +28,7 @@ services:
       INFLUXDB_USER_PASSWORD: openwisp
 
   influxdb2:
-    image: influxdb:2.7-alpine
+    image: influxdb:2.9.1-alpine
     volumes:
       - influxdb2-data:/var/lib/influxdb2
     ports:

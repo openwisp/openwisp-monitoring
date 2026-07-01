@@ -2,7 +2,6 @@ import time
 from datetime import timedelta
 
 from django.core.cache import cache
-from django.core.exceptions import ImproperlyConfigured
 from django.utils.timezone import now
 from swapper import load_model
 
@@ -12,6 +11,8 @@ from ...db import timeseries_db
 from ...db.backends import TIMESERIES_DB
 from ...device.utils import manage_short_retention_policy
 from ..configuration import (
+    DEFAULT_CHARTS,
+    DEFAULT_METRICS,
     register_chart,
     register_metric,
     unregister_chart,
@@ -258,6 +259,18 @@ class TestMonitoringMixin(TestOrganizationMixin):
     TEST_DB = f"{ORIGINAL_DB}_test"
 
     @classmethod
+    def _unregister_test_metrics(cls):
+        for key in metrics.keys():
+            if key in DEFAULT_METRICS:
+                unregister_metric(key)
+
+    @classmethod
+    def _unregister_test_charts(cls):
+        for key in charts.keys():
+            if key in DEFAULT_CHARTS:
+                unregister_chart(key)
+
+    @classmethod
     def setUpClass(cls):
         # By default timeseries_db.db shall connect to the database
         # defined in settings when apps are loaded. We don't want that while testing
@@ -269,16 +282,8 @@ class TestMonitoringMixin(TestOrganizationMixin):
         timeseries_db.delete_metric_data()
         timeseries_db.create_database()
         manage_short_retention_policy()
-        for key in metrics.keys():
-            try:
-                unregister_metric(key)
-            except ImproperlyConfigured:
-                pass
-        for key in charts.keys():
-            try:
-                unregister_chart(key)
-            except ImproperlyConfigured:
-                pass
+        cls._unregister_test_metrics()
+        cls._unregister_test_charts()
         for key, value in metrics.items():
             register_metric(key, value)
         for key, value in charts.items():
@@ -289,16 +294,8 @@ class TestMonitoringMixin(TestOrganizationMixin):
     @classmethod
     def tearDownClass(cls):
         timeseries_db.drop_database()
-        for metric_name in metrics.keys():
-            try:
-                unregister_metric(metric_name)
-            except ImproperlyConfigured:
-                pass
-        for key in charts.keys():
-            try:
-                unregister_chart(key)
-            except ImproperlyConfigured:
-                pass
+        cls._unregister_test_metrics()
+        cls._unregister_test_charts()
         cache.clear()
         super().tearDownClass()
 

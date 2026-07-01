@@ -41,6 +41,9 @@ if TIMESERIES_BACKEND == "influxdb":
         "OPTIONS": {"udp_writes": False, "udp_port": 8089},
     }
 elif TIMESERIES_BACKEND == "influxdb2":
+    # These defaults mirror the influxdb2 and redis containers defined in the
+    # repository docker-compose.yml, so most local development setups only need
+    # to export TIMESERIES_BACKEND=influxdb2.
     TIMESERIES_DATABASE = {
         "BACKEND": "openwisp_monitoring.db.backends.influxdb2",
         "NAME": os.getenv("INFLUXDB2_BUCKET", "openwisp2"),
@@ -344,6 +347,3 @@ try:
     from openwisp2.local_settings import *
 except ImportError:
     pass
-
-if "EXTRA_MIDDLEWARE" in globals():
-    MIDDLEWARE = [*EXTRA_MIDDLEWARE, *MIDDLEWARE]
