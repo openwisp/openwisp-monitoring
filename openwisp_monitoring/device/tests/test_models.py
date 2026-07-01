@@ -563,7 +563,13 @@ class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
     def test_device_data_cache_set(self):
         dd = self.create_test_data(no_resources=True)
         cache_key = get_device_cache_key(dd, context="current-data")
-        cache_data = cache.get(cache_key)[0]["data"]
+        cached_points = cache.get(cache_key)
+        self.assertIsNotNone(
+            cached_points,
+            f'Missing "{cache_key}" cache entry after device data write '
+            f"using backend {timeseries_db.backend_name}",
+        )
+        cache_data = cached_points[0]["data"]
         self.assertEqual(json.loads(cache_data), dd.data)
         with patch.object(timeseries_db, "query", side_effect=Exception):
             dd.refresh_from_db()
