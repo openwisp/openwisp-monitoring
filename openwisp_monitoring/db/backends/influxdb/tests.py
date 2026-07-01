@@ -35,7 +35,7 @@ Chart = load_model("monitoring", "Chart")
 Notification = load_model("openwisp_notifications", "Notification")
 
 
-@tag("timeseries_client", "tsdb_influxdb")
+@tag("timeseries_client", "influxdb1")
 class TestDatabaseClient(TestMonitoringMixin, TestCase):
     @classmethod
     def setUpClass(cls):
@@ -425,7 +425,7 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
             )
 
 
-@tag("timeseries_client", "tsdb_influxdb")
+@tag("timeseries_client", "influxdb1")
 class TestDatabaseClientUdp(TestMonitoringMixin, TestCase):
     @classmethod
     def setUpClass(cls):

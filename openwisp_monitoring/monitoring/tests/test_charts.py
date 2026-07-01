@@ -351,7 +351,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
             )
 
 
-class _TestChartsBackendMixin(TestMonitoringMixin, TestCase):
+class TestChartsBackendMixin(TestMonitoringMixin, TestCase):
     expected_backend = None
 
     @classmethod
@@ -375,8 +375,8 @@ class _TestChartsBackendMixin(TestMonitoringMixin, TestCase):
         return c
 
 
-@tag("tsdb_influxdb")
-class TestChartsInfluxDB(_TestChartsBackendMixin):
+@tag("influxdb1")
+class TestChartsInfluxDB(TestChartsBackendMixin):
     expected_backend = "influxdb"
 
     def test_read_bad_query_message(self):
@@ -392,8 +392,8 @@ class TestChartsInfluxDB(_TestChartsBackendMixin):
         self.assertIsNone(c.json(time=1))
 
 
-@tag("tsdb_influxdb2")
-class TestChartsInfluxDB2(_TestChartsBackendMixin):
+@tag("influxdb2")
+class TestChartsInfluxDB2(TestChartsBackendMixin):
     expected_backend = "influxdb2"
 
     def test_read_bad_query_message(self):

@@ -118,7 +118,7 @@ jobs:
           fail-on-error: false
 
   influxdb2:
-    name: InfluxDB2 | Python==3.12 | django~=5.2.0
+    name: InfluxDB2 | Python==${{ matrix.python-version }} | ${{ matrix.django-version }}
     runs-on: ubuntu-24.04
 
     services:
@@ -127,13 +127,21 @@ jobs:
         ports:
           - 6379:6379
 
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.12"
+        django-version:
+          - django~=5.2.0
+
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Cache APT packages
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: /var/cache/apt/archives
           key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
@@ -145,10 +153,10 @@ jobs:
           echo 'set man-db/auto-update false' | sudo debconf-communicate >/dev/null
           sudo dpkg-reconfigure man-db
 
-      - name: Set up and Cache Python 3.12
+      - name: Set up and Cache Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
           cache: "pip"
           cache-dependency-path: |
             **/requirements*.txt
@@ -169,23 +177,34 @@ jobs:
           pip install -U pip wheel setuptools
           pip install -r requirements-test.txt
           pip install -U -I -e .
-          pip install -U django~=5.2.0
+          pip install -U ${{ matrix.django-version }}
           sudo npm install -g prettier
 
       - name: Start InfluxDB 2
         if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
         run: docker compose up -d influxdb2
 
-      - name: InfluxDB 2 tests
+      - name: Tests
         if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
         run: |
           ./runtests-influxdb2
+
+      - name: Upload Coverage
+        if: ${{ success() }}
+        uses: coverallsapp/github-action@v2
+        with:
+          parallel: true
+          format: cobertura
+          flag-name: influxdb2-python-${{ matrix.python-version }}-${{ matrix.django-version }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-error: false
 
   deploy:
     name: Deploy Docker Image
     runs-on: ubuntu-24.04
     needs:
       - build
+      - influxdb2
 
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
     steps:
@@ -205,7 +224,9 @@ jobs:
           docker push openwisp/openwisp-monitoring:develop
 
   coveralls:
-    needs: build
+    needs:
+      - build
+      - influxdb2
     runs-on: ubuntu-latest
     steps:
       - name: Coveralls Finished

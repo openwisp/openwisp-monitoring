@@ -12,6 +12,7 @@ from influxdb_client.client.exceptions import InfluxDBError
 from influxdb_client.client.write_api import SYNCHRONOUS
 from influxdb_client.domain import BucketRetentionRules
 
+from openwisp_monitoring.device import settings as device_settings
 from openwisp_monitoring.utils import retry
 
 from ...exceptions import TimeseriesWriteException
@@ -43,7 +44,7 @@ class QueryResultSet:
 
     def __init__(self, points):
         """
-        Initialize with a list of point dictionaries from InfluxDB 2.7
+        Initialize with a list of point dictionaries from InfluxDB 2.x
         Args:
             points: List of data point dictionaries with structure:
                    {"_measurement": str, "_field": str, "_value": any,
@@ -407,8 +408,6 @@ class DatabaseClient(BaseTimeseriesClient):
             self.create_database()
             return
         if bucket_name == self._get_bucket_name("short"):
-            from openwisp_monitoring.device import settings as device_settings
-
             self.create_or_alter_retention_policy(
                 "short", device_settings.SHORT_RETENTION_POLICY
             )

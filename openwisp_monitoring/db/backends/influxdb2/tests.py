@@ -47,7 +47,7 @@ Metric = load_model("monitoring", "Metric")
 Notification = load_model("openwisp_notifications", "Notification")
 
 
-@tag("timeseries_client", "tsdb_influxdb2")
+@tag("timeseries_client", "influxdb2")
 class TestInfluxDB2Client(TestCase):
     """Tests for InfluxDB 2.0 client."""
 
@@ -936,7 +936,7 @@ class TestInfluxDB2Client(TestCase):
         )
 
 
-@tag("timeseries_client", "tsdb_influxdb2")
+@tag("timeseries_client", "influxdb2")
 class TestInfluxDB2ClientIntegration(TestMonitoringMixin, TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1204,7 +1204,7 @@ class TestInfluxDB2ClientIntegration(TestMonitoringMixin, TestCase):
                 timeseries_db.write("test_write", {"value": 1})
 
 
-@tag("timeseries_client", "tsdb_influxdb2")
+@tag("timeseries_client", "influxdb2")
 class TestInfluxDB2CheckIntegration(
     AutoWifiClientCheck,
     AutoDataCollectedCheck,
