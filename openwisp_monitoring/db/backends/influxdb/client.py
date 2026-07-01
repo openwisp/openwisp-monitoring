@@ -18,11 +18,12 @@ from openwisp_monitoring.utils import retry
 
 from ...exceptions import TimeseriesWriteException
 from .. import TIMESERIES_DB
+from ..base import BaseTimeseriesClient
 
 logger = logging.getLogger(__name__)
 
 
-class DatabaseClient(object):
+class DatabaseClient(BaseTimeseriesClient):
     _AGGREGATE = [
         "COUNT",
         "DISTINCT",
@@ -54,6 +55,7 @@ class DatabaseClient(object):
     ]
     _FORBIDDEN = ["drop", "create", "delete", "alter", "into"]
     backend_name = "influxdb"
+    required_settings = ("BACKEND", "USER", "PASSWORD", "NAME", "HOST", "PORT")
     _OPERATORS = [
         "=",
         "!=",

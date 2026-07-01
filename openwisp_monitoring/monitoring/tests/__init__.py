@@ -9,7 +9,10 @@ from openwisp_users.tests.utils import TestOrganizationMixin
 
 from ...db import timeseries_db
 from ...db.backends import TIMESERIES_DB
+from ...device.utils import manage_short_retention_policy
 from ..configuration import (
+    DEFAULT_CHARTS,
+    DEFAULT_METRICS,
     register_chart,
     register_metric,
     unregister_chart,
@@ -91,7 +94,14 @@ charts = {
                 "SELECT {fields|SUM|/ 1} FROM {key} "
                 "WHERE time >= '{time}' AND content_type = "
                 "'{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            "influxdb2": (
+                'from(bucket: "{bucket}") |> range(start: {time_start}) '
+                '|> filter(fn: (r) => r._measurement == "{key}")'
+                "{content_type_filter}{object_id_filter}{field_filter}"
+                " |> sum()"
+                " |> map(fn: (r) => ({{r with _value: float(v: r._value)}}))"
+            ),
         },
     },
     "dummy": {
@@ -108,7 +118,7 @@ charts = {
         "description": "Bugged chart for testing purposes.",
         "unit": "bugs",
         "order": 999,
-        "query": {"influxdb": "BAD"},
+        "query": {"influxdb": "BAD", "influxdb2": "BAD"},
     },
     "default": {
         "type": "line",
@@ -120,7 +130,12 @@ charts = {
             "influxdb": (
                 "SELECT {field_name} FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            "influxdb2": (
+                'from(bucket: "{bucket}") |> range(start: {time_start}) '
+                '|> filter(fn: (r) => r._measurement == "{key}")'
+                "{content_type_filter}{object_id_filter}{field_filter}"
+            ),
         },
     },
     "multiple_test": {
@@ -133,7 +148,13 @@ charts = {
             "influxdb": (
                 "SELECT {field_name}, value2 FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            "influxdb2": (
+                'from(bucket: "{bucket}") |> range(start: {time_start}) '
+                '|> filter(fn: (r) => r._measurement == "{key}")'
+                "{content_type_filter}{object_id_filter}"
+                ' |> filter(fn: (r) => r._field == "{field_name}" or r._field == "value2")'
+            ),
         },
     },
     "group_by_tag": {
@@ -146,13 +167,28 @@ charts = {
             "influxdb": (
                 "SELECT CUMULATIVE_SUM(SUM({field_name})) FROM {key} WHERE time >= '{time}'"
                 " GROUP BY time(1d), metric_num"
-            )
+            ),
+            "influxdb2": (
+                'from(bucket: "{bucket}") |> range(start: {time_start}) '
+                '|> filter(fn: (r) => r._measurement == "{key}")'
+                ' |> filter(fn: (r) => r._field == "{field_name}")'
+                ' |> group(columns: ["metric_num"])'
+                " |> aggregateWindow(every: {window}, fn: sum, createEmpty: false)"
+                " |> cumulativeSum()"
+            ),
         },
         "summary_query": {
             "influxdb": (
                 "SELECT SUM({field_name}) FROM {key} WHERE time >= '{time}'"
                 " GROUP BY time(30d), metric_num"
-            )
+            ),
+            "influxdb2": (
+                'from(bucket: "{bucket}") |> range(start: {time_start}) '
+                '|> filter(fn: (r) => r._measurement == "{key}")'
+                ' |> filter(fn: (r) => r._field == "{field_name}")'
+                ' |> group(columns: ["metric_num"])'
+                " |> sum()"
+            ),
         },
     },
     "mean_test": {
@@ -165,7 +201,14 @@ charts = {
             "influxdb": (
                 "SELECT MEAN({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            "influxdb2": (
+                'from(bucket: "{bucket}") |> range(start: {time_start}) '
+                '|> filter(fn: (r) => r._measurement == "{key}")'
+                "{content_type_filter}{object_id_filter}{field_filter}"
+                " |> mean()"
+                ' |> duplicate(column: "_stop", as: "_time")'
+            ),
         },
     },
     "sum_test": {
@@ -178,7 +221,14 @@ charts = {
             "influxdb": (
                 "SELECT SUM({field_name}) AS {field_name} FROM {key} WHERE time >= '{time}' AND "
                 "content_type = '{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            "influxdb2": (
+                'from(bucket: "{bucket}") |> range(start: {time_start}) '
+                '|> filter(fn: (r) => r._measurement == "{key}")'
+                "{content_type_filter}{object_id_filter}{field_filter}"
+                " |> sum()"
+                ' |> duplicate(column: "_stop", as: "_time")'
+            ),
         },
     },
     "top_fields_mean": {
@@ -192,7 +242,13 @@ charts = {
                 "SELECT {fields|MEAN} FROM {key} "
                 "WHERE time >= '{time}' AND content_type = "
                 "'{content_type}' AND object_id = '{object_id}'"
-            )
+            ),
+            "influxdb2": (
+                'from(bucket: "{bucket}") |> range(start: {time_start}) '
+                '|> filter(fn: (r) => r._measurement == "{key}")'
+                "{content_type_filter}{object_id_filter}{field_filter}"
+                " |> mean()"
+            ),
         },
     },
 }
@@ -201,15 +257,51 @@ charts = {
 class TestMonitoringMixin(TestOrganizationMixin):
     ORIGINAL_DB = TIMESERIES_DB["NAME"]
     TEST_DB = f"{ORIGINAL_DB}_test"
+    _TIMESERIES_CLIENT_ATTRS = (
+        "db",
+        "dbs",
+        "_write_api",
+        "_query_api",
+        "_delete_api",
+        "use_udp",
+    )
+
+    @classmethod
+    def _unregister_test_metrics(cls):
+        for key in metrics.keys():
+            if key in DEFAULT_METRICS:
+                unregister_metric(key)
+
+    @classmethod
+    def _unregister_test_charts(cls):
+        for key in charts.keys():
+            if key in DEFAULT_CHARTS:
+                unregister_chart(key)
+
+    @classmethod
+    def _reset_timeseries_client_state(cls):
+        # The global timeseries client caches backend handles lazily, so test
+        # classes must reset those cached objects whenever the test database
+        # lifecycle changes.
+        timeseries_db.db_name = cls.TEST_DB
+        for attr in cls._TIMESERIES_CLIENT_ATTRS:
+            timeseries_db.__dict__.pop(attr, None)
+
+    @classmethod
+    def _recreate_timeseries_storage(cls):
+        cls._reset_timeseries_client_state()
+        timeseries_db.drop_database()
+        cls._reset_timeseries_client_state()
+        timeseries_db.create_database()
+        manage_short_retention_policy()
 
     @classmethod
     def setUpClass(cls):
         # By default timeseries_db.db shall connect to the database
         # defined in settings when apps are loaded. We don't want that while testing
-        timeseries_db.db_name = cls.TEST_DB
-        del timeseries_db.db
-        del timeseries_db.dbs
-        timeseries_db.create_database()
+        cls._recreate_timeseries_storage()
+        cls._unregister_test_metrics()
+        cls._unregister_test_charts()
         for key, value in metrics.items():
             register_metric(key, value)
         for key, value in charts.items():
@@ -219,15 +311,16 @@ class TestMonitoringMixin(TestOrganizationMixin):
 
     @classmethod
     def tearDownClass(cls):
+        cls._reset_timeseries_client_state()
         timeseries_db.drop_database()
-        for metric_name in metrics.keys():
-            unregister_metric(metric_name)
-        for key in charts.keys():
-            unregister_chart(key)
+        cls._reset_timeseries_client_state()
+        cls._unregister_test_metrics()
+        cls._unregister_test_charts()
         cache.clear()
         super().tearDownClass()
 
     def tearDown(self):
+        cache.clear()
         timeseries_db.delete_metric_data()
         super().tearDown()
 
@@ -269,14 +362,44 @@ class TestMonitoringMixin(TestOrganizationMixin):
         c.save()
         return c
 
+    # UDP writes are flushed by InfluxDB in the background, so a point may not
+    # be readable immediately after being written. Polling is safer than a fixed
+    # sleep under CI load.
+    _udp_read_max_retries = 15
+    _udp_read_retry_delay = 0.2
+
     @property
     def _is_timeseries_udp_writes(self):
         return TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False)
 
+    @staticmethod
+    def _is_timeseries_read_empty(result):
+        # chart reads return a dict ("traces"/"x"), metric reads return a list
+        if isinstance(result, dict):
+            return not result.get("traces") and not result.get("x")
+        return not result
+
     def _read_chart_or_metric(self, obj, *args, **kwargs):
-        if self._is_timeseries_udp_writes:
-            time.sleep(0.12)
-        return obj.read(*args, **kwargs)
+        # Some callers expect an empty result, for example after deleting a
+        # metric. In those cases, return immediately instead of polling.
+        allow_empty = kwargs.pop("allow_empty", False)
+        if not self._is_timeseries_udp_writes:
+            return obj.read(*args, **kwargs)
+        result = obj.read(*args, **kwargs)
+        if allow_empty:
+            return result
+        # A UDP batch can become visible in pieces. Wait until two consecutive
+        # non-empty reads match, so partial results and trailing null values do
+        # not make the test proceed too early.
+        retries = 0
+        while retries < self._udp_read_max_retries:
+            time.sleep(self._udp_read_retry_delay)
+            new_result = obj.read(*args, **kwargs)
+            if not self._is_timeseries_read_empty(new_result) and new_result == result:
+                return new_result
+            result = new_result
+            retries += 1
+        return result
 
     def _read_metric(self, metric, *args, **kwargs):
         return self._read_chart_or_metric(metric, *args, **kwargs)
@@ -287,4 +410,6 @@ class TestMonitoringMixin(TestOrganizationMixin):
     def _write_metric(self, metric, *args, **kwargs):
         metric.write(*args, **kwargs)
         if self._is_timeseries_udp_writes:
-            time.sleep(0.12)
+            # Wait for InfluxDB to expose the point instead of relying on a
+            # fixed sleep, which is unreliable under load.
+            self._read_chart_or_metric(metric)

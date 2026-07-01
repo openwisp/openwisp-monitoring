@@ -6,7 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.test import TestCase
+from django.test import TestCase, tag
 from django.utils import timezone
 from freezegun import freeze_time
 from swapper import load_model
@@ -374,6 +374,9 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertIsNone(alert_s.custom_tolerance)
 
     @patch.object(app_settings, "TOLERANCE_INTERVAL", 300)
+    # The tolerance check runs inside Metric.write() and reads the new point
+    # immediately, which is unreliable with UDP writes.
+    @tag("flaky_with_udp_writes")
     def test_tolerance(self):
         self._create_admin()
         m = self._create_general_metric(name="load")
@@ -438,7 +441,7 @@ class TestModels(TestMonitoringMixin, TestCase):
         self.assertNotEqual(self._read_metric(metric1), [])
         self.assertNotEqual(self._read_metric(metric2), [])
         metric1.delete()
-        self.assertEqual(self._read_metric(metric1), [])
+        self.assertEqual(self._read_metric(metric1, allow_empty=True), [])
         # Only the timeseries data related to the deleted metric
         # should be deleted
         self.assertNotEqual(self._read_metric(metric2), [])

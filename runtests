@@ -1,12 +1,10 @@
 #!/bin/bash
 set -e
 
-coverage run runtests.py
-
-# the next test runs focus on specific backend features, therefore
-# we can skip selenium tests to improve speed and test consistency
-SAMPLE_APP=1 coverage run runtests.py --exclude-tag=selenium_tests
-TIMESERIES_UDP=1 coverage run runtests.py --exclude-tag=selenium_tests
+# full InfluxDB1 coverage lives in runtests-influxdb
+# full InfluxDB2 coverage lives in runtests-influxdb2
+./runtests-influxdb
+./runtests-influxdb2
 
 coverage combine
 coverage xml

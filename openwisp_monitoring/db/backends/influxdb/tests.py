@@ -1,4 +1,6 @@
+import os
 from datetime import datetime, timedelta
+from unittest import SkipTest
 from unittest.mock import patch
 
 from celery.exceptions import Retry
@@ -25,6 +27,7 @@ from openwisp_monitoring.monitoring.tests import TestMonitoringMixin
 from openwisp_monitoring.settings import MONITORING_TIMESERIES_RETRY_OPTIONS
 from openwisp_utils.tests import capture_stderr
 
+from ... import device_data_query
 from ...exceptions import TimeseriesWriteException
 from .. import timeseries_db
 
@@ -32,8 +35,14 @@ Chart = load_model("monitoring", "Chart")
 Notification = load_model("openwisp_notifications", "Notification")
 
 
-@tag("timeseries_client")
+@tag("timeseries_client", "influxdb1")
 class TestDatabaseClient(TestMonitoringMixin, TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if os.environ.get("TIMESERIES_BACKEND", "influxdb") != "influxdb":
+            raise SkipTest('Set TIMESERIES_BACKEND="influxdb" to run InfluxDB tests.')
+        super().setUpClass()
+
     def test_forbidden_queries(self):
         queries = [
             "DROP DATABASE openwisp2",
@@ -253,10 +262,22 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         )
         self.assertEqual(c.query, expected)
         self.assertEqual(
-            "".join(timeseries_db.queries.default_chart_query[0:2]), c._default_query
+            timeseries_db.get_default_chart_query(has_object_scope=True),
+            c._default_query,
         )
         c.metric.object_id = None
-        self.assertEqual(timeseries_db.queries.default_chart_query[0], c._default_query)
+        self.assertEqual(
+            timeseries_db.get_default_chart_query(has_object_scope=False),
+            c._default_query,
+        )
+
+    def test_device_data_query_uses_format_contract(self):
+        query = device_data_query.format(SHORT_RP, "device_data", "device-id")
+        self.assertEqual(
+            query,
+            "SELECT data FROM short.device_data WHERE pk = 'device-id' "
+            "ORDER BY time DESC LIMIT 1",
+        )
 
     def test_read_order(self):
         m = self._create_general_metric(name="dummy")
@@ -404,7 +425,14 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
             )
 
 
+@tag("timeseries_client", "influxdb1")
 class TestDatabaseClientUdp(TestMonitoringMixin, TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if os.environ.get("TIMESERIES_BACKEND", "influxdb") != "influxdb":
+            raise SkipTest('Set TIMESERIES_BACKEND="influxdb" to run InfluxDB tests.')
+        super().setUpClass()
+
     def test_exceed_udp_packet_limit(self):
         # When using UDP to write data to InfluxDB, writing
         # huge data that exceeds UDP packet limit should not raise

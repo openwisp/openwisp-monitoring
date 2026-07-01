@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.test import TestCase
+from django.test import TestCase, tag
 from django.utils.timezone import now, timedelta
 from freezegun import freeze_time
 from swapper import load_model
@@ -563,7 +563,13 @@ class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
     def test_device_data_cache_set(self):
         dd = self.create_test_data(no_resources=True)
         cache_key = get_device_cache_key(dd, context="current-data")
-        cache_data = cache.get(cache_key)[0]["data"]
+        cached_points = cache.get(cache_key)
+        self.assertIsNotNone(
+            cached_points,
+            f'Missing "{cache_key}" cache entry after device data write '
+            f"using backend {timeseries_db.backend_name}",
+        )
+        cache_data = cached_points[0]["data"]
         self.assertEqual(json.loads(cache_data), dd.data)
         with patch.object(timeseries_db, "query", side_effect=Exception):
             dd.refresh_from_db()
@@ -747,6 +753,7 @@ class TestDeviceMonitoring(
         load.check_threshold(80)
         self.assertEqual(dm.status, "ok")
 
+    @patch("openwisp_monitoring.device.settings.AUTO_CLEAR_MANAGEMENT_IP", True)
     @patch.object(
         app_settings,
         "CRITICAL_DEVICE_METRICS",
@@ -890,7 +897,7 @@ class TestDeviceMonitoring(
         dm1.device.delete(check_deactivated=False)
         # Only the metric related to the deleted device
         # is deleted
-        self.assertEqual(self._read_metric(ping1), [])
+        self.assertEqual(self._read_metric(ping1, allow_empty=True), [])
         self.assertNotEqual(self._read_metric(ping2), [])
 
     def test_handle_disabled_organization(self):
@@ -1114,6 +1121,9 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         self.assertEqual(WifiSession.objects.count(), 0)
 
     @patch.object(monitoring_settings, "TOLERANCE_INTERVAL", 60)
+    # Closing the session runs the wifi clients check, which reads the new
+    # points immediately. That is unreliable with UDP writes.
+    @tag("flaky_with_udp_writes")
     def test_device_offline_close_session(self):
         start_time = now()
         device_monitoring = self._create_device_monitoring()

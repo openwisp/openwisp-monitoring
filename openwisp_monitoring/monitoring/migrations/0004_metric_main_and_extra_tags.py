@@ -27,6 +27,7 @@ class Migration(migrations.Migration):
                 blank=True,
                 default=dict,
                 verbose_name="extra tags",
+                db_index=True,
             ),
         ),
         migrations.AlterUniqueTogether(
