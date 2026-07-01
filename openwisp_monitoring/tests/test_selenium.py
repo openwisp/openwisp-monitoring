@@ -44,7 +44,6 @@ Group = load_model("openwisp_users", "Group")
 
 
 class SeleniumTestMixin(BaseSeleniumTestMixin):
-
     @classmethod
     def setUpClass(cls):
         """
@@ -670,6 +669,14 @@ class TestDashboardMap(
             "#floorplan-navigation .right-arrow",
             timeout=5,
         ).click()
+        # Switching floors exits fullscreen on the previous floor. Wait until
+        # the class is removed before asserting.
+        WebDriverWait(self.web_driver, 5).until(
+            lambda driver: "leaflet-fullscreen-on"
+            not in driver.find_element(
+                By.CSS_SELECTOR, "#floor-content-1 .leaflet-container"
+            ).get_attribute("class")
+        )
         container = self.find_element(
             By.CSS_SELECTOR, "#floor-content-1 .leaflet-container", wait_for="presence"
         )
@@ -1133,7 +1140,7 @@ class TestDashboardMap(
                 "return decodeURIComponent(window.location.hash);"
             )
             expected_hash = (
-                f"#id={mapId}&nodeId={location.id};" f"id={quote_plus(indoorMapId1)}"
+                f"#id={mapId}&nodeId={location.id};id={quote_plus(indoorMapId1)}"
             )
             self.assertIn(expected_hash, current_hash)
 
@@ -1187,7 +1194,7 @@ class TestDashboardMap(
                 "return decodeURIComponent(window.location.hash);"
             )
             expected_hash = (
-                f"#id={mapId}&nodeId={location.id};" f"id={quote_plus(indoorMapId1)}"
+                f"#id={mapId}&nodeId={location.id};id={quote_plus(indoorMapId1)}"
             )
             self.assertIn(expected_hash, current_hash)
 
@@ -1213,7 +1220,7 @@ class TestDashboardMap(
                 "return decodeURIComponent(window.location.hash);"
             )
             expected_hash = (
-                f"#id={mapId}&nodeId={location.id};" f"id={quote_plus(indoorMapId2)}"
+                f"#id={mapId}&nodeId={location.id};id={quote_plus(indoorMapId2)}"
             )
             self.assertIn(expected_hash, current_hash)
             try:
@@ -1263,7 +1270,7 @@ class TestDashboardMap(
                 "return decodeURIComponent(window.location.hash);"
             )
             expected_hash = (
-                f"#id={mapId}&nodeId={location.id};" f"id={quote_plus(indoorMapId2)}"
+                f"#id={mapId}&nodeId={location.id};id={quote_plus(indoorMapId2)}"
             )
             self.assertIn(expected_hash, current_hash)
 
@@ -1296,3 +1303,149 @@ class TestDashboardMap(
                 self.web_driver.switch_to.window(tab)
                 self.web_driver.close()
             self.web_driver.switch_to.window(primary_tab)
+
+
+@tag("selenium_tests")
+class TestDeviceAdmin(
+    SeleniumTestMixin, TestDeviceMonitoringMixin, StaticLiveServerTestCase
+):
+    config_app_label = "config"
+
+    @patch("openwisp_monitoring.device.admin.MONITORING_API_BASEURL", None)
+    def test_device_issues_accordion_interaction(self):
+        self.create_test_data()
+        device = Device.objects.first()
+        # Ensure device has an unhealthy metric to make the issues accordion visible
+        disk_metric = Metric.objects.filter(
+            configuration="disk", object_id=device.id
+        ).first()
+        self.assertNotEqual(disk_metric, None)
+        disk_metric.write(disk_metric.alertsettings.threshold + 0.1)
+        disk_metric.refresh_from_db()
+        self.assertEqual(disk_metric.is_healthy, False)
+        dm = device.monitoring
+        self.assertEqual(dm.status, "problem")
+        self.login()
+        self.open(reverse(f"admin:{self.config_app_label}_device_changelist"))
+
+        row = self.find_element(
+            By.XPATH, f"//tr[.//a[contains(@href, '/{device.id}/change/')]]"
+        )
+        with self.subTest("expand accordion and verify metric name"):
+            toggle = row.find_element(By.CSS_SELECTOR, ".issues-toggle")
+            self.assertEqual(toggle.text, "show issues")
+            toggle.click()
+            self.wait_for_visibility(
+                By.CSS_SELECTOR,
+                ".device-issues-accordion.expanded .issues-content li",
+                timeout=5,
+            )
+            content = row.find_element(By.CSS_SELECTOR, ".issues-content")
+            self.assertIn("Disk usage", content.text)
+
+        with self.subTest("collapse accordion"):
+            toggle = row.find_element(By.CSS_SELECTOR, ".issues-toggle")
+            self.assertEqual(toggle.text, "hide issues")
+            toggle.click()
+            self.wait_for_invisibility(
+                By.CSS_SELECTOR, ".device-issues-accordion.expanded", timeout=5
+            )
+
+        with self.subTest("re-expand accordion with cached DOM content"):
+            toggle = row.find_element(By.CSS_SELECTOR, ".issues-toggle")
+            self.assertEqual(toggle.text, "show issues")
+            toggle.click()
+            self.wait_for_visibility(
+                By.CSS_SELECTOR,
+                ".device-issues-accordion.expanded .issues-content li",
+                timeout=5,
+            )
+            content = row.find_element(By.CSS_SELECTOR, ".issues-content")
+            self.assertIn("Disk usage", content.text)
+
+    def test_unhealthy_metric_sub_filter(self):
+        org = self._get_org()
+        device_ok = self._create_device(
+            organization=org,
+            name="ok-device",
+            mac_address="00:11:22:33:44:66",
+        )
+        dm_ok = device_ok.monitoring
+        dm_ok.status = "ok"
+        dm_ok.save()
+        device_disk = self._create_device(
+            organization=org,
+            name="disk-problem-device",
+            mac_address="00:11:22:33:44:67",
+        )
+        device_cpu = self._create_device(
+            organization=org,
+            name="cpu-problem-device",
+            mac_address="00:11:22:33:44:68",
+        )
+        disk_metric = self._create_object_metric(
+            content_object=device_disk,
+            name="Disk usage",
+            key="disk",
+            is_healthy=False,
+            configuration="disk",
+        )
+        self._create_alert_settings(
+            metric=disk_metric,
+            custom_threshold=90,
+            custom_tolerance=0,
+        )
+        disk_metric.write(91)
+        device_disk.monitoring.refresh_from_db()
+        self.assertEqual(device_disk.monitoring.status, "problem")
+
+        cpu_metric = self._create_object_metric(
+            content_object=device_cpu,
+            name="CPU Usage",
+            key="cpu",
+            configuration="cpu",
+            is_healthy=False,
+        )
+        self._create_alert_settings(
+            metric=cpu_metric,
+            custom_threshold=90,
+            custom_tolerance=0,
+        )
+        cpu_metric.write(91)
+        device_cpu.monitoring.refresh_from_db()
+        self.assertEqual(device_cpu.monitoring.status, "problem")
+
+        self.login()
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        self.open(url)
+        self.wait_for_visibility(By.CSS_SELECTOR, "#result_list", timeout=5)
+
+        with self.subTest("apply health status filter to problem"):
+            self.find_element(By.CSS_SELECTOR, "#health-status > div").click()
+            self.find_element(
+                By.CSS_SELECTOR, '#choices-health-status a[title="problem"]'
+            ).click()
+            self.find_element(By.CSS_SELECTOR, "#ow-apply-filter").click()
+            self.wait_for_visibility(By.CSS_SELECTOR, "#result_list", timeout=5)
+            rows = self.find_elements(By.CSS_SELECTOR, "#result_list tbody tr")
+            row_texts = " ".join(row.text for row in rows)
+            self.assertIn("disk-problem-device", row_texts)
+            self.assertIn("cpu-problem-device", row_texts)
+            self.assertNotIn("ok-device", row_texts)
+
+        with self.subTest("apply disk usage sub-filter"):
+            self.wait_for_visibility(
+                By.CSS_SELECTOR, "#problematic-metric:not(.hidden)", timeout=5
+            )
+            self.find_element(By.CSS_SELECTOR, "#problematic-metric > div").click()
+            self.find_element(
+                By.CSS_SELECTOR,
+                '#choices-problematic-metric a[title="Disk usage"]',
+            ).click()
+            self.find_element(By.CSS_SELECTOR, "#ow-apply-filter").click()
+            self.wait_for_visibility(By.CSS_SELECTOR, "#result_list", timeout=10)
+            rows = self.find_elements(By.CSS_SELECTOR, "#result_list tbody tr")
+            row_texts = " ".join(row.text for row in rows)
+            self.assertIn("disk-problem-device", row_texts)
+            self.assertNotIn("cpu-problem-device", row_texts)
+            self.assertNotIn("ok-device", row_texts)

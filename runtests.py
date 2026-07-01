@@ -21,6 +21,10 @@ if __name__ == "__main__":
     args.extend(base_args)
     if os.environ.get("TIMESERIES_UDP", False):
         args.extend(["--exclude-tag", "timeseries_client"])
+        # These tests read immediately after writing, sometimes inside product
+        # code such as Metric.write(). That is unreliable with UDP writes, and
+        # the same behavior is already covered by the TCP test runs.
+        args.extend(["--exclude-tag", "flaky_with_udp_writes"])
     # Keep sys.argv aligned with the final Django command so settings that
     # inspect argv during import can detect test mode correctly.
     sys.argv = args[:]
