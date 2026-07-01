@@ -77,12 +77,24 @@ Install development dependencies:
     pip install -r requirements-test.txt
     npm install -g prettier
 
-If you are using InfluxDB 2.0, export the following environment variables
+If you are using InfluxDB 2.0, export the following environment variable
 before running migrations, celery, or the development server:
 
 .. code-block:: shell
 
     export TIMESERIES_BACKEND=influxdb2
+
+If you are using the ``influxdb2`` and ``redis`` containers provided in
+this repository's ``docker-compose.yml``, no additional variables are
+needed because the default values in ``tests/openwisp2/settings.py``
+already match that setup.
+
+If you are not using the provided containers, or if you changed ports or
+credentials, you can override the defaults with:
+
+.. code-block:: shell
+
+    # Optional overrides for non-default setups
     export INFLUXDB2_HOST=localhost
     export INFLUXDB2_PORT=8087
     export INFLUXDB2_ORG=openwisp
