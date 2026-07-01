@@ -1,9 +1,10 @@
 # Manually created
 from django.db import migrations
 
+from openwisp_monitoring.db import timeseries_db
+
 
 def forward_migration(apps, schema_editor):
-    from openwisp_monitoring.db import timeseries_db
 
     if timeseries_db.backend_name != "influxdb":
         return
