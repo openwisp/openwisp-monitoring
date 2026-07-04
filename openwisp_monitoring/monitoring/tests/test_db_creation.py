@@ -9,7 +9,7 @@ from requests.exceptions import ConnectionError
 from openwisp_monitoring.settings import MONITORING_TIMESERIES_RETRY_OPTIONS
 
 
-class _TestDatabaseRetryMixin(TestCase):
+class TestDatabaseRetryMixin(TestCase):
     app = "monitoring"
     expected_backend = None
 
@@ -37,7 +37,7 @@ class _TestDatabaseRetryMixin(TestCase):
 
 
 @tag("influxdb1")
-class TestDatabaseInfluxDB(_TestDatabaseRetryMixin):
+class TestDatabaseInfluxDB(TestDatabaseRetryMixin):
     expected_backend = "influxdb"
 
     @patch("logging.Logger.info")
@@ -48,7 +48,7 @@ class TestDatabaseInfluxDB(_TestDatabaseRetryMixin):
 
 
 @tag("influxdb2")
-class TestDatabaseInfluxDB2(_TestDatabaseRetryMixin):
+class TestDatabaseInfluxDB2(TestDatabaseRetryMixin):
     expected_backend = "influxdb2"
 
     @patch("logging.Logger.info")
