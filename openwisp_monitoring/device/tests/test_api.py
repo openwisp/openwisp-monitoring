@@ -277,11 +277,12 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         # creation of resources metrics can be avoided here as it is not involved
         # this speeds up the test by reducing requests made
         del data2["resources"]
-        response = self._post_data(device.id, device.key, data2)
-        self.assertEqual(response.status_code, 200)
-        # Repeat the write to make sure location tags remain stable for
-        # subsequent metric updates too.
-        response = self._post_data(device.id, device.key, data2)
+        additional_queries = 0 if self._is_timeseries_udp_writes else 1
+        with self.assertNumQueries(21 + additional_queries):
+            response = self._post_data(device.id, device.key, data2)
+        # Ensure cache is working
+        with self.assertNumQueries(13 + additional_queries):
+            response = self._post_data(device.id, device.key, data2)
         self.assertEqual(response.status_code, 200)
         # Add 1 for general metric and chart
         self.assertEqual(self.metric_queryset.count(), 4)
@@ -369,7 +370,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.create_test_data(no_resources=True)
         device = self.device_model.objects.first()
         data = {"type": "DeviceMonitoring"}
-        response = self._post_data(device.id, device.key, data)
+        with self.assertNumQueries(2):
+            response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 200)
 
         # Deactivating the device will invalidate the cache.
@@ -377,12 +379,14 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         device.deactivate()
         response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
-        response = self._post_data(device.id, device.key, data)
+        with self.assertNumQueries(1):
+            response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 404)
 
         # Re-activating the device will allow POST requests again.
         device.activate()
-        response = self._post_data(device.id, device.key, data)
+        with self.assertNumQueries(4):
+            response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 200)
 
     def test_garbage_wireless_clients(self):
@@ -415,12 +419,14 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     def test_get_device_metrics_200(self):
         dd = self.create_test_data()
         d = self.device_model.objects.get(pk=dd.pk)
-        r = self.client.get(self._url(d.pk.hex, d.key))
-        r = self.client.get(self._url(d.pk.hex, d.key))
+        with self.assertNumQueries(17):
+            r = self.client.get(self._url(d.pk, d.key))
+        with self.assertNumQueries(16):
+            r = self.client.get(self._url(d.pk, d.key))
         self.assertEqual(r.status_code, 200)
 
         with self.subTest("Test device metrics 200 without the device key"):
-            r1 = self.client.get(self._url(d.pk.hex))
+            r1 = self.client.get(self._url(d.pk))
             self.assertEqual(r1.status_code, 200)
             for key in self._RESPONSE_KEYS:
                 self.assertIn(key, r.data.keys())

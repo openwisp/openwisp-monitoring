@@ -1,5 +1,4 @@
 from datetime import datetime
-from time import sleep
 
 from django.utils import timezone
 from swapper import load_model
@@ -84,21 +83,17 @@ class WifiClients(BaseCheck):
         return True
 
     def _get_wifi_clients_count(self, time_interval):
-        read_options = {
-            "key": "wifi_clients",
-            "fields": ["clients"],
-            "distinct_fields": ["clients"],
-            "count_fields": ["clients"],
-            "tags": {
+        values = timeseries_db.read(
+            key="wifi_clients",
+            fields=["clients"],
+            distinct_fields=["clients"],
+            count_fields=["clients"],
+            tags={
                 "content_type": self.related_object._meta.label_lower,
                 "object_id": str(self.related_object.pk),
             },
-            "since": (timezone.localtime() - timezone.timedelta(minutes=time_interval)),
-        }
-        values = timeseries_db.read(**read_options)
-        if not values and timeseries_db.use_udp:
-            sleep(0.12)
-            values = timeseries_db.read(**read_options)
+            since=(timezone.localtime() - timezone.timedelta(minutes=time_interval)),
+        )
         if not values:
             result = 0
         else:

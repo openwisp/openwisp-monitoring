@@ -13,11 +13,11 @@ if __name__ == "__main__":
     base_args = sys.argv[1:]
     args = [sys.argv[0], "test"]
     has_test_labels = any(not arg.startswith("-") for arg in base_args)
+    default_target = (
+        "openwisp2" if os.environ.get("SAMPLE_APP", False) else "openwisp_monitoring"
+    )
     if not has_test_labels:
-        if not os.environ.get("SAMPLE_APP", False):
-            args.append("openwisp_monitoring")
-        else:
-            args.append("openwisp2")
+        args.append(default_target)
     args.extend(base_args)
     if os.environ.get("TIMESERIES_UDP", False):
         args.extend(["--exclude-tag", "timeseries_client"])

@@ -1,5 +1,4 @@
 import json
-import time as time_module
 from copy import deepcopy
 
 from django.test import TestCase, TransactionTestCase
@@ -44,10 +43,7 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
             time = now().utcnow().strftime("%d-%m-%Y_%H:%M:%S.%f")
         url = self._url(id, key, time)
         netjson = json.dumps(data)
-        response = self.client.post(url, netjson, content_type="application/json")
-        if self._is_timeseries_udp_writes:
-            time_module.sleep(0.12)
-        return response
+        return self.client.post(url, netjson, content_type="application/json")
 
     def _create_device_monitoring(self):
         d = self._create_device(organization=self._create_org())

@@ -45,7 +45,6 @@ def load_backend(backend_name=TIMESERIES_DB["BACKEND"], config=None):
                 f"{BUILTIN_BACKENDS}"
             ) from e
         raise
-
     client_class = getattr(backend_module, "DatabaseClient", None)
     if not isinstance(client_class, type) or not issubclass(
         client_class, BaseTimeseriesClient
@@ -61,7 +60,6 @@ def load_backend(backend_name=TIMESERIES_DB["BACKEND"], config=None):
         raise ImproperlyConfigured(
             f'"{e}" field is not declared in TIMESERIES_DATABASE'
         ) from e
-
     queries = getattr(backend_module, "queries", None)
     if not isinstance(queries, BackendQueryBundle):
         raise ImproperlyConfigured(

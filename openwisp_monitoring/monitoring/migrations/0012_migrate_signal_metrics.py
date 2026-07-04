@@ -4,8 +4,6 @@ import logging
 
 from django.db import migrations
 
-from openwisp_monitoring.db import timeseries_db
-
 from .influxdb.influxdb_alter_structure_0006 import (
     update_metric_timeseries_structure_forward_migration,
     update_metric_timeseries_structure_reverse_migration,
@@ -18,10 +16,6 @@ logger = logging.getLogger(__name__)
 
 def forward_migration(apps, schema_editor):
     update_metric_timeseries_structure_forward_migration(apps, schema_editor)
-
-    if timeseries_db.backend_name != "influxdb":
-        return
-
     from ..tasks import migrate_timeseries_database
 
     migrate_timeseries_database.delay()

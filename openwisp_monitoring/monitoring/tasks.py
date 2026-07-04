@@ -104,6 +104,9 @@ def migrate_timeseries_database():
 
     To be removed in a future release.
     """
+    if timeseries_db.backend_name != "influxdb":
+        return
+
     from .migrations.influxdb.influxdb_alter_structure_0006 import (
         migrate_influxdb_structure,
     )
