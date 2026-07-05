@@ -1,6 +1,4 @@
-import re
 from importlib import import_module
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -12,6 +10,7 @@ from openwisp_monitoring.db.backends.base import (
     BackendQueryBundle,
     BaseTimeseriesClient,
 )
+from openwisp_monitoring.db.backends.influxdb2.client import DatabaseClient
 from openwisp_monitoring.monitoring import configuration
 
 
@@ -91,8 +90,16 @@ class DummyTimeseriesClient(BaseTimeseriesClient):
 
 
 def _get_chart_keys_from_configuration():
-    source = Path(configuration.__file__).read_text()
-    return set(re.findall(r'chart_query\["([^"]+)"\]', source))
+    chart_query_keys = {
+        id(query): key for key, query in configuration.chart_query.items()
+    }
+    required_keys = set()
+    for metric in configuration.DEFAULT_METRICS.values():
+        for chart_config in metric.get("charts", {}).values():
+            query_key = chart_query_keys.get(id(chart_config.get("query")))
+            if query_key:
+                required_keys.add(query_key)
+    return required_keys
 
 
 class TestBackendContract(SimpleTestCase):
@@ -139,6 +146,30 @@ class TestBackendContract(SimpleTestCase):
                         set(backend_module.queries.chart_query.keys())
                     )
                 )
+
+    def test_backends_reset_their_cached_state(self):
+        backend_cached_attrs = {
+            "openwisp_monitoring.db.backends.influxdb": ("db", "dbs", "use_udp"),
+            "openwisp_monitoring.db.backends.influxdb2": (
+                "db",
+                "_write_api",
+                "_query_api",
+                "_delete_api",
+                "use_udp",
+            ),
+        }
+        for backend_path, attrs in backend_cached_attrs.items():
+            with self.subTest(backend=backend_path):
+                backend_module = import_module(backend_path)
+                client = backend_module.DatabaseClient(db_name="initial-db")
+                for attr in attrs:
+                    client.__dict__[attr] = object()
+
+                client.reset(db_name="reset-db")
+
+                self.assertEqual(client.db_name, "reset-db")
+                for attr in attrs:
+                    self.assertNotIn(attr, client.__dict__)
 
 
 class TestBackendLoader(SimpleTestCase):
@@ -230,3 +261,44 @@ class TestBackendLoader(SimpleTestCase):
                 config={"BACKEND": "tests.dummy_backend", "NAME": "openwisp2"},
             )
         self.assertIs(loaded, backend_module)
+
+
+class TestInfluxDB2ClientURL(SimpleTestCase):
+    base_config = {
+        "BACKEND": "openwisp_monitoring.db.backends.influxdb2",
+        "TOKEN": "token",
+        "NAME": "openwisp2",
+        "ORG": "openwisp",
+        "HOST": "localhost",
+        "PORT": "8086",
+    }
+
+    @patch.dict(
+        "openwisp_monitoring.db.backends.influxdb2.client.TIMESERIES_DB",
+        base_config,
+        clear=True,
+    )
+    @patch("openwisp_monitoring.db.backends.influxdb2.client.InfluxDBClient")
+    def test_db_uses_http_fallback_url(self, mock_client):
+        client = DatabaseClient()
+        client.db
+        mock_client.assert_called_once_with(
+            url="http://localhost:8086", token="token", org="openwisp"
+        )
+
+    @patch.dict(
+        "openwisp_monitoring.db.backends.influxdb2.client.TIMESERIES_DB",
+        {**base_config, "URL": "http://influxdb.example.com:8086"},
+        clear=True,
+    )
+    @patch("openwisp_monitoring.db.backends.influxdb2.client.logger.warning")
+    @patch("openwisp_monitoring.db.backends.influxdb2.client.InfluxDBClient")
+    def test_db_warns_for_explicit_insecure_http_url(self, mock_client, mocked_warning):
+        client = DatabaseClient()
+        client.db
+        mock_client.assert_called_once_with(
+            url="http://influxdb.example.com:8086",
+            token="token",
+            org="openwisp",
+        )
+        mocked_warning.assert_called_once()
