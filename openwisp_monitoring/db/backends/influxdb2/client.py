@@ -279,10 +279,13 @@ class DatabaseClient(BaseTimeseriesClient):
         try:
             bucket = api.find_bucket_by_name(bucket_name)
         except self.client_error as exception:
-            logger.warning(
-                f'Could not inspect InfluxDB2 bucket "{bucket_name}": {exception}'
-            )
-            return
+            if self._is_bucket_not_found(exception):
+                bucket = None
+            else:
+                logger.warning(
+                    f'Could not inspect InfluxDB2 bucket "{bucket_name}": {exception}'
+                )
+                raise
         if not bucket:
             api.create_bucket(
                 bucket_name=bucket_name,
@@ -299,7 +302,7 @@ class DatabaseClient(BaseTimeseriesClient):
             api.update_bucket(bucket=bucket)
         except self.client_error as exception:
             logger.warning(f"Could not update InfluxDB2 bucket retention: {exception}")
-            return
+            raise
         logger.debug(
             f'Created/updated InfluxDB2 bucket "{bucket_name}" for retention policy '
             f'"{name}" with duration {duration}'
@@ -326,7 +329,7 @@ class DatabaseClient(BaseTimeseriesClient):
                 f'Invalid operator "{op}" passed.\n'
                 f"Valid operators are: {', '.join(self._OPERATORS)}"
             )
-        return op
+        return "==" if op == "=" else op
 
     @staticmethod
     def _escape_flux_string(value):

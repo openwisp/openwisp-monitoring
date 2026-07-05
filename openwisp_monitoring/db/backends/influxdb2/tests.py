@@ -448,7 +448,7 @@ class TestInfluxDB2Client(TestCase):
             self.assertIn(r'r.host == "server\"1"', flux_query)
             self.assertIn(r'r._field == "usage\"value"', flux_query)
             self.assertIn(
-                r'r._field == "status\"value" and r._value = "warn\"ing"',
+                r'r._field == "status\"value" and r._value == "warn\"ing"',
                 flux_query,
             )
 
@@ -686,6 +686,54 @@ class TestInfluxDB2Client(TestCase):
                 call_kwargs["bucket_name"],
                 f'{settings.TIMESERIES_DATABASE["NAME"]}_short',
             )
+
+    def test_create_or_alter_retention_policy_handles_missing_bucket_error(self):
+        with patch.object(self.timeseries_db.db, "buckets_api") as mock_buckets_api:
+            mock_api = MagicMock()
+            mock_buckets_api.return_value = mock_api
+            mock_api.find_bucket_by_name.side_effect = self.timeseries_db.client_error(
+                message="could not find bucket"
+            )
+
+            self.timeseries_db.create_or_alter_retention_policy(SHORT_RP, "24h0m0s")
+
+            mock_api.create_bucket.assert_called_once()
+
+    @patch("openwisp_monitoring.utils.sleep")
+    def test_create_or_alter_retention_policy_surfaces_lookup_failures(
+        self, mocked_sleep
+    ):
+        with patch.object(self.timeseries_db.db, "buckets_api") as mock_buckets_api:
+            mock_api = MagicMock()
+            mock_buckets_api.return_value = mock_api
+            mock_api.find_bucket_by_name.side_effect = self.timeseries_db.client_error(
+                message="lookup failed"
+            )
+
+            with self.assertRaises(self.timeseries_db.client_error):
+                self.timeseries_db.create_or_alter_retention_policy(SHORT_RP, "24h0m0s")
+
+            mock_api.create_bucket.assert_not_called()
+        mocked_sleep.assert_called()
+
+    @patch("openwisp_monitoring.utils.sleep")
+    def test_create_or_alter_retention_policy_surfaces_update_failures(
+        self, mocked_sleep
+    ):
+        with patch.object(self.timeseries_db.db, "buckets_api") as mock_buckets_api:
+            mock_api = MagicMock()
+            mock_buckets_api.return_value = mock_api
+            mock_bucket = MagicMock()
+            mock_api.find_bucket_by_name.return_value = mock_bucket
+            mock_api.update_bucket.side_effect = self.timeseries_db.client_error(
+                message="update failed"
+            )
+
+            with self.assertRaises(self.timeseries_db.client_error):
+                self.timeseries_db.create_or_alter_retention_policy(SHORT_RP, "24h0m0s")
+
+            mock_api.create_bucket.assert_not_called()
+        mocked_sleep.assert_called()
 
     def test_get_query_basic(self):
         """Test basic Flux query generation for charts."""
