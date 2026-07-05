@@ -415,7 +415,7 @@ class DatabaseClient(BaseTimeseriesClient):
     def validate_query(self, query):
         for word in self._FORBIDDEN:
             if re.search(rf"\b{word}\b", query, re.IGNORECASE):
-                msg = _(f'the word "{word.upper()}" is not allowed')
+                msg = _('the word "%(word)s" is not allowed') % {"word": word.upper()}
                 raise ValidationError({"configuration": msg})
         return self._is_aggregate(query)
 
@@ -539,15 +539,6 @@ class DatabaseClient(BaseTimeseriesClient):
         distinct_fields = kwargs.get("distinct_fields", [])
         count_fields = kwargs.get("count_fields", [])
         where = kwargs.get("where", [])
-        # Check for unsupported parameters and raise explicit errors
-        unsupported_params = {}
-        for param, reason in unsupported_params.items():
-            if kwargs.get(param):
-                raise NotImplementedError(
-                    f"InfluxDB 2.x read() does not support '{param}' parameter. "
-                    f"Reason: {reason}. "
-                    f"For complex queries, use timeseries_db.query() with custom Flux instead."
-                )
         supports_count_distinct = (
             len(distinct_fields) == 1
             and len(count_fields) == 1
@@ -1072,12 +1063,14 @@ class DatabaseClient(BaseTimeseriesClient):
         elif chart_type == "traffic":
             # Traffic: Convert bytes to GB (divide by 1e9)
             flux_query += (
-                " |> sum() |> map(fn: (r) => ({r with _value: r._value / 1000000000}))"
+                " |> sum() |> map(fn: (r) => ({r with "
+                "_value: float(v: r._value) / 1000000000.0}))"
             )
         elif chart_type == "general_traffic":
             # General traffic: Convert bytes to GB at org level
             flux_query += (
-                " |> sum() |> map(fn: (r) => ({r with _value: r._value / 1000000000}))"
+                " |> sum() |> map(fn: (r) => ({r with "
+                "_value: float(v: r._value) / 1000000000.0}))"
             )
         elif chart_type == "rtt":
             # RTT: Multiple aggregations (mean of mean, max, min)

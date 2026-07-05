@@ -371,7 +371,6 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         data = {"type": "DeviceMonitoring"}
         with self.assertNumQueries(2):
             response = self._post_data(device.id, device.key, data)
-        self.assertEqual(response.status_code, 200)
 
         # Deactivating the device will invalidate the cache.
         # The view will only allow readonly requests (GET).

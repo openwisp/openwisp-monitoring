@@ -9,10 +9,13 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "openwisp2.settings")
 
 if __name__ == "__main__":
     from django.core.management import execute_from_command_line
+    from django.core.management.commands.test import Command
 
     base_args = sys.argv[1:]
     args = [sys.argv[0], "test"]
-    has_test_labels = any(not arg.startswith("-") for arg in base_args)
+    parser = Command().create_parser(sys.argv[0], "test")
+    parsed_args, _ = parser.parse_known_args(base_args)
+    has_test_labels = bool(getattr(parsed_args, "args", []))
     default_target = (
         "openwisp2" if os.environ.get("SAMPLE_APP", False) else "openwisp_monitoring"
     )

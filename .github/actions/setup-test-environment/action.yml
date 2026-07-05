@@ -1,0 +1,54 @@
+name: Setup test environment
+description: Prepare the shared CI environment for test jobs
+
+inputs:
+  python-version:
+    description: Python version to install
+    required: true
+  django-version:
+    description: Django version constraint to install
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Cache APT packages
+      uses: actions/cache@v6
+      with:
+        path: /var/cache/apt/archives
+        key: apt-${{ runner.os }}-${{ hashFiles('.github/actions/setup-test-environment/action.yml') }}
+        restore-keys: |
+          apt-${{ runner.os }}-
+
+    - name: Disable man page auto-update
+      shell: bash
+      run: |
+        echo 'set man-db/auto-update false' | sudo debconf-communicate >/dev/null
+        sudo dpkg-reconfigure man-db
+
+    - name: Set up and cache Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: "pip"
+        cache-dependency-path: |
+          **/requirements*.txt
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        sudo apt update -qq
+        sudo apt -qq install \
+          sqlite3 \
+          fping \
+          gdal-bin \
+          libproj-dev \
+          libgeos-dev \
+          libspatialite-dev \
+          spatialite-bin \
+          libsqlite3-mod-spatialite
+        pip install -U pip wheel setuptools
+        pip install -r requirements-test.txt
+        pip install -U -I -e .
+        pip install -U "${{ inputs.django-version }}"
+        sudo npm install -g prettier
