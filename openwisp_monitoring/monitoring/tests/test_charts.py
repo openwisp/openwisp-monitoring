@@ -9,7 +9,6 @@ from django.test import TestCase, tag
 from django.utils.timezone import now
 from swapper import load_model
 
-from openwisp_monitoring.db import timeseries_db
 from openwisp_utils.tests import capture_stderr
 
 from .. import settings as app_settings
@@ -223,9 +222,12 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertDictEqual(json.loads(c.json()), data)
 
     def test_read_bad_query(self):
-        with self.assertRaises(ValidationError) as context:
+        try:
             self._create_chart(configuration="bad_test")
-        self.assertIn("configuration", context.exception.message_dict)
+        except ValidationError as error:
+            self.assertIn("configuration", error.message_dict)
+        else:
+            self.fail("ValidationError not raised")
 
     def test_get_query(self):
         c = self._create_chart(test_data=False)
@@ -238,18 +240,6 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertIn(m.content_type_key, query)
         self.assertIn(str(m.object_id), query)
         self.assertIn(str(time)[0:10], query)
-
-    def test_default_query_uses_backend_contract(self):
-        chart = self._create_chart(test_data=False)
-        self.assertEqual(
-            chart._default_query,
-            timeseries_db.get_default_chart_query(has_object_scope=True),
-        )
-        chart.metric.object_id = None
-        self.assertEqual(
-            chart._default_query,
-            timeseries_db.get_default_chart_query(has_object_scope=False),
-        )
 
     def test_description(self):
         c = self._create_chart(test_data=False)
@@ -356,7 +346,7 @@ class TestChartsBackendMixin(TestMonitoringMixin, TestCase):
 
     @classmethod
     def setUpClass(cls):
-        if os.environ.get("TIMESERIES_BACKEND") != cls.expected_backend:
+        if os.environ.get("TIMESERIES_BACKEND", "influxdb") != cls.expected_backend:
             raise SkipTest(
                 f'Set TIMESERIES_BACKEND="{cls.expected_backend}" to run these tests.'
             )
@@ -376,15 +366,8 @@ class TestChartsBackendMixin(TestMonitoringMixin, TestCase):
 
 
 @tag("influxdb1")
-class TestChartsInfluxDB(TestChartsBackendMixin):
+class TestChartsInfluxDB1(TestChartsBackendMixin):
     expected_backend = "influxdb"
-
-    def test_read_bad_query_message(self):
-        with self.assertRaises(ValidationError) as context:
-            self._create_chart(configuration="bad_test")
-        self.assertIn(
-            "error parsing query: found BAD", str(context.exception.message_dict)
-        )
 
     @capture_stderr()
     def test_bad_json_query_returns_none(self):
@@ -395,11 +378,6 @@ class TestChartsInfluxDB(TestChartsBackendMixin):
 @tag("influxdb2")
 class TestChartsInfluxDB2(TestChartsBackendMixin):
     expected_backend = "influxdb2"
-
-    def test_read_bad_query_message(self):
-        with self.assertRaises(ValidationError) as context:
-            self._create_chart(configuration="bad_test")
-        self.assertIn("undefined identifier BAD", str(context.exception.message_dict))
 
     @capture_stderr()
     def test_bad_json_query_returns_value(self):

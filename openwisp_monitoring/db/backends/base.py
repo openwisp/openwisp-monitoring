@@ -52,7 +52,10 @@ class BaseTimeseriesClient(ABC):
         if config is None or not hasattr(config, "__contains__"):
             raise DatabaseError("No TIMESERIES_DATABASE specified in settings")
         for field in cls.required_settings:
-            assert field in config, field
+            if field not in config:
+                raise ImproperlyConfigured(
+                    f'"{field}" field is not declared in TIMESERIES_DATABASE'
+                )
         return config
 
     def attach_queries(self, queries):

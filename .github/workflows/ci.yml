@@ -45,48 +45,15 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Cache APT packages
-        uses: actions/cache@v6
-        with:
-          path: /var/cache/apt/archives
-          key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
-          restore-keys: |
-            apt-${{ runner.os }}-
-
-      - name: Disable man page auto-update
-        run: |
-          echo 'set man-db/auto-update false' | sudo debconf-communicate >/dev/null
-          sudo dpkg-reconfigure man-db
-
-      - name: Set up and Cache Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+      - name: Set up test environment
+        id: setup_env
+        uses: ./.github/actions/setup-test-environment
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
-          cache-dependency-path: |
-            **/requirements*.txt
-
-      - name: Install Dependencies
-        id: deps
-        run: |
-          sudo apt update -qq
-          sudo apt -qq install \
-            sqlite3 \
-            fping \
-            gdal-bin \
-            libproj-dev \
-            libgeos-dev \
-            libspatialite-dev \
-            spatialite-bin \
-            libsqlite3-mod-spatialite
-          pip install -U pip wheel setuptools
-          pip install -r requirements-test.txt
-          pip install -U -I -e .
-          pip install -U ${{ matrix.django-version }}
-          sudo npm install -g prettier
+          django-version: ${{ matrix.django-version }}
 
       - name: Start InfluxDB
-        if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
+        if: ${{ !cancelled() && steps.setup_env.conclusion == 'success' }}
         run: docker compose up -d influxdb
 
       - name: QA checks
@@ -94,7 +61,7 @@ jobs:
           ./run-qa-checks
 
       - name: Tests
-        if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
+        if: ${{ !cancelled() && steps.setup_env.conclusion == 'success' }}
         run: |
           ./runtests-influxdb
         env:
@@ -140,52 +107,19 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Cache APT packages
-        uses: actions/cache@v6
-        with:
-          path: /var/cache/apt/archives
-          key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
-          restore-keys: |
-            apt-${{ runner.os }}-
-
-      - name: Disable man page auto-update
-        run: |
-          echo 'set man-db/auto-update false' | sudo debconf-communicate >/dev/null
-          sudo dpkg-reconfigure man-db
-
-      - name: Set up and Cache Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+      - name: Set up test environment
+        id: setup_env
+        uses: ./.github/actions/setup-test-environment
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
-          cache-dependency-path: |
-            **/requirements*.txt
-
-      - name: Install Dependencies
-        id: deps
-        run: |
-          sudo apt update -qq
-          sudo apt -qq install \
-            sqlite3 \
-            fping \
-            gdal-bin \
-            libproj-dev \
-            libgeos-dev \
-            libspatialite-dev \
-            spatialite-bin \
-            libsqlite3-mod-spatialite
-          pip install -U pip wheel setuptools
-          pip install -r requirements-test.txt
-          pip install -U -I -e .
-          pip install -U ${{ matrix.django-version }}
-          sudo npm install -g prettier
+          django-version: ${{ matrix.django-version }}
 
       - name: Start InfluxDB 2
-        if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
+        if: ${{ !cancelled() && steps.setup_env.conclusion == 'success' }}
         run: docker compose up -d influxdb2
 
       - name: Tests
-        if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
+        if: ${{ !cancelled() && steps.setup_env.conclusion == 'success' }}
         run: |
           ./runtests-influxdb2
 

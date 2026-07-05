@@ -54,12 +54,7 @@ def load_backend(backend_name=TIMESERIES_DB["BACKEND"], config=None):
             "BaseTimeseriesClient."
         )
 
-    try:
-        client_class.validate_settings(config)
-    except AssertionError as e:
-        raise ImproperlyConfigured(
-            f'"{e}" field is not declared in TIMESERIES_DATABASE'
-        ) from e
+    client_class.validate_settings(config)
     queries = getattr(backend_module, "queries", None)
     if not isinstance(queries, BackendQueryBundle):
         raise ImproperlyConfigured(

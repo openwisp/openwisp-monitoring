@@ -132,44 +132,37 @@ class TestInfluxDB2Client(TestCase):
         result = self.timeseries_db._get_timestamp(timestamp_str)
         self.assertEqual(result, timestamp_str)
 
-    @patch("openwisp_monitoring.db.backends.influxdb2.client.DatabaseClient._write_api")
-    def test_write_single_point(self, mock_write_api):
+    def test_write_single_point(self):
         """Test writing a single data point."""
-        mock_instance = MagicMock()
-        mock_write_api.return_value = mock_instance
-        self.timeseries_db._write_api = mock_instance
+        with patch.object(self.timeseries_db, "_write_api") as mock_write_api:
+            self.timeseries_db.write(
+                name="test_measurement",
+                values={"field1": 10, "field2": 20},
+                tags={"host": "localhost"},
+            )
 
-        self.timeseries_db.write(
-            name="test_measurement",
-            values={"field1": 10, "field2": 20},
-            tags={"host": "localhost"},
-        )
+            mock_write_api.write.assert_called()
+            call_args = mock_write_api.write.call_args
+            record = call_args[1]["record"]
+            self.assertEqual(record["measurement"], "test_measurement")
+            self.assertEqual(record["fields"], {"field1": 10, "field2": 20})
+            self.assertEqual(
+                call_args[1]["bucket"], settings.TIMESERIES_DATABASE["NAME"]
+            )
 
-        # Verify write was called
-        mock_instance.write.assert_called()
-        call_args = mock_instance.write.call_args
-        record = call_args[1]["record"]
-        self.assertEqual(record["measurement"], "test_measurement")
-        self.assertEqual(record["fields"], {"field1": 10, "field2": 20})
-        self.assertEqual(call_args[1]["bucket"], settings.TIMESERIES_DATABASE["NAME"])
-
-    @patch("openwisp_monitoring.db.backends.influxdb2.client.DatabaseClient._write_api")
-    def test_write_uses_retention_policy_bucket(self, mock_write_api):
+    def test_write_uses_retention_policy_bucket(self):
         """Test writing with a retention policy uses the mapped bucket."""
-        mock_instance = MagicMock()
-        mock_write_api.return_value = mock_instance
-        self.timeseries_db._write_api = mock_instance
+        with patch.object(self.timeseries_db, "_write_api") as mock_write_api:
+            self.timeseries_db.write(
+                name="test_measurement",
+                values={"field1": 10},
+                retention_policy=SHORT_RP,
+            )
 
-        self.timeseries_db.write(
-            name="test_measurement",
-            values={"field1": 10},
-            retention_policy=SHORT_RP,
-        )
-
-        call_args = mock_instance.write.call_args
-        self.assertEqual(
-            call_args[1]["bucket"], f'{settings.TIMESERIES_DATABASE["NAME"]}_short'
-        )
+            call_args = mock_write_api.write.call_args
+            self.assertEqual(
+                call_args[1]["bucket"], f'{settings.TIMESERIES_DATABASE["NAME"]}_short'
+            )
 
     def test_write_with_database_parameter_warning(self):
         """Test that database parameter triggers warning."""
@@ -185,64 +178,56 @@ class TestInfluxDB2Client(TestCase):
                 # Should log warning about database parameter being ignored
                 mock_logger.warning.assert_called()
 
-    @patch("openwisp_monitoring.db.backends.influxdb2.client.DatabaseClient._write_api")
-    def test_batch_write(self, mock_write_api):
+    def test_batch_write(self):
         """Test batch writing multiple data points."""
-        mock_instance = MagicMock()
-        mock_write_api.return_value = mock_instance
-        self.timeseries_db._write_api = mock_instance
+        with patch.object(self.timeseries_db, "_write_api") as mock_write_api:
+            metric_data = [
+                {
+                    "name": "test_measurement",
+                    "values": {"field1": 10},
+                    "tags": {"host": "localhost"},
+                },
+                {
+                    "name": "test_measurement",
+                    "values": {"field1": 20},
+                    "tags": {"host": "localhost"},
+                },
+            ]
+            self.timeseries_db.batch_write(metric_data)
+            mock_write_api.write.assert_called()
+            call_args = mock_write_api.write.call_args
+            records = call_args[1]["record"]
+            self.assertEqual(len(records), 2)
+            self.assertEqual(records[0]["fields"]["field1"], 10)
+            self.assertEqual(records[1]["fields"]["field1"], 20)
 
-        metric_data = [
-            {
-                "name": "test_measurement",
-                "values": {"field1": 10},
-                "tags": {"host": "localhost"},
-            },
-            {
-                "name": "test_measurement",
-                "values": {"field1": 20},
-                "tags": {"host": "localhost"},
-            },
-        ]
-        self.timeseries_db.batch_write(metric_data)
-        mock_instance.write.assert_called()
-        call_args = mock_instance.write.call_args
-        records = call_args[1]["record"]
-        self.assertEqual(len(records), 2)
-        self.assertEqual(records[0]["fields"]["field1"], 10)
-        self.assertEqual(records[1]["fields"]["field1"], 20)
-
-    @patch("openwisp_monitoring.db.backends.influxdb2.client.DatabaseClient._write_api")
-    def test_batch_write_groups_by_retention_policy_bucket(self, mock_write_api):
+    def test_batch_write_groups_by_retention_policy_bucket(self):
         """Test batch writing separates default and short retention buckets."""
-        mock_instance = MagicMock()
-        mock_write_api.return_value = mock_instance
-        self.timeseries_db._write_api = mock_instance
+        with patch.object(self.timeseries_db, "_write_api") as mock_write_api:
+            metric_data = [
+                {
+                    "name": "default_measurement",
+                    "values": {"field1": 10},
+                    "tags": {},
+                },
+                {
+                    "name": "short_measurement",
+                    "values": {"field1": 20},
+                    "tags": {},
+                    "retention_policy": SHORT_RP,
+                },
+            ]
+            self.timeseries_db.batch_write(metric_data)
 
-        metric_data = [
-            {
-                "name": "default_measurement",
-                "values": {"field1": 10},
-                "tags": {},
-            },
-            {
-                "name": "short_measurement",
-                "values": {"field1": 20},
-                "tags": {},
-                "retention_policy": SHORT_RP,
-            },
-        ]
-        self.timeseries_db.batch_write(metric_data)
-
-        calls = mock_instance.write.call_args_list
-        buckets = [call[1]["bucket"] for call in calls]
-        self.assertEqual(
-            buckets,
-            [
-                settings.TIMESERIES_DATABASE["NAME"],
-                f'{settings.TIMESERIES_DATABASE["NAME"]}_short',
-            ],
-        )
+            calls = mock_write_api.write.call_args_list
+            buckets = [call[1]["bucket"] for call in calls]
+            self.assertEqual(
+                buckets,
+                [
+                    settings.TIMESERIES_DATABASE["NAME"],
+                    f'{settings.TIMESERIES_DATABASE["NAME"]}_short',
+                ],
+            )
 
     def test_query_result_set_get_points(self):
         """Test QueryResultSet.get_points() generator."""
@@ -759,7 +744,7 @@ class TestInfluxDB2Client(TestCase):
         self.assertIn('contains(value: r._field, set: ["rx_bytes", "tx_bytes"])', query)
         self.assertIn("|> sum()", query)
         # Check for GB conversion (divide by 1e9)
-        self.assertIn("_value / 1000000000", query)
+        self.assertIn("float(v: r._value) / 1000000000.0", query)
 
     def test_get_query_general_traffic_gb_conversion(self):
         """Test Flux query for general traffic with GB conversion."""
@@ -780,7 +765,7 @@ class TestInfluxDB2Client(TestCase):
         self.assertIn('location_id == "loc1"', query)
         self.assertIn('floorplan_id == "fp1"', query)
         self.assertIn("|> sum()", query)
-        self.assertIn("_value / 1000000000", query)
+        self.assertIn("float(v: r._value) / 1000000000.0", query)
 
     def test_get_query_wifi_clients_count_distinct(self):
         """Test Flux query for wifi_clients using distinct() + count()."""

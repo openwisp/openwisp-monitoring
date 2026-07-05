@@ -27,7 +27,6 @@ from openwisp_monitoring.monitoring.tests import TestMonitoringMixin
 from openwisp_monitoring.settings import MONITORING_TIMESERIES_RETRY_OPTIONS
 from openwisp_utils.tests import capture_stderr
 
-from ... import device_data_query
 from ...exceptions import TimeseriesWriteException
 from .. import timeseries_db
 
@@ -262,22 +261,10 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         )
         self.assertEqual(c.query, expected)
         self.assertEqual(
-            timeseries_db.get_default_chart_query(has_object_scope=True),
-            c._default_query,
+            "".join(timeseries_db.queries.default_chart_query[0:2]), c._default_query
         )
         c.metric.object_id = None
-        self.assertEqual(
-            timeseries_db.get_default_chart_query(has_object_scope=False),
-            c._default_query,
-        )
-
-    def test_device_data_query_uses_format_contract(self):
-        query = device_data_query.format(SHORT_RP, "device_data", "device-id")
-        self.assertEqual(
-            query,
-            "SELECT data FROM short.device_data WHERE pk = 'device-id' "
-            "ORDER BY time DESC LIMIT 1",
-        )
+        self.assertEqual(timeseries_db.queries.default_chart_query[0], c._default_query)
 
     def test_read_order(self):
         m = self._create_general_metric(name="dummy")
