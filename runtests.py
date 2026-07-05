@@ -12,6 +12,10 @@ if __name__ == "__main__":
     from django.core.management.commands.test import Command
 
     base_args = sys.argv[1:]
+    # The Django test command parser imports settings to discover runner
+    # arguments. Prime argv first so settings that detect test mode from argv
+    # are initialized consistently.
+    sys.argv = [sys.argv[0], "test", *base_args]
     args = [sys.argv[0], "test"]
     parser = Command().create_parser(sys.argv[0], "test")
     parsed_args, _ = parser.parse_known_args(base_args)
