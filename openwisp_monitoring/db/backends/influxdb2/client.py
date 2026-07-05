@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from datetime import datetime, timedelta, timezone
@@ -140,9 +141,7 @@ class QueryResultSet:
 
     def __iter__(self):
         """Yield points like v1 ResultSet."""
-        for _key in self.keys():
-            for point in self.get_points():
-                yield point
+        yield from self.get_points()
 
     def __len__(self):
         """Return the number of series (measurement, tags) combinations."""
@@ -176,6 +175,11 @@ class DatabaseClient(BaseTimeseriesClient):
         self.db_name = db_name or TIMESERIES_DB["NAME"]
         self.org = TIMESERIES_DB.get("ORG", "openwisp")
         self.token = TIMESERIES_DB.get("TOKEN", "")
+
+    def reset(self, db_name=None):
+        super().reset(db_name=db_name)
+        for attr in ("db", "_write_api", "_query_api", "_delete_api", "use_udp"):
+            self.__dict__.pop(attr, None)
 
     @retry
     def create_database(self):
@@ -211,6 +215,13 @@ class DatabaseClient(BaseTimeseriesClient):
             TIMESERIES_DB.get("URL")
             or f"http://{TIMESERIES_DB['HOST']}:{TIMESERIES_DB['PORT']}"
         )
+        if TIMESERIES_DB.get("URL", "").startswith("http://"):
+            logger.warning(
+                'Using insecure HTTP for InfluxDB2 at "%s". Consider '
+                'switching TIMESERIES_DATABASE["URL"] to https:// when '
+                "running outside local development.",
+                url,
+            )
         return InfluxDBClient(url=url, token=self.token, org=self.org)
 
     @cached_property
@@ -317,11 +328,18 @@ class DatabaseClient(BaseTimeseriesClient):
             )
         return op
 
+    @staticmethod
+    def _escape_flux_string(value):
+        return json.dumps(str(value))[1:-1]
+
+    def _format_flux_string(self, value):
+        return f'"{self._escape_flux_string(value)}"'
+
     def _format_flux_value(self, value):
         if isinstance(value, datetime):
             return f'"{self._get_timestamp(value)}"'
         if isinstance(value, str):
-            return f'"{value}"'
+            return self._format_flux_string(value)
         if isinstance(value, bool):
             return str(value).lower()
         return value
@@ -566,17 +584,24 @@ class DatabaseClient(BaseTimeseriesClient):
         ]
         if len(measurements) == 1:
             flux_query += (
-                f' |> filter(fn: (r) => r._measurement == "{measurements[0]}")'
+                " |> filter(fn: (r) => "
+                f"r._measurement == {self._format_flux_string(measurements[0])})"
             )
         elif measurements:
             measurement_filter = " or ".join(
-                [f'r._measurement == "{measurement}"' for measurement in measurements]
+                [
+                    f"r._measurement == {self._format_flux_string(measurement)}"
+                    for measurement in measurements
+                ]
             )
             flux_query += f" |> filter(fn: (r) => {measurement_filter})"
         # Filter by tags
         if tags:
             for tag_key, tag_value in tags.items():
-                flux_query += f' |> filter(fn: (r) => r.{tag_key} == "{tag_value}")'
+                flux_query += (
+                    f" |> filter(fn: (r) => r.{tag_key} == "
+                    f"{self._format_flux_value(tag_value)})"
+                )
         # Filter by fields
         if isinstance(fields, str):
             fields = [fields]
@@ -602,12 +627,15 @@ class DatabaseClient(BaseTimeseriesClient):
                     seen_fields.add(field)
             fields = requested_fields
         if fields != ["*"]:
-            field_filter = " or ".join([f'r._field == "{field}"' for field in fields])
+            field_filter = " or ".join(
+                [f"r._field == {self._format_flux_string(field)}" for field in fields]
+            )
             flux_query += f" |> filter(fn: (r) => {field_filter})"
         for field, op, value in where:
             op = self._clean_operator(op)
             flux_query += (
-                f' |> filter(fn: (r) => r._field == "{field}" '
+                " |> filter(fn: (r) => "
+                f"r._field == {self._format_flux_string(field)} "
                 f"and r._value {op} {self._format_flux_value(value)})"
             )
         if supports_count_distinct:
@@ -728,28 +756,23 @@ class DatabaseClient(BaseTimeseriesClient):
     def _build_delete_predicate(self, key: str = None, tags: dict = None):
         predicates = []
         if key:
-            predicates.append(f'_measurement="{key}"')
+            predicates.append(f"_measurement={self._format_flux_string(key)}")
         if tags:
             for tag_key, tag_value in tags.items():
-                predicates.append(f'{tag_key}="{tag_value}"')
+                predicates.append(f"{tag_key}={self._format_flux_string(tag_value)}")
         return " AND ".join(predicates)
 
     @retry
     def _delete_range(self, predicate="", bucket=None):
         start = datetime(1970, 1, 1, tzinfo=timezone.utc)
         stop = datetime.now(timezone.utc)
-        try:
-            self._delete_api.delete(
-                start,
-                stop,
-                predicate,
-                bucket=bucket or self.db_name,
-                org=self.org,
-            )
-        except self.client_error as exception:
-            logger.debug(
-                f"Could not delete InfluxDB2 data from bucket {bucket}: {exception}"
-            )
+        self._delete_api.delete(
+            start,
+            stop,
+            predicate,
+            bucket=bucket or self.db_name,
+            org=self.org,
+        )
 
     @retry
     def delete_series(self, key=None, tags=None):
@@ -766,17 +789,14 @@ class DatabaseClient(BaseTimeseriesClient):
 
     def delete_metric_data(self, key=None, tags=None):
         """Deletes metric data based on measurement and tags."""
-        try:
-            predicate = self._build_delete_predicate(key=key, tags=tags)
-            if not predicate:
-                self._reset_known_buckets()
-                logger.debug("Reset InfluxDB2 buckets for full metric data cleanup")
-                return
-            for bucket in self._get_known_bucket_names():
-                self._delete_range(predicate, bucket=bucket)
-            logger.debug(f"Deleted metric data: key={key}, tags={tags}")
-        except Exception as exception:
-            logger.warning(f"Error deleting metric data: {exception}")
+        predicate = self._build_delete_predicate(key=key, tags=tags)
+        if not predicate:
+            self._reset_known_buckets()
+            logger.debug("Reset InfluxDB2 buckets for full metric data cleanup")
+            return
+        for bucket in self._get_known_bucket_names():
+            self._delete_range(predicate, bucket=bucket)
+        logger.debug(f"Deleted metric data: key={key}, tags={tags}")
 
     def _reset_known_buckets(self):
         api = self.db.buckets_api()
@@ -883,29 +903,29 @@ class DatabaseClient(BaseTimeseriesClient):
             flux_query += f" |> range(start: {start_range})"
         measurement = params.get("key")
         if measurement:
-            flux_query += f' |> filter(fn: (r) => r._measurement == "{measurement}")'
+            flux_query += (
+                " |> filter(fn: (r) => "
+                f"r._measurement == {self._format_flux_string(measurement)})"
+            )
         if params.get("content_type") and params.get("object_id"):
             content_type = params["content_type"]
             object_id = params["object_id"]
             flux_query += (
-                f' |> filter(fn: (r) => r.content_type == "{content_type}" '
-                f'and r.object_id == "{object_id}")'
+                " |> filter(fn: (r) => "
+                f"r.content_type == {self._format_flux_string(content_type)} "
+                f"and r.object_id == {self._format_flux_string(object_id)})"
             )
         if params.get("ifname"):
             ifname = params["ifname"]
-            flux_query += f' |> filter(fn: (r) => r.ifname == "{ifname}")'
-        if params.get("organization_id"):
-            org_id = params["organization_id"]
-            if isinstance(org_id, list):
-                org_id = org_id[0]
-            if org_id != "__all__":
-                flux_query += f' |> filter(fn: (r) => r.organization_id == "{org_id}")'
-        if params.get("location_id"):
-            location_id = params["location_id"]
-            flux_query += f' |> filter(fn: (r) => r.location_id == "{location_id}")'
-        if params.get("floorplan_id"):
-            floorplan_id = params["floorplan_id"]
-            flux_query += f' |> filter(fn: (r) => r.floorplan_id == "{floorplan_id}")'
+            flux_query += (
+                " |> filter(fn: (r) => "
+                f"r.ifname == {self._format_flux_string(ifname)})"
+            )
+        flux_query += self._format_filter(
+            "organization_id", params.get("organization_id")
+        )
+        flux_query += self._format_filter("location_id", params.get("location_id"))
+        flux_query += self._format_filter("floorplan_id", params.get("floorplan_id"))
         return flux_query
 
     def _format_filter(self, field, value):
@@ -915,19 +935,26 @@ class DatabaseClient(BaseTimeseriesClient):
             items = [item for item in value if item != "__all__"]
             if not items:
                 return ""
-            values = ", ".join([f'"{item}"' for item in items])
+            values = ", ".join([self._format_flux_string(item) for item in items])
             return f" |> filter(fn: (r) => contains(value: r.{field}, set: [{values}]))"
-        return f' |> filter(fn: (r) => r.{field} == "{value}")'
+        return (
+            " |> filter(fn: (r) => " f"r.{field} == {self._format_flux_string(value)})"
+        )
 
     def _format_field_filter(self, fields, field_name):
         if fields:
-            field_list = ", ".join([f'"{field}"' for field in fields])
+            field_list = ", ".join(
+                [self._format_flux_string(field) for field in fields]
+            )
             return (
                 " |> filter(fn: (r) => "
                 f"contains(value: r._field, set: [{field_list}]))"
             )
         if field_name:
-            return f' |> filter(fn: (r) => r._field == "{field_name}")'
+            return (
+                " |> filter(fn: (r) => "
+                f"r._field == {self._format_flux_string(field_name)})"
+            )
         return ""
 
     def _format_chart_query(self, query, params, time, group_map, summary, fields):
@@ -943,17 +970,17 @@ class DatabaseClient(BaseTimeseriesClient):
         window = self._normalize_chart_window(time, group_map)
         formatted = query.format(
             bucket=self.db_name,
-            key=params.get("key", ""),
+            key=self._escape_flux_string(params.get("key", "")),
             time_start=time_start,
             end_range=end_range,
             window=window,
-            field_name=params.get("field_name", ""),
-            content_type=params.get("content_type", ""),
-            object_id=params.get("object_id", ""),
-            ifname=params.get("ifname", ""),
-            organization_id=params.get("organization_id", ""),
-            location_id=params.get("location_id", ""),
-            floorplan_id=params.get("floorplan_id", ""),
+            field_name=self._escape_flux_string(params.get("field_name", "")),
+            content_type=self._escape_flux_string(params.get("content_type", "")),
+            object_id=self._escape_flux_string(params.get("object_id", "")),
+            ifname=self._escape_flux_string(params.get("ifname", "")),
+            organization_id=self._escape_flux_string(params.get("organization_id", "")),
+            location_id=self._escape_flux_string(params.get("location_id", "")),
+            floorplan_id=self._escape_flux_string(params.get("floorplan_id", "")),
             content_type_filter=self._format_filter(
                 "content_type", params.get("content_type")
             ),
@@ -1045,10 +1072,15 @@ class DatabaseClient(BaseTimeseriesClient):
         # 8. FIELD NAME FILTER: Use field_name from params if not overridden by fields
         if not fields and params.get("field_name"):
             field_name = params["field_name"]
-            flux_query += f' |> filter(fn: (r) => r._field == "{field_name}")'
+            flux_query += (
+                " |> filter(fn: (r) => "
+                f"r._field == {self._format_flux_string(field_name)})"
+            )
         # 9. EXPLICIT FIELDS FILTER: Use fields parameter if provided
         if fields:
-            field_list = ", ".join([f'"{f}"' for f in fields])
+            field_list = ", ".join(
+                [self._format_flux_string(field) for field in fields]
+            )
             flux_query += (
                 " |> filter(fn: (r) => "
                 f"contains(value: r._field, set: [{field_list}]))"

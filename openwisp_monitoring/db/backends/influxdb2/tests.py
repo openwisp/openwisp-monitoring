@@ -313,6 +313,30 @@ class TestInfluxDB2Client(TestCase):
         generated_points = list(points_gen)
         self.assertEqual(len(generated_points), 1)
 
+    def test_query_result_set_iter_does_not_duplicate_points(self):
+        points = [
+            {
+                "_measurement": "cpu",
+                "_field": "usage",
+                "_value": 50,
+                "time": "2024-03-25T12:00:00Z",
+                "host": "server1",
+            },
+            {
+                "_measurement": "memory",
+                "_field": "usage",
+                "_value": 70,
+                "time": "2024-03-25T12:00:00Z",
+                "host": "server1",
+            },
+        ]
+        resultset = QueryResultSet(points)
+
+        iterated_points = list(resultset)
+
+        self.assertEqual(len(iterated_points), 2)
+        self.assertEqual(iterated_points, points)
+
     def test_read_count_distinct_single_field(self):
         """Test read() supports COUNT(DISTINCT(field)) for wifi clients."""
         result = QueryResultSet(
@@ -409,6 +433,25 @@ class TestInfluxDB2Client(TestCase):
             self.assertIn('r._measurement == "memory" or', flux_query)
             self.assertIn('r._measurement == "disk"', flux_query)
 
+    def test_read_escapes_flux_string_literals(self):
+        with patch.object(
+            self.timeseries_db, "query", return_value=QueryResultSet([])
+        ) as mock_query:
+            self.timeseries_db.read(
+                key='cpu"main',
+                fields=['usage"value'],
+                tags={"host": 'server"1'},
+                where=[('status"value', "=", 'warn"ing')],
+            )
+            flux_query = mock_query.call_args[0][0]
+            self.assertIn(r'r._measurement == "cpu\"main"', flux_query)
+            self.assertIn(r'r.host == "server\"1"', flux_query)
+            self.assertIn(r'r._field == "usage\"value"', flux_query)
+            self.assertIn(
+                r'r._field == "status\"value" and r._value = "warn\"ing"',
+                flux_query,
+            )
+
     def test_read_uses_retention_policy_bucket(self):
         """Test read() uses the mapped retention policy bucket."""
         with patch.object(
@@ -484,12 +527,41 @@ class TestInfluxDB2Client(TestCase):
             predicate = call_args[0][2]
             self.assertIn('_measurement="cpu"', predicate)
 
+    def test_delete_metric_data_escapes_predicate_literals(self):
+        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
+            self.timeseries_db.delete_metric_data(
+                key='cpu"main', tags={"host": 'server"1'}
+            )
+            predicate = mock_delete_api.delete.call_args[0][2]
+            self.assertIn(r'_measurement="cpu\"main"', predicate)
+            self.assertIn(r'host="server\"1"', predicate)
+
+    @patch("openwisp_monitoring.utils.sleep")
+    def test_delete_metric_data_surfaces_delete_failures(self, mocked_sleep):
+        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
+            mock_delete_api.delete.side_effect = self.timeseries_db.client_error(
+                message="delete failed"
+            )
+            with self.assertRaises(self.timeseries_db.client_error):
+                self.timeseries_db.delete_metric_data(key="cpu")
+        mocked_sleep.assert_called()
+
     def test_delete_series_requires_filter(self):
         """Test delete_series rejects unfiltered deletes."""
         with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
             with self.assertRaises(ValueError):
                 self.timeseries_db.delete_series()
             mock_delete_api.delete.assert_not_called()
+
+    @patch("openwisp_monitoring.utils.sleep")
+    def test_delete_series_surfaces_delete_failures(self, mocked_sleep):
+        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
+            mock_delete_api.delete.side_effect = self.timeseries_db.client_error(
+                message="delete failed"
+            )
+            with self.assertRaises(self.timeseries_db.client_error):
+                self.timeseries_db.delete_series(key="cpu")
+        mocked_sleep.assert_called()
 
     def test_get_top_fields(self):
         """Test top field selection uses summed field values."""
@@ -528,6 +600,38 @@ class TestInfluxDB2Client(TestCase):
             flux_query = mock_query.call_args[0][0]
             self.assertIn('group(columns: ["_field"])', flux_query)
             self.assertIn("sum()", flux_query)
+
+    def test_get_top_fields_supports_multi_value_scopes(self):
+        with patch.object(
+            self.timeseries_db, "query", return_value=QueryResultSet([])
+        ) as mock_query:
+            self.timeseries_db._get_top_fields(
+                query="ignored",
+                params={
+                    "key": "applications",
+                    "organization_id": ["__all__", "org1", "org2"],
+                    "location_id": ["loc1", "loc2"],
+                    "floorplan_id": ["fp1", "fp2"],
+                },
+                chart_type="histogram",
+                group_map={"30d": "30d"},
+                number=2,
+                time="30d",
+            )
+            flux_query = mock_query.call_args[0][0]
+            self.assertIn(
+                'contains(value: r.organization_id, set: ["org1", "org2"])',
+                flux_query,
+            )
+            self.assertIn(
+                'contains(value: r.location_id, set: ["loc1", "loc2"])',
+                flux_query,
+            )
+            self.assertIn(
+                'contains(value: r.floorplan_id, set: ["fp1", "fp2"])',
+                flux_query,
+            )
+            self.assertNotIn("__all__", flux_query)
 
     def test_get_top_fields_empty_result(self):
         """Test top field selection returns empty list when no data is found."""
@@ -631,6 +735,46 @@ class TestInfluxDB2Client(TestCase):
             query,
         )
         self.assertIn('_field: "CPU_load"', query)
+
+    def test_get_query_escapes_default_chart_filters(self):
+        query = self.timeseries_db.get_query(
+            chart_type="line",
+            params={
+                "key": 'cpu"main',
+                "content_type": 'config"device',
+                "object_id": 'device"id',
+            },
+            time="1h",
+            group_map={"1h": "5m"},
+            fields=['usage"value'],
+            query="".join(self.timeseries_db.queries.default_chart_query[0:2]),
+        )
+        self.assertIn(r'r._measurement == "cpu\"main"', query)
+        self.assertIn(r'r.content_type == "config\"device"', query)
+        self.assertIn(r'r.object_id == "device\"id"', query)
+        self.assertIn(r'contains(value: r._field, set: ["usage\"value"])', query)
+
+    def test_get_query_escapes_flux_chart_template_literals(self):
+        from openwisp_monitoring.db.backends.influxdb2.queries import chart_query
+
+        query = self.timeseries_db.get_query(
+            chart_type="scatter",
+            params={
+                "key": 'ping"main',
+                "field_name": 'reachable"value',
+                "time": "2024-03-25 00:00:00",
+                "end_date": "2024-03-26 00:00:00",
+                "content_type": 'config"device',
+                "object_id": 'device"id',
+            },
+            time="1d",
+            group_map={"1d": "10m"},
+            query=chart_query["uptime"]["influxdb2"],
+        )
+        self.assertIn(r'r._measurement == "ping\"main"', query)
+        self.assertIn(r'r.content_type == "config\"device"', query)
+        self.assertIn(r'r.object_id == "device\"id"', query)
+        self.assertIn(r'r._field == "reachable\"value"', query)
 
     def test_format_flux_time_date_only(self):
         self.assertEqual(
@@ -766,6 +910,30 @@ class TestInfluxDB2Client(TestCase):
         self.assertIn('floorplan_id == "fp1"', query)
         self.assertIn("|> sum()", query)
         self.assertIn("float(v: r._value) / 1000000000.0", query)
+
+    def test_get_query_general_traffic_supports_multi_value_scopes(self):
+        query = self.timeseries_db.get_query(
+            chart_type="general_traffic",
+            params={
+                "key": "traffic",
+                "organization_id": ["__all__", "org1", "org2"],
+                "location_id": ["loc1", "loc2"],
+                "floorplan_id": ["fp1", "fp2"],
+            },
+            time="24h",
+            group_map={"24h": "1d"},
+            fields=["rx_bytes", "tx_bytes"],
+        )
+        self.assertIn(
+            'contains(value: r.organization_id, set: ["org1", "org2"])',
+            query,
+        )
+        self.assertIn('contains(value: r.location_id, set: ["loc1", "loc2"])', query)
+        self.assertIn(
+            'contains(value: r.floorplan_id, set: ["fp1", "fp2"])',
+            query,
+        )
+        self.assertNotIn("__all__", query)
 
     def test_get_query_wifi_clients_count_distinct(self):
         """Test Flux query for wifi_clients using distinct() + count()."""

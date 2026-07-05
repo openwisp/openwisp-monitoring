@@ -257,14 +257,6 @@ charts = {
 class TestMonitoringMixin(TestOrganizationMixin):
     ORIGINAL_DB = TIMESERIES_DB["NAME"]
     TEST_DB = f"{ORIGINAL_DB}_test"
-    _TIMESERIES_CLIENT_ATTRS = (
-        "db",
-        "dbs",
-        "_write_api",
-        "_query_api",
-        "_delete_api",
-        "use_udp",
-    )
 
     @classmethod
     def _unregister_test_metrics(cls):
@@ -283,9 +275,7 @@ class TestMonitoringMixin(TestOrganizationMixin):
         # The global timeseries client caches backend handles lazily, so test
         # classes must reset those cached objects whenever the test database
         # lifecycle changes.
-        timeseries_db.db_name = cls.TEST_DB
-        for attr in cls._TIMESERIES_CLIENT_ATTRS:
-            timeseries_db.__dict__.pop(attr, None)
+        timeseries_db.reset(db_name=cls.TEST_DB)
 
     @classmethod
     def _recreate_timeseries_storage(cls):

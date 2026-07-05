@@ -72,6 +72,11 @@ class DatabaseClient(BaseTimeseriesClient):
         self.db_name = db_name or TIMESERIES_DB["NAME"]
         self.client_error = InfluxDBClientError
 
+    def reset(self, db_name=None):
+        super().reset(db_name=db_name)
+        for attr in ("db", "dbs", "use_udp"):
+            self.__dict__.pop(attr, None)
+
     @retry
     def create_database(self):
         """Creates database if necessary."""

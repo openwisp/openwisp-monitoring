@@ -31,6 +31,27 @@ _window_sum = _window("sum")
 _window_count = _window("count")
 _window_mode = _window("mode")
 
+_wifi_clients_query = (
+    _range
+    + _object_filters
+    + ' |> filter(fn: (r) => r._field == "{field_name}")'
+    + " |> window(every: {window}, createEmpty: true)"
+    + ' |> unique(column: "_value")'
+    + " |> count()"
+    + ' |> duplicate(column: "_start", as: "_time")'
+    + ' |> map(fn: (r) => ({{r with _field: "wifi_clients"}}))'
+)
+
+_traffic_query = (
+    _range
+    + _object_filters
+    + " |> filter(fn: (r) => r._field =~ /^(tx_bytes|rx_bytes)$/)"
+    + _window_sum
+    + " |> map(fn: (r) => ({{r with "
+    + '_field: if r._field == "tx_bytes" then "upload" else "download", '
+    + "_value: float(v: r._value) / 1000000000.0}}))"
+)
+
 chart_query = {
     "uptime": {
         "influxdb2": (
@@ -63,52 +84,10 @@ chart_query = {
             + 'else "RTT_min"}}))'
         )
     },
-    "wifi_clients": {
-        "influxdb2": (
-            _range
-            + _object_filters
-            + ' |> filter(fn: (r) => r._field == "{field_name}")'
-            + " |> window(every: {window}, createEmpty: true)"
-            + ' |> unique(column: "_value")'
-            + " |> count()"
-            + ' |> duplicate(column: "_start", as: "_time")'
-            + ' |> map(fn: (r) => ({{r with _field: "wifi_clients"}}))'
-        )
-    },
-    "general_wifi_clients": {
-        "influxdb2": (
-            _range
-            + _object_filters
-            + ' |> filter(fn: (r) => r._field == "{field_name}")'
-            + " |> window(every: {window}, createEmpty: true)"
-            + ' |> unique(column: "_value")'
-            + " |> count()"
-            + ' |> duplicate(column: "_start", as: "_time")'
-            + ' |> map(fn: (r) => ({{r with _field: "wifi_clients"}}))'
-        )
-    },
-    "traffic": {
-        "influxdb2": (
-            _range
-            + _object_filters
-            + " |> filter(fn: (r) => r._field =~ /^(tx_bytes|rx_bytes)$/)"
-            + _window_sum
-            + " |> map(fn: (r) => ({{r with "
-            + '_field: if r._field == "tx_bytes" then "upload" else "download", '
-            + "_value: float(v: r._value) / 1000000000.0}}))"
-        )
-    },
-    "general_traffic": {
-        "influxdb2": (
-            _range
-            + _object_filters
-            + " |> filter(fn: (r) => r._field =~ /^(tx_bytes|rx_bytes)$/)"
-            + _window_sum
-            + " |> map(fn: (r) => ({{r with "
-            + '_field: if r._field == "tx_bytes" then "upload" else "download", '
-            + "_value: float(v: r._value) / 1000000000.0}}))"
-        )
-    },
+    "wifi_clients": {"influxdb2": _wifi_clients_query},
+    "general_wifi_clients": {"influxdb2": _wifi_clients_query},
+    "traffic": {"influxdb2": _traffic_query},
+    "general_traffic": {"influxdb2": _traffic_query},
     "memory": {
         "influxdb2": (
             _range

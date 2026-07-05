@@ -62,6 +62,10 @@ class BaseTimeseriesClient(ABC):
         self.queries = queries
         return self
 
+    def reset(self, db_name=None):
+        if db_name is not None:
+            self.db_name = db_name
+
     def get_default_chart_query(self, has_object_scope=False):
         default_query = self.queries.default_chart_query
         resolver = getattr(default_query, "resolve", None)
