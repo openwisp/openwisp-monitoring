@@ -74,6 +74,10 @@ class BaseTimeseriesClient(ABC):
         if isinstance(default_query, str):
             return default_query
         if isinstance(default_query, (list, tuple)):
+            if not default_query:
+                raise ImproperlyConfigured(
+                    "Backend query bundle must define a non-empty default_chart_query."
+                )
             query = default_query[0]
             if has_object_scope and len(default_query) > 1:
                 query = f"{query}{default_query[1]}"

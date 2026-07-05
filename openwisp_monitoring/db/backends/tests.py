@@ -262,6 +262,20 @@ class TestBackendLoader(SimpleTestCase):
             )
         self.assertIs(loaded, backend_module)
 
+    def test_get_default_chart_query_rejects_empty_sequence_descriptor(self):
+        client = DummyTimeseriesClient().attach_queries(
+            BackendQueryBundle(
+                chart_query={"cpu": {"dummy": "SELECT * FROM cpu"}},
+                default_chart_query=[],
+                device_data_query=DummyDeviceDataQuery(),
+            )
+        )
+        with self.assertRaisesMessage(
+            ImproperlyConfigured,
+            "Backend query bundle must define a non-empty default_chart_query.",
+        ):
+            client.get_default_chart_query()
+
 
 class TestInfluxDB2ClientURL(SimpleTestCase):
     base_config = {
