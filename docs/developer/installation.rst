@@ -10,7 +10,7 @@ Developer Installation Instructions
 Dependencies
 ------------
 
-- Python >= 3.8
+- Python >= 3.11
 - InfluxDB 1.8 or InfluxDB 2.0
 - fping
 - OpenSSL
