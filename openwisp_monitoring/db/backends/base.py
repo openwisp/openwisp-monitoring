@@ -1,18 +1,37 @@
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from typing import Any, Self, TypedDict
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db import DatabaseError
 
+TimeseriesFields = Mapping[str, Any]
+TimeseriesTags = Mapping[str, Any]
+TimeseriesPoint = dict[str, Any]
+FieldSelection = str | Sequence[str]
+ChartQueryParams = dict[str, Any]
+
+
+class BatchWritePayload(TypedDict, total=False):
+    name: str
+    values: TimeseriesFields
+    tags: TimeseriesTags
+    timestamp: Any
+    database: str | None
+    retention_policy: str | None
+    current: bool | str
+    metric: Any
+    check_threshold_kwargs: Mapping[str, Any]
+
 
 @dataclass(frozen=True)
 class BackendQueryBundle:
-    chart_query: Mapping
+    chart_query: Mapping[str, Mapping[str, str]]
     default_chart_query: object
     device_data_query: object
 
-    def validate(self, backend_name):
+    def validate(self, backend_name: str) -> Self:
         if not isinstance(self.chart_query, Mapping):
             raise ImproperlyConfigured(
                 "Backend query bundle must define chart_query as a mapping."
@@ -45,10 +64,10 @@ class BaseTimeseriesClient(ABC):
     backend_name = None
     client_error = Exception
     required_settings = ("BACKEND", "NAME")
-    queries = None
+    queries: BackendQueryBundle | None = None
 
     @classmethod
-    def validate_settings(cls, config):
+    def validate_settings(cls, config: Mapping[str, Any] | None) -> Mapping[str, Any]:
         if config is None or not hasattr(config, "__contains__"):
             raise DatabaseError("No TIMESERIES_DATABASE specified in settings")
         for field in cls.required_settings:
@@ -58,15 +77,15 @@ class BaseTimeseriesClient(ABC):
                 )
         return config
 
-    def attach_queries(self, queries):
+    def attach_queries(self, queries: BackendQueryBundle) -> Self:
         self.queries = queries
         return self
 
-    def reset(self, db_name=None):
+    def reset(self, db_name: str | None = None) -> None:
         if db_name is not None:
             self.db_name = db_name
 
-    def get_default_chart_query(self, has_object_scope=False):
+    def get_default_chart_query(self, has_object_scope: bool = False) -> str:
         default_query = self.queries.default_chart_query
         resolver = getattr(default_query, "resolve", None)
         if callable(resolver):
@@ -87,81 +106,91 @@ class BaseTimeseriesClient(ABC):
         )
 
     @abstractmethod
-    def create_database(self):
+    def create_database(self) -> None:
         pass
 
     @abstractmethod
-    def drop_database(self):
+    def drop_database(self) -> None:
         pass
 
     @property
     @abstractmethod
-    def use_udp(self):
+    def use_udp(self) -> bool:
         pass
 
     @abstractmethod
-    def create_or_alter_retention_policy(self, name, duration):
+    def create_or_alter_retention_policy(self, name: str, duration: str) -> None:
         pass
 
     @abstractmethod
-    def query(self, query, precision=None, **kwargs):
+    def query(self, query: str, precision: str | None = None, **kwargs: Any) -> Any:
         pass
 
     @abstractmethod
-    def write(self, name, values, **kwargs):
+    def write(self, name: str, values: TimeseriesFields, **kwargs: Any) -> None:
         pass
 
     @abstractmethod
-    def batch_write(self, metric_data):
+    def batch_write(self, metric_data: Sequence[BatchWritePayload]) -> None:
         pass
 
     @abstractmethod
-    def read(self, key, fields, tags, **kwargs):
+    def read(
+        self,
+        key: str,
+        fields: FieldSelection,
+        tags: TimeseriesTags | None,
+        **kwargs: Any,
+    ) -> list[TimeseriesPoint]:
         pass
 
     @abstractmethod
-    def get_list_query(self, query, precision="s"):
+    def get_list_query(self, query: str, precision: str = "s") -> list[TimeseriesPoint]:
         pass
 
     @abstractmethod
-    def get_list_retention_policies(self):
+    def get_list_retention_policies(self) -> list[TimeseriesPoint]:
         pass
 
     @abstractmethod
-    def delete_metric_data(self, key=None, tags=None):
+    def delete_metric_data(
+        self, key: str | None = None, tags: TimeseriesTags | None = None
+    ) -> None:
         pass
 
     @abstractmethod
-    def delete_series(self, key=None, tags=None):
+    def delete_series(
+        self, key: str | None = None, tags: TimeseriesTags | None = None
+    ) -> None:
         pass
 
     @abstractmethod
-    def validate_query(self, query):
+    def validate_query(self, query: str) -> bool:
         pass
 
     @abstractmethod
     def get_query(
         self,
-        chart_type,
-        params,
-        time,
-        group_map,
-        summary=False,
-        fields=None,
-        query=None,
-        timezone=None,
-    ):
+        chart_type: str,
+        params: ChartQueryParams,
+        time: Any,
+        group_map: Mapping[Any, str],
+        summary: bool = False,
+        fields: Sequence[str] | None = None,
+        query: str | None = None,
+        timezone: str | None = None,
+    ) -> str:
         pass
 
     @abstractmethod
     def _get_top_fields(
         self,
-        query,
-        params,
-        chart_type,
-        group_map,
-        number,
-        time,
-        timezone=None,
-    ):
+        query: str | None,
+        params: ChartQueryParams,
+        chart_type: str,
+        group_map: Mapping[Any, str],
+        number: int,
+        time: Any,
+        timezone: str | None = None,
+    ) -> list[str]:
         pass

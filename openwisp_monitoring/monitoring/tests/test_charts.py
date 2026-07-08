@@ -1,7 +1,5 @@
 import json
-import os
 from datetime import date, timedelta
-from unittest import SkipTest
 from unittest.mock import patch
 
 from django.core.exceptions import ImproperlyConfigured, ValidationError
@@ -19,7 +17,7 @@ from ..configuration import (
     register_chart,
     unregister_chart,
 )
-from . import TestMonitoringMixin, charts
+from . import RequireTimeseriesBackendMixin, TestMonitoringMixin, charts
 
 Chart = load_model("monitoring", "Chart")
 
@@ -341,16 +339,10 @@ class TestCharts(TestMonitoringMixin, TestCase):
             )
 
 
-class TestChartsBackendMixin(TestMonitoringMixin, TestCase):
+class TestChartsBackendMixin(
+    RequireTimeseriesBackendMixin, TestMonitoringMixin, TestCase
+):
     expected_backend = None
-
-    @classmethod
-    def setUpClass(cls):
-        if os.environ.get("TIMESERIES_BACKEND", "influxdb") != cls.expected_backend:
-            raise SkipTest(
-                f'Set TIMESERIES_BACKEND="{cls.expected_backend}" to run these tests.'
-            )
-        super().setUpClass()
 
     def _create_wifi_clients_chart(self):
         m = self._create_object_metric(

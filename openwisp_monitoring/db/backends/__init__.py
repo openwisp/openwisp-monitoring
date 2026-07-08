@@ -1,3 +1,4 @@
+import atexit
 import logging
 from importlib import import_module
 
@@ -77,3 +78,8 @@ def load_backend_module(backend_name=TIMESERIES_DB["BACKEND"], module=None):
 
 backend_module = load_backend()
 timeseries_db = backend_module.DatabaseClient().attach_queries(backend_module.queries)
+
+if timeseries_db.backend_name == "influxdb2" and callable(
+    getattr(timeseries_db, "close", None)
+):
+    atexit.register(timeseries_db.close)

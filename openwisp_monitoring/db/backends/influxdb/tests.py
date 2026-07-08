@@ -1,6 +1,4 @@
-import os
 from datetime import datetime, timedelta
-from unittest import SkipTest
 from unittest.mock import patch
 
 from celery.exceptions import Retry
@@ -23,7 +21,10 @@ from openwisp_monitoring.device.utils import (
     manage_default_retention_policy,
     manage_short_retention_policy,
 )
-from openwisp_monitoring.monitoring.tests import TestMonitoringMixin
+from openwisp_monitoring.monitoring.tests import (
+    RequireTimeseriesBackendMixin,
+    TestMonitoringMixin,
+)
 from openwisp_monitoring.settings import MONITORING_TIMESERIES_RETRY_OPTIONS
 from openwisp_utils.tests import capture_stderr
 
@@ -35,12 +36,8 @@ Notification = load_model("openwisp_notifications", "Notification")
 
 
 @tag("timeseries_client", "influxdb1")
-class TestDatabaseClient(TestMonitoringMixin, TestCase):
-    @classmethod
-    def setUpClass(cls):
-        if os.environ.get("TIMESERIES_BACKEND", "influxdb") != "influxdb":
-            raise SkipTest('Set TIMESERIES_BACKEND="influxdb" to run InfluxDB tests.')
-        super().setUpClass()
+class TestDatabaseClient(RequireTimeseriesBackendMixin, TestMonitoringMixin, TestCase):
+    expected_backend = "influxdb"
 
     def test_forbidden_queries(self):
         queries = [
@@ -413,12 +410,10 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
 
 
 @tag("timeseries_client", "influxdb1")
-class TestDatabaseClientUdp(TestMonitoringMixin, TestCase):
-    @classmethod
-    def setUpClass(cls):
-        if os.environ.get("TIMESERIES_BACKEND", "influxdb") != "influxdb":
-            raise SkipTest('Set TIMESERIES_BACKEND="influxdb" to run InfluxDB tests.')
-        super().setUpClass()
+class TestDatabaseClientUdp(
+    RequireTimeseriesBackendMixin, TestMonitoringMixin, TestCase
+):
+    expected_backend = "influxdb"
 
     def test_exceed_udp_packet_limit(self):
         # When using UDP to write data to InfluxDB, writing

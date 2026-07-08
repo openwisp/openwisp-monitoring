@@ -1,10 +1,12 @@
-import json
 import logging
 import re
+from collections.abc import Iterator, Mapping, Sequence
 from datetime import datetime, timedelta, timezone
+from typing import Any
+from urllib.parse import urlparse
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.utils.functional import cached_property
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
@@ -18,7 +20,15 @@ from openwisp_monitoring.utils import retry
 
 from ...exceptions import TimeseriesWriteException
 from .. import TIMESERIES_DB
-from ..base import BaseTimeseriesClient
+from ..base import (
+    BaseTimeseriesClient,
+    BatchWritePayload,
+    ChartQueryParams,
+    FieldSelection,
+    TimeseriesFields,
+    TimeseriesPoint,
+    TimeseriesTags,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +43,12 @@ FLUX_METADATA_FIELDS = {
     "_value",
 }
 
+SeriesTags = dict[str, Any]
+SeriesTagSet = frozenset[tuple[str, Any]]
+SeriesCacheKey = tuple[str, SeriesTagSet]
+SeriesKey = tuple[str, SeriesTags | None]
+SeriesCache = dict[SeriesCacheKey, list[TimeseriesPoint]]
+
 
 class QueryResultSet:
     """
@@ -43,7 +59,7 @@ class QueryResultSet:
     mimics that structure for backward compatibility.
     """
 
-    def __init__(self, points):
+    def __init__(self, points: list[TimeseriesPoint]) -> None:
         """
         Initialize with a list of point dictionaries from InfluxDB 2.x
         Args:
@@ -52,21 +68,21 @@ class QueryResultSet:
                     "time": datetime, ...other_tags}
         """
         self.points = points
-        self._series_cache = None
+        self._series_cache: SeriesCache | None = None
 
-    def _group_by_measurement_tags(self):
+    def _group_by_measurement_tags(self) -> SeriesCache:
         """
         Group points by (measurement, tags) to mimic v1 structure.
         Returns a dict: {(measurement, frozenset(tags.items())): [points]}
         """
         if self._series_cache is not None:
             return self._series_cache
-        series_dict = {}
+        series_dict: SeriesCache = {}
         for point in self.points:
             measurement = point.get("_measurement", "results")
             # Extract tags (all keys except special fields)
             special_fields = {"_measurement", "_field", "_value", "time", "__raw_time"}
-            tags = {}
+            tags: SeriesTags = {}
             for key, value in point.items():
                 if key not in special_fields:
                     tags[key] = value
@@ -79,7 +95,9 @@ class QueryResultSet:
         self._series_cache = series_dict
         return series_dict
 
-    def get_points(self, measurement=None, tags=None):
+    def get_points(
+        self, measurement: str | None = None, tags: TimeseriesTags | None = None
+    ) -> Iterator[TimeseriesPoint]:
         """
         Yield points filtered by measurement and tags.
         Mimics v1 ResultSet.get_points() which is a generator.
@@ -103,26 +121,26 @@ class QueryResultSet:
             for point in points:
                 yield point
 
-    def keys(self):
+    def keys(self) -> list[SeriesKey]:
         """
         Return list of (measurement, tags) tuples.
         Mimics v1 ResultSet.keys() which returns list of
         (measurement_name, tags_dict) tuples.
         """
         series_dict = self._group_by_measurement_tags()
-        keys = []
+        keys: list[SeriesKey] = []
         for measurement, tags_frozen in series_dict.keys():
             tags_dict = dict(tags_frozen) if tags_frozen else None
             keys.append((measurement, tags_dict))
         return keys
 
-    def items(self):
+    def items(self) -> list[tuple[SeriesKey, Iterator[TimeseriesPoint]]]:
         """
         Return list of (key, points_generator) tuples.
         Mimics v1 ResultSet.items().
         """
         series_dict = self._group_by_measurement_tags()
-        items = []
+        items: list[tuple[SeriesKey, Iterator[TimeseriesPoint]]] = []
         for (measurement, tags_frozen), points in series_dict.items():
             tags_dict = dict(tags_frozen) if tags_frozen else None
             key = (measurement, tags_dict)
@@ -132,22 +150,22 @@ class QueryResultSet:
         return items
 
     @staticmethod
-    def _tag_matches(series_tags, filter_tags):
+    def _tag_matches(series_tags: TimeseriesTags, filter_tags: TimeseriesTags) -> bool:
         """Check if all key/values in filter match in tags."""
         for tag_name, tag_value in filter_tags.items():
             if series_tags.get(tag_name) != tag_value:
                 return False
         return True
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[TimeseriesPoint]:
         """Yield points like v1 ResultSet."""
         yield from self.get_points()
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return the number of series (measurement, tags) combinations."""
         return len(self.keys())
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Representation of ResultSet object."""
         items = []
         for key, points in self.items():
@@ -161,11 +179,41 @@ class DatabaseClient(BaseTimeseriesClient):
     _AGGREGATE = ["mean", "sum", "count", "max", "min", "mode", "stddev"]
     backend_name = "influxdb2"
     client_error = InfluxDBError
-    required_settings = ("BACKEND", "TOKEN", "NAME", "ORG", "HOST", "PORT")
+    required_settings = ("BACKEND", "USER", "PASSWORD", "NAME")
     _FORBIDDEN = ["drop", "delete", "alter", "create", "into"]
     _OPERATORS = ["=", "!=", "<", ">", "<=", ">="]
+    _FLUX_STRING_ESCAPES = {
+        "\\": "\\\\",
+        '"': '\\"',
+        "\n": "\\n",
+        "\r": "\\r",
+        "\t": "\\t",
+        "${": r"\${",
+    }
+    _FLUX_STRING_PATTERN = re.compile(
+        r'\$\{|["\\\n\r\t]|[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]'
+    )
+    _DELETE_PREDICATE_KEY_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
-    def __init__(self, db_name=None):
+    @classmethod
+    def validate_settings(cls, config: Mapping[str, Any] | None) -> Mapping[str, Any]:
+        if config is None or not hasattr(config, "__contains__"):
+            raise ImproperlyConfigured("No TIMESERIES_DATABASE specified in settings")
+        for field in cls.required_settings:
+            if field not in config:
+                raise ImproperlyConfigured(
+                    f'"{field}" field is not declared in TIMESERIES_DATABASE'
+                )
+        has_url = bool(config.get("URL"))
+        has_host_port = all(config.get(field) for field in ("HOST", "PORT"))
+        if not has_url and not has_host_port:
+            raise ImproperlyConfigured(
+                'InfluxDB2 TIMESERIES_DATABASE must define either "URL" '
+                'or both "HOST" and "PORT".'
+            )
+        return config
+
+    def __init__(self, db_name: str | None = None) -> None:
         """Initialize InfluxDB 2 client.
 
         Args:
@@ -173,16 +221,29 @@ class DatabaseClient(BaseTimeseriesClient):
         """
         self._db = None
         self.db_name = db_name or TIMESERIES_DB["NAME"]
-        self.org = TIMESERIES_DB.get("ORG", "openwisp")
-        self.token = TIMESERIES_DB.get("TOKEN", "")
+        self.user = TIMESERIES_DB.get("USER", "openwisp")
+        self.password = TIMESERIES_DB.get("PASSWORD", "")
 
-    def reset(self, db_name=None):
+    def _close_cached_client(self) -> None:
+        client = self.__dict__.get("db")
+        close = getattr(client, "close", None)
+        try:
+            if callable(close):
+                close()
+        except Exception as exception:
+            logger.debug("Error while closing InfluxDB2 client: %s", exception)
+
+    def reset(self, db_name: str | None = None) -> None:
+        self._close_cached_client()
         super().reset(db_name=db_name)
         for attr in ("db", "_write_api", "_query_api", "_delete_api", "use_udp"):
             self.__dict__.pop(attr, None)
 
+    def close(self) -> None:
+        self.reset()
+
     @retry
-    def create_database(self):
+    def create_database(self) -> None:
         """Creates bucket if necessary."""
         api = self.db.buckets_api()
         try:
@@ -192,11 +253,11 @@ class DatabaseClient(BaseTimeseriesClient):
                 return
         except self.client_error:
             pass
-        api.create_bucket(bucket_name=self.db_name, org=self.org)
+        api.create_bucket(bucket_name=self.db_name, org=self.user)
         logger.debug(f'Created InfluxDB2 bucket "{self.db_name}"')
 
     @retry
-    def drop_database(self):
+    def drop_database(self) -> None:
         """Drops known buckets if they exist."""
         api = self.db.buckets_api()
         for bucket_name in self._get_known_bucket_names():
@@ -209,20 +270,20 @@ class DatabaseClient(BaseTimeseriesClient):
                 logger.debug(f'InfluxDB2 bucket "{bucket_name}" not found')
 
     @cached_property
-    def db(self):
+    def db(self) -> InfluxDBClient:
         """Returns an InfluxDBClient instance."""
         url = (
             TIMESERIES_DB.get("URL")
             or f"http://{TIMESERIES_DB['HOST']}:{TIMESERIES_DB['PORT']}"
         )
-        if TIMESERIES_DB.get("URL", "").startswith("http://"):
+        if urlparse(url).scheme == "http":
             logger.warning(
                 'Using insecure HTTP for InfluxDB2 at "%s". Consider '
                 'switching TIMESERIES_DATABASE["URL"] to https:// when '
                 "running outside local development.",
                 url,
             )
-        return InfluxDBClient(url=url, token=self.token, org=self.org)
+        return InfluxDBClient(url=url, token=self.password, org=self.user)
 
     @cached_property
     def _write_api(self):
@@ -242,7 +303,7 @@ class DatabaseClient(BaseTimeseriesClient):
         return self.db.delete_api()
 
     @cached_property
-    def use_udp(self):
+    def use_udp(self) -> bool:
         return False
 
     def _get_bucket_name(self, retention_policy=None):
@@ -268,7 +329,7 @@ class DatabaseClient(BaseTimeseriesClient):
         return "0s"
 
     @retry
-    def create_or_alter_retention_policy(self, name, duration):
+    def create_or_alter_retention_policy(self, name: str, duration: str) -> None:
         """Creates or alters a bucket matching the retention policy."""
         api = self.db.buckets_api()
         bucket_name = self._get_bucket_name(name)
@@ -279,17 +340,14 @@ class DatabaseClient(BaseTimeseriesClient):
         try:
             bucket = api.find_bucket_by_name(bucket_name)
         except self.client_error as exception:
-            if self._is_bucket_not_found(exception):
-                bucket = None
-            else:
-                logger.warning(
-                    f'Could not inspect InfluxDB2 bucket "{bucket_name}": {exception}'
-                )
-                raise
+            logger.warning(
+                f'Could not inspect InfluxDB2 bucket "{bucket_name}": {exception}'
+            )
+            return
         if not bucket:
             api.create_bucket(
                 bucket_name=bucket_name,
-                org=self.org,
+                org=self.user,
                 retention_rules=retention_rules,
             )
             logger.debug(
@@ -302,7 +360,7 @@ class DatabaseClient(BaseTimeseriesClient):
             api.update_bucket(bucket=bucket)
         except self.client_error as exception:
             logger.warning(f"Could not update InfluxDB2 bucket retention: {exception}")
-            raise
+            return
         logger.debug(
             f'Created/updated InfluxDB2 bucket "{bucket_name}" for retention policy '
             f'"{name}" with duration {duration}'
@@ -331,12 +389,29 @@ class DatabaseClient(BaseTimeseriesClient):
             )
         return "==" if op == "=" else op
 
-    @staticmethod
-    def _escape_flux_string(value):
-        return json.dumps(str(value))[1:-1]
+    @classmethod
+    def _escape_flux_match(cls, match):
+        token = match.group(0)
+        escaped = cls._FLUX_STRING_ESCAPES.get(token)
+        if escaped is not None:
+            return escaped
+        return "".join(f"\\x{byte:02x}" for byte in token.encode("utf-8"))
+
+    @classmethod
+    def _escape_flux_string(cls, value):
+        return cls._FLUX_STRING_PATTERN.sub(cls._escape_flux_match, str(value))
 
     def _format_flux_string(self, value):
         return f'"{self._escape_flux_string(value)}"'
+
+    def _format_flux_property_access(self, key):
+        return f"r[{self._format_flux_string(key)}]"
+
+    @classmethod
+    def _validate_delete_predicate_key(cls, key):
+        if not cls._DELETE_PREDICATE_KEY_PATTERN.fullmatch(str(key)):
+            raise ValueError(f'Invalid delete predicate key "{key}"')
+        return key
 
     def _format_flux_value(self, value):
         if isinstance(value, datetime):
@@ -380,11 +455,11 @@ class DatabaseClient(BaseTimeseriesClient):
             return f"{max(int(time_value), 1)}m"
         return time_value
 
-    def _normalize_chart_start_range(self, time_value, group_map=None):
+    def _normalize_chart_start_range(self, time_value):
         if isinstance(time_value, (int, float)):
-            return f"-{self._normalize_chart_window(time_value, group_map)}"
+            return f"-{self._normalize_chart_window(time_value)}"
         if isinstance(time_value, str) and re.fullmatch(r"\d+", time_value):
-            return f"-{self._normalize_chart_window(time_value, group_map)}"
+            return f"-{self._normalize_chart_window(time_value)}"
         return self._format_flux_time(time_value)
 
     def _normalize_record_time(self, record_time, precision="s"):
@@ -414,16 +489,6 @@ class DatabaseClient(BaseTimeseriesClient):
         message = str(exception).lower()
         return "retention policy" in message and "dropped" in message
 
-    def _is_bucket_not_found(self, exception):
-        message = str(exception).lower()
-        return "could not find bucket" in message
-
-    def _extract_bucket_name(self, query):
-        match = re.search(r'from\(bucket: "([^"]+)"\)', query)
-        if match:
-            return match.group(1)
-        return None
-
     def _ensure_bucket_exists(self, bucket_name):
         if bucket_name == self.db_name:
             self.create_database()
@@ -433,7 +498,7 @@ class DatabaseClient(BaseTimeseriesClient):
                 "short", device_settings.SHORT_RETENTION_POLICY
             )
 
-    def validate_query(self, query):
+    def validate_query(self, query: str) -> bool:
         for word in self._FORBIDDEN:
             if re.search(rf"\b{word}\b", query, re.IGNORECASE):
                 msg = _('the word "%(word)s" is not allowed') % {"word": word.upper()}
@@ -451,7 +516,7 @@ class DatabaseClient(BaseTimeseriesClient):
             for word in self._AGGREGATE
         )
 
-    def write(self, name, values, **kwargs):
+    def write(self, name: str, values: TimeseriesFields, **kwargs: Any) -> None:
         timestamp = self._get_timestamp(timestamp=kwargs.get("timestamp"))
         if kwargs.get("database") and kwargs.get("database") != self.db_name:
             logger.warning(
@@ -468,7 +533,7 @@ class DatabaseClient(BaseTimeseriesClient):
         try:
             self._write_api.write(
                 bucket=bucket,
-                org=self.org,
+                org=self.user,
                 record=point,
             )
         except Exception as exception:
@@ -481,7 +546,7 @@ class DatabaseClient(BaseTimeseriesClient):
             logger.warning(f"Error writing to InfluxDB2: {exception}")
             raise TimeseriesWriteException
 
-    def batch_write(self, metric_data):
+    def batch_write(self, metric_data: Sequence[BatchWritePayload]) -> None:
         """Write multiple data points in batch."""
         points_by_bucket = {}
         for data in metric_data:
@@ -501,7 +566,7 @@ class DatabaseClient(BaseTimeseriesClient):
             points_by_bucket.setdefault(bucket, []).append(point)
         try:
             for bucket, points in points_by_bucket.items():
-                self._write_api.write(bucket=bucket, org=self.org, record=points)
+                self._write_api.write(bucket=bucket, org=self.user, record=points)
         except Exception as exception:
             if self._is_retention_policy_violation(exception):
                 logger.warning(
@@ -512,47 +577,43 @@ class DatabaseClient(BaseTimeseriesClient):
             logger.warning(f"Error batch writing to InfluxDB2: {exception}")
             raise TimeseriesWriteException
 
-    def query(self, query, precision="s", **kwargs):
+    def query(
+        self, query: str, precision: str | None = "s", **kwargs: Any
+    ) -> QueryResultSet:
         """Execute a Flux query and return ResultSet-like object for backward compatibility."""
         try:
-            tables = self._query_api.query(query, org=self.org)
-            results = []
-            for table in tables:
-                for record in table.records:
-                    record_time = self._get_record_time(record)
-                    result = {
-                        "time": self._normalize_record_time(
-                            record_time, precision=precision
-                        ),
-                        "__raw_time": record_time,
-                        "_measurement": record.values.get("_measurement"),
-                        "_field": record.values.get("_field"),
-                        "_value": record.get_value(),
-                    }
-                    # Add tags
-                    for tag_key, tag_value in record.values.items():
-                        if tag_key not in FLUX_METADATA_FIELDS:
-                            result[tag_key] = tag_value
-                    results.append(result)
-            # Return wrapped ResultSet for backward compatibility with v1
-            return QueryResultSet(results)
+            tables = self._query_api.query(query, org=self.user)
         except Exception as exception:
-            bucket_name = self._extract_bucket_name(query)
-            if (
-                not kwargs.get("_retried_missing_bucket")
-                and bucket_name in self._get_known_bucket_names()
-                and self._is_bucket_not_found(exception)
-            ):
-                self._ensure_bucket_exists(bucket_name)
-                return self.query(
-                    query,
-                    precision=precision,
-                    _retried_missing_bucket=True,
-                )
             logger.warning(f"Error querying InfluxDB2: {exception}")
             raise
+        results = []
+        for table in tables:
+            for record in table.records:
+                record_time = self._get_record_time(record)
+                result = {
+                    "time": self._normalize_record_time(
+                        record_time, precision=precision
+                    ),
+                    "__raw_time": record_time,
+                    "_measurement": record.values.get("_measurement"),
+                    "_field": record.values.get("_field"),
+                    "_value": record.get_value(),
+                }
+                # Add tags
+                for tag_key, tag_value in record.values.items():
+                    if tag_key not in FLUX_METADATA_FIELDS:
+                        result[tag_key] = tag_value
+                results.append(result)
+        # Return wrapped ResultSet for backward compatibility with v1
+        return QueryResultSet(results)
 
-    def read(self, key, fields, tags, **kwargs):
+    def read(
+        self,
+        key: str,
+        fields: FieldSelection,
+        tags: TimeseriesTags | None,
+        **kwargs: Any,
+    ) -> list[TimeseriesPoint]:
         """Read data from InfluxDB2 using Flux query language.
         Note: InfluxDB 2.x with Flux does not support some v1 features.
         Raises NotImplementedError if unsupported parameters are used.
@@ -602,7 +663,8 @@ class DatabaseClient(BaseTimeseriesClient):
         if tags:
             for tag_key, tag_value in tags.items():
                 flux_query += (
-                    f" |> filter(fn: (r) => r.{tag_key} == "
+                    " |> filter(fn: (r) => "
+                    f"{self._format_flux_property_access(tag_key)} == "
                     f"{self._format_flux_value(tag_value)})"
                 )
         # Filter by fields
@@ -756,17 +818,20 @@ class DatabaseClient(BaseTimeseriesClient):
                 point.setdefault(field, None)
         return points
 
-    def _build_delete_predicate(self, key: str = None, tags: dict = None):
+    def _build_delete_predicate(
+        self, key: str | None = None, tags: TimeseriesTags | None = None
+    ) -> str:
         predicates = []
         if key:
             predicates.append(f"_measurement={self._format_flux_string(key)}")
         if tags:
             for tag_key, tag_value in tags.items():
+                self._validate_delete_predicate_key(tag_key)
                 predicates.append(f"{tag_key}={self._format_flux_string(tag_value)}")
         return " AND ".join(predicates)
 
     @retry
-    def _delete_range(self, predicate="", bucket=None):
+    def _delete_range(self, predicate: str = "", bucket: str | None = None) -> None:
         start = datetime(1970, 1, 1, tzinfo=timezone.utc)
         stop = datetime.now(timezone.utc)
         self._delete_api.delete(
@@ -774,11 +839,13 @@ class DatabaseClient(BaseTimeseriesClient):
             stop,
             predicate,
             bucket=bucket or self.db_name,
-            org=self.org,
+            org=self.user,
         )
 
     @retry
-    def delete_series(self, key=None, tags=None):
+    def delete_series(
+        self, key: str | None = None, tags: TimeseriesTags | None = None
+    ) -> None:
         """
         Backward-compatible InfluxDB 1.8 style series deletion.
         In InfluxDB 2.0 this is implemented as a predicate-based delete over
@@ -790,7 +857,9 @@ class DatabaseClient(BaseTimeseriesClient):
         for bucket in self._get_known_bucket_names():
             self._delete_range(predicate, bucket=bucket)
 
-    def delete_metric_data(self, key=None, tags=None):
+    def delete_metric_data(
+        self, key: str | None = None, tags: TimeseriesTags | None = None
+    ) -> None:
         """Deletes metric data based on measurement and tags."""
         predicate = self._build_delete_predicate(key=key, tags=tags)
         if not predicate:
@@ -812,13 +881,13 @@ class DatabaseClient(BaseTimeseriesClient):
             api.delete_bucket(bucket)
             create_kwargs = {
                 "bucket_name": bucket_name,
-                "org": self.org,
+                "org": self.user,
             }
             if retention_rules:
                 create_kwargs["retention_rules"] = retention_rules
             api.create_bucket(**create_kwargs)
 
-    def get_list_query(self, query, precision="s"):
+    def get_list_query(self, query: str, precision: str = "s") -> list[TimeseriesPoint]:
         """Execute a query and flatten GROUP BY TAG results for chart rendering.
         Mimics InfluxDB 1.x behavior for queries containing GROUP BY TAG clauses.
         Flattens tagged results into a time-indexed dictionary structure for UI charts.
@@ -869,7 +938,7 @@ class DatabaseClient(BaseTimeseriesClient):
         return points
 
     @retry
-    def get_list_retention_policies(self):
+    def get_list_retention_policies(self) -> list[TimeseriesPoint]:
         """Returns v1-compatible retention policy records for known buckets."""
         try:
             api = self.db.buckets_api()
@@ -891,13 +960,15 @@ class DatabaseClient(BaseTimeseriesClient):
         except self.client_error:
             return []
 
-    def _build_chart_base_query(self, params: dict, time, group_map: dict):
+    def _build_chart_base_query(
+        self, params: ChartQueryParams, time: Any, group_map: Mapping[Any, str]
+    ) -> str:
         flux_query = f'from(bucket: "{self.db_name}")'
         start_range = params.get("time")
         if start_range:
-            start_range = self._normalize_chart_start_range(start_range, group_map)
+            start_range = self._normalize_chart_start_range(start_range)
         else:
-            time_val = self._normalize_chart_window(time, group_map)
+            time_val = self._normalize_chart_window(time)
             start_range = f"-{time_val}"
         if params.get("end_date"):
             end_range = self._format_flux_time(params["end_date"])
@@ -963,9 +1034,9 @@ class DatabaseClient(BaseTimeseriesClient):
     def _format_chart_query(self, query, params, time, group_map, summary, fields):
         start_range = params.get("time")
         if start_range:
-            time_start = self._normalize_chart_start_range(start_range, group_map)
+            time_start = self._normalize_chart_start_range(start_range)
         else:
-            time_val = self._normalize_chart_window(time, group_map)
+            time_val = self._normalize_chart_window(time)
             time_start = f"-{time_val}"
         end_range = ""
         if params.get("end_date"):
@@ -1029,18 +1100,27 @@ class DatabaseClient(BaseTimeseriesClient):
 
     def _get_top_fields(
         self,
-        query,
-        params,
-        chart_type,
-        group_map,
-        number,
-        time,
-        timezone=settings.TIME_ZONE,
-    ):
-        del query, chart_type, timezone
+        query: str | None,
+        params: ChartQueryParams,
+        chart_type: str,
+        group_map: Mapping[Any, str],
+        number: int,
+        time: Any,
+        timezone: str = settings.TIME_ZONE,
+    ) -> list[str]:
         if number <= 0:
             return []
-        flux_query = self._build_chart_base_query(params, time, group_map)
+        ranking_params = params.copy()
+        ranking_params["field_name"] = ""
+        flux_query = self.get_query(
+            chart_type=chart_type,
+            params=ranking_params,
+            time=time,
+            group_map=group_map,
+            summary=True,
+            query=query,
+            timezone=timezone,
+        )
         flux_query += ' |> group(columns: ["_field"]) |> sum()'
         result = list(self.query(flux_query).get_points())
         result.sort(key=lambda point: point.get("_value", 0), reverse=True)
@@ -1048,15 +1128,15 @@ class DatabaseClient(BaseTimeseriesClient):
 
     def get_query(
         self,
-        chart_type,
-        params,
-        time,
-        group_map,
-        summary=False,
-        fields=None,
-        query=None,
-        timezone=settings.TIME_ZONE,
-    ):
+        chart_type: str,
+        params: ChartQueryParams,
+        time: Any,
+        group_map: Mapping[Any, str],
+        summary: bool = False,
+        fields: Sequence[str] | None = None,
+        query: str | None = None,
+        timezone: str | None = settings.TIME_ZONE,
+    ) -> str:
         """Build Flux query for chart rendering with full parameter consumption.
         Consumes all required params to filter data correctly:
         - content_type, object_id: Device-specific queries

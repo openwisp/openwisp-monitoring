@@ -49,6 +49,10 @@ To ensure consistent alerting behavior, this value should match the
         },
     }
 
+The example above shows the default InfluxDB 1.8 configuration.
+Alternatively, you can keep using the same ``TIMESERIES_DATABASE`` setting
+and switch ``BACKEND`` to ``openwisp_monitoring.db.backends.influxdb2``.
+
 The following table describes all keys available in
 ``TIMESERIES_DATABASE`` setting:
 
@@ -59,6 +63,9 @@ The following table describes all keys available in
 ``USER``     User for logging into the timeseries database
 ``PASSWORD`` Password of the timeseries database user
 ``NAME``     Name of the timeseries database
+``URL``      Optional connection URL. For the
+             ``openwisp_monitoring.db.backends.influxdb2`` backend you may
+             set ``URL`` instead of ``HOST`` and ``PORT``.
 ``HOST``     IP address/hostname of machine where the timeseries database
              is running
 ``PORT``     Port for connecting to the timeseries database
@@ -66,6 +73,22 @@ The following table describes all keys available in
              :ref:`timeseries_backend_options` table below for available
              options
 ============ =============================================================
+
+Example configuration for the
+``openwisp_monitoring.db.backends.influxdb2`` backend:
+
+.. code-block:: python
+
+    TIMESERIES_DATABASE = {
+        "BACKEND": "openwisp_monitoring.db.backends.influxdb2",
+        "NAME": "openwisp2",
+        "USER": "openwisp",  # InfluxDB organization
+        "PASSWORD": "openwisp-token",  # InfluxDB API token
+        "URL": "http://localhost:8087",
+    }
+
+For the ``openwisp_monitoring.db.backends.influxdb2`` backend, you must
+define either ``URL`` or both ``HOST`` and ``PORT``.
 
 .. _timeseries_backend_options:
 

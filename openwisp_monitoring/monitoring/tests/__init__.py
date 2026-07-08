@@ -1,5 +1,7 @@
+import os
 import time
 from datetime import timedelta
+from unittest import SkipTest
 
 from django.core.cache import cache
 from django.utils.timezone import now
@@ -46,6 +48,27 @@ test_notification = {
         "message": default_message,
     },
 }
+
+
+class RequireTimeseriesBackendMixin:
+    expected_backend = None
+    default_backend = "influxdb"
+
+    @classmethod
+    def _require_timeseries_backend(cls):
+        if (
+            os.environ.get("TIMESERIES_BACKEND", cls.default_backend)
+            != cls.expected_backend
+        ):
+            raise SkipTest(
+                f'Set TIMESERIES_BACKEND="{cls.expected_backend}" to run these tests.'
+            )
+
+    @classmethod
+    def setUpClass(cls):
+        cls._require_timeseries_backend()
+        super().setUpClass()
+
 
 # these custom metric configurations are used for automated testing purposes
 metrics = {

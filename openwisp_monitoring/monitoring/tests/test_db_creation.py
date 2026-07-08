@@ -1,5 +1,3 @@
-import os
-from unittest import SkipTest
 from unittest.mock import patch
 
 from django.apps import apps
@@ -8,18 +6,12 @@ from requests.exceptions import ConnectionError
 
 from openwisp_monitoring.settings import MONITORING_TIMESERIES_RETRY_OPTIONS
 
+from . import RequireTimeseriesBackendMixin
 
-class TestDatabaseRetryMixin(TestCase):
+
+class TestDatabaseRetryMixin(RequireTimeseriesBackendMixin, TestCase):
     app = "monitoring"
     expected_backend = None
-
-    @classmethod
-    def setUpClass(cls):
-        if os.environ.get("TIMESERIES_BACKEND", "influxdb") != cls.expected_backend:
-            raise SkipTest(
-                f'Set TIMESERIES_BACKEND="{cls.expected_backend}" to run these tests.'
-            )
-        super().setUpClass()
 
     def _assert_check_retry(self, mock, sleep_mock):
         max_retries = MONITORING_TIMESERIES_RETRY_OPTIONS.get("max_retries")

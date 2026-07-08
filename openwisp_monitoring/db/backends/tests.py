@@ -1,6 +1,6 @@
 from importlib import import_module
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase
@@ -114,9 +114,9 @@ class TestBackendContract(SimpleTestCase):
         },
         "openwisp_monitoring.db.backends.influxdb2": {
             "BACKEND": "openwisp_monitoring.db.backends.influxdb2",
-            "TOKEN": "token",
+            "PASSWORD": "token",
             "NAME": "openwisp2",
-            "ORG": "openwisp",
+            "USER": "openwisp",
             "HOST": "localhost",
             "PORT": "8086",
         },
@@ -280,9 +280,9 @@ class TestBackendLoader(SimpleTestCase):
 class TestInfluxDB2ClientURL(SimpleTestCase):
     base_config = {
         "BACKEND": "openwisp_monitoring.db.backends.influxdb2",
-        "TOKEN": "token",
+        "PASSWORD": "token",
         "NAME": "openwisp2",
-        "ORG": "openwisp",
+        "USER": "openwisp",
         "HOST": "localhost",
         "PORT": "8086",
     }
@@ -292,27 +292,91 @@ class TestInfluxDB2ClientURL(SimpleTestCase):
         base_config,
         clear=True,
     )
+    @patch("openwisp_monitoring.db.backends.influxdb2.client.logger.warning")
     @patch("openwisp_monitoring.db.backends.influxdb2.client.InfluxDBClient")
-    def test_db_uses_http_fallback_url(self, mock_client):
+    def test_db_warns_for_http_fallback_url(self, mock_client, mocked_warning):
         client = DatabaseClient()
         client.db
         mock_client.assert_called_once_with(
             url="http://localhost:8086", token="token", org="openwisp"
         )
+        mocked_warning.assert_called_once()
 
     @patch.dict(
         "openwisp_monitoring.db.backends.influxdb2.client.TIMESERIES_DB",
-        {**base_config, "URL": "http://influxdb.example.com:8086"},
+        {**base_config, "URL": "https://influxdb.example.com:8086"},
         clear=True,
     )
     @patch("openwisp_monitoring.db.backends.influxdb2.client.logger.warning")
     @patch("openwisp_monitoring.db.backends.influxdb2.client.InfluxDBClient")
-    def test_db_warns_for_explicit_insecure_http_url(self, mock_client, mocked_warning):
+    def test_db_does_not_warn_for_https_url(self, mock_client, mocked_warning):
         client = DatabaseClient()
         client.db
         mock_client.assert_called_once_with(
-            url="http://influxdb.example.com:8086",
+            url="https://influxdb.example.com:8086",
             token="token",
             org="openwisp",
         )
-        mocked_warning.assert_called_once()
+        mocked_warning.assert_not_called()
+
+    def test_validate_settings_accepts_url_without_host_and_port(self):
+        config = {
+            "BACKEND": "openwisp_monitoring.db.backends.influxdb2",
+            "PASSWORD": "token",
+            "NAME": "openwisp2",
+            "USER": "openwisp",
+            "URL": "http://influxdb.example.com:8086",
+        }
+
+        self.assertEqual(DatabaseClient.validate_settings(config), config)
+
+    def test_validate_settings_rejects_missing_url_and_host_port(self):
+        config = {
+            "BACKEND": "openwisp_monitoring.db.backends.influxdb2",
+            "PASSWORD": "token",
+            "NAME": "openwisp2",
+            "USER": "openwisp",
+        }
+
+        with self.assertRaisesMessage(
+            ImproperlyConfigured,
+            'InfluxDB2 TIMESERIES_DATABASE must define either "URL" or both "HOST" and "PORT".',
+        ):
+            DatabaseClient.validate_settings(config)
+
+    def test_close_shuts_down_cached_client_and_clears_cached_state(self):
+        client = DatabaseClient()
+        mock_db = MagicMock()
+        client.__dict__["db"] = mock_db
+        client.__dict__["_write_api"] = object()
+        client.__dict__["_query_api"] = object()
+        client.__dict__["_delete_api"] = object()
+        client.__dict__["use_udp"] = object()
+
+        client.close()
+
+        mock_db.close.assert_called_once_with()
+        self.assertNotIn("db", client.__dict__)
+        self.assertNotIn("_write_api", client.__dict__)
+        self.assertNotIn("_query_api", client.__dict__)
+        self.assertNotIn("_delete_api", client.__dict__)
+        self.assertNotIn("use_udp", client.__dict__)
+
+    def test_reset_shuts_down_cached_client_and_clears_cached_state(self):
+        client = DatabaseClient(db_name="initial-db")
+        mock_db = MagicMock()
+        client.__dict__["db"] = mock_db
+        client.__dict__["_write_api"] = object()
+        client.__dict__["_query_api"] = object()
+        client.__dict__["_delete_api"] = object()
+        client.__dict__["use_udp"] = object()
+
+        client.reset(db_name="reset-db")
+
+        mock_db.close.assert_called_once_with()
+        self.assertEqual(client.db_name, "reset-db")
+        self.assertNotIn("db", client.__dict__)
+        self.assertNotIn("_write_api", client.__dict__)
+        self.assertNotIn("_query_api", client.__dict__)
+        self.assertNotIn("_delete_api", client.__dict__)
+        self.assertNotIn("use_udp", client.__dict__)

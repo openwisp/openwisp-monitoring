@@ -219,11 +219,15 @@ class DeviceDataQuery:
     def format(self, retention_policy, measurement, pk):
         from openwisp_monitoring.db import timeseries_db
 
-        bucket = timeseries_db._get_bucket_name(retention_policy)
+        bucket = timeseries_db._format_flux_string(
+            timeseries_db._get_bucket_name(retention_policy)
+        )
+        measurement = timeseries_db._format_flux_string(measurement)
+        pk = timeseries_db._format_flux_string(pk)
         return (
-            f'from(bucket: "{bucket}") |> range(start: -24h) '
-            f'|> filter(fn: (r) => r._measurement == "{measurement}" '
-            f'and r.pk == "{pk}") '
+            f"from(bucket: {bucket}) |> range(start: -24h) "
+            f"|> filter(fn: (r) => r._measurement == {measurement} "
+            f"and r.pk == {pk}) "
             "|> last()"
         )
 
