@@ -29,6 +29,7 @@ if TESTING and "--exclude-tag=selenium_tests" not in sys.argv:
     }
 
 TIMESERIES_BACKEND = os.getenv("TIMESERIES_BACKEND", "influxdb")
+TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
 if TIMESERIES_BACKEND == "influxdb":
     TIMESERIES_DATABASE = {
         "BACKEND": "openwisp_monitoring.db.backends.influxdb",
@@ -60,7 +61,10 @@ elif TIMESERIES_BACKEND == "influxdb2":
 else:
     raise ValueError(f'Unsupported TIMESERIES_BACKEND "{TIMESERIES_BACKEND}"')
 if TESTING:
-    if TIMESERIES_BACKEND == "influxdb" and os.environ.get("TIMESERIES_UDP", False):
+    if (
+        TIMESERIES_BACKEND == "influxdb"
+        and os.getenv("TIMESERIES_UDP", "").strip().lower() in TRUTHY_ENV_VALUES
+    ):
         TIMESERIES_DATABASE["OPTIONS"] = {"udp_writes": True, "udp_port": 8091}
 
 SECRET_KEY = "fn)t*+$)ugeyip6-#txyy$5wf2ervc0d2n#h)qb)y5@ly$t*@w"

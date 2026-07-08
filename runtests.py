@@ -7,6 +7,8 @@ import sys
 sys.path.insert(0, "tests")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "openwisp2.settings")
 
+TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
+
 if __name__ == "__main__":
     from django.core.management import execute_from_command_line
     from django.core.management.commands.test import Command
@@ -26,7 +28,7 @@ if __name__ == "__main__":
     if not has_test_labels:
         args.append(default_target)
     args.extend(base_args)
-    if os.environ.get("TIMESERIES_UDP", False):
+    if os.getenv("TIMESERIES_UDP", "").strip().lower() in TRUTHY_ENV_VALUES:
         args.extend(["--exclude-tag", "timeseries_client"])
         # These tests read immediately after writing, sometimes inside product
         # code such as Metric.write(). That is unreliable with UDP writes, and

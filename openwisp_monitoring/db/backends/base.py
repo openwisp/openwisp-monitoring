@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, TypedDict, TypeVar
+from typing import Any, Self, TypedDict
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db import DatabaseError
@@ -11,8 +11,6 @@ TimeseriesTags = Mapping[str, Any]
 TimeseriesPoint = dict[str, Any]
 FieldSelection = str | Sequence[str]
 ChartQueryParams = dict[str, Any]
-BackendQueryBundleT = TypeVar("BackendQueryBundleT", bound="BackendQueryBundle")
-TimeseriesClientT = TypeVar("TimeseriesClientT", bound="BaseTimeseriesClient")
 
 
 class BatchWritePayload(TypedDict, total=False):
@@ -33,7 +31,7 @@ class BackendQueryBundle:
     default_chart_query: object
     device_data_query: object
 
-    def validate(self: BackendQueryBundleT, backend_name: str) -> BackendQueryBundleT:
+    def validate(self, backend_name: str) -> Self:
         if not isinstance(self.chart_query, Mapping):
             raise ImproperlyConfigured(
                 "Backend query bundle must define chart_query as a mapping."
@@ -79,9 +77,7 @@ class BaseTimeseriesClient(ABC):
                 )
         return config
 
-    def attach_queries(
-        self: TimeseriesClientT, queries: BackendQueryBundle
-    ) -> TimeseriesClientT:
+    def attach_queries(self, queries: BackendQueryBundle) -> Self:
         self.queries = queries
         return self
 

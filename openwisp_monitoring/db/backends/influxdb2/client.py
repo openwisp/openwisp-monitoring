@@ -390,10 +390,11 @@ class DatabaseClient(BaseTimeseriesClient):
 
     def _clean_operator(self, op):
         if op not in self._OPERATORS:
-            raise self.client_error(
-                f'Invalid operator "{op}" passed.\n'
-                f"Valid operators are: {', '.join(self._OPERATORS)}"
-            )
+            message = _(
+                'Invalid operator "%(operator)s" passed.\n'
+                "Valid operators are: %(operators)s"
+            ) % {"operator": op, "operators": ", ".join(self._OPERATORS)}
+            raise self.client_error(message)
         return "==" if op == "=" else op
 
     @classmethod
@@ -417,10 +418,14 @@ class DatabaseClient(BaseTimeseriesClient):
     @classmethod
     def _validate_delete_predicate_key(cls, key):
         if not cls._DELETE_PREDICATE_KEY_PATTERN.fullmatch(str(key)):
-            raise ValueError(f'Invalid delete predicate key "{key}"')
+            message = _('Invalid delete predicate key "%(key)s"') % {"key": key}
+            raise ValueError(message)
         return key
 
     def _format_flux_value(self, value):
+        if value is None:
+            message = _("None is not a valid Flux filter value")
+            raise self.client_error(message=message)
         if isinstance(value, datetime):
             return f'"{self._get_timestamp(value)}"'
         if isinstance(value, str):
@@ -449,8 +454,6 @@ class DatabaseClient(BaseTimeseriesClient):
         return value
 
     def _get_open_range_stop(self, since):
-        if isinstance(since, datetime):
-            return since + timedelta(days=3650)
         return datetime(2100, 1, 1, tzinfo=timezone.utc)
 
     def _normalize_chart_window(self, time_value, group_map=None):
@@ -722,11 +725,12 @@ class DatabaseClient(BaseTimeseriesClient):
             elif order == "-time":
                 flux_query += ' |> sort(columns: ["_time"], desc: true)'
             else:
-                raise self.client_error(
-                    f'Invalid order "{order}" passed.\n'
+                message = _(
+                    'Invalid order "%(order)s" passed.\n'
                     'You may pass "time" / "-time" to get result sorted '
                     "in ascending /descending order respectively."
-                )
+                ) % {"order": order}
+                raise self.client_error(message)
         else:
             flux_query += ' |> sort(columns: ["_time"])'
         # Apply limit

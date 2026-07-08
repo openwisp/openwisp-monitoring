@@ -2,7 +2,7 @@
 InfluxDB 2.x Database Client Tests
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 from django.conf import settings
@@ -497,6 +497,29 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             flux_query = mock_query.call_args[0][0]
             self.assertIn(r'r["client-id"] == "server\"1"', flux_query)
 
+    def test_read_rejects_none_tag_value(self):
+        with self.assertRaises(self.timeseries_db.client_error) as context:
+            self.timeseries_db.read(
+                key="cpu",
+                fields=["usage"],
+                tags={"host": None},
+            )
+        self.assertEqual(
+            str(context.exception), "None is not a valid Flux filter value"
+        )
+
+    def test_read_rejects_none_where_value(self):
+        with self.assertRaises(self.timeseries_db.client_error) as context:
+            self.timeseries_db.read(
+                key="cpu",
+                fields=["usage"],
+                tags={},
+                where=[("usage", "=", None)],
+            )
+        self.assertEqual(
+            str(context.exception), "None is not a valid Flux filter value"
+        )
+
     def test_read_escapes_mixed_flux_string_edge_cases(self):
         key = 'cpu${foo}"\\'
         field = "usage\n\t"
@@ -745,8 +768,6 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             self.assertEqual(fields, [])
 
     def test_get_top_fields_preserves_supplied_chart_query_semantics(self):
-        from openwisp_monitoring.db.backends.influxdb2.queries import chart_query
-
         result = QueryResultSet(
             [
                 {
@@ -979,6 +1000,25 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             self.timeseries_db._format_flux_time("2024-03-26"),
             'time(v: "2024-03-26T00:00:00Z")',
         )
+
+    def test_get_open_range_stop_uses_fixed_future_datetime(self):
+        self.assertEqual(
+            self.timeseries_db._get_open_range_stop(datetime(2000, 1, 1)),
+            datetime(2100, 1, 1, tzinfo=timezone.utc),
+        )
+
+    def test_read_uses_fixed_future_stop_for_datetime_since(self):
+        with patch.object(
+            self.timeseries_db, "query", return_value=QueryResultSet([])
+        ) as mock_query:
+            self.timeseries_db.read(
+                key="cpu",
+                fields=["usage"],
+                tags={},
+                since=datetime(2000, 1, 1),
+            )
+            flux_query = mock_query.call_args[0][0]
+            self.assertIn('stop: time(v: "2100-01-01T00:00:00+00:00")', flux_query)
 
     def test_get_query_summary_uses_whole_range_aggregate(self):
         from openwisp_monitoring.db.backends.influxdb2.queries import chart_query
@@ -1322,11 +1362,21 @@ class TestInfluxDB2ClientIntegration(
             "delay",
             side_effect=device_tasks.write_device_metrics.run,
         )
-        cls._write_delay_patcher.start()
-        cls._batch_write_delay_patcher.start()
-        cls._device_write_delay_patcher.start()
-        super().setUpClass()
-        manage_short_retention_policy()
+        started_patchers = []
+        try:
+            for patcher in (
+                cls._write_delay_patcher,
+                cls._batch_write_delay_patcher,
+                cls._device_write_delay_patcher,
+            ):
+                patcher.start()
+                started_patchers.append(patcher)
+            super().setUpClass()
+            manage_short_retention_policy()
+        except Exception:
+            for patcher in reversed(started_patchers):
+                patcher.stop()
+            raise
         assert settings.TIMESERIES_DATABASE["BACKEND"].endswith("influxdb2")
 
     @classmethod
@@ -1594,10 +1644,20 @@ class TestInfluxDB2CheckIntegration(
             "delay",
             side_effect=monitoring_tasks.timeseries_batch_write.run,
         )
-        cls._write_delay_patcher.start()
-        cls._batch_write_delay_patcher.start()
-        super().setUpClass()
-        manage_short_retention_policy()
+        started_patchers = []
+        try:
+            for patcher in (
+                cls._write_delay_patcher,
+                cls._batch_write_delay_patcher,
+            ):
+                patcher.start()
+                started_patchers.append(patcher)
+            super().setUpClass()
+            manage_short_retention_policy()
+        except Exception:
+            for patcher in reversed(started_patchers):
+                patcher.stop()
+            raise
         assert settings.TIMESERIES_DATABASE["BACKEND"].endswith("influxdb2")
 
     @classmethod

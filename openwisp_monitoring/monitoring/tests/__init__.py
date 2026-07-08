@@ -304,6 +304,8 @@ class TestMonitoringMixin(TestOrganizationMixin):
     def _recreate_timeseries_storage(cls):
         cls._reset_timeseries_client_state()
         timeseries_db.drop_database()
+        # Reset again after dropping to avoid reusing stale cached client
+        # state when create_database() opens the next connection.
         cls._reset_timeseries_client_state()
         timeseries_db.create_database()
         manage_short_retention_policy()
