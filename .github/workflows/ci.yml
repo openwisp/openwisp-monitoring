@@ -60,6 +60,8 @@ jobs:
       - name: QA checks
         run: |
           ./run-qa-checks
+        env:
+          TIMESERIES_BACKEND: ${{ matrix.tsdb }}
 
       - name: Tests
         if: ${{ !cancelled() && steps.setup_env.conclusion == 'success' }}

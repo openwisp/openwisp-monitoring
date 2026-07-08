@@ -1,7 +1,7 @@
 import logging
 import re
 from collections.abc import Iterator, Mapping, Sequence
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlparse
 

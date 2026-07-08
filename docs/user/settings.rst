@@ -30,9 +30,13 @@ To ensure consistent alerting behavior, this value should match the
 -----------------------
 
 ============ =========
-**type**:    ``str``
+**type**:    ``dict``
 **default**: see below
 ============ =========
+
+Example configurations:
+
+Default ``influxdb`` backend configuration:
 
 .. code-block:: python
 
@@ -49,33 +53,7 @@ To ensure consistent alerting behavior, this value should match the
         },
     }
 
-The example above shows the default InfluxDB 1.8 configuration.
-Alternatively, you can keep using the same ``TIMESERIES_DATABASE`` setting
-and switch ``BACKEND`` to ``openwisp_monitoring.db.backends.influxdb2``.
-
-The following table describes all keys available in
-``TIMESERIES_DATABASE`` setting:
-
-============ =============================================================
-**Key**      ``Description``
-``BACKEND``  The timeseries database backend to use. You can select one of
-             the backends located in ``openwisp_monitoring.db.backends``
-``USER``     User for logging into the timeseries database
-``PASSWORD`` Password of the timeseries database user
-``NAME``     Name of the timeseries database
-``URL``      Optional connection URL. For the
-             ``openwisp_monitoring.db.backends.influxdb2`` backend you may
-             set ``URL`` instead of ``HOST`` and ``PORT``.
-``HOST``     IP address/hostname of machine where the timeseries database
-             is running
-``PORT``     Port for connecting to the timeseries database
-``OPTIONS``  These settings depends on the timeseries backend. Refer the
-             :ref:`timeseries_backend_options` table below for available
-             options
-============ =============================================================
-
-Example configuration for the
-``openwisp_monitoring.db.backends.influxdb2`` backend:
+Alternative ``influxdb2`` backend configuration:
 
 .. code-block:: python
 
@@ -87,33 +65,52 @@ Example configuration for the
         "URL": "http://localhost:8087",
     }
 
-For the ``openwisp_monitoring.db.backends.influxdb2`` backend, you must
-define either ``URL`` or both ``HOST`` and ``PORT``.
+The following table describes the keys available in the
+``TIMESERIES_DATABASE`` setting:
+
+============ =============================================================
+**Key**      ``Description``
+``BACKEND``  The Python path of the timeseries backend to use, as shown in
+             the examples above
+``USER``     Username or organization, depending on the selected backend
+``PASSWORD`` Password or API token, depending on the selected backend
+``NAME``     Name of the timeseries database
+``URL``      Optional connection URL supported by the ``influxdb2``
+             backend
+``HOST``     IP address/hostname of machine where the timeseries database
+             is running
+``PORT``     Port for connecting to the timeseries database
+``OPTIONS``  These settings depend on the timeseries backend. Refer to
+             :ref:`timeseries_backend_options` for available options
+============ =============================================================
 
 .. _timeseries_backend_options:
 
 Timeseries Database Options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-============== =====================================================
+============== ==========================================================
 ``udp_writes`` Whether to use UDP for writing data to the timeseries
-               database
-``udp_port``   Timeseries database port for writing data using UDP
-============== =====================================================
+               database. Available only for the ``influxdb`` backend
+``udp_port``   Timeseries database port for writing data using UDP on the
+               ``influxdb`` backend
+============== ==========================================================
+
+The ``influxdb2`` backend does not support UDP writes.
 
 .. important::
 
-    UDP packets can have a maximum size of 64KB. When using UDP for
-    writing timeseries data, if the size of the data exceeds 64KB, TCP
+    UDP packets can have a maximum size of 64KB. When using UDP writes on
+    the ``influxdb`` backend, if the size of the data exceeds 64KB, TCP
     mode will be used instead.
 
 .. note::
 
-    If you want to use the ``openwisp_monitoring.db.backends.influxdb``
-    backend with UDP writes enabled, then you need to enable two different
-    ports for UDP (each for different retention policy) in your InfluxDB
-    configuration. The UDP configuration section of your InfluxDB should
-    look similar to the following:
+    UDP writes are supported only by the ``influxdb`` backend. If you want
+    to use that backend with UDP writes enabled, then you need to enable
+    two different ports for UDP (each for a different retention policy) in
+    your InfluxDB configuration. The UDP configuration section of your
+    InfluxDB should look similar to the following:
 
     .. code-block:: text
 
@@ -268,8 +265,9 @@ documentation regarding automatic retries for known errors
 .. note::
 
     The retry mechanism does not work when using ``UDP`` for writing data
-    to the timeseries database. It is due to the nature of ``UDP``
-    protocol which does not acknowledge receipt of data packets.
+    to the timeseries database on the ``influxdb`` backend. This is due to
+    the nature of the ``UDP`` protocol, which does not acknowledge receipt
+    of data packets.
 
 .. _openwisp_monitoring_timeseries_retry_options:
 
