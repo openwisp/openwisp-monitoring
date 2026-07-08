@@ -1,0 +1,34 @@
+name: Start timeseries DB
+description: Start the selected timeseries service and wait until it is reachable
+
+inputs:
+  tsdb:
+    description: Timeseries service name from docker-compose.yml
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Start ${{ inputs.tsdb }}
+      shell: bash
+      run: docker compose up -d ${{ inputs.tsdb }}
+
+    - name: Wait for ${{ inputs.tsdb }}
+      shell: bash
+      run: |
+        if [ "${{ inputs.tsdb }}" = "influxdb2" ]; then
+          url="http://localhost:8087/health"
+        else
+          url="http://localhost:8086/ping"
+        fi
+
+        for attempt in $(seq 1 30); do
+          if curl -fsS "$url" >/dev/null; then
+            exit 0
+          fi
+          sleep 2
+        done
+
+        echo "Timeseries DB did not become ready at $url"
+        docker compose logs ${{ inputs.tsdb }}
+        exit 1

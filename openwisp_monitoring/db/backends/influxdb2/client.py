@@ -242,6 +242,10 @@ class DatabaseClient(BaseTimeseriesClient):
     def close(self) -> None:
         self.reset()
 
+    @staticmethod
+    def _is_bucket_not_found(exception) -> bool:
+        return "could not find bucket" in str(exception).lower()
+
     @retry
     def create_database(self) -> None:
         """Creates bucket if necessary."""
@@ -340,10 +344,13 @@ class DatabaseClient(BaseTimeseriesClient):
         try:
             bucket = api.find_bucket_by_name(bucket_name)
         except self.client_error as exception:
-            logger.warning(
-                f'Could not inspect InfluxDB2 bucket "{bucket_name}": {exception}'
-            )
-            return
+            if self._is_bucket_not_found(exception):
+                bucket = None
+            else:
+                logger.warning(
+                    f'Could not inspect InfluxDB2 bucket "{bucket_name}": {exception}'
+                )
+                raise
         if not bucket:
             api.create_bucket(
                 bucket_name=bucket_name,
@@ -360,7 +367,7 @@ class DatabaseClient(BaseTimeseriesClient):
             api.update_bucket(bucket=bucket)
         except self.client_error as exception:
             logger.warning(f"Could not update InfluxDB2 bucket retention: {exception}")
-            return
+            raise
         logger.debug(
             f'Created/updated InfluxDB2 bucket "{bucket_name}" for retention policy '
             f'"{name}" with duration {duration}'

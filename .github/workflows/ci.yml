@@ -60,7 +60,9 @@ jobs:
 
       - name: Start Timeseries DB
         if: ${{ !cancelled() && steps.setup_env.conclusion == 'success' }}
-        run: docker compose up -d ${{ matrix.tsdb }}
+        uses: ./.github/actions/start-timeseries-db
+        with:
+          tsdb: ${{ matrix.tsdb }}
 
       - name: QA checks
         run: |

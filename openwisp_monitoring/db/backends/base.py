@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, TypeVar, TypedDict
+from typing import Any, TypedDict, TypeVar
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db import DatabaseError
@@ -33,9 +33,7 @@ class BackendQueryBundle:
     default_chart_query: object
     device_data_query: object
 
-    def validate(
-        self: BackendQueryBundleT, backend_name: str
-    ) -> BackendQueryBundleT:
+    def validate(self: BackendQueryBundleT, backend_name: str) -> BackendQueryBundleT:
         if not isinstance(self.chart_query, Mapping):
             raise ImproperlyConfigured(
                 "Backend query bundle must define chart_query as a mapping."
