@@ -930,6 +930,7 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             time="1d",
             group_map={"1d": "10m"},
             query=chart_query["cpu"]["influxdb2"],
+            timezone="UTC",
         )
         self.assertIn(f'from(bucket: "{self.timeseries_db.db_name}")', query)
         self.assertIn('start: time(v: "2024-03-25T00:00:00Z")', query)
@@ -943,6 +944,26 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             query,
         )
         self.assertIn('_field: "CPU_load"', query)
+
+    def test_get_query_converts_naive_chart_range_from_timezone_to_utc(self):
+        query = self.timeseries_db.get_query(
+            chart_type="bar",
+            params={
+                "key": "ping",
+                "field_name": "reachable",
+                "time": "2024-03-25 10:00:00",
+                "end_date": "2024-03-25 11:00:00",
+                "content_type": "config.device",
+                "object_id": "device-id",
+            },
+            time="1d",
+            group_map={"1d": "10m"},
+            query=chart_query["uptime"]["influxdb2"],
+            timezone="Asia/Kolkata",
+        )
+
+        self.assertIn('start: time(v: "2024-03-25T04:30:00Z")', query)
+        self.assertIn('stop: time(v: "2024-03-25T05:30:00Z")', query)
 
     def test_get_query_escapes_default_chart_filters(self):
         query = self.timeseries_db.get_query(
@@ -1527,6 +1548,29 @@ class TestInfluxDB2ClientIntegration(
         self.assertEqual(
             non_null_points[-1].strftime("%Y-%m-%d %H:%M"), "2024-03-25 10:00"
         )
+        self.assertEqual(data["summary"], {"uptime": 100.0})
+
+    def test_ping_uptime_chart_zoom_range_uses_request_timezone(self):
+        metric = self._create_object_metric(name="ping", configuration="ping")
+        metric.write(
+            1,
+            extra_values={"loss": 0, "rtt_min": 1.0, "rtt_avg": 2.0, "rtt_max": 3.0},
+            time=datetime(2024, 3, 25, 4, 40, tzinfo=timezone.utc),
+        )
+        chart = Chart(metric=metric, configuration="uptime")
+        chart.full_clean()
+        chart.save()
+        data = self._read_chart(
+            chart,
+            time="1d",
+            start_date="2024-03-25 10:00:00",
+            end_date="2024-03-25 11:00:00",
+            timezone="Asia/Kolkata",
+        )
+
+        self.assertIn("x", data)
+        self.assertEqual(data["traces"][0][0], "uptime")
+        self.assertIn(100.0, data["traces"][0][1])
         self.assertEqual(data["summary"], {"uptime": 100.0})
 
     def test_delete_metric_data_and_delete_series_round_trip(self):

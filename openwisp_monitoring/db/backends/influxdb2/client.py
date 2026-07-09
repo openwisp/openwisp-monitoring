@@ -4,6 +4,7 @@ from collections.abc import Iterator, Mapping, Sequence
 from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ValidationError
@@ -434,8 +435,20 @@ class DatabaseClient(BaseTimeseriesClient):
             return str(value).lower()
         return value
 
-    def _format_flux_time(self, value):
+    def _convert_naive_time_to_utc(self, value, timezone_name):
+        try:
+            parsed = datetime.fromisoformat(value)
+        except ValueError:
+            return f"{value}Z"
+        localized = parsed.replace(tzinfo=ZoneInfo(timezone_name))
+        return localized.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    def _format_flux_time(self, value, timezone_name=None):
         if isinstance(value, datetime):
+            if timezone_name and value.tzinfo is None:
+                value = value.replace(tzinfo=ZoneInfo(timezone_name)).astimezone(
+                    timezone.utc
+                )
             value = self._get_timestamp(value)
         if isinstance(value, str):
             if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
@@ -449,7 +462,10 @@ class DatabaseClient(BaseTimeseriesClient):
                 and "-" not in value[10:]
                 and not value.endswith("Z")
             ):
-                value = f"{value}Z"
+                if timezone_name:
+                    value = self._convert_naive_time_to_utc(value, timezone_name)
+                else:
+                    value = f"{value}Z"
             return f'time(v: "{value}")'
         return value
 
@@ -465,12 +481,12 @@ class DatabaseClient(BaseTimeseriesClient):
             return f"{max(int(time_value), 1)}m"
         return time_value
 
-    def _normalize_chart_start_range(self, time_value):
+    def _normalize_chart_start_range(self, time_value, timezone_name=None):
         if isinstance(time_value, (int, float)):
             return f"-{self._normalize_chart_window(time_value)}"
         if isinstance(time_value, str) and re.fullmatch(r"\d+", time_value):
             return f"-{self._normalize_chart_window(time_value)}"
-        return self._format_flux_time(time_value)
+        return self._format_flux_time(time_value, timezone_name=timezone_name)
 
     def _normalize_record_time(self, record_time, precision="s"):
         if not isinstance(record_time, datetime):
@@ -972,17 +988,25 @@ class DatabaseClient(BaseTimeseriesClient):
             return []
 
     def _build_chart_base_query(
-        self, params: ChartQueryParams, time: Any, group_map: Mapping[Any, str]
+        self,
+        params: ChartQueryParams,
+        time: Any,
+        group_map: Mapping[Any, str],
+        timezone_name: str | None = settings.TIME_ZONE,
     ) -> str:
         flux_query = f'from(bucket: "{self.db_name}")'
         start_range = params.get("time")
         if start_range:
-            start_range = self._normalize_chart_start_range(start_range)
+            start_range = self._normalize_chart_start_range(
+                start_range, timezone_name=timezone_name
+            )
         else:
             time_val = self._normalize_chart_window(time)
             start_range = f"-{time_val}"
         if params.get("end_date"):
-            end_range = self._format_flux_time(params["end_date"])
+            end_range = self._format_flux_time(
+                params["end_date"], timezone_name=timezone_name
+            )
             flux_query += f" |> range(start: {start_range}, stop: {end_range})"
         else:
             flux_query += f" |> range(start: {start_range})"
@@ -1042,16 +1066,23 @@ class DatabaseClient(BaseTimeseriesClient):
             )
         return ""
 
-    def _format_chart_query(self, query, params, time, group_map, summary, fields):
+    def _format_chart_query(
+        self, query, params, time, group_map, summary, fields, timezone_name
+    ):
         start_range = params.get("time")
         if start_range:
-            time_start = self._normalize_chart_start_range(start_range)
+            time_start = self._normalize_chart_start_range(
+                start_range, timezone_name=timezone_name
+            )
         else:
             time_val = self._normalize_chart_window(time)
             time_start = f"-{time_val}"
         end_range = ""
         if params.get("end_date"):
-            end_range = f', stop: {self._format_flux_time(params["end_date"])}'
+            formatted_end = self._format_flux_time(
+                params["end_date"], timezone_name=timezone_name
+            )
+            end_range = f", stop: {formatted_end}"
         window = self._normalize_chart_window(time, group_map)
         formatted = query.format(
             bucket=self.db_name,
@@ -1160,9 +1191,9 @@ class DatabaseClient(BaseTimeseriesClient):
         """
         if query:
             return self._format_chart_query(
-                query, params, time, group_map, summary, fields
+                query, params, time, group_map, summary, fields, timezone
             )
-        flux_query = self._build_chart_base_query(params, time, group_map)
+        flux_query = self._build_chart_base_query(params, time, group_map, timezone)
         # 8. FIELD NAME FILTER: Use field_name from params if not overridden by fields
         if not fields and params.get("field_name"):
             field_name = params["field_name"]
