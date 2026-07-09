@@ -1,10 +1,23 @@
 #!/bin/bash
 set -e
 
-# full InfluxDB1 coverage lives in runtests-influxdb
-# full InfluxDB2 coverage lives in runtests-influxdb2
-./runtests-influxdb
-./runtests-influxdb2
+TSDB="${TSDB:-influxdb}"
+
+if [ "$TSDB" = "influxdb" ]; then
+    TIMESERIES_BACKEND=influxdb coverage run runtests.py "$@"
+    SAMPLE_APP=1 TIMESERIES_BACKEND=influxdb coverage run runtests.py \
+        "$@" --exclude-tag=selenium_tests
+    TIMESERIES_UDP=1 TIMESERIES_BACKEND=influxdb coverage run runtests.py \
+        "$@" --exclude-tag=selenium_tests
+elif [ "$TSDB" = "influxdb2" ]; then
+    # SAMPLE_APP and UDP variants are covered by the default backend path.
+    TIMESERIES_BACKEND=influxdb2 coverage run runtests.py \
+        "$@" --exclude-tag=selenium_tests
+else
+    echo "Unsupported TSDB: $TSDB" >&2
+    echo "Supported values: influxdb, influxdb2" >&2
+    exit 1
+fi
 
 coverage combine
 coverage xml

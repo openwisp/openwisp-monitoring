@@ -844,7 +844,7 @@ class DatabaseClient(BaseTimeseriesClient):
     @retry
     def _delete_range(self, predicate: str = "", bucket: str | None = None) -> None:
         start = datetime(1970, 1, 1, tzinfo=timezone.utc)
-        stop = datetime.now(timezone.utc)
+        stop = self._get_open_range_stop(start)
         self._delete_api.delete(
             start,
             stop,

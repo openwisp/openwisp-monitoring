@@ -135,7 +135,12 @@ Run tests with (make sure you have the :ref:`selenium dependencies
 
 .. code-block:: shell
 
-    ./runtests  # using --parallel is not supported in this module
+    ./runtests  # default: runs the influxdb backend test flow
+    TSDB=influxdb2 ./runtests
+
+The ``./runtests`` script is the main test entry point. By default it runs
+the InfluxDB test flow. Set ``TSDB=influxdb2`` to run the InfluxDB 2.x
+test flow instead. Using ``--parallel`` is not supported in this module.
 
 Run quality assurance tests with:
 

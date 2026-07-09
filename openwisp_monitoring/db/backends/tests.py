@@ -164,9 +164,7 @@ class TestBackendContract(SimpleTestCase):
                 client = backend_module.DatabaseClient(db_name="initial-db")
                 for attr in attrs:
                     client.__dict__[attr] = object()
-
                 client.reset(db_name="reset-db")
-
                 self.assertEqual(client.db_name, "reset-db")
                 for attr in attrs:
                     self.assertNotIn(attr, client.__dict__)
@@ -352,9 +350,7 @@ class TestInfluxDB2ClientURL(SimpleTestCase):
         client.__dict__["_query_api"] = object()
         client.__dict__["_delete_api"] = object()
         client.__dict__["use_udp"] = object()
-
         client.close()
-
         mock_db.close.assert_called_once_with()
         self.assertNotIn("db", client.__dict__)
         self.assertNotIn("_write_api", client.__dict__)
@@ -370,9 +366,7 @@ class TestInfluxDB2ClientURL(SimpleTestCase):
         client.__dict__["_query_api"] = object()
         client.__dict__["_delete_api"] = object()
         client.__dict__["use_udp"] = object()
-
         client.reset(db_name="reset-db")
-
         mock_db.close.assert_called_once_with()
         self.assertEqual(client.db_name, "reset-db")
         self.assertNotIn("db", client.__dict__)

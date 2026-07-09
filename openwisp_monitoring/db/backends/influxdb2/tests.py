@@ -160,7 +160,6 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
                 values={"field1": 10, "field2": 20},
                 tags={"host": "localhost"},
             )
-
             mock_write_api.write.assert_called()
             call_args = mock_write_api.write.call_args
             record = call_args[1]["record"]
@@ -178,7 +177,6 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
                 values={"field1": 10},
                 retention_policy=SHORT_RP,
             )
-
             call_args = mock_write_api.write.call_args
             self.assertEqual(
                 call_args[1]["bucket"], f'{settings.TIMESERIES_DATABASE["NAME"]}_short'
@@ -364,9 +362,7 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             },
         ]
         resultset = QueryResultSet(points)
-
         iterated_points = list(resultset)
-
         self.assertEqual(len(iterated_points), 2)
         self.assertEqual(iterated_points, points)
 
@@ -628,6 +624,12 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             predicate = call_args[0][2]
             self.assertIn('host="server1"', predicate)
 
+    def test_delete_metric_data_uses_fixed_future_stop(self):
+        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
+            self.timeseries_db.delete_metric_data(key="cpu")
+            stop = mock_delete_api.delete.call_args[0][1]
+            self.assertEqual(stop, datetime(2100, 1, 1, tzinfo=timezone.utc))
+
     def test_delete_metric_data_rejects_unsafe_tag_keys(self):
         with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
             with self.assertRaises(ValueError):
@@ -720,8 +722,6 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             self.assertIn("sum()", flux_query)
 
     def test_get_top_fields_supports_multi_value_scopes(self):
-        from openwisp_monitoring.db.backends.influxdb2.queries import chart_query
-
         with patch.object(
             self.timeseries_db, "query", return_value=QueryResultSet([])
         ) as mock_query:
@@ -831,9 +831,7 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             mock_api = MagicMock()
             mock_buckets_api.return_value = mock_api
             mock_api.find_bucket_by_name.return_value = None
-
             self.timeseries_db.create_or_alter_retention_policy(SHORT_RP, "24h0m0s")
-
             mock_api.create_bucket.assert_called_once()
             call_kwargs = mock_api.create_bucket.call_args[1]
             self.assertEqual(
@@ -848,9 +846,7 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             mock_api.find_bucket_by_name.side_effect = self.timeseries_db.client_error(
                 message="could not find bucket"
             )
-
             self.timeseries_db.create_or_alter_retention_policy(SHORT_RP, "24h0m0s")
-
             mock_api.create_bucket.assert_called_once()
 
     @patch("openwisp_monitoring.utils.sleep")
@@ -863,10 +859,8 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             mock_api.find_bucket_by_name.side_effect = self.timeseries_db.client_error(
                 message="lookup failed"
             )
-
             with self.assertRaises(self.timeseries_db.client_error):
                 self.timeseries_db.create_or_alter_retention_policy(SHORT_RP, "24h0m0s")
-
             mock_api.create_bucket.assert_not_called()
         mocked_sleep.assert_called()
 
@@ -882,10 +876,8 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             mock_api.update_bucket.side_effect = self.timeseries_db.client_error(
                 message="update failed"
             )
-
             with self.assertRaises(self.timeseries_db.client_error):
                 self.timeseries_db.create_or_alter_retention_policy(SHORT_RP, "24h0m0s")
-
             mock_api.create_bucket.assert_not_called()
         mocked_sleep.assert_called()
 
@@ -925,8 +917,6 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             self.assertIn('from(bucket: "{bucket}")', config["influxdb2"])
 
     def test_get_query_uses_flux_chart_template(self):
-        from openwisp_monitoring.db.backends.influxdb2.queries import chart_query
-
         query = self.timeseries_db.get_query(
             chart_type="scatter",
             params={
@@ -941,7 +931,6 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             group_map={"1d": "10m"},
             query=chart_query["cpu"]["influxdb2"],
         )
-
         self.assertIn(f'from(bucket: "{self.timeseries_db.db_name}")', query)
         self.assertIn('start: time(v: "2024-03-25T00:00:00Z")', query)
         self.assertIn('stop: time(v: "2024-03-26T00:00:00Z")', query)
@@ -974,8 +963,6 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
         self.assertIn(r'contains(value: r._field, set: ["usage\"value"])', query)
 
     def test_get_query_escapes_flux_chart_template_literals(self):
-        from openwisp_monitoring.db.backends.influxdb2.queries import chart_query
-
         query = self.timeseries_db.get_query(
             chart_type="scatter",
             params={
@@ -1021,8 +1008,6 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             self.assertIn('stop: time(v: "2100-01-01T00:00:00+00:00")', flux_query)
 
     def test_get_query_summary_uses_whole_range_aggregate(self):
-        from openwisp_monitoring.db.backends.influxdb2.queries import chart_query
-
         query = self.timeseries_db.get_query(
             chart_type="scatter",
             params={
@@ -1035,15 +1020,12 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             query=chart_query["cpu"]["influxdb2"],
             summary=True,
         )
-
         self.assertIn("|> mean()", query)
         self.assertNotIn("aggregateWindow", query)
         self.assertNotIn("date.truncate", query)
         self.assertNotIn('|> duplicate(column: "_start", as: "_time")', query)
 
     def test_get_query_chart_uses_window_start_as_time(self):
-        from openwisp_monitoring.db.backends.influxdb2.queries import chart_query
-
         query = self.timeseries_db.get_query(
             chart_type="bar",
             params={
@@ -1061,8 +1043,6 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
         self.assertIn("date.truncate(t: r._time, unit: 10m)", query)
 
     def test_get_query_summary_uses_whole_range_wifi_clients_count(self):
-        from openwisp_monitoring.db.backends.influxdb2.queries import chart_query
-
         query = self.timeseries_db.get_query(
             chart_type="bar",
             params={
@@ -1263,11 +1243,9 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
             },
         ]
         resultset = QueryResultSet(points)
-
         # Get all points for ping measurement
         ping_points = list(resultset.get_points(measurement="ping"))
         self.assertEqual(len(ping_points), 3)
-
         # Verify field values
         fields_found = {p["_field"]: p["_value"] for p in ping_points}
         self.assertEqual(fields_found["rtt_avg"], 25.5)
@@ -1289,10 +1267,8 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
                 }
             ]
         )
-
         with patch.object(self.timeseries_db, "query", return_value=result):
             points = self.timeseries_db.get_list_query(query)
-
         self.assertEqual(
             points,
             [
@@ -1325,7 +1301,6 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
 
         with patch.object(self.timeseries_db, "query", return_value=result):
             points = self.timeseries_db.get_list_query(query)
-
         self.assertEqual(
             points,
             [
@@ -1388,9 +1363,7 @@ class TestInfluxDB2ClientIntegration(
 
     def test_metric_write_and_read_round_trip(self):
         metric = self._create_general_metric(name="load")
-
         self._write_metric(metric, 50, check=False)
-
         points = self._read_metric(metric)
         self.assertEqual(len(points), 1)
         self.assertEqual(points[0][metric.field_name], 50)
@@ -1441,7 +1414,6 @@ class TestInfluxDB2ClientIntegration(
                 ),
             ]
         )
-
         values = self._read_metric(metric, limit=2, order="time")
         self.assertEqual([point["value"] for point in values], [11, 22])
 
@@ -1500,9 +1472,7 @@ class TestInfluxDB2ClientIntegration(
         chart = Chart(metric=metric, configuration="uptime")
         chart.full_clean()
         chart.save()
-
         data = self._read_chart(chart, time="7d")
-
         self.assertEqual(data["summary"], {"uptime": 100.0})
 
     def test_ping_uptime_chart_uses_uniform_10_minute_buckets_for_1d(self):
@@ -1530,7 +1500,6 @@ class TestInfluxDB2ClientIntegration(
         chart = Chart(metric=metric, configuration="uptime")
         chart.full_clean()
         chart.save()
-
         data = self._read_chart(
             chart,
             time="1d",
@@ -1586,17 +1555,13 @@ class TestInfluxDB2ClientIntegration(
     def test_delete_metric_data_without_filters_clears_default_and_short_buckets(self):
         general_metric = self._create_general_metric(name="delete-all-general")
         short_metric = self._create_general_metric(name="delete-all-short")
-
         self._write_metric(general_metric, 100, check=False)
         self._write_metric(short_metric, 75, check=False, retention_policy=SHORT_RP)
-
         self.assertEqual(self._read_metric(general_metric)[0]["value"], 100)
         self.assertEqual(
             self._read_metric(short_metric, retention_policy=SHORT_RP)[0]["value"], 75
         )
-
         timeseries_db.delete_metric_data()
-
         self.assertEqual(self._read_metric(general_metric), [])
         self.assertEqual(self._read_metric(short_metric, retention_policy=SHORT_RP), [])
 
@@ -1614,7 +1579,6 @@ class TestInfluxDB2ClientIntegration(
     def test_write_failure_raises_timeseries_exception(self):
         with patch.object(timeseries_db, "_write_api") as mock_write_api:
             mock_write_api.write.side_effect = RuntimeError("write failed")
-
             with self.assertRaises(TimeseriesWriteException):
                 timeseries_db.write("test_write", {"value": 1})
 
@@ -1731,9 +1695,7 @@ class TestInfluxDB2CheckIntegration(
             content_type=ContentType.objects.get_for_model(Device),
             object_id=device.pk,
         )
-
         result = check.perform_check()
-
         self.assertEqual(result, {"data_collected": 1})
         metric = Metric.objects.get(key="data_collected", object_id=device_data.id)
         points = self._read_metric(metric, retention_policy=SHORT_RP)

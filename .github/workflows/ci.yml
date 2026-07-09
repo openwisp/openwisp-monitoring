@@ -35,7 +35,7 @@ jobs:
         tsdb:
           - influxdb
         include:
-          - python-version: "3.12"
+          - python-version: "3.13"
             django-version: django~=5.2.0
             tsdb: influxdb2
 
@@ -44,18 +44,65 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Set up test environment
-        id: setup_env
-        uses: ./.github/actions/setup-test-environment
+      - name: Cache APT packages
+        uses: actions/cache@v6
+        with:
+          path: /var/cache/apt/archives
+          key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
+          restore-keys: |
+            apt-${{ runner.os }}-
+
+      - name: Disable man page auto-update
+        run: |
+          echo 'set man-db/auto-update false' | sudo debconf-communicate >/dev/null
+          sudo dpkg-reconfigure man-db
+
+      - name: Set up and cache Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-          django-version: ${{ matrix.django-version }}
+          cache: "pip"
+          cache-dependency-path: |
+            **/requirements*.txt
+
+      - name: Install dependencies
+        run: |
+          sudo apt update -qq
+          sudo apt -qq install \
+            sqlite3 \
+            fping \
+            gdal-bin \
+            libproj-dev \
+            libgeos-dev \
+            libspatialite-dev \
+            spatialite-bin \
+            libsqlite3-mod-spatialite
+          pip install -U pip wheel setuptools
+          pip install -r requirements-test.txt
+          pip install -U -I -e .
+          pip install -U "${{ matrix.django-version }}"
+          sudo npm install -g prettier
 
       - name: Start Timeseries DB
-        if: ${{ !cancelled() && steps.setup_env.conclusion == 'success' }}
-        uses: ./.github/actions/start-timeseries-db
-        with:
-          tsdb: ${{ matrix.tsdb }}
+        run: |
+          docker compose up -d ${{ matrix.tsdb }}
+
+          if [ "${{ matrix.tsdb }}" = "influxdb2" ]; then
+            url="http://localhost:8087/health"
+          else
+            url="http://localhost:8086/query?q=SHOW%20DATABASES"
+          fi
+
+          for attempt in $(seq 1 30); do
+            if curl -fsS "$url" >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Timeseries DB did not become ready at $url"
+          docker compose logs ${{ matrix.tsdb }}
+          exit 1
 
       - name: QA checks
         run: |
@@ -64,10 +111,10 @@ jobs:
           TIMESERIES_BACKEND: ${{ matrix.tsdb }}
 
       - name: Tests
-        if: ${{ !cancelled() && steps.setup_env.conclusion == 'success' }}
         run: |
-          ./runtests-${{ matrix.tsdb }}
+          ./runtests
         env:
+          TSDB: ${{ matrix.tsdb }}
           SELENIUM_HEADLESS: 1
           GECKO_LOG: 1
 
