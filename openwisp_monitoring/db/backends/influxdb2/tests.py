@@ -1588,6 +1588,33 @@ class TestInfluxDB2ClientIntegration(
         self.assertIn(100.0, data["traces"][0][1])
         self.assertEqual(data["summary"], {"uptime": 100.0})
 
+    def test_ping_uptime_chart_daily_window_uses_request_timezone(self):
+        """Daily buckets should align to the request timezone midnight."""
+        metric = self._create_object_metric(name="ping", configuration="ping")
+        metric.write(
+            1,
+            extra_values={"loss": 0, "rtt_min": 1.0, "rtt_avg": 2.0, "rtt_max": 3.0},
+            time=datetime(2024, 3, 24, 20, 0, tzinfo=timezone.utc),
+        )
+        chart = Chart(metric=metric, configuration="uptime")
+        chart.full_clean()
+        chart.save()
+        data = self._read_chart(
+            chart,
+            time="30d",
+            start_date="2024-03-01 00:00:00",
+            end_date="2024-03-31 23:59:59",
+            timezone="Asia/Kolkata",
+        )
+        self.assertIn("x", data)
+        self.assertTrue(data["traces"], data)
+        non_null_points = [
+            timestamp
+            for timestamp, value in zip(data["x"], data["traces"][0][1])
+            if value is not None
+        ]
+        self.assertEqual(non_null_points, ["2024-03-25 00:00"])
+
     def test_delete_metric_data_and_delete_series_round_trip(self):
         general_metric = self._create_general_metric(name="delete-general")
         object_metric = self._create_object_metric(name="delete-object")
