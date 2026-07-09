@@ -4,7 +4,8 @@ set -e
 TSDB="${TSDB:-influxdb}"
 
 if [ "$TSDB" = "influxdb" ]; then
-    TIMESERIES_BACKEND=influxdb coverage run runtests.py "$@"
+    TIMESERIES_BACKEND=influxdb coverage run runtests.py \
+        "$@" --exclude-tag=selenium_tests
     SAMPLE_APP=1 TIMESERIES_BACKEND=influxdb coverage run runtests.py \
         "$@" --exclude-tag=selenium_tests
     TIMESERIES_UDP=1 TIMESERIES_BACKEND=influxdb coverage run runtests.py \
