@@ -965,6 +965,22 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
         self.assertIn('start: time(v: "2024-03-25T04:30:00Z")', query)
         self.assertIn('stop: time(v: "2024-03-25T05:30:00Z")', query)
 
+    def test_generated_query_converts_naive_chart_range_from_timezone_to_utc(self):
+        query = self.timeseries_db.get_query(
+            chart_type="line",
+            params={
+                "key": "cpu",
+                "field_name": "cpu_usage",
+                "time": "2024-03-25 10:00:00",
+                "end_date": "2024-03-25 11:00:00",
+            },
+            time="1d",
+            group_map={"1d": "10m"},
+            timezone="Asia/Kolkata",
+        )
+        self.assertIn('range(start: time(v: "2024-03-25T04:30:00Z")', query)
+        self.assertIn('stop: time(v: "2024-03-25T05:30:00Z"))', query)
+
     def test_get_query_escapes_default_chart_filters(self):
         query = self.timeseries_db.get_query(
             chart_type="line",
@@ -1567,6 +1583,7 @@ class TestInfluxDB2ClientIntegration(
             timezone="Asia/Kolkata",
         )
         self.assertIn("x", data)
+        self.assertTrue(data["traces"], data)
         self.assertEqual(data["traces"][0][0], "uptime")
         self.assertIn(100.0, data["traces"][0][1])
         self.assertEqual(data["summary"], {"uptime": 100.0})
