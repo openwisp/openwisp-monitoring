@@ -1528,7 +1528,6 @@ class TestInfluxDB2ClientIntegration(
             end_date="2024-03-25 10:07:00",
             timezone="UTC",
         )
-
         non_null_points = [
             datetime.strptime(timestamp, "%Y-%m-%d %H:%M")
             for timestamp, value in zip(data["x"], data["traces"][0][1])
@@ -1567,7 +1566,6 @@ class TestInfluxDB2ClientIntegration(
             end_date="2024-03-25 11:00:00",
             timezone="Asia/Kolkata",
         )
-
         self.assertIn("x", data)
         self.assertEqual(data["traces"][0][0], "uptime")
         self.assertIn(100.0, data["traces"][0][1])
