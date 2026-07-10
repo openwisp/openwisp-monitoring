@@ -1084,12 +1084,29 @@ class DatabaseClient(BaseTimeseriesClient):
             )
             end_range = f", stop: {formatted_end}"
         window = self._normalize_chart_window(time, group_map)
+        try:
+            large_window = self._duration_to_seconds(str(window)) >= 24 * 60 * 60
+        except ValueError:
+            large_window = False
+        window_timezone = ""
+        if (
+            not summary
+            and large_window
+            and timezone_name
+            and str(timezone_name).upper() != "UTC"
+        ):
+            window_timezone = (
+                ", location: timezone.location(name: "
+                f"{self._format_flux_string(timezone_name)})"
+            )
         formatted = query.format(
             bucket=self.db_name,
             key=self._escape_flux_string(params.get("key", "")),
             time_start=time_start,
             end_range=end_range,
             window=window,
+            timezone_import='import "timezone"\n' if window_timezone else "",
+            window_timezone=window_timezone,
             field_name=self._escape_flux_string(params.get("field_name", "")),
             content_type=self._escape_flux_string(params.get("content_type", "")),
             object_id=self._escape_flux_string(params.get("object_id", "")),

@@ -3,7 +3,7 @@ InfluxDB 2.x Flux queries for monitoring charts.
 """
 
 _range = (
-    'import "date"\nfrom(bucket: "{bucket}")'
+    'import "date"\n{timezone_import}from(bucket: "{bucket}")'
     " |> range(start: {time_start}{end_range})"
     ' |> filter(fn: (r) => r._measurement == "{key}")'
 )
@@ -20,9 +20,11 @@ _object_filters = (
 
 def _window(fn):
     return (
-        f' |> aggregateWindow(every: {{window}}, fn: {fn}, timeSrc: "_start")'
+        f" |> aggregateWindow(every: {{window}}, fn: {fn}, "
+        'timeSrc: "_start"{window_timezone})'
         " |> map(fn: (r) => "
-        "({{r with _time: date.truncate(t: r._time, unit: {window})}}))"
+        "({{r with _time: date.truncate(t: r._time, "
+        "unit: {window}{window_timezone})}}))"
     )
 
 
@@ -35,7 +37,7 @@ _wifi_clients_query = (
     _range
     + _object_filters
     + ' |> filter(fn: (r) => r._field == "{field_name}")'
-    + " |> window(every: {window}, createEmpty: true)"
+    + " |> window(every: {window}, createEmpty: true{window_timezone})"
     + ' |> unique(column: "_value")'
     + " |> count()"
     + ' |> duplicate(column: "_start", as: "_time")'

@@ -9,6 +9,7 @@ from swapper import load_model
 
 from openwisp_utils.tests import capture_stderr
 
+from ...db import timeseries_db
 from .. import settings as app_settings
 from ..configuration import (
     CHART_CONFIGURATION_CHOICES,
@@ -227,7 +228,11 @@ class TestCharts(TestMonitoringMixin, TestCase):
         else:
             self.fail("ValidationError not raised")
 
+    # Only InfluxDB1 keeps the local date in the raw query string.
+    @tag("influxdb1")
     def test_get_query(self):
+        if timeseries_db.backend_name != "influxdb":
+            self.skipTest('Set TIMESERIES_BACKEND="influxdb" to run this test.')
         c = self._create_chart(test_data=False)
         m = c.metric
         now_ = now()
