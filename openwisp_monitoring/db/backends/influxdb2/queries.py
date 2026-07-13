@@ -19,6 +19,8 @@ _object_filters = (
 
 
 def _window(fn):
+    # {window_timezone} keeps daily and weekly Flux buckets aligned to the
+    # request timezone.
     return (
         f" |> aggregateWindow(every: {{window}}, fn: {fn}, "
         'timeSrc: "_start"{window_timezone})'
