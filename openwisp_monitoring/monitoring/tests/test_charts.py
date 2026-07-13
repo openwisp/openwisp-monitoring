@@ -228,7 +228,8 @@ class TestCharts(TestMonitoringMixin, TestCase):
         else:
             self.fail("ValidationError not raised")
 
-    # Only InfluxDB1 keeps the local date in the raw query string.
+    # InfluxDB1 keeps local dates in the query and applies tz().
+    # InfluxDB2 converts local dates to UTC before building Flux queries.
     @tag("influxdb1")
     def test_get_query(self):
         if timeseries_db.backend_name != "influxdb":

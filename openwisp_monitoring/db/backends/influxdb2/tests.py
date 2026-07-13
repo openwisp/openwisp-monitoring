@@ -1405,6 +1405,18 @@ class TestInfluxDB2ClientIntegration(
         self.assertEqual(len(points), 1)
         self.assertEqual(points[0][metric.field_name], 50)
 
+    def test_metric_read_omit_since(self):
+        """Metric.read() should not hide stored data older than 24 hours if ``since`` is omitted."""
+        metric = self._create_general_metric(name="historical-load")
+        metric.write(
+            50,
+            time=datetime(2024, 3, 25, 10, 0, tzinfo=timezone.utc),
+            current=False,
+        )
+        points = self._read_metric(metric, limit=None)
+        self.assertEqual(len(points), 1)
+        self.assertEqual(points[0][metric.field_name], 50)
+
     def test_metric_read_order_and_same_key_different_fields(self):
         metric = self._create_general_metric(name="load")
         self._write_metric(metric, 30, check=False)
@@ -1428,6 +1440,31 @@ class TestInfluxDB2ClientIntegration(
         self._write_metric(upload, 100, check=False, time=timestamp)
         self.assertEqual(self._read_metric(download, order="-time")[0]["download"], 200)
         self.assertEqual(self._read_metric(upload, order="-time")[0]["upload"], 100)
+
+    def test_metric_read_limit_applies_to_latest_point_only(self):
+        """limit=1 should return one latest point, not one row per Flux field."""
+        metric = self._create_general_metric(
+            name="optional-field-metric",
+            configuration="test_alert_field",
+        )
+        old_time = now() - timedelta(hours=2)
+        new_time = now() - timedelta(hours=1)
+        metric.write(
+            10,
+            extra_values={"test_related_1": 100},
+            time=old_time,
+            check=False,
+        )
+        metric.write(20, time=new_time, check=False)
+        points = self._read_metric(
+            metric,
+            limit=1,
+            order="-time",
+            extra_fields="*",
+        )
+        self.assertEqual(len(points), 1)
+        self.assertEqual(points[0][metric.field_name], 20)
+        self.assertNotIn("test_related_1", points[0])
 
     def test_metric_batch_write_round_trip(self):
         metric = self._create_general_metric(name="batch-load")
