@@ -33,6 +33,8 @@ from ..base import (
 
 logger = logging.getLogger(__name__)
 
+MIN_TIMEZONE_WINDOW_SECONDS = 24 * 60 * 60
+
 FLUX_METADATA_FIELDS = {
     "result",
     "table",
@@ -1085,7 +1087,9 @@ class DatabaseClient(BaseTimeseriesClient):
             end_range = f", stop: {formatted_end}"
         window = self._normalize_chart_window(time, group_map)
         try:
-            large_window = self._duration_to_seconds(str(window)) >= 24 * 60 * 60
+            large_window = (
+                self._duration_to_seconds(str(window)) >= MIN_TIMEZONE_WINDOW_SECONDS
+            )
         except ValueError:
             large_window = False
         window_timezone = ""

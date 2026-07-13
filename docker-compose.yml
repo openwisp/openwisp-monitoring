@@ -1,3 +1,11 @@
+x-timeseries:
+  database: &timeseries_database ${TIMESERIES_DB:-openwisp2}
+  username: &timeseries_username ${TIMESERIES_USER:-openwisp}
+  password: &timeseries_password ${TIMESERIES_PASSWORD:-openwisp}
+  org: &timeseries_org ${INFLUXDB2_ORG:-openwisp}
+  token: &influxdb2_token ${INFLUXDB2_TOKEN:-openwisp-token}
+  influxdb2-port: &influxdb2_port ${INFLUXDB2_PORT:-8086}
+
 services:
   monitoring:
     image: openwisp/openwisp-monitoring:develop
@@ -7,8 +15,16 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - influxdb
+      - ${TIMESERIES_BACKEND:-influxdb}
       - redis
+    environment:
+      TIMESERIES_BACKEND: ${TIMESERIES_BACKEND:-influxdb}
+      INFLUXDB_HOST: influxdb
+      INFLUXDB2_HOST: influxdb2
+      INFLUXDB2_PORT: *influxdb2_port
+      INFLUXDB2_BUCKET: *timeseries_database
+      INFLUXDB2_USER: *timeseries_username
+      INFLUXDB2_PASSWORD: *influxdb2_token
 
   influxdb:
     image: influxdb:1.8-alpine
@@ -23,9 +39,9 @@ services:
       - "8091:8091/udp"
       - "8092:8092/udp"
     environment:
-      INFLUXDB_DB: openwisp2
-      INFLUXDB_USER: openwisp
-      INFLUXDB_USER_PASSWORD: openwisp
+      INFLUXDB_DB: *timeseries_database
+      INFLUXDB_USER: *timeseries_username
+      INFLUXDB_USER_PASSWORD: *timeseries_password
 
   influxdb2:
     image: influxdb:2.9.1-alpine
@@ -35,11 +51,11 @@ services:
       - "8087:8086"
     environment:
       DOCKER_INFLUXDB_INIT_MODE: setup
-      DOCKER_INFLUXDB_INIT_USERNAME: openwisp
-      DOCKER_INFLUXDB_INIT_PASSWORD: openwisp
-      DOCKER_INFLUXDB_INIT_ORG: openwisp
-      DOCKER_INFLUXDB_INIT_BUCKET: openwisp2
-      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: openwisp-token
+      DOCKER_INFLUXDB_INIT_USERNAME: *timeseries_username
+      DOCKER_INFLUXDB_INIT_PASSWORD: *timeseries_password
+      DOCKER_INFLUXDB_INIT_ORG: *timeseries_org
+      DOCKER_INFLUXDB_INIT_BUCKET: *timeseries_database
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: *influxdb2_token
 
   redis:
     image: redis:7
