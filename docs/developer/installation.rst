@@ -11,7 +11,7 @@ Dependencies
 ------------
 
 - Python >= 3.11
-- InfluxDB 1.8 or InfluxDB 2.0
+- InfluxDB 1.8 or InfluxDB 2.9
 - fping
 - OpenSSL
 
@@ -195,3 +195,10 @@ Run the docker container:
 .. code-block:: shell
 
     docker compose up
+
+By default, the Docker setup uses InfluxDB 1.8. To use InfluxDB 2.9
+instead, run:
+
+.. code-block:: shell
+
+    TIMESERIES_BACKEND=influxdb2 docker compose up
