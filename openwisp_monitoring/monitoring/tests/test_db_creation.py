@@ -30,7 +30,7 @@ class TestDatabaseRetryMixin(RequireTimeseriesBackendMixin, TestCase):
 
 
 @tag("influxdb1")
-class TestDatabaseInfluxDB(TestDatabaseRetryMixin):
+class TestDatabaseInfluxDb(TestDatabaseRetryMixin):
     expected_backend = "influxdb"
 
     @patch("openwisp_monitoring.utils.sleep")
@@ -40,7 +40,7 @@ class TestDatabaseInfluxDB(TestDatabaseRetryMixin):
 
 
 @tag("influxdb2")
-class TestDatabaseInfluxDB2(TestDatabaseRetryMixin):
+class TestDatabaseInfluxDb2(TestDatabaseRetryMixin):
     expected_backend = "influxdb2"
 
     @patch("openwisp_monitoring.utils.sleep")

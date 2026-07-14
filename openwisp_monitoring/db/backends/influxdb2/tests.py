@@ -49,7 +49,7 @@ Notification = load_model("openwisp_notifications", "Notification")
 
 
 @tag("timeseries_client", "influxdb2")
-class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
+class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
     """Tests for InfluxDB 2.0 client."""
 
     expected_backend = "influxdb2"
@@ -1359,7 +1359,7 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
 
 
 @tag("timeseries_client", "influxdb2")
-class TestInfluxDB2ClientIntegration(
+class TestInfluxDb2ClientIntegration(
     RequireTimeseriesBackendMixin, TestMonitoringMixin, TestCase
 ):
     expected_backend = "influxdb2"
@@ -1715,7 +1715,7 @@ class TestInfluxDB2ClientIntegration(
 
 
 @tag("timeseries_client", "influxdb2")
-class TestInfluxDB2CheckIntegration(
+class TestInfluxDb2CheckIntegration(
     RequireTimeseriesBackendMixin,
     AutoWifiClientCheck,
     AutoDataCollectedCheck,
