@@ -25,6 +25,7 @@ services:
       INFLUXDB2_BUCKET: *timeseries_database
       INFLUXDB2_USER: *timeseries_username
       INFLUXDB2_PASSWORD: *influxdb2_token
+      INFLUXDB2_UDP_HOST: telegraf
 
   influxdb:
     image: influxdb:1.8-alpine
@@ -56,6 +57,19 @@ services:
       DOCKER_INFLUXDB_INIT_ORG: *timeseries_org
       DOCKER_INFLUXDB_INIT_BUCKET: *timeseries_database
       DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: *influxdb2_token
+
+  # for UDP support on InfluxDB 2.x
+  telegraf:
+    image: telegraf:1.31-alpine
+    depends_on:
+      - influxdb2
+    volumes:
+      - ./tests/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    ports:
+      - "8089:8089/udp"
+      - "8090:8090/udp"
+      - "8091:8091/udp"
+      - "8092:8092/udp"
 
   redis:
     image: redis:7

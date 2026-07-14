@@ -11,7 +11,7 @@ Dependencies
 ------------
 
 - Python >= 3.11
-- InfluxDB 1.8 or InfluxDB 2.9
+- InfluxDB 1.x or InfluxDB 2.x
 - fping
 - OpenSSL
 
@@ -48,11 +48,18 @@ Start Redis and InfluxDB using Docker:
 
     docker compose up -d redis influxdb
 
-If you want to use InfluxDB 2.0 instead, start ``influxdb2``:
+If you want to use InfluxDB 2.x instead, start ``influxdb2``:
 
 .. code-block:: shell
 
     docker compose up -d redis influxdb2
+
+If you want to test InfluxDB 2.x with UDP writes, start ``telegraf`` as
+well:
+
+.. code-block:: shell
+
+    docker compose up -d redis influxdb2 telegraf
 
 Setup and activate a virtual-environment. (we'll be using `virtualenv
 <https://pypi.org/project/virtualenv/>`_)
@@ -135,12 +142,17 @@ Run tests with (make sure you have the :ref:`selenium dependencies
 
 .. code-block:: shell
 
-    ./runtests  # default: runs the influxdb backend test flow
-    TSDB=influxdb2 ./runtests
+    ./runtests  # default: runs tests with InfluxDB 1.x over HTTP
+    TIMESERIES_UDP=1 ./runtests  # InfluxDB 1.x over UDP
+    TSDB=influxdb2 ./runtests  # InfluxDB 2.x over HTTP
+    TSDB=influxdb2 TIMESERIES_UDP=1 ./runtests  # InfluxDB 2.x over UDP (via Telegraf)
 
 The ``./runtests`` script is the main test entry point. By default it runs
 the InfluxDB test flow. Set ``TSDB=influxdb2`` to run the InfluxDB 2.x
-test flow instead. Using ``--parallel`` is not supported in this module.
+test flow instead. Set ``TIMESERIES_UDP=1`` to run the UDP flow for the
+selected backend. When using ``TSDB=influxdb2 TIMESERIES_UDP=1``, Telegraf
+must be running because InfluxDB 2.x does not support UDP natively. Using
+``--parallel`` is not supported in this module.
 
 Run quality assurance tests with:
 

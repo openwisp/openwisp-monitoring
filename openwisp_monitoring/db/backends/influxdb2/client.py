@@ -1,5 +1,7 @@
 import logging
 import re
+import socket
+import sys
 from collections.abc import Iterator, Mapping, Sequence
 from datetime import datetime, timezone
 from typing import Any
@@ -11,6 +13,7 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.utils.functional import cached_property
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
+from influxdb.line_protocol import make_lines
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.exceptions import InfluxDBError
 from influxdb_client.client.write_api import SYNCHRONOUS
@@ -239,7 +242,15 @@ class DatabaseClient(BaseTimeseriesClient):
     def reset(self, db_name: str | None = None) -> None:
         self._close_cached_client()
         super().reset(db_name=db_name)
-        for attr in ("db", "_write_api", "_query_api", "_delete_api", "use_udp"):
+        for attr in (
+            "db",
+            "_write_api",
+            "_query_api",
+            "_delete_api",
+            "use_udp",
+            "_udp_host",
+            "_udp_port",
+        ):
             self.__dict__.pop(attr, None)
 
     def close(self) -> None:
@@ -311,7 +322,17 @@ class DatabaseClient(BaseTimeseriesClient):
 
     @cached_property
     def use_udp(self) -> bool:
-        return False
+        return TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False)
+
+    @cached_property
+    def _udp_host(self):
+        return TIMESERIES_DB.get("OPTIONS", {}).get(
+            "udp_host", TIMESERIES_DB.get("HOST", "localhost")
+        )
+
+    @cached_property
+    def _udp_port(self):
+        return TIMESERIES_DB.get("OPTIONS", {}).get("udp_port", 8089)
 
     def _get_bucket_name(self, retention_policy=None):
         if not retention_policy or retention_policy == "autogen":
@@ -520,6 +541,43 @@ class DatabaseClient(BaseTimeseriesClient):
         message = str(exception).lower()
         return "retention policy" in message and "dropped" in message
 
+    def _get_udp_port(self, retention_policy=None):
+        """Telegraf UDP routing needs listener ports to choose the bucket."""
+        if not retention_policy or retention_policy == "autogen":
+            return self._udp_port
+        return self._udp_port + 1
+
+    def _write_udp(self, lines, retention_policy=None):
+        """Send line protocol to the Telegraf UDP listener."""
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.sendto(
+                lines.encode(),
+                (self._udp_host, self._get_udp_port(retention_policy)),
+            )
+
+    def _handle_write_exception(self, exception):
+        if self._is_retention_policy_violation(exception):
+            logger.warning(
+                "Ignoring InfluxDB2 write dropped by retention policy: %s",
+                exception,
+            )
+            return
+        logger.warning(f"Error writing to InfluxDB2: {exception}")
+        raise TimeseriesWriteException
+
+    def _write(self, bucket, points, retention_policy=None):
+        """Write over UDP when payload size allows, otherwise use HTTP."""
+        udp_points = points if isinstance(points, list) else [points]
+        lines = make_lines({"points": udp_points}).rstrip("\n")
+        try:
+            if not self.use_udp or sys.getsizeof(lines) > 65000:
+                return self._write_api.write(
+                    bucket=bucket, org=self.user, record=points
+                )
+            self._write_udp(lines, retention_policy=retention_policy)
+        except Exception as exception:
+            self._handle_write_exception(exception)
+
     def _ensure_bucket_exists(self, bucket_name):
         if bucket_name == self.db_name:
             self.create_database()
@@ -561,21 +619,11 @@ class DatabaseClient(BaseTimeseriesClient):
             "fields": values,
             "time": timestamp,
         }
-        try:
-            self._write_api.write(
-                bucket=bucket,
-                org=self.user,
-                record=point,
-            )
-        except Exception as exception:
-            if self._is_retention_policy_violation(exception):
-                logger.warning(
-                    "Ignoring InfluxDB2 write dropped by retention policy: %s",
-                    exception,
-                )
-                return
-            logger.warning(f"Error writing to InfluxDB2: {exception}")
-            raise TimeseriesWriteException
+        self._write(
+            bucket=bucket,
+            points=point,
+            retention_policy=kwargs.get("retention_policy"),
+        )
 
     def batch_write(self, metric_data: Sequence[BatchWritePayload]) -> None:
         """Write multiple data points in batch."""
@@ -586,7 +634,8 @@ class DatabaseClient(BaseTimeseriesClient):
                     f'Parameter "database" is ignored in InfluxDB 2.0. '
                     f'Writing to bucket "{self.db_name}"'
                 )
-            bucket = self._get_bucket_name(data.get("retention_policy"))
+            retention_policy = data.get("retention_policy")
+            bucket = self._get_bucket_name(retention_policy)
             timestamp = self._get_timestamp(timestamp=data.get("timestamp"))
             point = {
                 "measurement": data.get("name"),
@@ -594,19 +643,13 @@ class DatabaseClient(BaseTimeseriesClient):
                 "fields": data.get("values"),
                 "time": timestamp,
             }
-            points_by_bucket.setdefault(bucket, []).append(point)
-        try:
-            for bucket, points in points_by_bucket.items():
-                self._write_api.write(bucket=bucket, org=self.user, record=points)
-        except Exception as exception:
-            if self._is_retention_policy_violation(exception):
-                logger.warning(
-                    "Ignoring InfluxDB2 batch write dropped by retention policy: %s",
-                    exception,
-                )
-                return
-            logger.warning(f"Error batch writing to InfluxDB2: {exception}")
-            raise TimeseriesWriteException
+            points_by_bucket.setdefault((bucket, retention_policy), []).append(point)
+        for (bucket, retention_policy), points in points_by_bucket.items():
+            self._write(
+                bucket=bucket,
+                points=points,
+                retention_policy=retention_policy,
+            )
 
     def query(
         self, query: str, precision: str | None = "s", **kwargs: Any

@@ -2,20 +2,24 @@
 set -e
 
 TSDB="${TSDB:-influxdb}"
+UDP="${TIMESERIES_UDP:-}"
 
-if [ "$TSDB" = "influxdb" ]; then
-    TIMESERIES_BACKEND=influxdb coverage run runtests.py "$@"
-    SAMPLE_APP=1 TIMESERIES_BACKEND=influxdb coverage run runtests.py \
-        "$@" --exclude-tag=selenium_tests
-    TIMESERIES_UDP=1 TIMESERIES_BACKEND=influxdb coverage run runtests.py \
-        "$@" --exclude-tag=selenium_tests
-elif [ "$TSDB" = "influxdb2" ]; then
-    # SAMPLE_APP and UDP variants are covered by the default backend path.
-    TIMESERIES_BACKEND=influxdb2 coverage run runtests.py "$@"
-else
+if [ "$TSDB" != "influxdb" ] && [ "$TSDB" != "influxdb2" ]; then
     echo "Unsupported TSDB: $TSDB" >&2
     echo "Supported values: influxdb, influxdb2" >&2
     exit 1
+fi
+
+if [ -z "$UDP" ]; then
+    TIMESERIES_BACKEND="$TSDB" coverage run runtests.py "$@"
+    # test extensibility only on the default TSDB
+    if [ "$TSDB" = "influxdb" ]; then
+        SAMPLE_APP=1 TIMESERIES_BACKEND="$TSDB" coverage run runtests.py \
+            "$@" --exclude-tag=selenium_tests
+    fi
+else
+    TIMESERIES_UDP=1 TIMESERIES_BACKEND="$TSDB" coverage run runtests.py \
+        "$@" --exclude-tag=selenium_tests
 fi
 
 coverage combine

@@ -14,7 +14,7 @@ on:
 
 jobs:
   build:
-    name: "${{ matrix.tsdb }} | Python==${{ matrix.python-version }} | ${{ matrix.django-version }}"
+    name: "${{ matrix.tsdb }}${{ matrix.udp && ' UDP' || '' }} | Python==${{ matrix.python-version }} | ${{ matrix.django-version }}"
     runs-on: ubuntu-24.04
 
     services:
@@ -38,6 +38,14 @@ jobs:
           - python-version: "3.13"
             django-version: django~=5.2.0
             tsdb: influxdb2
+          - python-version: "3.13"
+            django-version: django~=5.2.0
+            tsdb: influxdb
+            udp: true
+          - python-version: "3.13"
+            django-version: django~=5.2.0
+            tsdb: influxdb2
+            udp: true
 
     steps:
       - uses: actions/checkout@v7
@@ -85,7 +93,13 @@ jobs:
 
       - name: Start Timeseries DB
         run: |
-          docker compose up -d ${{ matrix.tsdb }}
+          services="${{ matrix.tsdb }}"
+          if [ "${{ matrix.udp }}" != "true" ] || [ "${{ matrix.tsdb }}" != "influxdb2" ]; then
+            :
+          else
+            services="$services telegraf"
+          fi
+          docker compose up -d $services
 
           if [ "${{ matrix.tsdb }}" = "influxdb2" ]; then
             url="http://localhost:8087/health"
@@ -115,6 +129,7 @@ jobs:
           ./runtests
         env:
           TSDB: ${{ matrix.tsdb }}
+          TIMESERIES_UDP: ${{ matrix.udp && '1' || '' }}
           SELENIUM_HEADLESS: 1
           GECKO_LOG: 1
 
@@ -130,7 +145,7 @@ jobs:
         with:
           parallel: true
           format: cobertura
-          flag-name: ${{ matrix.tsdb }}-python-${{ matrix.python-version }}-${{ matrix.django-version }}
+          flag-name: ${{ matrix.tsdb }}${{ matrix.udp && '-udp' || '' }}-python-${{ matrix.python-version }}-${{ matrix.django-version }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-error: false
 

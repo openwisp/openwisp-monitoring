@@ -1,6 +1,6 @@
 from importlib import import_module
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase
@@ -295,7 +295,7 @@ class TestBackendLoader(SimpleTestCase):
             client.get_default_chart_query()
 
 
-class TestInfluxDB2ClientURL(SimpleTestCase):
+class TestInfluxDb2ClientUrl(SimpleTestCase):
     base_config = {
         "BACKEND": "openwisp_monitoring.db.backends.influxdb2",
         "PASSWORD": "token",
@@ -345,7 +345,17 @@ class TestInfluxDB2ClientURL(SimpleTestCase):
             "USER": "openwisp",
             "URL": "http://influxdb.example.com:8086",
         }
+        self.assertEqual(DatabaseClient.validate_settings(config), config)
 
+    def test_validate_settings_accepts_udp_options(self):
+        config = {
+            **self.base_config,
+            "OPTIONS": {
+                "udp_writes": True,
+                "udp_host": "telegraf",
+                "udp_port": 8089,
+            },
+        }
         self.assertEqual(DatabaseClient.validate_settings(config), config)
 
     def test_validate_settings_rejects_missing_url_and_host_port(self):
@@ -355,7 +365,6 @@ class TestInfluxDB2ClientURL(SimpleTestCase):
             "NAME": "openwisp2",
             "USER": "openwisp",
         }
-
         with self.assertRaisesMessage(
             ImproperlyConfigured,
             'InfluxDB2 TIMESERIES_DATABASE must define either "URL" or both "HOST" and "PORT".',
@@ -370,6 +379,8 @@ class TestInfluxDB2ClientURL(SimpleTestCase):
         client.__dict__["_query_api"] = object()
         client.__dict__["_delete_api"] = object()
         client.__dict__["use_udp"] = object()
+        client.__dict__["_udp_host"] = object()
+        client.__dict__["_udp_port"] = object()
         client.close()
         mock_db.close.assert_called_once_with()
         self.assertNotIn("db", client.__dict__)
@@ -377,6 +388,131 @@ class TestInfluxDB2ClientURL(SimpleTestCase):
         self.assertNotIn("_query_api", client.__dict__)
         self.assertNotIn("_delete_api", client.__dict__)
         self.assertNotIn("use_udp", client.__dict__)
+        self.assertNotIn("_udp_host", client.__dict__)
+        self.assertNotIn("_udp_port", client.__dict__)
+
+    @patch.dict(
+        "openwisp_monitoring.db.backends.influxdb2.client.TIMESERIES_DB",
+        {
+            **base_config,
+            "OPTIONS": {
+                "udp_writes": True,
+                "udp_host": "telegraf",
+                "udp_port": 8089,
+            },
+        },
+        clear=True,
+    )
+    def test_use_udp_reads_udp_option(self):
+        self.assertIs(DatabaseClient().use_udp, True)
+
+    @patch.dict(
+        "openwisp_monitoring.db.backends.influxdb2.client.TIMESERIES_DB",
+        {
+            **base_config,
+            "OPTIONS": {
+                "udp_writes": True,
+                "udp_host": "telegraf",
+                "udp_port": 8089,
+            },
+        },
+        clear=True,
+    )
+    @patch("openwisp_monitoring.db.backends.influxdb2.client.socket.socket")
+    def test_write_uses_udp_line_protocol(self, mocked_socket):
+        client = DatabaseClient()
+        client.write(
+            "test_measurement",
+            {"field1": 10},
+            tags={"host": "router1"},
+            timestamp="2024-03-25T12:30:45Z",
+        )
+        mocked_socket.return_value.__enter__.return_value.sendto.assert_called_once_with(
+            b"test_measurement,host=router1 field1=10i 1711369845000000000",
+            ("telegraf", 8089),
+        )
+
+    @patch.dict(
+        "openwisp_monitoring.db.backends.influxdb2.client.TIMESERIES_DB",
+        {
+            **base_config,
+            "OPTIONS": {
+                "udp_writes": True,
+                "udp_host": "telegraf",
+                "udp_port": 8089,
+            },
+        },
+        clear=True,
+    )
+    @patch("openwisp_monitoring.db.backends.influxdb2.client.socket.socket")
+    def test_batch_write_maps_retention_policy_to_udp_port(self, mocked_socket):
+        client = DatabaseClient()
+        client.batch_write(
+            [
+                {
+                    "name": "default_measurement",
+                    "values": {"field1": 10},
+                    "timestamp": "2024-03-25T12:30:45Z",
+                },
+                {
+                    "name": "short_measurement",
+                    "values": {"field1": 20},
+                    "retention_policy": "short",
+                    "timestamp": "2024-03-25T12:31:45Z",
+                },
+            ]
+        )
+        sendto = mocked_socket.return_value.__enter__.return_value.sendto
+        self.assertEqual(
+            sendto.call_args_list,
+            [
+                call(
+                    b"default_measurement field1=10i 1711369845000000000",
+                    ("telegraf", 8089),
+                ),
+                call(
+                    b"short_measurement field1=20i 1711369905000000000",
+                    ("telegraf", 8090),
+                ),
+            ],
+        )
+
+    @patch.dict(
+        "openwisp_monitoring.db.backends.influxdb2.client.TIMESERIES_DB",
+        {
+            **base_config,
+            "OPTIONS": {
+                "udp_writes": True,
+                "udp_host": "telegraf",
+                "udp_port": 8089,
+            },
+        },
+        clear=True,
+    )
+    def test_autogen_retention_policy_uses_default_udp_port(self):
+        self.assertEqual(DatabaseClient()._get_udp_port("autogen"), 8089)
+
+    @patch.dict(
+        "openwisp_monitoring.db.backends.influxdb2.client.TIMESERIES_DB",
+        {
+            **base_config,
+            "OPTIONS": {
+                "udp_writes": True,
+                "udp_host": "telegraf",
+                "udp_port": 8089,
+            },
+        },
+        clear=True,
+    )
+    @patch(
+        "openwisp_monitoring.db.backends.influxdb2.client.sys.getsizeof",
+        return_value=65001,
+    )
+    def test_udp_write_falls_back_to_http_for_large_packets(self, mocked_getsizeof):
+        client = DatabaseClient()
+        with patch.object(client, "_write_api") as mock_write_api:
+            client.write("test_measurement", {"field1": 10})
+        mock_write_api.write.assert_called_once()
 
     def test_reset_shuts_down_cached_client_and_clears_cached_state(self):
         client = DatabaseClient(db_name="initial-db")
@@ -386,6 +522,8 @@ class TestInfluxDB2ClientURL(SimpleTestCase):
         client.__dict__["_query_api"] = object()
         client.__dict__["_delete_api"] = object()
         client.__dict__["use_udp"] = object()
+        client.__dict__["_udp_host"] = object()
+        client.__dict__["_udp_port"] = object()
         client.reset(db_name="reset-db")
         mock_db.close.assert_called_once_with()
         self.assertEqual(client.db_name, "reset-db")
@@ -394,3 +532,5 @@ class TestInfluxDB2ClientURL(SimpleTestCase):
         self.assertNotIn("_query_api", client.__dict__)
         self.assertNotIn("_delete_api", client.__dict__)
         self.assertNotIn("use_udp", client.__dict__)
+        self.assertNotIn("_udp_host", client.__dict__)
+        self.assertNotIn("_udp_port", client.__dict__)

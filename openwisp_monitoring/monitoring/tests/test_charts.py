@@ -26,6 +26,7 @@ Chart = load_model("monitoring", "Chart")
 class TestCharts(TestMonitoringMixin, TestCase):
     """Tests for functionalities related to charts"""
 
+    @tag("flaky_with_udp_writes")
     def test_read(self):
         c = self._create_chart()
         data = self._read_chart(c)
@@ -38,6 +39,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertEqual(len(charts[0][1]), 3)
         self.assertEqual(charts[0][1], [3, 6, 9])
 
+    @tag("flaky_with_udp_writes")
     def test_read_summary_avg(self):
         m = self._create_object_metric(name="summary_avg")
         c = self._create_chart(metric=m, test_data=False, configuration="mean_test")
@@ -47,6 +49,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         data = self._read_chart(c)
         self.assertEqual(data["summary"], {"value": 2})
 
+    @tag("flaky_with_udp_writes")
     def test_read_summary_sum(self):
         m = self._create_object_metric(name="summary_sum")
         c = self._create_chart(metric=m, test_data=False, configuration="sum_test")
@@ -139,6 +142,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertEqual(data["summary"], {"google": 87500000, "facebook": 37503000})
         self.assertEqual(c.get_top_fields(2), ["google", "facebook"])
 
+    @tag("flaky_with_udp_writes")
     def test_read_multiple(self):
         c = self._create_chart(test_data=None, configuration="multiple_test")
         m1 = c.metric
@@ -167,6 +171,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertEqual(charts[0][1], [3, 2, 1])
         self.assertEqual(charts[1][1], [4, 3, 2])
 
+    @tag("flaky_with_udp_writes")
     def test_read_group_by_tag(self):
         m1 = self._create_object_metric(
             name="test metric 1",
@@ -249,6 +254,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         c = self._create_chart(test_data=False)
         self.assertEqual(c.description, "Dummy chart for testing purposes.")
 
+    @tag("flaky_with_udp_writes")
     def test_wifi_hostapd(self):
         m = self._create_object_metric(
             name="wifi associations",
@@ -364,7 +370,7 @@ class TestChartsBackendMixin(
 
 
 @tag("influxdb1")
-class TestChartsInfluxDB1(TestChartsBackendMixin):
+class TestChartsInfluxDb1(TestChartsBackendMixin):
     expected_backend = "influxdb"
 
     @capture_stderr()
@@ -374,7 +380,7 @@ class TestChartsInfluxDB1(TestChartsBackendMixin):
 
 
 @tag("influxdb2")
-class TestChartsInfluxDB2(TestChartsBackendMixin):
+class TestChartsInfluxDb2(TestChartsBackendMixin):
     expected_backend = "influxdb2"
 
     @capture_stderr()

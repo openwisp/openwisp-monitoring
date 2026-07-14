@@ -98,6 +98,7 @@ class DatabaseClient(BaseTimeseriesClient):
 
     @cached_property
     def dbs(self):
+        udp_port = self._get_udp_port()
         dbs = {
             "default": InfluxDBClient(
                 TIMESERIES_DB["HOST"],
@@ -106,7 +107,7 @@ class DatabaseClient(BaseTimeseriesClient):
                 TIMESERIES_DB["PASSWORD"],
                 self.db_name,
                 use_udp=TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False),
-                udp_port=TIMESERIES_DB.get("OPTIONS", {}).get("udp_port", 8089),
+                udp_port=udp_port,
             ),
         }
         if TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False):
@@ -120,7 +121,7 @@ class DatabaseClient(BaseTimeseriesClient):
                 TIMESERIES_DB["PASSWORD"],
                 self.db_name,
                 use_udp=TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False),
-                udp_port=TIMESERIES_DB.get("OPTIONS", {}).get("udp_port", 8089) + 1,
+                udp_port=self._get_udp_port(retention_policy="short"),
             )
             dbs["__all__"] = InfluxDBClient(
                 TIMESERIES_DB["HOST"],
@@ -137,6 +138,11 @@ class DatabaseClient(BaseTimeseriesClient):
     @cached_property
     def use_udp(self):
         return TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False)
+
+    def _get_udp_port(self, retention_policy=None):
+        """UDP routing needs dedicated listener ports to choose the target."""
+        udp_port = TIMESERIES_DB.get("OPTIONS", {}).get("udp_port", 8089)
+        return udp_port + 1 if retention_policy else udp_port
 
     def _clean_operator(self, op):
         """Returns the operator if it is valid."""

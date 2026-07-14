@@ -63,6 +63,10 @@ Alternative ``influxdb2`` backend configuration:
         "USER": "openwisp",  # InfluxDB organization
         "PASSWORD": "openwisp-token",  # InfluxDB API token
         "URL": "http://localhost:8087",
+        "OPTIONS": {
+            "udp_writes": False,
+            "udp_port": 8089,
+        },
     }
 
 The following table describes the keys available in the
@@ -89,28 +93,35 @@ The following table describes the keys available in the
 Timeseries Database Options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-============== ==========================================================
+============== ===========================================================
 ``udp_writes`` Whether to use UDP for writing data to the timeseries
-               database. Available only for the ``influxdb`` backend
+               database. The ``influxdb2`` backend requires Telegraf as a
+               UDP listener because InfluxDB 2.x does not support UDP
+               natively
+``udp_host``   Optional Telegraf UDP listener hostname. Available only for
+               the ``influxdb2`` backend. Defaults to ``HOST`` when
+               configured, otherwise ``localhost``
 ``udp_port``   Timeseries database port for writing data using UDP on the
-               ``influxdb`` backend
-============== ==========================================================
+               ``influxdb`` backend, or Telegraf listener port for the
+               ``influxdb2`` backend
+============== ===========================================================
 
-The ``influxdb2`` backend does not support UDP writes.
+The ``influxdb2`` backend supports UDP writes only through Telegraf.
+OpenWISP sends Influx line protocol to Telegraf over UDP, then Telegraf
+forwards the data to InfluxDB 2.x over HTTP.
 
 .. important::
 
-    UDP packets can have a maximum size of 64KB. When using UDP writes on
-    the ``influxdb`` backend, if the size of the data exceeds 64KB, TCP
-    mode will be used instead.
+    UDP packets can have a maximum size of 64KB. When using UDP writes, if
+    the size of the data exceeds 64KB, TCP mode will be used instead.
 
 .. note::
 
-    UDP writes are supported only by the ``influxdb`` backend. If you want
-    to use that backend with UDP writes enabled, then you need to enable
-    two different ports for UDP (each for a different retention policy) in
-    your InfluxDB configuration. The UDP configuration section of your
-    InfluxDB should look similar to the following:
+    If you want to use the ``influxdb`` backend with UDP writes enabled,
+    then you need to enable two different ports for UDP (each for a
+    different retention policy) in your InfluxDB configuration. The UDP
+    configuration section of your InfluxDB should look similar to the
+    following:
 
     .. code-block:: text
 
@@ -134,6 +145,35 @@ The ``influxdb2`` backend does not support UDP writes.
     the `ansible-ow-influxdb's
     <https://github.com/openwisp/ansible-ow-influxdb#role-variables>`_ (a
     dependency of ansible-openwisp2) documentation to learn more.
+
+    If you want to use the ``influxdb2`` backend with UDP writes enabled,
+    then you need a Telegraf UDP listener. The UDP listener on
+    ``udp_port`` writes to the main InfluxDB 2.x bucket, while the next
+    UDP port writes to the bucket mapped to the ``short`` retention
+    policy. The Telegraf configuration should look similar to the
+    following:
+
+    .. code-block:: toml
+
+        [[inputs.socket_listener]]
+          service_address = "udp://:8089"
+          data_format = "influx"
+          [inputs.socket_listener.tags]
+            bucket = "openwisp2"
+
+        [[inputs.socket_listener]]
+          service_address = "udp://:8090"
+          data_format = "influx"
+          [inputs.socket_listener.tags]
+            bucket = "openwisp2_short"
+
+        [[outputs.influxdb_v2]]
+          urls = ["http://influxdb2:8086"]
+          token = "openwisp-token"
+          organization = "openwisp"
+          bucket = "openwisp2"
+          bucket_tag = "bucket"
+          exclude_bucket_tag = true
 
 .. _openwisp_monitoring_default_retention_policy:
 

@@ -2,8 +2,10 @@
 InfluxDB 2.x Database Client Tests
 """
 
+import time
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
@@ -1356,6 +1358,38 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                 }
             ],
         )
+
+
+@tag("influxdb2")
+class TestInfluxDb2UdpDelivery(
+    RequireTimeseriesBackendMixin, TestMonitoringMixin, TestCase
+):
+    """Will fail if UDP is not working"""
+
+    expected_backend = "influxdb2"
+
+    def test_udp_write_reaches_influxdb2(self):
+        if not timeseries_db.use_udp:
+            self.skipTest(
+                "Skipped InfluxDB 2.x UDP delivery test (not running in UDP mode)."
+            )
+        test_id = f"udp-delivery-{uuid4()}"
+        timeseries_db.write(
+            "udp_delivery_test", {"value": 42}, tags={"test_id": test_id}
+        )
+        points = []
+        for _attempt in range(15):
+            points = timeseries_db.read(
+                "udp_delivery_test",
+                "value",
+                {"test_id": test_id},
+                limit=1,
+            )
+            if points:
+                break
+            time.sleep(0.2)
+        self.assertEqual(len(points), 1)
+        self.assertEqual(points[0]["value"], 42)
 
 
 @tag("timeseries_client", "influxdb2")

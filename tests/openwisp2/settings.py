@@ -57,15 +57,25 @@ elif TIMESERIES_BACKEND == "influxdb2":
         ),
         "USER": os.getenv("INFLUXDB2_USER", "openwisp"),
         "PASSWORD": os.getenv("INFLUXDB2_PASSWORD", "openwisp-token"),
+        # URL/HOST/PORT are for the InfluxDB2 HTTP API. UDP writes go through
+        # Telegraf, so the influxdb2 backend needs separate listener settings.
+        "OPTIONS": {"udp_writes": False, "udp_port": 8089},
     }
 else:
     raise ValueError(f'Unsupported TIMESERIES_BACKEND "{TIMESERIES_BACKEND}"')
 if TESTING:
-    if (
-        TIMESERIES_BACKEND == "influxdb"
-        and os.getenv("TIMESERIES_UDP", "").strip().lower() in TRUTHY_ENV_VALUES
-    ):
-        TIMESERIES_DATABASE["OPTIONS"] = {"udp_writes": True, "udp_port": 8091}
+    udp_enabled = os.getenv("TIMESERIES_UDP", "").strip().lower() in TRUTHY_ENV_VALUES
+    if not udp_enabled:
+        udp_options = TIMESERIES_DATABASE.get("OPTIONS", {})
+    elif TIMESERIES_BACKEND == "influxdb":
+        udp_options = {"udp_writes": True, "udp_port": 8091}
+    elif TIMESERIES_BACKEND == "influxdb2":
+        udp_options = {
+            "udp_writes": True,
+            "udp_host": os.getenv("INFLUXDB2_UDP_HOST", "localhost"),
+            "udp_port": int(os.getenv("INFLUXDB2_UDP_PORT", 8091)),
+        }
+    TIMESERIES_DATABASE["OPTIONS"] = udp_options
 
 SECRET_KEY = "fn)t*+$)ugeyip6-#txyy$5wf2ervc0d2n#h)qb)y5@ly$t*@w"
 
