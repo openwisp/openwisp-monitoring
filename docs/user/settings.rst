@@ -155,6 +155,13 @@ forwards the data to InfluxDB 2.x over HTTP.
 
     .. code-block:: toml
 
+        [agent]
+          # Disable Telegraf's automatic hostname tag. If enabled on an
+          # existing OpenWISP bucket, it creates different series from the
+          # historical data, making charts look empty as if the timeseries
+          # database had been reset.
+          omit_hostname = true
+
         [[inputs.socket_listener]]
           service_address = "udp://:8089"
           data_format = "influx"

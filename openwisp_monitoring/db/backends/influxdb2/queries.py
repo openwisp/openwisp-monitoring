@@ -35,9 +35,13 @@ _window_sum = _window("sum")
 _window_count = _window("count")
 _window_mode = _window("mode")
 
-_summary_mean = " |> mean()"
-_summary_sum = " |> sum()"
-_summary_mode = " |> last()"
+# Ignore tags added by external writers before calculating chart summaries.
+# Otherwise the same field can be summarized once per tag set and then summed,
+# producing impossible values like disk or ping percentages greater than 100%.
+_summary_group = ' |> group(columns: ["_field"])'
+_summary_mean = _summary_group + " |> mean()"
+_summary_sum = _summary_group + " |> sum()"
+_summary_mode = _summary_group + " |> last()"
 
 _uptime_base = (
     _range + _object_filters + ' |> filter(fn: (r) => r._field == "{field_name}")'
@@ -78,6 +82,7 @@ _wifi_clients_query = (
 )
 _wifi_clients_summary_query = (
     _wifi_clients_base
+    + _summary_group
     + ' |> unique(column: "_value")'
     + " |> count()"
     + _wifi_clients_map

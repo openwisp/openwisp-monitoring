@@ -1591,6 +1591,19 @@ class TestInfluxDb2ClientIntegration(
         data = self._read_chart(chart, time="7d")
         self.assertEqual(data["summary"], {"uptime": 100.0})
 
+    def test_chart_summary_does_not_sum_split_tag_series(self):
+        """Unexpected tags must not make split-series summary means get summed."""
+        metric = self._create_object_metric(name="disk", configuration="disk")
+        timestamp = now()
+        metric.write(75, time=timestamp - timedelta(days=2))
+        metric.extra_tags = {"host": "openwisp-staging"}
+        metric.write(76, time=timestamp)
+        chart = Chart(metric=metric, configuration="disk")
+        chart.full_clean()
+        chart.save()
+        data = self._read_chart(chart, time="7d")
+        self.assertEqual(data["summary"], {"disk_usage": 75.5})
+
     def test_ping_uptime_chart_uses_uniform_10_minute_buckets_for_1d(self):
         metric = self._create_object_metric(name="ping", configuration="ping")
         base_time = now().replace(
