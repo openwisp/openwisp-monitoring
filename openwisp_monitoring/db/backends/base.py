@@ -30,6 +30,7 @@ class BackendQueryBundle:
     chart_query: Mapping[str, Mapping[str, str]]
     default_chart_query: object
     device_data_query: object
+    summary_query: Mapping[str, Mapping[str, str]] | None = None
 
     def validate(self, backend_name: str) -> Self:
         if not isinstance(self.chart_query, Mapping):
@@ -48,10 +49,29 @@ class BackendQueryBundle:
             raise ImproperlyConfigured(
                 f"Backend query bundle is missing the '{backend_name}' key for: {joined}"
             )
+        if self.summary_query is not None:
+            invalid_summary_query = []
+            for chart_name, chart_config in self.summary_query.items():
+                if (
+                    not isinstance(chart_config, Mapping)
+                    or backend_name not in chart_config
+                ):
+                    invalid_summary_query.append(chart_name)
+            if invalid_summary_query:
+                joined = ", ".join(sorted(invalid_summary_query))
+                raise ImproperlyConfigured(
+                    "Backend query bundle is missing the "
+                    f"'{backend_name}' summary key for: {joined}"
+                )
         if self.default_chart_query is None:
             raise ImproperlyConfigured(
                 "Backend query bundle must define default_chart_query."
             )
+        if isinstance(self.default_chart_query, (list, tuple)):
+            if not self.default_chart_query:
+                raise ImproperlyConfigured(
+                    "Backend query bundle must define a non-empty default_chart_query."
+                )
         formatter = getattr(self.device_data_query, "format", None)
         if not callable(formatter):
             raise ImproperlyConfigured(

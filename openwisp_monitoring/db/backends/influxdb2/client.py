@@ -471,7 +471,10 @@ class DatabaseClient(BaseTimeseriesClient):
             return f'time(v: "{value}")'
         return value
 
-    def _get_open_range_stop(self, since):
+    def _get_open_range_start(self):
+        return datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+    def _get_open_range_stop(self):
         return datetime(2100, 1, 1, tzinfo=timezone.utc)
 
     def _normalize_chart_window(self, time_value, group_map=None):
@@ -665,11 +668,12 @@ class DatabaseClient(BaseTimeseriesClient):
         # Add time range
         since = kwargs.get("since")
         if since:
-            timestamp = self._format_flux_time(since)
-            stop = self._format_flux_time(self._get_open_range_stop(since))
-            flux_query += f" |> range(start: {timestamp}, stop: {stop})"
+            start = since
         else:
-            flux_query += " |> range(start: -24h)"
+            start = self._get_open_range_start()
+        timestamp = self._format_flux_time(start)
+        stop = self._format_flux_time(self._get_open_range_stop())
+        flux_query += f" |> range(start: {timestamp}, stop: {stop})"
         # Filter by measurement. InfluxDB 1.x allows comma-separated measurements.
         measurements = [
             measurement.strip() for measurement in key.split(",") if measurement.strip()
@@ -751,15 +755,12 @@ class DatabaseClient(BaseTimeseriesClient):
                 raise self.client_error(message)
         else:
             flux_query += ' |> sort(columns: ["_time"])'
-        # Apply limit
         limit = kwargs.get("limit")
-        if limit:
-            flux_query += f" |> limit(n: {limit})"
         result = list(
             self.query(flux_query, precision=kwargs.get("precision", "s")).get_points()
         )
         if supports_count_distinct:
-            return [
+            points = [
                 {
                     "count": point.get("_value"),
                     **{
@@ -772,7 +773,9 @@ class DatabaseClient(BaseTimeseriesClient):
                 }
                 for point in result
             ]
-        return self._normalize_read_points(result)
+            return points[: int(limit)] if limit else points
+        points = self._normalize_read_points(result)
+        return points[: int(limit)] if limit else points
 
     def _normalize_read_points(self, points, include_tags=True):
         normalized = {}
@@ -861,8 +864,8 @@ class DatabaseClient(BaseTimeseriesClient):
 
     @retry
     def _delete_range(self, predicate: str = "", bucket: str | None = None) -> None:
-        start = datetime(1970, 1, 1, tzinfo=timezone.utc)
-        stop = self._get_open_range_stop(start)
+        start = self._get_open_range_start()
+        stop = self._get_open_range_stop()
         self._delete_api.delete(
             start,
             stop,
@@ -891,30 +894,9 @@ class DatabaseClient(BaseTimeseriesClient):
     ) -> None:
         """Deletes metric data based on measurement and tags."""
         predicate = self._build_delete_predicate(key=key, tags=tags)
-        if not predicate:
-            self._reset_known_buckets()
-            logger.debug("Reset InfluxDB2 buckets for full metric data cleanup")
-            return
         for bucket in self._get_known_bucket_names():
             self._delete_range(predicate, bucket=bucket)
         logger.debug(f"Deleted metric data: key={key}, tags={tags}")
-
-    def _reset_known_buckets(self):
-        api = self.db.buckets_api()
-        for bucket_name in self._get_known_bucket_names():
-            bucket = api.find_bucket_by_name(bucket_name)
-            if not bucket:
-                self._ensure_bucket_exists(bucket_name)
-                continue
-            retention_rules = bucket.retention_rules
-            api.delete_bucket(bucket)
-            create_kwargs = {
-                "bucket_name": bucket_name,
-                "org": self.user,
-            }
-            if retention_rules:
-                create_kwargs["retention_rules"] = retention_rules
-            api.create_bucket(**create_kwargs)
 
     def get_list_query(self, query: str, precision: str = "s") -> list[TimeseriesPoint]:
         """Execute a query and flatten GROUP BY TAG results for chart rendering.
@@ -1068,9 +1050,21 @@ class DatabaseClient(BaseTimeseriesClient):
             )
         return ""
 
+    def _get_summary_chart_query(self, query):
+        summary_queries = getattr(self.queries, "summary_query", None) or {}
+        if not summary_queries:
+            return query
+        for chart_name, chart_config in self.queries.chart_query.items():
+            if chart_config.get(self.backend_name) != query:
+                continue
+            return summary_queries.get(chart_name, {}).get(self.backend_name, query)
+        return query
+
     def _format_chart_query(
         self, query, params, time, group_map, summary, fields, timezone_name
     ):
+        if summary:
+            query = self._get_summary_chart_query(query)
         start_range = params.get("time")
         if start_range:
             time_start = self._normalize_chart_start_range(
@@ -1136,29 +1130,6 @@ class DatabaseClient(BaseTimeseriesClient):
                 fields, params.get("field_name", "")
             ),
         )
-        if summary:
-            formatted = re.sub(
-                r"\s\|> window\(every: [^)]+\)\s*"
-                r'\|> unique\(column: "_value"\)\s*'
-                r"\|> count\(\)\s*"
-                r'\|> duplicate\(column: "_start", as: "_time"\)',
-                ' |> unique(column: "_value") |> count()',
-                formatted,
-            )
-
-            def replace_summary_window(match):
-                aggregate_fn = match.group(1)
-                if aggregate_fn == "mode":
-                    return " |> last()"
-                return f" |> {aggregate_fn}()"
-
-            formatted = re.sub(
-                r"\s\|> aggregateWindow\(every: [^,]+, fn: (\w+)(?:, [^)]+)?\)"
-                r"(?:\s*\|> map\(fn: \(r\) => \(\{r with _time: "
-                r"date\.truncate\(t: r\._time, unit: [^)]+\)\}\)\))?",
-                replace_summary_window,
-                formatted,
-            )
         return formatted
 
     def _get_top_fields(

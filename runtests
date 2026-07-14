@@ -11,8 +11,7 @@ if [ "$TSDB" = "influxdb" ]; then
         "$@" --exclude-tag=selenium_tests
 elif [ "$TSDB" = "influxdb2" ]; then
     # SAMPLE_APP and UDP variants are covered by the default backend path.
-    TIMESERIES_BACKEND=influxdb2 coverage run runtests.py \
-        "$@" --exclude-tag=selenium_tests
+    TIMESERIES_BACKEND=influxdb2 coverage run runtests.py "$@"
 else
     echo "Unsupported TSDB: $TSDB" >&2
     echo "Supported values: influxdb, influxdb2" >&2

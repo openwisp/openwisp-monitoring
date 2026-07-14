@@ -12,7 +12,6 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase, TransactionTestCase, tag
 from django.utils.timezone import now
 from freezegun import freeze_time
-from influxdb_client.domain import BucketRetentionRules
 from swapper import load_model
 
 from openwisp_monitoring.check import settings as check_settings
@@ -21,7 +20,7 @@ from openwisp_monitoring.db.backends.influxdb2.client import (
     DatabaseClient,
     QueryResultSet,
 )
-from openwisp_monitoring.db.backends.influxdb2.queries import chart_query
+from openwisp_monitoring.db.backends.influxdb2.queries import chart_query, summary_query
 from openwisp_monitoring.device import tasks as device_tasks
 from openwisp_monitoring.device.tests import TestDeviceMonitoringMixin
 from openwisp_monitoring.device.utils import (
@@ -577,33 +576,18 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
 
     def test_delete_metric_data_all(self):
         """Test deleting all metric data."""
-        with patch.object(self.timeseries_db.db, "buckets_api") as mock_buckets_api:
-            mock_api = MagicMock()
-            mock_buckets_api.return_value = mock_api
-            default_bucket = MagicMock(retention_rules=[])
-            short_bucket = MagicMock(
-                retention_rules=[
-                    BucketRetentionRules(type="expire", every_seconds=86400)
-                ]
-            )
-            mock_api.find_bucket_by_name.side_effect = [default_bucket, short_bucket]
-
+        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
             self.timeseries_db.delete_metric_data()
-
-            self.assertEqual(mock_api.delete_bucket.call_count, 2)
-            self.assertEqual(mock_api.create_bucket.call_count, 2)
-            first_call = mock_api.create_bucket.call_args_list[0][1]
-            second_call = mock_api.create_bucket.call_args_list[1][1]
+            self.assertEqual(mock_delete_api.delete.call_count, 2)
+            calls = mock_delete_api.delete.call_args_list
+            self.assertEqual(calls[0][0][2], "")
+            self.assertEqual(calls[1][0][2], "")
             self.assertEqual(
-                first_call["bucket_name"], settings.TIMESERIES_DATABASE["NAME"]
+                calls[0][1]["bucket"], settings.TIMESERIES_DATABASE["NAME"]
             )
-            self.assertNotIn("retention_rules", first_call)
             self.assertEqual(
-                second_call["bucket_name"],
+                calls[1][1]["bucket"],
                 f'{settings.TIMESERIES_DATABASE["NAME"]}_short',
-            )
-            self.assertEqual(
-                second_call["retention_rules"], short_bucket.retention_rules
             )
 
     def test_delete_metric_data_by_key(self):
@@ -1027,7 +1011,7 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
 
     def test_get_open_range_stop_uses_fixed_future_datetime(self):
         self.assertEqual(
-            self.timeseries_db._get_open_range_stop(datetime(2000, 1, 1)),
+            self.timeseries_db._get_open_range_stop(),
             datetime(2100, 1, 1, tzinfo=timezone.utc),
         )
 
@@ -1097,6 +1081,30 @@ class TestInfluxDB2Client(RequireTimeseriesBackendMixin, TestCase):
         self.assertIn("|> count()", query)
         self.assertNotIn("|> window(", query)
         self.assertNotIn('|> duplicate(column: "_start", as: "_time")', query)
+
+    def test_built_in_chart_queries_have_explicit_summary_queries(self):
+        self.assertEqual(set(chart_query.keys()), set(summary_query.keys()))
+
+    def test_get_query_summary_does_not_rewrite_custom_flux_query(self):
+        custom_query = (
+            'from(bucket: "{bucket}") |> range(start: {time_start}{end_range})'
+            ' |> filter(fn: (r) => r._measurement == "{key}")'
+            " |> aggregateWindow(every: {window}, fn: mean)"
+            ' |> map(fn: (r) => ({{r with _field: "custom_mean"}}))'
+        )
+        query = self.timeseries_db.get_query(
+            chart_type="scatter",
+            params={
+                "key": "cpu",
+                "time": "2024-03-25 00:00:00",
+            },
+            time="1d",
+            group_map={"1d": "10m"},
+            query=custom_query,
+            summary=True,
+        )
+        self.assertIn("aggregateWindow(every: 10m, fn: mean)", query)
+        self.assertIn('map(fn: (r) => ({r with _field: "custom_mean"}))', query)
 
     def test_device_data_query_uses_configured_bucket(self):
         query = device_data_query.format(SHORT_RP, "device_data", "device-id")

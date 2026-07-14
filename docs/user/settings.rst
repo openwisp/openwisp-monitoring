@@ -75,8 +75,8 @@ The following table describes the keys available in the
 ``USER``     Username or organization, depending on the selected backend
 ``PASSWORD`` Password or API token, depending on the selected backend
 ``NAME``     Name of the timeseries database
-``URL``      Optional connection URL supported by the ``influxdb2``
-             backend
+``URL``      Connection URL supported by the ``influxdb2`` backend;
+             required when ``HOST`` and ``PORT`` are not configured
 ``HOST``     IP address/hostname of machine where the timeseries database
              is running
 ``PORT``     Port for connecting to the timeseries database

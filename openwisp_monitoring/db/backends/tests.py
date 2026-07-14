@@ -248,6 +248,26 @@ class TestBackendLoader(SimpleTestCase):
                     config={"BACKEND": "tests.dummy_backend", "NAME": "openwisp2"},
                 )
 
+    def test_load_backend_rejects_empty_default_chart_query(self):
+        backend_module = self._build_valid_backend()
+        backend_module.queries = BackendQueryBundle(
+            chart_query={"cpu": {"dummy": "SELECT * FROM cpu"}},
+            default_chart_query=[],
+            device_data_query=DummyDeviceDataQuery(),
+        )
+        with patch(
+            "openwisp_monitoring.db.backends.import_module",
+            return_value=backend_module,
+        ):
+            with self.assertRaisesMessage(
+                ImproperlyConfigured,
+                "Backend query bundle must define a non-empty default_chart_query.",
+            ):
+                load_backend(
+                    backend_name="tests.dummy_backend",
+                    config={"BACKEND": "tests.dummy_backend", "NAME": "openwisp2"},
+                )
+
     def test_load_backend_returns_validated_backend_module(self):
         backend_module = self._build_valid_backend()
         with patch(

@@ -23,7 +23,9 @@ if __name__ == "__main__":
     parsed_args, _ = parser.parse_known_args(base_args)
     has_test_labels = bool(getattr(parsed_args, "args", []))
     default_target = (
-        "openwisp2" if os.environ.get("SAMPLE_APP", False) else "openwisp_monitoring"
+        "openwisp2"
+        if os.getenv("SAMPLE_APP", "").strip().lower() in TRUTHY_ENV_VALUES
+        else "openwisp_monitoring"
     )
     if not has_test_labels:
         args.append(default_target)
