@@ -18,7 +18,6 @@ from influxdb_client.client.exceptions import InfluxDBError
 from influxdb_client.client.write_api import SYNCHRONOUS
 from influxdb_client.domain import BucketRetentionRules
 
-from openwisp_monitoring.device import settings as device_settings
 from openwisp_monitoring.utils import retry
 
 from ...exceptions import TimeseriesWriteException
@@ -632,15 +631,6 @@ class DatabaseClient(BaseTimeseriesClient):
             self._write_udp(payload, retention_policy=retention_policy)
         except Exception as exception:
             self._handle_write_exception(exception)
-
-    def _ensure_bucket_exists(self, bucket_name):
-        if bucket_name == self.db_name:
-            self.create_database()
-            return
-        if bucket_name == self._get_bucket_name("short"):
-            self.create_or_alter_retention_policy(
-                "short", device_settings.SHORT_RETENTION_POLICY
-            )
 
     def validate_query(self, query: str) -> bool:
         for word in self._FORBIDDEN:

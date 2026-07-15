@@ -55,8 +55,8 @@ elif TIMESERIES_BACKEND == "influxdb2":
                 port=os.getenv("INFLUXDB2_PORT", "8087"),
             ),
         ),
-        "USER": os.getenv("INFLUXDB2_USER", "openwisp"),
-        "PASSWORD": os.getenv("INFLUXDB2_PASSWORD", "openwisp-token"),
+        "USER": os.getenv("INFLUXDB2_ORG", "openwisp"),
+        "PASSWORD": os.getenv("INFLUXDB2_TOKEN", "openwisp-token"),
         # URL/HOST/PORT are for the InfluxDB2 HTTP API. UDP writes go through
         # Telegraf, so the influxdb2 backend needs separate listener settings.
         "OPTIONS": {"udp_writes": False, "udp_port": 8089},

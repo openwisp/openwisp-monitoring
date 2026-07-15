@@ -103,8 +103,8 @@ credentials, you can override the defaults with:
 
     # Optional overrides for non-default setups
     export INFLUXDB2_URL=http://localhost:8087
-    export INFLUXDB2_USER=openwisp
-    export INFLUXDB2_PASSWORD=openwisp-token
+    export INFLUXDB2_ORG=openwisp
+    export INFLUXDB2_TOKEN=openwisp-token
     export INFLUXDB2_BUCKET=openwisp2
     export REDIS_HOST=localhost
 

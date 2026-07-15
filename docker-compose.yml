@@ -23,8 +23,8 @@ services:
       INFLUXDB2_HOST: influxdb2
       INFLUXDB2_PORT: *influxdb2_port
       INFLUXDB2_BUCKET: *timeseries_database
-      INFLUXDB2_USER: *timeseries_username
-      INFLUXDB2_PASSWORD: *influxdb2_token
+      INFLUXDB2_ORG: *timeseries_org
+      INFLUXDB2_TOKEN: *influxdb2_token
       INFLUXDB2_UDP_HOST: telegraf
 
   influxdb:
@@ -65,6 +65,10 @@ services:
       - influxdb2
     volumes:
       - ./tests/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    environment:
+      TIMESERIES_DB: *timeseries_database
+      INFLUXDB2_ORG: *timeseries_org
+      INFLUXDB2_TOKEN: *influxdb2_token
     ports:
       - "8089:8089/udp"
       - "8090:8090/udp"

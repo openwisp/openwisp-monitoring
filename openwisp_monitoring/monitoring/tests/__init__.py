@@ -427,4 +427,6 @@ class TestMonitoringMixin(TestOrganizationMixin):
         if self._is_timeseries_udp_writes:
             # Wait for InfluxDB to expose the point instead of relying on a
             # fixed sleep, which is unreliable under load.
-            self._read_chart_or_metric(metric)
+            self._read_chart_or_metric(
+                metric, retention_policy=kwargs.get("retention_policy")
+            )
