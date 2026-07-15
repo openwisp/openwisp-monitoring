@@ -1085,7 +1085,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         }
         response = self._post_data(device.id, device.key, data)
         self.assertEqual(response.status_code, 200)
-        response = self.client.get(self._url(device.pk.hex, device.key))
+        response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data["charts"]
         self.assertEqual(charts[0]["summary"]["signal_power"], -70.0)

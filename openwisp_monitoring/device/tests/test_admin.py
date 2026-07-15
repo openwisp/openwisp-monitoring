@@ -549,7 +549,7 @@ class TestAdmin(
                 ],
             },
         )
-        url = reverse("admin:config_device_change", args=[d.id])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[d.id])
         r1 = self.client.get(url, follow=True)
         self.assertEqual(r1.status_code, 200)
         self.assertContains(r1, "Signal Strength (5G)")
