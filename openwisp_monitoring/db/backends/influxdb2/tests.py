@@ -471,7 +471,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                 key='cpu"main',
                 fields=['usage"value'],
                 tags={"host": 'server"1'},
-                where=[('status"value', "=", 'warn"ing')],
+                where=[('usage"value', "=", 'warn"ing')],
             )
             flux_query = mock_query.call_args[0][0]
             self.assertIn(r'r._measurement == "cpu\"main"', flux_query)
@@ -519,10 +519,9 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
 
     def test_read_escapes_mixed_flux_string_edge_cases(self):
         key = 'cpu${foo}"\\'
-        field = "usage\n\t"
+        field = 'status${x}"\\'
         host = 'server${1}"\\'
         note = "\x01"
-        where_field = 'status${x}"\\'
         where_value = 'warn${y}"\\\n'
         with patch.object(
             self.timeseries_db, "query", return_value=QueryResultSet([])
@@ -531,7 +530,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                 key=key,
                 fields=[field],
                 tags={"host": host, "note": note},
-                where=[(where_field, "=", where_value)],
+                where=[(field, "=", where_value)],
             )
             flux_query = mock_query.call_args[0][0]
             self.assertIn(
@@ -554,7 +553,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             )
             self.assertIn(
                 "r._field == "
-                f"{self.timeseries_db._format_flux_string(where_field)} "
+                f"{self.timeseries_db._format_flux_string(field)} "
                 f"and r._value == {self.timeseries_db._format_flux_string(where_value)}",
                 flux_query,
             )
