@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 from datetime import datetime, timedelta
 from unittest.mock import patch
 from uuid import uuid4
@@ -822,6 +823,21 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 mobile_data["signal"],
                 {"lte": {"rsrp": -75.00, "rsrq": -8.00, "rssi": -51.00, "snr": 13.00}},
             )
+        with self.subTest("accept each single LTE metric on its own"):
+            for metric, value in [
+                ("rssi", -52),
+                ("rsrp", -75),
+                ("rsrq", -8),
+                ("snr", 13),
+            ]:
+                minimal_data = deepcopy(data)
+                minimal_data["interfaces"][0]["mobile"]["signal"] = {
+                    "lte": {metric: value}
+                }
+                response = self._post_data(device.id, device.key, minimal_data)
+                self.assertEqual(
+                    response.status_code, 200, f"Failed for single metric: {metric}"
+                )
 
     def test_5g_mobile_properties(self):
         org = self._create_org()
@@ -845,7 +861,9 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                         "operator_code": "50502",
                         "operator_name": "YES OPTUS",
                         "power_status": "on",
-                        "signal": {"5g": {"rsrp": -75, "rsrq": -8, "snr": 13}},
+                        "signal": {
+                            "5g": {"rsrp": -75, "rsrq": -8, "rssi": -52.00, "snr": 13}
+                        },
                     },
                 }
             ],
@@ -865,11 +883,27 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             # lua cannot be forced to send floats so we need to force it
             self.assertIsInstance(mobile_data["signal"]["5g"]["rsrp"], float)
             self.assertIsInstance(mobile_data["signal"]["5g"]["rsrq"], float)
+            self.assertIsInstance(mobile_data["signal"]["5g"]["rssi"], float)
             self.assertIsInstance(mobile_data["signal"]["5g"]["snr"], float)
             self.assertDictEqual(
                 mobile_data["signal"],
-                {"5g": {"rsrp": -75.00, "rsrq": -8.00, "snr": 13.00}},
+                {"5g": {"rsrp": -75.00, "rsrq": -8.00, "rssi": -52.00, "snr": 13.00}},
             )
+        with self.subTest("accept each single 5G metric on its own"):
+            for metric, value in [
+                ("rssi", -52),
+                ("rsrp", -75),
+                ("rsrq", -8),
+                ("snr", 13),
+            ]:
+                minimal_data = deepcopy(data)
+                minimal_data["interfaces"][0]["mobile"]["signal"] = {
+                    "5g": {metric: value}
+                }
+                response = self._post_data(device.id, device.key, minimal_data)
+                self.assertEqual(
+                    response.status_code, 200, f"Failed for single metric: {metric}"
+                )
 
     def test_empty_mobile_signal_data(self):
         org = self._create_org()
@@ -930,7 +964,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                 "operator_code": "50502",
                 "operator_name": "YES OPTUS",
                 "power_status": "on",
-                "signal": {"lte": {"rsrp": -75}},
+                "signal": {"lte": {"unknown_metric": -75}},
             },
             {
                 "connection_status": "connected",
@@ -1043,6 +1077,46 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
                         "operator_name": "YES OPTUS",
                         "power_status": "on",
                         "signal": {
+                            "5g": {"rsrp": -70, "rsrq": -7, "rssi": -52, "snr": 12},
+                        },
+                    },
+                }
+            ],
+        }
+        response = self._post_data(device.id, device.key, data)
+        self.assertEqual(response.status_code, 200)
+        response = self.client.get(self._url(device.pk.hex, device.key))
+        self.assertEqual(response.status_code, 200)
+        charts = response.data["charts"]
+        self.assertEqual(charts[0]["summary"]["signal_power"], -70.0)
+        self.assertEqual(charts[0]["summary"]["signal_strength"], -52.0)
+        self.assertEqual(charts[1]["summary"]["signal_quality"], -7.0)
+        self.assertEqual(charts[1]["summary"]["signal_to_noise_ratio"], 12.0)
+        self.assertEqual(charts[2]["summary"]["access_tech"], 5)
+
+    def test_5g_nsa_charts(self):
+        org = self._create_org()
+        device = self._create_device(organization=org)
+        data = {
+            "type": "DeviceMonitoring",
+            "interfaces": [
+                {
+                    "name": "mobile0",
+                    "mac": "00:00:00:00:00:00",
+                    "mtu": 1900,
+                    "multicast": True,
+                    "txqueuelen": 1000,
+                    "type": "modem-manager",
+                    "up": True,
+                    "mobile": {
+                        "connection_status": "connected",
+                        "imei": "300000001234567",
+                        "manufacturer": "Sierra Wireless, Incorporated",
+                        "model": "MC7430",
+                        "operator_code": "50502",
+                        "operator_name": "YES OPTUS",
+                        "power_status": "on",
+                        "signal": {
                             "lte": {"rsrp": -75, "rsrq": -8, "rssi": -51, "snr": 13},
                             "5g": {"rsrp": -70, "rsrq": -7, "snr": 12},
                         },
@@ -1055,6 +1129,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         response = self.client.get(self._url(device.pk, device.key))
         self.assertEqual(response.status_code, 200)
         charts = response.data["charts"]
+        # Note only 5G is shown here, nothing about the LTE control layer
+        # See https://github.com/openwisp/openwisp-monitoring/issues/776
         self.assertEqual(charts[0]["summary"]["signal_power"], -70.0)
         self.assertEqual(charts[0]["summary"]["signal_strength"], None)
         self.assertEqual(charts[1]["summary"]["signal_quality"], -7.0)

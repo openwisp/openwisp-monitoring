@@ -541,7 +541,9 @@ class TestAdmin(
                             "operator_code": "50502",
                             "operator_name": "YES OPTUS",
                             "power_status": "on",
-                            "signal": {"5g": {"rsrp": -75, "rsrq": -8, "snr": 13}},
+                            "signal": {
+                                "5g": {"rsrp": -75, "rsrq": -8, "rssi": -51, "snr": 13}
+                            },
                         },
                     }
                 ],
@@ -550,6 +552,7 @@ class TestAdmin(
         url = reverse("admin:config_device_change", args=[d.id])
         r1 = self.client.get(url, follow=True)
         self.assertEqual(r1.status_code, 200)
+        self.assertContains(r1, "Signal Strength (5G)")
         self.assertContains(r1, "Signal Power (5G)")
         self.assertContains(r1, "Signal Quality (5G)")
         self.assertContains(r1, "Signal to noise ratio (5G)")
