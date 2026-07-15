@@ -1,5 +1,4 @@
 import logging
-import uuid
 from datetime import datetime
 
 from cache_memoize import cache_memoize
@@ -32,7 +31,9 @@ from openwisp_controller.geo.api.views import (
     LocationDeviceList,
     ProtectedAPIMixin,
 )
-from openwisp_users.api.mixins import FilterByOrganizationManaged
+from openwisp_users.api.mixins import FilterByOrganizationManaged, FilterByParentManaged
+from openwisp_users.api.mixins import ProtectedAPIMixin as BaseProtectedAPIMixin
+from openwisp_users.api.permissions import DjangoModelPermissions, IsOrganizationManager
 from openwisp_utils.api.pagination import OpenWispPagination
 
 from ...settings import CACHE_TIMEOUT
@@ -47,6 +48,7 @@ from .filters import (
     WifiSessionFilter,
 )
 from .serializers import (
+    DeviceMetricSerializer,
     MonitoringDeviceDetailSerializer,
     MonitoringDeviceListSerializer,
     MonitoringGeoJsonLocationSerializer,
@@ -70,10 +72,6 @@ WifiSession = load_model("device_monitoring", "WifiSession")
 
 def get_device_args_rewrite(view, pk):
     """Use only the PK parameter for calculating the cache key"""
-    try:
-        pk = uuid.UUID(pk)
-    except ValueError:
-        return pk
     return pk.hex
 
 
@@ -127,7 +125,7 @@ class DeviceMetricView(
     def invalidate_get_device_cache(cls, instance, **kwargs):
         """Called from signal receiver which performs cache invalidation"""
         view = cls()
-        view.get_object.invalidate(view, str(instance.pk))
+        view.get_object.invalidate(view, instance.pk)
         logger.debug(f"invalidated view cache for device ID {instance.pk}")
 
     @classmethod
@@ -141,11 +139,6 @@ class DeviceMetricView(
         cls._get_charts.invalidate(None, None, pk)
 
     def get(self, request, pk):
-        # ensure valid UUID
-        try:
-            pk = str(uuid.UUID(pk))
-        except ValueError:
-            return Response({"detail": "not found"}, status=404)
         self.instance = self.get_object(pk)
         response = super().get(request, pk)
         if not request.query_params.get("csv"):
@@ -331,6 +324,45 @@ class MonitoringDeviceList(DeviceListCreateView):
 
 
 monitoring_device_list = MonitoringDeviceList.as_view()
+
+
+class DeviceModelPermissions(DjangoModelPermissions):
+    """
+    Checks model-level permissions against the ``Device`` model
+    instead of the model of the view's queryset.
+    """
+
+    def _queryset(self, view):
+        return Device.objects.filter(pk=view.kwargs.get("pk"))
+
+
+class DeviceMetricListView(BaseProtectedAPIMixin, FilterByParentManaged, ListAPIView):
+    """
+    Returns metrics for a device, optionally filtered by ``is_healthy``.
+    Used by the changelist accordion to show why a device is in PROBLEM state.
+    """
+
+    serializer_class = DeviceMetricSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["is_healthy"]
+    queryset = Metric.objects.all()
+    # Access to this view is granted based on the permissions the user has
+    # on the parent ``Device``, not on the ``Metric`` model.
+    permission_classes = (IsOrganizationManager, DeviceModelPermissions)
+
+    def get_parent_queryset(self):
+        return Device.objects.filter(pk=self.kwargs["pk"])
+
+    def get_queryset(self):
+        device_ct = ContentType.objects.get_for_model(Device)
+        qs = super().get_queryset()
+        return qs.filter(
+            object_id=self.kwargs["pk"],
+            content_type=device_ct,
+        ).only("name", "key", "is_healthy")
+
+
+device_metric_list = DeviceMetricListView.as_view()
 
 
 class WifiSessionListView(ProtectedAPIMixin, FilterByOrganizationManaged, ListAPIView):

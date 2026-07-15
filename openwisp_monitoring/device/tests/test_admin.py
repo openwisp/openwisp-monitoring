@@ -4,6 +4,7 @@ import django
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.forms import generic_inlineformset_factory
+from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.db import connection
 from django.test import TestCase, override_settings
@@ -25,10 +26,12 @@ Chart = load_model("monitoring", "Chart")
 Metric = load_model("monitoring", "Metric")
 AlertSettings = load_model("monitoring", "AlertSettings")
 DeviceData = load_model("device_monitoring", "DeviceData")
+DeviceMonitoring = load_model("device_monitoring", "DeviceMonitoring")
 WifiClient = load_model("device_monitoring", "WifiClient")
 WifiSession = load_model("device_monitoring", "WifiSession")
 User = get_user_model()
 Check = load_model("check", "Check")
+ZERO_UUID = "00000000-0000-0000-0000-000000000000"
 # needed for config.geo
 Device = load_model("config", "Device")
 DeviceLocation = load_model("geo", "DeviceLocation")
@@ -143,13 +146,23 @@ class TestAdmin(
         self.assertContains(
             response, f'geoJsonUrl: "{reverse("monitoring:api_location_geojson")}"'
         )
-        self.assertTrue(
+        self.assertContains(
             response,
-            f'locationDeviceUrl: "{reverse("monitoring:api_location_device_list", args=["000"])}"',
+            'locationDeviceUrl: "{0}"'.format(
+                reverse(
+                    "monitoring:api_location_device_list",
+                    args=[ZERO_UUID],
+                )
+            ),
         )
-        self.assertTrue(
+        self.assertContains(
             response,
-            f'indoorCoordinatesUrl: "{reverse("monitoring:api_indoor_coordinates_list", args=["000"])}"',
+            'indoorCoordinatesUrl: "{0}"'.format(
+                reverse(
+                    "monitoring:api_indoor_coordinates_list",
+                    args=[ZERO_UUID],
+                )
+            ),
         )
 
     def test_wifisession_dashboard_chart_query(self):
@@ -214,13 +227,13 @@ class TestAdmin(
         with self.subTest("Wireless client table header is shown"):
             self.assertContains(
                 r,
-                '<th class="mac">\n\nAssociated client\n\nMAC address\n\n' "</th>",
+                '<th class="mac">\n\nAssociated client\n\nMAC address\n\n</th>',
                 html=True,
                 count=2,
             )
             self.assertContains(
                 r,
-                '<th class="mac">\n\nAccess Point\n\nMAC address\n\n' "</th>",
+                '<th class="mac">\n\nAccess Point\n\nMAC address\n\n</th>',
                 html=True,
                 count=1,
             )
@@ -594,6 +607,9 @@ class TestAdmin(
         self.assertEqual(dd.monitoring.status, "problem")
         r = self.client.get(url)
         self.assertContains(r, "<label>Health checks:</label>")
+        with self.subTest("accordion should not be present on detail page"):
+            self.assertNotContains(r, "device-issues-accordion")
+            self.assertNotContains(r, "issues-toggle")
         # Clients and Traffic metrics
         interface_metrics = dd.metrics.filter(alertsettings__isnull=True)
         interface_metric = interface_metrics.first()
@@ -669,7 +685,7 @@ class TestAdmin(
             self.assertEqual(user.user_permissions.count(), 0)
             device_permissions = Permission.objects.filter(codename__endswith="device")
             # Permissions required to access device page
-            user.user_permissions.add(*device_permissions),
+            user.user_permissions.add(*device_permissions)
             self.assertEqual(user.user_permissions.count(), 4)
 
         def _add_user_permissions(user, permission_query, expected_perm_count):
@@ -927,6 +943,215 @@ class TestAdmin(
             """,
             html=True,
         )
+
+    def test_unhealthy_metric_filter_hidden_without_problem_status(self):
+        org = self._create_org()
+        device = self._create_device(organization=org, name="test-device")
+        dm = device.monitoring
+        dm.status = "ok"
+        dm.save()
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        with self.subTest("filter hidden when monitoring__status is not set"):
+            response = self.client.get(url)
+            self.assertContains(response, "ow-sub-filter")
+            self.assertContains(
+                response,
+                'data-sub-filter-active-values="problem"',
+            )
+            self.assertContains(response, "ow-sub-filter hidden")
+        with self.subTest("filter hidden when monitoring__status=ok"):
+            response = self.client.get(url, {"monitoring__status": "ok"})
+            self.assertContains(response, "ow-sub-filter")
+            self.assertContains(
+                response,
+                'data-sub-filter-active-values="problem"',
+            )
+            self.assertContains(response, "ow-sub-filter hidden")
+
+    def test_unhealthy_metric_filter_shown_for_problem_status(self):
+        org = self._create_org()
+        self._create_device(organization=org, name="test-device")
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        response = self.client.get(url, {"monitoring__status": "problem"})
+        self.assertContains(response, "ow-filter problematic-metric ow-sub-filter")
+        self.assertNotContains(response, "ow-sub-filter hidden")
+        self.assertContains(response, "Ping")
+
+    def test_unhealthy_metric_filter_queryset(self):
+        org = self._get_org()
+        device_ping = self._create_device(organization=org, name="ping-problem-device")
+        dm_ping = device_ping.monitoring
+        dm_ping.status = "problem"
+        dm_ping.save()
+        device_memory = self._create_device(
+            organization=org,
+            name="memory-problem-device",
+            mac_address="00:11:22:33:44:57",
+        )
+        dm_memory = device_memory.monitoring
+        dm_memory.status = "problem"
+        dm_memory.save()
+        device_ct = ContentType.objects.get_for_model(Device)
+        Metric.objects.create(
+            content_type=device_ct,
+            object_id=device_ping.pk,
+            name="Ping",
+            key="ping",
+            is_healthy=False,
+            configuration="ping",
+        )
+        Metric.objects.create(
+            content_type=device_ct,
+            object_id=device_memory.pk,
+            name="Memory",
+            key="memory",
+            is_healthy=False,
+            configuration="memory",
+        )
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        with self.subTest("filter by ping shows only ping-problem-device"):
+            response = self.client.get(
+                url,
+                {"monitoring__status": "problem", "unhealthy_metric": "ping"},
+            )
+            self.assertContains(response, "ping-problem-device")
+            self.assertNotContains(response, "memory-problem-device")
+
+    def test_unhealthy_metric_filter_rejected_without_problem_status(self):
+        org = self._create_org()
+        device = self._create_device(organization=org, name="test-device")
+        self._create_device(
+            organization=org,
+            name="other-device",
+            mac_address="00:11:22:33:44:57",
+        )
+        dm = device.monitoring
+        dm.status = "ok"
+        dm.save()
+        device_ct = ContentType.objects.get_for_model(Device)
+        Metric.objects.create(
+            content_type=device_ct,
+            object_id=device.pk,
+            name="Ping",
+            key="ping",
+            is_healthy=False,
+            configuration="ping",
+        )
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        with self.subTest("unhealthy_metric rejected when monitoring__status=ok"):
+            response = self.client.get(
+                url, {"monitoring__status": "ok", "unhealthy_metric": "ping"}
+            )
+            self.assertEqual(response.status_code, 302)
+            self.assertRedirects(response, url + "?e=1")
+        with self.subTest("unhealthy_metric rejected when no status filter"):
+            response = self.client.get(url, {"unhealthy_metric": "ping"})
+            self.assertEqual(response.status_code, 302)
+            self.assertRedirects(response, url + "?e=1")
+
+    def test_unhealthy_metric_filter_tenant_isolation_for_org_admin(self):
+        org1 = self._create_org(name="org1", slug="org1")
+        org2 = self._create_org(name="org2", slug="org2")
+        device_org1 = self._create_device(
+            organization=org1, name="org1-device", mac_address="00:11:22:33:44:55"
+        )
+        device_org2 = self._create_device(
+            organization=org2, name="org2-device", mac_address="00:11:22:33:44:56"
+        )
+        self._create_object_metric(
+            content_object=device_org1,
+            name="Ping",
+            key="ping",
+            configuration="ping",
+            is_healthy=False,
+        )
+        self._create_object_metric(
+            content_object=device_org2,
+            name="Ping",
+            key="ping",
+            configuration="ping",
+            is_healthy=False,
+        )
+        DeviceMonitoring.objects.update(status="problem")
+        operator = self._create_operator(organizations=[org1])
+        self.client.force_login(operator)
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        response = self.client.get(
+            url,
+            {"monitoring__status": "problem", "unhealthy_metric": "ping"},
+        )
+        self.assertContains(response, "org1-device")
+        self.assertNotContains(response, "org2-device")
+
+    def test_accordion_visible_for_problem_device(self):
+        org = self._create_org()
+        device = self._create_device(organization=org, name="problem-device")
+        dm = device.monitoring
+        dm.status = "problem"
+        dm.save()
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        response = self.client.get(url)
+        self.assertContains(
+            response,
+            '<span class="health-problem">problem</span>',
+        )
+        self.assertContains(
+            response,
+            '<a href="#" class="issues-toggle" data-device-id="{0}"'.format(device.pk),
+        )
+        self.assertContains(response, "show issues")
+
+    def test_accordion_hidden_for_ok_device(self):
+        org = self._create_org()
+        device = self._create_device(organization=org, name="ok-device")
+        dm = device.monitoring
+        dm.status = "ok"
+        dm.save()
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        response = self.client.get(url)
+        self.assertContains(
+            response,
+            '<span class="health-ok">ok</span>',
+        )
+        self.assertNotContains(response, "issues-toggle")
+        self.assertNotContains(response, "show issues")
+
+    def test_accordion_hidden_for_unknown_device(self):
+        org = self._create_org()
+        device = self._create_device(organization=org, name="unknown-device")
+        dm = device.monitoring
+        dm.status = "unknown"
+        dm.save()
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        response = self.client.get(url)
+        self.assertNotContains(response, "issues-toggle")
+
+    def test_accordion_hidden_for_deactivated_device(self):
+        org = self._create_org()
+        device = self._create_device(organization=org, name="deactivated-device")
+        dm = device.monitoring
+        dm.status = "deactivated"
+        dm.save()
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        response = self.client.get(url)
+        self.assertNotContains(response, "issues-toggle")
+
+    def test_accordion_hidden_for_critical_device(self):
+        org = self._create_org()
+        device = self._create_device(organization=org, name="critical-device")
+        dm = device.monitoring
+        dm.status = "critical"
+        dm.save()
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        response = self.client.get(url)
+        self.assertNotContains(response, "issues-toggle")
+
+    def test_accordion_js_media_included(self):
+        org = self._create_org()
+        self._create_device(organization=org, name="test-device")
+        url = reverse(f"admin:{self.config_app_label}_device_changelist")
+        response = self.client.get(url)
+        self.assertContains(response, "monitoring/js/device-changelist.js")
 
 
 class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
@@ -1275,13 +1500,23 @@ class TestMapPageAdmin(TestGeoMixin, DeviceMonitoringTestCase):
         self.assertContains(
             response, f'geoJsonUrl: "{reverse("monitoring:api_location_geojson")}"'
         )
-        self.assertTrue(
+        self.assertContains(
             response,
-            f'locationDeviceUrl: "{reverse("monitoring:api_location_device_list", args=["000"])}"',
+            'locationDeviceUrl: "{0}"'.format(
+                reverse(
+                    "monitoring:api_location_device_list",
+                    args=[ZERO_UUID],
+                )
+            ),
         )
-        self.assertTrue(
+        self.assertContains(
             response,
-            f'indoorCoordinatesUrl: "{reverse("monitoring:api_indoor_coordinates_list", args=["000"])}"',
+            'indoorCoordinatesUrl: "{0}"'.format(
+                reverse(
+                    "monitoring:api_indoor_coordinates_list",
+                    args=[ZERO_UUID],
+                )
+            ),
         )
 
     def test_mappage_admin_media_files(self):
