@@ -549,9 +549,54 @@ class TestAdmin(
                 ],
             },
         )
-        url = reverse("admin:config_device_change", args=[d.id])
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[d.id])
         r1 = self.client.get(url, follow=True)
         self.assertEqual(r1.status_code, 200)
+        self.assertContains(r1, "Signal Strength (5G)")
+        self.assertContains(r1, "Signal Power (5G)")
+        self.assertContains(r1, "Signal Quality (5G)")
+        self.assertContains(r1, "Signal to noise ratio (5G)")
+
+    def test_interface_mobile_admin_zero_signals(self):
+        d = self._create_device(organization=self._create_org())
+        self._post_data(
+            d.id,
+            d.key,
+            {
+                "type": "DeviceMonitoring",
+                "interfaces": [
+                    {
+                        "name": "mobile0",
+                        "mac": "00:00:00:00:00:00",
+                        "mtu": 1900,
+                        "multicast": True,
+                        "txqueuelen": 1000,
+                        "type": "modem-manager",
+                        "up": True,
+                        "mobile": {
+                            "connection_status": "connected",
+                            "imei": "300000001234567",
+                            "manufacturer": "Sierra Wireless, Incorporated",
+                            "model": "MC7430",
+                            "operator_code": "50502",
+                            "operator_name": "YES OPTUS",
+                            "power_status": "on",
+                            "signal": {
+                                "lte": {"snr": 0, "rssi": 0, "rsrp": 0, "rsrq": 0},
+                                "5g": {"snr": 0, "rssi": 0, "rsrp": 0, "rsrq": 0},
+                            },
+                        },
+                    }
+                ],
+            },
+        )
+        url = reverse(f"admin:{self.config_app_label}_device_change", args=[d.id])
+        r1 = self.client.get(url, follow=True)
+        self.assertEqual(r1.status_code, 200)
+        self.assertContains(r1, "Signal Strength (LTE)")
+        self.assertContains(r1, "Signal Power (LTE)")
+        self.assertContains(r1, "Signal Quality (LTE)")
+        self.assertContains(r1, "Signal to noise ratio (LTE)")
         self.assertContains(r1, "Signal Strength (5G)")
         self.assertContains(r1, "Signal Power (5G)")
         self.assertContains(r1, "Signal Quality (5G)")
