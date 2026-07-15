@@ -78,6 +78,17 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             with self.assertRaises(ValidationError):
                 self.timeseries_db.validate_query(q)
 
+    def test_validate_query_rejects_flux_write_side_effects(self):
+        """Reject Flux pipelines that turn chart reads into TSDB writes."""
+        query = (
+            'from(bucket: "openwisp2") '
+            "|> range(start: -24h) "
+            "|> mean() "
+            '|> to(bucket: "evil")'
+        )
+        with self.assertRaises(ValidationError):
+            self.timeseries_db.validate_query(query)
+
     def test_validate_query_allowed(self):
         """Test that valid Flux queries pass validation."""
         query = 'from(bucket: "openwisp2") |> range(start: -24h)'
@@ -1009,6 +1020,21 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             self.timeseries_db._format_flux_time("2024-03-26"),
             'time(v: "2024-03-26T00:00:00Z")',
         )
+
+    def test_get_query_does_not_interpolate_unsafe_end_date(self):
+        """Prevent end-date injection from appending malicious Flux stages."""
+        query = self.timeseries_db.get_query(
+            chart_type="line",
+            params={
+                "key": "cpu",
+                "field_name": "cpu_usage",
+                "time": "2024-03-25 00:00:00",
+                "end_date": '2024-03-26T00:00:00Z") |> to(bucket: "evil") //',
+            },
+            time="1d",
+            group_map={"1d": "10m"},
+        )
+        self.assertNotIn('|> to(bucket: "evil")', query)
 
     def test_get_open_range_stop_uses_fixed_future_datetime(self):
         self.assertEqual(
