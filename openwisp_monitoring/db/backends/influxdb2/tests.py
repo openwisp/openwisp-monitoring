@@ -39,7 +39,7 @@ from openwisp_monitoring.monitoring.tests import (
 )
 from openwisp_utils.tests import capture_stderr
 
-from ... import device_data_query, timeseries_db
+from ... import timeseries_db
 from ...exceptions import TimeseriesWriteException
 
 Chart = load_model("monitoring", "Chart")
@@ -1109,7 +1109,11 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         self.assertIn('map(fn: (r) => ({r with _field: "custom_mean"}))', query)
 
     def test_device_data_query_uses_configured_bucket(self):
-        query = device_data_query.format(SHORT_RP, "device_data", "device-id")
+        query = timeseries_db.get_device_data_query(
+            SHORT_RP,
+            "device_data",
+            "device-id",
+        )
         self.assertIn(
             f'from(bucket: "{settings.TIMESERIES_DATABASE["NAME"]}_short")', query
         )
@@ -1119,7 +1123,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
 
     def test_device_data_query_escapes_flux_string_literals(self):
         with patch.object(timeseries_db, "db_name", 'open"wisp\\bucket'):
-            query = device_data_query.format(
+            query = timeseries_db.get_device_data_query(
                 SHORT_RP,
                 'device"data',
                 'device\\id"',

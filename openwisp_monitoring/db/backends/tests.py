@@ -14,11 +14,6 @@ from openwisp_monitoring.db.backends.influxdb2.client import DatabaseClient
 from openwisp_monitoring.monitoring import configuration
 
 
-class DummyDeviceDataQuery:
-    def format(self, retention_policy, measurement, pk):
-        return f"{retention_policy}:{measurement}:{pk}"
-
-
 class DummyTimeseriesClient(BaseTimeseriesClient):
     backend_name = "dummy"
     required_settings = ("BACKEND", "NAME")
@@ -53,6 +48,9 @@ class DummyTimeseriesClient(BaseTimeseriesClient):
 
     def get_list_retention_policies(self):
         return []
+
+    def get_device_data_query(self, retention_policy, measurement, pk):
+        return f"{retention_policy}:{measurement}:{pk}"
 
     def delete_metric_data(self, key=None, tags=None):
         return None
@@ -138,8 +136,9 @@ class TestBackendContract(SimpleTestCase):
                 backend_module.queries.validate(
                     backend_module.DatabaseClient.backend_name
                 )
+                self.assertIsInstance(backend_module.queries.device_data_query, str)
                 self.assertTrue(
-                    callable(backend_module.queries.device_data_query.format)
+                    callable(backend_module.DatabaseClient().get_device_data_query)
                 )
                 self.assertTrue(
                     required_chart_keys.issubset(
@@ -177,7 +176,7 @@ class TestBackendLoader(SimpleTestCase):
             queries=BackendQueryBundle(
                 chart_query={"cpu": {"dummy": "SELECT * FROM cpu"}},
                 default_chart_query=["SELECT value FROM cpu", " WHERE object_id = 1"],
-                device_data_query=DummyDeviceDataQuery(),
+                device_data_query="SELECT data FROM {measurement}",
             ),
         )
 
@@ -233,7 +232,7 @@ class TestBackendLoader(SimpleTestCase):
         backend_module.queries = BackendQueryBundle(
             chart_query={"cpu": {"other": "SELECT * FROM cpu"}},
             default_chart_query=["SELECT value FROM cpu"],
-            device_data_query=DummyDeviceDataQuery(),
+            device_data_query="SELECT data FROM {measurement}",
         )
         with patch(
             "openwisp_monitoring.db.backends.import_module",
@@ -253,7 +252,7 @@ class TestBackendLoader(SimpleTestCase):
         backend_module.queries = BackendQueryBundle(
             chart_query={"cpu": {"dummy": "SELECT * FROM cpu"}},
             default_chart_query=[],
-            device_data_query=DummyDeviceDataQuery(),
+            device_data_query="SELECT data FROM {measurement}",
         )
         with patch(
             "openwisp_monitoring.db.backends.import_module",
@@ -262,6 +261,26 @@ class TestBackendLoader(SimpleTestCase):
             with self.assertRaisesMessage(
                 ImproperlyConfigured,
                 "Backend query bundle must define a non-empty default_chart_query.",
+            ):
+                load_backend(
+                    backend_name="tests.dummy_backend",
+                    config={"BACKEND": "tests.dummy_backend", "NAME": "openwisp2"},
+                )
+
+    def test_load_backend_rejects_empty_device_data_query(self):
+        backend_module = self._build_valid_backend()
+        backend_module.queries = BackendQueryBundle(
+            chart_query={"cpu": {"dummy": "SELECT * FROM cpu"}},
+            default_chart_query=["SELECT value FROM cpu"],
+            device_data_query="",
+        )
+        with patch(
+            "openwisp_monitoring.db.backends.import_module",
+            return_value=backend_module,
+        ):
+            with self.assertRaisesMessage(
+                ImproperlyConfigured,
+                "Backend query bundle must define a non-empty device_data_query.",
             ):
                 load_backend(
                     backend_name="tests.dummy_backend",
@@ -285,7 +304,7 @@ class TestBackendLoader(SimpleTestCase):
             BackendQueryBundle(
                 chart_query={"cpu": {"dummy": "SELECT * FROM cpu"}},
                 default_chart_query=[],
-                device_data_query=DummyDeviceDataQuery(),
+                device_data_query="SELECT data FROM {measurement}",
             )
         )
         with self.assertRaisesMessage(

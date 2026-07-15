@@ -90,6 +90,18 @@ class TestDatabaseClient(RequireTimeseriesBackendMixin, TestMonitoringMixin, Tes
         )
         self.assertEqual(c.query, q)
 
+    def test_get_device_data_query(self):
+        query = timeseries_db.get_device_data_query(
+            SHORT_RP,
+            "device_data",
+            "device-id",
+        )
+        self.assertEqual(
+            query,
+            "SELECT data FROM short.device_data WHERE pk = 'device-id' "
+            "ORDER BY time DESC LIMIT 1",
+        )
+
     def test_write(self):
         timeseries_db.write("test_write", dict(value=2), database=self.TEST_DB)
         measurement = list(

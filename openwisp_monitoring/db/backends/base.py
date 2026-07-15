@@ -29,7 +29,7 @@ class BatchWritePayload(TypedDict, total=False):
 class BackendQueryBundle:
     chart_query: Mapping[str, Mapping[str, str]]
     default_chart_query: object
-    device_data_query: object
+    device_data_query: str
     summary_query: Mapping[str, Mapping[str, str]] | None = None
 
     def validate(self, backend_name: str) -> Self:
@@ -72,10 +72,9 @@ class BackendQueryBundle:
                 raise ImproperlyConfigured(
                     "Backend query bundle must define a non-empty default_chart_query."
                 )
-        formatter = getattr(self.device_data_query, "format", None)
-        if not callable(formatter):
+        if not isinstance(self.device_data_query, str) or not self.device_data_query:
             raise ImproperlyConfigured(
-                "Backend query bundle must define device_data_query.format()."
+                "Backend query bundle must define a non-empty device_data_query."
             )
         return self
 
@@ -170,6 +169,15 @@ class BaseTimeseriesClient(ABC):
 
     @abstractmethod
     def get_list_retention_policies(self) -> list[TimeseriesPoint]:
+        pass
+
+    @abstractmethod
+    def get_device_data_query(
+        self,
+        retention_policy: str,
+        measurement: str,
+        pk: str,
+    ) -> str:
         pass
 
     @abstractmethod

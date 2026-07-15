@@ -1014,6 +1014,21 @@ class DatabaseClient(BaseTimeseriesClient):
         except self.client_error:
             return []
 
+    def get_device_data_query(
+        self,
+        retention_policy: str,
+        measurement: str,
+        pk: str,
+    ) -> str:
+        bucket = self._format_flux_string(self._get_bucket_name(retention_policy))
+        measurement = self._format_flux_string(measurement)
+        pk = self._format_flux_string(pk)
+        return self.queries.device_data_query.format(
+            bucket=bucket,
+            measurement=measurement,
+            pk=pk,
+        )
+
     def _build_chart_base_query(
         self,
         params: ChartQueryParams,

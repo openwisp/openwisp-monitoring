@@ -384,6 +384,13 @@ class DatabaseClient(BaseTimeseriesClient):
     def get_list_retention_policies(self):
         return self.db.get_list_retention_policies()
 
+    def get_device_data_query(self, retention_policy, measurement, pk):
+        return self.queries.device_data_query.format(
+            retention_policy=retention_policy,
+            measurement=measurement,
+            pk=pk,
+        )
+
     def delete_metric_data(self, key=None, tags=None):
         """Deletes a specific metric.
 
