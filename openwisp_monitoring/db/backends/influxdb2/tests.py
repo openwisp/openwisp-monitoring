@@ -1744,6 +1744,46 @@ class TestInfluxDb2ClientIntegration(
         )
         self.assertEqual(data["summary"], {"uptime": 100.0})
 
+    def test_wifi_clients_chart_uses_uniform_10_minute_buckets_for_1d(self):
+        metric = self._create_object_metric(
+            name="wifi associations",
+            key="hostapd",
+            field_name="mac",
+            extra_tags={"ifname": "wlan0"},
+        )
+        range_start = (
+            (now() - timedelta(days=1))
+            .astimezone(timezone.utc)
+            .replace(hour=10, minute=7, second=0, microsecond=0)
+        )
+        for minutes, mac in (
+            (1, "00:14:5c:00:00:01"),
+            (11, "00:14:5c:00:00:02"),
+            (21, "00:14:5c:00:00:03"),
+        ):
+            metric.write(mac, time=range_start + timedelta(minutes=minutes))
+        chart = Chart(metric=metric, configuration="wifi_clients")
+        chart.full_clean()
+        chart.save()
+        data = self._read_chart(
+            chart,
+            time="1d",
+            start_date=range_start.strftime("%Y-%m-%d %H:%M:%S"),
+            end_date=(range_start + timedelta(minutes=30)).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ),
+            timezone="UTC",
+        )
+        non_null_points = [
+            datetime.strptime(timestamp, "%Y-%m-%d %H:%M")
+            for timestamp, value in zip(data["x"], data["traces"][0][1])
+            if value is not None
+        ]
+
+        self.assertGreaterEqual(len(non_null_points), 1)
+        self.assertTrue(all(point.minute % 10 == 0 for point in non_null_points), data)
+        self.assertEqual(data["summary"], {"wifi_clients": 3})
+
     def test_ping_uptime_chart_zoom_range_uses_request_timezone(self):
         metric = self._create_object_metric(name="ping", configuration="ping")
         metric.write(

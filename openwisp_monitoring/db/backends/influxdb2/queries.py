@@ -104,6 +104,9 @@ _wifi_clients_query = (
     + ' |> unique(column: "_value")'
     + " |> count()"
     + ' |> duplicate(column: "_start", as: "_time")'
+    + " |> map(fn: (r) => "
+    + "({{r with _time: date.truncate(t: r._time, "
+    + "unit: {window}{window_timezone})}}))"
     + _wifi_clients_map
 )
 _wifi_clients_summary_query = (
