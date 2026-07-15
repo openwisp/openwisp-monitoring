@@ -958,6 +958,7 @@ class DatabaseClient(BaseTimeseriesClient):
         # query explicitly groups by columns.
         if (
             "group(columns:" not in query
+            or 'group(columns: ["_field"])' in query
             or not result.keys()
             or result.keys()[0][1] is None
         ):

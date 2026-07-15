@@ -1084,6 +1084,24 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         self.assertNotIn("|> window(", query)
         self.assertNotIn('|> duplicate(column: "_start", as: "_time")', query)
 
+    def test_get_query_summary_uses_access_tech_mode(self):
+        query = self.timeseries_db.get_query(
+            chart_type="bar",
+            params={
+                "key": "signal",
+                "field_name": "access_tech",
+                "time": "2024-03-25 00:00:00",
+            },
+            time="1d",
+            group_map={"1d": "1h"},
+            query=chart_query["access_tech"]["influxdb2"],
+            summary=True,
+        )
+        self.assertIn('duplicate(column: "_value", as: "mode_value")', query)
+        self.assertIn('group(columns: ["_field", "mode_value"])', query)
+        self.assertIn("|> count()", query)
+        self.assertNotIn("|> last()", query)
+
     def test_built_in_chart_queries_have_explicit_summary_queries(self):
         self.assertEqual(set(chart_query.keys()), set(summary_query.keys()))
 
@@ -1359,6 +1377,37 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                     "time": "2024-03-25T12:00:00Z",
                     "signal_quality": -7.0,
                     "signal_to_noise_ratio": None,
+                }
+            ],
+        )
+
+    def test_get_list_query_normalizes_field_grouped_summary(self):
+        query = (
+            'from(bucket: "openwisp2")'
+            ' |> filter(fn: (r) => r._field == "access_tech")'
+            ' |> group(columns: ["_field"]) |> mode()'
+        )
+        result = QueryResultSet(
+            [
+                {
+                    "_measurement": "signal",
+                    "_field": "access_tech",
+                    "_value": 4,
+                    "time": "2024-03-25T12:00:00Z",
+                    "content_type": "config.device",
+                    "object_id": "device-id",
+                    "ifname": "mobile0",
+                }
+            ]
+        )
+        with patch.object(self.timeseries_db, "query", return_value=result):
+            points = self.timeseries_db.get_list_query(query)
+        self.assertEqual(
+            points,
+            [
+                {
+                    "time": "2024-03-25T12:00:00Z",
+                    "access_tech": 4,
                 }
             ],
         )

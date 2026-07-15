@@ -40,10 +40,33 @@ def _window(fn):
 _window_mean = _window("mean")
 _window_sum = _window("sum")
 _window_count = _window("count")
-_window_mode = _window("mode")
+# Mode is computed manually because count() overwrites _value with the
+# occurrence count; mode_value keeps the original field value to restore later.
+_window_mode = (
+    _field_group
+    + " |> window(every: {window}, createEmpty: false{window_timezone})"
+    + ' |> duplicate(column: "_value", as: "mode_value")'
+    + ' |> group(columns: ["_field", "_start", "_stop", "mode_value"])'
+    + " |> count()"
+    + ' |> group(columns: ["_field", "_start", "_stop"])'
+    + ' |> sort(columns: ["_value"], desc: true)'
+    + " |> limit(n: 1)"
+    + " |> map(fn: (r) => "
+    + "({{r with _value: r.mode_value, _time: date.truncate(t: r._start, "
+    + "unit: {window}{window_timezone})}}))"
+)
 _summary_mean = _field_group + " |> mean()"
 _summary_sum = _field_group + " |> sum()"
-_summary_mode = _field_group + " |> last()"
+# Keep summary semantics aligned with InfluxDB 1 MODE(access_tech).
+_summary_mode = (
+    ' |> duplicate(column: "_value", as: "mode_value")'
+    + ' |> group(columns: ["_field", "mode_value"])'
+    + " |> count()"
+    + ' |> group(columns: ["_field"])'
+    + ' |> sort(columns: ["_value"], desc: true)'
+    + " |> limit(n: 1)"
+    + " |> map(fn: (r) => ({{r with _value: r.mode_value}}))"
+)
 
 _uptime_base = (
     _range + _object_filters + ' |> filter(fn: (r) => r._field == "{field_name}")'
