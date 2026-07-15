@@ -299,7 +299,7 @@
                       </div>
                       {% endif %}
                       {% if interface.mobile.signal.lte %}
-                          {% if interface.mobile.signal.lte.rssi %}
+                          {% if "rssi" in interface.mobile.signal.lte %}
                       <div class="form-row">
                           <label>{% trans 'Signal Strength' %} (LTE):</label>
                           <div class="readonly">
@@ -307,7 +307,7 @@
                           </div>
                       </div>
                           {% endif %}
-                          {% if interface.mobile.signal.lte.rsrp %}
+                          {% if "rsrp" in interface.mobile.signal.lte %}
                       <div class="form-row">
                           <label>{% trans 'Signal Power' %} (LTE):</label>
                           <div class="readonly">
@@ -315,7 +315,7 @@
                           </div>
                       </div>
                           {% endif %}
-                          {% if interface.mobile.signal.lte.rsrq %}
+                          {% if "rsrq" in interface.mobile.signal.lte %}
                       <div class="form-row">
                           <label>{% trans 'Signal Quality' %} (LTE):</label>
                           <div class="readonly">
@@ -323,7 +323,7 @@
                           </div>
                       </div>
                           {% endif %}
-                          {% if interface.mobile.signal.lte.snr %}
+                          {% if "snr" in interface.mobile.signal.lte %}
                       <div class="form-row">
                           <label>{% trans 'Signal to noise ratio' %} (LTE):</label>
                           <div class="readonly">
@@ -333,7 +333,7 @@
                           {% endif %}
                       {% endif %}
                       {% if interface.mobile.signal.5g %}
-                          {% if interface.mobile.signal.5g.rssi %}
+                          {% if "rssi" in interface.mobile.signal.5g %}
                       <div class="form-row">
                           <label>{% trans 'Signal Strength' %} (5G):</label>
                           <div class="readonly">
@@ -341,7 +341,7 @@
                           </div>
                       </div>
                           {% endif %}
-                          {% if interface.mobile.signal.5g.rsrp %}
+                          {% if "rsrp" in interface.mobile.signal.5g %}
                       <div class="form-row">
                           <label>{% trans 'Signal Power' %} (5G):</label>
                           <div class="readonly">
@@ -349,7 +349,7 @@
                           </div>
                       </div>
                           {% endif %}
-                          {% if interface.mobile.signal.5g.rsrq %}
+                          {% if "rsrq" in interface.mobile.signal.5g %}
                       <div class="form-row">
                           <label>{% trans 'Signal Quality' %} (5G):</label>
                           <div class="readonly">
@@ -357,7 +357,7 @@
                           </div>
                       </div>
                           {% endif %}
-                          {%  if interface.mobile.signal.5g.snr %}
+                          {% if "snr" in interface.mobile.signal.5g %}
                       <div class="form-row">
                           <label>{% trans 'Signal to noise ratio' %} (5G):</label>
                           <div class="readonly">
