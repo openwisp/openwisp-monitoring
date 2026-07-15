@@ -1505,7 +1505,7 @@ class TestInfluxDb2ClientIntegration(
         metric = self._create_general_metric(name="historical-load")
         metric.write(
             50,
-            time=datetime(2024, 3, 25, 10, 0, tzinfo=timezone.utc),
+            time=now() - timedelta(days=2),
             current=False,
         )
         points = self._read_metric(metric, limit=None)
@@ -1596,15 +1596,16 @@ class TestInfluxDb2ClientIntegration(
             custom_threshold=90,
             custom_tolerance=5,
         )
-        with freeze_time("2024-03-25 10:00:00"):
+        base_time = now().replace(second=0, microsecond=0)
+        with freeze_time(base_time):
             metric.write(99)
-        with freeze_time("2024-03-25 10:02:00"):
+        with freeze_time(base_time + timedelta(minutes=2)):
             metric.write(99)
         metric.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
         self.assertEqual(metric.is_healthy, False)
         self.assertEqual(metric.is_healthy_tolerant, True)
         self.assertEqual(Notification.objects.count(), 0)
-        with freeze_time("2024-03-25 10:06:00"):
+        with freeze_time(base_time + timedelta(minutes=6)):
             metric.write(99)
         metric.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
         self.assertEqual(metric.is_healthy, False)
@@ -1693,9 +1694,13 @@ class TestInfluxDb2ClientIntegration(
 
     def test_ping_uptime_chart_uses_uniform_10_minute_buckets_for_1d(self):
         metric = self._create_object_metric(name="ping", configuration="ping")
-        base_time = now().replace(
-            year=2024, month=3, day=25, hour=10, minute=5, second=0, microsecond=0
+        base_time = (
+            (now() - timedelta(days=1))
+            .astimezone(timezone.utc)
+            .replace(hour=10, minute=5, second=0, microsecond=0)
         )
+        range_start = base_time - timedelta(days=1) + timedelta(minutes=2)
+        range_end = base_time + timedelta(minutes=2)
         timestamps = [
             base_time - timedelta(minutes=30),
             base_time - timedelta(minutes=20),
@@ -1719,8 +1724,8 @@ class TestInfluxDb2ClientIntegration(
         data = self._read_chart(
             chart,
             time="1d",
-            start_date="2024-03-24 10:07:00",
-            end_date="2024-03-25 10:07:00",
+            start_date=range_start.strftime("%Y-%m-%d %H:%M:%S"),
+            end_date=range_end.strftime("%Y-%m-%d %H:%M:%S"),
             timezone="UTC",
         )
         non_null_points = [
@@ -1740,7 +1745,8 @@ class TestInfluxDb2ClientIntegration(
                 {600},
             )
         self.assertEqual(
-            non_null_points[-1].strftime("%Y-%m-%d %H:%M"), "2024-03-25 10:00"
+            non_null_points[-1].strftime("%Y-%m-%d %H:%M"),
+            base_time.replace(minute=0).strftime("%Y-%m-%d %H:%M"),
         )
         self.assertEqual(data["summary"], {"uptime": 100.0})
 
@@ -1786,10 +1792,18 @@ class TestInfluxDb2ClientIntegration(
 
     def test_ping_uptime_chart_zoom_range_uses_request_timezone(self):
         metric = self._create_object_metric(name="ping", configuration="ping")
+        request_day = (now() - timedelta(days=1)).astimezone(timezone.utc).date()
         metric.write(
             1,
             extra_values={"loss": 0, "rtt_min": 1.0, "rtt_avg": 2.0, "rtt_max": 3.0},
-            time=datetime(2024, 3, 25, 4, 40, tzinfo=timezone.utc),
+            time=datetime(
+                request_day.year,
+                request_day.month,
+                request_day.day,
+                4,
+                40,
+                tzinfo=timezone.utc,
+            ),
         )
         chart = Chart(metric=metric, configuration="uptime")
         chart.full_clean()
@@ -1797,8 +1811,8 @@ class TestInfluxDb2ClientIntegration(
         data = self._read_chart(
             chart,
             time="1d",
-            start_date="2024-03-25 10:00:00",
-            end_date="2024-03-25 11:00:00",
+            start_date=f"{request_day:%Y-%m-%d} 10:00:00",
+            end_date=f"{request_day:%Y-%m-%d} 11:00:00",
             timezone="Asia/Kolkata",
         )
         self.assertIn("x", data)
@@ -1810,10 +1824,27 @@ class TestInfluxDb2ClientIntegration(
     def test_ping_uptime_chart_daily_window_uses_request_timezone(self):
         """Daily buckets should align to the request timezone midnight."""
         metric = self._create_object_metric(name="ping", configuration="ping")
+        india_timezone = timezone(timedelta(hours=5, minutes=30))
+        write_day = (now() - timedelta(days=2)).astimezone(timezone.utc).date()
+        write_time = datetime(
+            write_day.year,
+            write_day.month,
+            write_day.day,
+            20,
+            0,
+            tzinfo=timezone.utc,
+        )
+        local_midnight = write_time.astimezone(india_timezone).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        window_start = local_midnight - timedelta(days=1)
+        window_end = local_midnight + timedelta(
+            days=1, hours=23, minutes=59, seconds=59
+        )
         metric.write(
             1,
             extra_values={"loss": 0, "rtt_min": 1.0, "rtt_avg": 2.0, "rtt_max": 3.0},
-            time=datetime(2024, 3, 24, 20, 0, tzinfo=timezone.utc),
+            time=write_time,
         )
         chart = Chart(metric=metric, configuration="uptime")
         chart.full_clean()
@@ -1821,8 +1852,8 @@ class TestInfluxDb2ClientIntegration(
         data = self._read_chart(
             chart,
             time="30d",
-            start_date="2024-03-01 00:00:00",
-            end_date="2024-03-31 23:59:59",
+            start_date=window_start.strftime("%Y-%m-%d %H:%M:%S"),
+            end_date=window_end.strftime("%Y-%m-%d %H:%M:%S"),
             timezone="Asia/Kolkata",
         )
         self.assertIn("x", data)
@@ -1832,7 +1863,10 @@ class TestInfluxDb2ClientIntegration(
             for timestamp, value in zip(data["x"], data["traces"][0][1])
             if value is not None
         ]
-        self.assertEqual(non_null_points, ["2024-03-25 00:00"])
+        self.assertEqual(
+            non_null_points,
+            [local_midnight.strftime("%Y-%m-%d %H:%M")],
+        )
 
     def test_delete_metric_data_and_delete_series_round_trip(self):
         general_metric = self._create_general_metric(name="delete-general")

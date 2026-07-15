@@ -10,7 +10,10 @@ from openwisp_monitoring.db.backends.base import (
     BackendQueryBundle,
     BaseTimeseriesClient,
 )
-from openwisp_monitoring.db.backends.influxdb2.client import DatabaseClient
+from openwisp_monitoring.db.backends.influxdb2.client import (
+    DatabaseClient,
+    QueryResultSet,
+)
 from openwisp_monitoring.monitoring import configuration
 
 
@@ -299,6 +302,40 @@ class TestBackendLoader(SimpleTestCase):
             )
         self.assertIs(loaded, backend_module)
 
+    def test_load_backend_preserves_module_attribute_error(self):
+        with patch(
+            "openwisp_monitoring.db.backends.import_module",
+            side_effect=AttributeError("module attribute failed", name="broken_attr"),
+        ):
+            with self.assertRaisesMessage(AttributeError, "module attribute failed"):
+                load_backend(
+                    backend_name="tests.dummy_backend",
+                    config={"BACKEND": "tests.dummy_backend", "NAME": "openwisp2"},
+                )
+
+    def test_load_backend_preserves_dependency_import_error(self):
+        errors = (
+            ImportError("cannot import name 'missing_dependency'"),
+            ModuleNotFoundError(
+                "No module named 'missing_dependency'",
+                name="missing_dependency",
+            ),
+        )
+        for error in errors:
+            with self.subTest(error=error.__class__.__name__):
+                with patch(
+                    "openwisp_monitoring.db.backends.import_module",
+                    side_effect=error,
+                ):
+                    with self.assertRaisesMessage(error.__class__, str(error)):
+                        load_backend(
+                            backend_name="tests.dummy_backend",
+                            config={
+                                "BACKEND": "tests.dummy_backend",
+                                "NAME": "openwisp2",
+                            },
+                        )
+
     def test_get_default_chart_query_rejects_empty_sequence_descriptor(self):
         client = DummyTimeseriesClient().attach_queries(
             BackendQueryBundle(
@@ -409,6 +446,139 @@ class TestInfluxDb2ClientUrl(SimpleTestCase):
         self.assertNotIn("use_udp", client.__dict__)
         self.assertNotIn("_udp_host", client.__dict__)
         self.assertNotIn("_udp_port", client.__dict__)
+
+    def _mock_buckets_api(self, client):
+        mock_db = MagicMock()
+        mock_api = MagicMock()
+        mock_db.buckets_api.return_value = mock_api
+        client.__dict__["db"] = mock_db
+        return mock_api
+
+    def test_create_database_ignores_missing_bucket_lookup_error(self):
+        client = DatabaseClient()
+        mock_api = self._mock_buckets_api(client)
+        mock_api.find_bucket_by_name.side_effect = client.client_error(
+            message="could not find bucket"
+        )
+        client.create_database()
+        mock_api.create_bucket.assert_called_once_with(
+            bucket_name=client.db_name,
+            org=client.user,
+        )
+
+    @patch("openwisp_monitoring.utils.sleep")
+    def test_create_database_reraises_lookup_error(self, mocked_sleep):
+        client = DatabaseClient()
+        mock_api = self._mock_buckets_api(client)
+        mock_api.find_bucket_by_name.side_effect = client.client_error(
+            message="lookup failed"
+        )
+        with self.assertRaises(client.client_error):
+            client.create_database()
+        mock_api.create_bucket.assert_not_called()
+        mocked_sleep.assert_called()
+
+    @patch("openwisp_monitoring.db.backends.influxdb2.client.logger.debug")
+    def test_drop_database_ignores_missing_bucket_lookup_error(self, mocked_debug):
+        client = DatabaseClient()
+        mock_api = self._mock_buckets_api(client)
+        mock_api.find_bucket_by_name.side_effect = client.client_error(
+            message="could not find bucket"
+        )
+        client.drop_database()
+        mock_api.delete_bucket.assert_not_called()
+        self.assertEqual(
+            mocked_debug.call_args_list,
+            [
+                call(f'InfluxDB2 bucket "{client.db_name}" not found'),
+                call(f'InfluxDB2 bucket "{client.db_name}_short" not found'),
+            ],
+        )
+
+    @patch("openwisp_monitoring.utils.sleep")
+    def test_drop_database_reraises_lookup_error(self, mocked_sleep):
+        client = DatabaseClient()
+        mock_api = self._mock_buckets_api(client)
+        mock_api.find_bucket_by_name.side_effect = client.client_error(
+            message="lookup failed"
+        )
+        with self.assertRaises(client.client_error):
+            client.drop_database()
+        mock_api.delete_bucket.assert_not_called()
+        mocked_sleep.assert_called()
+
+    def test_read_preserves_selected_field_with_cross_field_where(self):
+        client = DatabaseClient()
+        points = [
+            {
+                "_measurement": "cpu",
+                "_field": "usage",
+                "_value": 72,
+                "time": 1,
+                "host": "router1",
+            },
+            {
+                "_measurement": "cpu",
+                "_field": "status",
+                "_value": "ok",
+                "time": 1,
+                "host": "router1",
+            },
+            {
+                "_measurement": "cpu",
+                "_field": "usage",
+                "_value": 91,
+                "time": 2,
+                "host": "router1",
+            },
+            {
+                "_measurement": "cpu",
+                "_field": "status",
+                "_value": "warn",
+                "time": 2,
+                "host": "router1",
+            },
+        ]
+
+        def mock_query(flux_query, **kwargs):
+            if 'r._field == "status" and r._value == "ok"' in flux_query:
+                return QueryResultSet([points[1]])
+            return QueryResultSet(points)
+
+        with patch.object(client, "query", side_effect=mock_query):
+            result = client.read(
+                key="cpu",
+                fields=["usage"],
+                tags={},
+                where=[("status", "=", "ok")],
+            )
+        self.assertEqual(result, [{"time": 1, "host": "router1", "usage": 72}])
+
+    def test_normalize_read_points_keeps_measurements_separate(self):
+        client = DatabaseClient()
+        points = [
+            {
+                "_measurement": "cpu",
+                "_field": "usage",
+                "_value": 72,
+                "time": 1,
+                "host": "router1",
+            },
+            {
+                "_measurement": "memory",
+                "_field": "usage",
+                "_value": 91,
+                "time": 1,
+                "host": "router1",
+            },
+        ]
+        self.assertEqual(
+            client._normalize_read_points(points),
+            [
+                {"time": 1, "host": "router1", "usage": 72},
+                {"time": 1, "host": "router1", "usage": 91},
+            ],
+        )
 
     @patch.dict(
         "openwisp_monitoring.db.backends.influxdb2.client.TIMESERIES_DB",
@@ -523,14 +693,10 @@ class TestInfluxDb2ClientUrl(SimpleTestCase):
         },
         clear=True,
     )
-    @patch(
-        "openwisp_monitoring.db.backends.influxdb2.client.sys.getsizeof",
-        return_value=65001,
-    )
-    def test_udp_write_falls_back_to_http_for_large_packets(self, mocked_getsizeof):
+    def test_udp_write_falls_back_to_http_for_large_packets(self):
         client = DatabaseClient()
         with patch.object(client, "_write_api") as mock_write_api:
-            client.write("test_measurement", {"field1": 10})
+            client.write("test_measurement", {"field1": "é" * 40000})
         mock_write_api.write.assert_called_once()
 
     def test_reset_shuts_down_cached_client_and_clears_cached_state(self):

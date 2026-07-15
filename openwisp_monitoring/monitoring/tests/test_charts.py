@@ -386,4 +386,7 @@ class TestChartsInfluxDb2(TestChartsBackendMixin):
     @capture_stderr()
     def test_bad_json_query_returns_value(self):
         c = self._create_wifi_clients_chart()
-        self.assertIsNotNone(c.json(time=1))
+        data = json.loads(c.json(time=1))
+        traces = dict(data["traces"])
+        self.assertIn("wifi_clients", traces)
+        self.assertIn(1, traces["wifi_clients"])

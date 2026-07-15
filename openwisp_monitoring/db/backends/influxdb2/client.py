@@ -1,7 +1,6 @@
 import logging
 import re
 import socket
-import sys
 from collections.abc import Iterator, Mapping, Sequence
 from datetime import datetime, timezone
 from typing import Any
@@ -269,8 +268,9 @@ class DatabaseClient(BaseTimeseriesClient):
             if bucket:
                 logger.debug(f'InfluxDB2 bucket "{self.db_name}" already exists')
                 return
-        except self.client_error:
-            pass
+        except self.client_error as exception:
+            if not self._is_bucket_not_found(exception):
+                raise
         api.create_bucket(bucket_name=self.db_name, org=self.user)
         logger.debug(f'Created InfluxDB2 bucket "{self.db_name}"')
 
@@ -284,7 +284,9 @@ class DatabaseClient(BaseTimeseriesClient):
                 if bucket:
                     api.delete_bucket(bucket)
                     logger.debug(f'Dropped InfluxDB2 bucket "{bucket_name}"')
-            except self.client_error:
+            except self.client_error as exception:
+                if not self._is_bucket_not_found(exception):
+                    raise
                 logger.debug(f'InfluxDB2 bucket "{bucket_name}" not found')
 
     @cached_property
@@ -400,9 +402,12 @@ class DatabaseClient(BaseTimeseriesClient):
     def _duration_to_seconds(self, duration):
         """Converts duration string (eg '30d' or '26280h0m0s') to seconds."""
         mapping = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}
-        duration_parts = re.findall(r"(\d+)([smhdw])", duration)
-        if not duration_parts:
+        if not isinstance(duration, str) or not re.fullmatch(
+            r"(?:\d+[smhdw])+",
+            duration,
+        ):
             raise ValueError(f'Invalid duration "{duration}"')
+        duration_parts = re.findall(r"(\d+)([smhdw])", duration)
         return sum(int(value) * mapping[unit] for value, unit in duration_parts)
 
     def _get_timestamp(self, timestamp=None):
@@ -514,6 +519,56 @@ class DatabaseClient(BaseTimeseriesClient):
             return f"-{self._normalize_chart_window(time_value)}"
         return self._format_flux_time(time_value, timezone_name=timezone_name)
 
+    def _clean_where(self, where):
+        cleaned_where = []
+        for field, op, value in where:
+            op = self._clean_operator(op)
+            if value is None:
+                self._format_flux_value(value)
+            cleaned_where.append((field, op, value))
+        return cleaned_where
+
+    def _filter_where_after_normalization(self, fields, where):
+        if not where:
+            return False
+        if fields == ["*"]:
+            return True
+        where_fields = {field for field, _op, _value in where}
+        return len(set(fields) | where_fields) > 1
+
+    def _matches_where(self, point, where):
+        for field, op, value in where:
+            if field not in point:
+                return False
+            point_value = point[field]
+            if op == "==" and point_value != value:
+                return False
+            if op == "!=" and point_value == value:
+                return False
+            if op == ">" and not point_value > value:
+                return False
+            if op == ">=" and not point_value >= value:
+                return False
+            if op == "<" and not point_value < value:
+                return False
+            if op == "<=" and not point_value <= value:
+                return False
+        return True
+
+    def _filter_normalized_read_points(self, points, fields, where):
+        filtered_points = [
+            point for point in points if self._matches_where(point, where)
+        ]
+        if fields == ["*"]:
+            return filtered_points
+        predicate_only_fields = {
+            field for field, _op, _value in where if field not in fields
+        }
+        for point in filtered_points:
+            for field in predicate_only_fields:
+                point.pop(field, None)
+        return filtered_points
+
     def _normalize_record_time(self, record_time, precision="s"):
         if not isinstance(record_time, datetime):
             return record_time
@@ -547,11 +602,11 @@ class DatabaseClient(BaseTimeseriesClient):
             return self._udp_port
         return self._udp_port + 1
 
-    def _write_udp(self, lines, retention_policy=None):
+    def _write_udp(self, payload, retention_policy=None):
         """Send line protocol to the Telegraf UDP listener."""
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.sendto(
-                lines.encode(),
+                payload,
                 (self._udp_host, self._get_udp_port(retention_policy)),
             )
 
@@ -568,13 +623,13 @@ class DatabaseClient(BaseTimeseriesClient):
     def _write(self, bucket, points, retention_policy=None):
         """Write over UDP when payload size allows, otherwise use HTTP."""
         udp_points = points if isinstance(points, list) else [points]
-        lines = make_lines({"points": udp_points}).rstrip("\n")
+        payload = make_lines({"points": udp_points}).rstrip("\n").encode()
         try:
-            if not self.use_udp or sys.getsizeof(lines) > 65000:
+            if not self.use_udp or len(payload) > 65000:
                 return self._write_api.write(
                     bucket=bucket, org=self.user, record=points
                 )
-            self._write_udp(lines, retention_policy=retention_policy)
+            self._write_udp(payload, retention_policy=retention_policy)
         except Exception as exception:
             self._handle_write_exception(exception)
 
@@ -694,7 +749,7 @@ class DatabaseClient(BaseTimeseriesClient):
         """
         distinct_fields = kwargs.get("distinct_fields", [])
         count_fields = kwargs.get("count_fields", [])
-        where = kwargs.get("where", [])
+        where = self._clean_where(kwargs.get("where", []))
         supports_count_distinct = (
             len(distinct_fields) == 1
             and len(count_fields) == 1
@@ -754,10 +809,15 @@ class DatabaseClient(BaseTimeseriesClient):
             fields.extend(extra_fields)
         elif extra_fields == "*":
             fields = ["*"]
-        if fields != ["*"]:
+        output_fields = fields[:]
+        filter_where_after_normalization = self._filter_where_after_normalization(
+            output_fields, where
+        )
+        query_fields = fields[:]
+        if query_fields != ["*"]:
             requested_fields = []
             seen_fields = set()
-            for field in fields:
+            for field in query_fields:
                 if field not in seen_fields:
                     requested_fields.append(field)
                     seen_fields.add(field)
@@ -765,19 +825,22 @@ class DatabaseClient(BaseTimeseriesClient):
                 if field not in seen_fields:
                     requested_fields.append(field)
                     seen_fields.add(field)
-            fields = requested_fields
-        if fields != ["*"]:
+            query_fields = requested_fields
+        if query_fields != ["*"]:
             field_filter = " or ".join(
-                [f"r._field == {self._format_flux_string(field)}" for field in fields]
+                [
+                    f"r._field == {self._format_flux_string(field)}"
+                    for field in query_fields
+                ]
             )
             flux_query += f" |> filter(fn: (r) => {field_filter})"
-        for field, op, value in where:
-            op = self._clean_operator(op)
-            flux_query += (
-                " |> filter(fn: (r) => "
-                f"r._field == {self._format_flux_string(field)} "
-                f"and r._value {op} {self._format_flux_value(value)})"
-            )
+        if not filter_where_after_normalization:
+            for field, op, value in where:
+                flux_query += (
+                    " |> filter(fn: (r) => "
+                    f"r._field == {self._format_flux_string(field)} "
+                    f"and r._value {op} {self._format_flux_value(value)})"
+                )
         if supports_count_distinct:
             flux_query += (
                 ' |> group(columns: []) |> distinct(column: "_value") |> count()'
@@ -818,6 +881,8 @@ class DatabaseClient(BaseTimeseriesClient):
             ]
             return points[: int(limit)] if limit else points
         points = self._normalize_read_points(result)
+        if filter_where_after_normalization:
+            points = self._filter_normalized_read_points(points, output_fields, where)
         return points[: int(limit)] if limit else points
 
     def _normalize_read_points(self, points, include_tags=True):
@@ -835,6 +900,7 @@ class DatabaseClient(BaseTimeseriesClient):
                     if key not in special_fields and key not in FLUX_METADATA_FIELDS
                 }
             key = (
+                point.get("_measurement"),
                 point.get("__raw_time", point.get("time")),
                 tuple(sorted(tags.items())),
             )

@@ -27,17 +27,26 @@ if not TIMESERIES_DB:
     )
 
 
+def _is_missing_backend_module(error, backend_name):
+    missing_module = getattr(error, "name", None)
+    return isinstance(error, ModuleNotFoundError) and (
+        missing_module == backend_name or backend_name.startswith(f"{missing_module}.")
+    )
+
+
 def load_backend(backend_name=TIMESERIES_DB["BACKEND"], config=None):
     """Return a validated backend package module."""
     config = TIMESERIES_DB if config is None else config
     try:
         backend_module = import_module(backend_name)
     except AttributeError as e:
+        if getattr(e, "obj", None) is not backend_name or e.name != "startswith":
+            raise
         raise DatabaseError("No TIMESERIES_DATABASE specified in settings") from e
     except ImportError as e:
         # The database backend wasn't found. Display a helpful error message
         # listing all built-in database backends.
-        if backend_name not in [
+        if _is_missing_backend_module(e, backend_name) and backend_name not in [
             f"openwisp_monitoring.db.backends.{b}" for b in BUILTIN_BACKENDS
         ]:
             raise ImproperlyConfigured(
