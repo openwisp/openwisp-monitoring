@@ -478,7 +478,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             self.assertIn(r'r["host"] == "server\"1"', flux_query)
             self.assertIn(r'r._field == "usage\"value"', flux_query)
             self.assertIn(
-                r'r._field == "status\"value" and r._value == "warn\"ing"',
+                r'r._field == "usage\"value" and r._value == "warn\"ing"',
                 flux_query,
             )
 
