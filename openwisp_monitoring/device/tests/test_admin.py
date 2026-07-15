@@ -557,7 +557,7 @@ class TestAdmin(
         self.assertContains(r1, "Signal Quality (5G)")
         self.assertContains(r1, "Signal to noise ratio (5G)")
 
-    def test_interface_mobile_admin_zero_snr(self):
+    def test_interface_mobile_admin_zero_signals(self):
         d = self._create_device(organization=self._create_org())
         self._post_data(
             d.id,
@@ -581,7 +581,10 @@ class TestAdmin(
                             "operator_code": "50502",
                             "operator_name": "YES OPTUS",
                             "power_status": "on",
-                            "signal": {"lte": {"snr": 0}, "5g": {"snr": 0}},
+                            "signal": {
+                                "lte": {"snr": 0, "rssi": 0, "rsrp": 0, "rsrq": 0},
+                                "5g": {"snr": 0, "rssi": 0, "rsrp": 0, "rsrq": 0},
+                            },
                         },
                     }
                 ],
@@ -590,7 +593,13 @@ class TestAdmin(
         url = reverse(f"admin:{self.config_app_label}_device_change", args=[d.id])
         r1 = self.client.get(url, follow=True)
         self.assertEqual(r1.status_code, 200)
+        self.assertContains(r1, "Signal Strength (LTE)")
+        self.assertContains(r1, "Signal Power (LTE)")
+        self.assertContains(r1, "Signal Quality (LTE)")
         self.assertContains(r1, "Signal to noise ratio (LTE)")
+        self.assertContains(r1, "Signal Strength (5G)")
+        self.assertContains(r1, "Signal Power (5G)")
+        self.assertContains(r1, "Signal Quality (5G)")
         self.assertContains(r1, "Signal to noise ratio (5G)")
 
     def test_uuid_bug(self):
