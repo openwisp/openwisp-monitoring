@@ -17,12 +17,19 @@ _object_filters = (
     "{floorplan_id_filter}"
 )
 
+# Grouping strictly by _field merges data across different tag sets.
+# This ensures aggregateWindow() processes all points together, even if
+# Telegraf (or another writer) injects extra tags like 'host'.
+# Without this, extra tags will split the data into multiple tables and
+# cause charts to display partial or incorrect data.
+_field_group = ' |> group(columns: ["_field"])'
+
 
 def _window(fn):
     # {window_timezone} keeps daily and weekly Flux buckets aligned to the
     # request timezone.
     return (
-        f" |> aggregateWindow(every: {{window}}, fn: {fn}, "
+        f"{_field_group} |> aggregateWindow(every: {{window}}, fn: {fn}, "
         'timeSrc: "_start"{window_timezone})'
         " |> map(fn: (r) => "
         "({{r with _time: date.truncate(t: r._time, "
@@ -34,14 +41,9 @@ _window_mean = _window("mean")
 _window_sum = _window("sum")
 _window_count = _window("count")
 _window_mode = _window("mode")
-
-# Ignore tags added by external writers before calculating chart summaries.
-# Otherwise the same field can be summarized once per tag set and then summed,
-# producing impossible values like disk or ping percentages greater than 100%.
-_summary_group = ' |> group(columns: ["_field"])'
-_summary_mean = _summary_group + " |> mean()"
-_summary_sum = _summary_group + " |> sum()"
-_summary_mode = _summary_group + " |> last()"
+_summary_mean = _field_group + " |> mean()"
+_summary_sum = _field_group + " |> sum()"
+_summary_mode = _field_group + " |> last()"
 
 _uptime_base = (
     _range + _object_filters + ' |> filter(fn: (r) => r._field == "{field_name}")'
@@ -74,6 +76,7 @@ _wifi_clients_base = (
 _wifi_clients_map = ' |> map(fn: (r) => ({{r with _field: "wifi_clients"}}))'
 _wifi_clients_query = (
     _wifi_clients_base
+    + _field_group
     + " |> window(every: {window}, createEmpty: true{window_timezone})"
     + ' |> unique(column: "_value")'
     + " |> count()"
@@ -82,7 +85,7 @@ _wifi_clients_query = (
 )
 _wifi_clients_summary_query = (
     _wifi_clients_base
-    + _summary_group
+    + _field_group
     + ' |> unique(column: "_value")'
     + " |> count()"
     + _wifi_clients_map

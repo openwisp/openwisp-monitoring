@@ -1595,14 +1595,48 @@ class TestInfluxDb2ClientIntegration(
         """Unexpected tags must not make split-series summary means get summed."""
         metric = self._create_object_metric(name="disk", configuration="disk")
         timestamp = now()
-        metric.write(75, time=timestamp - timedelta(days=2))
-        metric.extra_tags = {"host": "openwisp-staging"}
-        metric.write(76, time=timestamp)
+        timeseries_db.write(
+            metric.key,
+            {metric.field_name: 75},
+            tags=metric.tags,
+            timestamp=timestamp - timedelta(days=2),
+        )
+        tags = {**metric.tags, "host": "openwisp-staging"}
+        timeseries_db.write(
+            metric.key,
+            {metric.field_name: 76},
+            tags=tags,
+            timestamp=timestamp,
+        )
         chart = Chart(metric=metric, configuration="disk")
         chart.full_clean()
         chart.save()
         data = self._read_chart(chart, time="7d")
         self.assertEqual(data["summary"], {"disk_usage": 75.5})
+
+    def test_chart_read_does_not_hide_split_tag_series(self):
+        """Unexpected tags must not make chart data look like a new series."""
+        metric = self._create_object_metric(name="disk", configuration="disk")
+        timestamp = now()
+        timeseries_db.write(
+            metric.key,
+            {metric.field_name: 75},
+            tags=metric.tags,
+            timestamp=timestamp - timedelta(days=2),
+        )
+        tags = {**metric.tags, "host": "openwisp-staging"}
+        timeseries_db.write(
+            metric.key,
+            {metric.field_name: 76},
+            tags=tags,
+            timestamp=timestamp,
+        )
+        chart = Chart(metric=metric, configuration="disk")
+        chart.full_clean()
+        chart.save()
+        data = self._read_chart(chart, time="7d")
+        values = [value for value in data["traces"][0][1] if value is not None]
+        self.assertEqual(values, [75.0, 76.0])
 
     def test_ping_uptime_chart_uses_uniform_10_minute_buckets_for_1d(self):
         metric = self._create_object_metric(name="ping", configuration="ping")
