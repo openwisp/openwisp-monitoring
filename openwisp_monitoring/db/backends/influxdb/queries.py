@@ -151,6 +151,6 @@ default_chart_query = [
 ]
 
 device_data_query = (
-    "SELECT data FROM {retention_policy}.{measurement} WHERE pk = '{pk}' "
+    "SELECT data FROM {retention_policy}.{measurement} WHERE pk = {pk} "
     "ORDER BY time DESC LIMIT 1"
 )

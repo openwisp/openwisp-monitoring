@@ -156,7 +156,12 @@ class DatabaseClient(BaseTimeseriesClient):
     def _clean_value(self, value):
         if isinstance(value, datetime):
             return f"'{self._get_timestamp(value)}'"
+        if isinstance(value, str):
+            return self._format_string_value(value)
         return value
+
+    def _format_string_value(self, value):
+        return "'{}'".format(str(value).replace("\\", "\\\\").replace("'", "\\'"))
 
     @retry
     def create_or_alter_retention_policy(self, name, duration):
@@ -339,7 +344,12 @@ class DatabaseClient(BaseTimeseriesClient):
             conditions.append(f"time >= '{timestamp}'")
         if tags:
             conditions.append(
-                " AND ".join(["{0} = '{1}'".format(*tag) for tag in tags.items()])
+                " AND ".join(
+                    [
+                        f"{key} = {self._format_string_value(value)}"
+                        for key, value in tags.items()
+                    ]
+                )
             )
         if conditions:
             conditions = "WHERE %s" % " AND ".join(conditions)
@@ -388,7 +398,7 @@ class DatabaseClient(BaseTimeseriesClient):
         return self.queries.device_data_query.format(
             retention_policy=retention_policy,
             measurement=measurement,
-            pk=pk,
+            pk=self._format_string_value(pk),
         )
 
     def delete_metric_data(self, key=None, tags=None):

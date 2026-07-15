@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from celery.exceptions import Retry
 from django.core.exceptions import ValidationError
@@ -94,12 +94,28 @@ class TestDatabaseClient(RequireTimeseriesBackendMixin, TestMonitoringMixin, Tes
         query = timeseries_db.get_device_data_query(
             SHORT_RP,
             "device_data",
-            "device-id",
+            "device'id",
         )
         self.assertEqual(
             query,
-            "SELECT data FROM short.device_data WHERE pk = 'device-id' "
+            "SELECT data FROM short.device_data WHERE pk = 'device\\'id' "
             "ORDER BY time DESC LIMIT 1",
+        )
+
+    def test_read_escapes_string_literals(self):
+        result = MagicMock()
+        result.get_points.return_value = []
+        with patch.object(timeseries_db, "query", return_value=result) as mocked_query:
+            timeseries_db.read(
+                "device_data",
+                fields="data",
+                tags={"hostname": "ap'01"},
+                where=[("status", "=", "warn'ing")],
+            )
+        mocked_query.assert_called_once_with(
+            "SELECT data FROM device_data WHERE status = 'warn\\'ing' "
+            "AND hostname = 'ap\\'01'",
+            precision="s",
         )
 
     def test_write(self):
