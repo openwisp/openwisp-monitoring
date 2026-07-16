@@ -185,6 +185,7 @@ class DatabaseClient(BaseTimeseriesClient):
     client_error = InfluxDBError
     required_settings = ("BACKEND", "USER", "PASSWORD", "NAME")
     _FORBIDDEN = ["drop", "delete", "alter", "create", "into"]
+    _FORBIDDEN_FLUX_FUNCTIONS = ["to"]
     _OPERATORS = ["=", "!=", "<", ">", "<=", ">="]
     _FLUX_STRING_ESCAPES = {
         "\\": "\\\\",
@@ -197,6 +198,8 @@ class DatabaseClient(BaseTimeseriesClient):
     _FLUX_STRING_PATTERN = re.compile(
         r'\$\{|["\\\n\r\t]|[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]'
     )
+    _FLUX_COMMENT_PATTERN = re.compile(r"//.*?$", re.MULTILINE)
+    _FLUX_STRING_LITERAL_PATTERN = re.compile(r'"(?:\\.|[^"\\])*"')
     _DELETE_PREDICATE_KEY_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
     @classmethod
@@ -462,13 +465,16 @@ class DatabaseClient(BaseTimeseriesClient):
             return str(value).lower()
         return value
 
-    def _convert_naive_time_to_utc(self, value, timezone_name):
+    def _parse_flux_time(self, value):
+        if "T" not in value and " " in value:
+            value = value.replace(" ", "T", 1)
         try:
-            parsed = datetime.fromisoformat(value)
+            return datetime.fromisoformat(value), value
         except ValueError:
-            return f"{value}Z"
-        localized = parsed.replace(tzinfo=ZoneInfo(timezone_name))
-        return localized.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+            return None, value
+
+    def _serialize_flux_time(self, value):
+        return value.isoformat().replace("+00:00", "Z")
 
     def _format_flux_time(self, value, timezone_name=None):
         if isinstance(value, datetime):
@@ -476,24 +482,20 @@ class DatabaseClient(BaseTimeseriesClient):
                 value = value.replace(tzinfo=ZoneInfo(timezone_name)).astimezone(
                     timezone.utc
                 )
-            value = self._get_timestamp(value)
+            return f'time(v: "{self._get_timestamp(value)}")'
         if isinstance(value, str):
-            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
-                value = f"{value}T00:00:00"
-            if "T" not in value and " " in value:
-                value = value.replace(" ", "T", 1)
-            if value.endswith("Z"):
-                return f'time(v: "{value}")'
-            if (
-                "+" not in value[10:]
-                and "-" not in value[10:]
-                and not value.endswith("Z")
-            ):
+            parsed_time, normalized_value = self._parse_flux_time(value)
+            if parsed_time is None:
+                return f"time(v: {self._format_flux_string(normalized_value)})"
+            value = parsed_time
+            if value.tzinfo is None:
                 if timezone_name:
-                    value = self._convert_naive_time_to_utc(value, timezone_name)
+                    value = value.replace(tzinfo=ZoneInfo(timezone_name)).astimezone(
+                        timezone.utc
+                    )
                 else:
-                    value = f"{value}Z"
-            return f'time(v: "{value}")'
+                    value = value.replace(tzinfo=timezone.utc)
+            return f'time(v: "{self._serialize_flux_time(value)}")'
         return value
 
     def _get_open_range_start(self):
@@ -633,11 +635,26 @@ class DatabaseClient(BaseTimeseriesClient):
             self._handle_write_exception(exception)
 
     def validate_query(self, query: str) -> bool:
+        validation_source = self._get_flux_validation_source(query)
         for word in self._FORBIDDEN:
-            if re.search(rf"\b{word}\b", query, re.IGNORECASE):
+            if re.search(rf"\b{word}\b", validation_source, re.IGNORECASE):
                 msg = _('the word "%(word)s" is not allowed') % {"word": word.upper()}
                 raise ValidationError({"configuration": msg})
-        return self._is_aggregate(query)
+        for function in self._FORBIDDEN_FLUX_FUNCTIONS:
+            if re.search(
+                rf"\b(?:[A-Za-z_][A-Za-z0-9_]*\s*\.\s*)?{function}\s*\(",
+                validation_source,
+                re.IGNORECASE,
+            ):
+                msg = _('the Flux function "%(function)s()" is not allowed') % {
+                    "function": function.upper()
+                }
+                raise ValidationError({"configuration": msg})
+        return self._is_aggregate(validation_source)
+
+    def _get_flux_validation_source(self, query: str) -> str:
+        query = self._FLUX_STRING_LITERAL_PATTERN.sub('""', query)
+        return self._FLUX_COMMENT_PATTERN.sub("", query)
 
     def _is_aggregate(self, query):
         query = query.lower()
