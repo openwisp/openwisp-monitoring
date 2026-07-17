@@ -39,7 +39,11 @@ def trigger_device_critical_checks(pk, recovery=True):
         device.monitoring.update_status(status)
         return
     if recovery and device.monitoring.status == "critical":
-        device.monitoring.update_status("problem")
+        status = device.monitoring._get_status_from_metrics()
+        # If metrics no longer imply critical status, move to problem.
+        # The checks triggered below will confirm if the device is ok.
+        if status != "critical":
+            device.monitoring.update_status("problem")
     for check_id in check_ids:
         perform_check.delay(check_id)
 
