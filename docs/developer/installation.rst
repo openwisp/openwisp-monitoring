@@ -11,7 +11,7 @@ Dependencies
 ------------
 
 - Python >= 3.11
-- InfluxDB 1.x or InfluxDB 2.x
+- InfluxDB 1.x, InfluxDB 2.x, or Elasticsearch 9.x
 - fping
 - OpenSSL
 
@@ -64,6 +64,12 @@ well:
 Setup and activate a virtual-environment. (we'll be using `virtualenv
 <https://pypi.org/project/virtualenv/>`_)
 
+If you want to use Elasticsearch 9.x instead, start ``elasticsearch``:
+
+.. code-block:: shell
+
+    docker compose up -d redis elasticsearch
+
 .. code-block:: shell
 
     python -m virtualenv env
@@ -107,6 +113,60 @@ credentials, you can override the defaults with:
     export INFLUXDB2_TOKEN=openwisp-token
     export INFLUXDB2_BUCKET=openwisp2
     export REDIS_HOST=localhost
+
+If you are using Elasticsearch 9.x, export the following environment
+variable before running migrations, celery, or the development server:
+
+.. code-block:: shell
+
+    export TIMESERIES_BACKEND=elasticsearch
+
+If you are using the ``elasticsearch`` and ``redis`` containers provided
+in this repository's ``docker-compose.yml``, no additional variables are
+needed because the default values in ``tests/openwisp2/settings.py``
+already match that setup.
+
+If you are not using the provided containers, or if you changed ports or
+credentials, you can override the defaults with:
+
+.. code-block:: shell
+
+    # Optional overrides for non-default setups
+    export ELASTICSEARCH_URL=http://localhost:9200
+    export ELASTICSEARCH_NAME=openwisp2
+    export REDIS_HOST=localhost
+
+For Elastic Cloud, use ``ELASTICSEARCH_CLOUD_ID`` instead of
+``ELASTICSEARCH_URL``:
+
+.. code-block:: shell
+
+    export ELASTICSEARCH_CLOUD_ID=<cloud-id>
+    export ELASTICSEARCH_API_KEY=<api-key>
+
+If your cluster requires authentication, use one of these methods:
+
+.. code-block:: shell
+
+    # API key authentication
+    export ELASTICSEARCH_API_KEY=<api-key>
+
+    # Bearer token authentication
+    export ELASTICSEARCH_BEARER_AUTH=<bearer-token>
+
+    # Username and password authentication
+    export ELASTICSEARCH_USER=elastic
+    export ELASTICSEARCH_PASSWORD=<password>
+
+For TLS-enabled clusters, use:
+
+.. code-block:: shell
+
+    export ELASTICSEARCH_CA_CERTS=/path/to/http_ca.crt
+    export ELASTICSEARCH_SSL_ASSERT_FINGERPRINT=<fingerprint>
+
+Elasticsearch index templates, refresh behavior, retry policy, and
+lifecycle settings are managed by the backend.
 
 Install WebDriver for Chromium for your browser version from
 https://chromedriver.chromium.org/home and extract ``chromedriver`` to one
