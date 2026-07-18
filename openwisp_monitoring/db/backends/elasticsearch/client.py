@@ -4,6 +4,7 @@ from collections.abc import Iterator, Mapping, Sequence
 from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ValidationError
@@ -582,10 +583,42 @@ class DatabaseClient(BaseTimeseriesClient):
             )
         return sorted(policies, key=lambda item: (not item["default"], item["name"]))
 
-    def _get_timestamp(self, timestamp=None) -> str:
-        timestamp = timestamp or now()
+    def _get_timezone(self, timezone_name=None):
+        if not timezone_name:
+            return timezone.utc
+        try:
+            return ZoneInfo(str(timezone_name))
+        except Exception:
+            return timezone.utc
+
+    def _parse_timestamp(self, timestamp):
         if isinstance(timestamp, datetime):
-            return timestamp.isoformat()
+            return timestamp
+        if not isinstance(timestamp, str):
+            return None
+        parsed = parse_datetime(timestamp)
+        if parsed is not None:
+            return parsed
+        if "T" not in timestamp and " " in timestamp:
+            timestamp = timestamp.replace(" ", "T", 1)
+            parsed = parse_datetime(timestamp)
+            if parsed is not None:
+                return parsed
+        return None
+
+    def _serialize_timestamp(self, timestamp, timezone_name=None):
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=self._get_timezone(timezone_name))
+        timestamp = timestamp.astimezone(timezone.utc)
+        return timestamp.isoformat().replace("+00:00", "Z")
+
+    def _get_timestamp(self, timestamp=None, timezone_name=None) -> str:
+        timestamp = timestamp or now()
+        parsed_timestamp = self._parse_timestamp(timestamp)
+        if parsed_timestamp is not None:
+            return self._serialize_timestamp(
+                parsed_timestamp, timezone_name=timezone_name
+            )
         return timestamp
 
     def _normalize_time(self, value, precision="s"):
@@ -645,9 +678,9 @@ class DatabaseClient(BaseTimeseriesClient):
     def write(self, name: str, values: TimeseriesFields, **kwargs: Any) -> None:
         self._check_database_kwarg(kwargs.get("database"))
         retention_policy = kwargs.get("retention_policy")
+        self._ensure_data_stream_resources(retention_policy)
+        document = self._build_document(name, values, **kwargs)
         try:
-            self._ensure_data_stream_resources(retention_policy)
-            document = self._build_document(name, values, **kwargs)
             self.db.index(
                 index=self._get_stream_name(retention_policy),
                 document=document,
@@ -658,27 +691,36 @@ class DatabaseClient(BaseTimeseriesClient):
             self._handle_write_exception(exception)
 
     def batch_write(self, metric_data: Sequence[BatchWritePayload]) -> None:
-        try:
-            actions = []
-            for data in metric_data:
-                self._check_database_kwarg(data.get("database"))
-                retention_policy = data.get("retention_policy")
+        actions = []
+        ensured_retention_policies = set()
+        checked_databases = set()
+        for data in metric_data:
+            database = data.get("database")
+            if database not in checked_databases:
+                self._check_database_kwarg(database)
+                checked_databases.add(database)
+            retention_policy = data.get("retention_policy")
+            if retention_policy not in ensured_retention_policies:
                 self._ensure_data_stream_resources(retention_policy)
-                actions.append(
-                    {
-                        "_op_type": "create",
-                        "_index": self._get_stream_name(retention_policy),
-                        "_source": self._build_document(
-                            data.get("name"),
-                            data.get("values"),
-                            tags=data.get("tags"),
-                            timestamp=data.get("timestamp"),
-                        ),
-                    }
-                )
-            if not actions:
-                return
-            bulk(self.db, actions, refresh=self.refresh)
+                ensured_retention_policies.add(retention_policy)
+            actions.append(
+                {
+                    "_op_type": "create",
+                    "_index": self._get_stream_name(retention_policy),
+                    "_source": self._build_document(
+                        data.get("name"),
+                        data.get("values"),
+                        tags=data.get("tags"),
+                        timestamp=data.get("timestamp"),
+                    ),
+                }
+            )
+        if not actions:
+            return
+        try:
+            bulk(
+                self.db, actions, refresh=self.refresh
+            )  # https://elasticsearch-py.readthedocs.io/en/v8.12.1/helpers.html#bulk-helpers
         except Exception as exception:
             self._handle_write_exception(exception)
 
@@ -924,16 +966,20 @@ class DatabaseClient(BaseTimeseriesClient):
             return {"terms": {tag_field: values}}
         return {"term": {tag_field: str(value)}}
 
-    def _build_chart_base_query(self, params):
+    def _build_chart_base_query(self, params, timezone_name=None):
         filters = []
         measurement_filter = self._build_measurement_filter(params.get("key"))
         if measurement_filter:
             filters.append(measurement_filter)
         time_filter = {}
         if params.get("time"):
-            time_filter["gte"] = self._get_timestamp(params["time"])
+            time_filter["gte"] = self._get_timestamp(
+                params["time"], timezone_name=timezone_name
+            )
         if params.get("end_date"):
-            time_filter["lte"] = self._get_timestamp(params["end_date"])
+            time_filter["lte"] = self._get_timestamp(
+                params["end_date"], timezone_name=timezone_name
+            )
         if time_filter:
             filters.append({"range": {"@timestamp": time_filter}})
         for field in self._CHART_FILTERS:
@@ -980,7 +1026,7 @@ class DatabaseClient(BaseTimeseriesClient):
         metrics = self._format_chart_metrics(query, params)
         body = {
             "size": 0,
-            "query": self._build_chart_base_query(params),
+            "query": self._build_chart_base_query(params, timezone_name=timezone),
             "__index": self._get_stream_name(params.get("retention_policy")),
             "__openwisp_query_type": "chart",
             "__openwisp_metrics": metrics,
@@ -1014,11 +1060,11 @@ class DatabaseClient(BaseTimeseriesClient):
             return ["*"]
         return [field]
 
-    def _build_raw_chart_query(self, query, params, fields=None):
+    def _build_raw_chart_query(self, query, params, fields=None, timezone=None):
         selected_fields = self._normalize_raw_chart_fields(query, params, fields)
         return {
             "size": int(self.options.get("read_size", 10000)),
-            "query": self._build_chart_base_query(params),
+            "query": self._build_chart_base_query(params, timezone_name=timezone),
             "sort": [{"@timestamp": {"order": "asc"}}],
             "__index": self._get_stream_name(params.get("retention_policy")),
             "__openwisp_query_type": "raw_chart",
@@ -1096,7 +1142,9 @@ class DatabaseClient(BaseTimeseriesClient):
                 timezone=timezone,
             )
         if self._is_openwisp_query(query, "raw_chart"):
-            return self._build_raw_chart_query(query, params, fields=fields)
+            return self._build_raw_chart_query(
+                query, params, fields=fields, timezone=timezone
+            )
         format_params = {
             **params,
             "time": params.get("time", time),
@@ -1126,7 +1174,7 @@ class DatabaseClient(BaseTimeseriesClient):
         search = {
             "size": int(self.options.get("top_fields_read_size", 10000)),
             "_source": ["fields"],
-            "query": self._build_chart_base_query(params),
+            "query": self._build_chart_base_query(params, timezone_name=timezone),
             "__index": self._get_stream_name(params.get("retention_policy")),
         }
         response = self.query(search, precision="s")
