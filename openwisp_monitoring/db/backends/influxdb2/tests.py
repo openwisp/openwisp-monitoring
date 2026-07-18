@@ -1815,6 +1815,37 @@ class TestInfluxDb2ClientIntegration(
         self.assertTrue(all(point.minute % 10 == 0 for point in non_null_points), data)
         self.assertEqual(data["summary"], {"wifi_clients": 3})
 
+    def test_access_tech_chart_keeps_sparse_range_buckets(self):
+        metric = self._create_object_metric(
+            name="access technology",
+            key="signal",
+            field_name="access_tech",
+            configuration="access_tech",
+            extra_tags={"ifname": "wwan0"},
+        )
+        range_start = (
+            (now() - timedelta(days=1))
+            .astimezone(timezone.utc)
+            .replace(hour=10, minute=7, second=0, microsecond=0)
+        )
+        metric.write(4, time=range_start + timedelta(minutes=1))
+        metric.write(4, time=range_start + timedelta(minutes=11))
+        chart = Chart(metric=metric, configuration="access_tech")
+        chart.full_clean()
+        chart.save()
+        data = self._read_chart(
+            chart,
+            time="1d",
+            start_date=range_start.strftime("%Y-%m-%d %H:%M:%S"),
+            end_date=(range_start + timedelta(minutes=60)).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ),
+            timezone="UTC",
+        )
+        non_null_values = [value for value in data["traces"][0][1] if value is not None]
+        self.assertEqual(non_null_values, [4, 4])
+        self.assertGreaterEqual(len(data["x"]), 6, data)
+
     def test_ping_uptime_chart_zoom_range_uses_request_timezone(self):
         metric = self._create_object_metric(name="ping", configuration="ping")
         request_day = (now() - timedelta(days=1)).astimezone(timezone.utc).date()
