@@ -966,6 +966,54 @@ class DatabaseClient(BaseTimeseriesClient):
                 point.setdefault(field, None)
         return points
 
+    def _get_access_tech_window_range(self, query):
+        """Return the time range and bucket size of an access-tech chart query."""
+        if 'r._field == "access_tech"' not in query or "|> window(every:" not in query:
+            return None
+        range_match = re.search(
+            r'range\(start: time\(v: "([^"]+)"\), stop: time\(v: "([^"]+)"\)\)',
+            query,
+        )
+        window_match = re.search(r"\|> window\(every: ([^,\)]+)", query)
+        if not range_match or not window_match:
+            return None
+        start, _ = self._parse_flux_time(range_match.group(1))
+        stop, _ = self._parse_flux_time(range_match.group(2))
+        try:
+            window_seconds = self._duration_to_seconds(window_match.group(1))
+        except ValueError:
+            return None
+        if not start or not stop or stop <= start or window_seconds <= 0:
+            return None
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        if stop.tzinfo is None:
+            stop = stop.replace(tzinfo=timezone.utc)
+        start = start.astimezone(timezone.utc)
+        stop = stop.astimezone(timezone.utc)
+        return start, stop, window_seconds
+
+    def _backfill_access_tech_windows(self, points, query):
+        """
+        Add missing empty buckets to access-tech charts.
+        Flux returns only buckets containing data after the mode calculation.
+        Filling the missing timestamps here is simpler and cheaper than adding
+        Flux joins just to return null values for empty chart buckets.
+        """
+        window_range = self._get_access_tech_window_range(query)
+        if not window_range:
+            return points
+        start, stop, window_seconds = window_range
+        start_timestamp = int(start.timestamp())
+        first_bucket = start_timestamp - (start_timestamp % window_seconds)
+        stop_timestamp = int(stop.timestamp())
+        points_by_time = {point["time"]: point for point in points if "time" in point}
+        current = first_bucket
+        while current < stop_timestamp:
+            points_by_time.setdefault(current, {"time": current, "access_tech": None})
+            current += window_seconds
+        return [points_by_time[key] for key in sorted(points_by_time)]
+
     def _build_delete_predicate(
         self, key: str | None = None, tags: TimeseriesTags | None = None
     ) -> str:
@@ -1038,7 +1086,8 @@ class DatabaseClient(BaseTimeseriesClient):
             points = self._normalize_read_points(
                 list(result.get_points()), include_tags=False
             )
-            return self._backfill_expected_fields(points, query)
+            points = self._backfill_expected_fields(points, query)
+            return self._backfill_access_tech_windows(points, query)
         # Handle queries with GROUP BY TAG clause
         # Group results by time and merge tag-specific values into single record
         result_points = {}
