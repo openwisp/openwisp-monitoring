@@ -474,6 +474,19 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             self.assertIn('r._measurement == "memory" or', flux_query)
             self.assertIn('r._measurement == "disk"', flux_query)
 
+    def test_read_formats_naive_datetime_since_as_utc(self):
+        with patch.object(
+            self.timeseries_db, "query", return_value=QueryResultSet([])
+        ) as mock_query:
+            self.timeseries_db.read(
+                key="cpu",
+                fields=["usage"],
+                tags={},
+                since=datetime(2000, 1, 1),
+            )
+            flux_query = mock_query.call_args[0][0]
+            self.assertIn('start: time(v: "2000-01-01T00:00:00Z")', flux_query)
+
     def test_read_escapes_flux_string_literals(self):
         with patch.object(
             self.timeseries_db, "query", return_value=QueryResultSet([])
@@ -585,6 +598,20 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                 f'from(bucket: "{settings.TIMESERIES_DATABASE["NAME"]}_short")',
                 flux_query,
             )
+
+    def test_read_escapes_bucket_name(self):
+        with patch.object(self.timeseries_db, "db_name", 'open"wisp\\bucket'):
+            with patch.object(
+                self.timeseries_db, "query", return_value=QueryResultSet([])
+            ) as mock_query:
+                self.timeseries_db.read(
+                    key="cpu",
+                    fields=["usage"],
+                    tags={},
+                    retention_policy=SHORT_RP,
+                )
+        flux_query = mock_query.call_args[0][0]
+        self.assertIn('from(bucket: "open\\"wisp\\\\bucket_short")', flux_query)
 
     def test_delete_metric_data_all(self):
         """Test deleting all metric data."""
@@ -905,6 +932,30 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
 
         self.assertIn("range(start: -1h)", query)
         self.assertIn('aggregateWindow(every: 5m, fn: mean, timeSrc: "_start")', query)
+
+    def test_generated_chart_query_escapes_bucket_name(self):
+        with patch.object(self.timeseries_db, "db_name", 'open"wisp\\bucket'):
+            query = self.timeseries_db.get_query(
+                chart_type="line",
+                params={"key": "cpu"},
+                time="1h",
+                group_map={"1h": "5m"},
+            )
+        self.assertIn('from(bucket: "open\\"wisp\\\\bucket")', query)
+
+    def test_custom_chart_query_escapes_bucket_name(self):
+        with patch.object(self.timeseries_db, "db_name", 'open"wisp\\bucket'):
+            query = self.timeseries_db.get_query(
+                chart_type="scatter",
+                params={
+                    "key": "cpu",
+                    "field_name": "cpu_usage",
+                },
+                time="1h",
+                group_map={"1h": "5m"},
+                query=chart_query["cpu"]["influxdb2"],
+            )
+        self.assertIn('from(bucket: "open\\"wisp\\\\bucket")', query)
 
     def test_query_bundle_matches_backend_contract(self):
         self.timeseries_db.queries.validate(self.timeseries_db.backend_name)
@@ -1495,6 +1546,7 @@ class TestInfluxDb2ClientIntegration(
             side_effect=device_tasks.write_device_metrics.run,
         )
         started_patchers = []
+        super_setup_completed = False
         try:
             for patcher in (
                 cls._write_delay_patcher,
@@ -1504,10 +1556,13 @@ class TestInfluxDb2ClientIntegration(
                 patcher.start()
                 started_patchers.append(patcher)
             super().setUpClass()
+            super_setup_completed = True
             manage_short_retention_policy()
         except Exception:
             for patcher in reversed(started_patchers):
                 patcher.stop()
+            if super_setup_completed:
+                super().tearDownClass()
             raise
         assert settings.TIMESERIES_DATABASE["BACKEND"].endswith("influxdb2")
 
@@ -2004,6 +2059,7 @@ class TestInfluxDb2CheckIntegration(
             side_effect=monitoring_tasks.timeseries_batch_write.run,
         )
         started_patchers = []
+        super_setup_completed = False
         try:
             for patcher in (
                 cls._write_delay_patcher,
@@ -2012,10 +2068,13 @@ class TestInfluxDb2CheckIntegration(
                 patcher.start()
                 started_patchers.append(patcher)
             super().setUpClass()
+            super_setup_completed = True
             manage_short_retention_policy()
         except Exception:
             for patcher in reversed(started_patchers):
                 patcher.stop()
+            if super_setup_completed:
+                super().tearDownClass()
             raise
         assert settings.TIMESERIES_DATABASE["BACKEND"].endswith("influxdb2")
 

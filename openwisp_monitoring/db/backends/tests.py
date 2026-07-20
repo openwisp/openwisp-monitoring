@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, call, patch
 from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase
 
-from openwisp_monitoring.db.backends import load_backend
+from openwisp_monitoring.db.backends import load_backend, load_backend_module
 from openwisp_monitoring.db.backends.base import (
     BackendQueryBundle,
     BaseTimeseriesClient,
@@ -182,6 +182,29 @@ class TestBackendLoader(SimpleTestCase):
                 device_data_query="SELECT data FROM {measurement}",
             ),
         )
+
+    def test_load_backend_rejects_missing_backend_name(self):
+        with patch("openwisp_monitoring.db.backends.import_module") as mocked_import:
+            with self.assertRaisesMessage(
+                ImproperlyConfigured,
+                '"BACKEND" field is not declared in TIMESERIES_DATABASE',
+            ):
+                load_backend(config={"NAME": "openwisp2"})
+        mocked_import.assert_not_called()
+
+    @patch.dict(
+        "openwisp_monitoring.db.backends.TIMESERIES_DB",
+        {"NAME": "openwisp2"},
+        clear=True,
+    )
+    def test_load_backend_module_rejects_missing_default_backend_name(self):
+        with patch("openwisp_monitoring.db.backends.import_module") as mocked_import:
+            with self.assertRaisesMessage(
+                ImproperlyConfigured,
+                '"BACKEND" field is not declared in TIMESERIES_DATABASE',
+            ):
+                load_backend_module()
+        mocked_import.assert_not_called()
 
     def test_load_backend_rejects_invalid_backend_class(self):
         backend_module = self._build_valid_backend()
@@ -505,6 +528,41 @@ class TestInfluxDb2ClientUrl(SimpleTestCase):
         with self.assertRaises(client.client_error):
             client.drop_database()
         mock_api.delete_bucket.assert_not_called()
+        mocked_sleep.assert_called()
+
+    def test_get_list_retention_policies_ignores_missing_bucket_lookup_error(self):
+        client = DatabaseClient()
+        mock_api = self._mock_buckets_api(client)
+        short_bucket = MagicMock()
+        short_rule = MagicMock()
+        short_rule.every_seconds = 86400
+        short_bucket.retention_rules = [short_rule]
+        mock_api.find_bucket_by_name.side_effect = [
+            client.client_error(message="could not find bucket"),
+            short_bucket,
+        ]
+        policies = client.get_list_retention_policies()
+        self.assertEqual(
+            policies,
+            [
+                {
+                    "name": "short",
+                    "default": False,
+                    "duration": "86400s",
+                    "replication": 1,
+                }
+            ],
+        )
+
+    @patch("openwisp_monitoring.utils.sleep")
+    def test_get_list_retention_policies_reraises_lookup_error(self, mocked_sleep):
+        client = DatabaseClient()
+        mock_api = self._mock_buckets_api(client)
+        mock_api.find_bucket_by_name.side_effect = client.client_error(
+            message="lookup failed"
+        )
+        with self.assertRaises(client.client_error):
+            client.get_list_retention_policies()
         mocked_sleep.assert_called()
 
     def test_read_preserves_selected_field_with_cross_field_where(self):

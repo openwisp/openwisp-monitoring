@@ -478,10 +478,14 @@ class DatabaseClient(BaseTimeseriesClient):
 
     def _format_flux_time(self, value, timezone_name=None):
         if isinstance(value, datetime):
-            if timezone_name and value.tzinfo is None:
-                value = value.replace(tzinfo=ZoneInfo(timezone_name)).astimezone(
-                    timezone.utc
-                )
+            if value.tzinfo is None:
+                if timezone_name:
+                    value = value.replace(tzinfo=ZoneInfo(timezone_name)).astimezone(
+                        timezone.utc
+                    )
+                else:
+                    value = value.replace(tzinfo=timezone.utc)
+                return f'time(v: "{self._serialize_flux_time(value)}")'
             return f'time(v: "{self._get_timestamp(value)}")'
         if isinstance(value, str):
             parsed_time, normalized_value = self._parse_flux_time(value)
@@ -768,7 +772,9 @@ class DatabaseClient(BaseTimeseriesClient):
                 "COUNT(DISTINCT(field)) queries."
             )
         # Build Flux query
-        bucket = self._get_bucket_name(kwargs.get("retention_policy"))
+        bucket = self._escape_flux_string(
+            self._get_bucket_name(kwargs.get("retention_policy"))
+        )
         flux_query = f'from(bucket: "{bucket}")'
         # Add time range
         since = kwargs.get("since")
@@ -1117,25 +1123,27 @@ class DatabaseClient(BaseTimeseriesClient):
     @retry
     def get_list_retention_policies(self) -> list[TimeseriesPoint]:
         """Returns v1-compatible retention policy records for known buckets."""
-        try:
-            api = self.db.buckets_api()
-            policies = []
-            for bucket_name in self._get_known_bucket_names():
+        api = self.db.buckets_api()
+        policies = []
+        for bucket_name in self._get_known_bucket_names():
+            try:
                 bucket = api.find_bucket_by_name(bucket_name)
-                if not bucket:
+            except self.client_error as exception:
+                if self._is_bucket_not_found(exception):
                     continue
-                policy_name = self._get_retention_policy_name(bucket_name)
-                policies.append(
-                    {
-                        "name": policy_name,
-                        "default": policy_name == "autogen",
-                        "duration": self._get_bucket_retention_duration(bucket),
-                        "replication": 1,
-                    }
-                )
-            return policies
-        except self.client_error:
-            return []
+                raise
+            if not bucket:
+                continue
+            policy_name = self._get_retention_policy_name(bucket_name)
+            policies.append(
+                {
+                    "name": policy_name,
+                    "default": policy_name == "autogen",
+                    "duration": self._get_bucket_retention_duration(bucket),
+                    "replication": 1,
+                }
+            )
+        return policies
 
     def get_device_data_query(
         self,
@@ -1159,7 +1167,8 @@ class DatabaseClient(BaseTimeseriesClient):
         group_map: Mapping[Any, str],
         timezone_name: str | None = settings.TIME_ZONE,
     ) -> str:
-        flux_query = f'from(bucket: "{self.db_name}")'
+        bucket = self._escape_flux_string(self.db_name)
+        flux_query = f'from(bucket: "{bucket}")'
         start_range = params.get("time")
         if start_range:
             start_range = self._normalize_chart_start_range(
@@ -1279,7 +1288,7 @@ class DatabaseClient(BaseTimeseriesClient):
                 f"{self._format_flux_string(timezone_name)})"
             )
         formatted = query.format(
-            bucket=self.db_name,
+            bucket=self._escape_flux_string(self.db_name),
             key=self._escape_flux_string(params.get("key", "")),
             time_start=time_start,
             end_range=end_range,

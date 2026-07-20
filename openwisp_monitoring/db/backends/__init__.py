@@ -4,7 +4,6 @@ from importlib import import_module
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.db import DatabaseError
 
 from .base import BackendQueryBundle, BaseTimeseriesClient
 
@@ -34,15 +33,23 @@ def _is_missing_backend_module(error, backend_name):
     )
 
 
-def load_backend(backend_name=TIMESERIES_DB["BACKEND"], config=None):
+def _resolve_backend_name(backend_name=None, config=None):
+    if backend_name is None:
+        config = TIMESERIES_DB if config is None else config
+        backend_name = config.get("BACKEND") if hasattr(config, "get") else None
+    if not backend_name:
+        raise ImproperlyConfigured(
+            '"BACKEND" field is not declared in TIMESERIES_DATABASE'
+        )
+    return backend_name
+
+
+def load_backend(backend_name=None, config=None):
     """Return a validated backend package module."""
     config = TIMESERIES_DB if config is None else config
+    backend_name = _resolve_backend_name(backend_name, config)
     try:
         backend_module = import_module(backend_name)
-    except AttributeError as e:
-        if getattr(e, "obj", None) is not backend_name or e.name != "startswith":
-            raise
-        raise DatabaseError("No TIMESERIES_DATABASE specified in settings") from e
     except ImportError as e:
         # The database backend wasn't found. Display a helpful error message
         # listing all built-in database backends.
@@ -74,7 +81,8 @@ def load_backend(backend_name=TIMESERIES_DB["BACKEND"], config=None):
     return backend_module
 
 
-def load_backend_module(backend_name=TIMESERIES_DB["BACKEND"], module=None):
+def load_backend_module(backend_name=None, module=None):
+    backend_name = _resolve_backend_name(backend_name)
     backend_module = load_backend(backend_name=backend_name)
     if module is None:
         return backend_module
