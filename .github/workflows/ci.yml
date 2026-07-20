@@ -34,6 +34,10 @@ jobs:
           - django~=5.2.0
         tsdb:
           - influxdb
+        # influxdb2 and UDP variants intentionally run only on the latest
+        # Python version: the full Python version matrix is already covered
+        # by the influxdb runs above, and repeating it for every backend
+        # would only make CI slower without adding meaningful coverage.
         include:
           - python-version: "3.13"
             django-version: django~=5.2.0
