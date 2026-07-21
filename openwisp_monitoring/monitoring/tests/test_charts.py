@@ -206,6 +206,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertEqual(data["summary"]["first"], 6)
         self.assertEqual(data["summary"]["second"], 9)
 
+    @tag("flaky_with_udp_writes")
     def test_json(self):
         c = self._create_chart()
         data = self._read_chart(c)
