@@ -172,7 +172,9 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                 }
             )
 
-    def test_validate_chart_configuration_rejects_custom_window_query_without_summary(self):
+    def test_validate_chart_configuration_rejects_custom_window_query_without_summary(
+        self,
+    ):
         from openwisp_monitoring.monitoring.configuration import (
             _validate_chart_configuration,
         )
