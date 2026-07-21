@@ -28,6 +28,7 @@ If instructions conflict, repository config and CI workflows win first, official
 - Mark user-facing strings for translation with Django i18n helpers in Django code.
 - Place imports at the top of the file. Only defer imports when necessary (e.g., Django model imports inside functions or methods where the app registry is not yet ready).
 - Avoid unnecessary blank lines inside function and method bodies.
+- Prefer patch decorators when a test patch spans the whole method, to avoid unnecessary nesting.
 - Update docs when behavior, settings, public APIs, setup steps, metrics, or supported versions change.
 
 ## Testing and QA

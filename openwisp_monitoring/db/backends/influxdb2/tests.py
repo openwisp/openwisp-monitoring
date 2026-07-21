@@ -241,57 +241,53 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                     expected,
                 )
 
-    def test_write_single_point(self):
+    @patch.object(DatabaseClient, "_write_api")
+    def test_write_single_point(self, mock_write_api):
         """Test writing a single data point."""
-        with patch.object(self.timeseries_db, "_write_api") as mock_write_api:
-            self.timeseries_db.write(
-                name="test_measurement",
-                values={"field1": 10, "field2": 20},
-                tags={"host": "localhost"},
-            )
-            mock_write_api.write.assert_called()
-            call_args = mock_write_api.write.call_args
-            record = call_args[1]["record"]
-            self.assertEqual(record["measurement"], "test_measurement")
-            self.assertEqual(record["fields"], {"field1": 10, "field2": 20})
-            self.assertEqual(
-                call_args[1]["bucket"], settings.TIMESERIES_DATABASE["NAME"]
-            )
+        self.timeseries_db.write(
+            name="test_measurement",
+            values={"field1": 10, "field2": 20},
+            tags={"host": "localhost"},
+        )
+        mock_write_api.write.assert_called()
+        call_args = mock_write_api.write.call_args
+        record = call_args[1]["record"]
+        self.assertEqual(record["measurement"], "test_measurement")
+        self.assertEqual(record["fields"], {"field1": 10, "field2": 20})
+        self.assertEqual(call_args[1]["bucket"], settings.TIMESERIES_DATABASE["NAME"])
 
-    def test_write_preserves_zero_timestamp(self):
-        with patch.object(self.timeseries_db, "_write") as mocked_write:
-            with self.subTest("write"):
-                self.timeseries_db.write(
-                    "test_measurement", {"field1": 10}, timestamp=0
-                )
-                point = mocked_write.call_args[1]["points"]
-                self.assertEqual(point["time"], 0)
-            with self.subTest("batch_write"):
-                mocked_write.reset_mock()
-                self.timeseries_db.batch_write(
-                    [
-                        {
-                            "name": "test_measurement",
-                            "values": {"field1": 10},
-                            "timestamp": 0,
-                        }
-                    ]
-                )
-                point = mocked_write.call_args[1]["points"][0]
-                self.assertEqual(point["time"], 0)
+    @patch.object(DatabaseClient, "_write")
+    def test_write_preserves_zero_timestamp(self, mocked_write):
+        with self.subTest("write"):
+            self.timeseries_db.write("test_measurement", {"field1": 10}, timestamp=0)
+            point = mocked_write.call_args[1]["points"]
+            self.assertEqual(point["time"], 0)
+        with self.subTest("batch_write"):
+            mocked_write.reset_mock()
+            self.timeseries_db.batch_write(
+                [
+                    {
+                        "name": "test_measurement",
+                        "values": {"field1": 10},
+                        "timestamp": 0,
+                    }
+                ]
+            )
+            point = mocked_write.call_args[1]["points"][0]
+            self.assertEqual(point["time"], 0)
 
-    def test_write_uses_retention_policy_bucket(self):
+    @patch.object(DatabaseClient, "_write_api")
+    def test_write_uses_retention_policy_bucket(self, mock_write_api):
         """Test writing with a retention policy uses the mapped bucket."""
-        with patch.object(self.timeseries_db, "_write_api") as mock_write_api:
-            self.timeseries_db.write(
-                name="test_measurement",
-                values={"field1": 10},
-                retention_policy=SHORT_RP,
-            )
-            call_args = mock_write_api.write.call_args
-            self.assertEqual(
-                call_args[1]["bucket"], f'{settings.TIMESERIES_DATABASE["NAME"]}_short'
-            )
+        self.timeseries_db.write(
+            name="test_measurement",
+            values={"field1": 10},
+            retention_policy=SHORT_RP,
+        )
+        call_args = mock_write_api.write.call_args
+        self.assertEqual(
+            call_args[1]["bucket"], f'{settings.TIMESERIES_DATABASE["NAME"]}_short'
+        )
 
     def test_write_with_database_parameter_warning(self):
         """Test that database parameter triggers warning."""
@@ -307,56 +303,56 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                 # Should log warning about database parameter being ignored
                 mock_logger.warning.assert_called()
 
-    def test_batch_write(self):
+    @patch.object(DatabaseClient, "_write_api")
+    def test_batch_write(self, mock_write_api):
         """Test batch writing multiple data points."""
-        with patch.object(self.timeseries_db, "_write_api") as mock_write_api:
-            metric_data = [
-                {
-                    "name": "test_measurement",
-                    "values": {"field1": 10},
-                    "tags": {"host": "localhost"},
-                },
-                {
-                    "name": "test_measurement",
-                    "values": {"field1": 20},
-                    "tags": {"host": "localhost"},
-                },
-            ]
-            self.timeseries_db.batch_write(metric_data)
-            mock_write_api.write.assert_called()
-            call_args = mock_write_api.write.call_args
-            records = call_args[1]["record"]
-            self.assertEqual(len(records), 2)
-            self.assertEqual(records[0]["fields"]["field1"], 10)
-            self.assertEqual(records[1]["fields"]["field1"], 20)
+        metric_data = [
+            {
+                "name": "test_measurement",
+                "values": {"field1": 10},
+                "tags": {"host": "localhost"},
+            },
+            {
+                "name": "test_measurement",
+                "values": {"field1": 20},
+                "tags": {"host": "localhost"},
+            },
+        ]
+        self.timeseries_db.batch_write(metric_data)
+        mock_write_api.write.assert_called()
+        call_args = mock_write_api.write.call_args
+        records = call_args[1]["record"]
+        self.assertEqual(len(records), 2)
+        self.assertEqual(records[0]["fields"]["field1"], 10)
+        self.assertEqual(records[1]["fields"]["field1"], 20)
 
-    def test_batch_write_groups_by_retention_policy_bucket(self):
+    @patch.object(DatabaseClient, "_write_api")
+    def test_batch_write_groups_by_retention_policy_bucket(self, mock_write_api):
         """Test batch writing separates default and short retention buckets."""
-        with patch.object(self.timeseries_db, "_write_api") as mock_write_api:
-            metric_data = [
-                {
-                    "name": "default_measurement",
-                    "values": {"field1": 10},
-                    "tags": {},
-                },
-                {
-                    "name": "short_measurement",
-                    "values": {"field1": 20},
-                    "tags": {},
-                    "retention_policy": SHORT_RP,
-                },
-            ]
-            self.timeseries_db.batch_write(metric_data)
+        metric_data = [
+            {
+                "name": "default_measurement",
+                "values": {"field1": 10},
+                "tags": {},
+            },
+            {
+                "name": "short_measurement",
+                "values": {"field1": 20},
+                "tags": {},
+                "retention_policy": SHORT_RP,
+            },
+        ]
+        self.timeseries_db.batch_write(metric_data)
 
-            calls = mock_write_api.write.call_args_list
-            buckets = [call[1]["bucket"] for call in calls]
-            self.assertEqual(
-                buckets,
-                [
-                    settings.TIMESERIES_DATABASE["NAME"],
-                    f'{settings.TIMESERIES_DATABASE["NAME"]}_short',
-                ],
-            )
+        calls = mock_write_api.write.call_args_list
+        buckets = [call[1]["bucket"] for call in calls]
+        self.assertEqual(
+            buckets,
+            [
+                settings.TIMESERIES_DATABASE["NAME"],
+                f'{settings.TIMESERIES_DATABASE["NAME"]}_short',
+            ],
+        )
 
     def test_query_result_set_get_points(self):
         """Test QueryResultSet.get_points() generator."""
@@ -477,7 +473,8 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         self.assertEqual(len(iterated_points), 2)
         self.assertEqual(iterated_points, points)
 
-    def test_read_count_distinct_single_field(self):
+    @patch.object(DatabaseClient, "query")
+    def test_read_count_distinct_single_field(self, mock_query):
         """Test read() supports COUNT(DISTINCT(field)) for wifi clients."""
         result = QueryResultSet(
             [
@@ -491,20 +488,18 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                 },
             ]
         )
-        with patch.object(
-            self.timeseries_db, "query", return_value=result
-        ) as mock_query:
-            values = self.timeseries_db.read(
-                key="wifi_clients",
-                fields=["clients"],
-                distinct_fields=["clients"],
-                count_fields=["clients"],
-                tags={"content_type": "test.device", "object_id": "1"},
-            )
-            self.assertEqual(values[0]["count"], 3)
-            flux_query = mock_query.call_args[0][0]
-            self.assertIn('distinct(column: "_value")', flux_query)
-            self.assertIn("|> count()", flux_query)
+        mock_query.return_value = result
+        values = self.timeseries_db.read(
+            key="wifi_clients",
+            fields=["clients"],
+            distinct_fields=["clients"],
+            count_fields=["clients"],
+            tags={"content_type": "test.device", "object_id": "1"},
+        )
+        self.assertEqual(values[0]["count"], 3)
+        flux_query = mock_query.call_args[0][0]
+        self.assertIn('distinct(column: "_value")', flux_query)
+        self.assertIn("|> count()", flux_query)
 
     def test_read_count_distinct_unsupported_shape(self):
         """Test read() still rejects unsupported distinct/count combinations."""
@@ -517,105 +512,91 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                 tags={},
             )
 
-    def test_read_supports_order_by_alias(self):
+    @patch.object(DatabaseClient, "query", return_value=QueryResultSet([]))
+    def test_read_supports_order_by_alias(self, mock_query):
         """Test read() accepts order_by as an alias for order."""
-        with patch.object(
-            self.timeseries_db, "query", return_value=QueryResultSet([])
-        ) as mock_query:
-            self.timeseries_db.read(
-                key="cpu",
-                fields=["usage"],
-                tags={},
-                order_by="-time",
-            )
-            flux_query = mock_query.call_args[0][0]
-            self.assertIn('|> sort(columns: ["_time"], desc: true)', flux_query)
+        self.timeseries_db.read(
+            key="cpu",
+            fields=["usage"],
+            tags={},
+            order_by="-time",
+        )
+        flux_query = mock_query.call_args[0][0]
+        self.assertIn('|> sort(columns: ["_time"], desc: true)', flux_query)
 
-    def test_read_supports_where_filters(self):
+    @patch.object(DatabaseClient, "query", return_value=QueryResultSet([]))
+    def test_read_supports_where_filters(self, mock_query):
         """Test read() translates simple WHERE conditions into Flux filters."""
-        with patch.object(
-            self.timeseries_db, "query", return_value=QueryResultSet([])
-        ) as mock_query:
-            self.timeseries_db.read(
-                key="cpu",
-                fields=["usage"],
-                tags={},
-                where=[("usage", ">=", 80)],
-            )
-            flux_query = mock_query.call_args[0][0]
-            self.assertIn('r._field == "usage" and r._value >= 80', flux_query)
+        self.timeseries_db.read(
+            key="cpu",
+            fields=["usage"],
+            tags={},
+            where=[("usage", ">=", 80)],
+        )
+        flux_query = mock_query.call_args[0][0]
+        self.assertIn('r._field == "usage" and r._value >= 80', flux_query)
 
-    def test_read_supports_wildcard_fields(self):
+    @patch.object(DatabaseClient, "query", return_value=QueryResultSet([]))
+    def test_read_supports_wildcard_fields(self, mock_query):
         """Test read() treats '*' as all fields and skips field filtering."""
-        with patch.object(
-            self.timeseries_db, "query", return_value=QueryResultSet([])
-        ) as mock_query:
-            self.timeseries_db.read(
-                key="cpu",
-                fields="*",
-                tags={},
-            )
-            flux_query = mock_query.call_args[0][0]
-            self.assertNotIn('r._field == "*"', flux_query)
+        self.timeseries_db.read(
+            key="cpu",
+            fields="*",
+            tags={},
+        )
+        flux_query = mock_query.call_args[0][0]
+        self.assertNotIn('r._field == "*"', flux_query)
 
-    def test_read_supports_multiple_measurements(self):
+    @patch.object(DatabaseClient, "query", return_value=QueryResultSet([]))
+    def test_read_supports_multiple_measurements(self, mock_query):
         """Test read() translates comma-separated measurements to Flux OR filter."""
-        with patch.object(
-            self.timeseries_db, "query", return_value=QueryResultSet([])
-        ) as mock_query:
-            self.timeseries_db.read(
-                key="cpu,memory,disk",
-                fields="*",
-                tags={},
-            )
-            flux_query = mock_query.call_args[0][0]
-            self.assertIn('r._measurement == "cpu" or', flux_query)
-            self.assertIn('r._measurement == "memory" or', flux_query)
-            self.assertIn('r._measurement == "disk"', flux_query)
+        self.timeseries_db.read(
+            key="cpu,memory,disk",
+            fields="*",
+            tags={},
+        )
+        flux_query = mock_query.call_args[0][0]
+        self.assertIn('r._measurement == "cpu" or', flux_query)
+        self.assertIn('r._measurement == "memory" or', flux_query)
+        self.assertIn('r._measurement == "disk"', flux_query)
 
-    def test_read_formats_naive_datetime_since_as_utc(self):
-        with patch.object(
-            self.timeseries_db, "query", return_value=QueryResultSet([])
-        ) as mock_query:
-            self.timeseries_db.read(
-                key="cpu",
-                fields=["usage"],
-                tags={},
-                since=datetime(2000, 1, 1),
-            )
-            flux_query = mock_query.call_args[0][0]
-            self.assertIn('start: time(v: "2000-01-01T00:00:00Z")', flux_query)
+    @patch.object(DatabaseClient, "query", return_value=QueryResultSet([]))
+    def test_read_formats_naive_datetime_since_as_utc(self, mock_query):
+        self.timeseries_db.read(
+            key="cpu",
+            fields=["usage"],
+            tags={},
+            since=datetime(2000, 1, 1),
+        )
+        flux_query = mock_query.call_args[0][0]
+        self.assertIn('start: time(v: "2000-01-01T00:00:00Z")', flux_query)
 
-    def test_read_escapes_flux_string_literals(self):
-        with patch.object(
-            self.timeseries_db, "query", return_value=QueryResultSet([])
-        ) as mock_query:
-            self.timeseries_db.read(
-                key='cpu"main',
-                fields=['usage"value'],
-                tags={"host": 'server"1'},
-                where=[('usage"value', "=", 'warn"ing')],
-            )
-            flux_query = mock_query.call_args[0][0]
-            self.assertIn(r'r._measurement == "cpu\"main"', flux_query)
-            self.assertIn(r'r["host"] == "server\"1"', flux_query)
-            self.assertIn(r'r._field == "usage\"value"', flux_query)
-            self.assertIn(
-                r'r._field == "usage\"value" and r._value == "warn\"ing"',
-                flux_query,
-            )
+    @patch.object(DatabaseClient, "query", return_value=QueryResultSet([]))
+    def test_read_escapes_flux_string_literals(self, mock_query):
+        self.timeseries_db.read(
+            key='cpu"main',
+            fields=['usage"value'],
+            tags={"host": 'server"1'},
+            where=[('usage"value', "=", 'warn"ing')],
+        )
+        flux_query = mock_query.call_args[0][0]
+        self.assertIn(r'r._measurement == "cpu\"main"', flux_query)
+        self.assertIn(r'r["host"] == "server\"1"', flux_query)
+        self.assertIn(r'r._field == "usage\"value"', flux_query)
+        self.assertIn(
+            r'r._field == "usage\"value" and r._value == "warn\"ing"',
+            flux_query,
+        )
 
-    def test_read_uses_bracket_access_for_unsafe_tag_keys(self):
-        with patch.object(
-            self.timeseries_db, "query", return_value=QueryResultSet([])
-        ) as mock_query:
-            self.timeseries_db.read(
-                key="cpu",
-                fields=["usage"],
-                tags={"client-id": 'server"1'},
-            )
-            flux_query = mock_query.call_args[0][0]
-            self.assertIn(r'r["client-id"] == "server\"1"', flux_query)
+    @patch.object(DatabaseClient, "query", return_value=QueryResultSet([]))
+    def test_read_uses_bracket_access_for_unsafe_tag_keys(self, mock_query):
+        self.timeseries_db.read(
+            key="cpu",
+            fields=["usage"],
+            tags={"client-id": 'server"1'},
+        )
+        flux_query = mock_query.call_args[0][0]
+        self.assertIn(r'r["client-id"] == "server\"1"', flux_query)
 
     def test_read_rejects_none_tag_value(self):
         with self.assertRaises(self.timeseries_db.client_error) as context:
@@ -640,63 +621,59 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             str(context.exception), "None is not a valid Flux filter value"
         )
 
-    def test_read_escapes_mixed_flux_string_edge_cases(self):
+    @patch.object(DatabaseClient, "query", return_value=QueryResultSet([]))
+    def test_read_escapes_mixed_flux_string_edge_cases(self, mock_query):
         key = 'cpu${foo}"\\'
         field = 'status${x}"\\'
         host = 'server${1}"\\'
         note = "\x01"
         where_value = 'warn${y}"\\\n'
-        with patch.object(
-            self.timeseries_db, "query", return_value=QueryResultSet([])
-        ) as mock_query:
-            self.timeseries_db.read(
-                key=key,
-                fields=[field],
-                tags={"host": host, "note": note},
-                where=[(field, "=", where_value)],
-            )
-            flux_query = mock_query.call_args[0][0]
-            self.assertIn(
-                f"r._measurement == {self.timeseries_db._format_flux_string(key)}",
-                flux_query,
-            )
-            self.assertIn(
-                f"r._field == {self.timeseries_db._format_flux_string(field)}",
-                flux_query,
-            )
-            self.assertIn(
-                f'{self.timeseries_db._format_flux_property_access("host")} == '
-                f"{self.timeseries_db._format_flux_string(host)}",
-                flux_query,
-            )
-            self.assertIn(
-                f'{self.timeseries_db._format_flux_property_access("note")} == '
-                f"{self.timeseries_db._format_flux_string(note)}",
-                flux_query,
-            )
-            self.assertIn(
-                "r._field == "
-                f"{self.timeseries_db._format_flux_string(field)} "
-                f"and r._value == {self.timeseries_db._format_flux_string(where_value)}",
-                flux_query,
-            )
+        self.timeseries_db.read(
+            key=key,
+            fields=[field],
+            tags={"host": host, "note": note},
+            where=[(field, "=", where_value)],
+        )
+        flux_query = mock_query.call_args[0][0]
+        self.assertIn(
+            f"r._measurement == {self.timeseries_db._format_flux_string(key)}",
+            flux_query,
+        )
+        self.assertIn(
+            f"r._field == {self.timeseries_db._format_flux_string(field)}",
+            flux_query,
+        )
+        self.assertIn(
+            f'{self.timeseries_db._format_flux_property_access("host")} == '
+            f"{self.timeseries_db._format_flux_string(host)}",
+            flux_query,
+        )
+        self.assertIn(
+            f'{self.timeseries_db._format_flux_property_access("note")} == '
+            f"{self.timeseries_db._format_flux_string(note)}",
+            flux_query,
+        )
+        self.assertIn(
+            "r._field == "
+            f"{self.timeseries_db._format_flux_string(field)} "
+            f"and r._value == {self.timeseries_db._format_flux_string(where_value)}",
+            flux_query,
+        )
 
-    def test_read_uses_retention_policy_bucket(self):
+    @patch.object(DatabaseClient, "query", return_value=QueryResultSet([]))
+    def test_read_uses_retention_policy_bucket(self, mock_query):
         """Test read() uses the mapped retention policy bucket."""
-        with patch.object(
-            self.timeseries_db, "query", return_value=QueryResultSet([])
-        ) as mock_query:
-            self.timeseries_db.read(
-                key="cpu",
-                fields=["usage"],
-                tags={},
-                retention_policy=SHORT_RP,
-            )
-            flux_query = mock_query.call_args[0][0]
-            self.assertIn(
-                f'from(bucket: "{settings.TIMESERIES_DATABASE["NAME"]}_short")',
-                flux_query,
-            )
+        self.timeseries_db.read(
+            key="cpu",
+            fields=["usage"],
+            tags={},
+            retention_policy=SHORT_RP,
+        )
+        flux_query = mock_query.call_args[0][0]
+        self.assertIn(
+            f'from(bucket: "{settings.TIMESERIES_DATABASE["NAME"]}_short")',
+            flux_query,
+        )
 
     def test_read_escapes_bucket_name(self):
         with patch.object(self.timeseries_db, "db_name", 'open"wisp\\bucket'):
@@ -712,48 +689,46 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         flux_query = mock_query.call_args[0][0]
         self.assertIn('from(bucket: "open\\"wisp\\\\bucket_short")', flux_query)
 
-    def test_delete_metric_data_all(self):
+    @patch.object(DatabaseClient, "_delete_api")
+    def test_delete_metric_data_all(self, mock_delete_api):
         """Test deleting all metric data."""
-        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
-            self.timeseries_db.delete_metric_data()
-            self.assertEqual(mock_delete_api.delete.call_count, 2)
-            calls = mock_delete_api.delete.call_args_list
-            self.assertEqual(calls[0][0][2], "")
-            self.assertEqual(calls[1][0][2], "")
-            self.assertEqual(
-                calls[0][1]["bucket"], settings.TIMESERIES_DATABASE["NAME"]
-            )
-            self.assertEqual(
-                calls[1][1]["bucket"],
-                f'{settings.TIMESERIES_DATABASE["NAME"]}_short',
-            )
+        self.timeseries_db.delete_metric_data()
+        self.assertEqual(mock_delete_api.delete.call_count, 2)
+        calls = mock_delete_api.delete.call_args_list
+        self.assertEqual(calls[0][0][2], "")
+        self.assertEqual(calls[1][0][2], "")
+        self.assertEqual(calls[0][1]["bucket"], settings.TIMESERIES_DATABASE["NAME"])
+        self.assertEqual(
+            calls[1][1]["bucket"],
+            f'{settings.TIMESERIES_DATABASE["NAME"]}_short',
+        )
 
-    def test_delete_metric_data_by_key(self):
+    @patch.object(DatabaseClient, "_delete_api")
+    def test_delete_metric_data_by_key(self, mock_delete_api):
         """Test deleting metric data by measurement key."""
-        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
-            self.timeseries_db.delete_metric_data(key="cpu")
-            mock_delete_api.delete.assert_called()
-            call_args = mock_delete_api.delete.call_args
-            predicate = call_args[0][2]
-            self.assertIn('_measurement="cpu"', predicate)
+        self.timeseries_db.delete_metric_data(key="cpu")
+        mock_delete_api.delete.assert_called()
+        call_args = mock_delete_api.delete.call_args
+        predicate = call_args[0][2]
+        self.assertIn('_measurement="cpu"', predicate)
 
-    def test_delete_metric_data_by_tags(self):
+    @patch.object(DatabaseClient, "_delete_api")
+    def test_delete_metric_data_by_tags(self, mock_delete_api):
         """Test deleting metric data by tags."""
-        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
-            self.timeseries_db.delete_metric_data(tags={"host": "server1"})
-            mock_delete_api.delete.assert_called()
-            call_args = mock_delete_api.delete.call_args
-            predicate = call_args[0][2]
-            self.assertIn('host="server1"', predicate)
+        self.timeseries_db.delete_metric_data(tags={"host": "server1"})
+        mock_delete_api.delete.assert_called()
+        call_args = mock_delete_api.delete.call_args
+        predicate = call_args[0][2]
+        self.assertIn('host="server1"', predicate)
 
-    def test_delete_metric_data_uses_fixed_future_stop(self):
-        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
-            self.timeseries_db.delete_metric_data(key="cpu")
-            stop = mock_delete_api.delete.call_args[0][1]
-            self.assertEqual(
-                stop,
-                datetime(2262, 4, 11, 23, 47, 16, 854775, tzinfo=timezone.utc),
-            )
+    @patch.object(DatabaseClient, "_delete_api")
+    def test_delete_metric_data_uses_fixed_future_stop(self, mock_delete_api):
+        self.timeseries_db.delete_metric_data(key="cpu")
+        stop = mock_delete_api.delete.call_args[0][1]
+        self.assertEqual(
+            stop,
+            datetime(2262, 4, 11, 23, 47, 16, 854775, tzinfo=timezone.utc),
+        )
 
     def test_delete_metric_data_rejects_unsafe_tag_keys(self):
         with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
@@ -761,23 +736,21 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                 self.timeseries_db.delete_metric_data(tags={"host-name": "server1"})
         mock_delete_api.delete.assert_not_called()
 
-    def test_delete_series_by_key(self):
+    @patch.object(DatabaseClient, "_delete_api")
+    def test_delete_series_by_key(self, mock_delete_api):
         """Test InfluxDB 1.x compatible delete_series by measurement."""
-        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
-            self.timeseries_db.delete_series(key="cpu")
-            self.assertEqual(mock_delete_api.delete.call_count, 2)
-            call_args = mock_delete_api.delete.call_args_list[0]
-            predicate = call_args[0][2]
-            self.assertIn('_measurement="cpu"', predicate)
+        self.timeseries_db.delete_series(key="cpu")
+        self.assertEqual(mock_delete_api.delete.call_count, 2)
+        call_args = mock_delete_api.delete.call_args_list[0]
+        predicate = call_args[0][2]
+        self.assertIn('_measurement="cpu"', predicate)
 
-    def test_delete_metric_data_escapes_predicate_literals(self):
-        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
-            self.timeseries_db.delete_metric_data(
-                key='cpu"main', tags={"host": 'server"1'}
-            )
-            predicate = mock_delete_api.delete.call_args[0][2]
-            self.assertIn(r'_measurement="cpu\"main"', predicate)
-            self.assertIn(r'host="server\"1"', predicate)
+    @patch.object(DatabaseClient, "_delete_api")
+    def test_delete_metric_data_escapes_predicate_literals(self, mock_delete_api):
+        self.timeseries_db.delete_metric_data(key='cpu"main', tags={"host": 'server"1'})
+        predicate = mock_delete_api.delete.call_args[0][2]
+        self.assertIn(r'_measurement="cpu\"main"', predicate)
+        self.assertIn(r'host="server\"1"', predicate)
 
     @patch("openwisp_monitoring.utils.sleep")
     def test_delete_metric_data_surfaces_delete_failures(self, mocked_sleep):
@@ -789,12 +762,12 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                 self.timeseries_db.delete_metric_data(key="cpu")
         mocked_sleep.assert_called()
 
-    def test_delete_series_requires_filter(self):
+    @patch.object(DatabaseClient, "_delete_api")
+    def test_delete_series_requires_filter(self, mock_delete_api):
         """Test delete_series rejects unfiltered deletes."""
-        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
-            with self.assertRaises(ValueError):
-                self.timeseries_db.delete_series()
-            mock_delete_api.delete.assert_not_called()
+        with self.assertRaises(ValueError):
+            self.timeseries_db.delete_series()
+        mock_delete_api.delete.assert_not_called()
 
     @patch("openwisp_monitoring.utils.sleep")
     def test_delete_series_surfaces_delete_failures(self, mocked_sleep):
@@ -806,7 +779,8 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                 self.timeseries_db.delete_series(key="cpu")
         mocked_sleep.assert_called()
 
-    def test_get_top_fields(self):
+    @patch.object(DatabaseClient, "query")
+    def test_get_top_fields(self, mock_query):
         """Test top field selection uses summed field values."""
         query = self.timeseries_db.get_default_chart_query(has_object_scope=True)
         result = QueryResultSet(
@@ -825,58 +799,54 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                 },
             ]
         )
-        with patch.object(
-            self.timeseries_db, "query", return_value=result
-        ) as mock_query:
-            fields = self.timeseries_db._get_top_fields(
-                query=query,
-                params={
-                    "key": "applications",
-                    "content_type": "test",
-                    "object_id": "1",
-                    "field_name": "app",
-                },
-                chart_type="histogram",
-                group_map={"30d": "30d"},
-                number=2,
-                time="30d",
-            )
-            self.assertEqual(fields, ["http2", "ssh"])
-            flux_query = mock_query.call_args[0][0]
-            self.assertIn('group(columns: ["_field"])', flux_query)
-            self.assertIn("sum()", flux_query)
+        mock_query.return_value = result
+        fields = self.timeseries_db._get_top_fields(
+            query=query,
+            params={
+                "key": "applications",
+                "content_type": "test",
+                "object_id": "1",
+                "field_name": "app",
+            },
+            chart_type="histogram",
+            group_map={"30d": "30d"},
+            number=2,
+            time="30d",
+        )
+        self.assertEqual(fields, ["http2", "ssh"])
+        flux_query = mock_query.call_args[0][0]
+        self.assertIn('group(columns: ["_field"])', flux_query)
+        self.assertIn("sum()", flux_query)
 
-    def test_get_top_fields_supports_multi_value_scopes(self):
-        with patch.object(
-            self.timeseries_db, "query", return_value=QueryResultSet([])
-        ) as mock_query:
-            self.timeseries_db._get_top_fields(
-                query=chart_query["general_traffic"]["influxdb2"],
-                params={
-                    "key": "traffic",
-                    "organization_id": ["__all__", "org1", "org2"],
-                    "location_id": ["loc1", "loc2"],
-                    "floorplan_id": ["fp1", "fp2"],
-                },
-                chart_type="general_traffic",
-                group_map={"30d": "30d"},
-                number=2,
-                time="30d",
-            )
-            flux_query = mock_query.call_args[0][0]
-            self.assertIn(
-                'contains(value: r.organization_id, set: ["org1", "org2"])',
-                flux_query,
-            )
-            self.assertIn(
-                'contains(value: r.location_id, set: ["loc1", "loc2"])',
-                flux_query,
-            )
-            self.assertIn(
-                'contains(value: r.floorplan_id, set: ["fp1", "fp2"])',
-                flux_query,
-            )
-            self.assertNotIn("__all__", flux_query)
+    @patch.object(DatabaseClient, "query", return_value=QueryResultSet([]))
+    def test_get_top_fields_supports_multi_value_scopes(self, mock_query):
+        self.timeseries_db._get_top_fields(
+            query=chart_query["general_traffic"]["influxdb2"],
+            params={
+                "key": "traffic",
+                "organization_id": ["__all__", "org1", "org2"],
+                "location_id": ["loc1", "loc2"],
+                "floorplan_id": ["fp1", "fp2"],
+            },
+            chart_type="general_traffic",
+            group_map={"30d": "30d"},
+            number=2,
+            time="30d",
+        )
+        flux_query = mock_query.call_args[0][0]
+        self.assertIn(
+            'contains(value: r.organization_id, set: ["org1", "org2"])',
+            flux_query,
+        )
+        self.assertIn(
+            'contains(value: r.location_id, set: ["loc1", "loc2"])',
+            flux_query,
+        )
+        self.assertIn(
+            'contains(value: r.floorplan_id, set: ["fp1", "fp2"])',
+            flux_query,
+        )
+        self.assertNotIn("__all__", flux_query)
 
     def test_get_top_fields_empty_result(self):
         """Test top field selection returns empty list when no data is found."""
@@ -892,7 +862,8 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             )
             self.assertEqual(fields, [])
 
-    def test_get_top_fields_preserves_supplied_chart_query_semantics(self):
+    @patch.object(DatabaseClient, "query")
+    def test_get_top_fields_preserves_supplied_chart_query_semantics(self, mock_query):
         result = QueryResultSet(
             [
                 {
@@ -903,76 +874,78 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                 }
             ]
         )
-        with patch.object(
-            self.timeseries_db, "query", return_value=result
-        ) as mock_query:
-            fields = self.timeseries_db._get_top_fields(
-                query=chart_query["cpu"]["influxdb2"],
-                params={
-                    "key": "cpu",
-                    "field_name": "cpu_usage",
-                    "content_type": "config.device",
-                    "object_id": "device-id",
-                },
-                chart_type="scatter",
-                group_map={"1h": "5m"},
-                number=1,
-                time="1h",
-            )
-            self.assertEqual(fields, ["CPU_load"])
-            flux_query = mock_query.call_args[0][0]
-            self.assertIn('r._field == "cpu_usage"', flux_query)
-            self.assertIn('map(fn: (r) => ({r with _field: "CPU_load"}))', flux_query)
-            self.assertIn("|> mean()", flux_query)
+        mock_query.return_value = result
+        fields = self.timeseries_db._get_top_fields(
+            query=chart_query["cpu"]["influxdb2"],
+            params={
+                "key": "cpu",
+                "field_name": "cpu_usage",
+                "content_type": "config.device",
+                "object_id": "device-id",
+            },
+            chart_type="scatter",
+            group_map={"1h": "5m"},
+            number=1,
+            time="1h",
+        )
+        self.assertEqual(fields, ["CPU_load"])
+        flux_query = mock_query.call_args[0][0]
+        self.assertIn('r._field == "cpu_usage"', flux_query)
+        self.assertIn('map(fn: (r) => ({r with _field: "CPU_load"}))', flux_query)
+        self.assertIn("|> mean()", flux_query)
 
-    def test_get_list_retention_policies(self):
+    @patch("influxdb_client.InfluxDBClient.buckets_api")
+    def test_get_list_retention_policies(self, mock_buckets_api):
         """Test retrieving list of retention policies."""
-        with patch.object(self.timeseries_db.db, "buckets_api") as mock_buckets_api:
-            mock_api = MagicMock()
-            mock_buckets_api.return_value = mock_api
+        mock_api = MagicMock()
+        mock_buckets_api.return_value = mock_api
 
-            default_bucket = MagicMock()
-            default_rule = MagicMock()
-            default_rule.every_seconds = 94608000  # 3 years
-            default_bucket.retention_rules = [default_rule]
-            short_bucket = MagicMock()
-            short_rule = MagicMock()
-            short_rule.every_seconds = 86400  # 24 hours
-            short_bucket.retention_rules = [short_rule]
-            mock_api.find_bucket_by_name.side_effect = [default_bucket, short_bucket]
-            policies = self.timeseries_db.get_list_retention_policies()
-            self.assertEqual(len(policies), 2)
-            self.assertEqual(policies[0]["name"], DEFAULT_RP)
-            self.assertEqual(policies[0]["default"], True)
-            self.assertEqual(policies[0]["duration"], "94608000s")
-            self.assertEqual(policies[1]["name"], SHORT_RP)
-            self.assertEqual(policies[1]["default"], False)
-            self.assertEqual(policies[1]["duration"], "86400s")
-            self.assertEqual(policies[0]["replication"], 1)
+        default_bucket = MagicMock()
+        default_rule = MagicMock()
+        default_rule.every_seconds = 94608000  # 3 years
+        default_bucket.retention_rules = [default_rule]
+        short_bucket = MagicMock()
+        short_rule = MagicMock()
+        short_rule.every_seconds = 86400  # 24 hours
+        short_bucket.retention_rules = [short_rule]
+        mock_api.find_bucket_by_name.side_effect = [default_bucket, short_bucket]
+        policies = self.timeseries_db.get_list_retention_policies()
+        self.assertEqual(len(policies), 2)
+        self.assertEqual(policies[0]["name"], DEFAULT_RP)
+        self.assertEqual(policies[0]["default"], True)
+        self.assertEqual(policies[0]["duration"], "94608000s")
+        self.assertEqual(policies[1]["name"], SHORT_RP)
+        self.assertEqual(policies[1]["default"], False)
+        self.assertEqual(policies[1]["duration"], "86400s")
+        self.assertEqual(policies[0]["replication"], 1)
 
-    def test_create_or_alter_retention_policy_creates_short_bucket(self):
+    @patch("influxdb_client.InfluxDBClient.buckets_api")
+    def test_create_or_alter_retention_policy_creates_short_bucket(
+        self, mock_buckets_api
+    ):
         """Test short retention policy creates the mapped short bucket."""
-        with patch.object(self.timeseries_db.db, "buckets_api") as mock_buckets_api:
-            mock_api = MagicMock()
-            mock_buckets_api.return_value = mock_api
-            mock_api.find_bucket_by_name.return_value = None
-            self.timeseries_db.create_or_alter_retention_policy(SHORT_RP, "24h0m0s")
-            mock_api.create_bucket.assert_called_once()
-            call_kwargs = mock_api.create_bucket.call_args[1]
-            self.assertEqual(
-                call_kwargs["bucket_name"],
-                f'{settings.TIMESERIES_DATABASE["NAME"]}_short',
-            )
+        mock_api = MagicMock()
+        mock_buckets_api.return_value = mock_api
+        mock_api.find_bucket_by_name.return_value = None
+        self.timeseries_db.create_or_alter_retention_policy(SHORT_RP, "24h0m0s")
+        mock_api.create_bucket.assert_called_once()
+        call_kwargs = mock_api.create_bucket.call_args[1]
+        self.assertEqual(
+            call_kwargs["bucket_name"],
+            f'{settings.TIMESERIES_DATABASE["NAME"]}_short',
+        )
 
-    def test_create_or_alter_retention_policy_handles_missing_bucket_error(self):
-        with patch.object(self.timeseries_db.db, "buckets_api") as mock_buckets_api:
-            mock_api = MagicMock()
-            mock_buckets_api.return_value = mock_api
-            mock_api.find_bucket_by_name.side_effect = self.timeseries_db.client_error(
-                message="could not find bucket"
-            )
-            self.timeseries_db.create_or_alter_retention_policy(SHORT_RP, "24h0m0s")
-            mock_api.create_bucket.assert_called_once()
+    @patch("influxdb_client.InfluxDBClient.buckets_api")
+    def test_create_or_alter_retention_policy_handles_missing_bucket_error(
+        self, mock_buckets_api
+    ):
+        mock_api = MagicMock()
+        mock_buckets_api.return_value = mock_api
+        mock_api.find_bucket_by_name.side_effect = self.timeseries_db.client_error(
+            message="could not find bucket"
+        )
+        self.timeseries_db.create_or_alter_retention_policy(SHORT_RP, "24h0m0s")
+        mock_api.create_bucket.assert_called_once()
 
     @patch("openwisp_monitoring.utils.sleep")
     def test_create_or_alter_retention_policy_surfaces_lookup_failures(
@@ -1195,20 +1168,16 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             datetime(2262, 4, 11, 23, 47, 16, 854775, tzinfo=timezone.utc),
         )
 
-    def test_read_uses_fixed_future_stop_for_datetime_since(self):
-        with patch.object(
-            self.timeseries_db, "query", return_value=QueryResultSet([])
-        ) as mock_query:
-            self.timeseries_db.read(
-                key="cpu",
-                fields=["usage"],
-                tags={},
-                since=datetime(2000, 1, 1),
-            )
-            flux_query = mock_query.call_args[0][0]
-            self.assertIn(
-                'stop: time(v: "2262-04-11T23:47:16.854775+00:00")', flux_query
-            )
+    @patch.object(DatabaseClient, "query", return_value=QueryResultSet([]))
+    def test_read_uses_fixed_future_stop_for_datetime_since(self, mock_query):
+        self.timeseries_db.read(
+            key="cpu",
+            fields=["usage"],
+            tags={},
+            since=datetime(2000, 1, 1),
+        )
+        flux_query = mock_query.call_args[0][0]
+        self.assertIn('stop: time(v: "2262-04-11T23:47:16.854775+00:00")', flux_query)
 
     def test_get_query_summary_uses_whole_range_aggregate(self):
         query = self.timeseries_db.get_query(
@@ -2130,11 +2099,11 @@ class TestInfluxDb2ClientIntegration(
         self.assertEqual(policies[1]["default"], False)
 
     @capture_stderr()
-    def test_write_failure_raises_timeseries_exception(self):
-        with patch.object(timeseries_db, "_write_api") as mock_write_api:
-            mock_write_api.write.side_effect = RuntimeError("write failed")
-            with self.assertRaises(TimeseriesWriteException):
-                timeseries_db.write("test_write", {"value": 1})
+    @patch.object(DatabaseClient, "_write_api")
+    def test_write_failure_raises_timeseries_exception(self, mock_write_api):
+        mock_write_api.write.side_effect = RuntimeError("write failed")
+        with self.assertRaises(TimeseriesWriteException):
+            timeseries_db.write("test_write", {"value": 1})
 
 
 @tag("timeseries_client", "influxdb2")
