@@ -750,7 +750,10 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
             self.timeseries_db.delete_metric_data(key="cpu")
             stop = mock_delete_api.delete.call_args[0][1]
-            self.assertEqual(stop, datetime(2100, 1, 1, tzinfo=timezone.utc))
+            self.assertEqual(
+                stop,
+                datetime(2262, 4, 11, 23, 47, 16, 854775, tzinfo=timezone.utc),
+            )
 
     def test_delete_metric_data_rejects_unsafe_tag_keys(self):
         with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
@@ -1187,7 +1190,10 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         self.assertNotIn('|> to(bucket: "evil")', query)
 
     def test_open_range_stop_uses_fixed_future_datetime(self):
-        self.assertEqual(OPEN_RANGE_STOP, datetime(2100, 1, 1, tzinfo=timezone.utc))
+        self.assertEqual(
+            OPEN_RANGE_STOP,
+            datetime(2262, 4, 11, 23, 47, 16, 854775, tzinfo=timezone.utc),
+        )
 
     def test_read_uses_fixed_future_stop_for_datetime_since(self):
         with patch.object(
@@ -1200,7 +1206,9 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                 since=datetime(2000, 1, 1),
             )
             flux_query = mock_query.call_args[0][0]
-            self.assertIn('stop: time(v: "2100-01-01T00:00:00+00:00")', flux_query)
+            self.assertIn(
+                'stop: time(v: "2262-04-11T23:47:16.854775+00:00")', flux_query
+            )
 
     def test_get_query_summary_uses_whole_range_aggregate(self):
         query = self.timeseries_db.get_query(

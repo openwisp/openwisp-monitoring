@@ -37,7 +37,8 @@ logger = logging.getLogger(__name__)
 MIN_TIMEZONE_WINDOW_SECONDS = 24 * 60 * 60
 
 OPEN_RANGE_START = datetime(1970, 1, 1, tzinfo=timezone.utc)
-OPEN_RANGE_STOP = datetime(2100, 1, 1, tzinfo=timezone.utc)
+# Latest InfluxDB 2 timestamp representable by Python datetime.
+OPEN_RANGE_STOP = datetime(2262, 4, 11, 23, 47, 16, 854775, tzinfo=timezone.utc)
 
 FLUX_METADATA_FIELDS = {
     "result",
