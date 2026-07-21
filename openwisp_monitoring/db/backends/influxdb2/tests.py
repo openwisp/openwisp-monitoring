@@ -1594,38 +1594,29 @@ class TestInfluxDb2UdpDelivery(
         self.assertEqual(points[0]["value"], 42)
 
 
-@tag("timeseries_client", "influxdb2")
-class TestInfluxDb2ClientIntegration(
-    RequireTimeseriesBackendMixin, TestMonitoringMixin, TestCase
-):
-    expected_backend = "influxdb2"
+class InfluxDb2IntegrationMixin:
+    @classmethod
+    def _get_class_patchers(cls):
+        return (
+            patch.object(
+                monitoring_tasks.timeseries_write,
+                "delay",
+                side_effect=monitoring_tasks.timeseries_write.run,
+            ),
+            patch.object(
+                monitoring_tasks.timeseries_batch_write,
+                "delay",
+                side_effect=monitoring_tasks.timeseries_batch_write.run,
+            ),
+        )
 
     @classmethod
     def setUpClass(cls):
-        cls._require_timeseries_backend()
-        cls._write_delay_patcher = patch.object(
-            monitoring_tasks.timeseries_write,
-            "delay",
-            side_effect=monitoring_tasks.timeseries_write.run,
-        )
-        cls._batch_write_delay_patcher = patch.object(
-            monitoring_tasks.timeseries_batch_write,
-            "delay",
-            side_effect=monitoring_tasks.timeseries_batch_write.run,
-        )
-        cls._device_write_delay_patcher = patch.object(
-            device_tasks.write_device_metrics,
-            "delay",
-            side_effect=device_tasks.write_device_metrics.run,
-        )
+        cls._class_patchers = cls._get_class_patchers()
         started_patchers = []
         super_setup_completed = False
         try:
-            for patcher in (
-                cls._write_delay_patcher,
-                cls._batch_write_delay_patcher,
-                cls._device_write_delay_patcher,
-            ):
+            for patcher in cls._class_patchers:
                 patcher.start()
                 started_patchers.append(patcher)
             super().setUpClass()
@@ -1641,10 +1632,29 @@ class TestInfluxDb2ClientIntegration(
 
     @classmethod
     def tearDownClass(cls):
-        cls._device_write_delay_patcher.stop()
-        cls._batch_write_delay_patcher.stop()
-        cls._write_delay_patcher.stop()
+        for patcher in reversed(cls._class_patchers):
+            patcher.stop()
         super().tearDownClass()
+
+
+@tag("timeseries_client", "influxdb2")
+class TestInfluxDb2ClientIntegration(
+    InfluxDb2IntegrationMixin,
+    RequireTimeseriesBackendMixin,
+    TestMonitoringMixin,
+    TestCase,
+):
+    expected_backend = "influxdb2"
+
+    @classmethod
+    def _get_class_patchers(cls):
+        return super()._get_class_patchers() + (
+            patch.object(
+                device_tasks.write_device_metrics,
+                "delay",
+                side_effect=device_tasks.write_device_metrics.run,
+            ),
+        )
 
     def test_metric_write_and_read_round_trip(self):
         metric = self._create_general_metric(name="load")
@@ -2098,8 +2108,8 @@ class TestInfluxDb2ClientIntegration(
         self.assertEqual(policies[1]["name"], SHORT_RP)
         self.assertEqual(policies[1]["default"], False)
 
+    @patch.object(timeseries_db, "_write_api")
     @capture_stderr()
-    @patch.object(DatabaseClient, "_write_api")
     def test_write_failure_raises_timeseries_exception(self, mock_write_api):
         mock_write_api.write.side_effect = RuntimeError("write failed")
         with self.assertRaises(TimeseriesWriteException):
@@ -2108,6 +2118,7 @@ class TestInfluxDb2ClientIntegration(
 
 @tag("timeseries_client", "influxdb2")
 class TestInfluxDb2CheckIntegration(
+    InfluxDb2IntegrationMixin,
     RequireTimeseriesBackendMixin,
     AutoWifiClientCheck,
     AutoDataCollectedCheck,
@@ -2117,45 +2128,6 @@ class TestInfluxDb2CheckIntegration(
     _WIFI_CLIENTS = check_settings.CHECK_CLASSES[3][0]
     _DATA_COLLECTED = check_settings.CHECK_CLASSES[4][0]
     expected_backend = "influxdb2"
-
-    @classmethod
-    def setUpClass(cls):
-        cls._require_timeseries_backend()
-        cls._write_delay_patcher = patch.object(
-            monitoring_tasks.timeseries_write,
-            "delay",
-            side_effect=monitoring_tasks.timeseries_write.run,
-        )
-        cls._batch_write_delay_patcher = patch.object(
-            monitoring_tasks.timeseries_batch_write,
-            "delay",
-            side_effect=monitoring_tasks.timeseries_batch_write.run,
-        )
-        started_patchers = []
-        super_setup_completed = False
-        try:
-            for patcher in (
-                cls._write_delay_patcher,
-                cls._batch_write_delay_patcher,
-            ):
-                patcher.start()
-                started_patchers.append(patcher)
-            super().setUpClass()
-            super_setup_completed = True
-            manage_short_retention_policy()
-        except Exception:
-            for patcher in reversed(started_patchers):
-                patcher.stop()
-            if super_setup_completed:
-                super().tearDownClass()
-            raise
-        assert settings.TIMESERIES_DATABASE["BACKEND"].endswith("influxdb2")
-
-    @classmethod
-    def tearDownClass(cls):
-        cls._batch_write_delay_patcher.stop()
-        cls._write_delay_patcher.stop()
-        super().tearDownClass()
 
     def _create_device(self, monitoring_status="ok", *args, **kwargs):
         device = super()._create_device(*args, **kwargs)
