@@ -127,6 +127,12 @@ class TestDatabaseClient(RequireTimeseriesBackendMixin, TestMonitoringMixin, Tes
         )[0]
         self.assertEqual(measurement["value"], 2)
 
+    def test_write_preserves_zero_timestamp(self):
+        with patch.object(timeseries_db, "_write") as mocked_write:
+            timeseries_db.write("test_write", {"value": 2}, timestamp=0)
+        point = mocked_write.call_args[1]["points"][0]
+        self.assertEqual(point["time"], 0)
+
     def test_general_write(self):
         m = self._create_general_metric(name="Sync test")
         m.write(1)

@@ -104,6 +104,9 @@ class BaseTimeseriesClient(ABC):
         if db_name is not None:
             self.db_name = db_name
 
+    def validate_chart_config(self, chart_config: Mapping[str, Any]) -> None:
+        pass
+
     def get_default_chart_query(self, has_object_scope: bool = False) -> str:
         default_query = self.queries.default_chart_query
         resolver = getattr(default_query, "resolve", None)

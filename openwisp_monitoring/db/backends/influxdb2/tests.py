@@ -3,6 +3,7 @@ InfluxDB 2.x Database Client Tests
 """
 
 import time
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -10,7 +11,7 @@ from uuid import uuid4
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.test import TestCase, TransactionTestCase, tag
 from django.utils.timezone import now
 from freezegun import freeze_time
@@ -120,6 +121,81 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             result = self.timeseries_db.validate_query(query)
             self.assertTrue(result, f"aggregateWindow query not detected: {query}")
 
+    def test_validate_chart_config_allows_built_in_query_without_config_summary(self):
+        self.timeseries_db.validate_chart_config({"query": chart_query["cpu"]})
+
+    def test_validate_chart_config_rejects_built_in_query_without_bundle_summary(self):
+        queries = replace(
+            self.timeseries_db.queries,
+            summary_query={
+                key: value for key, value in summary_query.items() if key != "cpu"
+            },
+        )
+        with patch.object(self.timeseries_db, "queries", queries):
+            with self.assertRaisesMessage(
+                ImproperlyConfigured,
+                'InfluxDB2 chart query "cpu" must define a matching summary query.',
+            ):
+                self.timeseries_db.validate_chart_config({"query": chart_query["cpu"]})
+
+    def test_validate_chart_config_allows_custom_window_query_with_summary(self):
+        self.timeseries_db.validate_chart_config(
+            {
+                "query": {
+                    "influxdb2": (
+                        'from(bucket: "{bucket}") |> range(start: {time_start})'
+                        " |> aggregateWindow(every: {window}, fn: mean)"
+                    )
+                },
+                "summary_query": {
+                    "influxdb2": (
+                        'from(bucket: "{bucket}") |> range(start: {time_start})'
+                        " |> mean()"
+                    )
+                },
+            }
+        )
+
+    def test_validate_chart_config_rejects_custom_window_query_without_summary(self):
+        with self.assertRaisesMessage(
+            ImproperlyConfigured,
+            'summary_query["influxdb2"]',
+        ):
+            self.timeseries_db.validate_chart_config(
+                {
+                    "query": {
+                        "influxdb2": (
+                            'from(bucket: "{bucket}") |> range(start: {time_start})'
+                            " |> window(every: {window})"
+                        )
+                    }
+                }
+            )
+
+    def test_validate_chart_configuration_rejects_custom_window_query_without_summary(self):
+        from openwisp_monitoring.monitoring.configuration import (
+            _validate_chart_configuration,
+        )
+
+        with self.assertRaisesMessage(
+            ImproperlyConfigured,
+            'summary_query["influxdb2"]',
+        ):
+            _validate_chart_configuration(
+                {
+                    "type": "line",
+                    "title": "Custom window chart",
+                    "description": "Custom window chart",
+                    "order": 10,
+                    "query": {
+                        "influxdb2": (
+                            'from(bucket: "{bucket}") |> range(start: {time_start})'
+                            " |> aggregateWindow(every: {window}, fn: mean)"
+                        )
+                    },
+                }
+            )
+
     def test_duration_to_seconds(self):
         """Test duration string conversion to seconds."""
         test_cases = [
@@ -180,6 +256,12 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             self.assertEqual(
                 call_args[1]["bucket"], settings.TIMESERIES_DATABASE["NAME"]
             )
+
+    def test_write_preserves_zero_timestamp(self):
+        with patch.object(self.timeseries_db, "_write") as mocked_write:
+            self.timeseries_db.write("test_measurement", {"field1": 10}, timestamp=0)
+        point = mocked_write.call_args[1]["points"]
+        self.assertEqual(point["time"], 0)
 
     def test_write_uses_retention_policy_bucket(self):
         """Test writing with a retention policy uses the mapped bucket."""

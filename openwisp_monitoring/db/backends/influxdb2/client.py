@@ -200,6 +200,7 @@ class DatabaseClient(BaseTimeseriesClient):
     )
     _FLUX_COMMENT_PATTERN = re.compile(r"//.*?$", re.MULTILINE)
     _FLUX_STRING_LITERAL_PATTERN = re.compile(r'"(?:\\.|[^"\\])*"')
+    _FLUX_WINDOW_PATTERN = re.compile(r"\b(?:aggregatewindow|window)\s*\(", re.I)
     _DELETE_PREDICATE_KEY_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
     @classmethod
@@ -414,7 +415,8 @@ class DatabaseClient(BaseTimeseriesClient):
 
     def _get_timestamp(self, timestamp=None):
         """Returns ISO format timestamp."""
-        timestamp = timestamp or now()
+        if timestamp is None:
+            timestamp = now()
         if isinstance(timestamp, datetime):
             return timestamp.isoformat()
         return timestamp
@@ -670,6 +672,35 @@ class DatabaseClient(BaseTimeseriesClient):
             )
             for word in self._AGGREGATE
         )
+
+    def validate_chart_config(self, chart_config):
+        query_config = chart_config.get("query") or {}
+        if not isinstance(query_config, Mapping):
+            return
+        query = query_config.get(self.backend_name)
+        if not query:
+            return
+        for chart_name, builtin_query_config in self.queries.chart_query.items():
+            if builtin_query_config.get(self.backend_name) != query:
+                continue
+            summary_queries = self.queries.summary_query or {}
+            if not summary_queries.get(chart_name, {}).get(self.backend_name):
+                raise ImproperlyConfigured(
+                    f'InfluxDB2 chart query "{chart_name}" must define a '
+                    "matching summary query."
+                )
+            return
+        validation_source = self._get_flux_validation_source(query)
+        if not self._FLUX_WINDOW_PATTERN.search(validation_source):
+            return
+        summary_query = chart_config.get("summary_query") or {}
+        if not isinstance(summary_query, Mapping) or not summary_query.get(
+            self.backend_name
+        ):
+            raise ImproperlyConfigured(
+                "Custom InfluxDB2 chart queries using aggregateWindow() or "
+                'window() must define summary_query["influxdb2"].'
+            )
 
     def write(self, name: str, values: TimeseriesFields, **kwargs: Any) -> None:
         timestamp = self._get_timestamp(timestamp=kwargs.get("timestamp"))

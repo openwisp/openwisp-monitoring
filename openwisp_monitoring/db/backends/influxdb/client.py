@@ -232,7 +232,8 @@ class DatabaseClient(BaseTimeseriesClient):
             raise TimeseriesWriteException
 
     def _get_timestamp(self, timestamp=None):
-        timestamp = timestamp or now()
+        if timestamp is None:
+            timestamp = now()
         if isinstance(timestamp, datetime):
             return timestamp.isoformat(sep="T", timespec="microseconds")
         return timestamp
