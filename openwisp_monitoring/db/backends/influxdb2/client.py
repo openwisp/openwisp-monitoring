@@ -36,6 +36,9 @@ logger = logging.getLogger(__name__)
 
 MIN_TIMEZONE_WINDOW_SECONDS = 24 * 60 * 60
 
+OPEN_RANGE_START = datetime(1970, 1, 1, tzinfo=timezone.utc)
+OPEN_RANGE_STOP = datetime(2100, 1, 1, tzinfo=timezone.utc)
+
 FLUX_METADATA_FIELDS = {
     "result",
     "table",
@@ -504,12 +507,6 @@ class DatabaseClient(BaseTimeseriesClient):
             return f'time(v: "{self._serialize_flux_time(value)}")'
         return value
 
-    def _get_open_range_start(self):
-        return datetime(1970, 1, 1, tzinfo=timezone.utc)
-
-    def _get_open_range_stop(self):
-        return datetime(2100, 1, 1, tzinfo=timezone.utc)
-
     def _normalize_chart_window(self, time_value, group_map=None):
         if group_map and time_value in group_map:
             return group_map[time_value]
@@ -535,7 +532,7 @@ class DatabaseClient(BaseTimeseriesClient):
             cleaned_where.append((field, op, value))
         return cleaned_where
 
-    def _filter_where_after_normalization(self, fields, where):
+    def _should_filter_where_after_read(self, fields, where):
         if not where:
             return False
         if fields == ["*"]:
@@ -812,9 +809,9 @@ class DatabaseClient(BaseTimeseriesClient):
         if since:
             start = since
         else:
-            start = self._get_open_range_start()
+            start = OPEN_RANGE_START
         timestamp = self._format_flux_time(start)
-        stop = self._format_flux_time(self._get_open_range_stop())
+        stop = self._format_flux_time(OPEN_RANGE_STOP)
         flux_query += f" |> range(start: {timestamp}, stop: {stop})"
         # Filter by measurement. InfluxDB 1.x allows comma-separated measurements.
         measurements = [
@@ -854,7 +851,7 @@ class DatabaseClient(BaseTimeseriesClient):
         elif extra_fields == "*":
             fields = ["*"]
         output_fields = fields[:]
-        filter_where_after_normalization = self._filter_where_after_normalization(
+        should_filter_where_after_read = self._should_filter_where_after_read(
             output_fields, where
         )
         query_fields = fields[:]
@@ -878,7 +875,7 @@ class DatabaseClient(BaseTimeseriesClient):
                 ]
             )
             flux_query += f" |> filter(fn: (r) => {field_filter})"
-        if not filter_where_after_normalization:
+        if not should_filter_where_after_read:
             for field, op, value in where:
                 flux_query += (
                     " |> filter(fn: (r) => "
@@ -925,7 +922,7 @@ class DatabaseClient(BaseTimeseriesClient):
             ]
             return points[: int(limit)] if limit else points
         points = self._normalize_read_points(result)
-        if filter_where_after_normalization:
+        if should_filter_where_after_read:
             points = self._filter_normalized_read_points(points, output_fields, where)
         return points[: int(limit)] if limit else points
 
@@ -1065,11 +1062,9 @@ class DatabaseClient(BaseTimeseriesClient):
 
     @retry
     def _delete_range(self, predicate: str = "", bucket: str | None = None) -> None:
-        start = self._get_open_range_start()
-        stop = self._get_open_range_stop()
         self._delete_api.delete(
-            start,
-            stop,
+            OPEN_RANGE_START,
+            OPEN_RANGE_STOP,
             predicate,
             bucket=bucket or self.db_name,
             org=self.user,

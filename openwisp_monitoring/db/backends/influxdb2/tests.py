@@ -20,6 +20,7 @@ from swapper import load_model
 from openwisp_monitoring.check import settings as check_settings
 from openwisp_monitoring.check.tests import AutoDataCollectedCheck, AutoWifiClientCheck
 from openwisp_monitoring.db.backends.influxdb2.client import (
+    OPEN_RANGE_STOP,
     DatabaseClient,
     QueryResultSet,
 )
@@ -121,10 +122,10 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             result = self.timeseries_db.validate_query(query)
             self.assertTrue(result, f"aggregateWindow query not detected: {query}")
 
-    def test_validate_chart_config_allows_built_in_query_without_config_summary(self):
+    def test_validate_chart_config_builtin_ok(self):
         self.timeseries_db.validate_chart_config({"query": chart_query["cpu"]})
 
-    def test_validate_chart_config_rejects_built_in_query_without_bundle_summary(self):
+    def test_validate_chart_config_builtin_missing_bundle_summary(self):
         queries = replace(
             self.timeseries_db.queries,
             summary_query={
@@ -172,9 +173,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                 }
             )
 
-    def test_validate_chart_configuration_rejects_custom_window_query_without_summary(
-        self,
-    ):
+    def test_validate_chart_configuration_rejects_custom_window_query(self):
         from openwisp_monitoring.monitoring.configuration import (
             _validate_chart_configuration,
         )
@@ -261,9 +260,25 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
 
     def test_write_preserves_zero_timestamp(self):
         with patch.object(self.timeseries_db, "_write") as mocked_write:
-            self.timeseries_db.write("test_measurement", {"field1": 10}, timestamp=0)
-        point = mocked_write.call_args[1]["points"]
-        self.assertEqual(point["time"], 0)
+            with self.subTest("write"):
+                self.timeseries_db.write(
+                    "test_measurement", {"field1": 10}, timestamp=0
+                )
+                point = mocked_write.call_args[1]["points"]
+                self.assertEqual(point["time"], 0)
+            with self.subTest("batch_write"):
+                mocked_write.reset_mock()
+                self.timeseries_db.batch_write(
+                    [
+                        {
+                            "name": "test_measurement",
+                            "values": {"field1": 10},
+                            "timestamp": 0,
+                        }
+                    ]
+                )
+                point = mocked_write.call_args[1]["points"][0]
+                self.assertEqual(point["time"], 0)
 
     def test_write_uses_retention_policy_bucket(self):
         """Test writing with a retention policy uses the mapped bucket."""
@@ -1171,11 +1186,8 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         )
         self.assertNotIn('|> to(bucket: "evil")', query)
 
-    def test_get_open_range_stop_uses_fixed_future_datetime(self):
-        self.assertEqual(
-            self.timeseries_db._get_open_range_stop(),
-            datetime(2100, 1, 1, tzinfo=timezone.utc),
-        )
+    def test_open_range_stop_uses_fixed_future_datetime(self):
+        self.assertEqual(OPEN_RANGE_STOP, datetime(2100, 1, 1, tzinfo=timezone.utc))
 
     def test_read_uses_fixed_future_stop_for_datetime_since(self):
         with patch.object(
