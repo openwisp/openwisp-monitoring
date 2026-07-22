@@ -61,9 +61,12 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.timeseries_db = DatabaseClient().attach_queries(timeseries_db.queries)
         assert settings.TIMESERIES_DATABASE["BACKEND"].endswith("influxdb2")
-        assert cls.timeseries_db.backend_name == "influxdb2"
+
+    def setUp(self):
+        super().setUp()
+        # Avoid leaking cached API handles or patches from one test to another.
+        self.timeseries_db = DatabaseClient().attach_queries(timeseries_db.queries)
 
     def test_backend_name(self):
         self.assertEqual(self.timeseries_db.backend_name, "influxdb2")
