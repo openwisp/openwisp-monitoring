@@ -2,7 +2,10 @@ from openwisp_monitoring.monitoring.tests.test_charts import (
     TestCharts as BaseTestCharts,
 )
 from openwisp_monitoring.monitoring.tests.test_db_creation import (
-    TestDatabase as BaseTestDatabase,
+    TestDatabaseInfluxDb as BaseTestDatabaseInfluxDb,
+)
+from openwisp_monitoring.monitoring.tests.test_db_creation import (
+    TestDatabaseInfluxDb2 as BaseTestDatabaseInfluxDb2,
 )
 from openwisp_monitoring.monitoring.tests.test_models import (
     TestModels as BaseTestModels,
@@ -15,7 +18,11 @@ from openwisp_monitoring.monitoring.tests.test_monitoring_notifications import (
 )
 
 
-class TestDatabase(BaseTestDatabase):
+class TestDatabaseInfluxDb(BaseTestDatabaseInfluxDb):
+    app = "sample_monitoring"
+
+
+class TestDatabaseInfluxDb2(BaseTestDatabaseInfluxDb2):
     app = "sample_monitoring"
 
 
@@ -51,7 +58,8 @@ class TestTransactionMonitoringNotifications(
 
 
 # this is necessary to avoid excuting the base test suites
-del BaseTestDatabase
+del BaseTestDatabaseInfluxDb
+del BaseTestDatabaseInfluxDb2
 del BaseTestCharts
 del BaseTestModels
 del BaseTestMonitoringNotifications

@@ -25,7 +25,7 @@ from swapper import get_model_name
 from openwisp_monitoring.monitoring.utils import clean_timeseries_data_key
 from openwisp_utils.base import TimeStampedEditableModel
 
-from ...db import default_chart_query, timeseries_db
+from ...db import timeseries_db
 from ...settings import CACHE_TIMEOUT, DEFAULT_CHART_TIME
 from .. import settings as app_settings
 from ..configuration import (
@@ -646,10 +646,9 @@ class AbstractChart(TimeStampedEditableModel):
 
     @property
     def _default_query(self):
-        q = default_chart_query[0]
-        if self.metric.object_id:
-            q += default_chart_query[1]
-        return q
+        return timeseries_db.get_default_chart_query(
+            has_object_scope=bool(self.metric.object_id)
+        )
 
     @classmethod
     def _get_group_map(cls, time=None):
