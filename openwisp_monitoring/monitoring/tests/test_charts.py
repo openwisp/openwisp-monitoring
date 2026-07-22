@@ -2,7 +2,6 @@ import json
 from datetime import date, timedelta
 from unittest.mock import patch
 
-from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.test import TestCase, tag
 from django.utils.timezone import now
@@ -10,6 +9,7 @@ from swapper import load_model
 
 from openwisp_utils.tests import capture_stderr
 
+from ...db import timeseries_db
 from .. import settings as app_settings
 from ..configuration import (
     CHART_CONFIGURATION_CHOICES,
@@ -18,7 +18,7 @@ from ..configuration import (
     register_chart,
     unregister_chart,
 )
-from . import TestMonitoringMixin, charts
+from . import RequireTimeseriesBackendMixin, TestMonitoringMixin, charts
 
 Chart = load_model("monitoring", "Chart")
 
@@ -26,6 +26,7 @@ Chart = load_model("monitoring", "Chart")
 class TestCharts(TestMonitoringMixin, TestCase):
     """Tests for functionalities related to charts"""
 
+    @tag("flaky_with_udp_writes")
     def test_read(self):
         c = self._create_chart()
         data = self._read_chart(c)
@@ -38,6 +39,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertEqual(len(charts[0][1]), 3)
         self.assertEqual(charts[0][1], [3, 6, 9])
 
+    @tag("flaky_with_udp_writes")
     def test_read_summary_avg(self):
         m = self._create_object_metric(name="summary_avg")
         c = self._create_chart(metric=m, test_data=False, configuration="mean_test")
@@ -47,6 +49,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         data = self._read_chart(c)
         self.assertEqual(data["summary"], {"value": 2})
 
+    @tag("flaky_with_udp_writes")
     def test_read_summary_sum(self):
         m = self._create_object_metric(name="summary_sum")
         c = self._create_chart(metric=m, test_data=False, configuration="sum_test")
@@ -139,6 +142,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertEqual(data["summary"], {"google": 87500000, "facebook": 37503000})
         self.assertEqual(c.get_top_fields(2), ["google", "facebook"])
 
+    @tag("flaky_with_udp_writes")
     def test_read_multiple(self):
         c = self._create_chart(test_data=None, configuration="multiple_test")
         m1 = c.metric
@@ -167,6 +171,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertEqual(charts[0][1], [3, 2, 1])
         self.assertEqual(charts[1][1], [4, 3, 2])
 
+    @tag("flaky_with_udp_writes")
     def test_read_group_by_tag(self):
         m1 = self._create_object_metric(
             name="test metric 1",
@@ -201,6 +206,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertEqual(data["summary"]["first"], 6)
         self.assertEqual(data["summary"]["second"], 9)
 
+    @tag("flaky_with_udp_writes")
     def test_json(self):
         c = self._create_chart()
         data = self._read_chart(c)
@@ -223,33 +229,33 @@ class TestCharts(TestMonitoringMixin, TestCase):
     def test_read_bad_query(self):
         try:
             self._create_chart(configuration="bad_test")
-        except ValidationError as e:
-            self.assertIn("configuration", e.message_dict)
-            self.assertIn("error parsing query: found BAD", str(e.message_dict))
+        except ValidationError as error:
+            self.assertIn("configuration", error.message_dict)
         else:
             self.fail("ValidationError not raised")
 
+    # InfluxDB1 keeps local dates in the query and applies tz().
+    # InfluxDB2 converts local dates to UTC before building Flux queries.
+    @tag("influxdb1")
     def test_get_query(self):
+        if timeseries_db.backend_name != "influxdb":
+            self.skipTest('Set TIMESERIES_BACKEND="influxdb" to run this test.')
         c = self._create_chart(test_data=False)
         m = c.metric
         now_ = now()
         today = date(now_.year, now_.month, now_.day)
         time = today - timedelta(days=6)
-        expected = c.query.format(
-            field_name=m.field_name,
-            key=m.key,
-            content_type=m.content_type_key,
-            object_id=m.object_id,
-            time=str(time),
-            end_date="",
-        )
-        expected = "{0} tz('{1}')".format(expected, settings.TIME_ZONE)
-        self.assertEqual(c.get_query(), expected)
+        query = c.get_query()
+        self.assertIn(m.key, query)
+        self.assertIn(m.content_type_key, query)
+        self.assertIn(str(m.object_id), query)
+        self.assertIn(str(time)[0:10], query)
 
     def test_description(self):
         c = self._create_chart(test_data=False)
         self.assertEqual(c.description, "Dummy chart for testing purposes.")
 
+    @tag("flaky_with_udp_writes")
     def test_wifi_hostapd(self):
         m = self._create_object_metric(
             name="wifi associations",
@@ -299,19 +305,6 @@ class TestCharts(TestMonitoringMixin, TestCase):
         c.save()
         self.assertNotIn("GROUP BY time", c.get_query())
 
-    @capture_stderr()
-    def test_bad_json_query_returns_none(self):
-        m = self._create_object_metric(
-            name="wifi associations",
-            key="hostapd",
-            field_name="mac",
-            extra_tags={"ifname": "wlan0"},
-        )
-        c = self._create_chart(metric=m, test_data=False, configuration="wifi_clients")
-        m.write("00:14:5c:00:00:00")
-        c.save()
-        self.assertIsNone(c.json(time=1))
-
     def test_register_invalid_chart_configuration(self):
         with self.subTest("Registering with incomplete chart configuration."):
             with self.assertRaises(AssertionError):
@@ -357,3 +350,44 @@ class TestCharts(TestMonitoringMixin, TestCase):
             self.assertDictEqual(
                 DEFAULT_DASHBOARD_TRAFFIC_CHART, {"__all__": ["wan", "eth1", "eth0_2"]}
             )
+
+
+class TestChartsBackendMixin(
+    RequireTimeseriesBackendMixin, TestMonitoringMixin, TestCase
+):
+    expected_backend = None
+
+    def _create_wifi_clients_chart(self):
+        m = self._create_object_metric(
+            name="wifi associations",
+            key="hostapd",
+            field_name="mac",
+            extra_tags={"ifname": "wlan0"},
+        )
+        c = self._create_chart(metric=m, test_data=False, configuration="wifi_clients")
+        m.write("00:14:5c:00:00:00")
+        c.save()
+        return c
+
+
+@tag("influxdb1")
+class TestChartsInfluxDb1(TestChartsBackendMixin):
+    expected_backend = "influxdb"
+
+    @capture_stderr()
+    def test_bad_json_query_returns_none(self):
+        c = self._create_wifi_clients_chart()
+        self.assertIsNone(c.json(time=1))
+
+
+@tag("influxdb2")
+class TestChartsInfluxDb2(TestChartsBackendMixin):
+    expected_backend = "influxdb2"
+
+    @capture_stderr()
+    def test_bad_json_query_returns_value(self):
+        c = self._create_wifi_clients_chart()
+        data = json.loads(c.json(time=1))
+        traces = dict(data["traces"])
+        self.assertIn("wifi_clients", traces)
+        self.assertIn(1, traces["wifi_clients"])

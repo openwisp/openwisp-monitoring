@@ -30,9 +30,13 @@ To ensure consistent alerting behavior, this value should match the
 -----------------------
 
 ============ =========
-**type**:    ``str``
+**type**:    ``dict``
 **default**: see below
 ============ =========
+
+Example configurations:
+
+Default ``influxdb`` backend configuration:
 
 .. code-block:: python
 
@@ -49,22 +53,39 @@ To ensure consistent alerting behavior, this value should match the
         },
     }
 
-The following table describes all keys available in
+Alternative ``influxdb2`` backend configuration:
+
+.. code-block:: python
+
+    TIMESERIES_DATABASE = {
+        "BACKEND": "openwisp_monitoring.db.backends.influxdb2",
+        "NAME": "openwisp2",
+        "USER": "openwisp",  # InfluxDB organization
+        "PASSWORD": "openwisp-token",  # InfluxDB API token
+        "URL": "http://localhost:8087",
+        "OPTIONS": {
+            "udp_writes": False,
+            "udp_port": 8089,
+        },
+    }
+
+The following table describes the keys available in the
 ``TIMESERIES_DATABASE`` setting:
 
 ============ =============================================================
 **Key**      ``Description``
-``BACKEND``  The timeseries database backend to use. You can select one of
-             the backends located in ``openwisp_monitoring.db.backends``
-``USER``     User for logging into the timeseries database
-``PASSWORD`` Password of the timeseries database user
+``BACKEND``  The Python path of the timeseries backend to use, as shown in
+             the examples above
+``USER``     Username or organization, depending on the selected backend
+``PASSWORD`` Password or API token, depending on the selected backend
 ``NAME``     Name of the timeseries database
+``URL``      Connection URL supported by the ``influxdb2`` backend;
+             required when ``HOST`` and ``PORT`` are not configured
 ``HOST``     IP address/hostname of machine where the timeseries database
              is running
 ``PORT``     Port for connecting to the timeseries database
-``OPTIONS``  These settings depends on the timeseries backend. Refer the
-             :ref:`timeseries_backend_options` table below for available
-             options
+``OPTIONS``  These settings depend on the timeseries backend. Refer to
+             :ref:`timeseries_backend_options` for available options
 ============ =============================================================
 
 .. _timeseries_backend_options:
@@ -72,25 +93,35 @@ The following table describes all keys available in
 Timeseries Database Options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-============== =====================================================
+============== ===========================================================
 ``udp_writes`` Whether to use UDP for writing data to the timeseries
-               database
-``udp_port``   Timeseries database port for writing data using UDP
-============== =====================================================
+               database. The ``influxdb2`` backend requires Telegraf as a
+               UDP listener because InfluxDB 2.x does not support UDP
+               natively
+``udp_host``   Optional Telegraf UDP listener hostname. Available only for
+               the ``influxdb2`` backend. Defaults to ``HOST`` when
+               configured, otherwise ``localhost``
+``udp_port``   Timeseries database port for writing data using UDP on the
+               ``influxdb`` backend, or Telegraf listener port for the
+               ``influxdb2`` backend
+============== ===========================================================
+
+The ``influxdb2`` backend supports UDP writes only through Telegraf.
+OpenWISP sends Influx line protocol to Telegraf over UDP, then Telegraf
+forwards the data to InfluxDB 2.x over HTTP.
 
 .. important::
 
-    UDP packets can have a maximum size of 64KB. When using UDP for
-    writing timeseries data, if the size of the data exceeds 64KB, TCP
-    mode will be used instead.
+    UDP packets can have a maximum size of 64KB. When using UDP writes, if
+    the size of the data exceeds 64KB, TCP mode will be used instead.
 
 .. note::
 
-    If you want to use the ``openwisp_monitoring.db.backends.influxdb``
-    backend with UDP writes enabled, then you need to enable two different
-    ports for UDP (each for different retention policy) in your InfluxDB
-    configuration. The UDP configuration section of your InfluxDB should
-    look similar to the following:
+    If you want to use the ``influxdb`` backend with UDP writes enabled,
+    then you need to enable two different ports for UDP (each for a
+    different retention policy) in your InfluxDB configuration. The UDP
+    configuration section of your InfluxDB should look similar to the
+    following:
 
     .. code-block:: text
 
@@ -114,6 +145,42 @@ Timeseries Database Options
     the `ansible-ow-influxdb's
     <https://github.com/openwisp/ansible-ow-influxdb#role-variables>`_ (a
     dependency of ansible-openwisp2) documentation to learn more.
+
+    If you want to use the ``influxdb2`` backend with UDP writes enabled,
+    then you need a Telegraf UDP listener. The UDP listener on
+    ``udp_port`` writes to the main InfluxDB 2.x bucket, while the next
+    UDP port writes to the bucket mapped to the ``short`` retention
+    policy. The Telegraf configuration should look similar to the
+    following:
+
+    .. code-block:: toml
+
+        [agent]
+          # Disable Telegraf's automatic hostname tag. If enabled on an
+          # existing OpenWISP bucket, it creates different series from the
+          # historical data, making charts look empty as if the timeseries
+          # database had been reset.
+          omit_hostname = true
+
+        [[inputs.socket_listener]]
+          service_address = "udp://:8089"
+          data_format = "influx"
+          [inputs.socket_listener.tags]
+            bucket = "openwisp2"
+
+        [[inputs.socket_listener]]
+          service_address = "udp://:8090"
+          data_format = "influx"
+          [inputs.socket_listener.tags]
+            bucket = "openwisp2_short"
+
+        [[outputs.influxdb_v2]]
+          urls = ["http://influxdb2:8086"]
+          token = "openwisp-token"
+          organization = "openwisp"
+          bucket = "openwisp2"
+          bucket_tag = "bucket"
+          exclude_bucket_tag = true
 
 .. _openwisp_monitoring_default_retention_policy:
 
@@ -245,8 +312,9 @@ documentation regarding automatic retries for known errors
 .. note::
 
     The retry mechanism does not work when using ``UDP`` for writing data
-    to the timeseries database. It is due to the nature of ``UDP``
-    protocol which does not acknowledge receipt of data packets.
+    to the timeseries database on the ``influxdb`` backend. This is due to
+    the nature of the ``UDP`` protocol, which does not acknowledge receipt
+    of data packets.
 
 .. _openwisp_monitoring_timeseries_retry_options:
 

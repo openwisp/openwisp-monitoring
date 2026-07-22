@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from celery.exceptions import Retry
 from django.core.exceptions import ValidationError
@@ -21,7 +21,10 @@ from openwisp_monitoring.device.utils import (
     manage_default_retention_policy,
     manage_short_retention_policy,
 )
-from openwisp_monitoring.monitoring.tests import TestMonitoringMixin
+from openwisp_monitoring.monitoring.tests import (
+    RequireTimeseriesBackendMixin,
+    TestMonitoringMixin,
+)
 from openwisp_monitoring.settings import MONITORING_TIMESERIES_RETRY_OPTIONS
 from openwisp_utils.tests import capture_stderr
 
@@ -32,8 +35,10 @@ Chart = load_model("monitoring", "Chart")
 Notification = load_model("openwisp_notifications", "Notification")
 
 
-@tag("timeseries_client")
-class TestDatabaseClient(TestMonitoringMixin, TestCase):
+@tag("timeseries_client", "influxdb1")
+class TestDatabaseClient(RequireTimeseriesBackendMixin, TestMonitoringMixin, TestCase):
+    expected_backend = "influxdb"
+
     def test_forbidden_queries(self):
         queries = [
             "DROP DATABASE openwisp2",
@@ -85,6 +90,34 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         )
         self.assertEqual(c.query, q)
 
+    def test_get_device_data_query(self):
+        query = timeseries_db.get_device_data_query(
+            SHORT_RP,
+            "device_data",
+            "device'id",
+        )
+        self.assertEqual(
+            query,
+            "SELECT data FROM short.device_data WHERE pk = 'device\\'id' "
+            "ORDER BY time DESC LIMIT 1",
+        )
+
+    def test_read_escapes_string_literals(self):
+        result = MagicMock()
+        result.get_points.return_value = []
+        with patch.object(timeseries_db, "query", return_value=result) as mocked_query:
+            timeseries_db.read(
+                "device_data",
+                fields="data",
+                tags={"hostname": "ap'01"},
+                where=[("status", "=", "warn'ing")],
+            )
+        mocked_query.assert_called_once_with(
+            "SELECT data FROM device_data WHERE status = 'warn\\'ing' "
+            "AND hostname = 'ap\\'01'",
+            precision="s",
+        )
+
     def test_write(self):
         timeseries_db.write("test_write", dict(value=2), database=self.TEST_DB)
         measurement = list(
@@ -93,6 +126,21 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
             ).get_points()
         )[0]
         self.assertEqual(measurement["value"], 2)
+
+    @patch.object(timeseries_db, "_write")
+    def test_write_preserves_zero_timestamp(self, mocked_write):
+        with self.subTest("write"):
+            timeseries_db.write("test_write", {"value": 2}, timestamp=0)
+            point = mocked_write.call_args[1]["points"][0]
+            self.assertEqual(point["time"], 0)
+
+        with self.subTest("batch_write"):
+            mocked_write.reset_mock()
+            timeseries_db.batch_write(
+                [{"name": "test_write", "values": {"value": 2}, "timestamp": 0}]
+            )
+            point = mocked_write.call_args[1]["points"][0]
+            self.assertEqual(point["time"], 0)
 
     def test_general_write(self):
         m = self._create_general_metric(name="Sync test")
@@ -404,7 +452,12 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
             )
 
 
-class TestDatabaseClientUdp(TestMonitoringMixin, TestCase):
+@tag("timeseries_client", "influxdb1")
+class TestDatabaseClientUdp(
+    RequireTimeseriesBackendMixin, TestMonitoringMixin, TestCase
+):
+    expected_backend = "influxdb"
+
     def test_exceed_udp_packet_limit(self):
         # When using UDP to write data to InfluxDB, writing
         # huge data that exceeds UDP packet limit should not raise

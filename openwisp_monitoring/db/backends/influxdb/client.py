@@ -18,11 +18,12 @@ from openwisp_monitoring.utils import retry
 
 from ...exceptions import TimeseriesWriteException
 from .. import TIMESERIES_DB
+from ..base import BaseTimeseriesClient
 
 logger = logging.getLogger(__name__)
 
 
-class DatabaseClient(object):
+class DatabaseClient(BaseTimeseriesClient):
     _AGGREGATE = [
         "COUNT",
         "DISTINCT",
@@ -54,6 +55,7 @@ class DatabaseClient(object):
     ]
     _FORBIDDEN = ["drop", "create", "delete", "alter", "into"]
     backend_name = "influxdb"
+    required_settings = ("BACKEND", "USER", "PASSWORD", "NAME", "HOST", "PORT")
     _OPERATORS = [
         "=",
         "!=",
@@ -69,6 +71,11 @@ class DatabaseClient(object):
         self._db = None
         self.db_name = db_name or TIMESERIES_DB["NAME"]
         self.client_error = InfluxDBClientError
+
+    def reset(self, db_name=None):
+        super().reset(db_name=db_name)
+        for attr in ("db", "dbs", "use_udp"):
+            self.__dict__.pop(attr, None)
 
     @retry
     def create_database(self):
@@ -91,6 +98,7 @@ class DatabaseClient(object):
 
     @cached_property
     def dbs(self):
+        udp_port = self._get_udp_port()
         dbs = {
             "default": InfluxDBClient(
                 TIMESERIES_DB["HOST"],
@@ -99,7 +107,7 @@ class DatabaseClient(object):
                 TIMESERIES_DB["PASSWORD"],
                 self.db_name,
                 use_udp=TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False),
-                udp_port=TIMESERIES_DB.get("OPTIONS", {}).get("udp_port", 8089),
+                udp_port=udp_port,
             ),
         }
         if TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False):
@@ -113,7 +121,7 @@ class DatabaseClient(object):
                 TIMESERIES_DB["PASSWORD"],
                 self.db_name,
                 use_udp=TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False),
-                udp_port=TIMESERIES_DB.get("OPTIONS", {}).get("udp_port", 8089) + 1,
+                udp_port=self._get_udp_port(retention_policy="short"),
             )
             dbs["__all__"] = InfluxDBClient(
                 TIMESERIES_DB["HOST"],
@@ -131,6 +139,11 @@ class DatabaseClient(object):
     def use_udp(self):
         return TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False)
 
+    def _get_udp_port(self, retention_policy=None):
+        """UDP routing needs dedicated listener ports to choose the target."""
+        udp_port = TIMESERIES_DB.get("OPTIONS", {}).get("udp_port", 8089)
+        return udp_port + 1 if retention_policy else udp_port
+
     def _clean_operator(self, op):
         """Returns the operator if it is valid."""
         if op not in self._OPERATORS:
@@ -143,7 +156,12 @@ class DatabaseClient(object):
     def _clean_value(self, value):
         if isinstance(value, datetime):
             return f"'{self._get_timestamp(value)}'"
+        if isinstance(value, str):
+            return self._format_string_value(value)
         return value
+
+    def _format_string_value(self, value):
+        return "'{}'".format(str(value).replace("\\", "\\\\").replace("'", "\\'"))
 
     @retry
     def create_or_alter_retention_policy(self, name, duration):
@@ -214,7 +232,8 @@ class DatabaseClient(object):
             raise TimeseriesWriteException
 
     def _get_timestamp(self, timestamp=None):
-        timestamp = timestamp or now()
+        if timestamp is None:
+            timestamp = now()
         if isinstance(timestamp, datetime):
             return timestamp.isoformat(sep="T", timespec="microseconds")
         return timestamp
@@ -326,7 +345,12 @@ class DatabaseClient(object):
             conditions.append(f"time >= '{timestamp}'")
         if tags:
             conditions.append(
-                " AND ".join(["{0} = '{1}'".format(*tag) for tag in tags.items()])
+                " AND ".join(
+                    [
+                        f"{key} = {self._format_string_value(value)}"
+                        for key, value in tags.items()
+                    ]
+                )
             )
         if conditions:
             conditions = "WHERE %s" % " AND ".join(conditions)
@@ -370,6 +394,13 @@ class DatabaseClient(object):
     @retry
     def get_list_retention_policies(self):
         return self.db.get_list_retention_policies()
+
+    def get_device_data_query(self, retention_policy, measurement, pk):
+        return self.queries.device_data_query.format(
+            retention_policy=retention_policy,
+            measurement=measurement,
+            pk=self._format_string_value(pk),
+        )
 
     def delete_metric_data(self, key=None, tags=None):
         """Deletes a specific metric.

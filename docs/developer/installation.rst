@@ -10,8 +10,8 @@ Developer Installation Instructions
 Dependencies
 ------------
 
-- Python >= 3.8
-- InfluxDB 1.8
+- Python >= 3.11
+- InfluxDB 1.x or InfluxDB 2.x
 - fping
 - OpenSSL
 
@@ -48,6 +48,19 @@ Start Redis and InfluxDB using Docker:
 
     docker compose up -d redis influxdb
 
+If you want to use InfluxDB 2.x instead, start ``influxdb2``:
+
+.. code-block:: shell
+
+    docker compose up -d redis influxdb2
+
+If you want to test InfluxDB 2.x with UDP writes, start ``telegraf`` as
+well:
+
+.. code-block:: shell
+
+    docker compose up -d redis influxdb2 telegraf
+
 Setup and activate a virtual-environment. (we'll be using `virtualenv
 <https://pypi.org/project/virtualenv/>`_)
 
@@ -70,6 +83,30 @@ Install development dependencies:
     pip install -e .
     pip install -r requirements-test.txt
     npm install -g prettier
+
+If you are using InfluxDB 2.0, export the following environment variable
+before running migrations, celery, or the development server:
+
+.. code-block:: shell
+
+    export TIMESERIES_BACKEND=influxdb2
+
+If you are using the ``influxdb2`` and ``redis`` containers provided in
+this repository's ``docker-compose.yml``, no additional variables are
+needed because the default values in ``tests/openwisp2/settings.py``
+already match that setup.
+
+If you are not using the provided containers, or if you changed ports or
+credentials, you can override the defaults with:
+
+.. code-block:: shell
+
+    # Optional overrides for non-default setups
+    export INFLUXDB2_URL=http://localhost:8087
+    export INFLUXDB2_ORG=openwisp
+    export INFLUXDB2_TOKEN=openwisp-token
+    export INFLUXDB2_BUCKET=openwisp2
+    export REDIS_HOST=localhost
 
 Install WebDriver for Chromium for your browser version from
 https://chromedriver.chromium.org/home and extract ``chromedriver`` to one
@@ -105,7 +142,17 @@ Run tests with (make sure you have the :ref:`selenium dependencies
 
 .. code-block:: shell
 
-    ./runtests  # using --parallel is not supported in this module
+    ./runtests  # default: runs tests with InfluxDB 1.x over HTTP
+    TIMESERIES_UDP=1 ./runtests  # InfluxDB 1.x over UDP
+    TSDB=influxdb2 ./runtests  # InfluxDB 2.x over HTTP
+    TSDB=influxdb2 TIMESERIES_UDP=1 ./runtests  # InfluxDB 2.x over UDP (via Telegraf)
+
+The ``./runtests`` script is the main test entry point. By default it runs
+the InfluxDB test flow. Set ``TSDB=influxdb2`` to run the InfluxDB 2.x
+test flow instead. Set ``TIMESERIES_UDP=1`` to run the UDP flow for the
+selected backend. When using ``TSDB=influxdb2 TIMESERIES_UDP=1``, Telegraf
+must be running because InfluxDB 2.x does not support UDP natively. Using
+``--parallel`` is not supported in this module.
 
 Run quality assurance tests with:
 
@@ -160,3 +207,10 @@ Run the docker container:
 .. code-block:: shell
 
     docker compose up
+
+By default, the Docker setup uses InfluxDB 1.8. To use InfluxDB 2.9
+instead, run:
+
+.. code-block:: shell
+
+    TIMESERIES_BACKEND=influxdb2 docker compose up

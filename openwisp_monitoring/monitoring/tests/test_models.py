@@ -335,6 +335,7 @@ class TestModels(TestMonitoringMixin, TestCase):
                 current=False,
             )
 
+    @tag("flaky_with_udp_writes")
     def test_metric_post_write_signals_emitted(self):
         om = self._create_object_metric()
         with catch_signal(post_metric_write) as handler:

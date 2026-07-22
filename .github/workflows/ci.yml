@@ -14,7 +14,7 @@ on:
 
 jobs:
   build:
-    name: Python==${{ matrix.python-version }} | ${{ matrix.django-version }}
+    name: "${{ matrix.tsdb }}${{ matrix.udp && ' UDP' || '' }} | Python==${{ matrix.python-version }} | ${{ matrix.django-version }}"
     runs-on: ubuntu-24.04
 
     services:
@@ -27,18 +27,29 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - "3.10"
           - "3.11"
           - "3.12"
           - "3.13"
         django-version:
-          - django~=4.2.0
-          - django~=5.1.0
           - django~=5.2.0
-        exclude:
-          # Python 3.13 supported only in Django >=5.1.3
+        tsdb:
+          - influxdb
+        # influxdb2 and UDP variants intentionally run only on the latest
+        # Python version: the full Python version matrix is already covered
+        # by the influxdb runs above, and repeating it for every backend
+        # would only make CI slower without adding meaningful coverage.
+        include:
           - python-version: "3.13"
-            django-version: django~=4.2.0
+            django-version: django~=5.2.0
+            tsdb: influxdb2
+          - python-version: "3.13"
+            django-version: django~=5.2.0
+            tsdb: influxdb
+            udp: true
+          - python-version: "3.13"
+            django-version: django~=5.2.0
+            tsdb: influxdb2
+            udp: true
 
     steps:
       - uses: actions/checkout@v7
@@ -58,7 +69,7 @@ jobs:
           echo 'set man-db/auto-update false' | sudo debconf-communicate >/dev/null
           sudo dpkg-reconfigure man-db
 
-      - name: Set up and Cache Python ${{ matrix.python-version }}
+      - name: Set up and cache Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
@@ -66,8 +77,7 @@ jobs:
           cache-dependency-path: |
             **/requirements*.txt
 
-      - name: Install Dependencies
-        id: deps
+      - name: Install dependencies
         run: |
           sudo apt update -qq
           sudo apt -qq install \
@@ -82,22 +92,46 @@ jobs:
           pip install -U pip wheel setuptools
           pip install -r requirements-test.txt
           pip install -U -I -e .
-          pip install -U ${{ matrix.django-version }}
+          pip install -U "${{ matrix.django-version }}"
           sudo npm install -g prettier
 
-      - name: Start InfluxDB
-        if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
-        run: docker compose up -d influxdb
+      - name: Start Timeseries DB
+        run: |
+          services=("${{ matrix.tsdb }}")
+          if [ "${{ matrix.udp }}" = "true" ] && [ "${{ matrix.tsdb }}" = "influxdb2" ]; then
+            services+=(telegraf)
+          fi
+          docker compose up -d "${services[@]}"
+
+          if [ "${{ matrix.tsdb }}" = "influxdb2" ]; then
+            url="http://localhost:8087/health"
+          else
+            url="http://localhost:8086/query?q=SHOW%20DATABASES"
+          fi
+
+          for attempt in $(seq 1 30); do
+            if curl -fsS "$url" >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Timeseries DB did not become ready at $url"
+          docker compose logs "${services[@]}"
+          exit 1
 
       - name: QA checks
         run: |
           ./run-qa-checks
+        env:
+          TIMESERIES_BACKEND: ${{ matrix.tsdb }}
 
       - name: Tests
-        if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
         run: |
           ./runtests
         env:
+          TSDB: ${{ matrix.tsdb }}
+          TIMESERIES_UDP: ${{ matrix.udp && '1' || '' }}
           SELENIUM_HEADLESS: 1
           GECKO_LOG: 1
 
@@ -113,7 +147,7 @@ jobs:
         with:
           parallel: true
           format: cobertura
-          flag-name: python-${{ matrix.python-version }}-${{ matrix.django-version }}
+          flag-name: ${{ matrix.tsdb }}${{ matrix.udp && '-udp' || '' }}-python-${{ matrix.python-version }}-${{ matrix.django-version }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-error: false
 
@@ -141,7 +175,8 @@ jobs:
           docker push openwisp/openwisp-monitoring:develop
 
   coveralls:
-    needs: build
+    needs:
+      - build
     runs-on: ubuntu-latest
     steps:
       - name: Coveralls Finished
