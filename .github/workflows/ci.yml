@@ -97,13 +97,11 @@ jobs:
 
       - name: Start Timeseries DB
         run: |
-          services="${{ matrix.tsdb }}"
-          if [ "${{ matrix.udp }}" != "true" ] || [ "${{ matrix.tsdb }}" != "influxdb2" ]; then
-            :
-          else
-            services="$services telegraf"
+          services=("${{ matrix.tsdb }}")
+          if [ "${{ matrix.udp }}" = "true" ] && [ "${{ matrix.tsdb }}" = "influxdb2" ]; then
+            services+=(telegraf)
           fi
-          docker compose up -d $services
+          docker compose up -d "${services[@]}"
 
           if [ "${{ matrix.tsdb }}" = "influxdb2" ]; then
             url="http://localhost:8087/health"
@@ -119,7 +117,7 @@ jobs:
           done
 
           echo "Timeseries DB did not become ready at $url"
-          docker compose logs ${{ matrix.tsdb }}
+          docker compose logs "${services[@]}"
           exit 1
 
       - name: QA checks

@@ -383,6 +383,14 @@ class TestInfluxDb2ClientUrl(SimpleTestCase):
         "HOST": "localhost",
         "PORT": "8086",
     }
+    udp_config = {
+        **base_config,
+        "OPTIONS": {
+            "udp_writes": True,
+            "udp_host": "telegraf",
+            "udp_port": 8089,
+        },
+    }
 
     @patch.dict(
         "openwisp_monitoring.db.backends.influxdb2.client.TIMESERIES_DB",
@@ -640,14 +648,7 @@ class TestInfluxDb2ClientUrl(SimpleTestCase):
 
     @patch.dict(
         "openwisp_monitoring.db.backends.influxdb2.client.TIMESERIES_DB",
-        {
-            **base_config,
-            "OPTIONS": {
-                "udp_writes": True,
-                "udp_host": "telegraf",
-                "udp_port": 8089,
-            },
-        },
+        udp_config,
         clear=True,
     )
     def test_use_udp_reads_udp_option(self):
@@ -655,14 +656,7 @@ class TestInfluxDb2ClientUrl(SimpleTestCase):
 
     @patch.dict(
         "openwisp_monitoring.db.backends.influxdb2.client.TIMESERIES_DB",
-        {
-            **base_config,
-            "OPTIONS": {
-                "udp_writes": True,
-                "udp_host": "telegraf",
-                "udp_port": 8089,
-            },
-        },
+        udp_config,
         clear=True,
     )
     @patch("openwisp_monitoring.db.backends.influxdb2.client.socket.socket")
@@ -681,14 +675,7 @@ class TestInfluxDb2ClientUrl(SimpleTestCase):
 
     @patch.dict(
         "openwisp_monitoring.db.backends.influxdb2.client.TIMESERIES_DB",
-        {
-            **base_config,
-            "OPTIONS": {
-                "udp_writes": True,
-                "udp_host": "telegraf",
-                "udp_port": 8089,
-            },
-        },
+        udp_config,
         clear=True,
     )
     @patch("openwisp_monitoring.db.backends.influxdb2.client.socket.socket")
@@ -726,14 +713,7 @@ class TestInfluxDb2ClientUrl(SimpleTestCase):
 
     @patch.dict(
         "openwisp_monitoring.db.backends.influxdb2.client.TIMESERIES_DB",
-        {
-            **base_config,
-            "OPTIONS": {
-                "udp_writes": True,
-                "udp_host": "telegraf",
-                "udp_port": 8089,
-            },
-        },
+        udp_config,
         clear=True,
     )
     def test_autogen_retention_policy_uses_default_udp_port(self):
@@ -741,14 +721,7 @@ class TestInfluxDb2ClientUrl(SimpleTestCase):
 
     @patch.dict(
         "openwisp_monitoring.db.backends.influxdb2.client.TIMESERIES_DB",
-        {
-            **base_config,
-            "OPTIONS": {
-                "udp_writes": True,
-                "udp_host": "telegraf",
-                "udp_port": 8089,
-            },
-        },
+        udp_config,
         clear=True,
     )
     def test_udp_write_falls_back_to_http_for_large_packets(self):

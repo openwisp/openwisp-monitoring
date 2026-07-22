@@ -1580,7 +1580,7 @@ class TestInfluxDb2UdpDelivery(
             "udp_delivery_test", {"value": 42}, tags={"test_id": test_id}
         )
         points = []
-        for _attempt in range(15):
+        for _attempt in range(self._udp_read_max_retries):
             points = timeseries_db.read(
                 "udp_delivery_test",
                 "value",
@@ -1589,7 +1589,7 @@ class TestInfluxDb2UdpDelivery(
             )
             if points:
                 break
-            time.sleep(0.2)
+            time.sleep(self._udp_read_retry_delay)
         self.assertEqual(len(points), 1)
         self.assertEqual(points[0]["value"], 42)
 

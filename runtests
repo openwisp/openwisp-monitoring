@@ -4,6 +4,12 @@ set -e
 TSDB="${TSDB:-influxdb}"
 UDP="${TIMESERIES_UDP:-}"
 
+# Treat only explicit truthy values as UDP, so TIMESERIES_UDP=0 uses HTTP.
+case "${UDP,,}" in
+    1|true|yes|on) UDP=1 ;;
+    *) UDP="" ;;
+esac
+
 if [ "$TSDB" != "influxdb" ] && [ "$TSDB" != "influxdb2" ]; then
     echo "Unsupported TSDB: $TSDB" >&2
     echo "Supported values: influxdb, influxdb2" >&2
