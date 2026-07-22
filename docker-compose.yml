@@ -5,6 +5,7 @@ x-timeseries:
   org: &timeseries_org ${INFLUXDB2_ORG:-openwisp}
   token: &influxdb2_token ${INFLUXDB2_TOKEN:-openwisp-token}
   influxdb2-port: &influxdb2_port ${INFLUXDB2_PORT:-8086}
+  elasticsearch-port: &elasticsearch_port ${ELASTICSEARCH_PORT:-9200}
 
 services:
   monitoring:
@@ -26,6 +27,8 @@ services:
       INFLUXDB2_ORG: *timeseries_org
       INFLUXDB2_TOKEN: *influxdb2_token
       INFLUXDB2_UDP_HOST: telegraf
+      ELASTICSEARCH_NAME: *timeseries_database
+      ELASTICSEARCH_URL: http://elasticsearch:9200
 
   influxdb:
     image: influxdb:1.8-alpine
@@ -58,6 +61,19 @@ services:
       DOCKER_INFLUXDB_INIT_BUCKET: *timeseries_database
       DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: *influxdb2_token
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTICSEARCH_VERSION:-9.4.3}
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - target: 9200
+        published: *elasticsearch_port
+        protocol: tcp
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+
   # for UDP support on InfluxDB 2.x
   telegraf:
     image: telegraf:1.31-alpine
@@ -84,3 +100,4 @@ services:
 volumes:
   influxdb-data: {}
   influxdb2-data: {}
+  elasticsearch-data: {}
