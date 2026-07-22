@@ -1,19 +1,19 @@
 from unittest.mock import patch
 
 from django.apps import apps
-from django.test import TestCase
-from influxdb import InfluxDBClient
+from django.test import TestCase, tag
 from requests.exceptions import ConnectionError
 
 from openwisp_monitoring.settings import MONITORING_TIMESERIES_RETRY_OPTIONS
 
+from . import RequireTimeseriesBackendMixin
 
-class TestDatabase(TestCase):
+
+class TestDatabaseRetryMixin(RequireTimeseriesBackendMixin, TestCase):
     app = "monitoring"
+    expected_backend = None
 
-    @patch.object(InfluxDBClient, "create_database", side_effect=ConnectionError())
-    @patch("openwisp_monitoring.utils.sleep")
-    def test_check_retry(self, sleep_mock, mock):
+    def _assert_check_retry(self, mock, sleep_mock):
         max_retries = MONITORING_TIMESERIES_RETRY_OPTIONS.get("max_retries")
         delay = MONITORING_TIMESERIES_RETRY_OPTIONS.get("delay")
         with patch("logging.Logger.info") as mocked_logger:
@@ -27,3 +27,26 @@ class TestDatabase(TestCase):
         self.assertEqual(mock.call_count, max_retries)
         self.assertEqual(sleep_mock.call_count, max_retries - 3)
         sleep_mock.assert_called_with(delay)
+
+
+@tag("influxdb1")
+class TestDatabaseInfluxDb(TestDatabaseRetryMixin):
+    expected_backend = "influxdb"
+
+    @patch("openwisp_monitoring.utils.sleep")
+    @patch("influxdb.InfluxDBClient.create_database", side_effect=ConnectionError())
+    def test_check_retry(self, mock, sleep_mock):
+        self._assert_check_retry(mock, sleep_mock)
+
+
+@tag("influxdb2")
+class TestDatabaseInfluxDb2(TestDatabaseRetryMixin):
+    expected_backend = "influxdb2"
+
+    @patch("openwisp_monitoring.utils.sleep")
+    @patch(
+        "openwisp_monitoring.db.backends.influxdb2.client.InfluxDBClient.buckets_api",
+        side_effect=ConnectionError(),
+    )
+    def test_check_retry(self, mock, sleep_mock):
+        self._assert_check_retry(mock, sleep_mock)

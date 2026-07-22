@@ -104,6 +104,11 @@ def migrate_timeseries_database():
 
     To be removed in a future release.
     """
+    # Historical timeseries migrations 0006 and 0012 only apply to the
+    # InfluxDB1 layout, so InfluxDB2 must skip this task entirely.
+    if timeseries_db.backend_name != "influxdb":
+        return
+
     from .migrations.influxdb.influxdb_alter_structure_0006 import (
         migrate_influxdb_structure,
     )

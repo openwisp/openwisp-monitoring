@@ -9,8 +9,8 @@ OpenWISP provides the following monitoring capabilities:
   which show the total unique WiFI clients and the traffic flowing to the
   network <dashboard-monitoring-charts>`, a geographic map is also
   available for those who use the geographic features of OpenWISP
-- Collection of monitoring information in a timeseries database (currently
-  only **InfluxDB** is supported)
+- Collection of monitoring information in a timeseries database using the
+  supported **InfluxDB 1.8** or **InfluxDB 2.x** backends
 - Allows to browse alerts easily from the user interface with one click
 - Collects and displays :ref:`device status <device_status>` information
   like uptime, RAM status, CPU load averages, Interface properties and
