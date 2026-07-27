@@ -3,6 +3,9 @@ import re
 from collections.abc import Iterator, Mapping, Sequence
 from copy import deepcopy
 from datetime import datetime, timezone
+from hashlib import sha1
+from itertools import count
+from json import dumps
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -224,6 +227,13 @@ class DatabaseClient(BaseTimeseriesClient):
     def __init__(self, db_name: str | None = None) -> None:
         self.db_name = db_name or TIMESERIES_DB["NAME"]
         self._ensured_streams = set()
+        self._write_sequence = count()
+
+    def reset(self, db_name: str | None = None) -> None:
+        super().reset(db_name=db_name)
+        self.__dict__.pop("db", None)
+        self._ensured_streams = set()
+        self._write_sequence = count()
 
     @property
     def use_udp(self) -> bool:
@@ -366,7 +376,13 @@ class DatabaseClient(BaseTimeseriesClient):
                 "settings": {
                     "index.mode": "time_series",
                     "index.lifecycle.name": self._get_policy_name(retention_policy),
-                    "index.routing_path": ["measurement", "tags.*"],
+                    "index.look_ahead_time": self.options.get("look_ahead_time", "2h"),
+                    "index.look_back_time": self.options.get("look_back_time", "7d"),
+                    "index.routing_path": [
+                        "measurement",
+                        "openwisp_series_id",
+                        "tags.*",
+                    ],
                 },
                 "mappings": {
                     "dynamic": True,
@@ -418,7 +434,15 @@ class DatabaseClient(BaseTimeseriesClient):
                             "type": "keyword",
                             "time_series_dimension": True,
                         },
+                        "openwisp_series_id": {
+                            "type": "keyword",
+                            "time_series_dimension": True,
+                        },
                         "openwisp_doc_count": {
+                            "type": "long",
+                            "time_series_metric": "gauge",
+                        },
+                        "openwisp_write_sequence": {
                             "type": "long",
                             "time_series_metric": "gauge",
                         },
@@ -466,6 +490,8 @@ class DatabaseClient(BaseTimeseriesClient):
             except Exception as exception:
                 if not self._is_resource_exists(exception):
                     raise
+                if not self._data_stream_exists(stream_name):
+                    raise
         self._ensured_streams.add(cache_key)
 
     @retry
@@ -481,6 +507,7 @@ class DatabaseClient(BaseTimeseriesClient):
             except Exception as exception:
                 if not self._is_not_found(exception):
                     raise
+        self._delete_indices()
         self._delete_index_templates()
         self._delete_lifecycle_policies()
         self._ensured_streams = set()
@@ -499,6 +526,31 @@ class DatabaseClient(BaseTimeseriesClient):
             for stream in response.get("data_streams", [])
             if self._is_own_stream(stream["name"])
         ]
+
+    def _get_index_names(self) -> list[str]:
+        try:
+            response = self.db.indices.get(
+                index=f"{self.db_name}*",
+                expand_wildcards="open,closed",
+            )
+        except Exception as exception:
+            if self._is_not_found(exception):
+                return []
+            raise
+        response = self._response_body(response)
+        return [
+            index_name
+            for index_name in response.keys()
+            if self._is_own_stream(index_name)
+        ]
+
+    def _delete_indices(self) -> None:
+        for index_name in self._get_index_names():
+            try:
+                self.db.indices.delete(index=index_name)
+            except Exception as exception:
+                if not self._is_not_found(exception):
+                    raise
 
     def _delete_index_templates(self) -> None:
         try:
@@ -561,7 +613,9 @@ class DatabaseClient(BaseTimeseriesClient):
     def get_list_retention_policies(self) -> list[TimeseriesPoint]:
         policies = []
         for policy_name in self._get_lifecycle_policy_names():
-            retention_policy = policy_name[len(self.db_name) + 1 : -len("-ilm")]
+            start = len(self.db_name) + 1
+            end = -len("-ilm")
+            retention_policy = policy_name[start:end]
             try:
                 body = self.db.ilm.get_lifecycle(name=policy_name)
             except Exception as exception:
@@ -613,7 +667,8 @@ class DatabaseClient(BaseTimeseriesClient):
         return timestamp.isoformat().replace("+00:00", "Z")
 
     def _get_timestamp(self, timestamp=None, timezone_name=None) -> str:
-        timestamp = timestamp or now()
+        if timestamp is None:
+            timestamp = now()
         parsed_timestamp = self._parse_timestamp(timestamp)
         if parsed_timestamp is not None:
             return self._serialize_timestamp(
@@ -663,12 +718,16 @@ class DatabaseClient(BaseTimeseriesClient):
             )
 
     def _build_document(self, name, values, **kwargs) -> dict[str, Any]:
+        values = dict(values or {})
+        series_payload = dumps(values, sort_keys=True, default=str)
         return {
             "@timestamp": self._get_timestamp(kwargs.get("timestamp")),
             "measurement": name,
+            "openwisp_series_id": sha1(series_payload.encode()).hexdigest(),
             "openwisp_doc_count": 1,
+            "openwisp_write_sequence": next(self._write_sequence),
             "tags": dict(kwargs.get("tags") or {}),
-            "fields": dict(values or {}),
+            "fields": values,
         }
 
     def _handle_write_exception(self, exception) -> None:
@@ -718,9 +777,7 @@ class DatabaseClient(BaseTimeseriesClient):
         if not actions:
             return
         try:
-            bulk(
-                self.db, actions, refresh=self.refresh
-            )  # https://elasticsearch-py.readthedocs.io/en/v8.12.1/helpers.html#bulk-helpers
+            bulk(self.db, actions, refresh=self.refresh)
         except Exception as exception:
             self._handle_write_exception(exception)
 
@@ -785,6 +842,61 @@ class DatabaseClient(BaseTimeseriesClient):
         range_operator = {">": "gt", ">=": "gte", "<": "lt", "<=": "lte"}[op]
         return {"range": {field_name: {range_operator: value}}}
 
+    def _build_field_exists_filter(self, fields):
+        if not fields or fields == ["*"]:
+            return None
+        fields = [field for field in fields if field != "*"]
+        if not fields:
+            return None
+        filters = [{"exists": {"field": f"fields.{field}"}} for field in fields]
+        if len(filters) == 1:
+            return filters[0]
+        return {"bool": {"should": filters, "minimum_should_match": 1}}
+
+    def _add_filter(self, query, filter_query):
+        if not filter_query:
+            return query
+        if query == {"match_all": {}}:
+            return {"bool": {"filter": [filter_query]}}
+        query = deepcopy(query)
+        query.setdefault("bool", {}).setdefault("filter", []).append(filter_query)
+        return query
+
+    def _get_read_exists_fields(self, fields, where):
+        if fields == ["*"]:
+            exists_fields = []
+        else:
+            exists_fields = list(fields)
+        exists_fields.extend(condition[0] for condition in where)
+        if not exists_fields:
+            return ["*"]
+        return list(dict.fromkeys(exists_fields))
+
+    def _matches_where(self, point, where):
+        for field, op, value in where:
+            op = self._clean_operator(op)
+            point_value = point.get(field)
+            if point_value is None:
+                return False
+            if op == "=" and point_value != value:
+                return False
+            if op == "!=" and point_value == value:
+                return False
+            if op == ">" and not point_value > value:
+                return False
+            if op == ">=" and not point_value >= value:
+                return False
+            if op == "<" and not point_value < value:
+                return False
+            if op == "<=" and not point_value <= value:
+                return False
+        return True
+
+    def _filter_points(self, points, where):
+        if not where:
+            return points
+        return [point for point in points if self._matches_where(point, where)]
+
     def _build_base_query(
         self,
         key: str | None = None,
@@ -817,10 +929,10 @@ class DatabaseClient(BaseTimeseriesClient):
         precision: str | None = "s",
         include_tags: bool = True,
     ) -> TimeseriesPoint:
+        timestamp = document.get("@timestamp")
         point = {
-            "time": self._normalize_time(
-                document.get("@timestamp"), precision=precision
-            )
+            "time": self._normalize_time(timestamp, precision=precision),
+            "__openwisp_time_key": timestamp,
         }
         if include_tags:
             point.update(document.get("tags") or {})
@@ -901,9 +1013,15 @@ class DatabaseClient(BaseTimeseriesClient):
         fields = self._normalize_fields(fields, kwargs.get("extra_fields"))
         order = kwargs.get("order") or kwargs.get("order_by")
         if order in (None, "time"):
-            sort = [{"@timestamp": {"order": "asc"}}]
+            sort = [
+                {"@timestamp": {"order": "asc"}},
+                {"openwisp_write_sequence": {"order": "asc", "unmapped_type": "long"}},
+            ]
         elif order == "-time":
-            sort = [{"@timestamp": {"order": "desc"}}]
+            sort = [
+                {"@timestamp": {"order": "desc"}},
+                {"openwisp_write_sequence": {"order": "asc", "unmapped_type": "long"}},
+            ]
         else:
             message = _(
                 'Invalid order "%(order)s" passed.\n'
@@ -912,21 +1030,22 @@ class DatabaseClient(BaseTimeseriesClient):
             ) % {"order": order}
             raise self.client_error(message)
         query = {
-            "query": self._build_base_query(
-                key=key,
-                tags=tags,
-                since=kwargs.get("since"),
-                where=where,
+            "query": self._add_filter(
+                self._build_base_query(
+                    key=key,
+                    tags=tags,
+                    since=kwargs.get("since"),
+                ),
+                self._build_field_exists_filter(
+                    self._get_read_exists_fields(fields, where)
+                ),
             ),
             "sort": sort,
             "__retention_policy": retention_policy,
+            "size": int(self.options.get("read_size", 10000)),
         }
-        if limit:
-            query["size"] = int(limit)
-        else:
-            query["size"] = int(self.options.get("read_size", 10000))
         response = self.query(query, precision=precision)
-        return [
+        points = [
             self._document_to_point(
                 hit.get("_source", {}),
                 fields=fields,
@@ -934,6 +1053,8 @@ class DatabaseClient(BaseTimeseriesClient):
             )
             for hit in self._get_hits(response)
         ]
+        points = self._filter_points(self._merge_points_by_time(points), where)
+        return points[: int(limit)] if limit else points
 
     def _format_query_mapping(self, value, params):
         if isinstance(value, str):
@@ -993,21 +1114,34 @@ class DatabaseClient(BaseTimeseriesClient):
     def _normalize_chart_window(self, time, group_map):
         return str(group_map.get(time, time) or "1d")
 
-    def _format_chart_metrics(self, query, params):
+    def _format_chart_metrics(self, query, params, fields=None):
         format_params = {**params}
         metrics = self._format_query_mapping(query.get("metrics", []), format_params)
+        if fields:
+            selected_fields = set(fields)
+            metrics = [
+                metric
+                for metric in metrics
+                if metric.get("field") in selected_fields
+                or metric.get("name") in selected_fields
+            ]
         return [metric for metric in metrics if metric.get("field")]
 
     def _build_metric_aggregation(self, metric):
         field = f"fields.{metric['field']}"
         aggregation = metric.get("agg", "avg")
         if aggregation == "sum":
-            return {"sum": {"field": field}}
-        if aggregation == "cardinality":
-            return {"cardinality": {"field": field}}
-        if aggregation == "mode":
-            return {"terms": {"field": field, "size": 1}}
-        return {"avg": {"field": field}}
+            metric_aggregation = {"sum": {"field": field}}
+        elif aggregation == "cardinality":
+            metric_aggregation = {"cardinality": {"field": field}}
+        elif aggregation == "mode":
+            metric_aggregation = {"terms": {"field": field, "size": 1}}
+        else:
+            metric_aggregation = {"avg": {"field": field}}
+        return {
+            "filter": {"exists": {"field": field}},
+            "aggs": {"value": metric_aggregation},
+        }
 
     def _build_metric_aggregations(self, metrics):
         return {
@@ -1022,8 +1156,9 @@ class DatabaseClient(BaseTimeseriesClient):
         group_map,
         summary=False,
         timezone=None,
+        fields=None,
     ):
-        metrics = self._format_chart_metrics(query, params)
+        metrics = self._format_chart_metrics(query, params, fields=fields)
         body = {
             "size": 0,
             "query": self._build_chart_base_query(params, timezone_name=timezone),
@@ -1042,12 +1177,73 @@ class DatabaseClient(BaseTimeseriesClient):
             "fixed_interval": self._normalize_chart_window(time, group_map),
             "min_doc_count": 0,
         }
+        if params.get("time"):
+            histogram["extended_bounds"] = {
+                "min": self._get_timestamp(params["time"], timezone_name=timezone),
+                "max": self._get_timestamp(
+                    params.get("end_date") or now(), timezone_name=timezone
+                ),
+            }
         if timezone:
             histogram["time_zone"] = timezone
         body["aggs"] = {
             "timeseries": {
                 "date_histogram": histogram,
                 "aggs": metric_aggs,
+            }
+        }
+        return body
+
+    def _build_grouped_chart_query(
+        self,
+        query,
+        params,
+        time,
+        group_map,
+        summary=False,
+        timezone=None,
+    ):
+        metric = self._format_query_mapping(query["metric"], params)
+        group_by = query["group_by"]
+        base_params = {
+            key: value
+            for key, value in params.items()
+            if key not in ("content_type", "object_id", group_by)
+        }
+        body = {
+            "size": 0,
+            "query": self._build_chart_base_query(base_params, timezone_name=timezone),
+            "__index": self._get_stream_name(params.get("retention_policy")),
+            "__openwisp_query_type": "grouped_chart",
+            "__openwisp_metric": metric,
+            "__openwisp_group_by": group_by,
+            "__openwisp_summary": summary,
+            "__openwisp_cumulative": bool(query.get("cumulative")),
+            "__openwisp_aggregate": True,
+        }
+        group_aggs = {
+            "groups": {
+                "terms": {
+                    "field": f"tags.{group_by}",
+                    "size": int(self.options.get("terms_size", 1000)),
+                },
+                "aggs": {"value": self._build_metric_aggregation(metric)},
+            }
+        }
+        if summary:
+            body["aggs"] = group_aggs
+            return body
+        histogram = {
+            "field": "@timestamp",
+            "fixed_interval": self._normalize_chart_window(time, group_map),
+            "min_doc_count": 0,
+        }
+        if timezone:
+            histogram["time_zone"] = timezone
+        body["aggs"] = {
+            "timeseries": {
+                "date_histogram": histogram,
+                "aggs": group_aggs,
             }
         }
         return body
@@ -1064,7 +1260,10 @@ class DatabaseClient(BaseTimeseriesClient):
         selected_fields = self._normalize_raw_chart_fields(query, params, fields)
         return {
             "size": int(self.options.get("read_size", 10000)),
-            "query": self._build_chart_base_query(params, timezone_name=timezone),
+            "query": self._add_filter(
+                self._build_chart_base_query(params, timezone_name=timezone),
+                self._build_field_exists_filter(selected_fields),
+            ),
             "sort": [{"@timestamp": {"order": "asc"}}],
             "__index": self._get_stream_name(params.get("retention_policy")),
             "__openwisp_query_type": "raw_chart",
@@ -1140,6 +1339,16 @@ class DatabaseClient(BaseTimeseriesClient):
                 group_map,
                 summary=summary,
                 timezone=timezone,
+                fields=fields,
+            )
+        if self._is_openwisp_query(query, "grouped_chart"):
+            return self._build_grouped_chart_query(
+                query,
+                params,
+                time,
+                group_map,
+                summary=summary,
+                timezone=timezone,
             )
         if self._is_openwisp_query(query, "raw_chart"):
             return self._build_raw_chart_query(
@@ -1195,6 +1404,10 @@ class DatabaseClient(BaseTimeseriesClient):
 
     def _extract_chart_metric_value(self, aggregation, metric):
         metric_aggregation = aggregation.get(metric["name"], {})
+        if "doc_count" in metric_aggregation:
+            if metric_aggregation["doc_count"] == 0:
+                return None
+            metric_aggregation = metric_aggregation.get("value", {})
         if metric.get("agg") == "mode":
             buckets = metric_aggregation.get("buckets", [])
             value = buckets[0]["key"] if buckets else None
@@ -1237,6 +1450,51 @@ class DatabaseClient(BaseTimeseriesClient):
             for bucket in buckets
         ]
 
+    def _extract_grouped_chart_value(self, bucket, metric):
+        return self._extract_chart_metric_value(
+            {"value": bucket.get("value", {})}, metric
+        )
+
+    def _get_grouped_chart_points(self, response, query, precision="s"):
+        aggregations = response.get("aggregations", {})
+        metric = query["__openwisp_metric"]
+        if query.get("__openwisp_summary"):
+            point = {"time": None}
+            for bucket in aggregations.get("groups", {}).get("buckets", []):
+                point[bucket["key"]] = self._extract_grouped_chart_value(bucket, metric)
+            return [point]
+        totals = {}
+        points = []
+        for bucket in aggregations.get("timeseries", {}).get("buckets", []):
+            point = {"time": self._format_histogram_time(bucket, precision)}
+            for group_bucket in bucket.get("groups", {}).get("buckets", []):
+                value = self._extract_grouped_chart_value(group_bucket, metric)
+                key = group_bucket["key"]
+                if query.get("__openwisp_cumulative"):
+                    totals[key] = totals.get(key, 0) + (value or 0)
+                    value = totals[key]
+                point[key] = value
+            if len(point) > 1:
+                points.append(point)
+        return points
+
+    def _merge_points_by_time(self, points):
+        merged = {}
+        order = []
+        for point in points:
+            time_key = point.get("__openwisp_time_key", point.get("time"))
+            if time_key not in merged:
+                merged[time_key] = {"time": point.get("time")}
+                order.append(time_key)
+            merged[time_key].update(
+                {
+                    key: value
+                    for key, value in point.items()
+                    if key not in ("time", "__openwisp_time_key")
+                }
+            )
+        return [merged[time_key] for time_key in order]
+
     def get_list_query(
         self, query: Mapping[str, Any], precision: str = "s"
     ) -> list[TimeseriesPoint]:
@@ -1256,9 +1514,12 @@ class DatabaseClient(BaseTimeseriesClient):
         if self._is_openwisp_query(query, "chart"):
             response = self.query(query, precision=precision)
             return self._get_chart_points(response, query, precision=precision)
+        if self._is_openwisp_query(query, "grouped_chart"):
+            response = self.query(query, precision=precision)
+            return self._get_grouped_chart_points(response, query, precision=precision)
         response = self.query(query, precision=precision)
         fields = query.get("__openwisp_fields") if isinstance(query, Mapping) else None
-        return [
+        points = [
             self._document_to_point(
                 hit.get("_source", {}),
                 fields=fields,
@@ -1267,6 +1528,7 @@ class DatabaseClient(BaseTimeseriesClient):
             )
             for hit in self._get_hits(response)
         ]
+        return self._merge_points_by_time(points)
 
     def get_device_data_query(
         self,
@@ -1286,7 +1548,7 @@ class DatabaseClient(BaseTimeseriesClient):
         refresh = self.refresh
         if refresh == "wait_for":
             refresh = True
-        for stream_name in self._get_data_stream_names():
+        for stream_name in self._get_data_stream_names() + self._get_index_names():
             try:
                 self.db.delete_by_query(
                     index=stream_name,

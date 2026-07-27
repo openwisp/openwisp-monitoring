@@ -44,6 +44,9 @@ jobs:
             tsdb: influxdb2
           - python-version: "3.13"
             django-version: django~=5.2.0
+            tsdb: elasticsearch
+          - python-version: "3.13"
+            django-version: django~=5.2.0
             tsdb: influxdb
             udp: true
           - python-version: "3.13"
@@ -105,6 +108,8 @@ jobs:
 
           if [ "${{ matrix.tsdb }}" = "influxdb2" ]; then
             url="http://localhost:8087/health"
+          elif [ "${{ matrix.tsdb }}" = "elasticsearch" ]; then
+            url="http://localhost:9200"
           else
             url="http://localhost:8086/query?q=SHOW%20DATABASES"
           fi
