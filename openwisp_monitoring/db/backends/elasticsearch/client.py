@@ -3,9 +3,7 @@ import re
 from collections.abc import Iterator, Mapping, Sequence
 from copy import deepcopy
 from datetime import datetime, timezone
-from hashlib import sha1
 from itertools import count
-from json import dumps
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -374,15 +372,7 @@ class DatabaseClient(BaseTimeseriesClient):
             "priority": self.options.get("template_priority", 500),
             "template": {
                 "settings": {
-                    "index.mode": "time_series",
                     "index.lifecycle.name": self._get_policy_name(retention_policy),
-                    "index.look_ahead_time": self.options.get("look_ahead_time", "2h"),
-                    "index.look_back_time": self.options.get("look_back_time", "7d"),
-                    "index.routing_path": [
-                        "measurement",
-                        "openwisp_series_id",
-                        "tags.*",
-                    ],
                 },
                 "mappings": {
                     "dynamic": True,
@@ -392,7 +382,6 @@ class DatabaseClient(BaseTimeseriesClient):
                                 "path_match": "tags.*",
                                 "mapping": {
                                     "type": "keyword",
-                                    "time_series_dimension": True,
                                     "ignore_above": 2048,
                                 },
                             }
@@ -413,7 +402,6 @@ class DatabaseClient(BaseTimeseriesClient):
                                 "match_mapping_type": "long",
                                 "mapping": {
                                     "type": "double",
-                                    "time_series_metric": "gauge",
                                 },
                             }
                         },
@@ -423,28 +411,15 @@ class DatabaseClient(BaseTimeseriesClient):
                                 "match_mapping_type": "double",
                                 "mapping": {
                                     "type": "double",
-                                    "time_series_metric": "gauge",
                                 },
                             }
                         },
                     ],
                     "properties": {
                         "@timestamp": {"type": "date"},
-                        "measurement": {
-                            "type": "keyword",
-                            "time_series_dimension": True,
-                        },
-                        "openwisp_series_id": {
-                            "type": "keyword",
-                            "time_series_dimension": True,
-                        },
-                        "openwisp_doc_count": {
-                            "type": "long",
-                            "time_series_metric": "gauge",
-                        },
+                        "measurement": {"type": "keyword"},
                         "openwisp_write_sequence": {
                             "type": "long",
-                            "time_series_metric": "gauge",
                         },
                         "tags": {"type": "object", "dynamic": True},
                         "fields": {"type": "object", "dynamic": True},
@@ -452,7 +427,9 @@ class DatabaseClient(BaseTimeseriesClient):
                 },
                 "lifecycle": {"enabled": True},
             },
-            "_meta": {"description": "OpenWISP Monitoring Elasticsearch TSDS data"},
+            "_meta": {
+                "description": "OpenWISP Monitoring Elasticsearch data stream data"
+            },
         }
 
     def _put_index_template(self, retention_policy=None) -> None:
@@ -719,12 +696,9 @@ class DatabaseClient(BaseTimeseriesClient):
 
     def _build_document(self, name, values, **kwargs) -> dict[str, Any]:
         values = dict(values or {})
-        series_payload = dumps(values, sort_keys=True, default=str)
         return {
             "@timestamp": self._get_timestamp(kwargs.get("timestamp")),
             "measurement": name,
-            "openwisp_series_id": sha1(series_payload.encode()).hexdigest(),
-            "openwisp_doc_count": 1,
             "openwisp_write_sequence": next(self._write_sequence),
             "tags": dict(kwargs.get("tags") or {}),
             "fields": values,
