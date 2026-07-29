@@ -1539,7 +1539,7 @@ class TestMapPageAdmin(TestGeoMixin, DeviceMonitoringTestCase):
         return reverse(f"admin:{self.map_app_label}_{self.map_model_name}_changelist")
 
     def test_mappage_admin(self):
-        self._create_object_location()
+        device_location = self._create_object_location()
         url = self._map_changelist_url()
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -1568,6 +1568,14 @@ class TestMapPageAdmin(TestGeoMixin, DeviceMonitoringTestCase):
                     args=[ZERO_UUID],
                 )
             ),
+        )
+        device_change_url = reverse(
+            f"admin:{Device._meta.app_label}_{Device._meta.model_name}_change",
+            args=[device_location.device.pk],
+        )
+        response = self.client.get(device_change_url)
+        self.assertContains(
+            response, f'window._owMapPageUrl = "{self._map_changelist_url()}";'
         )
 
     def test_mappage_admin_media_files(self):

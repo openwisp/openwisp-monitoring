@@ -782,7 +782,7 @@ class TestDashboardMap(
             self.web_driver.close()
             self.web_driver.switch_to.window(tabs[0])
 
-        with self.subTest("Test falling back from a deleted floor"):
+        with self.subTest("Test falling back from an unknown floor"):
             incorrect_floor_url = f"{self.live_server_url}/admin/#id={location.id}_999"
             self.web_driver.switch_to.new_window("tab")
             tabs = self.web_driver.window_handles
@@ -796,6 +796,12 @@ class TestDashboardMap(
                 By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
             )
             self.assertGreater(len(canvases), 0)
+            self.assertIn(
+                f"id={location.id}_{floorplan.floor}",
+                self.web_driver.execute_script(
+                    "return decodeURIComponent(window.location.hash);"
+                ),
+            )
             self.web_driver.close()
             self.web_driver.switch_to.window(tabs[0])
 

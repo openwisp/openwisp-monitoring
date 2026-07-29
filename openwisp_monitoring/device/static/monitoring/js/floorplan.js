@@ -142,7 +142,7 @@
     );
   }
 
-  function fetchData(url, floor = null) {
+  function fetchData(url, floor = null, isContinuation = false) {
     const floorplanState = getFloorplanState();
     if (!floorplanState?.allResults) return Promise.resolve();
     const reqUrl = new URL(url, window.location.origin);
@@ -154,7 +154,7 @@
     return new Promise((resolve, reject) => {
       // If data for the requested floor already exists in allResults,
       // skip the API call to avoid redundant requests.
-      if (floor != null && floorplanState.allResults[floor]) {
+      if (!isContinuation && floor != null && floorplanState.allResults[floor]) {
         resolve();
         return;
       }
@@ -187,7 +187,7 @@
             }
             setFloorplanState(floorplanState);
             if (data.next) {
-              await fetchData(data.next, actualFloor);
+              await fetchData(data.next, actualFloor, true);
             }
             resolve();
           } catch (e) {
@@ -249,6 +249,9 @@
     }
     if (indoorMap.echarts) {
       indoorMap.echarts.dispose();
+    }
+    if (window._owIndoorMap === indoorMap) {
+      window._owIndoorMap = null;
     }
   }
 
