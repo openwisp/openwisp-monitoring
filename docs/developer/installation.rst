@@ -114,8 +114,8 @@ credentials, you can override the defaults with:
     export INFLUXDB2_BUCKET=openwisp2
     export REDIS_HOST=localhost
 
-If you are using Elasticsearch 9.x, export the following environment
-variable before running migrations, celery, or the development server:
+If you are using Elasticsearch 9.x, the only required environment variable
+for local development is:
 
 .. code-block:: shell
 
@@ -126,25 +126,29 @@ in this repository's ``docker-compose.yml``, no additional variables are
 needed because the default values in ``tests/openwisp2/settings.py``
 already match that setup.
 
-If you are not using the provided containers, or if you changed ports or
-credentials, you can override the defaults with:
+Optional Elasticsearch connection overrides are:
 
 .. code-block:: shell
 
-    # Optional overrides for non-default setups
-    export ELASTICSEARCH_URL=http://localhost:9200
+    # Defaults to openwisp2
     export ELASTICSEARCH_NAME=openwisp2
-    export REDIS_HOST=localhost
 
-For Elastic Cloud, use ``ELASTICSEARCH_CLOUD_ID`` instead of
-``ELASTICSEARCH_URL``:
+    # Defaults to localhost and 9200
+    export ELASTICSEARCH_HOST=localhost
+    export ELASTICSEARCH_PORT=9200
+
+    # Defaults to http://<ELASTICSEARCH_HOST>:<ELASTICSEARCH_PORT>
+    export ELASTICSEARCH_URL=http://localhost:9200
+
+If ``ELASTICSEARCH_CLOUD_ID`` is set, it is used instead of
+``ELASTICSEARCH_URL`` or ``ELASTICSEARCH_HOST``/``ELASTICSEARCH_PORT``:
 
 .. code-block:: shell
 
     export ELASTICSEARCH_CLOUD_ID=<cloud-id>
-    export ELASTICSEARCH_API_KEY=<api-key>
 
-If your cluster requires authentication, use one of these methods:
+Advanced authentication and TLS settings are unset by default. If your
+cluster requires authentication, use one of these methods:
 
 .. code-block:: shell
 
@@ -158,15 +162,25 @@ If your cluster requires authentication, use one of these methods:
     export ELASTICSEARCH_USER=elastic
     export ELASTICSEARCH_PASSWORD=<password>
 
+When multiple authentication methods are configured, the backend uses them
+in this order: ``ELASTICSEARCH_API_KEY``, ``ELASTICSEARCH_BEARER_AUTH``,
+then ``ELASTICSEARCH_USER``/``ELASTICSEARCH_PASSWORD``.
+
 For TLS-enabled clusters, use:
 
 .. code-block:: shell
 
     export ELASTICSEARCH_CA_CERTS=/path/to/http_ca.crt
     export ELASTICSEARCH_SSL_ASSERT_FINGERPRINT=<fingerprint>
+    export ELASTICSEARCH_VERIFY_CERTS=true
+
+``ELASTICSEARCH_VERIFY_CERTS`` is passed to the Elasticsearch client only
+when explicitly set; otherwise the client default is used.
 
 Elasticsearch index templates, refresh behavior, retry policy, and
 lifecycle settings are managed by the backend.
+
+Elasticsearch uses HTTP/TCP only, so no UDP or Telegraf service is needed.
 
 Install WebDriver for Chromium for your browser version from
 https://chromedriver.chromium.org/home and extract ``chromedriver`` to one
