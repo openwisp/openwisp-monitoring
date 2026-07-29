@@ -3,6 +3,7 @@
 (function ($) {
   const status_colors = window._owGeoMapConfig.STATUS_COLORS;
   const NAV_WINDOW_SIZE = 5;
+  let floorplanOpeningId = 0;
 
   function getFloorplanState() {
     const $overlay = $("#floorplan-overlay");
@@ -30,8 +31,8 @@
       navWindowStart: 0,
       selectedIndex: 0,
       isFullScreen: false,
-      // Used to ignore late ajax responses from older sessions.
-      _sessionId: window.crypto.randomUUID(),
+      // Used to ignore late work from older floorplan openings.
+      _sessionId: ++floorplanOpeningId,
     };
   }
 
@@ -79,11 +80,14 @@
 
   function calculateNavigationState(currentFloor) {
     const floorplanState = getFloorplanState();
-    if (!floorplanState) return;
+    if (!floorplanState?.floors.length) return false;
     const idx = floorplanState.floors.findIndex(
       (f) => String(f) === String(currentFloor),
     );
     floorplanState.selectedIndex = idx === -1 ? 0 : idx;
+    if (idx === -1) {
+      floorplanState.state.currentFloor = floorplanState.floors[0];
+    }
     const maxStart = Math.max(0, floorplanState.floors.length - NAV_WINDOW_SIZE);
     const center = Math.floor(NAV_WINDOW_SIZE / 2);
     floorplanState.navWindowStart = Math.max(
@@ -91,6 +95,7 @@
       Math.min(floorplanState.selectedIndex - center, maxStart),
     );
     setFloorplanState(floorplanState);
+    return true;
   }
 
   async function openFloorPlan(url, id, floor = null) {
@@ -108,15 +113,33 @@
     $("#dashboard-map-overlay").append($floorPlanContainer);
     $("#floorplan-overlay").append($floorNavigation);
 
-    setFloorplanState(buildInitialFloorplanState(url, id, floor));
+    const floorplanState = buildInitialFloorplanState(url, id, floor);
+    const openingId = floorplanState._sessionId;
+    setFloorplanState(floorplanState);
 
-    await fetchData(url, floor);
+    try {
+      await fetchData(url, floor);
+      const latestState = getFloorplanState();
+      if (latestState?._sessionId !== openingId) return;
+      if (!calculateNavigationState(latestState.state.currentFloor)) {
+        destroyFloorplan();
+        return;
+      }
+      addFloorButtons();
+      await showFloor(url, latestState.state.currentFloor);
+    } catch {
+      if (getFloorplanState()?._sessionId === openingId) {
+        destroyFloorplan();
+      }
+    }
+  }
+
+  function isCurrentFloorplanRequest(openingId, floor) {
     const floorplanState = getFloorplanState();
-    if (!floorplanState?.state) return;
-    calculateNavigationState(floorplanState.state.currentFloor);
-
-    addFloorButtons();
-    await showFloor(url, floorplanState.state.currentFloor);
+    return (
+      floorplanState?._sessionId === openingId &&
+      (floor == null || String(floorplanState.state.currentFloor) === String(floor))
+    );
   }
 
   function fetchData(url, floor = null) {
@@ -132,7 +155,6 @@
       // If data for the requested floor already exists in allResults,
       // skip the API call to avoid redundant requests.
       if (floor != null && floorplanState.allResults[floor]) {
-        $(".floorplan-loading-spinner").hide();
         resolve();
         return;
       }
@@ -169,12 +191,20 @@
             }
             resolve();
           } catch (e) {
+            if (!isCurrentFloorplanRequest(capturedSessionId, floor)) {
+              resolve();
+              return;
+            }
             alert(gettext("Error loading floorplan coordinates."));
             $(".floorplan-loading-spinner").hide();
             reject(e);
           }
         },
         error: (xhr, status, err) => {
+          if (!isCurrentFloorplanRequest(capturedSessionId, floor)) {
+            resolve();
+            return;
+          }
           alert(gettext("Error loading floorplan coordinates."));
           $(".floorplan-loading-spinner").hide();
           reject(new Error(`${status}: ${err}`));
@@ -208,18 +238,24 @@
     `);
   }
 
+  function destroyIndoorMap(indoorMap) {
+    if (indoorMap._popstateHandler) {
+      window.removeEventListener("popstate", indoorMap._popstateHandler);
+      indoorMap._popstateHandler = null;
+    }
+    if (indoorMap.leaflet) {
+      indoorMap.leaflet.off("fullscreenchange");
+      indoorMap.leaflet.remove();
+    }
+    if (indoorMap.echarts) {
+      indoorMap.echarts.dispose();
+    }
+  }
+
   function destroyFloorplan({ replace: useReplace = true } = {}) {
     const floorplanState = getFloorplanState();
     if (floorplanState?.maps) {
-      Object.values(floorplanState.maps).forEach((indoorMap) => {
-        if (indoorMap.leaflet) {
-          indoorMap.leaflet.off("fullscreenchange");
-          indoorMap.leaflet.remove();
-        }
-        if (indoorMap.echarts) {
-          indoorMap.echarts.dispose();
-        }
-      });
+      Object.values(floorplanState.maps).forEach(destroyIndoorMap);
     }
 
     // Remove DOM and state first — ensures fragmentchange handler
@@ -281,10 +317,16 @@
   async function showFloor(url, floor, { updateUrl = true } = {}) {
     const floorplanState = getFloorplanState();
     if (!floorplanState?.state) return;
+    const openingId = floorplanState._sessionId;
 
     await fetchData(url, floor);
     const nextState = getFloorplanState();
-    if (!nextState?.state) return;
+    if (
+      !nextState?.state ||
+      nextState._sessionId !== openingId ||
+      String(nextState.state.currentFloor) !== String(floor)
+    )
+      return;
 
     const nodesThisFloor = { nodes: nextState.allResults[floor], links: [] };
     if (!nodesThisFloor.nodes || nodesThisFloor.nodes.length === 0) {
@@ -381,8 +423,11 @@
   }
 
   function renderIndoorMap(imageUrl, divId, floor) {
+    const floorplanState = getFloorplanState();
+    if (!floorplanState?.state) return;
+    const openingId = floorplanState._sessionId;
     const indoorMap = new NetJSONGraph(
-      { nodes: (getFloorplanState()?.allResults || {})[floor], links: [] },
+      { nodes: floorplanState.allResults[floor], links: [] },
       {
         el: `#${divId}`,
         render: "map",
@@ -420,7 +465,7 @@
         },
         bookmarkableActions: {
           enabled: true,
-          id: `${getFloorplanState()?.state?.locationId}_${floor}`,
+          id: `${floorplanState.state.locationId}_${floor}`,
           zoomOnRestore: false,
           preserveFragment: true,
         },
@@ -445,14 +490,14 @@
         },
 
         async onReady() {
-          const floorplanState = getFloorplanState();
-          if (!floorplanState?.state) return;
-          // Guard against stale async continuation if the overlay is closed or a
-          // newer floorplan session replaces the current one while awaiting.
-          const sessionId = floorplanState._sessionId;
+          const activeState = getFloorplanState();
+          if (!activeState?.state || activeState._sessionId !== openingId) {
+            destroyIndoorMap(indoorMap);
+            return;
+          }
           const map = this.leaflet;
-          floorplanState.maps[floor] = indoorMap;
-          setFloorplanState(floorplanState);
+          activeState.maps[floor] = indoorMap;
+          setFloorplanState(activeState);
           // remove default geo map tiles
           map.eachLayer((layer) => layer._url && map.removeLayer(layer));
           const img = new Image();
@@ -462,20 +507,33 @@
             await img.decode();
           } catch (e) {
             console.error("Failed to load floorplan image:", e);
-            $(".floorplan-loading-spinner").hide();
+            const currentState = getFloorplanState();
+            if (
+              currentState?._sessionId === openingId &&
+              currentState.maps[floor] === indoorMap
+            ) {
+              delete currentState.maps[floor];
+              setFloorplanState(currentState);
+              $(`#floor-content-${floor}`).remove();
+              if (String(currentState.state.currentFloor) === String(floor)) {
+                $(".floorplan-loading-spinner").hide();
+              }
+            }
+            destroyIndoorMap(indoorMap);
             return;
           }
 
           const latestState = getFloorplanState();
           if (
             !latestState?.state ||
-            latestState._sessionId !== sessionId ||
+            latestState._sessionId !== openingId ||
             latestState.maps[floor] !== indoorMap
           ) {
             // Don't touch map/echarts/DOM: this continuation is stale.
             return;
           }
-          const isActiveFloor = latestState.state.currentFloor === floor;
+          const isActiveFloor =
+            String(latestState.state.currentFloor) === String(floor);
           let initialZoom;
           const h = img.height;
           const w = h * (img.width / img.height);
@@ -673,8 +731,8 @@
     },
   );
 
-  // React to URL fragment changes from the library or browser back/forward.
-  window.addEventListener("fragmentchange", () => {
+  // React to URL fragment changes from the library, browser history, or direct edits.
+  function handleFragmentChange() {
     const indoorFragment = getIndoorMapIdFromUrl();
     const $overlay = document.getElementById("floorplan-overlay");
     const floorplanState = getFloorplanState();
@@ -717,7 +775,10 @@
     }
     // URL already changed via popstate/library → sync floor without pushing history.
     navigateToFloor(idx, { updateUrl: false });
-  });
+  }
+
+  window.addEventListener("fragmentchange", handleFragmentChange);
+  window.addEventListener("hashchange", handleFragmentChange);
 
   window.openFloorPlan = openFloorPlan;
 })(django.jQuery);

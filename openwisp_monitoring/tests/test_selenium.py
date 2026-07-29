@@ -782,6 +782,23 @@ class TestDashboardMap(
             self.web_driver.close()
             self.web_driver.switch_to.window(tabs[0])
 
+        with self.subTest("Test falling back from a deleted floor"):
+            incorrect_floor_url = f"{self.live_server_url}/admin/#id={location.id}_999"
+            self.web_driver.switch_to.new_window("tab")
+            tabs = self.web_driver.window_handles
+            self.web_driver.switch_to.window(tabs[1])
+            self.web_driver.get(incorrect_floor_url)
+            floor_heading = self.find_element(
+                By.CSS_SELECTOR, "#floorplan-title", timeout=5
+            )
+            self.assertIn("1st floor", floor_heading.text.lower())
+            canvases = self.find_elements(
+                By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
+            )
+            self.assertGreater(len(canvases), 0)
+            self.web_driver.close()
+            self.web_driver.switch_to.window(tabs[0])
+
         # Cleanup in case of failure to ensure the it does not end up with multiple tabs open
         if len(self.web_driver.window_handles) > 1:
             primary_tab = self.web_driver.window_handles[0]
