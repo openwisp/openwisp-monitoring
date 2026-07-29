@@ -142,6 +142,10 @@ django.jQuery(
             if (!isMonitoringChartsLocation()) {
               return;
             }
+            // Ignore relayouts caused by viewport changes, such as fullscreen exit.
+            if (!eventEnd && !eventStart && eventdata["xaxis.autorange"] !== true) {
+              return;
+            }
             // When the chart is zoomed out, then load charts with initial zoom level
             if (!eventEnd && !eventStart) {
               localStorage.setItem(isChartZoomed, false);
