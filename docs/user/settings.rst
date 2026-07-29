@@ -30,7 +30,7 @@ To ensure consistent alerting behavior, this value should match the
 -----------------------
 
 ============ =========
-**type**:    ``str``
+**type**:    ``dict``
 **default**: see below
 ============ =========
 
