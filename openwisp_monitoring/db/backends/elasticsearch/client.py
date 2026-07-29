@@ -42,6 +42,31 @@ SeriesTags = dict[str, Any]
 SeriesTagSet = frozenset[tuple[str, Any]]
 SeriesKey = tuple[str, SeriesTags | None]
 SeriesCache = dict[tuple[str, SeriesTagSet], list[TimeseriesPoint]]
+_TIMESTAMP_PRECISION_MULTIPLIERS = {
+    "s": 1,
+    "ms": 1000,
+    "u": 1000000,
+    "ns": 1000000000,
+}
+
+
+def _normalize_datetime(value: datetime, precision="s"):
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    if precision is None:
+        return value.isoformat().replace("+00:00", "Z")
+    timestamp = value.timestamp()
+    multiplier = _TIMESTAMP_PRECISION_MULTIPLIERS.get(precision)
+    return int(timestamp * multiplier) if multiplier else timestamp
+
+
+def _normalize_timestamp_value(value, precision="s"):
+    if isinstance(value, datetime):
+        return _normalize_datetime(value, precision=precision)
+    if isinstance(value, str):
+        parsed = parse_datetime(value)
+        return _normalize_datetime(parsed, precision=precision) if parsed else value
+    return value
 
 
 class QueryResultSet:
@@ -59,28 +84,7 @@ class QueryResultSet:
         return self.response.get(key, default)
 
     def _normalize_time(self, value):
-        if isinstance(value, datetime):
-            dt = value
-        elif isinstance(value, str):
-            dt = parse_datetime(value)
-            if dt is None:
-                return value
-        else:
-            return value
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        if self.precision is None:
-            return dt.isoformat().replace("+00:00", "Z")
-        timestamp = dt.timestamp()
-        if self.precision == "s":
-            return int(timestamp)
-        if self.precision == "ms":
-            return int(timestamp * 1000)
-        if self.precision == "u":
-            return int(timestamp * 1000000)
-        if self.precision == "ns":
-            return int(timestamp * 1000000000)
-        return timestamp
+        return _normalize_timestamp_value(value, precision=self.precision)
 
     def _hits(self) -> list[Mapping[str, Any]]:
         return self.response.get("hits", {}).get("hits", [])
@@ -181,6 +185,8 @@ class DatabaseClient(BaseTimeseriesClient):
     backend_name = "elasticsearch"
     client_error = TransportError
     required_settings = ("BACKEND", "NAME")
+    _INVALID_DATA_STREAM_NAME = re.compile(r'[\\/*?"<>| ,#:]')
+    _MAX_DATA_STREAM_NAME_BYTES = 255
     _OPERATORS = ("=", "!=", "<", ">", "<=", ">=")
     _AGGREGATE = (
         "avg",
@@ -200,6 +206,8 @@ class DatabaseClient(BaseTimeseriesClient):
     _DURATION_PATTERN = re.compile(r"(?:\d+[smhdw])+")
     _DURATION_PART_PATTERN = re.compile(r"(\d+)([smhdw])")
     _DEFAULT_ROLLOVER_SECONDS = 30 * 24 * 60 * 60
+    # Wins over broad external templates that may also match OpenWISP streams.
+    _OPENWISP_INDEX_TEMPLATE_PRIORITY = 500
     _CHART_FILTERS = (
         "content_type",
         "object_id",
@@ -212,6 +220,12 @@ class DatabaseClient(BaseTimeseriesClient):
     @classmethod
     def validate_settings(cls, config: Mapping[str, Any] | None) -> Mapping[str, Any]:
         super().validate_settings(config)
+        try:
+            cls._validate_data_stream_name(config["NAME"])
+        except ValueError as exception:
+            raise ImproperlyConfigured(
+                '"NAME" must be a valid Elasticsearch data stream name.'
+            ) from exception
         has_cloud_id = bool(config.get("CLOUD_ID"))
         has_url = bool(config.get("URL"))
         has_host_port = all(config.get(field) for field in ("HOST", "PORT"))
@@ -220,17 +234,28 @@ class DatabaseClient(BaseTimeseriesClient):
                 'Elasticsearch TIMESERIES_DATABASE must define "CLOUD_ID", '
                 '"URL", or both "HOST" and "PORT".'
             )
+        if not isinstance(config.get("OPTIONS", {}), Mapping):
+            raise ImproperlyConfigured('"OPTIONS" must be a mapping.')
+        if "VERIFY_CERTS" in config and not isinstance(config["VERIFY_CERTS"], bool):
+            raise ImproperlyConfigured('"VERIFY_CERTS" must be a boolean.')
+        uses_basic_auth = not config.get("API_KEY") and not config.get("BEARER_AUTH")
+        if uses_basic_auth and bool(config.get("USER")) != bool(config.get("PASSWORD")):
+            raise ImproperlyConfigured(
+                '"USER" and "PASSWORD" must be configured together.'
+            )
         return config
 
     def __init__(self, db_name: str | None = None) -> None:
-        self.db_name = db_name or TIMESERIES_DB["NAME"]
-        self._ensured_streams = set()
+        self.db_name = self._validate_data_stream_name(
+            TIMESERIES_DB["NAME"] if db_name is None else db_name
+        )
         self._write_sequence = count()
 
     def reset(self, db_name: str | None = None) -> None:
+        if db_name is not None:
+            self._validate_data_stream_name(db_name)
         super().reset(db_name=db_name)
         self.__dict__.pop("db", None)
-        self._ensured_streams = set()
         self._write_sequence = count()
 
     @property
@@ -284,6 +309,21 @@ class DatabaseClient(BaseTimeseriesClient):
                 kwargs[option_name] = self.options[option_name]
         return kwargs
 
+    @classmethod
+    def _validate_data_stream_name(cls, name: str) -> str:
+        invalid = (
+            not isinstance(name, str)
+            or not name
+            or name != name.lower()
+            or name.startswith(("-", "_", "+", "."))
+            or name in {".", ".."}
+            or cls._INVALID_DATA_STREAM_NAME.search(name)
+            or len(name.encode()) > cls._MAX_DATA_STREAM_NAME_BYTES
+        )
+        if invalid:
+            raise ValueError(f'Invalid Elasticsearch data stream name "{name}"')
+        return name
+
     def _get_retention_policy_name(self, retention_policy=None) -> str:
         if not retention_policy or retention_policy == "autogen":
             return "autogen"
@@ -293,7 +333,7 @@ class DatabaseClient(BaseTimeseriesClient):
         retention_policy = self._get_retention_policy_name(retention_policy)
         if retention_policy == "autogen":
             return self.db_name
-        return f"{self.db_name}-{retention_policy}"
+        return self._validate_data_stream_name(f"{self.db_name}-{retention_policy}")
 
     def _get_policy_name(self, retention_policy=None) -> str:
         return f"{self.db_name}-{self._get_retention_policy_name(retention_policy)}-ilm"
@@ -301,7 +341,7 @@ class DatabaseClient(BaseTimeseriesClient):
     def _get_template_name(self, retention_policy=None) -> str:
         return f"{self._get_stream_name(retention_policy)}-template"
 
-    def _is_own_stream(self, name: str) -> bool:
+    def _is_own_resource_name(self, name: str) -> bool:
         return name == self.db_name or name.startswith(f"{self.db_name}-")
 
     def _is_not_found(self, exception: Exception) -> bool:
@@ -315,7 +355,11 @@ class DatabaseClient(BaseTimeseriesClient):
             return False
         if getattr(exception, "status_code", None) != 400:
             return False
-        return "resource_already_exists_exception" in str(exception)
+        body = self._response_body(exception)
+        error = body.get("error", {}) if isinstance(body, Mapping) else {}
+        if isinstance(error, Mapping):
+            return error.get("type") == "resource_already_exists_exception"
+        return error == "resource_already_exists_exception"
 
     def _response_body(self, response):
         return getattr(response, "body", response)
@@ -335,8 +379,11 @@ class DatabaseClient(BaseTimeseriesClient):
 
     def _build_lifecycle_policy(self, duration: str | None = None) -> dict[str, Any]:
         duration_seconds = self._duration_to_seconds(duration)
-        rollover_seconds = duration_seconds or self._DEFAULT_ROLLOVER_SECONDS
-        rollover_seconds = min(rollover_seconds, self._DEFAULT_ROLLOVER_SECONDS)
+        # Bound retention overshoot and backing-index size for long-lived policies.
+        rollover_seconds = min(
+            duration_seconds or self._DEFAULT_ROLLOVER_SECONDS,
+            self._DEFAULT_ROLLOVER_SECONDS,
+        )
         policy = {
             "phases": {
                 "hot": {
@@ -359,17 +406,14 @@ class DatabaseClient(BaseTimeseriesClient):
         return policy
 
     def _put_lifecycle_policy(self, name: str, policy: Mapping[str, Any]) -> None:
-        try:
-            self.db.ilm.put_lifecycle(name=name, policy=policy)
-        except TypeError:
-            self.db.ilm.put_lifecycle(name=name, body={"policy": policy})
+        self.db.ilm.put_lifecycle(name=name, policy=policy)
 
     def _build_index_template_body(self, retention_policy=None) -> dict[str, Any]:
         stream_name = self._get_stream_name(retention_policy)
         return {
             "index_patterns": [stream_name],
             "data_stream": {},
-            "priority": self.options.get("template_priority", 500),
+            "priority": self._OPENWISP_INDEX_TEMPLATE_PRIORITY,
             "template": {
                 "settings": {
                     "index.lifecycle.name": self._get_policy_name(retention_policy),
@@ -425,7 +469,6 @@ class DatabaseClient(BaseTimeseriesClient):
                         "fields": {"type": "object", "dynamic": True},
                     },
                 },
-                "lifecycle": {"enabled": True},
             },
             "_meta": {
                 "description": "OpenWISP Monitoring Elasticsearch data stream data"
@@ -435,10 +478,7 @@ class DatabaseClient(BaseTimeseriesClient):
     def _put_index_template(self, retention_policy=None) -> None:
         name = self._get_template_name(retention_policy)
         body = self._build_index_template_body(retention_policy)
-        try:
-            self.db.indices.put_index_template(name=name, **body)
-        except TypeError:
-            self.db.indices.put_index_template(name=name, body=body)
+        self.db.indices.put_index_template(name=name, **body)
 
     def _data_stream_exists(self, name: str) -> bool:
         try:
@@ -451,11 +491,8 @@ class DatabaseClient(BaseTimeseriesClient):
 
     def _ensure_data_stream_resources(
         self, retention_policy=None, duration: str | None = None
-    ):
+    ) -> None:
         stream_name = self._get_stream_name(retention_policy)
-        cache_key = (stream_name, duration)
-        if cache_key in self._ensured_streams:
-            return
         self._put_lifecycle_policy(
             self._get_policy_name(retention_policy),
             self._build_lifecycle_policy(duration),
@@ -469,7 +506,6 @@ class DatabaseClient(BaseTimeseriesClient):
                     raise
                 if not self._data_stream_exists(stream_name):
                     raise
-        self._ensured_streams.add(cache_key)
 
     @retry
     def create_database(self) -> None:
@@ -487,7 +523,6 @@ class DatabaseClient(BaseTimeseriesClient):
         self._delete_indices()
         self._delete_index_templates()
         self._delete_lifecycle_policies()
-        self._ensured_streams = set()
         logger.debug('Dropped Elasticsearch data streams for "%s"', self.db_name)
 
     def _get_data_stream_names(self) -> list[str]:
@@ -501,7 +536,7 @@ class DatabaseClient(BaseTimeseriesClient):
         return [
             stream["name"]
             for stream in response.get("data_streams", [])
-            if self._is_own_stream(stream["name"])
+            if self._is_own_resource_name(stream["name"])
         ]
 
     def _get_index_names(self) -> list[str]:
@@ -518,7 +553,7 @@ class DatabaseClient(BaseTimeseriesClient):
         return [
             index_name
             for index_name in response.keys()
-            if self._is_own_stream(index_name)
+            if self._is_own_resource_name(index_name)
         ]
 
     def _delete_indices(self) -> None:
@@ -530,25 +565,11 @@ class DatabaseClient(BaseTimeseriesClient):
                     raise
 
     def _delete_index_templates(self) -> None:
-        try:
-            response = self.db.indices.get_index_template(
-                name=f"{self.db_name}*-template"
-            )
-        except Exception as exception:
-            if self._is_not_found(exception):
-                return
-            raise
-        response = self._response_body(response)
-        template_names = [
-            template["name"]
-            for template in response.get("index_templates", [])
-            if template["name"] == self._get_template_name()
-            or (
-                template["name"].startswith(f"{self.db_name}-")
-                and template["name"].endswith("-template")
-            )
-        ]
-        for template_name in template_names:
+        template_patterns = (
+            self._get_template_name(),
+            f"{self.db_name}-*-template",
+        )
+        for template_name in template_patterns:
             try:
                 self.db.indices.delete_index_template(name=template_name)
             except Exception as exception:
@@ -563,22 +584,31 @@ class DatabaseClient(BaseTimeseriesClient):
                 if not self._is_not_found(exception):
                     raise
 
-    def _get_lifecycle_policy_names(self) -> list[str]:
+    def _get_lifecycle_policies(self) -> dict[str, Any]:
+        pattern = f"{self.db_name}-*-ilm"
         try:
-            response = self.db.ilm.get_lifecycle(name=f"{self.db_name}-*-ilm")
+            response = self.db.ilm.get_lifecycle(name=pattern)
         except Exception as exception:
             if self._is_not_found(exception):
-                return []
+                return {}
             raise
         response = self._response_body(response)
-        return [
-            name
-            for name in response.keys()
+        return {
+            name: policy
+            for name, policy in response.items()
             if name.startswith(f"{self.db_name}-") and name.endswith("-ilm")
-        ]
+        }
+
+    def _get_lifecycle_policy_names(self) -> list[str]:
+        return list(self._get_lifecycle_policies())
+
+    def create_or_alter_retention_policy(self, name: str, duration: str) -> None:
+        self._get_stream_name(name)
+        self._duration_to_seconds(duration)
+        self._create_or_alter_retention_policy(name, duration)
 
     @retry
-    def create_or_alter_retention_policy(self, name: str, duration: str) -> None:
+    def _create_or_alter_retention_policy(self, name: str, duration: str) -> None:
         self._ensure_data_stream_resources(retention_policy=name, duration=duration)
         logger.debug(
             'Created/updated Elasticsearch retention policy "%s" with duration %s',
@@ -588,19 +618,13 @@ class DatabaseClient(BaseTimeseriesClient):
 
     @retry
     def get_list_retention_policies(self) -> list[TimeseriesPoint]:
+        """Return ES ILM policies in an InfluxDB-compatible shape."""
         policies = []
-        for policy_name in self._get_lifecycle_policy_names():
-            start = len(self.db_name) + 1
-            end = -len("-ilm")
-            retention_policy = policy_name[start:end]
-            try:
-                body = self.db.ilm.get_lifecycle(name=policy_name)
-            except Exception as exception:
-                if self._is_not_found(exception):
-                    continue
-                raise
-            body = self._response_body(body)
-            phases = body.get(policy_name, {}).get("policy", {}).get("phases", {})
+        prefix = f"{self.db_name}-"
+        suffix = "-ilm"
+        for policy_name, policy in self._get_lifecycle_policies().items():
+            retention_policy = policy_name.removeprefix(prefix).removesuffix(suffix)
+            phases = policy.get("policy", {}).get("phases", {})
             duration = "0s"
             if "delete" in phases:
                 duration = phases["delete"].get("min_age", duration)
@@ -654,28 +678,7 @@ class DatabaseClient(BaseTimeseriesClient):
         return timestamp
 
     def _normalize_time(self, value, precision="s"):
-        if isinstance(value, datetime):
-            dt = value
-        elif isinstance(value, str):
-            dt = parse_datetime(value)
-            if dt is None:
-                return value
-        else:
-            return value
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        if precision is None:
-            return dt.isoformat().replace("+00:00", "Z")
-        timestamp = dt.timestamp()
-        if precision == "s":
-            return int(timestamp)
-        if precision == "ms":
-            return int(timestamp * 1000)
-        if precision == "u":
-            return int(timestamp * 1000000)
-        if precision == "ns":
-            return int(timestamp * 1000000000)
-        return timestamp
+        return _normalize_timestamp_value(value, precision=precision)
 
     def _clean_operator(self, op: str) -> str:
         if op not in self._OPERATORS:
@@ -711,7 +714,6 @@ class DatabaseClient(BaseTimeseriesClient):
     def write(self, name: str, values: TimeseriesFields, **kwargs: Any) -> None:
         self._check_database_kwarg(kwargs.get("database"))
         retention_policy = kwargs.get("retention_policy")
-        self._ensure_data_stream_resources(retention_policy)
         document = self._build_document(name, values, **kwargs)
         try:
             self.db.index(
@@ -725,7 +727,6 @@ class DatabaseClient(BaseTimeseriesClient):
 
     def batch_write(self, metric_data: Sequence[BatchWritePayload]) -> None:
         actions = []
-        ensured_retention_policies = set()
         checked_databases = set()
         for data in metric_data:
             database = data.get("database")
@@ -733,9 +734,6 @@ class DatabaseClient(BaseTimeseriesClient):
                 self._check_database_kwarg(database)
                 checked_databases.add(database)
             retention_policy = data.get("retention_policy")
-            if retention_policy not in ensured_retention_policies:
-                self._ensure_data_stream_resources(retention_policy)
-                ensured_retention_policies.add(retention_policy)
             actions.append(
                 {
                     "_op_type": "create",
@@ -1534,7 +1532,6 @@ class DatabaseClient(BaseTimeseriesClient):
                 if not self._is_not_found(exception):
                     raise
 
-    @retry
     def delete_series(
         self, key: str | None = None, tags: TimeseriesTags | None = None
     ) -> None:

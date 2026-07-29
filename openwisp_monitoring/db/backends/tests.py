@@ -121,6 +121,11 @@ class TestBackendContract(SimpleTestCase):
             "HOST": "localhost",
             "PORT": "8086",
         },
+        "openwisp_monitoring.db.backends.elasticsearch": {
+            "BACKEND": "openwisp_monitoring.db.backends.elasticsearch",
+            "NAME": "openwisp2",
+            "URL": "http://localhost:9200",
+        },
     }
 
     def test_backends_implement_contract(self):
@@ -159,6 +164,7 @@ class TestBackendContract(SimpleTestCase):
                 "_delete_api",
                 "use_udp",
             ),
+            "openwisp_monitoring.db.backends.elasticsearch": ("db",),
         }
         for backend_path, attrs in backend_cached_attrs.items():
             with self.subTest(backend=backend_path):
