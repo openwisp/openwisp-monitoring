@@ -2,7 +2,7 @@ from datetime import date, timedelta
 from unittest.mock import patch
 
 from django.core.exceptions import ValidationError
-from django.test import TransactionTestCase
+from django.test import TransactionTestCase, tag
 from django.utils.timezone import now
 from freezegun import freeze_time
 from swapper import load_model
@@ -20,6 +20,10 @@ Device = load_model("config", "device")
 Notification = load_model("openwisp_notifications", "Notification")
 
 
+# These tests trigger threshold checks inside Metric.write(), which read the new
+# point immediately. That is unreliable with UDP writes, so keep them in the TCP
+# runs only.
+@tag("flaky_with_udp_writes")
 class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTestCase):
     _PING = app_settings.CHECK_CLASSES[0][0]
     _CONFIG_APPLIED = app_settings.CHECK_CLASSES[1][0]
@@ -271,9 +275,11 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
         dm.update_status("ok")
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         check.perform_check()
-        self.assertEqual(Metric.objects.count(), 1)
+        self.assertEqual(
+            Metric.objects.filter(configuration="config_applied").count(), 1
+        )
         self.assertEqual(AlertSettings.objects.count(), 1)
-        m = Metric.objects.first()
+        m = Metric.objects.filter(configuration="config_applied").first()
         self.assertTrue(dm.is_metric_critical(m))
         # must be executed twice to trepass the tolerance
         with freeze_time(now() - timedelta(minutes=6)):
@@ -337,7 +343,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
         self.assertEqual(Check.objects.count(), 5)
         c2 = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         c2.perform_check()
-        self.assertEqual(Metric.objects.count(), 0)
+        self.assertEqual(Metric.objects.filter(object_id=d.id).count(), 0)
         self.assertIsNone(c2.perform_check())
 
     def test_device_unknown_no_config_check(self):
@@ -348,7 +354,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
         self.assertEqual(Check.objects.count(), 5)
         c2 = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         c2.perform_check()
-        self.assertEqual(Metric.objects.count(), 0)
+        self.assertEqual(Metric.objects.filter(object_id=d.id).count(), 0)
         self.assertEqual(Notification.objects.count(), 0)
         self.assertIsNone(c2.perform_check())
 

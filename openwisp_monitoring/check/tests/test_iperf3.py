@@ -3,7 +3,7 @@ from unittest.mock import call, patch
 
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from django.test import TransactionTestCase
+from django.test import TransactionTestCase, tag
 from swapper import load_model
 
 from openwisp_controller.connection.connectors.ssh import Ssh
@@ -32,6 +32,9 @@ Metric = load_model("monitoring", "Metric")
 AlertSettings = load_model("monitoring", "AlertSettings")
 
 
+# These checks read data immediately after writing it, which is unreliable with
+# UDP writes. Keep them in the TCP runs only.
+@tag("flaky_with_udp_writes")
 class TestIperf3(
     CreateConnectionsMixin, TestDeviceMonitoringMixin, TransactionTestCase
 ):
@@ -56,9 +59,11 @@ class TestIperf3(
         "iperf3.openwisptestserver2.com",
     ]
     charts_qs = Chart.objects.exclude(
+        configuration__in=["gen_wifi_clients", "general_traffic"]
+    )
+    metrics_qs = Metric.objects.exclude(
         configuration__in=["general_clients", "general_traffic"]
     )
-    metrics_qs = Metric.objects.exclude(key__in=["general_clients", "general_traffic"])
 
     @classmethod
     def setUpClass(cls):
@@ -520,7 +525,7 @@ class TestIperf3(
             mock_exec_command.side_effect = [(RESULT_FAIL, 1), (RESULT_FAIL, 1)]
             result = self._perform_iperf3_check()
             self._assert_iperf3_fail_result(result)
-            self.assertEqual(Chart.objects.count(), 6)
+            self.assertEqual(self.charts_qs.count(), 6)
             self.assertEqual(self.metrics_qs.count(), 1)
             self.assertEqual(mock_warn.call_count, 2)
             self.assertEqual(mock_exec_command.call_count, 2)

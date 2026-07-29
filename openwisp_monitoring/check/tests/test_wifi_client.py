@@ -58,6 +58,11 @@ class TestWifiClient(
         self.assertEqual(metric_qs.count(), 0)
         self.assertEqual(alert_settings_qs.count(), 0)
         check = Check.objects.filter(check_type=self._WIFI_CLIENTS).first()
+        # With UDP writes, create_test_data may return before the wifi client
+        # points are readable. Wait here so perform_check does not see 0 clients
+        # and produce the wrong result (see #649).
+        for metric in Metric.objects.filter(key="wifi_clients", object_id=device.pk):
+            self._read_metric(metric)
         result = check.perform_check()
         self.assertEqual(result, {"wifi_clients_min": 3, "wifi_clients_max": 3})
         self.assertEqual(metric_qs.count(), 2)

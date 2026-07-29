@@ -269,14 +269,44 @@ class TestMonitoringMixin(TestOrganizationMixin):
         c.save()
         return c
 
+    # UDP writes are flushed by InfluxDB in the background, so a point may not
+    # be readable immediately after being written. Polling is safer than a fixed
+    # sleep under CI load.
+    _udp_read_max_retries = 15
+    _udp_read_retry_delay = 0.2
+
     @property
     def _is_timeseries_udp_writes(self):
         return TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False)
 
+    @staticmethod
+    def _is_timeseries_read_empty(result):
+        # chart reads return a dict ("traces"/"x"), metric reads return a list
+        if isinstance(result, dict):
+            return not result.get("traces") and not result.get("x")
+        return not result
+
     def _read_chart_or_metric(self, obj, *args, **kwargs):
-        if self._is_timeseries_udp_writes:
-            time.sleep(0.12)
-        return obj.read(*args, **kwargs)
+        # Some callers expect an empty result, for example after deleting a
+        # metric. In those cases, return immediately instead of polling.
+        allow_empty = kwargs.pop("allow_empty", False)
+        if not self._is_timeseries_udp_writes:
+            return obj.read(*args, **kwargs)
+        result = obj.read(*args, **kwargs)
+        if allow_empty:
+            return result
+        # A UDP batch can become visible in pieces. Wait until two consecutive
+        # non-empty reads match, so partial results and trailing null values do
+        # not make the test proceed too early.
+        retries = 0
+        while retries < self._udp_read_max_retries:
+            time.sleep(self._udp_read_retry_delay)
+            new_result = obj.read(*args, **kwargs)
+            if not self._is_timeseries_read_empty(new_result) and new_result == result:
+                return new_result
+            result = new_result
+            retries += 1
+        return result
 
     def _read_metric(self, metric, *args, **kwargs):
         return self._read_chart_or_metric(metric, *args, **kwargs)
@@ -287,4 +317,6 @@ class TestMonitoringMixin(TestOrganizationMixin):
     def _write_metric(self, metric, *args, **kwargs):
         metric.write(*args, **kwargs)
         if self._is_timeseries_udp_writes:
-            time.sleep(0.12)
+            # Wait for InfluxDB to expose the point instead of relying on a
+            # fixed sleep, which is unreliable under load.
+            self._read_chart_or_metric(metric)

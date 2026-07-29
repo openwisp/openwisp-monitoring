@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.test import TestCase
+from django.test import TestCase, tag
 from django.utils.timezone import now, timedelta
 from freezegun import freeze_time
 from swapper import load_model
@@ -890,7 +890,7 @@ class TestDeviceMonitoring(
         dm1.device.delete(check_deactivated=False)
         # Only the metric related to the deleted device
         # is deleted
-        self.assertEqual(self._read_metric(ping1), [])
+        self.assertEqual(self._read_metric(ping1, allow_empty=True), [])
         self.assertNotEqual(self._read_metric(ping2), [])
 
     def test_handle_disabled_organization(self):
@@ -928,6 +928,28 @@ class TestDeviceMonitoring(
 class TestTransactionDeviceMonitoring(
     CreateConnectionsMixin, MonitoringTestMixin, DeviceMonitoringTransactionTestcase
 ):
+    @patch("openwisp_monitoring.device.tasks.perform_check.delay")
+    def test_stuck_problem_regression(self, mocked):
+        """Regression test for https://github.com/openwisp/openwisp-monitoring/issues/830."""
+        dm, ping, load, process_count = self._create_env()
+        data_collected = self._create_object_metric(
+            configuration="data_collected", content_object=dm.device
+        )
+        self._create_alert_settings(
+            metric=data_collected,
+            custom_operator="<",
+            custom_threshold=1,
+            custom_tolerance=0,
+        )
+        ping.write(0)
+        data_collected.write(0)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, "critical")
+        trigger_device_critical_checks.delay(dm.device.pk)
+        dm.refresh_from_db()
+        self.assertEqual(dm.status, "critical")
+        self.assertEqual(mocked.call_count, len(dm.get_critical_checks()))
+
     def test_critical_status_recovered_by_monitoring_metrics(self):
         dm, ping, load, process_count = self._create_env()
         config_applied = self._create_object_metric(
@@ -1114,6 +1136,9 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
         self.assertEqual(WifiSession.objects.count(), 0)
 
     @patch.object(monitoring_settings, "TOLERANCE_INTERVAL", 60)
+    # Closing the session runs the wifi clients check, which reads the new
+    # points immediately. That is unreliable with UDP writes.
+    @tag("flaky_with_udp_writes")
     def test_device_offline_close_session(self):
         start_time = now()
         device_monitoring = self._create_device_monitoring()

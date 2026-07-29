@@ -10,8 +10,8 @@
   );
   window._owGeoMapConfig = {
     geoJsonUrl: "{% url 'monitoring:api_location_geojson' %}",
-    locationDeviceUrl: "{% url 'monitoring:api_location_device_list' '000' %}",
-    indoorCoordinatesUrl: "{% url 'monitoring:api_indoor_coordinates_list' '000' %}",
+    locationDeviceUrl: "{% url 'monitoring:api_location_device_list' '00000000-0000-0000-0000-000000000000' %}",
+    indoorCoordinatesUrl: "{% url 'monitoring:api_indoor_coordinates_list' '00000000-0000-0000-0000-000000000000' %}",
     labels
   };
 </script>

@@ -14,11 +14,12 @@
   };
   const STATUS_COLORS = window._owGeoMapConfig.STATUS_COLORS;
   const STATUS_LABELS = window._owGeoMapConfig.labels;
+  const uuidPlaceholder = "00000000-0000-0000-0000-000000000000";
   const getIndoorCoordinatesUrl = function (pk) {
-    return window._owGeoMapConfig.indoorCoordinatesUrl.replace("000", pk);
+    return window._owGeoMapConfig.indoorCoordinatesUrl.replace(uuidPlaceholder, pk);
   };
   const getLocationDeviceUrl = function (pk) {
-    return window._owGeoMapConfig.locationDeviceUrl.replace("000", pk);
+    return window._owGeoMapConfig.locationDeviceUrl.replace(uuidPlaceholder, pk);
   };
   const escapeHtml = function (text) {
     if (!text) return "";

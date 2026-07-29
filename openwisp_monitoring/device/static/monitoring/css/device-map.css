@@ -53,11 +53,10 @@
   display: none;
   position: absolute;
   z-index: 99;
-  top: 0;
+  top: 38%;
   left: 0;
   width: 100%;
   text-align: center;
-  padding-top: 115px;
 }
 .no-data a.button {
   color: #fff;

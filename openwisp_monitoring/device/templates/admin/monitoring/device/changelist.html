@@ -1,0 +1,17 @@
+{% extends "admin/config/change_list_device.html" %}
+{% load i18n static %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'monitoring/css/device-changelist.css' %}">
+{% endblock %}
+
+{% block footer %}
+  {{ block.super }}
+  <script>
+    (function() {
+        window.deviceMetricsApiBaseUrl = "{{ device_metric_list }}";
+    })();
+  </script>
+  <script src="{% static 'monitoring/js/device-changelist.js' %}"></script>
+{% endblock %}

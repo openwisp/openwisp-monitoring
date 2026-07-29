@@ -1,7 +1,7 @@
 import uuid
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import TestCase, tag
 from django.urls import reverse
 from swapper import load_model
 
@@ -21,6 +21,9 @@ Location = load_model("geo", "Location")
 Device = load_model("config", "Device")
 
 
+# These tests assert on dashboard chart data immediately after writes. That is
+# unreliable with UDP writes, so keep them in the TCP runs only.
+@tag("flaky_with_udp_writes")
 @patch.dict(DEFAULT_DASHBOARD_TRAFFIC_CHART, {"__all__": ["wan"]})
 class TestDashboardTimeseriesView(
     CreateConfigTemplateMixin, TestMonitoringMixin, TestGeoMixin, TestCase

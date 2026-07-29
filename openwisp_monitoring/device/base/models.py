@@ -426,16 +426,21 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
             monitoring = target.monitoring
         except DeviceMonitoring.DoesNotExist:
             monitoring = DeviceMonitoring.objects.create(device=target)
+        monitoring.update_status(monitoring._get_status_from_metrics())
 
-        status = "ok" if metric.is_healthy else "problem"
+    def _get_status_from_metrics(self):
+        """Returns the device status from related metric health."""
+        status = "ok"
         unhealthy_critical_metrics = 0
-        for related_metric in monitoring.related_metrics.filter(is_healthy=False):
+        for related_metric in self.related_metrics.filter(is_healthy=False):
             status = "problem"
-            if monitoring.is_metric_critical(related_metric):
+            if self.is_metric_critical(related_metric):
                 unhealthy_critical_metrics += 1
-        if unhealthy_critical_metrics == len(app_settings.CRITICAL_DEVICE_METRICS):
+        if app_settings.CRITICAL_DEVICE_METRICS and unhealthy_critical_metrics == len(
+            app_settings.CRITICAL_DEVICE_METRICS
+        ):
             status = "critical"
-        monitoring.update_status(status)
+        return status
 
     @staticmethod
     def is_metric_critical(metric):
