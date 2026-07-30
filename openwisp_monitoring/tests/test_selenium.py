@@ -230,6 +230,28 @@ class TestDashboardCharts(
             ).get_attribute("innerHTML"),
         )
 
+    def test_chart_resize_does_not_reload_dashboard(self):
+        self.create_test_data()
+        self.login()
+        self.wait_for_visibility(
+            By.CSS_SELECTOR, "#chart-0 .js-plotly-plot", timeout=10
+        )
+        self.web_driver.execute_script("""
+            window.dashboardChartRequests = 0;
+            const originalAjax = django.jQuery.ajax;
+            django.jQuery.ajax = function () {
+              window.dashboardChartRequests += 1;
+              return originalAjax.apply(this, arguments);
+            };
+            document.querySelector('#chart-0 .js-plotly-plot').emit(
+              'plotly_relayout',
+              { autosize: true },
+            );
+        """)
+        self.assertEqual(
+            self.web_driver.execute_script("return window.dashboardChartRequests;"), 0
+        )
+
 
 @tag("selenium_tests")
 class TestWifiSessionInlineAdmin(

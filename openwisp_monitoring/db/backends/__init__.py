@@ -1,26 +1,17 @@
-import logging
 from importlib import import_module
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.db import DatabaseError
 
-logger = logging.getLogger(__name__)
 
-TIMESERIES_DB = getattr(settings, "TIMESERIES_DATABASE", None)
-if not TIMESERIES_DB:
-    TIMESERIES_DB = {
-        "BACKEND": "openwisp_monitoring.db.backends.influxdb",
-        "USER": getattr(settings, "INFLUXDB_USER", "openwisp"),
-        "PASSWORD": getattr(settings, "INFLUXDB_PASSWORD", "openwisp"),
-        "NAME": getattr(settings, "INFLUXDB_DATABASE", "openwisp2"),
-        "HOST": getattr(settings, "INFLUXDB_HOST", "localhost"),
-        "PORT": getattr(settings, "INFLUXDB_PORT", "8086"),
-    }
-    logger.warning(
-        "The previous method to define Timeseries Database has been deprecated. Please refer to the docs:\n"
-        "https://github.com/openwisp/openwisp-monitoring#setup-integrate-in-an-existing-django-project"
-    )
+def get_timeseries_database():
+    timeseries_database = getattr(settings, "TIMESERIES_DATABASE", None)
+    if not timeseries_database:
+        raise ImproperlyConfigured("TIMESERIES_DATABASE must be configured.")
+    return timeseries_database
+
+
+TIMESERIES_DB = get_timeseries_database()
 
 
 def load_backend_module(backend_name=TIMESERIES_DB["BACKEND"], module=None):
@@ -41,8 +32,6 @@ def load_backend_module(backend_name=TIMESERIES_DB["BACKEND"], module=None):
             return import_module(f"{backend_name}.{module}")
         else:
             return import_module(backend_name)
-    except AttributeError as e:
-        raise DatabaseError("No TIMESERIES_DATABASE specified in settings") from e
     except AssertionError as e:
         raise ImproperlyConfigured(
             f'"{e}" field is not declared in TIMESERIES_DATABASE'

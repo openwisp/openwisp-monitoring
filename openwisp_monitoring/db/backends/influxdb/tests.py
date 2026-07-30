@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from celery.exceptions import Retry
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.test import TestCase, tag
 from django.utils.timezone import make_aware, now
 from freezegun import freeze_time
@@ -26,7 +26,7 @@ from openwisp_monitoring.settings import MONITORING_TIMESERIES_RETRY_OPTIONS
 from openwisp_utils.tests import capture_stderr
 
 from ...exceptions import TimeseriesWriteException
-from .. import timeseries_db
+from .. import get_timeseries_database, timeseries_db
 
 Chart = load_model("monitoring", "Chart")
 Notification = load_model("openwisp_notifications", "Notification")
@@ -34,6 +34,14 @@ Notification = load_model("openwisp_notifications", "Notification")
 
 @tag("timeseries_client")
 class TestDatabaseClient(TestMonitoringMixin, TestCase):
+    def test_timeseries_database_setting_is_required(self):
+        with self.settings(TIMESERIES_DATABASE=None):
+            with self.assertRaisesRegex(
+                ImproperlyConfigured,
+                "TIMESERIES_DATABASE must be configured.",
+            ):
+                get_timeseries_database()
+
     def test_forbidden_queries(self):
         queries = [
             "DROP DATABASE openwisp2",
