@@ -16,18 +16,8 @@ class ElasticsearchQuery(dict):
 
         return ElasticsearchQuery(replace_value(query))
 
-
-class ElasticsearchDefaultChartQuery:
-    def resolve(self, has_object_scope=False):
-        filters = ["content_type", "object_id"] if has_object_scope else []
-        return ElasticsearchQuery(
-            {
-                "__openwisp_query_type": "raw_chart",
-                "aggregate": False,
-                "field": "{field_name}",
-                "filters": filters,
-            }
-        )
+    def resolve(self):
+        return ElasticsearchQuery(deepcopy(self))
 
 
 def _metric(name, field, agg="avg", scale=None, round_value=False):
@@ -49,7 +39,9 @@ def _chart(*metrics):
     )
 
 
-_gb = 1 / 1000000000
+_gb = (
+    1 / 1000000000
+)  # Scale byte-based traffic and transfer metrics to decimal gigabytes for charts.
 
 chart_query = {
     "uptime": {
@@ -161,5 +153,11 @@ chart_query = {
 summary_query = {
     key: {"elasticsearch": value["elasticsearch"]} for key, value in chart_query.items()
 }
-default_chart_query = ElasticsearchDefaultChartQuery()
+default_chart_query = ElasticsearchQuery(
+    {
+        "__openwisp_query_type": "raw_chart",
+        "aggregate": False,
+        "field": "{field_name}",
+    }
+)
 device_data_query = "elasticsearch-device-data-query"

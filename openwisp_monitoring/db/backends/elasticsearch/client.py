@@ -1022,6 +1022,7 @@ class DatabaseClient(BaseTimeseriesClient):
                 hit.get("_source", {}),
                 fields=fields,
                 precision=precision,
+                include_tags=False,
             )
             for hit in self._get_hits(response)
         ]
@@ -1401,6 +1402,15 @@ class DatabaseClient(BaseTimeseriesClient):
             )
         return point
 
+    @staticmethod
+    def _has_chart_values(points, metrics):
+        metric_names = [metric["name"] for metric in metrics]
+        return any(
+            point.get(metric_name) is not None
+            for point in points
+            for metric_name in metric_names
+        )
+
     def _format_histogram_time(self, bucket, precision):
         if "key" not in bucket:
             return None
@@ -1411,9 +1421,12 @@ class DatabaseClient(BaseTimeseriesClient):
         metrics = query.get("__openwisp_metrics", [])
         aggregations = response.get("aggregations", {})
         if query.get("__openwisp_summary"):
-            return [self._build_chart_point(aggregations, metrics)]
+            point = self._build_chart_point(aggregations, metrics)
+            if not self._has_chart_values([point], metrics):
+                return []
+            return [point]
         buckets = aggregations.get("timeseries", {}).get("buckets", [])
-        return [
+        points = [
             self._build_chart_point(
                 bucket,
                 metrics,
@@ -1421,6 +1434,9 @@ class DatabaseClient(BaseTimeseriesClient):
             )
             for bucket in buckets
         ]
+        if not self._has_chart_values(points, metrics):
+            return []
+        return points
 
     def _extract_grouped_chart_value(self, bucket, metric):
         return self._extract_chart_metric_value(
