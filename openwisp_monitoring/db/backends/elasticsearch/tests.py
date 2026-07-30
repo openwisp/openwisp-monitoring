@@ -22,6 +22,7 @@ from openwisp_monitoring.db.backends.elasticsearch.client import (
     QueryResultSet,
 )
 from openwisp_monitoring.db.backends.elasticsearch.queries import (
+    ElasticsearchQuery,
     chart_query,
     summary_query,
 )
@@ -124,17 +125,16 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             "a" * 256,
         )
         for name in invalid_names:
-            with self.subTest(name=name):
-                with self.assertRaisesMessage(
-                    ImproperlyConfigured,
-                    '"NAME" must be a valid Elasticsearch data stream name.',
-                ):
-                    DatabaseClient.validate_settings(
-                        {
-                            **self.base_config,
-                            "NAME": name,
-                        }
-                    )
+            with self.subTest(name=name), self.assertRaisesMessage(
+                ImproperlyConfigured,
+                '"NAME" must be a valid Elasticsearch data stream name.',
+            ):
+                DatabaseClient.validate_settings(
+                    {
+                        **self.base_config,
+                        "NAME": name,
+                    }
+                )
 
     def test_validate_settings_rejects_invalid_advanced_options(self):
         invalid_settings = (
@@ -150,14 +150,15 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             ),
         )
         for invalid_setting, message in invalid_settings:
-            with self.subTest(setting=invalid_setting):
-                with self.assertRaisesMessage(ImproperlyConfigured, message):
-                    DatabaseClient.validate_settings(
-                        {
-                            **self.base_config,
-                            **invalid_setting,
-                        }
-                    )
+            with self.subTest(setting=invalid_setting), self.assertRaisesMessage(
+                ImproperlyConfigured, message
+            ):
+                DatabaseClient.validate_settings(
+                    {
+                        **self.base_config,
+                        **invalid_setting,
+                    }
+                )
 
     @patch.dict(
         "openwisp_monitoring.db.backends.elasticsearch.client.TIMESERIES_DB",
@@ -473,6 +474,7 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             ],
         )
 
+    @patch.object(DatabaseClient, "_is_not_found")
     @patch.object(DatabaseClient, "_delete_lifecycle_policies")
     @patch.object(DatabaseClient, "_delete_index_templates")
     @patch.object(DatabaseClient, "_delete_indices")
@@ -482,7 +484,12 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         return_value=["openwisp2", "openwisp2-short"],
     )
     def test_drop_database_retries_safely_after_partial_deletion(
-        self, mock_streams, mock_indices, mock_templates, mock_policies
+        self,
+        mock_streams,
+        mock_indices,
+        mock_templates,
+        mock_policies,
+        mock_is_not_found,
     ):
         mock_db = self._mock_db()
         transient_error = RuntimeError("temporary failure")
@@ -493,16 +500,8 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             missing_error,
             None,
         ]
-
-        def is_not_found(exception):
-            return exception is missing_error
-
-        with patch.object(
-            DatabaseClient,
-            "_is_not_found",
-            side_effect=is_not_found,
-        ):
-            self.timeseries_db.drop_database()
+        mock_is_not_found.side_effect = lambda exception: exception is missing_error
+        self.timeseries_db.drop_database()
         self.assertEqual(mock_streams.call_count, 2)
         self.assertEqual(
             mock_db.indices.delete_data_stream.call_args_list,
@@ -745,7 +744,7 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             )
         )
         points = self.timeseries_db.read("cpu", "usage", {"host": "server1"})
-        self.assertEqual(points, [{"time": 1711368000, "host": "server1", "usage": 10}])
+        self.assertEqual(points, [{"time": 1711368000, "usage": 10}])
 
     @patch.object(DatabaseClient, "query")
     def test_read_deduplicates_same_timestamp_before_where_filtering(self, mock_query):
@@ -868,6 +867,24 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         )
         self.assertEqual(query["__openwisp_metrics"][0]["scale"], 100)
 
+    def test_build_metric_aggregation(self):
+        cases = (
+            ("avg", {"avg": {"field": "fields.value"}}),
+            ("sum", {"sum": {"field": "fields.value"}}),
+            (
+                "cardinality",
+                {"cardinality": {"field": "fields.value"}},
+            ),
+            ("mode", {"terms": {"field": "fields.value", "size": 1}}),
+            ("unknown", {"avg": {"field": "fields.value"}}),
+        )
+        for aggregation, expected in cases:
+            with self.subTest(aggregation=aggregation):
+                result = self.timeseries_db._build_metric_aggregation(
+                    {"field": "value", "agg": aggregation}
+                )
+                self.assertEqual(result["aggs"]["value"], expected)
+
     def test_get_query_builds_summary_query(self):
         query = self.timeseries_db.get_query(
             chart_type="traffic",
@@ -924,6 +941,20 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         for config in self.timeseries_db.queries.chart_query.values():
             self.assertIn("elasticsearch", config)
 
+    @patch.object(
+        ElasticsearchQuery,
+        "resolve",
+        autospec=True,
+        wraps=ElasticsearchQuery.resolve,
+    )
+    def test_default_chart_query_omits_unused_filter_metadata(self, mock_resolve):
+        default_query = self.timeseries_db.queries.default_chart_query
+        self.assertIsInstance(default_query, ElasticsearchQuery)
+        query = self.timeseries_db.get_default_chart_query(has_object_scope=True)
+        mock_resolve.assert_called_once_with(default_query)
+        self.assertNotIn("filters", query)
+        self.assertIsNot(query, default_query)
+
     @patch.object(DatabaseClient, "query")
     def test_get_top_fields(self, mock_query):
         mock_query.return_value = QueryResultSet(
@@ -970,6 +1001,51 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             self.timeseries_db.get_list_query(query),
             [{"time": 1711368000, "uptime": 50.0}],
         )
+
+    @patch.object(DatabaseClient, "query")
+    def test_get_list_query_omits_empty_chart_aggregations(self, mock_query):
+        query = self.timeseries_db.get_query(
+            chart_type="bar",
+            params={"key": "ping", "field_name": "reachable"},
+            time="1d",
+            group_map={"1d": "10m"},
+            query=chart_query["uptime"]["elasticsearch"],
+        )
+        mock_query.return_value = QueryResultSet(
+            {
+                "hits": {"hits": []},
+                "aggregations": {
+                    "timeseries": {
+                        "buckets": [
+                            {
+                                "key": 1711368000000,
+                                "doc_count": 0,
+                                "uptime": {"value": None},
+                            }
+                        ]
+                    }
+                },
+            }
+        )
+        self.assertEqual(self.timeseries_db.get_list_query(query), [])
+
+    @patch.object(DatabaseClient, "query")
+    def test_get_list_query_omits_empty_chart_summary(self, mock_query):
+        query = self.timeseries_db.get_query(
+            chart_type="bar",
+            params={"key": "ping", "field_name": "reachable"},
+            time="1d",
+            group_map={"1d": "10m"},
+            summary=True,
+            query=chart_query["uptime"]["elasticsearch"],
+        )
+        mock_query.return_value = QueryResultSet(
+            {
+                "hits": {"hits": []},
+                "aggregations": {"uptime": {"value": None}},
+            }
+        )
+        self.assertEqual(self.timeseries_db.get_list_query(query), [])
 
     @patch.object(DatabaseClient, "query")
     def test_get_list_query_converts_raw_hits(self, mock_query):

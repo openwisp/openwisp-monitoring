@@ -177,6 +177,22 @@ class TestBackendContract(SimpleTestCase):
                 for attr in attrs:
                     self.assertNotIn(attr, client.__dict__)
 
+    def test_normalize_chart_window(self):
+        client = DummyTimeseriesClient()
+        cases = (
+            ("1d", {"1d": "10m"}, "10m"),
+            (5, None, "5m"),
+            (0, None, "1m"),
+            ("5", None, "5m"),
+            ("10m", None, "10m"),
+        )
+        for time_value, group_map, expected in cases:
+            with self.subTest(time_value=time_value, group_map=group_map):
+                self.assertEqual(
+                    client._normalize_chart_window(time_value, group_map),
+                    expected,
+                )
+
 
 class TestBackendLoader(SimpleTestCase):
     def _build_valid_backend(self):

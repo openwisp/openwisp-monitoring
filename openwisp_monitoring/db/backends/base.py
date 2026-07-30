@@ -111,7 +111,7 @@ class BaseTimeseriesClient(ABC):
         default_query = self.queries.default_chart_query
         resolver = getattr(default_query, "resolve", None)
         if callable(resolver):
-            return resolver(has_object_scope=has_object_scope)
+            return resolver()
         if isinstance(default_query, str):
             return default_query
         if isinstance(default_query, (list, tuple)):
@@ -126,6 +126,15 @@ class BaseTimeseriesClient(ABC):
         raise ImproperlyConfigured(
             "Unsupported default_chart_query descriptor for the selected backend."
         )
+
+    def _normalize_chart_window(self, time_value, group_map=None):
+        if group_map and time_value in group_map:
+            return group_map[time_value]
+        if isinstance(time_value, (int, float)) or (
+            isinstance(time_value, str) and time_value.isdigit()
+        ):
+            return f"{max(int(time_value), 1)}m"
+        return time_value
 
     @abstractmethod
     def create_database(self) -> None:
