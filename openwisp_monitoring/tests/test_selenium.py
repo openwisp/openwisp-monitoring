@@ -493,12 +493,22 @@ class TestDashboardMap(
         table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
         self.assertEqual(len(table_entries), 10)
         self.web_driver.execute_script(
-            "arguments[0].scrollTop = arguments[0].scrollHeight", table_container
+            """
+            arguments[0].scrollTop = arguments[0].scrollHeight;
+            arguments[0].dispatchEvent(new Event("scroll"));
+            """,
+            table_container,
         )
-        # Allow scroll animation to trigger infinite scroll fetch.
-        sleep(0.3)
-        self._wait_for_popup_table_ready()
-        table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+        table_entries = WebDriverWait(self.web_driver, 2).until(
+            lambda d: (
+                entries
+                if len(
+                    entries := d.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+                )
+                == 20
+                else False
+            )
+        )
         self.assertEqual(len(table_entries), 20)
 
     def test_url_fragment_actions_on_geo_map(self):
@@ -725,6 +735,166 @@ class TestDashboardMap(
                 f"Hash change did not activate {second_map_id}; "
                 f"state is {floorplan_state}; logs are {self.get_browser_logs()}"
             )
+
+        self.web_driver.execute_script(
+            "window.location.hash = arguments[0];", f"id={second_location.id}_999"
+        )
+        WebDriverWait(self.web_driver, 2).until(
+            lambda d: f"id={second_map_id}"
+            in d.execute_script("return decodeURIComponent(window.location.hash);")
+        )
+        self.web_driver.execute_script("window.location.hash = '%';")
+        WebDriverWait(self.web_driver, 2).until(
+            lambda d: not d.execute_script(
+                "return Boolean(document.getElementById('floorplan-overlay'));"
+            )
+        )
+        self.assertTrue(
+            self.web_driver.execute_script(
+                "return typeof window.openFloorPlan === 'function';"
+            )
+        )
+
+    def test_invalid_indoor_map_fragment_does_not_break_map_initialization(self):
+        self._create_object_location()
+        self.login()
+        for fragment in ("id=not-a-uuid_1", "%"):
+            with self.subTest(fragment=fragment):
+                self.open(f"/admin/#{fragment}")
+                self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+                self.assertTrue(
+                    self.web_driver.execute_script(
+                        "return typeof window.openFloorPlan === 'function';"
+                    )
+                )
+                self.assertFalse(
+                    self.web_driver.execute_script(
+                        "return Boolean(document.getElementById('floorplan-overlay'));"
+                    )
+                )
+
+    def test_closing_uninitialized_floorplan_does_not_add_history_entry(self):
+        org = self._get_org()
+        location = self._create_location(type="indoor", organization=org)
+        floorplan = self._create_floorplan(floor=1, location=location)
+        device = self._create_device(organization=org)
+        self._create_object_location(
+            content_object=device,
+            location=location,
+            floorplan=floorplan,
+            organization=org,
+        )
+        self.login()
+        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+        self._open_popup("_owGeoMap", location.id)
+        WebDriverWait(self.web_driver, 2).until(
+            lambda d: f"id=dashboard-geo-map&nodeId={location.id}"
+            in d.execute_script("return decodeURIComponent(window.location.hash);")
+        )
+        history_length = self.web_driver.execute_script("return window.history.length;")
+        self.web_driver.execute_script(
+            """
+            const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
+              "00000000-0000-0000-0000-000000000000",
+              arguments[0],
+            );
+            window.openFloorPlan(floorplanUrl, arguments[0]);
+            django.jQuery("#floorplan-close-btn").trigger("click");
+            """,
+            str(location.id),
+        )
+        self.assertEqual(
+            history_length,
+            self.web_driver.execute_script("return window.history.length;"),
+        )
+
+    def test_floorplan_retries_failed_pages_without_duplicate_nodes(self):
+        org = self._get_org()
+        location = self._create_location(type="indoor", organization=org)
+        floorplans = {
+            floor: self._create_floorplan(floor=floor, location=location)
+            for floor in (1, 2, 3)
+        }
+        for floor, device_count in ((1, 1), (2, 51), (3, 51)):
+            for index in range(device_count):
+                device = self._create_device(
+                    name=f"Floor-{floor}-Device-{index}",
+                    mac_address=f"00:00:00:00:{floor:02x}:{index:02x}",
+                    organization=org,
+                )
+                self._create_object_location(
+                    content_object=device,
+                    location=location,
+                    floorplan=floorplans[floor],
+                    organization=org,
+                )
+        self.login()
+        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+        self.web_driver.execute_script(
+            """
+            const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
+              "00000000-0000-0000-0000-000000000000",
+              arguments[0],
+            );
+            const originalAjax = django.jQuery.ajax;
+            let failContinuation = true;
+            window.alert = () => {};
+            django.jQuery.ajax = function (options) {
+              const url = new URL(options.url, window.location.origin);
+              if (
+                failContinuation &&
+                url.searchParams.get("floor") === "2" &&
+                url.searchParams.get("page") === "2"
+              ) {
+                failContinuation = false;
+                window.setTimeout(() => {
+                  django.jQuery.ajax = originalAjax;
+                  options.error({}, "error", "forced pagination failure");
+                });
+                return { abort() {} };
+              }
+              return originalAjax.apply(this, arguments);
+            };
+            window.openFloorPlan(floorplanUrl, arguments[0]);
+            """,
+            str(location.id),
+        )
+        floor1_map_id = f"{location.id}_{floorplans[1].floor}"
+        WebDriverWait(self.web_driver, 2).until(
+            lambda d: d.execute_script(
+                "return window._owIndoorMap?.config?.bookmarkableActions?.id;"
+            )
+            == floor1_map_id
+        )
+        self.find_element(
+            By.CSS_SELECTOR, "#floorplan-navigation .floor-btn[data-floor='2']"
+        ).click()
+        WebDriverWait(self.web_driver, 2).until(lambda d: d.execute_script("""
+                const state = django.jQuery("#floorplan-overlay").data("floorplanState");
+                return (
+                  state?.state?.currentFloor === 1 &&
+                  !state.allResults[2] &&
+                  !state.floorRequests[2]
+                );
+                """))
+        self.find_element(
+            By.CSS_SELECTOR, "#floorplan-navigation .floor-btn[data-floor='2']"
+        ).click()
+        WebDriverWait(self.web_driver, 2).until(lambda d: d.execute_script("""
+                const state = django.jQuery("#floorplan-overlay").data("floorplanState");
+                return state?.allResults[2]?.length === 51;
+                """))
+        self.web_driver.execute_script("""
+            const floorButton = document.querySelector(
+              "#floorplan-navigation .floor-btn[data-floor='3']",
+            );
+            floorButton.click();
+            floorButton.click();
+            """)
+        WebDriverWait(self.web_driver, 2).until(lambda d: d.execute_script("""
+                const state = django.jQuery("#floorplan-overlay").data("floorplanState");
+                return state?.allResults[3]?.length === 51;
+                """))
 
     def test_switching_floorplan_in_fullscreen_mode(self):
         org = self._get_org()

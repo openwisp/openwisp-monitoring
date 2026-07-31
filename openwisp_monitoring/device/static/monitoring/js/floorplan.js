@@ -3,6 +3,7 @@
 (function ($) {
   const status_colors = window._owGeoMapConfig.STATUS_COLORS;
   const NAV_WINDOW_SIZE = 5;
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   let floorplanOpeningId = 0;
 
   function getFloorplanState() {
@@ -33,11 +34,13 @@
     return {
       state: { url: String(url), locationId: id, currentFloor: floor },
       allResults: {},
+      floorRequests: {},
       floors: [],
       maps: {},
       navWindowStart: 0,
       selectedIndex: 0,
       isFullScreen: false,
+      replaceUrl: false,
       // Used to ignore late work from older floorplan openings.
       _sessionId: ++floorplanOpeningId,
     };
@@ -53,7 +56,12 @@
   // be removed before adding the new one.
   // Note: future logic to manage this will be implemented in netjsongraph.js.
   function getIndoorMapIdFromUrl() {
-    const rawUrlFragments = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+    let rawUrlFragments;
+    try {
+      rawUrlFragments = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+    } catch {
+      return null;
+    }
     const fragments = rawUrlFragments.split(";").filter((f) => f.trim() !== "");
     const indoorFragment = fragments.find((fragment) => {
       const params = new URLSearchParams(fragment);
@@ -68,7 +76,7 @@
     const fragmentId = params.get("id");
     // fragments format is expected to be "<locationId>_<floor>"
     const [fragmentLocationId, fragmentFloor] = fragmentId?.split("_") || [];
-    if (!fragmentLocationId || fragmentFloor == null) {
+    if (!UUID_RE.test(fragmentLocationId) || fragmentFloor == null) {
       return null;
     }
     return { fragmentLocationId, fragmentFloor };
@@ -151,75 +159,94 @@
     );
   }
 
-  function fetchData(url, floor = null, isContinuation = false) {
+  function fetchData(url, floor = null) {
     const floorplanState = getFloorplanState();
-    if (!floorplanState?.allResults) return Promise.resolve();
+    if (!floorplanState?.allResults || !floorplanState.floorRequests) {
+      return Promise.resolve();
+    }
     const reqUrl = new URL(url, window.location.origin);
     // Prevent adding params if already exists
     if (floor != null && !reqUrl.searchParams.has("floor")) {
       reqUrl.searchParams.set("floor", floor);
     }
     const capturedSessionId = floorplanState._sessionId;
-    return new Promise((resolve, reject) => {
-      // If data for the requested floor already exists in allResults,
-      // skip the API call to avoid redundant requests.
-      if (!isContinuation && floor != null && floorplanState.allResults[floor]) {
-        resolve();
-        return;
-      }
-      $.ajax({
-        url: reqUrl.toString(),
-        method: "GET",
-        dataType: "json",
-        xhrFields: { withCredentials: true },
-        success: async (data) => {
-          const floorplanState = getFloorplanState();
-          if (
-            !floorplanState?.allResults ||
-            floorplanState._sessionId !== capturedSessionId
-          ) {
-            resolve();
-            return;
-          }
-          try {
-            const actualFloor = data.results.length ? data.results[0].floor : floor;
-            if (!floorplanState.allResults[actualFloor]) {
-              floorplanState.allResults[actualFloor] = [];
+    const requestKey = floor == null ? reqUrl.toString() : String(floor);
+    if (floor != null && floorplanState.allResults[floor]) {
+      return Promise.resolve();
+    }
+    if (floorplanState.floorRequests[requestKey]) {
+      return floorplanState.floorRequests[requestKey];
+    }
+
+    let actualFloor = floor;
+    const results = [];
+    const request = new Promise((resolve, reject) => {
+      const fetchPage = (pageUrl) => {
+        $.ajax({
+          url: pageUrl,
+          method: "GET",
+          dataType: "json",
+          xhrFields: { withCredentials: true },
+          success(data) {
+            const currentState = getFloorplanState();
+            if (
+              !currentState?.allResults ||
+              currentState._sessionId !== capturedSessionId
+            ) {
+              resolve();
+              return;
             }
-            floorplanState.allResults[actualFloor] = [
-              ...floorplanState.allResults[actualFloor],
-              ...data.results,
-            ];
-            floorplanState.floors = data.floors;
-            if (!floorplanState.state.currentFloor && data.results.length) {
-              floorplanState.state.currentFloor = actualFloor;
-            }
-            setFloorplanState(floorplanState);
+            actualFloor ??= data.results.length ? data.results[0].floor : floor;
+            results.push(...data.results);
             if (data.next) {
-              await fetchData(data.next, actualFloor, true);
+              const nextUrl = new URL(data.next, window.location.origin);
+              if (actualFloor != null && !nextUrl.searchParams.has("floor")) {
+                nextUrl.searchParams.set("floor", actualFloor);
+              }
+              fetchPage(nextUrl.toString());
+              return;
             }
+            if (actualFloor != null) {
+              currentState.allResults[actualFloor] = results;
+            }
+            currentState.floors = data.floors;
+            if (!currentState.state.currentFloor && actualFloor != null) {
+              currentState.state.currentFloor = actualFloor;
+            }
+            setFloorplanState(currentState);
             resolve();
-          } catch (e) {
+          },
+          error(_xhr, status, err) {
             if (!isCurrentFloorplanRequest(capturedSessionId, floor)) {
               resolve();
               return;
             }
             alert(gettext("Error loading floorplan coordinates."));
             $(".floorplan-loading-spinner").hide();
-            reject(e);
-          }
-        },
-        error: (xhr, status, err) => {
-          if (!isCurrentFloorplanRequest(capturedSessionId, floor)) {
-            resolve();
-            return;
-          }
-          alert(gettext("Error loading floorplan coordinates."));
-          $(".floorplan-loading-spinner").hide();
-          reject(new Error(`${status}: ${err}`));
-        },
-      });
+            reject(new Error(`${status}: ${err}`));
+          },
+        });
+      };
+      fetchPage(reqUrl.toString());
     });
+    floorplanState.floorRequests[requestKey] = request;
+    request.then(
+      () => {
+        const currentState = getFloorplanState();
+        if (currentState?._sessionId === capturedSessionId) {
+          delete currentState.floorRequests[requestKey];
+          setFloorplanState(currentState);
+        }
+      },
+      () => {
+        const currentState = getFloorplanState();
+        if (currentState?._sessionId === capturedSessionId) {
+          delete currentState.floorRequests[requestKey];
+          setFloorplanState(currentState);
+        }
+      },
+    );
+    return request;
   }
 
   function createFloorPlanContainer() {
@@ -284,18 +311,30 @@
     // Close/escape use pushState (Forward restores indoor map).
     const raw = window.location.hash.replace(/^#/, "");
     if (removeUrlFragment && raw) {
-      const fragments = decodeURIComponent(raw)
+      let decodedHash;
+      try {
+        decodedHash = decodeURIComponent(raw);
+      } catch {
+        return;
+      }
+      const fragments = decodedHash
         .split(";")
         .map((f) => f.trim())
         .filter(Boolean);
-      if (fragments.length) {
+      const hasIndoorFragment = fragments.some(
+        (fragment) => new URLSearchParams(fragment).get("id") !== "dashboard-geo-map",
+      );
+      if (hasIndoorFragment) {
         const kept = fragments.filter((fragment) => {
           const params = new URLSearchParams(fragment);
           return params.get("id") === "dashboard-geo-map";
         });
         const nextHash = kept.length ? `#${encodeURIComponent(kept.join(";"))}` : "";
         const nextUrl = `${window.location.pathname}${window.location.search}${nextHash}`;
-        window.history[useReplace ? "replaceState" : "pushState"](null, "", nextUrl);
+        const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        if (nextUrl !== currentUrl) {
+          window.history[useReplace ? "replaceState" : "pushState"](null, "", nextUrl);
+        }
       }
     }
   }
@@ -329,7 +368,7 @@
     );
   }
 
-  async function showFloor(url, floor, { updateUrl = true } = {}) {
+  async function showFloor(url, floor, { updateUrl = true, replaceUrl = false } = {}) {
     const floorplanState = getFloorplanState();
     if (!floorplanState?.state) return;
     const openingId = floorplanState._sessionId;
@@ -373,12 +412,14 @@
     // triggered again. Therefore we need to push the URL fragment manually
     // when switching floors.
     if (updateUrl) {
-      // Use pushState so Back/Forward navigates across floor changes.
-      pushIndoorMapIdFragment(
-        nextState.maps[nextState.state.currentFloor],
-        floor,
-        false,
-      );
+      // Use pushState so Back/Forward navigates across floor changes unless
+      // correcting an unavailable floor from the browser history.
+      const activeMap = nextState.maps[nextState.state.currentFloor];
+      pushIndoorMapIdFragment(activeMap, floor, replaceUrl);
+      if (activeMap && nextState.replaceUrl) {
+        nextState.replaceUrl = false;
+        setFloorplanState(nextState);
+      }
     }
   }
 
@@ -637,7 +678,15 @@
             const hasThisFloorFragment = Boolean(
               fragments && indoorMapId && fragments[indoorMapId],
             );
-            pushIndoorMapIdFragment(this, floor, hasThisFloorFragment);
+            pushIndoorMapIdFragment(
+              this,
+              floor,
+              hasThisFloorFragment || latestState.replaceUrl,
+            );
+            if (latestState.replaceUrl) {
+              latestState.replaceUrl = false;
+              setFloorplanState(latestState);
+            }
             if (hasThisFloorFragment) {
               this.utils.applyUrlFragmentState(this);
             }
@@ -683,11 +732,20 @@
     window._owIndoorMap = indoorMap;
   }
 
-  async function navigateToFloor(newIndex, { updateUrl = true } = {}) {
+  async function navigateToFloor(
+    newIndex,
+    { updateUrl = true, replaceUrl = false } = {},
+  ) {
     const floorplanState = getFloorplanState();
     if (!floorplanState?.state) {
       return;
     }
+    const previousState = {
+      currentFloor: floorplanState.state.currentFloor,
+      navWindowStart: floorplanState.navWindowStart,
+      replaceUrl: floorplanState.replaceUrl,
+      selectedIndex: floorplanState.selectedIndex,
+    };
     floorplanState.selectedIndex = newIndex;
     const maxStart = Math.max(0, floorplanState.floors.length - NAV_WINDOW_SIZE);
     const center = Math.floor(NAV_WINDOW_SIZE / 2);
@@ -695,14 +753,34 @@
       0,
       Math.min(floorplanState.selectedIndex - center, maxStart),
     );
-    addFloorButtons();
     floorplanState.state.currentFloor =
       floorplanState.floors[floorplanState.selectedIndex];
+    floorplanState.replaceUrl = replaceUrl;
     setFloorplanState(floorplanState);
+    addFloorButtons();
     $(".floorplan-loading-spinner").show();
-    await showFloor(floorplanState.state.url, floorplanState.state.currentFloor, {
-      updateUrl,
-    });
+    const targetFloor = floorplanState.state.currentFloor;
+    try {
+      await showFloor(floorplanState.state.url, targetFloor, {
+        updateUrl,
+        replaceUrl,
+      });
+    } catch (error) {
+      const currentState = getFloorplanState();
+      if (
+        currentState?._sessionId === floorplanState._sessionId &&
+        String(currentState.state.currentFloor) === String(targetFloor)
+      ) {
+        currentState.selectedIndex = previousState.selectedIndex;
+        currentState.navWindowStart = previousState.navWindowStart;
+        currentState.replaceUrl = previousState.replaceUrl;
+        currentState.state.currentFloor = previousState.currentFloor;
+        setFloorplanState(currentState);
+        addFloorButtons();
+        $(".floorplan-loading-spinner").hide();
+      }
+      throw error;
+    }
   }
 
   // Delegated event handlers (set up once at module init)
@@ -717,32 +795,38 @@
     }
   });
 
-  $(document).on("click", "#floorplan-navigation .floor-btn", async function (e) {
+  $(document).on("click", "#floorplan-navigation .floor-btn", function (e) {
     if (!getFloorplanState()?.state) return;
-    navigateToFloor(+e.currentTarget.dataset.index);
+    navigateToFloor(+e.currentTarget.dataset.index).catch((error) =>
+      console.error("Failed to switch floor:", error),
+    );
   });
 
   $(document).on(
     "click",
     "#floorplan-navigation .right-arrow:not(.disabled)",
-    async function () {
+    function () {
       const floorplanState = getFloorplanState();
       if (
         !floorplanState?.state ||
         floorplanState.selectedIndex >= floorplanState.floors.length - 1
       )
         return;
-      navigateToFloor(floorplanState.selectedIndex + 1);
+      navigateToFloor(floorplanState.selectedIndex + 1).catch((error) =>
+        console.error("Failed to switch floor:", error),
+      );
     },
   );
 
   $(document).on(
     "click",
     "#floorplan-navigation .left-arrow:not(.disabled)",
-    async function () {
+    function () {
       const floorplanState = getFloorplanState();
       if (!floorplanState?.state || floorplanState.selectedIndex <= 0) return;
-      navigateToFloor(floorplanState.selectedIndex - 1);
+      navigateToFloor(floorplanState.selectedIndex - 1).catch((error) =>
+        console.error("Failed to switch floor:", error),
+      );
     },
   );
 
@@ -782,11 +866,13 @@
     if (String(floorplanState.state.currentFloor) === String(fragmentFloor)) {
       return;
     }
-    // Target floor not in the available floors → ignore.
+    // Target floor not in the available floors: restore the first floor and
+    // replace the invalid fragment without adding another history entry.
     const idx = floorplanState.floors.findIndex(
       (f) => String(f) === String(fragmentFloor),
     );
     if (idx === -1) {
+      navigateToFloor(0, { replaceUrl: true });
       return;
     }
     // URL already changed via popstate/library → sync floor without pushing history.
