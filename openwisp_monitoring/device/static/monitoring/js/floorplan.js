@@ -15,6 +15,13 @@
     $("#floorplan-overlay").data("floorplanState", nextState);
   }
 
+  function getIndoorCoordinatesUrl(locationId) {
+    return window._owGeoMapConfig.indoorCoordinatesUrl.replace(
+      "00000000-0000-0000-0000-000000000000",
+      locationId,
+    );
+  }
+
   const escapeHtml = function (text) {
     if (!text) return "";
     const div = document.createElement("div");
@@ -71,10 +78,7 @@
   const indoorMapId = getIndoorMapIdFromUrl();
   if (indoorMapId) {
     const { fragmentLocationId, fragmentFloor } = indoorMapId;
-    const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
-      "00000000-0000-0000-0000-000000000000",
-      fragmentLocationId,
-    );
+    const floorplanUrl = getIndoorCoordinatesUrl(fragmentLocationId);
     openFloorPlan(floorplanUrl, fragmentLocationId, fragmentFloor);
   }
 
@@ -98,12 +102,17 @@
     return true;
   }
 
-  async function openFloorPlan(url, id, floor = null) {
+  async function openFloorPlan(
+    url,
+    id,
+    floor = null,
+    { preserveFragment = false } = {},
+  ) {
     if (id == null) {
       throw new Error("openFloorPlan requires a locationId");
     }
     if (document.getElementById("floorplan-overlay")) {
-      destroyFloorplan();
+      destroyFloorplan({ removeUrlFragment: !preserveFragment });
     }
 
     // Create UI first so we have a stable place to store state via $.data().
@@ -255,7 +264,10 @@
     }
   }
 
-  function destroyFloorplan({ replace: useReplace = true } = {}) {
+  function destroyFloorplan({
+    replace: useReplace = true,
+    removeUrlFragment = true,
+  } = {}) {
     const floorplanState = getFloorplanState();
     if (floorplanState?.maps) {
       Object.values(floorplanState.maps).forEach(destroyIndoorMap);
@@ -271,7 +283,7 @@
     // Strip any indoor fragment from the URL.
     // Close/escape use pushState (Forward restores indoor map).
     const raw = window.location.hash.replace(/^#/, "");
-    if (raw) {
+    if (removeUrlFragment && raw) {
       const fragments = decodeURIComponent(raw)
         .split(";")
         .map((f) => f.trim())
@@ -749,10 +761,7 @@
     const { fragmentLocationId, fragmentFloor } = indoorFragment;
     // Forward/restore added an indoor fragment while overlay is closed → open it.
     if (!$overlay) {
-      const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
-        "00000000-0000-0000-0000-000000000000",
-        fragmentLocationId,
-      );
+      const floorplanUrl = getIndoorCoordinatesUrl(fragmentLocationId);
       openFloorPlan(floorplanUrl, fragmentLocationId, fragmentFloor);
       return;
     }
@@ -760,8 +769,12 @@
     if (!floorplanState?.state) {
       return;
     }
-    // Indoor fragment belongs to a different location → ignore.
+    // Replace the active overlay while preserving the browser's new fragment.
     if (String(fragmentLocationId) !== String(floorplanState.state.locationId)) {
+      const floorplanUrl = getIndoorCoordinatesUrl(fragmentLocationId);
+      openFloorPlan(floorplanUrl, fragmentLocationId, fragmentFloor, {
+        preserveFragment: true,
+      });
       return;
     }
     // Already showing the target floor → nothing to do (avoids re-entry loop

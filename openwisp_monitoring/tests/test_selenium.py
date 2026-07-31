@@ -652,6 +652,80 @@ class TestDashboardMap(
                 f"/config/device/{device2.id}/change/", self.web_driver.current_url
             )
 
+    def test_hash_change_reopens_floorplan_for_another_location(self):
+        org = self._get_org()
+        first_location = self._create_location(type="indoor", organization=org)
+        second_location = self._create_location(type="indoor", organization=org)
+        first_floorplan = self._create_floorplan(floor=1, location=first_location)
+        second_floorplan = self._create_floorplan(floor=1, location=second_location)
+        first_device = self._create_device(
+            name="First-Device",
+            mac_address="00:00:00:00:00:01",
+            organization=org,
+        )
+        second_device = self._create_device(
+            name="Second-Device",
+            mac_address="00:00:00:00:00:02",
+            organization=org,
+        )
+        self._create_object_location(
+            content_object=first_device,
+            location=first_location,
+            floorplan=first_floorplan,
+            organization=org,
+        )
+        self._create_object_location(
+            content_object=second_device,
+            location=second_location,
+            floorplan=second_floorplan,
+            organization=org,
+        )
+        self.login()
+        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+        first_map_id = f"{first_location.id}_{first_floorplan.floor}"
+        second_map_id = f"{second_location.id}_{second_floorplan.floor}"
+        second_fragment = f"id={second_map_id}"
+        self.web_driver.execute_script(
+            """
+            const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
+              "00000000-0000-0000-0000-000000000000",
+              arguments[0],
+            );
+            window.openFloorPlan(floorplanUrl, arguments[0]);
+            """,
+            str(first_location.id),
+        )
+        WebDriverWait(self.web_driver, 2).until(
+            lambda d: d.execute_script(
+                "return window._owIndoorMap?.config?.bookmarkableActions?.id;"
+            )
+            == first_map_id
+        )
+        self.web_driver.execute_script(
+            "window.location.hash = arguments[0];", second_fragment
+        )
+        try:
+            WebDriverWait(self.web_driver, 2).until(
+                lambda d: d.execute_script(
+                    "return window._owIndoorMap?.config?.bookmarkableActions?.id;"
+                )
+                == second_map_id
+            )
+        except TimeoutException:
+            floorplan_state = self.web_driver.execute_script("""
+                const state = django.jQuery("#floorplan-overlay").data("floorplanState");
+                return {
+                  activeMapId: window._owIndoorMap?.config?.bookmarkableActions?.id,
+                  currentFloor: state?.state?.currentFloor,
+                  hash: window.location.hash,
+                  locationId: state?.state?.locationId,
+                };
+                """)
+            self.fail(
+                f"Hash change did not activate {second_map_id}; "
+                f"state is {floorplan_state}; logs are {self.get_browser_logs()}"
+            )
+
     def test_switching_floorplan_in_fullscreen_mode(self):
         org = self._get_org()
         location = self._create_location(type="indoor", organization=org)
