@@ -90,6 +90,21 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         self.assertEqual(self.timeseries_db.backend_name, "elasticsearch")
         self.assertFalse(self.timeseries_db.use_udp)
 
+    def test_normalize_chart_window(self):
+        cases = (
+            ("1d", {"1d": "10m"}, "10m"),
+            (5, None, "5m"),
+            (0, None, "1m"),
+            ("5", None, "5m"),
+            ("10m", None, "10m"),
+        )
+        for time_value, group_map, expected in cases:
+            with self.subTest(time_value=time_value, group_map=group_map):
+                self.assertEqual(
+                    self.timeseries_db._normalize_chart_window(time_value, group_map),
+                    expected,
+                )
+
     def test_validate_settings_accepts_supported_connection_options(self):
         for config in (
             self.base_config,
@@ -747,6 +762,25 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         self.assertEqual(points, [{"time": 1711368000, "usage": 10}])
 
     @patch.object(DatabaseClient, "query")
+    def test_read_filters_by_unselected_field(self, mock_query):
+        mock_query.return_value = QueryResultSet(
+            _search_response(
+                {
+                    "@timestamp": "2024-03-25T12:00:00Z",
+                    "measurement": "load",
+                    "fields": {"value": 10, "related": 100},
+                }
+            )
+        )
+        points = self.timeseries_db.read(
+            "load",
+            "value",
+            {},
+            where=[("related", ">", 50)],
+        )
+        self.assertEqual(points, [{"time": 1711368000, "value": 10}])
+
+    @patch.object(DatabaseClient, "query")
     def test_read_deduplicates_same_timestamp_before_where_filtering(self, mock_query):
         mock_query.return_value = QueryResultSet(
             _search_response(
@@ -1361,6 +1395,30 @@ class TestElasticsearchClientIntegration(
         self.assertEqual(metric.is_healthy_tolerant, False)
         self.assertEqual(Notification.objects.count(), 1)
 
+    @patch.object(monitoring_settings, "TOLERANCE_INTERVAL", 60)
+    def test_alert_tolerance_uses_unselected_related_field(self):
+        self._create_admin()
+        metric = self._create_general_metric(configuration="test_alert_field")
+        self._create_alert_settings(
+            metric=metric,
+            custom_operator=">",
+            custom_threshold=30,
+            custom_tolerance=1,
+        )
+        base_time = now().replace(second=0, microsecond=0)
+        with freeze_time(base_time):
+            metric.write(10, extra_values={"test_related_2": 35})
+        metric.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
+        self.assertEqual(metric.is_healthy, False)
+        self.assertEqual(metric.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
+        with freeze_time(base_time + timedelta(seconds=61)):
+            metric.write(10, extra_values={"test_related_2": 35})
+        metric.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
+        self.assertEqual(metric.is_healthy, False)
+        self.assertEqual(metric.is_healthy_tolerant, False)
+        self.assertEqual(Notification.objects.count(), 1)
+
     def test_chart_read_default_query_round_trip(self):
         chart = self._create_chart(configuration="dummy")
         data = self._read_chart(chart)
@@ -1369,6 +1427,24 @@ class TestElasticsearchClientIntegration(
         self.assertEqual(len(data["x"]), 3)
         self.assertEqual(data["traces"], [("value", [3, 6, 9])])
         self.assertEqual(data["summary"], {"value": None})
+
+    def test_chart_top_fields_round_trip(self):
+        metric = self._create_object_metric(
+            name="applications",
+            configuration="get_top_fields",
+        )
+        chart = Chart(metric=metric, configuration="histogram")
+        self.assertEqual(chart.get_top_fields(number=3), [])
+        metric.write(
+            None,
+            extra_values={
+                "http2": 100,
+                "ssh": 90,
+                "udp": 80,
+                "spdy": 70,
+            },
+        )
+        self.assertEqual(chart.get_top_fields(number=3), ["http2", "ssh", "udp"])
 
     def test_ping_uptime_chart_summary_round_trip(self):
         metric = self._create_object_metric(name="ping", configuration="ping")
