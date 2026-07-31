@@ -1016,17 +1016,32 @@ class DatabaseClient(BaseTimeseriesClient):
             "__retention_policy": retention_policy,
             "size": int(self.options.get("read_size", 10000)),
         }
+        where_fields = [condition[0] for condition in where]
+        projection_fields = fields
+        filter_only_fields = set()
+        if fields != ["*"]:
+            projection_fields = list(dict.fromkeys([*fields, *where_fields]))
+            filter_only_fields = set(where_fields) - set(fields)
         response = self.query(query, precision=precision)
         points = [
             self._document_to_point(
                 hit.get("_source", {}),
-                fields=fields,
+                fields=projection_fields,
                 precision=precision,
                 include_tags=False,
             )
             for hit in self._get_hits(response)
         ]
         points = self._filter_points(self._merge_points_by_time(points), where)
+        if filter_only_fields:
+            points = [
+                {
+                    field: value
+                    for field, value in point.items()
+                    if field not in filter_only_fields
+                }
+                for point in points
+            ]
         return points[: int(limit)] if limit else points
 
     def _format_query_mapping(self, value, params):
@@ -1084,8 +1099,14 @@ class DatabaseClient(BaseTimeseriesClient):
             return {"match_all": {}}
         return {"bool": {"filter": filters}}
 
-    def _normalize_chart_window(self, time, group_map):
-        return str(group_map.get(time, time) or "1d")
+    def _normalize_chart_window(self, time_value, group_map=None):
+        if group_map and time_value in group_map:
+            return group_map[time_value]
+        if isinstance(time_value, (int, float)):
+            return f"{max(int(time_value), 1)}m"
+        if isinstance(time_value, str) and re.fullmatch(r"\d+", time_value):
+            return f"{max(int(time_value), 1)}m"
+        return time_value
 
     def _format_chart_metrics(self, query, params, fields=None):
         format_params = {**params}

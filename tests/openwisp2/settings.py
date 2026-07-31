@@ -3,6 +3,7 @@ import sys
 from datetime import timedelta
 
 from celery.schedules import crontab
+from django.core.exceptions import ImproperlyConfigured
 
 TESTING = "test" in sys.argv
 SHELL = "shell" in sys.argv or "shell_plus" in sys.argv
@@ -30,6 +31,7 @@ if TESTING and "--exclude-tag=selenium_tests" not in sys.argv:
 
 TIMESERIES_BACKEND = os.getenv("TIMESERIES_BACKEND", "influxdb")
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
+FALSEY_ENV_VALUES = {"0", "false", "no", "off"}
 if TIMESERIES_BACKEND == "influxdb":
     TIMESERIES_DATABASE = {
         "BACKEND": "openwisp_monitoring.db.backends.influxdb",
@@ -85,7 +87,7 @@ elif TIMESERIES_BACKEND == "elasticsearch":
         TIMESERIES_DATABASE["API_KEY"] = os.getenv("ELASTICSEARCH_API_KEY")
     elif os.getenv("ELASTICSEARCH_BEARER_AUTH"):
         TIMESERIES_DATABASE["BEARER_AUTH"] = os.getenv("ELASTICSEARCH_BEARER_AUTH")
-    elif os.getenv("ELASTICSEARCH_USER") and os.getenv("ELASTICSEARCH_PASSWORD"):
+    elif os.getenv("ELASTICSEARCH_USER") or os.getenv("ELASTICSEARCH_PASSWORD"):
         TIMESERIES_DATABASE["USER"] = os.getenv("ELASTICSEARCH_USER")
         TIMESERIES_DATABASE["PASSWORD"] = os.getenv("ELASTICSEARCH_PASSWORD")
     for env_var, setting in (
@@ -95,9 +97,12 @@ elif TIMESERIES_BACKEND == "elasticsearch":
         if os.getenv(env_var):
             TIMESERIES_DATABASE[setting] = os.getenv(env_var)
     if os.getenv("ELASTICSEARCH_VERIFY_CERTS"):
-        TIMESERIES_DATABASE["VERIFY_CERTS"] = (
-            os.getenv("ELASTICSEARCH_VERIFY_CERTS").strip().lower() in TRUTHY_ENV_VALUES
-        )
+        verify_certs = os.getenv("ELASTICSEARCH_VERIFY_CERTS").strip().lower()
+        if verify_certs not in TRUTHY_ENV_VALUES | FALSEY_ENV_VALUES:
+            raise ImproperlyConfigured(
+                '"ELASTICSEARCH_VERIFY_CERTS" must be a boolean value.'
+            )
+        TIMESERIES_DATABASE["VERIFY_CERTS"] = verify_certs in TRUTHY_ENV_VALUES
 else:
     raise ValueError(f'Unsupported TIMESERIES_BACKEND "{TIMESERIES_BACKEND}"')
 if TESTING:

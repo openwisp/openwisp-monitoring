@@ -417,8 +417,6 @@ class DatabaseClient(BaseTimeseriesClient):
     def delete_series(self, key=None, tags=None):
         self.db.delete_series(measurement=key, tags=tags)
 
-    # Chart related functions below
-
     def validate_query(self, query):
         for word in self._FORBIDDEN:
             if word in query.lower():

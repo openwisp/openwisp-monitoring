@@ -162,6 +162,9 @@ cluster requires authentication, use one of these methods:
     export ELASTICSEARCH_USER=elastic
     export ELASTICSEARCH_PASSWORD=<password>
 
+``ELASTICSEARCH_USER`` and ``ELASTICSEARCH_PASSWORD`` must be configured
+together.
+
 When multiple authentication methods are configured, the backend uses them
 in this order: ``ELASTICSEARCH_API_KEY``, ``ELASTICSEARCH_BEARER_AUTH``,
 then ``ELASTICSEARCH_USER``/``ELASTICSEARCH_PASSWORD``.
