@@ -2,23 +2,50 @@
 
 (function ($) {
   const status_colors = window._owGeoMapConfig.STATUS_COLORS;
-  let allResults = {};
-  let floors = [];
-  let currentFloor = null;
   const NAV_WINDOW_SIZE = 5;
-  let navWindowStart = 0;
-  let selectedIndex = 0;
-  let isFullScreen = false;
-  let maps = {};
-  let locationId = null;
-  let popstateHandler = null;
-  let hashchangeHandler = null;
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  let floorplanOpeningId = 0;
+
+  function getFloorplanState() {
+    const $overlay = $("#floorplan-overlay");
+    if (!$overlay.length) return null;
+    return $overlay.data("floorplanState") || null;
+  }
+
+  function setFloorplanState(nextState) {
+    $("#floorplan-overlay").data("floorplanState", nextState);
+  }
+
+  function getIndoorCoordinatesUrl(locationId) {
+    return window._owGeoMapConfig.indoorCoordinatesUrl.replace(
+      "00000000-0000-0000-0000-000000000000",
+      locationId,
+    );
+  }
+
   const escapeHtml = function (text) {
     if (!text) return "";
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
   };
+
+  function buildInitialFloorplanState(url, id, floor) {
+    return {
+      state: { url: String(url), locationId: id, currentFloor: floor },
+      allResults: {},
+      floorRequests: {},
+      floors: [],
+      maps: {},
+      navWindowStart: 0,
+      selectedIndex: 0,
+      isFullScreen: false,
+      replaceUrl: false,
+      // Used to ignore late work from older floorplan openings.
+      _sessionId: ++floorplanOpeningId,
+    };
+  }
+
   // Use case: we support overlaying two maps. The URL hash contains up to two
   // fragments separated by ';' — one is the geo map and the other is an indoor map.
   //
@@ -29,7 +56,12 @@
   // be removed before adding the new one.
   // Note: future logic to manage this will be implemented in netjsongraph.js.
   function getIndoorMapIdFromUrl() {
-    const rawUrlFragments = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+    let rawUrlFragments;
+    try {
+      rawUrlFragments = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+    } catch {
+      return null;
+    }
     const fragments = rawUrlFragments.split(";").filter((f) => f.trim() !== "");
     const indoorFragment = fragments.find((fragment) => {
       const params = new URLSearchParams(fragment);
@@ -44,148 +76,177 @@
     const fragmentId = params.get("id");
     // fragments format is expected to be "<locationId>_<floor>"
     const [fragmentLocationId, fragmentFloor] = fragmentId?.split("_") || [];
-    if (!fragmentLocationId || fragmentFloor == null) {
+    if (!UUID_RE.test(fragmentLocationId) || fragmentFloor == null) {
       return null;
     }
     return { fragmentLocationId, fragmentFloor };
   }
+
+  // Initialize floorplan on page load if URL contains indoor map fragment
   const indoorMapId = getIndoorMapIdFromUrl();
   if (indoorMapId) {
     const { fragmentLocationId, fragmentFloor } = indoorMapId;
-    const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
-      "00000000-0000-0000-0000-000000000000",
-      fragmentLocationId,
-    );
+    const floorplanUrl = getIndoorCoordinatesUrl(fragmentLocationId);
     openFloorPlan(floorplanUrl, fragmentLocationId, fragmentFloor);
   }
 
-  // Handle browser back/forward navigation
-  function setupPopstateHandler() {
-    if (popstateHandler) {
-      window.removeEventListener("popstate", popstateHandler);
-      popstateHandler = null;
+  function calculateNavigationState(currentFloor) {
+    const floorplanState = getFloorplanState();
+    if (!floorplanState?.floors.length) return false;
+    const idx = floorplanState.floors.findIndex(
+      (f) => String(f) === String(currentFloor),
+    );
+    floorplanState.selectedIndex = idx === -1 ? 0 : idx;
+    if (idx === -1) {
+      floorplanState.state.currentFloor = floorplanState.floors[0];
     }
-    popstateHandler = () => {
-      const indoorMapId = getIndoorMapIdFromUrl();
-      const isOverlayOpen = document.getElementById("floorplan-overlay") !== null;
-      if (!indoorMapId && isOverlayOpen) {
-        closeButtonHandler();
-      }
-    };
-    window.addEventListener("popstate", popstateHandler);
-  }
-
-  // Handle manual URL fragment changes (e.g., pasting URL in address bar)
-  function setupHashChangeHandler() {
-    if (hashchangeHandler) {
-      window.removeEventListener("hashchange", hashchangeHandler);
-      hashchangeHandler = null;
-    }
-    hashchangeHandler = () => {
-      const indoorMapId = getIndoorMapIdFromUrl();
-      const isOverlayOpen = $("#floorplan-overlay").length > 0;
-      if (indoorMapId) {
-        const { fragmentLocationId, fragmentFloor } = indoorMapId;
-        const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
-          "00000000-0000-0000-0000-000000000000",
-          fragmentLocationId,
-        );
-        openFloorPlan(floorplanUrl, fragmentLocationId, fragmentFloor);
-      } else if (isOverlayOpen) {
-        closeButtonHandler();
-      }
-    };
-    window.addEventListener("hashchange", hashchangeHandler);
-  }
-
-  async function openFloorPlan(url, id = null, floor = currentFloor) {
-    if ($("#floorplan-overlay").length) {
-      closeButtonHandler();
-    }
-    // coerce url to string
-    url = String(url);
-    locationId = id;
-    // Handle browser back/forward navigation: close the indoor map overlay
-    // If the indoor map fragment is removed from the URL, close the overlay
-    // should be done before async tasks that are performed later
-    setupPopstateHandler();
-    // Handle manual url changes like pasting new url after the initial load
-    setupHashChangeHandler();
-
-    await fetchData(url, floor);
-    const idx = floors.indexOf(currentFloor);
-    selectedIndex = idx === -1 ? 0 : idx;
-    // Calculate the starting index of the navigation window so the selected floor is positioned
-    // as close to the center as possible without going out of bounds.
-    // Example: If selectedIndex = 3, NAV_WINDOW_SIZE = 5, floors.length = 10:
-    //   center = Math.floor(5 / 2) = 2
-    //   maxStart = 10 - 5 = 5
-    //   navWindowStart = Math.max(0, Math.min(3 - 2, 5)) = Math.max(0, Math.min(1, 5)) = 1
-    // This means we will slice floors from index 1 to 6, so the selected floor (index 3)
-    // appears in the middle of the navigation window when possible.
-    const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
+    const maxStart = Math.max(0, floorplanState.floors.length - NAV_WINDOW_SIZE);
     const center = Math.floor(NAV_WINDOW_SIZE / 2);
-    navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
+    floorplanState.navWindowStart = Math.max(
+      0,
+      Math.min(floorplanState.selectedIndex - center, maxStart),
+    );
+    setFloorplanState(floorplanState);
+    return true;
+  }
 
+  async function openFloorPlan(
+    url,
+    id,
+    floor = null,
+    { preserveFragment = false } = {},
+  ) {
+    if (id == null) {
+      throw new Error("openFloorPlan requires a locationId");
+    }
+    if (document.getElementById("floorplan-overlay")) {
+      destroyFloorplan({ removeUrlFragment: !preserveFragment });
+    }
+
+    // Create UI first so we have a stable place to store state via $.data().
     const $floorPlanContainer = createFloorPlanContainer();
     const $floorNavigation = createFloorNavigation();
-
     $(".menu-backdrop").addClass("active");
     $("#dashboard-map-overlay").append($floorPlanContainer);
     $("#floorplan-overlay").append($floorNavigation);
-    $("#floorplan-close-btn").on("click", closeButtonHandler);
-    addFloorButtons(selectedIndex, navWindowStart);
-    addNavigationHandlers(url);
-    await showFloor(url, currentFloor);
+
+    const floorplanState = buildInitialFloorplanState(url, id, floor);
+    const openingId = floorplanState._sessionId;
+    setFloorplanState(floorplanState);
+
+    try {
+      await fetchData(url, floor);
+      const latestState = getFloorplanState();
+      if (latestState?._sessionId !== openingId) return;
+      if (!calculateNavigationState(latestState.state.currentFloor)) {
+        destroyFloorplan();
+        return;
+      }
+      addFloorButtons();
+      await showFloor(url, latestState.state.currentFloor);
+    } catch {
+      if (getFloorplanState()?._sessionId === openingId) {
+        destroyFloorplan();
+      }
+    }
+  }
+
+  function isCurrentFloorplanRequest(openingId, floor) {
+    const floorplanState = getFloorplanState();
+    return (
+      floorplanState?._sessionId === openingId &&
+      (floor == null || String(floorplanState.state.currentFloor) === String(floor))
+    );
   }
 
   function fetchData(url, floor = null) {
+    const floorplanState = getFloorplanState();
+    if (!floorplanState?.allResults || !floorplanState.floorRequests) {
+      return Promise.resolve();
+    }
     const reqUrl = new URL(url, window.location.origin);
     // Prevent adding params if already exists
     if (floor != null && !reqUrl.searchParams.has("floor")) {
       reqUrl.searchParams.set("floor", floor);
     }
-    return new Promise((resolve, reject) => {
-      // If data for the requested floor already exists in allResults,
-      // skip the API call to avoid redundant requests.
-      if (floor != null && allResults[floor]) {
-        $(".floorplan-loading-spinner").hide();
-        resolve();
-        return;
-      }
-      $.ajax({
-        url: reqUrl.toString(),
-        method: "GET",
-        dataType: "json",
-        xhrFields: { withCredentials: true },
-        success: async (data) => {
-          try {
-            const actualFloor = data.results.length ? data.results[0].floor : floor;
-            if (!allResults[actualFloor]) {
-              allResults[actualFloor] = [];
+    const capturedSessionId = floorplanState._sessionId;
+    const requestKey = floor == null ? reqUrl.toString() : String(floor);
+    if (floor != null && floorplanState.allResults[floor]) {
+      return Promise.resolve();
+    }
+    if (floorplanState.floorRequests[requestKey]) {
+      return floorplanState.floorRequests[requestKey];
+    }
+
+    let actualFloor = floor;
+    const results = [];
+    const request = new Promise((resolve, reject) => {
+      const fetchPage = (pageUrl) => {
+        $.ajax({
+          url: pageUrl,
+          method: "GET",
+          dataType: "json",
+          xhrFields: { withCredentials: true },
+          success(data) {
+            const currentState = getFloorplanState();
+            if (
+              !currentState?.allResults ||
+              currentState._sessionId !== capturedSessionId
+            ) {
+              resolve();
+              return;
             }
-            allResults[actualFloor] = [...allResults[actualFloor], ...data.results];
-            floors = data.floors;
-            if (!currentFloor && data.results.length) {
-              currentFloor = actualFloor;
-            }
+            actualFloor ??= data.results.length ? data.results[0].floor : floor;
+            results.push(...data.results);
             if (data.next) {
-              await fetchData(data.next, actualFloor);
+              const nextUrl = new URL(data.next, window.location.origin);
+              if (actualFloor != null && !nextUrl.searchParams.has("floor")) {
+                nextUrl.searchParams.set("floor", actualFloor);
+              }
+              fetchPage(nextUrl.toString());
+              return;
             }
+            if (actualFloor != null) {
+              currentState.allResults[actualFloor] = results;
+            }
+            currentState.floors = data.floors;
+            if (!currentState.state.currentFloor && actualFloor != null) {
+              currentState.state.currentFloor = actualFloor;
+            }
+            setFloorplanState(currentState);
             resolve();
-          } catch (e) {
+          },
+          error(_xhr, status, err) {
+            if (!isCurrentFloorplanRequest(capturedSessionId, floor)) {
+              resolve();
+              return;
+            }
             alert(gettext("Error loading floorplan coordinates."));
             $(".floorplan-loading-spinner").hide();
-            reject(e);
-          }
-        },
-        error: (xhr, status, err) => {
-          alert(gettext("Error loading floorplan coordinates."));
-          $(".floorplan-loading-spinner").hide();
-          reject(new Error(`${status}: ${err}`));
-        },
-      });
+            reject(new Error(`${status}: ${err}`));
+          },
+        });
+      };
+      fetchPage(reqUrl.toString());
     });
+    floorplanState.floorRequests[requestKey] = request;
+    request.then(
+      () => {
+        const currentState = getFloorplanState();
+        if (currentState?._sessionId === capturedSessionId) {
+          delete currentState.floorRequests[requestKey];
+          setFloorplanState(currentState);
+        }
+      },
+      () => {
+        const currentState = getFloorplanState();
+        if (currentState?._sessionId === capturedSessionId) {
+          delete currentState.floorRequests[requestKey];
+          setFloorplanState(currentState);
+        }
+      },
+    );
+    return request;
   }
 
   function createFloorPlanContainer() {
@@ -213,34 +274,82 @@
     `);
   }
 
-  function closeButtonHandler() {
+  function destroyIndoorMap(indoorMap) {
+    if (indoorMap._popstateHandler) {
+      window.removeEventListener("popstate", indoorMap._popstateHandler);
+      indoorMap._popstateHandler = null;
+    }
+    if (indoorMap.leaflet) {
+      indoorMap.leaflet.off("fullscreenchange");
+      indoorMap.leaflet.remove();
+    }
+    if (indoorMap.echarts) {
+      indoorMap.echarts.dispose();
+    }
+    if (window._owIndoorMap === indoorMap) {
+      window._owIndoorMap = null;
+    }
+  }
+
+  function destroyFloorplan({
+    replace: useReplace = true,
+    removeUrlFragment = true,
+  } = {}) {
+    const floorplanState = getFloorplanState();
+    if (floorplanState?.maps) {
+      Object.values(floorplanState.maps).forEach(destroyIndoorMap);
+    }
+
+    // Remove DOM and state first — ensures fragmentchange handler
+    // sees overlay is closed and doesn't re-trigger destroyFloorplan.
     $("#floorplan-container, #floorplan-navigation").remove();
+    $("#floorplan-overlay").removeData("floorplanState");
     $("#floorplan-overlay").remove();
     $(".menu-backdrop").removeClass("active");
-    removeUrlFragment(locationId);
-    allResults = {};
-    currentFloor = null;
-    maps = {};
-    locationId = null;
-    if (popstateHandler) {
-      window.removeEventListener("popstate", popstateHandler);
-      popstateHandler = null;
+
+    // Strip any indoor fragment from the URL.
+    // Close/escape use pushState (Forward restores indoor map).
+    const raw = window.location.hash.replace(/^#/, "");
+    if (removeUrlFragment && raw) {
+      let decodedHash;
+      try {
+        decodedHash = decodeURIComponent(raw);
+      } catch {
+        return;
+      }
+      const fragments = decodedHash
+        .split(";")
+        .map((f) => f.trim())
+        .filter(Boolean);
+      const hasIndoorFragment = fragments.some(
+        (fragment) => new URLSearchParams(fragment).get("id") !== "dashboard-geo-map",
+      );
+      if (hasIndoorFragment) {
+        const kept = fragments.filter((fragment) => {
+          const params = new URLSearchParams(fragment);
+          return params.get("id") === "dashboard-geo-map";
+        });
+        const nextHash = kept.length ? `#${encodeURIComponent(kept.join(";"))}` : "";
+        const nextUrl = `${window.location.pathname}${window.location.search}${nextHash}`;
+        const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        if (nextUrl !== currentUrl) {
+          window.history[useReplace ? "replaceState" : "pushState"](null, "", nextUrl);
+        }
+      }
     }
   }
 
-  function removeUrlFragment(locationId) {
-    if (locationId != null && maps[currentFloor]) {
-      const id = maps[currentFloor].config.bookmarkableActions.id;
-      maps[currentFloor].utils.removeUrlFragment(id);
-    }
-  }
-
-  function addFloorButtons(selectedIndex, navWindowStart) {
+  function addFloorButtons() {
+    const floorplanState = getFloorplanState();
+    if (!floorplanState) return;
     const $navBody = $(".floorplan-navigation-body").empty();
-    const slicedFloors = floors.slice(navWindowStart, navWindowStart + NAV_WINDOW_SIZE);
+    const slicedFloors = floorplanState.floors.slice(
+      floorplanState.navWindowStart,
+      floorplanState.navWindowStart + NAV_WINDOW_SIZE,
+    );
     slicedFloors.forEach((floor, idx) => {
       // The index present in the floors array
-      const globalIdx = navWindowStart + idx;
+      const globalIdx = floorplanState.navWindowStart + idx;
       $navBody.append(`
         <button class="floor-btn" data-index="${globalIdx}" data-floor="${floor}">
           ${floor}
@@ -248,64 +357,32 @@
       `);
     });
 
-    $(".left-arrow").toggleClass("disabled", selectedIndex === 0);
-    $(".right-arrow").toggleClass("disabled", selectedIndex === floors.length - 1);
+    $(".left-arrow").toggleClass("disabled", floorplanState.selectedIndex === 0);
+    $(".right-arrow").toggleClass(
+      "disabled",
+      floorplanState.selectedIndex === floorplanState.floors.length - 1,
+    );
     $(".floor-btn").removeClass("active selected");
-    $('.floor-btn[data-index="' + selectedIndex + '"]').addClass("active selected");
+    $('.floor-btn[data-index="' + floorplanState.selectedIndex + '"]').addClass(
+      "active selected",
+    );
   }
 
-  function addNavigationHandlers(url) {
-    const maxStart = Math.max(0, floors.length - NAV_WINDOW_SIZE);
-    const $nav = $("#floorplan-navigation");
-
-    $nav.off("click");
-    $nav.on("click", ".floor-btn", async (e) => {
-      $(".floorplan-loading-spinner").show();
-      selectedIndex = +e.currentTarget.dataset.index;
-      const center = Math.floor(NAV_WINDOW_SIZE / 2);
-      navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
-      removeUrlFragment(locationId);
-      addFloorButtons(selectedIndex, navWindowStart);
-      currentFloor = floors[selectedIndex];
-      await showFloor(url, currentFloor);
-    });
-
-    $nav.on("click", ".right-arrow:not(.disabled)", async () => {
-      $(".floorplan-loading-spinner").show();
-      if (selectedIndex < floors.length - 1) {
-        selectedIndex++;
-        const center = Math.floor(NAV_WINDOW_SIZE / 2);
-        navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
-        removeUrlFragment(locationId);
-        addFloorButtons(selectedIndex, navWindowStart);
-        currentFloor = floors[selectedIndex];
-        await showFloor(url, currentFloor);
-      }
-    });
-
-    $nav.on("click", ".left-arrow:not(.disabled)", async () => {
-      $(".floorplan-loading-spinner").show();
-      if (selectedIndex > 0) {
-        selectedIndex--;
-        const center = Math.floor(NAV_WINDOW_SIZE / 2);
-        navWindowStart = Math.max(0, Math.min(selectedIndex - center, maxStart));
-        removeUrlFragment(locationId);
-        addFloorButtons(selectedIndex, navWindowStart);
-        currentFloor = floors[selectedIndex];
-        await showFloor(url, currentFloor);
-      }
-    });
-  }
-
-  async function showFloor(url, floor) {
-    $("#floorplan-navigation .floor-btn")
-      .removeClass("active selected")
-      .filter(`[data-floor="${floor}"]`)
-      .addClass("active selected");
+  async function showFloor(url, floor, { updateUrl = true, replaceUrl = false } = {}) {
+    const floorplanState = getFloorplanState();
+    if (!floorplanState?.state) return;
+    const openingId = floorplanState._sessionId;
 
     await fetchData(url, floor);
+    const nextState = getFloorplanState();
+    if (
+      !nextState?.state ||
+      nextState._sessionId !== openingId ||
+      String(nextState.state.currentFloor) !== String(floor)
+    )
+      return;
 
-    const nodesThisFloor = { nodes: allResults[floor], links: [] };
+    const nodesThisFloor = { nodes: nextState.allResults[floor], links: [] };
     if (!nodesThisFloor.nodes || nodesThisFloor.nodes.length === 0) {
       $(".floorplan-loading-spinner").hide();
       console.warn(`No data available for floor "${floor}".`);
@@ -316,7 +393,7 @@
     const imageUrl = nodesThisFloor.nodes[0].image;
 
     const root = $("#floorplan-content-root");
-    if (isFullScreen) {
+    if (nextState.isFullScreen) {
       document.exitFullscreen?.();
     }
     root.children(".floor-content").hide();
@@ -324,32 +401,53 @@
     if (!$floorDiv.length) {
       $floorDiv = $(`<div id="floor-content-${floor}" class="floor-content"></div>`);
       root.append($floorDiv);
-      renderIndoorMap(nodesThisFloor, imageUrl, $floorDiv[0].id, floor);
+      renderIndoorMap(imageUrl, $floorDiv[0].id, floor);
+    } else {
+      $(".floorplan-loading-spinner").hide();
     }
     $floorDiv.show();
-    maps[currentFloor]?.leaflet?.invalidateSize();
+    nextState.maps[nextState.state.currentFloor]?.leaflet?.invalidateSize();
     // Since the div containing the indoor map is saved after the first render
     // and later floors are shown or hidden instead of re-rendered, onReady is not
     // triggered again. Therefore we need to push the URL fragment manually
     // when switching floors.
-    pushIndoorMapIdFragment(maps[currentFloor], locationId, floor);
+    if (updateUrl) {
+      // Use pushState so Back/Forward navigates across floor changes unless
+      // correcting an unavailable floor from the browser history.
+      const activeMap = nextState.maps[nextState.state.currentFloor];
+      pushIndoorMapIdFragment(activeMap, floor, replaceUrl);
+      if (activeMap && nextState.replaceUrl) {
+        nextState.replaceUrl = false;
+        setFloorplanState(nextState);
+      }
+    }
   }
 
-  function pushIndoorMapIdFragment(indoorMap, locationId, floor) {
+  function pushIndoorMapIdFragment(indoorMap, floor, replace = true) {
     if (!indoorMap) {
       return;
     }
+    const floorplanState = getFloorplanState();
+    if (!floorplanState?.state) return;
     const fragments = indoorMap?.utils?.parseUrlFragments();
-    const indoorMapId = indoorMap?.config?.bookmarkableActions?.id;
-    if (!fragments || !indoorMapId) {
+    if (!fragments) {
       return;
     }
-    const indoorParams = fragments[indoorMapId] || new URLSearchParams();
-    if (!indoorParams.get("id")) {
-      indoorParams.set("id", `${locationId}_${floor}`);
-    }
-    fragments[indoorMapId] = indoorParams;
-    indoorMap?.utils?.updateUrlFragments(fragments);
+    const geoMapId = "dashboard-geo-map";
+    const fragmentId = `${floorplanState.state.locationId}_${floor}`;
+
+    // Ensure we never accumulate multiple indoor fragments when switching floors.
+    // Keep the geo map fragment and replace any existing indoor fragment(s).
+    Object.keys(fragments).forEach((key) => {
+      if (key !== geoMapId && key !== fragmentId) {
+        delete fragments[key];
+      }
+    });
+
+    const indoorParams = fragments[fragmentId] || new URLSearchParams();
+    indoorParams.set("id", fragmentId);
+    fragments[fragmentId] = indoorParams;
+    indoorMap?.utils?.updateUrlFragments(fragments, null, replace);
   }
 
   function loadPopUpContent(node, netjsongraphInstance) {
@@ -380,159 +478,225 @@
     return popupContent;
   }
 
-  function renderIndoorMap(allResults, imageUrl, divId, floor) {
-    const indoorMap = new NetJSONGraph(allResults, {
-      el: `#${divId}`,
-      render: "map",
-      showMapLabelsAtZoom: 0,
-      mapOptions: {
-        center: [0, 0],
-        zoom: 0,
-        minZoom: 6,
-        maxZoom: 10,
-        zoomSnap: 0.5,
-        zoomDelta: 0.5,
-        zoomAnimation: false,
-        fullscreenControl: true,
-        nodeConfig: {
-          label: {
+  function renderIndoorMap(imageUrl, divId, floor) {
+    const floorplanState = getFloorplanState();
+    if (!floorplanState?.state) return;
+    const openingId = floorplanState._sessionId;
+    const indoorMap = new NetJSONGraph(
+      { nodes: floorplanState.allResults[floor], links: [] },
+      {
+        el: `#${divId}`,
+        render: "map",
+        showMapLabelsAtZoom: 0,
+        mapOptions: {
+          center: [0, 0],
+          zoom: 0,
+          minZoom: 6,
+          maxZoom: 10,
+          zoomSnap: 0.5,
+          zoomDelta: 0.5,
+          zoomAnimation: false,
+          fullscreenControl: true,
+          nodeConfig: {
+            label: {
+              show: true,
+              color: "#ffffff",
+              backgroundColor: "#000000",
+              borderWidth: 1,
+              borderRadius: 8,
+              opacity: 1,
+            },
+          },
+          baseOptions: { media: [{ option: { tooltip: { show: false } } }] },
+          nodePopup: {
             show: true,
-            color: "#ffffff",
-            backgroundColor: "#000000",
-            borderWidth: 1,
-            borderRadius: 8,
-            opacity: 1,
+            content: loadPopUpContent,
+            config: {
+              closeOnClick: false,
+              autoPan: true,
+              autoPanPadding: [25, 25],
+              offset: null,
+            },
           },
         },
-        baseOptions: { media: [{ option: { tooltip: { show: false } } }] },
-        nodePopup: {
-          show: true,
-          content: loadPopUpContent,
-          config: {
-            closeOnClick: false,
-            autoPan: true,
-            autoPanPadding: [25, 25],
-            offset: null,
-          },
+        bookmarkableActions: {
+          enabled: true,
+          id: `${floorplanState.state.locationId}_${floor}`,
+          zoomOnRestore: false,
+          preserveFragment: true,
         },
-      },
-      bookmarkableActions: {
-        enabled: true,
-        id: `${locationId}_${floor}`,
-        zoomOnRestore: false,
-        preserveFragment: true,
-      },
-      nodeCategories: Object.keys(status_colors).map((status) => ({
-        name: status,
-        nodeStyle: { color: status_colors[status] },
-      })),
-      prepareData(data) {
-        data.nodes.forEach((node) => {
-          node.location = node.coordinates;
-          node.properties = {
-            ...node.properties,
-            name: node.device_name,
-            status: node.monitoring.status,
-            location: node.coordinates,
-            "Mac address": node.mac_address,
-          };
-          node.label = node.properties.name;
-          node.category = node.monitoring.status;
-        });
-        return data;
-      },
+        nodeCategories: Object.keys(status_colors).map((status) => ({
+          name: status,
+          nodeStyle: { color: status_colors[status] },
+        })),
+        prepareData(data) {
+          data.nodes.forEach((node) => {
+            node.location = node.coordinates;
+            node.properties = {
+              ...node.properties,
+              name: node.device_name,
+              status: node.monitoring.status,
+              location: node.coordinates,
+              "Mac address": node.mac_address,
+            };
+            node.label = node.properties.name;
+            node.category = node.monitoring.status;
+          });
+          return data;
+        },
 
-      async onReady() {
-        const map = this.leaflet;
-        maps[floor] = indoorMap;
-        // remove default geo map tiles
-        map.eachLayer((layer) => layer._url && map.removeLayer(layer));
-        const img = new Image();
-        img.src = imageUrl;
-        $(".floorplan-loading-spinner").show();
-        try {
-          await img.decode();
-        } catch (e) {
-          console.error("Failed to load floorplan image:", e);
-          $(".floorplan-loading-spinner").hide();
-          return;
-        }
-        let initialZoom;
-        const h = img.height;
-        const w = h * (img.width / img.height);
-        const zoom = map.getMaxZoom() - 1;
-
-        // To make the image center in the map at (0,0) coordinates
-        const anchorLatLng = L.latLng(0, 0);
-        const anchorPoint = map.project(anchorLatLng, zoom);
-
-        // Calculate the bounds of the image, with respect to the anchor point (0, 0)
-        // Leaflet's pixel coordinates increase to the right and downwards
-        // Unlike cartesian system where y increases upwards
-        // So top-left will have negative y and bottom-right will have positive y
-        // Similarly left will have negative x and right will have positive x
-        const topLeft = L.point(anchorPoint.x - w / 2, anchorPoint.y - h / 2);
-        const bottomRight = L.point(anchorPoint.x + w / 2, anchorPoint.y + h / 2);
-
-        // Update node coordinates to fit the image overlay
-        // We get the node coordinates from the API in the format for L.CRS.Simple
-        // So the coordinates is in for cartesian system with origin at top left corner
-        // Rendering image in the third quadrant with topLeft as (0,0) and bottomRight as (w,-h)
-        // So we convert py to positive and then project the point to get the corresponding topLeft
-        // Then unproject the point to get the corresponding latlng on the map
-        const mapOptions = this.echarts.getOption();
-        const series = mapOptions.series.find((s) => s.type === "scatter");
-        series.data.forEach((data, index) => {
-          const node = data.node;
-          const px = Number(node.coordinates.lng);
-          const py = -Number(node.coordinates.lat);
-          const nodeProjected = L.point(topLeft.x + px, topLeft.y + py);
-          // This requires a map instance to unproject coordinates so it can't be done in prepareData
-          const nodeLatLng = map.unproject(nodeProjected, zoom);
-          // Also updating this.data so that after onReady when applyUrlFragmentState is called it would
-          // have the correct coordinates data points to trigger the popup at right place.
-          this.data.nodes[index].location = nodeLatLng;
-          this.data.nodes[index].properties.location = nodeLatLng;
-          node.properties.location = nodeLatLng;
-          data.value = [nodeLatLng.lng, nodeLatLng.lat];
-        });
-        this.echarts.setOption(mapOptions);
-
-        // Unproject the topLeft and bottomRight points to get northWest and southEast latlngs
-        const nw = map.unproject(topLeft, zoom);
-        const se = map.unproject(bottomRight, zoom);
-        const bnds = L.latLngBounds(nw, se);
-        L.imageOverlay(imageUrl, bnds).addTo(map);
-        map.fitBounds(bnds);
-        map.setMaxBounds(bnds.pad(1));
-        initialZoom = map.getZoom();
-        map.invalidateSize();
-        $(".floorplan-loading-spinner").hide();
-        map.on("fullscreenchange", () => {
-          const floorNavigation = $("#floorplan-navigation");
-          const zoomSnap = map.options.zoomSnap || 1;
-          if (map.isFullscreen()) {
-            map.setZoom(initialZoom + zoomSnap);
-            isFullScreen = true;
-            floorNavigation.addClass("fullscreen");
-            $(`#floor-content-${floor} .leaflet-container`).append(floorNavigation);
-          } else {
-            isFullScreen = false;
-            map.setZoom(initialZoom);
-            floorNavigation.removeClass("fullscreen");
-            $("#floorplan-overlay").append(floorNavigation);
+        async onReady() {
+          const activeState = getFloorplanState();
+          if (!activeState?.state || activeState._sessionId !== openingId) {
+            destroyIndoorMap(indoorMap);
+            return;
           }
+          const map = this.leaflet;
+          activeState.maps[floor] = indoorMap;
+          setFloorplanState(activeState);
+          // remove default geo map tiles
+          map.eachLayer((layer) => layer._url && map.removeLayer(layer));
+          const img = new Image();
+          img.src = imageUrl;
+          $(".floorplan-loading-spinner").show();
+          try {
+            await img.decode();
+          } catch (e) {
+            console.error("Failed to load floorplan image:", e);
+            const currentState = getFloorplanState();
+            if (
+              currentState?._sessionId === openingId &&
+              currentState.maps[floor] === indoorMap
+            ) {
+              delete currentState.maps[floor];
+              setFloorplanState(currentState);
+              $(`#floor-content-${floor}`).remove();
+              if (String(currentState.state.currentFloor) === String(floor)) {
+                $(".floorplan-loading-spinner").hide();
+              }
+            }
+            destroyIndoorMap(indoorMap);
+            return;
+          }
+
+          const latestState = getFloorplanState();
+          if (
+            !latestState?.state ||
+            latestState._sessionId !== openingId ||
+            latestState.maps[floor] !== indoorMap
+          ) {
+            // Don't touch map/echarts/DOM: this continuation is stale.
+            return;
+          }
+          const isActiveFloor =
+            String(latestState.state.currentFloor) === String(floor);
+          let initialZoom;
+          const h = img.height;
+          const w = h * (img.width / img.height);
+          const zoom = map.getMaxZoom() - 1;
+
+          // To make the image center in the map at (0,0) coordinates
+          const anchorLatLng = L.latLng(0, 0);
+          const anchorPoint = map.project(anchorLatLng, zoom);
+
+          // Calculate the bounds of the image, with respect to the anchor point (0, 0)
+          // Leaflet's pixel coordinates increase to the right and downwards
+          // Unlike cartesian system where y increases upwards
+          // So top-left will have negative y and bottom-right will have positive y
+          // Similarly left will have negative x and right will have positive x
+          const topLeft = L.point(anchorPoint.x - w / 2, anchorPoint.y - h / 2);
+          const bottomRight = L.point(anchorPoint.x + w / 2, anchorPoint.y + h / 2);
+
+          // Update node coordinates to fit the image overlay
+          // We get the node coordinates from the API in the format for L.CRS.Simple
+          // So the coordinates is in for cartesian system with origin at top left corner
+          // Rendering image in the third quadrant with topLeft as (0,0) and bottomRight as (w,-h)
+          // So we convert py to positive and then project the point to get the corresponding topLeft
+          // Then unproject the point to get the corresponding latlng on the map
+          const mapOptions = this.echarts.getOption();
+          const series = mapOptions.series.find((s) => s.type === "scatter");
+          series.data.forEach((data, index) => {
+            const node = data.node;
+            const px = Number(node.coordinates.lng);
+            const py = -Number(node.coordinates.lat);
+            const nodeProjected = L.point(topLeft.x + px, topLeft.y + py);
+            // This requires a map instance to unproject coordinates so it can't be done in prepareData
+            const nodeLatLng = map.unproject(nodeProjected, zoom);
+            // Also updating this.data so that after onReady when applyUrlFragmentState is called it would
+            // have the correct coordinates data points to trigger the popup at right place.
+            this.data.nodes[index].location = nodeLatLng;
+            this.data.nodes[index].properties.location = nodeLatLng;
+            node.properties.location = nodeLatLng;
+            data.value = [nodeLatLng.lng, nodeLatLng.lat];
+          });
+          this.echarts.setOption(mapOptions);
+
+          // Unproject the topLeft and bottomRight points to get northWest and southEast latlngs
+          const nw = map.unproject(topLeft, zoom);
+          const se = map.unproject(bottomRight, zoom);
+          const bnds = L.latLngBounds(nw, se);
+          L.imageOverlay(imageUrl, bnds).addTo(map);
+          map.fitBounds(bnds);
+          map.setMaxBounds(bnds.pad(1));
+          initialZoom = map.getZoom();
           map.invalidateSize();
-        });
-        // Push the indoor map fragment id=<locationId>:<floor> to the URL once the map
-        // instance is ready, so the indoor map can be opened directly from the URL
-        // without requiring a node click to add the fragment.
-        pushIndoorMapIdFragment(this, locationId, floor);
+          if (isActiveFloor) {
+            $(".floorplan-loading-spinner").hide();
+          }
+          map.on("fullscreenchange", () => {
+            const floorplanState = getFloorplanState();
+            if (!floorplanState?.state) return;
+            const floorNavigation = $("#floorplan-navigation");
+            const zoomSnap = map.options.zoomSnap || 1;
+            if (map.isFullscreen()) {
+              map.setZoom(initialZoom + zoomSnap);
+              floorplanState.isFullScreen = true;
+              floorNavigation.addClass("fullscreen");
+              $(`#floor-content-${floor} .leaflet-container`).append(floorNavigation);
+            } else {
+              floorplanState.isFullScreen = false;
+              map.setZoom(initialZoom);
+              floorNavigation.removeClass("fullscreen");
+              $("#floorplan-overlay").append(floorNavigation);
+            }
+            setFloorplanState(floorplanState);
+            map.invalidateSize();
+          });
+          // Push the indoor map fragment id=<locationId>:<floor> to the URL once the map
+          // instance is ready, so the indoor map can be opened directly from the URL
+          // without requiring a node click to add the fragment.
+          if (isActiveFloor) {
+            // Use pushState the first time we add the indoor fragment so Back
+            // returns to the geo-map-only state (with popup restored)
+            // If the fragment for this exact floor is already present (page-load
+            // restore or history navigation), use replaceState to avoid creating
+            // duplicate entries.
+            // Otherwise (initial open or floor switch), use pushState so Back/Forward
+            // can navigate across floor changes.
+            const fragments = this.utils?.parseUrlFragments?.();
+            const indoorMapId = this.config?.bookmarkableActions?.id;
+            const hasThisFloorFragment = Boolean(
+              fragments && indoorMapId && fragments[indoorMapId],
+            );
+            pushIndoorMapIdFragment(
+              this,
+              floor,
+              hasThisFloorFragment || latestState.replaceUrl,
+            );
+            if (latestState.replaceUrl) {
+              latestState.replaceUrl = false;
+              setFloorplanState(latestState);
+            }
+            if (hasThisFloorFragment) {
+              this.utils.applyUrlFragmentState(this);
+            }
+          }
+        },
+        // Popup handling is delegated to nodePopup.content,
+        // so disable the default onClickElement popup behavior.
+        onClickElement: function () {},
       },
-      // Popup handling is delegated to nodePopup.content,
-      // so disable the default onClickElement popup behavior.
-      onClickElement: function () {},
-    });
+    );
     indoorMap.setUtils({
       // Added a utility function to open a specific popup for a device Id in selenium tests
       openPopup: function (deviceId) {
@@ -565,9 +729,158 @@
       },
     });
     indoorMap.render();
-    $(".floorplan-loading-spinner").hide();
     window._owIndoorMap = indoorMap;
   }
+
+  async function navigateToFloor(
+    newIndex,
+    { updateUrl = true, replaceUrl = false } = {},
+  ) {
+    const floorplanState = getFloorplanState();
+    if (!floorplanState?.state) {
+      return;
+    }
+    const previousState = {
+      currentFloor: floorplanState.state.currentFloor,
+      navWindowStart: floorplanState.navWindowStart,
+      replaceUrl: floorplanState.replaceUrl,
+      selectedIndex: floorplanState.selectedIndex,
+    };
+    floorplanState.selectedIndex = newIndex;
+    const maxStart = Math.max(0, floorplanState.floors.length - NAV_WINDOW_SIZE);
+    const center = Math.floor(NAV_WINDOW_SIZE / 2);
+    floorplanState.navWindowStart = Math.max(
+      0,
+      Math.min(floorplanState.selectedIndex - center, maxStart),
+    );
+    floorplanState.state.currentFloor =
+      floorplanState.floors[floorplanState.selectedIndex];
+    floorplanState.replaceUrl = replaceUrl;
+    setFloorplanState(floorplanState);
+    addFloorButtons();
+    $(".floorplan-loading-spinner").show();
+    const targetFloor = floorplanState.state.currentFloor;
+    try {
+      await showFloor(floorplanState.state.url, targetFloor, {
+        updateUrl,
+        replaceUrl,
+      });
+    } catch (error) {
+      const currentState = getFloorplanState();
+      if (
+        currentState?._sessionId === floorplanState._sessionId &&
+        String(currentState.state.currentFloor) === String(targetFloor)
+      ) {
+        currentState.selectedIndex = previousState.selectedIndex;
+        currentState.navWindowStart = previousState.navWindowStart;
+        currentState.replaceUrl = previousState.replaceUrl;
+        currentState.state.currentFloor = previousState.currentFloor;
+        setFloorplanState(currentState);
+        addFloorButtons();
+        $(".floorplan-loading-spinner").hide();
+      }
+      throw error;
+    }
+  }
+
+  // Delegated event handlers (set up once at module init)
+  // Close/escape use pushState so Forward restores the indoor map.
+  $(document).on("click", "#floorplan-close-btn", () => {
+    destroyFloorplan({ replace: false });
+  });
+
+  $(document).on("keydown", function (e) {
+    if (e.key === "Escape" && document.getElementById("floorplan-overlay")) {
+      destroyFloorplan({ replace: false });
+    }
+  });
+
+  $(document).on("click", "#floorplan-navigation .floor-btn", function (e) {
+    if (!getFloorplanState()?.state) return;
+    navigateToFloor(+e.currentTarget.dataset.index).catch((error) =>
+      console.error("Failed to switch floor:", error),
+    );
+  });
+
+  $(document).on(
+    "click",
+    "#floorplan-navigation .right-arrow:not(.disabled)",
+    function () {
+      const floorplanState = getFloorplanState();
+      if (
+        !floorplanState?.state ||
+        floorplanState.selectedIndex >= floorplanState.floors.length - 1
+      )
+        return;
+      navigateToFloor(floorplanState.selectedIndex + 1).catch((error) =>
+        console.error("Failed to switch floor:", error),
+      );
+    },
+  );
+
+  $(document).on(
+    "click",
+    "#floorplan-navigation .left-arrow:not(.disabled)",
+    function () {
+      const floorplanState = getFloorplanState();
+      if (!floorplanState?.state || floorplanState.selectedIndex <= 0) return;
+      navigateToFloor(floorplanState.selectedIndex - 1).catch((error) =>
+        console.error("Failed to switch floor:", error),
+      );
+    },
+  );
+
+  // React to URL fragment changes from the library, browser history, or direct edits.
+  function handleFragmentChange() {
+    const indoorFragment = getIndoorMapIdFromUrl();
+    const $overlay = document.getElementById("floorplan-overlay");
+    const floorplanState = getFloorplanState();
+    // Back/forward removed the indoor fragment → close overlay if open.
+    if (!indoorFragment) {
+      if ($overlay) {
+        destroyFloorplan();
+      }
+      return;
+    }
+    const { fragmentLocationId, fragmentFloor } = indoorFragment;
+    // Forward/restore added an indoor fragment while overlay is closed → open it.
+    if (!$overlay) {
+      const floorplanUrl = getIndoorCoordinatesUrl(fragmentLocationId);
+      openFloorPlan(floorplanUrl, fragmentLocationId, fragmentFloor);
+      return;
+    }
+    // No floorplan state to sync with.
+    if (!floorplanState?.state) {
+      return;
+    }
+    // Replace the active overlay while preserving the browser's new fragment.
+    if (String(fragmentLocationId) !== String(floorplanState.state.locationId)) {
+      const floorplanUrl = getIndoorCoordinatesUrl(fragmentLocationId);
+      openFloorPlan(floorplanUrl, fragmentLocationId, fragmentFloor, {
+        preserveFragment: true,
+      });
+      return;
+    }
+    // Already showing the target floor → nothing to do (avoids re-entry loop
+    // when the library dispatches fragmentchange after our own URL update).
+    if (String(floorplanState.state.currentFloor) === String(fragmentFloor)) {
+      return;
+    }
+    // Target floor not in the available floors: restore the first floor and
+    // replace the invalid fragment without adding another history entry.
+    const idx = floorplanState.floors.findIndex(
+      (f) => String(f) === String(fragmentFloor),
+    );
+    if (idx === -1) {
+      navigateToFloor(0, { replaceUrl: true });
+      return;
+    }
+    // URL already changed via popstate/library → sync floor without pushing history.
+    navigateToFloor(idx, { updateUrl: false });
+  }
+
+  window.addEventListener("fragmentchange", handleFragmentChange);
+  window.addEventListener("hashchange", handleFragmentChange);
 
   window.openFloorPlan = openFloorPlan;
 })(django.jQuery);

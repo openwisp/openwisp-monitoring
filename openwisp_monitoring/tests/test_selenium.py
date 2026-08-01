@@ -351,6 +351,27 @@ class TestDashboardMap(
             str(id),
         )
 
+    def _wait_for_popup_table_ready(self, timeout=5):
+        # The popup keeps the table mounted during replace/append fetches, so
+        # these loading-state classes are the most reliable signal that row
+        # updates have finished.
+        try:
+            WebDriverWait(self.web_driver, timeout).until(
+                lambda d: all(
+                    cls
+                    not in (
+                        d.find_element(
+                            By.CSS_SELECTOR, ".map-detail .table-container"
+                        ).get_attribute("class")
+                        or ""
+                    )
+                    for cls in ("is-loading", "is-loading-append")
+                )
+            )
+        except TimeoutException as e:
+            print(self.get_browser_logs())
+            self.fail(f"Popup table did not finish loading within {timeout}s: {e}")
+
     def test_features_on_device_popup(self):
         org = self._get_org()
         d1 = self._create_device(
@@ -389,9 +410,7 @@ class TestDashboardMap(
             self.assertFalse(status_ok_close_btn.is_displayed())
             status_ok.click()
             self.assertTrue(status_ok_close_btn.is_displayed())
-            self.wait_for_invisibility(
-                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
-            )
+            self._wait_for_popup_table_ready()
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 1)
             self.assertIn(d2.name, table_entries[0].text)
@@ -406,35 +425,27 @@ class TestDashboardMap(
             self.assertFalse(status_unknown_close_btn.is_displayed())
             status_unknown.click()
             self.assertTrue(status_unknown_close_btn.is_displayed())
-            self.wait_for_invisibility(
-                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
-            )
+            self._wait_for_popup_table_ready()
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 2)
 
         with self.subTest("Test removing filters by clicking close button"):
             status_ok_close_btn.click()
             self.assertFalse(status_ok_close_btn.is_displayed())
-            self.wait_for_invisibility(
-                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner", timeout=5
-            )
+            self._wait_for_popup_table_ready()
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 1)
             self.assertIn(d1.name, table_entries[0].text)
             status_unknown.click()
             self.assertFalse(status_unknown_close_btn.is_displayed())
-            self.wait_for_invisibility(
-                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
-            )
+            self._wait_for_popup_table_ready()
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 2)
 
         with self.subTest("Test search field"):
             input_field = self.find_element(By.CSS_SELECTOR, "#device-search")
             input_field.send_keys("device1")
-            self.wait_for_invisibility(
-                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
-            )
+            self._wait_for_popup_table_ready()
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 1)
             self.assertIn(d1.name, table_entries[0].text)
@@ -443,17 +454,13 @@ class TestDashboardMap(
             input_field.clear()
             # Just clearing the input field does not trigger the event listeners
             input_field.send_keys(" ")
-            self.wait_for_invisibility(
-                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
-            )
+            self._wait_for_popup_table_ready()
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 2)
 
         with self.subTest("Test filtering to get no results"):
             input_field.send_keys("Non-Existent-Device")
-            self.wait_for_invisibility(
-                By.CSS_SELECTOR, ".map-detail .ow-loading-spinner"
-            )
+            self._wait_for_popup_table_ready()
             table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
             self.assertEqual(len(table_entries), 1)
             self.assertIn("No devices found", table_entries[0].text)
@@ -486,10 +493,22 @@ class TestDashboardMap(
         table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
         self.assertEqual(len(table_entries), 10)
         self.web_driver.execute_script(
-            "arguments[0].scrollTop = arguments[0].scrollHeight", table_container
+            """
+            arguments[0].scrollTop = arguments[0].scrollHeight;
+            arguments[0].dispatchEvent(new Event("scroll"));
+            """,
+            table_container,
         )
-        self.wait_for_invisibility(By.CSS_SELECTOR, ".map-detail .ow-loading-spinner")
-        table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+        table_entries = WebDriverWait(self.web_driver, 2).until(
+            lambda d: (
+                entries
+                if len(
+                    entries := d.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+                )
+                == 20
+                else False
+            )
+        )
         self.assertEqual(len(table_entries), 20)
 
     def test_url_fragment_actions_on_geo_map(self):
@@ -504,12 +523,14 @@ class TestDashboardMap(
             try:
                 WebDriverWait(self.web_driver, 5).until(
                     lambda d: f"nodeId={location.id}"
-                    in d.execute_script("return window.location.hash;")
+                    in d.execute_script(
+                        "return decodeURIComponent(window.location.hash);"
+                    )
                 )
             except TimeoutException:
                 self.fail("URL fragment was not updated after opening geo map popup")
             current_hash = self.web_driver.execute_script(
-                "return window.location.hash;"
+                "return decodeURIComponent(window.location.hash);"
             )
             expected_hash = f"id={mapId}&nodeId={location.id}"
             self.assertIn(expected_hash, current_hash)
@@ -640,6 +661,240 @@ class TestDashboardMap(
             self.assertIn(
                 f"/config/device/{device2.id}/change/", self.web_driver.current_url
             )
+
+    def test_hash_change_reopens_floorplan_for_another_location(self):
+        org = self._get_org()
+        first_location = self._create_location(type="indoor", organization=org)
+        second_location = self._create_location(type="indoor", organization=org)
+        first_floorplan = self._create_floorplan(floor=1, location=first_location)
+        second_floorplan = self._create_floorplan(floor=1, location=second_location)
+        first_device = self._create_device(
+            name="First-Device",
+            mac_address="00:00:00:00:00:01",
+            organization=org,
+        )
+        second_device = self._create_device(
+            name="Second-Device",
+            mac_address="00:00:00:00:00:02",
+            organization=org,
+        )
+        self._create_object_location(
+            content_object=first_device,
+            location=first_location,
+            floorplan=first_floorplan,
+            organization=org,
+        )
+        self._create_object_location(
+            content_object=second_device,
+            location=second_location,
+            floorplan=second_floorplan,
+            organization=org,
+        )
+        self.login()
+        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+        first_map_id = f"{first_location.id}_{first_floorplan.floor}"
+        second_map_id = f"{second_location.id}_{second_floorplan.floor}"
+        second_fragment = f"id={second_map_id}"
+        self.web_driver.execute_script(
+            """
+            const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
+              "00000000-0000-0000-0000-000000000000",
+              arguments[0],
+            );
+            window.openFloorPlan(floorplanUrl, arguments[0]);
+            """,
+            str(first_location.id),
+        )
+        WebDriverWait(self.web_driver, 2).until(
+            lambda d: d.execute_script(
+                "return window._owIndoorMap?.config?.bookmarkableActions?.id;"
+            )
+            == first_map_id
+        )
+        self.web_driver.execute_script(
+            "window.location.hash = arguments[0];", second_fragment
+        )
+        try:
+            WebDriverWait(self.web_driver, 2).until(
+                lambda d: d.execute_script(
+                    "return window._owIndoorMap?.config?.bookmarkableActions?.id;"
+                )
+                == second_map_id
+            )
+        except TimeoutException:
+            floorplan_state = self.web_driver.execute_script("""
+                const state = django.jQuery("#floorplan-overlay").data("floorplanState");
+                return {
+                  activeMapId: window._owIndoorMap?.config?.bookmarkableActions?.id,
+                  currentFloor: state?.state?.currentFloor,
+                  hash: window.location.hash,
+                  locationId: state?.state?.locationId,
+                };
+                """)
+            self.fail(
+                f"Hash change did not activate {second_map_id}; "
+                f"state is {floorplan_state}; logs are {self.get_browser_logs()}"
+            )
+
+        self.web_driver.execute_script(
+            "window.location.hash = arguments[0];", f"id={second_location.id}_999"
+        )
+        WebDriverWait(self.web_driver, 2).until(
+            lambda d: f"id={second_map_id}"
+            in d.execute_script("return decodeURIComponent(window.location.hash);")
+        )
+        self.web_driver.execute_script("window.location.hash = '%';")
+        WebDriverWait(self.web_driver, 2).until(
+            lambda d: not d.execute_script(
+                "return Boolean(document.getElementById('floorplan-overlay'));"
+            )
+        )
+        self.assertTrue(
+            self.web_driver.execute_script(
+                "return typeof window.openFloorPlan === 'function';"
+            )
+        )
+
+    def test_invalid_indoor_map_fragment_does_not_break_map_initialization(self):
+        self._create_object_location()
+        self.login()
+        for fragment in ("id=not-a-uuid_1", "%"):
+            with self.subTest(fragment=fragment):
+                self.open(f"/admin/#{fragment}")
+                self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+                self.assertTrue(
+                    self.web_driver.execute_script(
+                        "return typeof window.openFloorPlan === 'function';"
+                    )
+                )
+                self.assertFalse(
+                    self.web_driver.execute_script(
+                        "return Boolean(document.getElementById('floorplan-overlay'));"
+                    )
+                )
+
+    def test_closing_uninitialized_floorplan_does_not_add_history_entry(self):
+        org = self._get_org()
+        location = self._create_location(type="indoor", organization=org)
+        floorplan = self._create_floorplan(floor=1, location=location)
+        device = self._create_device(organization=org)
+        self._create_object_location(
+            content_object=device,
+            location=location,
+            floorplan=floorplan,
+            organization=org,
+        )
+        self.login()
+        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+        self._open_popup("_owGeoMap", location.id)
+        WebDriverWait(self.web_driver, 2).until(
+            lambda d: f"id=dashboard-geo-map&nodeId={location.id}"
+            in d.execute_script("return decodeURIComponent(window.location.hash);")
+        )
+        history_length = self.web_driver.execute_script("return window.history.length;")
+        self.web_driver.execute_script(
+            """
+            const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
+              "00000000-0000-0000-0000-000000000000",
+              arguments[0],
+            );
+            window.openFloorPlan(floorplanUrl, arguments[0]);
+            django.jQuery("#floorplan-close-btn").trigger("click");
+            """,
+            str(location.id),
+        )
+        self.assertEqual(
+            history_length,
+            self.web_driver.execute_script("return window.history.length;"),
+        )
+
+    def test_floorplan_retries_failed_pages_without_duplicate_nodes(self):
+        org = self._get_org()
+        location = self._create_location(type="indoor", organization=org)
+        floorplans = {
+            floor: self._create_floorplan(floor=floor, location=location)
+            for floor in (1, 2, 3)
+        }
+        for floor, device_count in ((1, 1), (2, 51), (3, 51)):
+            for index in range(device_count):
+                device = self._create_device(
+                    name=f"Floor-{floor}-Device-{index}",
+                    mac_address=f"00:00:00:00:{floor:02x}:{index:02x}",
+                    organization=org,
+                )
+                self._create_object_location(
+                    content_object=device,
+                    location=location,
+                    floorplan=floorplans[floor],
+                    organization=org,
+                )
+        self.login()
+        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+        self.web_driver.execute_script(
+            """
+            const floorplanUrl = window._owGeoMapConfig.indoorCoordinatesUrl.replace(
+              "00000000-0000-0000-0000-000000000000",
+              arguments[0],
+            );
+            const originalAjax = django.jQuery.ajax;
+            let failContinuation = true;
+            window.alert = () => {};
+            django.jQuery.ajax = function (options) {
+              const url = new URL(options.url, window.location.origin);
+              if (
+                failContinuation &&
+                url.searchParams.get("floor") === "2" &&
+                url.searchParams.get("page") === "2"
+              ) {
+                failContinuation = false;
+                window.setTimeout(() => {
+                  django.jQuery.ajax = originalAjax;
+                  options.error({}, "error", "forced pagination failure");
+                });
+                return { abort() {} };
+              }
+              return originalAjax.apply(this, arguments);
+            };
+            window.openFloorPlan(floorplanUrl, arguments[0]);
+            """,
+            str(location.id),
+        )
+        floor1_map_id = f"{location.id}_{floorplans[1].floor}"
+        WebDriverWait(self.web_driver, 2).until(
+            lambda d: d.execute_script(
+                "return window._owIndoorMap?.config?.bookmarkableActions?.id;"
+            )
+            == floor1_map_id
+        )
+        self.find_element(
+            By.CSS_SELECTOR, "#floorplan-navigation .floor-btn[data-floor='2']"
+        ).click()
+        WebDriverWait(self.web_driver, 2).until(lambda d: d.execute_script("""
+                const state = django.jQuery("#floorplan-overlay").data("floorplanState");
+                return (
+                  state?.state?.currentFloor === 1 &&
+                  !state.allResults[2] &&
+                  !state.floorRequests[2]
+                );
+                """))
+        self.find_element(
+            By.CSS_SELECTOR, "#floorplan-navigation .floor-btn[data-floor='2']"
+        ).click()
+        WebDriverWait(self.web_driver, 2).until(lambda d: d.execute_script("""
+                const state = django.jQuery("#floorplan-overlay").data("floorplanState");
+                return state?.allResults[2]?.length === 51;
+                """))
+        self.web_driver.execute_script("""
+            const floorButton = document.querySelector(
+              "#floorplan-navigation .floor-btn[data-floor='3']",
+            );
+            floorButton.click();
+            floorButton.click();
+            """)
+        WebDriverWait(self.web_driver, 2).until(lambda d: d.execute_script("""
+                const state = django.jQuery("#floorplan-overlay").data("floorplanState");
+                return state?.allResults[3]?.length === 51;
+                """))
 
     def test_switching_floorplan_in_fullscreen_mode(self):
         org = self._get_org()
@@ -790,6 +1045,29 @@ class TestDashboardMap(
                 By.CSS_SELECTOR, ".njg-tooltip-inner"
             )
             self.assertTrue(popup_not_displayed)
+            self.web_driver.close()
+            self.web_driver.switch_to.window(tabs[0])
+
+        with self.subTest("Test falling back from an unknown floor"):
+            incorrect_floor_url = f"{self.live_server_url}/admin/#id={location.id}_999"
+            self.web_driver.switch_to.new_window("tab")
+            tabs = self.web_driver.window_handles
+            self.web_driver.switch_to.window(tabs[1])
+            self.web_driver.get(incorrect_floor_url)
+            floor_heading = self.find_element(
+                By.CSS_SELECTOR, "#floorplan-title", timeout=5
+            )
+            self.assertIn("1st floor", floor_heading.text.lower())
+            canvases = self.find_elements(
+                By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
+            )
+            self.assertGreater(len(canvases), 0)
+            self.assertIn(
+                f"id={location.id}_{floorplan.floor}",
+                self.web_driver.execute_script(
+                    "return decodeURIComponent(window.location.hash);"
+                ),
+            )
             self.web_driver.close()
             self.web_driver.switch_to.window(tabs[0])
 
