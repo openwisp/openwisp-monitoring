@@ -1094,6 +1094,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(charts[1]["summary"]["signal_to_noise_ratio"], 12.0)
         self.assertEqual(charts[2]["summary"]["access_tech"], 5)
 
+    @tag("flaky_with_udp_writes")
     def test_5g_nsa_charts(self):
         org = self._create_org()
         device = self._create_device(organization=org)
