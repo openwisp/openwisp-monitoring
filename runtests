@@ -5,27 +5,42 @@ TSDB="${TSDB:-influxdb}"
 UDP="${TIMESERIES_UDP:-}"
 
 # Treat only explicit truthy values as UDP, so TIMESERIES_UDP=0 uses HTTP.
-case "${UDP,,}" in
+UDP_NORMALIZED=$(printf '%s' "$UDP" | tr '[:upper:]' '[:lower:]')
+case "$UDP_NORMALIZED" in
     1|true|yes|on) UDP=1 ;;
     *) UDP="" ;;
 esac
 
-if [ "$TSDB" != "influxdb" ] && [ "$TSDB" != "influxdb2" ]; then
+if [ "$TSDB" != "influxdb" ] && [ "$TSDB" != "influxdb2" ] && [ "$TSDB" != "elasticsearch" ]; then
     echo "Unsupported TSDB: $TSDB" >&2
-    echo "Supported values: influxdb, influxdb2" >&2
+    echo "Supported values: influxdb, influxdb2, elasticsearch" >&2
     exit 1
 fi
 
+if [ "$TSDB" = "elasticsearch" ] && [ -n "$UDP" ]; then
+    echo "Elasticsearch does not support UDP writes." >&2
+    exit 1
+fi
+
+TEST_ARGS=("$@")
+if [ "$TSDB" = "elasticsearch" ] && [ "$#" -eq 0 ]; then
+    TEST_ARGS=(
+        openwisp_monitoring.db.backends.elasticsearch.tests
+        openwisp_monitoring.db.backends.tests
+        openwisp_monitoring.monitoring.tests.test_db_creation
+    )
+fi
+
 if [ -z "$UDP" ]; then
-    TIMESERIES_BACKEND="$TSDB" coverage run runtests.py "$@"
+    TIMESERIES_BACKEND="$TSDB" coverage run runtests.py "${TEST_ARGS[@]}"
     # test extensibility only on the default TSDB
     if [ "$TSDB" = "influxdb" ]; then
         SAMPLE_APP=1 TIMESERIES_BACKEND="$TSDB" coverage run runtests.py \
-            "$@" --exclude-tag=selenium_tests
+            "${TEST_ARGS[@]}" --exclude-tag=selenium_tests
     fi
 else
     TIMESERIES_UDP=1 TIMESERIES_BACKEND="$TSDB" coverage run runtests.py \
-        "$@" --exclude-tag=selenium_tests
+        "${TEST_ARGS[@]}" --exclude-tag=selenium_tests
 fi
 
 coverage combine

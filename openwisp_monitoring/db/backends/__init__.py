@@ -8,7 +8,7 @@ from django.core.exceptions import ImproperlyConfigured
 from .base import BackendQueryBundle, BaseTimeseriesClient
 
 logger = logging.getLogger(__name__)
-BUILTIN_BACKENDS = ["influxdb", "influxdb2"]
+BUILTIN_BACKENDS = ["influxdb", "influxdb2", "elasticsearch"]
 
 TIMESERIES_DB = getattr(settings, "TIMESERIES_DATABASE", None)
 if not TIMESERIES_DB:

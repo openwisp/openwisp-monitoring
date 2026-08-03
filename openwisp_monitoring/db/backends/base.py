@@ -111,7 +111,7 @@ class BaseTimeseriesClient(ABC):
         default_query = self.queries.default_chart_query
         resolver = getattr(default_query, "resolve", None)
         if callable(resolver):
-            return resolver(has_object_scope=has_object_scope)
+            return resolver()
         if isinstance(default_query, str):
             return default_query
         if isinstance(default_query, (list, tuple)):
