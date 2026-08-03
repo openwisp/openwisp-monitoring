@@ -198,6 +198,7 @@ class DatabaseClient(BaseTimeseriesClient):
         "max",
         "min",
         "percentiles",
+        "scripted_metric",
         "stats",
         "sum",
         "terms",
@@ -820,7 +821,23 @@ class DatabaseClient(BaseTimeseriesClient):
         fields = [field for field in fields if field != "*"]
         if not fields:
             return None
-        filters = [{"exists": {"field": f"fields.{field}"}} for field in fields]
+        filters = []
+        for field in fields:
+            field_name = f"fields.{field}"
+            field_filter = {"exists": {"field": field_name}}
+            # Large device snapshots are kept in _source but excluded from the
+            # index by ignore_above, which Elasticsearch records in _ignored.
+            if field == "data":
+                field_filter = {
+                    "bool": {
+                        "should": [
+                            field_filter,
+                            {"term": {"_ignored": field_name}},
+                        ],
+                        "minimum_should_match": 1,
+                    }
+                }
+            filters.append(field_filter)
         if len(filters) == 1:
             return filters[0]
         return {"bool": {"should": filters, "minimum_should_match": 1}}
@@ -1374,21 +1391,55 @@ class DatabaseClient(BaseTimeseriesClient):
     ) -> list[str]:
         if number <= 0:
             return []
+        # Dynamic field names must be discovered and summed without fetching a
+        # capped set of matching documents into the application.
         search = {
-            "size": int(self.options.get("top_fields_read_size", 10000)),
-            "_source": ["fields"],
+            "size": 0,
             "query": self._build_chart_base_query(params, timezone_name=timezone),
+            "aggs": {
+                "top_fields": {
+                    "scripted_metric": {
+                        "init_script": "state.totals = [:]",
+                        "map_script": (
+                            "def values = params['_source']['fields']; "
+                            "if (values == null) return; "
+                            "for (def entry : values.entrySet()) { "
+                            "def value = entry.getValue(); "
+                            "if (value instanceof Number) { "
+                            "def name = entry.getKey(); "
+                            "state.totals[name] = state.totals.containsKey(name) "
+                            "? state.totals[name] + value : value; "
+                            "} "
+                            "}"
+                        ),
+                        "combine_script": "return state.totals",
+                        "reduce_script": (
+                            "Map totals = [:]; "
+                            "for (def shard : states) { "
+                            "if (shard == null) continue; "
+                            "for (def entry : shard.entrySet()) { "
+                            "def name = entry.getKey(); "
+                            "totals[name] = totals.containsKey(name) "
+                            "? totals[name] + entry.getValue() : entry.getValue(); "
+                            "} "
+                            "} "
+                            "return totals"
+                        ),
+                    }
+                }
+            },
             "__index": self._get_stream_name(params.get("retention_policy")),
         }
         response = self.query(search, precision="s")
-        totals = {}
-        for hit in self._get_hits(response):
-            fields = (hit.get("_source") or {}).get("fields") or {}
-            for field, value in fields.items():
-                if isinstance(value, bool) or not isinstance(value, (int, float)):
-                    continue
-                totals[field] = totals.get(field, 0) + value
-        sorted_fields = sorted(totals.items(), key=lambda item: item[1], reverse=True)
+        totals = (
+            response.get("aggregations", {}).get("top_fields", {}).get("value") or {}
+        )
+        totals = {
+            field: value
+            for field, value in totals.items()
+            if not isinstance(value, bool) and isinstance(value, (int, float))
+        }
+        sorted_fields = sorted(totals.items(), key=lambda item: (-item[1], item[0]))
         return [field for field, _value in sorted_fields[:number]]
 
     def _round_chart_value(self, value):
@@ -1464,8 +1515,30 @@ class DatabaseClient(BaseTimeseriesClient):
             {"value": bucket.get("value", {})}, metric
         )
 
+    def _warn_if_grouped_chart_truncated(self, aggregations, query):
+        if query.get("__openwisp_summary"):
+            groups = (aggregations.get("groups", {}),)
+        else:
+            groups = (
+                bucket.get("groups", {})
+                for bucket in aggregations.get("timeseries", {}).get("buckets", [])
+            )
+        omitted_documents = sum(
+            group.get("sum_other_doc_count", 0) or 0 for group in groups
+        )
+        if omitted_documents:
+            logger.warning(
+                'Elasticsearch grouped chart for tag "%s" omitted groups '
+                "containing %d document(s) because the terms_size limit (%d) "
+                "was reached.",
+                query.get("__openwisp_group_by"),
+                omitted_documents,
+                int(self.options.get("terms_size", 1000)),
+            )
+
     def _get_grouped_chart_points(self, response, query, precision="s"):
         aggregations = response.get("aggregations", {})
+        self._warn_if_grouped_chart_truncated(aggregations, query)
         metric = query["__openwisp_metric"]
         if query.get("__openwisp_summary"):
             point = {"time": None}
@@ -1509,7 +1582,7 @@ class DatabaseClient(BaseTimeseriesClient):
     ) -> list[TimeseriesPoint]:
         if (
             isinstance(query, Mapping)
-            and query.get("_openwisp_query_type") == "device_data"
+            and query.get("__openwisp_query_type") == "device_data"
         ):
             return self.read(
                 key=query["measurement"],
@@ -1546,7 +1619,7 @@ class DatabaseClient(BaseTimeseriesClient):
         pk: str,
     ) -> Mapping[str, str]:
         return {
-            "_openwisp_query_type": "device_data",
+            "__openwisp_query_type": "device_data",
             "retention_policy": retention_policy,
             "measurement": measurement,
             "pk": str(pk),

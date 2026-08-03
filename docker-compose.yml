@@ -68,6 +68,7 @@ services:
     ports:
       - target: 9200
         published: *elasticsearch_port
+        host_ip: 127.0.0.1
         protocol: tcp
     environment:
       discovery.type: single-node
