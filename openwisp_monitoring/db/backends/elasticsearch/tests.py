@@ -2,6 +2,7 @@
 Elasticsearch Database Client Tests
 """
 
+import json
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, call, patch
 
@@ -972,8 +973,14 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
     def test_query_bundle_matches_backend_contract(self):
         self.timeseries_db.queries.validate(self.timeseries_db.backend_name)
         self.assertEqual(set(chart_query.keys()), set(summary_query.keys()))
-        for config in self.timeseries_db.queries.chart_query.values():
+        for key, config in self.timeseries_db.queries.chart_query.items():
             self.assertIn("elasticsearch", config)
+            self.assertEqual(
+                summary_query[key]["elasticsearch"], config["elasticsearch"]
+            )
+            self.assertIsNot(
+                summary_query[key]["elasticsearch"], config["elasticsearch"]
+            )
 
     @patch.object(
         ElasticsearchQuery,
@@ -992,10 +999,19 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
     @patch.object(DatabaseClient, "query")
     def test_get_top_fields(self, mock_query):
         mock_query.return_value = QueryResultSet(
-            _search_response(
-                {"fields": {"http2": 100, "ssh": 90, "ignored": "string"}},
-                {"fields": {"http2": 1, "udp": 80, "is_bool": True}},
-            )
+            {
+                "aggregations": {
+                    "top_fields": {
+                        "value": {
+                            "http2": 101,
+                            "ssh": 90,
+                            "udp": 80,
+                            "is_bool": True,
+                            "ignored": "string",
+                        }
+                    }
+                }
+            }
         )
         fields = self.timeseries_db._get_top_fields(
             query=self.timeseries_db.get_default_chart_query(has_object_scope=False),
@@ -1006,6 +1022,10 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             time="30d",
         )
         self.assertEqual(fields, ["http2", "ssh"])
+        search = mock_query.call_args.args[0]
+        self.assertEqual(search["size"], 0)
+        self.assertNotIn("_source", search)
+        self.assertIn("scripted_metric", search["aggs"]["top_fields"])
 
     @patch.object(DatabaseClient, "query")
     def test_get_list_query_converts_chart_aggregations(self, mock_query):
@@ -1081,6 +1101,60 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         )
         self.assertEqual(self.timeseries_db.get_list_query(query), [])
 
+    def test_grouped_chart_truncation_logs_once(self):
+        query = {
+            "__openwisp_metric": {"name": "value", "field": "clients"},
+            "__openwisp_group_by": "organization_id",
+            "__openwisp_summary": False,
+        }
+        response = {
+            "aggregations": {
+                "timeseries": {
+                    "buckets": [
+                        {
+                            "key": 1711368000000,
+                            "groups": {
+                                "sum_other_doc_count": 2,
+                                "buckets": [
+                                    {
+                                        "key": "org-1",
+                                        "value": {"value": 3},
+                                    }
+                                ],
+                            },
+                        },
+                        {
+                            "key": 1711368600000,
+                            "groups": {
+                                "sum_other_doc_count": 4,
+                                "buckets": [
+                                    {
+                                        "key": "org-1",
+                                        "value": {"value": 5},
+                                    }
+                                ],
+                            },
+                        },
+                    ]
+                }
+            }
+        }
+        with self.assertLogs(
+            "openwisp_monitoring.db.backends.elasticsearch.client",
+            level="WARNING",
+        ) as captured:
+            points = self.timeseries_db._get_grouped_chart_points(response, query)
+        self.assertEqual(
+            points,
+            [
+                {"time": 1711368000, "org-1": 3},
+                {"time": 1711368600, "org-1": 5},
+            ],
+        )
+        self.assertEqual(len(captured.output), 1)
+        self.assertIn('tag "organization_id"', captured.output[0])
+        self.assertIn("6 document(s)", captured.output[0])
+
     @patch.object(DatabaseClient, "query")
     def test_get_list_query_converts_raw_hits(self, mock_query):
         query = self.timeseries_db.get_query(
@@ -1138,7 +1212,7 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         self.assertEqual(
             query,
             {
-                "_openwisp_query_type": "device_data",
+                "__openwisp_query_type": "device_data",
                 "retention_policy": SHORT_RP,
                 "measurement": "device_data",
                 "pk": "1",
@@ -1288,6 +1362,24 @@ class TestElasticsearchClientIntegration(
         points = self._read_metric(metric)
         self.assertEqual(len(points), 1)
         self.assertEqual(points[0][metric.field_name], 50)
+
+    def test_large_device_data_snapshot_round_trip(self):
+        device_id = "large-device-data"
+        snapshot = json.dumps({"payload": "x" * 9000})
+        timeseries_db.write(
+            "device_data",
+            {"data": snapshot},
+            tags={"pk": device_id},
+            retention_policy=SHORT_RP,
+        )
+        query = timeseries_db.get_device_data_query(
+            SHORT_RP,
+            "device_data",
+            device_id,
+        )
+        points = timeseries_db.get_list_query(query, precision=None)
+        self.assertEqual(len(points), 1)
+        self.assertEqual(points[0]["data"], snapshot)
 
     def test_metric_read_omit_since(self):
         metric = self._create_general_metric(name="historical-load")
@@ -1445,6 +1537,16 @@ class TestElasticsearchClientIntegration(
             },
         )
         self.assertEqual(chart.get_top_fields(number=3), ["http2", "ssh", "udp"])
+
+    def test_chart_top_fields_aggregates_all_documents(self):
+        metric = self._create_object_metric(
+            name="top-fields-all-documents",
+            configuration="get_top_fields",
+        )
+        chart = Chart(metric=metric, configuration="histogram")
+        metric.write(None, extra_values={"http2": 100, "ssh": 0})
+        metric.write(None, extra_values={"http2": 0, "ssh": 200})
+        self.assertEqual(chart.get_top_fields(number=1), ["ssh"])
 
     def test_ping_uptime_chart_summary_round_trip(self):
         metric = self._create_object_metric(name="ping", configuration="ping")
@@ -1777,16 +1879,10 @@ class TestElasticsearchClientIntegration(
     def test_write_failure_raises_timeseries_exception(self):
         mock_db = MagicMock()
         mock_db.index.side_effect = RuntimeError("write failed")
-        original_db = timeseries_db.__dict__.get("db")
-        timeseries_db.__dict__["db"] = mock_db
-        try:
-            with self.assertRaises(TimeseriesWriteException):
-                timeseries_db.write("test_write", {"value": 1})
-        finally:
-            if original_db is None:
-                timeseries_db.__dict__.pop("db", None)
-            else:
-                timeseries_db.__dict__["db"] = original_db
+        with patch.dict(timeseries_db.__dict__, {"db": mock_db}), self.assertRaises(
+            TimeseriesWriteException
+        ):
+            timeseries_db.write("test_write", {"value": 1})
 
 
 @tag("timeseries_client", "elasticsearch")
@@ -1798,8 +1894,16 @@ class TestElasticsearchCheckIntegration(
     TestDeviceMonitoringMixin,
     TransactionTestCase,
 ):
-    _WIFI_CLIENTS = check_settings.CHECK_CLASSES[3][0]
-    _DATA_COLLECTED = check_settings.CHECK_CLASSES[4][0]
+    _WIFI_CLIENTS = next(
+        path
+        for path, _name, _setting in check_settings.CHECK_CLASSES
+        if path.endswith(".WifiClients")
+    )
+    _DATA_COLLECTED = next(
+        path
+        for path, _name, _setting in check_settings.CHECK_CLASSES
+        if path.endswith(".DataCollected")
+    )
     expected_backend = "elasticsearch"
 
     def _create_device(self, monitoring_status="ok", *args, **kwargs):

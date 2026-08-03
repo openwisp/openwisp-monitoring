@@ -169,16 +169,20 @@ When multiple authentication methods are configured, the backend uses them
 in this order: ``ELASTICSEARCH_API_KEY``, ``ELASTICSEARCH_BEARER_AUTH``,
 then ``ELASTICSEARCH_USER``/``ELASTICSEARCH_PASSWORD``.
 
-For TLS-enabled clusters, use:
+For self-managed TLS-enabled clusters, configure an HTTPS endpoint and the
+required certificate options:
 
 .. code-block:: shell
 
+    export ELASTICSEARCH_URL=https://<host>:<port>
     export ELASTICSEARCH_CA_CERTS=/path/to/http_ca.crt
     export ELASTICSEARCH_SSL_ASSERT_FINGERPRINT=<fingerprint>
     export ELASTICSEARCH_VERIFY_CERTS=true
 
 ``ELASTICSEARCH_VERIFY_CERTS`` is passed to the Elasticsearch client only
-when explicitly set; otherwise the client default is used.
+when explicitly set; otherwise the client default is used. Elastic Cloud
+deployments can use ``ELASTICSEARCH_CLOUD_ID`` instead of configuring the
+URL.
 
 Elasticsearch index templates, refresh behavior, retry policy, and
 lifecycle settings are managed by the backend.
@@ -223,13 +227,15 @@ Run tests with (make sure you have the :ref:`selenium dependencies
     TIMESERIES_UDP=1 ./runtests  # InfluxDB 1.x over UDP
     TSDB=influxdb2 ./runtests  # InfluxDB 2.x over HTTP
     TSDB=influxdb2 TIMESERIES_UDP=1 ./runtests  # InfluxDB 2.x over UDP (via Telegraf)
+    TSDB=elasticsearch ./runtests  # Elasticsearch over HTTP
 
 The ``./runtests`` script is the main test entry point. By default it runs
-the InfluxDB test flow. Set ``TSDB=influxdb2`` to run the InfluxDB 2.x
-test flow instead. Set ``TIMESERIES_UDP=1`` to run the UDP flow for the
-selected backend. When using ``TSDB=influxdb2 TIMESERIES_UDP=1``, Telegraf
-must be running because InfluxDB 2.x does not support UDP natively. Using
-``--parallel`` is not supported in this module.
+the InfluxDB test flow. Set ``TSDB=influxdb2`` or ``TSDB=elasticsearch``
+to run the corresponding backend test flow instead. Set
+``TIMESERIES_UDP=1`` to run the UDP flow for an InfluxDB backend. When
+using ``TSDB=influxdb2 TIMESERIES_UDP=1``, Telegraf must be running
+because InfluxDB 2.x does not support UDP natively. Using ``--parallel``
+is not supported in this module.
 
 Run quality assurance tests with:
 
@@ -285,9 +291,10 @@ Run the docker container:
 
     docker compose up
 
-By default, the Docker setup uses InfluxDB 1.8. To use InfluxDB 2.9
-instead, run:
+By default, the Docker setup uses InfluxDB 1.8. To use another supported
+backend instead, run one of the following:
 
 .. code-block:: shell
 
     TIMESERIES_BACKEND=influxdb2 docker compose up
+    TIMESERIES_BACKEND=elasticsearch docker compose up

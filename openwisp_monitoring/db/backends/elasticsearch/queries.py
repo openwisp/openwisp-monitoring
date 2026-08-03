@@ -151,7 +151,8 @@ chart_query = {
 }
 
 summary_query = {
-    key: {"elasticsearch": value["elasticsearch"]} for key, value in chart_query.items()
+    key: {"elasticsearch": value["elasticsearch"].resolve()}
+    for key, value in chart_query.items()
 }
 default_chart_query = ElasticsearchQuery(
     {
