@@ -34,6 +34,7 @@ If instructions conflict, repository config and CI workflows win first, official
 
 - Add or update tests for every behavior change.
 - For bug fixes, write the regression test first, run it against the unfixed code, confirm it fails for the expected reason, then implement the fix.
+- Prefer method decorators for context managers that apply to the entire test method and would otherwise create unnecessary nesting, unless decorator ordering conflicts or the context manager requires data unavailable when the method is defined.
 - Use targeted tests while iterating, then run the documented full test command before considering the change complete.
 - Run `openwisp-qa-format` after editing when available.
 - Run `./run-qa-checks` when present. Treat failures as blocking unless confirmed unrelated and reported.
