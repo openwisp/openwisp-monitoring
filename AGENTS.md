@@ -54,6 +54,7 @@ If instructions conflict, repository config and CI workflows win first, official
 - Before pushing a branch or opening a pull request for a behavior-affecting change, verify that the full test suite has passed at least once for the current branch after its latest code, test, dependency, migration, or configuration change. If no successful full-suite result is available, stop, report the missing verification, and do not push or open the pull request. If the full suite cannot run, report the blocker and wait for user direction.
 - Apps under `tests/openwisp2/sample_*` are disposable test and example projects, not maintained deployments. Prefer updating their existing migrations to keep them minimal. Add an append-only migration only when an important change needs documented upgrade guidance for users who customized their OpenWISP modules.
 - Prefer in-process tests so coverage tools can measure changed code.
+- Keep helpers and classes used by only one test method inside that method. Promote them to class or module scope only when genuinely reused.
 
 ## Django Notes
 
