@@ -70,6 +70,7 @@ If instructions conflict, repository config and CI workflows win first, official
 - Be careful with queryset filtering, serializers, admin behavior, cache invalidation, signals, Celery tasks, time series database backends, and dashboard/websocket updates.
 - When changing APIs, include tests for permissions, validation, filtering, pagination, and tenant boundaries.
 - When a Celery task, notification, cache invalidation, or other external side effect depends on database changes made in the current transaction, register it with `transaction.on_commit()` so it cannot run against uncommitted or rolled-back data. Do not defer work that must run before commit or is independent of the transaction. Test commit and rollback behavior, and account for Celery eager execution in tests versus asynchronous execution in production.
+- Treat email addresses as case-insensitive when identifying, deduplicating, importing, migrating, or searching users by email. Use `email__iexact` for direct and `Q()` ORM lookups. Keep username matching case-sensitive unless explicitly required. Normalize email records this module owns to lowercase, and cover casing-only inputs, including legacy mixed-case records when relevant.
 
 ## Security Rules
 
