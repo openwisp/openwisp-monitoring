@@ -337,14 +337,15 @@ class TestModels(TestMonitoringMixin, TestCase):
 
     def test_metric_post_write_signals_emitted(self):
         om = self._create_object_metric()
+        now = timezone.now()
         with catch_signal(post_metric_write) as handler:
-            om.write(3, current=True, time=start_time)
+            om.write(3, current=True, time=now)
             handler.assert_called_once_with(
                 sender=Metric,
                 metric=om,
                 values={om.field_name: 3},
                 signal=post_metric_write,
-                time=start_time.isoformat(),
+                time=now.isoformat(),
                 current=True,
             )
 

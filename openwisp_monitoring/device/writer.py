@@ -77,7 +77,13 @@ class DeviceDataWriter(object):
             ifname = interface["name"]
             if "mobile" in interface:
                 self._write_mobile_signal(
-                    interface, ifname, ct, self.device_data.pk, current, time=time
+                    interface,
+                    ifname,
+                    ct,
+                    self.device_data.pk,
+                    current,
+                    time=time,
+                    extra_tags=device_extra_tags,
                 )
             ifstats = interface.get("statistics", {})
             # Explicitly stated None to avoid skipping in case the stats are zero
@@ -192,7 +198,9 @@ class DeviceDataWriter(object):
             if tech in signal:
                 return tech
 
-    def _write_mobile_signal(self, interface, ifname, ct, pk, current=False, time=None):
+    def _write_mobile_signal(
+        self, interface, ifname, ct, pk, current=False, time=None, extra_tags=None
+    ):
         access_type = self._get_mobile_signal_type(interface["mobile"].get("signal"))
         if not access_type:
             return
@@ -210,13 +218,15 @@ class DeviceDataWriter(object):
         if signal_strength is not None:
             signal_strength = float(signal_strength)
         if signal_strength is not None or signal_power is not None:
+            name = f"{ifname} signal strength"
             metric, created = Metric._get_or_create(
                 object_id=self.device_data.pk,
                 content_type_id=ct.id,
                 configuration="signal_strength",
-                name="signal strength",
+                name=name,
                 key="signal",
                 main_tags={"ifname": Metric._makekey(ifname)},
+                extra_tags=extra_tags,
             )
             self._append_metric_data(
                 metric, signal_strength, current, time=time, extra_values=extra_values
@@ -239,13 +249,15 @@ class DeviceDataWriter(object):
         if signal_quality is not None:
             signal_quality = float(signal_quality)
         if snr is not None or signal_quality is not None:
+            name = f"{ifname} signal quality"
             metric, created = Metric._get_or_create(
                 object_id=self.device_data.pk,
                 content_type_id=ct.id,
                 configuration="signal_quality",
-                name="signal quality",
+                name=name,
                 key="signal",
                 main_tags={"ifname": Metric._makekey(ifname)},
+                extra_tags=extra_tags,
             )
             self._append_metric_data(
                 metric, signal_quality, current, time=time, extra_values=extra_values
@@ -253,13 +265,15 @@ class DeviceDataWriter(object):
             if created:
                 self._create_signal_quality_chart(metric)
         # create access technology chart
+        name = f"{ifname} access technology"
         metric, created = Metric._get_or_create(
             object_id=self.device_data.pk,
             content_type_id=ct.id,
             configuration="access_tech",
-            name="access technology",
+            name=name,
             key="signal",
             main_tags={"ifname": Metric._makekey(ifname)},
+            extra_tags=extra_tags,
         )
         self._append_metric_data(
             metric,

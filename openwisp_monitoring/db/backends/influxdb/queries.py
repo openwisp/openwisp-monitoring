@@ -80,7 +80,7 @@ chart_query = {
             "SELECT ROUND(MEAN(signal_strength)) AS signal_strength, "
             "ROUND(MEAN(signal_power)) AS signal_power FROM {key} WHERE "
             "time >= '{time}' {end_date} AND content_type = '{content_type}' AND "
-            "object_id = '{object_id}' GROUP BY time(1d)"
+            "object_id = '{object_id}' AND ifname = '{ifname}' GROUP BY time(1d)"
         )
     },
     "signal_quality": {
@@ -88,14 +88,14 @@ chart_query = {
             "SELECT ROUND(MEAN(signal_quality)) AS signal_quality, "
             "ROUND(MEAN(snr)) AS signal_to_noise_ratio FROM {key} WHERE "
             "time >= '{time}' {end_date} AND content_type = '{content_type}' AND "
-            "object_id = '{object_id}' GROUP BY time(1d)"
+            "object_id = '{object_id}' AND ifname = '{ifname}' GROUP BY time(1d)"
         )
     },
     "access_tech": {
         "influxdb": (
             "SELECT MODE(access_tech) AS access_tech FROM {key} WHERE "
             "time >= '{time}' {end_date} AND content_type = '{content_type}' AND "
-            "object_id = '{object_id}' GROUP BY time(1d)"
+            "object_id = '{object_id}' AND ifname = '{ifname}' GROUP BY time(1d)"
         )
     },
     "bandwidth": {
