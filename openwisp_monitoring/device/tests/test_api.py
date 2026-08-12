@@ -363,6 +363,28 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(self.metric_queryset.count(), 0)
         self.assertEqual(self.chart_queryset.count(), 0)
 
+    def test_404_disabled_organization_with_cached_device(self):
+        organization = self._create_org()
+        device = self._create_device(organization=organization)
+        self.assertEqual(
+            self._post_data(device.id, device.key, self._data()).status_code, 200
+        )
+        organization.is_active = False
+        organization.save()
+        response = self._post_data(device.id, device.key, self._data())
+        self.assertEqual(response.status_code, 404)
+
+    def test_disabled_organization_read_api_allowed(self):
+        org = self._create_org(is_active=False)
+        device = self._create_device(organization=org)
+        device_list_url = reverse("monitoring:api_monitoring_device_list")
+        response = self.client.get(device_list_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 1)
+        metric_list_url = reverse("monitoring:api_device_metric_list", args=[device.pk])
+        response = self.client.get(metric_list_url)
+        self.assertEqual(response.status_code, 200)
+
     def test_device_activate_deactivate(self):
         # "self.create_test_data" creates a device and makes
         # a POST request to DeviceMetricView ensuring that
@@ -2034,6 +2056,18 @@ class TestWifiSessionApi(
         serializer_dict = self._serialize_wifi_session(ws, list_single=True)
         self.assertEqual(len(response.data["results"]), 1)
         self.assertEqual(response.data["results"][0], serializer_dict)
+
+    def test_wifi_session_read_allowed_disabled_organization(self):
+        org = self._create_org(is_active=False)
+        device = self._create_device(organization=org)
+        wifi_session = self._create_wifi_session(device=device)
+        self._login_admin()
+        list_response = self.client.get(reverse("monitoring:api_wifi_session_list"))
+        self.assertEqual(list_response.status_code, 200)
+        detail_response = self.client.get(
+            reverse("monitoring:api_wifi_session_detail", args=[wifi_session.id])
+        )
+        self.assertEqual(detail_response.status_code, 200)
 
     def test_wifi_session_list_unauthorized(self):
         device = self._create_device()

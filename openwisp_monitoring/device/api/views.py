@@ -167,11 +167,6 @@ class DeviceMetricView(
 
     def post(self, request, pk):
         self.instance = self.get_object(pk)
-        if self.instance._is_deactivated:
-            # If the device is deactivated, do not accept data.
-            # We don't use "Device.is_deactivated()" to avoid
-            # generating query for the related config.
-            raise Http404
         self.instance.data = request.data
         # validate incoming data
         try:

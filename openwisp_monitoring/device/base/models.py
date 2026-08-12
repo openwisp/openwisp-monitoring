@@ -62,10 +62,13 @@ class AbstractDeviceData(object):
     @cache_memoize(CACHE_TIMEOUT)
     def get_devicedata(cls, pk):
         obj = (
-            cls.objects.select_related("devicelocation")
+            cls.objects.select_related("devicelocation", "organization")
             .only(
                 "id",
                 "organization_id",
+                "organization__id",
+                "organization__is_active",
+                "_is_deactivated",
                 "devicelocation__location_id",
                 "devicelocation__floorplan_id",
             )
@@ -479,7 +482,10 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         """Handles the disabling of an organization.
 
         Clears the management IP of all devices belonging to a disabled
-        organization and set their monitoring status to 'unknown'.
+        organization.
+
+        Don't update the device's monitoring status here because it will
+        be automatically updated when the device is deactivated.
 
         Parameters: - organization_id (int): The ID of the disabled
         organization.
@@ -626,3 +632,10 @@ class AbstractWifiSession(TimeStampedEditableModel):
             and AbstractDeviceMonitoring.is_metric_critical(metric)
         ):
             tasks.offline_device_close_session.delay(device_id=target.pk)
+
+    @classmethod
+    def close_organization_sessions(cls, organization_id):
+        """Closes the open sessions of a disabled organization's devices."""
+        cls.objects.filter(
+            device__organization_id=organization_id, stop_time__isnull=True
+        ).update(stop_time=now())

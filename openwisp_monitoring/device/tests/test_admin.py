@@ -1,13 +1,14 @@
 from copy import deepcopy
 
 import django
+from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.forms import generic_inlineformset_factory
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.db import connection
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils.timezone import datetime, now, timedelta
 from freezegun import freeze_time
@@ -19,7 +20,7 @@ from openwisp_controller.geo.tests.utils import TestGeoMixin
 from openwisp_users.tests.utils import TestMultitenantAdminMixin
 
 from ...check.settings import CHECK_CLASSES
-from ..admin import CheckInline, CheckInlineFormSet
+from ..admin import AlertSettingsInline, CheckInline, CheckInlineFormSet
 from . import DeviceMonitoringTestCase, TestWifiClientSessionMixin
 
 Chart = load_model("monitoring", "Chart")
@@ -43,7 +44,10 @@ metric_model_name = get_model_name("monitoring", "Metric").lower().replace(".", 
 
 
 class TestAdmin(
-    TestWifiClientSessionMixin, TestImportExportMixin, DeviceMonitoringTestCase
+    TestWifiClientSessionMixin,
+    TestImportExportMixin,
+    TestMultitenantAdminMixin,
+    DeviceMonitoringTestCase,
 ):
     """Test the additions of openwisp-monitoring to DeviceAdmin"""
 
@@ -386,12 +390,44 @@ class TestAdmin(
         response = self.client.get(url)
         self.assertContains(response, "<h2>Status</h2>")
         self.assertContains(response, "<h2>Charts</h2>")
-        self.assertNotContains(
+        self.assertContains(
             response, self._get_inline_admin_heading("Checks"), html=True
         )
-        self.assertNotContains(
+        self.assertContains(
             response, self._get_inline_admin_heading("Alert Settings"), html=True
         )
+
+    def test_device_disabled_org_admin_inline_readonly(self):
+        self.create_test_data()
+        device = Device.objects.first()
+        active_device = self._create_device(
+            name="active-device", organization=self._create_org(name="active-org")
+        )
+        org = device.organization
+        org.is_active = False
+        org.save()
+        request = RequestFactory().get("/")
+        request.user = self._get_admin()
+        device_admin = admin.site._registry[Device]
+        self._test_disabled_org_admin_inline_readonly(
+            device_admin,
+            device,
+            active_obj=active_device,
+            inline_models=(CheckInline,),
+            user=request.user,
+        )
+
+    def test_device_alertsettings_inline_readonly_for_deactivated_device(self):
+        device = self._create_device(organization=self._create_org())
+        metric = self._create_object_metric(content_object=device)
+        self._create_alert_settings(metric=metric)
+        device.deactivate()
+        request = RequestFactory().get("/")
+        request.user = self._get_admin()
+        inline = AlertSettingsInline(Metric, admin.site)
+        self.assertFalse(inline.has_add_permission(request, metric))
+        self.assertFalse(inline.has_change_permission(request, metric))
+        self.assertTrue(inline.has_delete_permission(request, metric))
 
     def test_remove_invalid_interface(self):
         d = self._create_device(organization=self._create_org())

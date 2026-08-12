@@ -33,3 +33,21 @@ def retry(method):
                     raise err
 
     return wrapper
+
+
+def is_write_blocked(content_type, object_id):
+    """Return whether a generic relation targets a blocked object."""
+    if content_type is None or not object_id:
+        return False
+    model = content_type.model_class()
+    if model is None:
+        return False
+    field_names = {field.name for field in model._meta.get_fields()}
+    if "_is_deactivated" not in field_names and "organization" not in field_names:
+        return False
+    queryset = model._default_manager.filter(pk=object_id)
+    if "_is_deactivated" in field_names:
+        queryset = queryset.filter(_is_deactivated=False)
+    if "organization" in field_names:
+        queryset = queryset.filter(organization__is_active=True)
+    return not queryset.exists()
