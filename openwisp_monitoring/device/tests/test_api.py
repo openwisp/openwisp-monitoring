@@ -494,6 +494,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             )
             # Update device (d2) health status to 'critical'
             d2.monitoring.update_status("critical")
+            d2.refresh_from_db()
             r = self.client.get(f"{url}?monitoring__status=critical")
             self.assertEqual(r.data["count"], 1)
             self._assert_device_info(device=d2, data=r.data["results"][0])
@@ -1849,8 +1850,7 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
             organization=org2,
             model="TP-Link Archer C60",
         )
-        org2_device1.monitoring.status = "ok"
-        org2_device1.monitoring.save()
+        org2_device1.monitoring.update_status("ok")
 
         self._create_object_location(
             content_object=org1_device1,

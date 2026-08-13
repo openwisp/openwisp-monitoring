@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import transaction
 from django.test import TestCase, tag
 from django.utils.timezone import now, timedelta
 from freezegun import freeze_time
@@ -254,8 +255,7 @@ class MonitoringTestMixin(object):
     def _create_env(self):
         d = self._create_device()
         dm = d.monitoring
-        dm.status = "ok"
-        dm.save()
+        dm.update_status("ok")
         ping = self._create_object_metric(configuration="ping", content_object=d)
         self._create_alert_settings(
             metric=ping, custom_operator="<", custom_threshold=1, custom_tolerance=0
@@ -572,16 +572,14 @@ class TestDeviceData(MonitoringTestMixin, DeviceMonitoringTestCase):
     @patch("openwisp_controller.connection.tasks.logger.info")
     def test_can_be_updated(self, mocked_logger_info):
         device = self._create_device_config()
-        device.monitoring.status = "critical"
-        device.monitoring.save()
+        device.monitoring.update_status("critical")
         update_config.delay(device.pk)
         mocked_logger_info.assert_called_once()
 
     @patch("openwisp_controller.connection.tasks.logger.info")
     def test_can_be_updated_unknown(self, mocked_logger_info):
         device = self._create_device_config()
-        device.monitoring.status = "unknown"
-        device.monitoring.save()
+        device.monitoring.update_status("unknown")
         update_config.delay(device.pk)
         mocked_logger_info.assert_called_once()
 
@@ -597,6 +595,23 @@ class TestDeviceMonitoring(
 ):
     """Test openwisp_monitoring.device.models.DeviceMonitoring"""
 
+    def _assert_unknown(self, *metrics):
+        for metric in metrics:
+            metric.refresh_from_db()
+            self.assertIsNone(
+                metric.is_healthy,
+                "Expected is_healthy to be None because the device status is unknown.",
+            )
+            self.assertIsNone(
+                metric.is_healthy_tolerant,
+                "Expected is_healthy_tolerant to be None because the device status is unknown.",
+            )
+
+    def test_unknown(self):
+        device_monitoring, ping, load, process_count = self._create_env()
+        device_monitoring.update_status("unknown")
+        self._assert_unknown(ping, load, process_count)
+
     def test_disabling_critical_check(self):
         Check = load_model("check", "Check")
         dm, ping, load, process_count = self._create_env()
@@ -606,16 +621,19 @@ class TestDeviceMonitoring(
             content_object=dm.device,
             params={},
         )
+        ping.write(1)
         dm.update_status("ok")
         with catch_signal(health_status_changed) as handler:
-            ping_check_instance.is_active = False
-            ping_check_instance.save()
+            with self.captureOnCommitCallbacks(execute=True):
+                ping_check_instance.is_active = False
+                ping_check_instance.save()
         self.assertEqual(handler.call_count, 1)
         call_args = handler.call_args[1]
         self.assertEqual(call_args["instance"], dm)
         self.assertEqual(call_args["status"], "unknown")
         dm.refresh_from_db()
         self.assertEqual(dm.status, "unknown")
+        self._assert_unknown(ping, load, process_count)
         with self.subTest(
             "Ensure status does not change on saving active critical check"
         ):
@@ -654,21 +672,25 @@ class TestDeviceMonitoring(
             content_object=dm.device,
             params={},
         )
+        ping.write(1)
         dm.update_status("ok")
         with catch_signal(health_status_changed) as handler:
-            ping_check_instance.delete()
+            with self.captureOnCommitCallbacks(execute=True):
+                ping_check_instance.delete()
         self.assertEqual(handler.call_count, 1)
         call_args = handler.call_args[1]
         self.assertEqual(call_args["instance"], dm)
         self.assertEqual(call_args["status"], "unknown")
         dm.refresh_from_db()
         self.assertEqual(dm.status, "unknown")
+        self._assert_unknown(ping, load, process_m)
 
     def test_status_changed(self):
         dm, ping, load, process_count = self._create_env()
         # check signal
         with catch_signal(health_status_changed) as handler:
-            dm.update_status("problem")
+            with self.captureOnCommitCallbacks(execute=True):
+                dm.update_status("problem")
         dm.refresh_from_db()
         self.assertEqual(dm.status, "problem")
         handler.assert_called_once_with(
@@ -760,7 +782,7 @@ class TestDeviceMonitoring(
         self.assertEqual(dm.device.management_ip, "10.10.0.5")
         ping.check_threshold(0)
         self.assertEqual(dm.status, "critical")
-        self.assertIsNone(dm.device.management_ip)
+        self.assertEqual(dm.device.management_ip, "")
 
     @patch("openwisp_monitoring.device.settings.AUTO_CLEAR_MANAGEMENT_IP", False)
     @patch.object(
@@ -779,14 +801,9 @@ class TestDeviceMonitoring(
         self.assertIsNotNone(dm.device.management_ip)
 
     def _set_env_unknown(self, load, process_count, ping, dm):
-        dm.status = "unknown"
-        dm.save()
-        ping.is_healthy = None
-        load.save()
-        load.is_healthy = None
-        ping.save()
-        process_count.is_healthy = None
-        process_count.save()
+        dm.update_status("unknown")
+        for metric in load, process_count, ping:
+            metric.refresh_from_db()
 
     def test_unknown_ok(self):
         dm, ping, load, process_count = self._create_env()
@@ -878,8 +895,7 @@ class TestDeviceMonitoring(
             organization=dm1.device.organization,
         )
         dm2 = device2.monitoring
-        dm2.status = "ok"
-        dm2.save()
+        dm2.update_status("ok")
         ping2 = self._create_object_metric(
             name="ping", key="ping", field_name="reachable", content_object=device2
         )
@@ -894,22 +910,70 @@ class TestDeviceMonitoring(
         self.assertNotEqual(self._read_metric(ping2), [])
 
     def test_handle_disabled_organization(self):
-        device_monitoring, _, _, _ = self._create_env()
+        device_monitoring, ping, load, process_count = self._create_env()
         device = device_monitoring.device
+        other_device_monitoring = self._create_device(
+            name="same-org-device",
+            mac_address="22:33:44:55:66:77",
+            organization=device.organization,
+        ).monitoring
+        same_org_ping = self._create_object_metric(
+            configuration="ping", content_object=other_device_monitoring.device
+        )
+        self._create_alert_settings(
+            metric=same_org_ping,
+            custom_operator="<",
+            custom_threshold=1,
+            custom_tolerance=0,
+        )
+        other_monitoring = self._create_device(
+            organization=self._create_org(name="other org", slug="other-org")
+        ).monitoring
+        other_monitoring.update_status("ok")
+        unrelated_ping = self._create_object_metric(
+            configuration="ping", content_object=other_monitoring.device
+        )
+        self._create_alert_settings(
+            metric=unrelated_ping,
+            custom_operator="<",
+            custom_threshold=1,
+            custom_tolerance=0,
+        )
         device.management_ip = "10.10.0.5"
         device.save()
+        other_device_monitoring.device.management_ip = "10.10.0.6"
+        other_device_monitoring.device.save()
+        other_monitoring.device.management_ip = "10.10.0.7"
+        other_monitoring.device.save()
+        ping.write(1)
+        same_org_ping.write(1)
+        unrelated_ping.write(1)
         self.assertEqual(device_monitoring.status, "ok")
         org = device.organization
-        org.is_active = False
-        org.save(update_fields=["is_active"])
+        with self.assertNumQueries(10):
+            DeviceMonitoring.handle_disabled_organization(org.pk)
         device_monitoring.refresh_from_db()
         device.refresh_from_db()
         self.assertEqual(device_monitoring.status, "unknown")
         self.assertEqual(device.management_ip, None)
+        self._assert_unknown(ping, load, process_count)
+        other_device_monitoring.refresh_from_db()
+        other_device_monitoring.device.refresh_from_db()
+        self.assertEqual(other_device_monitoring.status, "unknown")
+        self.assertIsNone(other_device_monitoring.device.management_ip)
+        self._assert_unknown(same_org_ping)
+        other_monitoring.refresh_from_db()
+        other_monitoring.device.refresh_from_db()
+        unrelated_ping.refresh_from_db()
+        self.assertEqual(other_monitoring.status, "ok")
+        self.assertEqual(other_monitoring.device.management_ip, "10.10.0.7")
+        self.assertTrue(unrelated_ping.is_healthy)
+        self.assertTrue(unrelated_ping.is_healthy_tolerant)
 
     def test_handle_deactivate_activate_device(self):
-        device_monitoring, _, _, _ = self._create_env()
+        device_monitoring, ping, load, process_count = self._create_env()
         device = device_monitoring.device
+        ping.write(1)
         self.assertEqual(device_monitoring.status, "ok")
 
         with self.subTest("Test deactivation of device"):
@@ -923,11 +987,49 @@ class TestDeviceMonitoring(
             device_monitoring.refresh_from_db()
             device.refresh_from_db()
             self.assertEqual(device_monitoring.status, "unknown")
+            self._assert_unknown(ping, load, process_count)
+            ping.refresh_from_db()
+            ping.write(1)
+            device_monitoring.refresh_from_db()
+            ping.refresh_from_db()
+            self.assertTrue(ping.is_healthy)
+            self.assertTrue(ping.is_healthy_tolerant)
+            self.assertEqual(
+                device_monitoring.status,
+                "ok",
+                "A healthy ping did not restore the status after reactivation.",
+            )
 
 
 class TestTransactionDeviceMonitoring(
     CreateConnectionsMixin, MonitoringTestMixin, DeviceMonitoringTransactionTestcase
 ):
+    def test_unknown_status_rollback(self):
+        dm, ping, load, process_count = self._create_env()
+        with transaction.atomic():
+            dm.update_status("unknown")
+            transaction.set_rollback(True)
+        dm.refresh_from_db()
+        ping.refresh_from_db()
+        self.assertEqual(dm.status, "ok")
+        self.assertTrue(ping.is_healthy)
+        self.assertTrue(ping.is_healthy_tolerant)
+
+    def test_disabled_organization_rollback(self):
+        dm, ping, load, process_count = self._create_env()
+        dm.device.management_ip = "10.10.0.5"
+        dm.device.save()
+        with transaction.atomic():
+            DeviceMonitoring.handle_disabled_organization(dm.device.organization_id)
+            transaction.set_rollback(True)
+        dm.refresh_from_db()
+        dm.device.refresh_from_db()
+        ping.refresh_from_db()
+        self.assertEqual(dm.status, "ok")
+        self.assertEqual(dm.device.management_ip, "10.10.0.5")
+        self.assertTrue(ping.is_healthy)
+        self.assertTrue(ping.is_healthy_tolerant)
+
     @patch("openwisp_monitoring.device.tasks.perform_check.delay")
     def test_stuck_problem_regression(self, mocked):
         """Regression test for https://github.com/openwisp/openwisp-monitoring/issues/830."""
