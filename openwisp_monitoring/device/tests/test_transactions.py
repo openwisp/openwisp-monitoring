@@ -73,6 +73,12 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
     def test_config_status_changed_receiver_deactivated_device(self, mock_method):
         c = self._create_config(status="applied", organization=self._create_org())
         c.device.deactivate()
+        c.config = {"general": {"description": "test"}}
+        c.full_clean()
+        with catch_signal(config_status_changed) as handler:
+            c.save()
+            handler.assert_called_once()
+        self.assertEqual(c.status, "modified")
         mock_method.assert_not_called()
 
     @patch.object(Check, "perform_check")

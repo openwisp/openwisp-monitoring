@@ -9,6 +9,14 @@ Check = load_model("check", "Check")
 
 @tag("flaky_with_udp_writes")
 class TestAdmin(TestDeviceMonitoringMixin, TransactionTestCase):
+    def test_check_admin_change_permission(self):
+        d = self._create_device(organization=self._create_org())
+        check = Check.objects.filter(object_id=d.pk).first()
+        request = RequestFactory().get("/")
+        request.user = self._get_admin()
+        check_admin = admin.site._registry[Check]
+        self.assertTrue(check_admin.has_change_permission(request, check))
+
     def test_check_admin_disabled_organization_read_only(self):
         org = self._create_org()
         d = self._create_device(organization=org)

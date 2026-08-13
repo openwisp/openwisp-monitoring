@@ -2065,6 +2065,8 @@ class TestWifiSessionApi(
         self._login_admin()
         list_response = self.client.get(reverse("monitoring:api_wifi_session_list"))
         self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(list_response.data["count"], 1)
+        self.assertEqual(list_response.data["results"][0]["id"], str(wifi_session.id))
         detail_response = self.client.get(
             reverse("monitoring:api_wifi_session_detail", args=[wifi_session.id])
         )

@@ -20,7 +20,12 @@ from openwisp_controller.geo.tests.utils import TestGeoMixin
 from openwisp_users.tests.utils import TestMultitenantAdminMixin
 
 from ...check.settings import CHECK_CLASSES
-from ..admin import AlertSettingsInline, CheckInline, CheckInlineFormSet
+from ..admin import (
+    AlertSettingsInline,
+    CheckInline,
+    CheckInlineFormSet,
+    MetricInline,
+)
 from . import DeviceMonitoringTestCase, TestWifiClientSessionMixin
 
 Chart = load_model("monitoring", "Chart")
@@ -415,6 +420,22 @@ class TestAdmin(
             active_obj=active_device,
             inline_models=(CheckInline,),
             user=request.user,
+        )
+        metric_inline = next(
+            inline
+            for inline in device_admin.get_inline_instances(request, device)
+            if isinstance(inline, MetricInline)
+        )
+        self.assertFalse(metric_inline.has_add_permission(request, device))
+        self.assertFalse(metric_inline.has_change_permission(request, device))
+        self.assertFalse(metric_inline.has_delete_permission(request, device))
+        active_metric_inline = next(
+            inline
+            for inline in device_admin.get_inline_instances(request, active_device)
+            if isinstance(inline, MetricInline)
+        )
+        self.assertTrue(
+            active_metric_inline.has_change_permission(request, active_device)
         )
 
     def test_device_alertsettings_inline_readonly_for_deactivated_device(self):

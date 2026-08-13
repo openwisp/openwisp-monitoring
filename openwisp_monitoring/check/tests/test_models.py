@@ -184,8 +184,13 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
 
     def test_auto_check_not_created_for_disabled_organization(self):
         self.assertEqual(Check.objects.count(), 0)
-        self._create_device(organization=self._create_org(is_active=False))
-        self.assertEqual(Check.objects.count(), 0)
+        self._create_device(organization=self._create_org())
+        self.assertEqual(Check.objects.count(), 5)
+        disabled_org = self._create_org(
+            name="disabled org", slug="disabled-org", is_active=False
+        )
+        self._create_device(organization=disabled_org)
+        self.assertEqual(Check.objects.count(), 5)
 
     def test_auto_check_not_created_for_deactivated_device(self):
         device = self._create_device(organization=self._create_org())

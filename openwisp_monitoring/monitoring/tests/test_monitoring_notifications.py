@@ -518,6 +518,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             m.write(99)
         m.refresh_from_db()
         self.assertEqual(m.is_healthy, False)
+        self.assertEqual(m.is_healthy_tolerant, False)
         self.assertEqual(Notification.objects.count(), 0)
 
     def test_alerts_deactivated_device(self):
@@ -534,6 +535,7 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
             m.write(99)
         m.refresh_from_db()
         self.assertEqual(m.is_healthy, False)
+        self.assertEqual(m.is_healthy_tolerant, False)
         self.assertEqual(Notification.objects.count(), 0)
 
     def test_alert_field(self):
