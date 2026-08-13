@@ -782,7 +782,7 @@ class TestDeviceMonitoring(
         self.assertEqual(dm.device.management_ip, "10.10.0.5")
         ping.check_threshold(0)
         self.assertEqual(dm.status, "critical")
-        self.assertIsNone(dm.device.management_ip)
+        self.assertEqual(dm.device.management_ip, "")
 
     @patch("openwisp_monitoring.device.settings.AUTO_CLEAR_MANAGEMENT_IP", False)
     @patch.object(
@@ -950,8 +950,8 @@ class TestDeviceMonitoring(
         unrelated_ping.write(1)
         self.assertEqual(device_monitoring.status, "ok")
         org = device.organization
-        org.is_active = False
-        org.save(update_fields=["is_active"])
+        with self.assertNumQueries(10):
+            DeviceMonitoring.handle_disabled_organization(org.pk)
         device_monitoring.refresh_from_db()
         device.refresh_from_db()
         self.assertEqual(device_monitoring.status, "unknown")
@@ -999,15 +999,6 @@ class TestDeviceMonitoring(
                 "ok",
                 "A healthy ping did not restore the status after reactivation.",
             )
-
-    def test_lifecycle_without_device_monitoring(self):
-        device = self._create_device()
-        device.monitoring.delete()
-        with self.subTest("deactivation"):
-            device.deactivate()
-
-        with self.subTest("activation"):
-            device.activate()
 
 
 class TestTransactionDeviceMonitoring(

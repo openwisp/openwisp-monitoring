@@ -362,21 +362,33 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
     class Meta:
         abstract = True
 
-    def update_status(self, value):
+    def update_status(self, value, clear_management_ip=False):
+        """Updates the device health status and related state.
+
+        Args:
+            value: Target health status. ``unknown`` resets all related metric
+                health states.
+            clear_management_ip: Clears the device management IP in the same
+                transaction, even when the status is already set to ``value``.
+        """
         with transaction.atomic():
+            # If the status is being set to "unknown" reset the related metrics
+            # to "factory default". This allows the system to easily recalculate
+            # the status if the device is reactivated.
             if value == "unknown":
-                # Reset health even if the status is already unknown.
                 self.related_metrics.update(is_healthy=None, is_healthy_tolerant=None)
+            # Clear device management_ip when offline or explicitly requested.
+            if (
+                value == "critical" and app_settings.AUTO_CLEAR_MANAGEMENT_IP
+            ) or clear_management_ip:
+                self.device.management_ip = ""
+                self.device.save(update_fields=["management_ip"])
             # don't trigger save nor emit signal if status is not changing
             if self.status == value:
                 return
             self.status = value
             self.full_clean()
             self.save()
-            # clear device management_ip when device is offline
-            if self.status == "critical" and app_settings.AUTO_CLEAR_MANAGEMENT_IP:
-                self.device.management_ip = None
-                self.device.save(update_fields=["management_ip"])
 
         transaction.on_commit(
             lambda: health_status_changed.send(
@@ -474,15 +486,11 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
 
         Returns: - None
         """
-        monitoring = cls.objects.select_related("device").filter(
-            device__organization_id=organization_id
-        )
+        monitoring = cls.objects.filter(device__organization_id=organization_id)
+        monitoring.update(status="unknown")
         # Process one device at a time to avoid loading a large organization in memory.
-        for instance in monitoring.iterator():
-            with transaction.atomic():
-                instance.device.management_ip = ""
-                instance.device.save(update_fields=["management_ip"])
-                instance.update_status("unknown")
+        for instance in monitoring.select_related("device").iterator():
+            instance.update_status("unknown", clear_management_ip=True)
 
     @classmethod
     def handle_deactivated_device(cls, instance, **kwargs):
@@ -495,9 +503,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
 
         Returns: - None
         """
-        monitoring = cls.objects.filter(device_id=instance.id).first()
-        if monitoring:
-            monitoring.update_status("deactivated")
+        instance.monitoring.update_status("deactivated")
 
     @classmethod
     def handle_activated_device(cls, instance, **kwargs):
@@ -510,9 +516,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
 
         Returns: - None
         """
-        monitoring = cls.objects.filter(device_id=instance.id).first()
-        if monitoring:
-            monitoring.update_status("unknown")
+        instance.monitoring.update_status("unknown")
 
     @classmethod
     def _get_critical_metric_keys(cls):
