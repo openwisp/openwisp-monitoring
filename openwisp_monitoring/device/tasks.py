@@ -9,6 +9,7 @@ from swapper import load_model
 from openwisp_utils.tasks import OpenwispCeleryTask
 
 from ..check.tasks import perform_check
+from ..utils import is_monitoring_blocked
 from . import settings as app_settings
 
 logger = logging.getLogger(__name__)
@@ -89,10 +90,12 @@ def offline_device_close_session(device_id):
 def write_device_metrics(pk, data, time=None, current=False):
     DeviceData = load_model("device_monitoring", "DeviceData")
     try:
-        device_data = DeviceData.objects.select_related("organization").get(
-            pk=pk, _is_deactivated=False, organization__is_active=True
-        )
+        device_data = DeviceData.objects.select_related(
+            "organization", "devicelocation"
+        ).get(pk=pk)
     except DeviceData.DoesNotExist:
+        return
+    if is_monitoring_blocked(device_data):
         return
     device_data.writer.write(data, time, current)
 

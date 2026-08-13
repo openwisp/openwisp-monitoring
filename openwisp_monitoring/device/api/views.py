@@ -37,6 +37,7 @@ from openwisp_users.api.permissions import DjangoModelPermissions, IsOrganizatio
 from openwisp_utils.api.pagination import OpenWispPagination
 
 from ...settings import CACHE_TIMEOUT
+from ...utils import is_monitoring_blocked
 from ...views import MonitoringApiViewMixin
 from ..schema import schema
 from ..signals import device_metrics_received
@@ -108,14 +109,12 @@ class DeviceMetricView(
     """
 
     model = DeviceData
-    queryset = (
-        DeviceData.objects.filter(organization__is_active=True, _is_deactivated=False)
-        .only(
-            "_is_deactivated",
-            "id",
-            "key",
-        )
-        .all()
+    queryset = DeviceData.objects.select_related("organization").only(
+        "_is_deactivated",
+        "id",
+        "key",
+        "organization__id",
+        "organization__is_active",
     )
     serializer_class = serializers.Serializer
     permission_classes = [DevicePermission]
@@ -167,6 +166,8 @@ class DeviceMetricView(
 
     def post(self, request, pk):
         self.instance = self.get_object(pk)
+        if is_monitoring_blocked(self.instance):
+            raise Http404
         self.instance.data = request.data
         # validate incoming data
         try:

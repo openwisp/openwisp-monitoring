@@ -167,7 +167,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(self.metric_queryset.count(), 0)
         self.assertEqual(self.chart_queryset.count(), 0)
         data = {"type": "DeviceMonitoring"}
-        with self.assertNumQueries(2):
+        with self.assertNumQueries(3):
             r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 200)
         # Add 1 for general metric and chart
@@ -281,7 +281,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         with self.assertNumQueries(21 + additional_queries):
             response = self._post_data(device.id, device.key, data2)
         # Ensure cache is working
-        with self.assertNumQueries(13 + additional_queries):
+        with self.assertNumQueries(14 + additional_queries):
             response = self._post_data(device.id, device.key, data2)
         self.assertEqual(response.status_code, 200)
         # Add 1 for general metric and chart
@@ -370,7 +370,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             self._post_data(device.id, device.key, self._data()).status_code, 200
         )
         organization.is_active = False
-        organization.save()
+        with self.captureOnCommitCallbacks(execute=True):
+            organization.save()
         response = self._post_data(device.id, device.key, self._data())
         self.assertEqual(response.status_code, 404)
 
@@ -392,7 +393,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.create_test_data(no_resources=True)
         device = self.device_model.objects.first()
         data = {"type": "DeviceMonitoring"}
-        with self.assertNumQueries(2):
+        with self.assertNumQueries(3):
             response = self._post_data(device.id, device.key, data)
 
         # Deactivating the device will invalidate the cache.
@@ -440,9 +441,9 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     def test_get_device_metrics_200(self):
         dd = self.create_test_data()
         d = self.device_model.objects.get(pk=dd.pk)
-        with self.assertNumQueries(17):
-            r = self.client.get(self._url(d.pk, d.key))
         with self.assertNumQueries(16):
+            r = self.client.get(self._url(d.pk, d.key))
+        with self.assertNumQueries(15):
             r = self.client.get(self._url(d.pk, d.key))
         self.assertEqual(r.status_code, 200)
 
