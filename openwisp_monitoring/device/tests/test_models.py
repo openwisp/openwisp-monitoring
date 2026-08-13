@@ -802,6 +802,8 @@ class TestDeviceMonitoring(
 
     def _set_env_unknown(self, load, process_count, ping, dm):
         dm.update_status("unknown")
+        for metric in load, process_count, ping:
+            metric.refresh_from_db()
 
     def test_unknown_ok(self):
         dm, ping, load, process_count = self._create_env()
@@ -960,6 +962,7 @@ class TestDeviceMonitoring(
             device.refresh_from_db()
             self.assertEqual(device_monitoring.status, "unknown")
             self._assert_unknown(ping, load, process_count)
+            ping.refresh_from_db()
             ping.write(1)
             device_monitoring.refresh_from_db()
             self.assertEqual(
