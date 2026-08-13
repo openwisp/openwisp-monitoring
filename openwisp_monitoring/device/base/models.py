@@ -345,7 +345,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         _("health status"),
         db_index=True,
         help_text=_(
-            '"{0}" means the health of the device and its related metrics is unknown; \n'
+            '"{0}" means the device status is unknown; \n'
             '"{1}" means the device is operating normally; \n'
             '"{2}" means the device is having issues but it\'s still communicating with the server; \n'
             '"{3}" means the device is not communicating with the server;\n'
@@ -487,8 +487,9 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         Returns: - None
         """
         monitoring = cls.objects.filter(device__organization_id=organization_id)
+        # Preserve the bulk update for large organizations: disabling an
+        # organization is not a health-status change and has its own signal.
         monitoring.update(status="unknown")
-        # Process one device at a time to avoid loading a large organization in memory.
         for instance in monitoring.select_related("device").iterator():
             instance.update_status("unknown", clear_management_ip=True)
 
