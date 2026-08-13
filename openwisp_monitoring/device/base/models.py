@@ -345,7 +345,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         _("health status"),
         db_index=True,
         help_text=_(
-            '"{0}" means the device has been recently added; \n'
+            '"{0}" means the health of the device and its related metrics is unknown; \n'
             '"{1}" means the device is operating normally; \n'
             '"{2}" means the device is having issues but it\'s still communicating with the server; \n'
             '"{3}" means the device is not communicating with the server;\n'
@@ -378,7 +378,11 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
                 self.device.management_ip = None
                 self.device.save(update_fields=["management_ip"])
 
-        health_status_changed.send(sender=self.__class__, instance=self, status=value)
+        transaction.on_commit(
+            lambda: health_status_changed.send(
+                sender=self.__class__, instance=self, status=value
+            )
+        )
 
     @property
     def related_metrics(self):
