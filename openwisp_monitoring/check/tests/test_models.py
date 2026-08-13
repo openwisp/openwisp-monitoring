@@ -380,7 +380,7 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
 
     def test_device_organization_disabled_check_not_performed(self):
         org = self._create_org()
-        config = self._create_config(status="modified", organization=org)
+        self._create_config(status="modified", organization=org)
         self.assertEqual(Check.objects.count(), 5)
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
         org.is_active = False
