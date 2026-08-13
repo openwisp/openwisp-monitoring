@@ -20,12 +20,7 @@ from openwisp_controller.geo.tests.utils import TestGeoMixin
 from openwisp_users.tests.utils import TestMultitenantAdminMixin
 
 from ...check.settings import CHECK_CLASSES
-from ..admin import (
-    AlertSettingsInline,
-    CheckInline,
-    CheckInlineFormSet,
-    MetricInline,
-)
+from ..admin import AlertSettingsInline, CheckInline, CheckInlineFormSet, MetricInline
 from . import DeviceMonitoringTestCase, TestWifiClientSessionMixin
 
 Chart = load_model("monitoring", "Chart")
