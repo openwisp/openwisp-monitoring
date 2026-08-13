@@ -32,8 +32,7 @@ class TestWifiClient(
 
     def _create_device(self, monitoring_status="ok", *args, **kwargs):
         device = super()._create_device(*args, **kwargs)
-        device.monitoring.status = monitoring_status
-        device.monitoring.save()
+        device.monitoring.update_status(monitoring_status)
         return device
 
     def test_store_result(self):
@@ -104,8 +103,7 @@ class TestWifiClient(
             min_mocked.assert_not_called()
 
         with self.subTest("Test check skipped when device status is critical"):
-            device.monitoring.status = "critical"
-            device.monitoring.save()
+            device.monitoring.update_status("critical")
             result = check.perform_check()
             self.assertEqual(result, None)
             max_mocked.assert_not_called()

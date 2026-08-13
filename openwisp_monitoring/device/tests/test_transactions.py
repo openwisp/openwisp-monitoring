@@ -55,14 +55,12 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
             mock.assert_called_once()
 
     @patch.object(Ping, "_command", return_value=_FPING_UNREACHABLE)
-    @patch.object(DeviceMonitoring, "update_status")
-    def test_trigger_device_recovery_task_regression(
-        self, mocked_update_status, mocked_ping
-    ):
+    def test_trigger_device_recovery_task_regression(self, mocked_ping):
         dm = self._create_device_monitoring()
         dm.device.management_ip = None
         dm.device.save()
-        trigger_device_critical_checks.delay(dm.device.pk)
+        with patch.object(DeviceMonitoring, "update_status") as mocked_update_status:
+            trigger_device_critical_checks.delay(dm.device.pk)
         self.assertTrue(Check.objects.exists())
         # we expect update_status() to be called twice (by the check)
         # and not a third time directly by our code
@@ -72,8 +70,7 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
     def test_is_working_false_true(self, perform_check):
         d = self._create_device()
         dm = d.monitoring
-        dm.status = "unknown"
-        dm.save()
+        dm.update_status("unknown")
         self._delete_non_ping_checks()
         c = Credentials.objects.create()
         dc = DeviceConnection.objects.create(credentials=c, device=d, is_working=False)
@@ -86,8 +83,7 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
     def test_is_working_changed_to_false(self, perform_check):
         d = self._create_device()
         dm = d.monitoring
-        dm.status = "ok"
-        dm.save()
+        dm.update_status("ok")
         self._delete_non_ping_checks()
         c = Credentials.objects.create()
         dc = DeviceConnection.objects.create(credentials=c, device=d)
@@ -100,8 +96,7 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
     def test_is_working_none_true(self, notify_send, perform_check):
         d = self._create_device()
         dm = d.monitoring
-        dm.status = "unknown"
-        dm.save()
+        dm.update_status("unknown")
         self._delete_non_ping_checks()
         c = Credentials.objects.create()
         dc = DeviceConnection.objects.create(credentials=c, device=d)

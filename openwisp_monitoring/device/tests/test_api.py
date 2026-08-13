@@ -1849,8 +1849,7 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
             organization=org2,
             model="TP-Link Archer C60",
         )
-        org2_device1.monitoring.status = "ok"
-        org2_device1.monitoring.save()
+        org2_device1.monitoring.update_status("ok")
 
         self._create_object_location(
             content_object=org1_device1,

@@ -33,8 +33,7 @@ class TestDataCollected(
 
     def _create_device(self, monitoring_status="ok", *args, **kwargs):
         device = super()._create_device(*args, **kwargs)
-        device.monitoring.status = monitoring_status
-        device.monitoring.save()
+        device.monitoring.update_status(monitoring_status)
         return device
 
     def test_store_result(self):

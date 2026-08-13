@@ -8,7 +8,7 @@ from cache_memoize import cache_memoize
 from dateutil.relativedelta import relativedelta
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.utils.module_loading import import_string
@@ -363,16 +363,20 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         abstract = True
 
     def update_status(self, value):
-        # don't trigger save nor emit signal if status is not changing
-        if self.status == value:
-            return
-        self.status = value
-        self.full_clean()
-        self.save()
-        # clear device management_ip when device is offline
-        if self.status == "critical" and app_settings.AUTO_CLEAR_MANAGEMENT_IP:
-            self.device.management_ip = None
-            self.device.save(update_fields=["management_ip"])
+        with transaction.atomic():
+            if value == "unknown":
+                # Reset health even if the status is already unknown.
+                self.related_metrics.update(is_healthy=None, is_healthy_tolerant=None)
+            # don't trigger save nor emit signal if status is not changing
+            if self.status == value:
+                return
+            self.status = value
+            self.full_clean()
+            self.save()
+            # clear device management_ip when device is offline
+            if self.status == "critical" and app_settings.AUTO_CLEAR_MANAGEMENT_IP:
+                self.device.management_ip = None
+                self.device.save(update_fields=["management_ip"])
 
         health_status_changed.send(sender=self.__class__, instance=self, status=value)
 
@@ -466,12 +470,15 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
 
         Returns: - None
         """
-        load_model("config", "Device").objects.filter(
-            organization_id=organization_id
-        ).update(management_ip="")
-        cls.objects.filter(device__organization_id=organization_id).update(
-            status="unknown"
+        monitoring = cls.objects.select_related("device").filter(
+            device__organization_id=organization_id
         )
+        # Process one device at a time to avoid loading a large organization in memory.
+        for instance in monitoring.iterator():
+            with transaction.atomic():
+                instance.device.management_ip = ""
+                instance.device.save(update_fields=["management_ip"])
+                instance.update_status("unknown")
 
     @classmethod
     def handle_deactivated_device(cls, instance, **kwargs):
@@ -484,7 +491,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
 
         Returns: - None
         """
-        cls.objects.filter(device_id=instance.id).update(status="deactivated")
+        instance.monitoring.update_status("deactivated")
 
     @classmethod
     def handle_activated_device(cls, instance, **kwargs):
@@ -497,7 +504,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
 
         Returns: - None
         """
-        cls.objects.filter(device_id=instance.id).update(status="unknown")
+        instance.monitoring.update_status("unknown")
 
     @classmethod
     def _get_critical_metric_keys(cls):

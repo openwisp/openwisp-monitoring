@@ -20,6 +20,10 @@ Core code lives in `openwisp_monitoring/`:
 
 If instructions conflict, repository config and CI workflows win first, official docs next, and this file is supplemental.
 
+## Repository Rules
+
+- `DeviceMonitoring.status == "unknown"` means every metric related to that device has unknown health. Always use `DeviceMonitoring.update_status()` to change a device status. For large sets of devices, iterate over `DeviceMonitoring` records with `iterator()` and call `update_status()` on each record. Do not use `QuerySet.update()` for device monitoring statuses.
+
 ## Contributing Guidelines
 
 - Before editing, inspect the relevant implementation, tests, documentation, and configuration. Follow existing repository patterns and do not invent behavior or requirements.

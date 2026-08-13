@@ -48,8 +48,7 @@ class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
     def _create_device_monitoring(self):
         d = self._create_device(organization=self._create_org())
         dm = d.monitoring
-        dm.status = "ok"
-        dm.save()
+        dm.update_status("ok")
         return dm
 
     def _transform_wireless_interface_test_data(self, data):
