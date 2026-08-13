@@ -1,3 +1,6 @@
+from .utils import is_monitoring_blocked
+
+
 class DisabledOrgReadOnlyMixin:
     """Makes objects of a disabled organization or a deactivated device
     read-only in the admin.
@@ -18,18 +21,9 @@ class DisabledOrgReadOnlyMixin:
             return self._get_related_object(metric)
         return obj
 
-    def _is_write_blocked(self, obj):
-        related = self._get_related_object(obj)
-        if related is None:
-            return False
-        if hasattr(related, "is_deactivated") and related.is_deactivated():
-            return True
-        organization = getattr(related, "organization", None)
-        return organization is not None and not organization.is_active
-
     def has_change_permission(self, request, obj=None):
         perm = super().has_change_permission(request, obj)
-        return perm and not self._is_write_blocked(obj)
+        return perm and not is_monitoring_blocked(self._get_related_object(obj))
 
 
 class DisabledOrgReadOnlyInlineMixin(DisabledOrgReadOnlyMixin):
@@ -37,4 +31,4 @@ class DisabledOrgReadOnlyInlineMixin(DisabledOrgReadOnlyMixin):
 
     def has_add_permission(self, request, obj=None):
         perm = super().has_add_permission(request, obj)
-        return perm and not self._is_write_blocked(obj)
+        return perm and not is_monitoring_blocked(self._get_related_object(obj))

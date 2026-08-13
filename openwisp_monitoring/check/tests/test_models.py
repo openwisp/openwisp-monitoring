@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 from unittest.mock import patch
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.test import TransactionTestCase, tag
 from django.utils.timezone import now
@@ -181,6 +182,25 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
             self.assertEqual(c1.content_object, d)
             self.assertEqual(self._DATA_COLLECTED, c1.check_type)
 
+    def test_auto_check_not_created_for_disabled_organization(self):
+        self.assertEqual(Check.objects.count(), 0)
+        self._create_device(organization=self._create_org(is_active=False))
+        self.assertEqual(Check.objects.count(), 0)
+
+    def test_auto_check_not_created_for_deactivated_device(self):
+        device = self._create_device(organization=self._create_org())
+        Check.objects.all().delete()
+        device.deactivate()
+        ct = ContentType.objects.get_for_model(Device)
+        auto_create_check(
+            model=ct.model,
+            app_label=ct.app_label,
+            object_id=str(device.pk),
+            check_type=self._PING,
+            check_name="Ping",
+        )
+        self.assertEqual(Check.objects.count(), 0)
+
     def test_device_deleted(self):
         self.assertEqual(Check.objects.count(), 0)
         d = self._create_device(organization=self._create_org())
@@ -359,11 +379,12 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
         self.assertIsNone(c2.perform_check())
 
     def test_device_organization_disabled_check_not_performed(self):
-        self._create_config(
-            status="modified", organization=self._create_org(is_active=False)
-        )
+        org = self._create_org()
+        config = self._create_config(status="modified", organization=org)
         self.assertEqual(Check.objects.count(), 5)
         check = Check.objects.filter(check_type=self._CONFIG_APPLIED).first()
+        org.is_active = False
+        org.save()
         with patch(f"{self._CONFIG_APPLIED}.check") as mocked_check:
             check.perform_check()
         mocked_check.assert_not_called()

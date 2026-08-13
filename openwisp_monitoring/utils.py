@@ -35,19 +35,18 @@ def retry(method):
     return wrapper
 
 
-def is_write_blocked(content_type, object_id):
-    """Return whether a generic relation targets a blocked object."""
-    if content_type is None or not object_id:
+def is_monitoring_blocked(obj):
+    """
+    Whether monitoring operations must be skipped for a related object.
+
+    Duck-typed so it works across generic relations: a deactivated
+    device or a device belonging to a disabled organization blocks
+    monitoring, everything else (None, non-device content objects) does
+    not.
+    """
+    if obj is None:
         return False
-    model = content_type.model_class()
-    if model is None:
-        return False
-    field_names = {field.name for field in model._meta.get_fields()}
-    if "_is_deactivated" not in field_names and "organization" not in field_names:
-        return False
-    queryset = model._default_manager.filter(pk=object_id)
-    if "_is_deactivated" in field_names:
-        queryset = queryset.filter(_is_deactivated=False)
-    if "organization" in field_names:
-        queryset = queryset.filter(organization__is_active=True)
-    return not queryset.exists()
+    if hasattr(obj, "is_deactivated") and obj.is_deactivated():
+        return True
+    organization = getattr(obj, "organization", None)
+    return organization is not None and not organization.is_active

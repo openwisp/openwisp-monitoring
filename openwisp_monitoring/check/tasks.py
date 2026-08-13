@@ -10,6 +10,7 @@ from swapper import load_model
 
 from openwisp_utils.tasks import OpenwispCeleryTask
 
+from ..utils import is_monitoring_blocked
 from . import settings as app_settings
 
 logger = logging.getLogger(__name__)
@@ -96,8 +97,22 @@ def auto_create_check(
     # create new check only if necessary
     if has_check:
         return
+    is_migration = content_type_model is not None
     content_type_model = content_type_model or ContentType
     ct = content_type_model.objects.get_by_natural_key(app_label=app_label, model=model)
+    if not is_migration:
+        # Historical models used by migrations don't retain custom
+        # methods such as "model_class()" or "is_deactivated()", so
+        # this check only applies to the live signal/task path.
+        model_class = ct.model_class()
+        try:
+            instance = model_class.objects.select_related("organization").get(
+                pk=object_id
+            )
+        except ObjectDoesNotExist:
+            return
+        if is_monitoring_blocked(instance):
+            return
     check = Check(
         name=check_name,
         check_type=check_type,

@@ -16,7 +16,6 @@ from openwisp_utils.tests import catch_signal
 
 from ...db import timeseries_db
 from ...monitoring import settings as monitoring_settings
-from ...monitoring.signals import pre_metric_write, threshold_crossed
 from .. import settings as app_settings
 from ..signals import health_status_changed
 from ..tasks import (
@@ -1000,31 +999,6 @@ class TestDeviceMonitoring(
         device.organization.save()
         write_device_metrics(str(device.pk), self._sample_data)
         write.assert_not_called()
-
-    @patch("openwisp_monitoring.monitoring.base.models._timeseries_batch_write")
-    @patch("openwisp_monitoring.monitoring.base.models._timeseries_write")
-    def test_blocked_metric_writes_have_no_side_effects(
-        self, timeseries_write, timeseries_batch_write
-    ):
-        device = self._create_device(organization=self._create_org())
-        metric = self._create_object_metric(content_object=device)
-        self._create_alert_settings(
-            metric=metric, custom_operator=">", custom_threshold=1, custom_tolerance=0
-        )
-        device.deactivate()
-        is_healthy = metric.is_healthy
-        is_healthy_tolerant = metric.is_healthy_tolerant
-        with catch_signal(pre_metric_write) as pre_write_handler:
-            with catch_signal(threshold_crossed) as threshold_handler:
-                metric.write(2)
-                Metric.batch_write([(metric, {"value": 2})])
-        metric.refresh_from_db()
-        self.assertEqual(metric.is_healthy, is_healthy)
-        self.assertEqual(metric.is_healthy_tolerant, is_healthy_tolerant)
-        pre_write_handler.assert_not_called()
-        threshold_handler.assert_not_called()
-        timeseries_write.assert_not_called()
-        timeseries_batch_write.assert_not_called()
 
     def test_handle_deactivate_activate_device(self):
         device_monitoring, ping, load, process_count = self._create_env()

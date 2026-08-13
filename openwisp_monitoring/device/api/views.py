@@ -109,7 +109,7 @@ class DeviceMetricView(
 
     model = DeviceData
     queryset = (
-        DeviceData.objects.filter(organization__is_active=True)
+        DeviceData.objects.filter(organization__is_active=True, _is_deactivated=False)
         .only(
             "_is_deactivated",
             "id",

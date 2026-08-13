@@ -27,6 +27,7 @@ from openwisp_utils.base import TimeStampedEditableModel
 
 from ...db import default_chart_query, timeseries_db
 from ...settings import CACHE_TIMEOUT, DEFAULT_CHART_TIME
+from ...utils import is_monitoring_blocked
 from .. import settings as app_settings
 from ..configuration import (
     CHART_CONFIGURATION_CHOICES,
@@ -499,9 +500,15 @@ class AbstractMetric(TimeStampedEditableModel):
 
     def _notify_users(self, notification_type, alert_settings):
         """creates notifications for users"""
-        opts = dict(sender=self, type=notification_type, action_object=alert_settings)
-        if self.content_object is not None:
-            opts["target"] = self.content_object
+        content_object = self.content_object
+        if is_monitoring_blocked(content_object):
+            return
+        opts = dict(
+            sender=self,
+            type=notification_type,
+            action_object=alert_settings,
+            target=content_object,
+        )
         notify.send(**opts)
 
 
