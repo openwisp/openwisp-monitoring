@@ -495,7 +495,9 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
 
         Returns: - None
         """
-        instance.monitoring.update_status("deactivated")
+        monitoring = cls.objects.filter(device_id=instance.id).first()
+        if monitoring:
+            monitoring.update_status("deactivated")
 
     @classmethod
     def handle_activated_device(cls, instance, **kwargs):
@@ -508,7 +510,9 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
 
         Returns: - None
         """
-        instance.monitoring.update_status("unknown")
+        monitoring = cls.objects.filter(device_id=instance.id).first()
+        if monitoring:
+            monitoring.update_status("unknown")
 
     @classmethod
     def _get_critical_metric_keys(cls):

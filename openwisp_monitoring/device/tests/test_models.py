@@ -911,24 +911,43 @@ class TestDeviceMonitoring(
 
     def test_handle_disabled_organization(self):
         device_monitoring, ping, load, process_count = self._create_env()
-        other_monitoring = self._create_device(
-            organization=self._create_org(name="other org", slug="other-org")
+        device = device_monitoring.device
+        other_device_monitoring = self._create_device(
+            name="same-org-device",
+            mac_address="22:33:44:55:66:77",
+            organization=device.organization,
         ).monitoring
-        other_monitoring.update_status("ok")
-        other_ping = self._create_object_metric(
-            configuration="ping", content_object=other_monitoring.device
+        same_org_ping = self._create_object_metric(
+            configuration="ping", content_object=other_device_monitoring.device
         )
         self._create_alert_settings(
-            metric=other_ping,
+            metric=same_org_ping,
             custom_operator="<",
             custom_threshold=1,
             custom_tolerance=0,
         )
-        device = device_monitoring.device
+        other_monitoring = self._create_device(
+            organization=self._create_org(name="other org", slug="other-org")
+        ).monitoring
+        other_monitoring.update_status("ok")
+        unrelated_ping = self._create_object_metric(
+            configuration="ping", content_object=other_monitoring.device
+        )
+        self._create_alert_settings(
+            metric=unrelated_ping,
+            custom_operator="<",
+            custom_threshold=1,
+            custom_tolerance=0,
+        )
         device.management_ip = "10.10.0.5"
         device.save()
+        other_device_monitoring.device.management_ip = "10.10.0.6"
+        other_device_monitoring.device.save()
+        other_monitoring.device.management_ip = "10.10.0.7"
+        other_monitoring.device.save()
         ping.write(1)
-        other_ping.write(1)
+        same_org_ping.write(1)
+        unrelated_ping.write(1)
         self.assertEqual(device_monitoring.status, "ok")
         org = device.organization
         org.is_active = False
@@ -938,11 +957,18 @@ class TestDeviceMonitoring(
         self.assertEqual(device_monitoring.status, "unknown")
         self.assertEqual(device.management_ip, None)
         self._assert_unknown(ping, load, process_count)
+        other_device_monitoring.refresh_from_db()
+        other_device_monitoring.device.refresh_from_db()
+        self.assertEqual(other_device_monitoring.status, "unknown")
+        self.assertIsNone(other_device_monitoring.device.management_ip)
+        self._assert_unknown(same_org_ping)
         other_monitoring.refresh_from_db()
-        other_ping.refresh_from_db()
+        other_monitoring.device.refresh_from_db()
+        unrelated_ping.refresh_from_db()
         self.assertEqual(other_monitoring.status, "ok")
-        self.assertTrue(other_ping.is_healthy)
-        self.assertTrue(other_ping.is_healthy_tolerant)
+        self.assertEqual(other_monitoring.device.management_ip, "10.10.0.7")
+        self.assertTrue(unrelated_ping.is_healthy)
+        self.assertTrue(unrelated_ping.is_healthy_tolerant)
 
     def test_handle_deactivate_activate_device(self):
         device_monitoring, ping, load, process_count = self._create_env()
@@ -965,11 +991,23 @@ class TestDeviceMonitoring(
             ping.refresh_from_db()
             ping.write(1)
             device_monitoring.refresh_from_db()
+            ping.refresh_from_db()
+            self.assertTrue(ping.is_healthy)
+            self.assertTrue(ping.is_healthy_tolerant)
             self.assertEqual(
                 device_monitoring.status,
                 "ok",
                 "A healthy ping did not restore the status after reactivation.",
             )
+
+    def test_lifecycle_without_device_monitoring(self):
+        device = self._create_device()
+        device.monitoring.delete()
+        with self.subTest("deactivation"):
+            device.deactivate()
+
+        with self.subTest("activation"):
+            device.activate()
 
 
 class TestTransactionDeviceMonitoring(
