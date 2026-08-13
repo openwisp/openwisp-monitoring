@@ -380,8 +380,7 @@ class TestDashboardMap(
         d2 = self._create_device(
             name="Test-Device2", mac_address="00:00:00:00:00:02", organization=org
         )
-        d2.monitoring.status = "ok"
-        d2.monitoring.save()
+        d2.monitoring.update_status("ok")
         location = self._create_location(
             type="outdoor", name="Test-Location", organization=org
         )
@@ -1671,8 +1670,7 @@ class TestDeviceAdmin(
             mac_address="00:11:22:33:44:66",
         )
         dm_ok = device_ok.monitoring
-        dm_ok.status = "ok"
-        dm_ok.save()
+        dm_ok.update_status("ok")
         device_disk = self._create_device(
             organization=org,
             name="disk-problem-device",

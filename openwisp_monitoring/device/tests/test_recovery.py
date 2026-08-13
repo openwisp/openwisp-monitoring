@@ -2,6 +2,7 @@ import json
 from unittest.mock import patch
 
 from django.core.cache import cache
+from django.db import transaction
 from swapper import load_model
 
 from ..signals import health_status_changed
@@ -41,15 +42,18 @@ class TestRecovery(DeviceMonitoringTestCase):
     def test_device_recovery_cache_key_set(self):
         dm = self._create_device_monitoring()
         cache_key = get_device_cache_key(device=dm.device)
-        dm.update_status("critical")
+        with self.captureOnCommitCallbacks(execute=True):
+            dm.update_status("critical")
         dm.refresh_from_db()
         self.assertEqual(dm.status, "critical")
         self.assertEqual(cache.get(cache_key), 1)
-        dm.update_status("problem")
+        with self.captureOnCommitCallbacks(execute=True):
+            dm.update_status("problem")
         dm.refresh_from_db()
         self.assertEqual(dm.status, "problem")
         self.assertEqual(cache.get(cache_key), None)
-        dm.update_status("ok")
+        with self.captureOnCommitCallbacks(execute=True):
+            dm.update_status("ok")
         dm.refresh_from_db()
         self.assertEqual(dm.status, "ok")
         self.assertEqual(cache.get(cache_key), None)
@@ -78,6 +82,14 @@ class TestRecovery(DeviceMonitoringTestCase):
 
 
 class TestRecoveryTransaction(DeviceMonitoringTransactionTestcase):
+    def test_status_rollback_does_not_change_recovery_cache(self):
+        dm = self._create_device_monitoring()
+        cache_key = get_device_cache_key(device=dm.device)
+        with transaction.atomic():
+            dm.update_status("critical")
+            transaction.set_rollback(True)
+        self.assertIsNone(cache.get(cache_key))
+
     @patch("openwisp_monitoring.device.tasks.perform_check.delay")
     def test_metrics_received_trigger_device_recovery_checks(self, mocked_task):
         device = self._create_config(organization=self._get_org()).device
