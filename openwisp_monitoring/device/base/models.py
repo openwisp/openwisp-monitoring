@@ -365,7 +365,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
     class Meta:
         abstract = True
 
-    def update_status(self, value, clear_management_ip=False):
+    def update_status(self, value, clear_management_ip=False, allow_deactivated=False):
         """Updates the device health status and related state.
 
         Args:
@@ -373,10 +373,12 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
                 health states.
             clear_management_ip: Clears the device management IP in the same
                 transaction, even when the status is already set to ``value``.
+            allow_deactivated: Allows the activation handler to reset a
+                deactivated status.
         """
         with transaction.atomic():
             monitoring = self.__class__.objects.select_for_update().get(pk=self.pk)
-            if monitoring.status == "deactivated":
+            if monitoring.status == "deactivated" and not allow_deactivated:
                 self.status = monitoring.status
                 return
             # If the status is being set to "unknown" reset the related metrics
@@ -530,7 +532,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
 
         Returns: - None
         """
-        instance.monitoring.update_status("unknown")
+        instance.monitoring.update_status("unknown", allow_deactivated=True)
 
     @classmethod
     def _get_critical_metric_keys(cls):
