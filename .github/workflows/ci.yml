@@ -93,8 +93,9 @@ jobs:
             spatialite-bin \
             libsqlite3-mod-spatialite
           pip install -U pip wheel setuptools
-          pip install -r requirements-test.txt
-          pip install -U -I -e .
+          # Resolve test dependencies against the matrix Django version from the start.
+          pip install -r requirements-test.txt "${{ matrix.django-version }}"
+          pip install -U -e .
           pip install -U "${{ matrix.django-version }}"
           sudo npm install -g prettier
 
