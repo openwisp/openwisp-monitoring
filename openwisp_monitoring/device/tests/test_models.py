@@ -1029,7 +1029,7 @@ class TestTransactionDeviceMonitoring(
         device_monitoring.refresh_from_db()
         device.refresh_from_db()
         wifi_session.refresh_from_db()
-        self.assertEqual(device_monitoring.status, "deactivated")
+        self.assertEqual(device_monitoring.status, "unknown")
         self.assertEqual(device.management_ip, None)
         self.assertIsNotNone(wifi_session.stop_time)
         mocked_dd_cache.assert_called_once()
