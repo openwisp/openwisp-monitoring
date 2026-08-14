@@ -16,6 +16,7 @@ ChartQueryParams = dict[str, Any]
 class BatchWritePayload(TypedDict, total=False):
     name: str
     values: TimeseriesFields
+    operation_id: str
     tags: TimeseriesTags
     timestamp: Any
     database: str | None
@@ -83,6 +84,7 @@ class BaseTimeseriesClient(ABC):
     backend_name = None
     client_error = Exception
     required_settings = ("BACKEND", "NAME")
+    requires_write_operation_id = False
     queries: BackendQueryBundle | None = None
 
     @classmethod

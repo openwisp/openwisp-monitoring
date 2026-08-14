@@ -30,6 +30,7 @@ if [ "$TSDB" = "elasticsearch" ] && [ "$#" -eq 0 ]; then
         openwisp_monitoring.db.backends.elasticsearch.tests
         openwisp_monitoring.db.backends.tests
         openwisp_monitoring.monitoring.tests.test_db_creation
+        openwisp_monitoring.monitoring.tests.test_charts.TestCharts
     )
 fi
 

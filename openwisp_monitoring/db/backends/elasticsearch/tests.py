@@ -5,6 +5,7 @@ Elasticsearch Database Client Tests
 import json
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, call, patch
+from uuid import UUID
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
@@ -61,6 +62,35 @@ def _search_response(*documents, aggregations=None):
             "hits": [{"_source": document} for document in documents],
         },
         "aggregations": aggregations or {},
+    }
+
+
+def _search_hit(document, sort):
+    return {"_source": document, "sort": sort}
+
+
+def _paginated_search_response(pit_id, *hits):
+    return {"pit_id": pit_id, "hits": {"hits": list(hits)}}
+
+
+def _field_exists_filter(field):
+    return {
+        "bool": {
+            "should": [
+                {"exists": {"field": f"indexed_fields.keyword.{field}"}},
+                {"exists": {"field": f"indexed_fields.numeric.{field}"}},
+                {"exists": {"field": f"indexed_fields.boolean.{field}"}},
+                {"term": {"_ignored": f"indexed_fields.keyword.{field}"}},
+            ],
+            "minimum_should_match": 1,
+        }
+    }
+
+
+def _resource_metadata(database="openwisp2"):
+    return {
+        "description": "OpenWISP Monitoring Elasticsearch data stream data",
+        "openwisp_monitoring": {"database": database},
     }
 
 
@@ -261,6 +291,7 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
     def test_build_index_template_uses_data_stream_settings(self):
         body = self.timeseries_db._build_index_template_body(SHORT_RP)
         self.assertEqual(body["index_patterns"], ["openwisp2-short"])
+        self.assertEqual(body["_meta"], _resource_metadata())
         settings_body = body["template"]["settings"]
         self.assertEqual(settings_body["index.lifecycle.name"], "openwisp2-short-ilm")
         self.assertNotIn("lifecycle", body["template"])
@@ -268,17 +299,53 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         self.assertNotIn("index.look_ahead_time", settings_body)
         self.assertNotIn("index.look_back_time", settings_body)
         self.assertNotIn("index.routing_path", settings_body)
+        self.assertEqual(
+            body["template"]["mappings"]["_source"],
+            {"excludes": ["indexed_fields"]},
+        )
+        self.assertEqual(
+            body["template"]["mappings"]["_meta"],
+            _resource_metadata(),
+        )
         mappings = body["template"]["mappings"]["properties"]
         self.assertEqual(mappings["@timestamp"], {"type": "date"})
         self.assertEqual(mappings["measurement"], {"type": "keyword"})
         self.assertNotIn("openwisp_series_id", mappings)
         self.assertNotIn("openwisp_doc_count", mappings)
         self.assertEqual(mappings["openwisp_write_sequence"]["type"], "long")
+        self.assertEqual(
+            mappings["fields"],
+            {"type": "object", "enabled": False},
+        )
+        self.assertEqual(
+            mappings["indexed_fields"],
+            {"type": "object", "dynamic": True},
+        )
+        templates = body["template"]["mappings"]["dynamic_templates"]
+        self.assertIn(
+            {
+                "keyword_fields": {
+                    "path_match": "indexed_fields.keyword.*",
+                    "mapping": {"type": "keyword", "ignore_above": 8192},
+                }
+            },
+            templates,
+        )
+        self.assertIn(
+            {
+                "numeric_fields": {
+                    "path_match": "indexed_fields.numeric.*",
+                    "mapping": {"type": "double"},
+                }
+            },
+            templates,
+        )
 
     def test_build_lifecycle_policy_bounds_rollover_age(self):
         short_policy = self.timeseries_db._build_lifecycle_policy("24h0m0s")
         default_policy = self.timeseries_db._build_lifecycle_policy("26280h0m0s")
         no_retention_policy = self.timeseries_db._build_lifecycle_policy()
+        self.assertEqual(short_policy["_meta"], _resource_metadata())
         self.assertEqual(
             short_policy["phases"]["hot"]["actions"]["rollover"]["max_age"],
             "86400s",
@@ -367,13 +434,22 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         mock_db = self._mock_db()
         mock_db.ilm.get_lifecycle.return_value = {
             "openwisp2-autogen-ilm": {
-                "policy": {"phases": {"delete": {"min_age": "94608000s"}}}
+                "policy": {
+                    "_meta": _resource_metadata(),
+                    "phases": {"delete": {"min_age": "94608000s"}},
+                }
             },
             "openwisp2-short-ilm": {
-                "policy": {"phases": {"delete": {"min_age": "86400s"}}}
+                "policy": {
+                    "_meta": _resource_metadata(),
+                    "phases": {"delete": {"min_age": "86400s"}},
+                }
             },
-            "another-project-autogen-ilm": {
-                "policy": {"phases": {"delete": {"min_age": "60s"}}}
+            "openwisp2-prod-autogen-ilm": {
+                "policy": {
+                    "_meta": _resource_metadata("openwisp2-prod"),
+                    "phases": {"delete": {"min_age": "60s"}},
+                }
             },
         }
         policies = self.timeseries_db.get_list_retention_policies()
@@ -396,14 +472,16 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         )
         mock_db.ilm.get_lifecycle.assert_called_once_with(name="openwisp2-*-ilm")
 
-    def test_get_data_stream_names_filters_namespace(self):
+    def test_get_data_stream_names_filters_exact_owner(self):
         mock_db = self._mock_db()
         mock_db.indices.get_data_stream.return_value = {
             "data_streams": [
-                {"name": "openwisp2"},
-                {"name": "openwisp2-short"},
-                {"name": "openwisp2_test"},
-                {"name": "openwisp20"},
+                {"name": "openwisp2", "_meta": _resource_metadata()},
+                {"name": "openwisp2-short", "_meta": _resource_metadata()},
+                {
+                    "name": "openwisp2-prod",
+                    "_meta": _resource_metadata("openwisp2-prod"),
+                },
             ]
         }
         self.assertEqual(
@@ -411,12 +489,14 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             ["openwisp2", "openwisp2-short"],
         )
 
-    def test_get_index_names_filters_data_stream_backing_indices(self):
+    def test_get_index_names_filters_exact_owner(self):
         mock_db = self._mock_db()
         mock_db.indices.get.return_value = {
-            "openwisp2": {},
-            "openwisp2-short": {},
-            "openwisp2_test": {},
+            "openwisp2": {"mappings": {"_meta": _resource_metadata()}},
+            "openwisp2-short": {"mappings": {"_meta": _resource_metadata()}},
+            "openwisp2-prod": {
+                "mappings": {"_meta": _resource_metadata("openwisp2-prod")}
+            },
             ".ds-openwisp2-2026.07.27-000001": {},
         }
         self.assertEqual(
@@ -431,8 +511,8 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
     ):
         mock_db = self._mock_db()
         mock_db.indices.get.return_value = {
-            "openwisp2": {},
-            "openwisp2-short": {},
+            "openwisp2": {"mappings": {"_meta": _resource_metadata()}},
+            "openwisp2-short": {"mappings": {"_meta": _resource_metadata()}},
             ".ds-openwisp2-2026.07.27-000001": {},
         }
         self.timeseries_db.drop_database()
@@ -447,23 +527,46 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         mock_templates.assert_called_once()
         mock_policies.assert_called_once()
 
-    def test_drop_database_deletes_only_namespaced_resources(self):
+    def test_drop_database_deletes_only_resources_with_exact_owner(self):
         mock_db = self._mock_db()
         mock_db.indices.get_data_stream.return_value = {
             "data_streams": [
-                {"name": "openwisp2"},
-                {"name": "openwisp2-short"},
-                {"name": "another-project"},
+                {"name": "openwisp2", "_meta": _resource_metadata()},
+                {"name": "openwisp2-short", "_meta": _resource_metadata()},
+                {
+                    "name": "openwisp2-prod",
+                    "_meta": _resource_metadata("openwisp2-prod"),
+                },
             ]
         }
         mock_db.indices.get.return_value = {
-            "openwisp2-legacy": {},
-            "another-project": {},
+            "openwisp2-legacy": {"mappings": {"_meta": _resource_metadata()}},
+            "openwisp2-prod-legacy": {
+                "mappings": {"_meta": _resource_metadata("openwisp2-prod")}
+            },
+        }
+        mock_db.indices.get_index_template.return_value = {
+            "index_templates": [
+                {
+                    "name": "openwisp2-template",
+                    "index_template": {"_meta": _resource_metadata()},
+                },
+                {
+                    "name": "openwisp2-short-template",
+                    "index_template": {"_meta": _resource_metadata()},
+                },
+                {
+                    "name": "openwisp2-prod-template",
+                    "index_template": {"_meta": _resource_metadata("openwisp2-prod")},
+                },
+            ]
         }
         mock_db.ilm.get_lifecycle.return_value = {
-            "openwisp2-autogen-ilm": {},
-            "openwisp2-short-ilm": {},
-            "another-project-autogen-ilm": {},
+            "openwisp2-autogen-ilm": {"policy": {"_meta": _resource_metadata()}},
+            "openwisp2-short-ilm": {"policy": {"_meta": _resource_metadata()}},
+            "openwisp2-prod-autogen-ilm": {
+                "policy": {"_meta": _resource_metadata("openwisp2-prod")}
+            },
         }
         self.timeseries_db.drop_database()
         self.assertEqual(
@@ -478,10 +581,10 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             mock_db.indices.delete_index_template.call_args_list,
             [
                 call(name="openwisp2-template"),
-                call(name="openwisp2-*-template"),
+                call(name="openwisp2-short-template"),
             ],
         )
-        mock_db.indices.get_index_template.assert_not_called()
+        mock_db.indices.get_index_template.assert_called_once_with(name="openwisp2*")
         self.assertEqual(
             mock_db.ilm.delete_lifecycle.call_args_list,
             [
@@ -563,20 +666,50 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             {"usage": 10},
             tags={"host": "server1"},
             timestamp=timestamp,
+            operation_id="operation-1",
         )
         mock_ensure.assert_not_called()
         mock_db.index.assert_called_once_with(
             index="openwisp2",
+            id="operation-1",
             document={
                 "@timestamp": "2024-03-25T12:00:00Z",
                 "measurement": "cpu",
                 "openwisp_write_sequence": 0,
                 "tags": {"host": "server1"},
                 "fields": {"usage": 10},
+                "indexed_fields": {"numeric": {"usage": 10}},
             },
             op_type="create",
             refresh="wait_for",
         )
+
+    @patch.object(monitoring_tasks.timeseries_write, "delay")
+    def test_write_operation_id_is_created_before_enqueue(self, mock_delay):
+        monitoring_tasks._timeseries_write("cpu", {"usage": 10})
+        operation_id = mock_delay.call_args.kwargs["operation_id"]
+        self.assertEqual(UUID(operation_id).hex, operation_id)
+
+    @patch.object(monitoring_tasks.timeseries_batch_write, "delay")
+    def test_batch_operation_ids_are_created_before_enqueue(self, mock_delay):
+        data = [
+            {
+                "name": "cpu",
+                "values": {"usage": 10},
+                "metric": MagicMock(pk="metric-1"),
+            },
+            {
+                "name": "cpu",
+                "values": {"usage": 10},
+                "metric": MagicMock(pk="metric-2"),
+            },
+        ]
+        monitoring_tasks._timeseries_batch_write(data)
+        queued_data = mock_delay.call_args.kwargs["data"]
+        operation_ids = [item["operation_id"] for item in queued_data]
+        self.assertEqual(len(set(operation_ids)), 2)
+        for operation_id in operation_ids:
+            self.assertEqual(UUID(operation_id).hex, operation_id)
 
     @patch.object(DatabaseClient, "_ensure_data_stream_resources")
     def test_write_preserves_zero_timestamp(self, mock_ensure):
@@ -599,6 +732,7 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
                     "values": {"usage": 10},
                     "tags": {"host": "server1"},
                     "timestamp": timestamp,
+                    "operation_id": "operation-1",
                 },
                 {
                     "name": "memory",
@@ -606,6 +740,7 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
                     "tags": {"host": "server1"},
                     "timestamp": timestamp,
                     "retention_policy": SHORT_RP,
+                    "operation_id": "operation-2",
                 },
                 {
                     "name": "disk",
@@ -613,6 +748,7 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
                     "tags": {"host": "server1"},
                     "timestamp": timestamp,
                     "retention_policy": SHORT_RP,
+                    "operation_id": "operation-3",
                 },
             ]
         )
@@ -620,9 +756,19 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         actions = mock_bulk.call_args.args[1]
         self.assertEqual(actions[0]["_op_type"], "create")
         self.assertEqual(actions[0]["_index"], "openwisp2")
+        self.assertEqual(actions[0]["_id"], "operation-1")
         self.assertEqual(actions[1]["_index"], "openwisp2-short")
         self.assertEqual(actions[2]["_source"]["fields"], {"used": 30})
-        mock_bulk.assert_called_once_with(mock_db, actions, refresh="wait_for")
+        self.assertEqual(
+            actions[2]["_source"]["indexed_fields"],
+            {"numeric": {"used": 30}},
+        )
+        mock_bulk.assert_called_once_with(
+            mock_db,
+            actions,
+            refresh="wait_for",
+            ignore_status=(409,),
+        )
 
     @patch.object(DatabaseClient, "_ensure_data_stream_resources")
     @patch("openwisp_monitoring.db.backends.elasticsearch.client.logger.warning")
@@ -639,6 +785,16 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         )
         mocked_warning.assert_called_once()
         mock_ensure.assert_not_called()
+
+    @patch(
+        "openwisp_monitoring.db.backends.elasticsearch.client.bulk",
+        side_effect=RuntimeError("bulk write failed"),
+    )
+    def test_batch_write_failure_raises_timeseries_exception(self, mock_bulk):
+        self._mock_db()
+        with self.assertRaises(TimeseriesWriteException):
+            self.timeseries_db.batch_write([{"name": "cpu", "values": {"usage": 10}}])
+        mock_bulk.assert_called_once()
 
     @patch.object(DatabaseClient, "_ensure_data_stream_resources")
     def test_write_failure_raises_timeseries_exception(self, mock_ensure):
@@ -713,10 +869,8 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             body={"query": {"match_all": {}}},
         )
 
-    @patch.object(
-        DatabaseClient, "query", return_value=QueryResultSet(_search_response())
-    )
-    def test_read_builds_search_body(self, mock_query):
+    @patch.object(DatabaseClient, "_get_paginated_hits", return_value=[])
+    def test_read_builds_search_body(self, mock_get_hits):
         since = datetime(2024, 3, 25, 10, 0, tzinfo=timezone.utc)
         self.timeseries_db.read(
             key="cpu,memory",
@@ -728,7 +882,7 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             limit=5,
             retention_policy=SHORT_RP,
         )
-        query = mock_query.call_args.args[0]
+        query = mock_get_hits.call_args.args[0]
         self.assertEqual(query["size"], 10000)
         self.assertEqual(
             query["sort"],
@@ -741,38 +895,34 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         filters = query["query"]["bool"]["filter"]
         self.assertIn({"terms": {"measurement": ["cpu", "memory"]}}, filters)
         self.assertIn({"term": {"tags.host": "server1"}}, filters)
-        self.assertIn({"exists": {"field": "fields.usage"}}, filters)
+        self.assertIn(_field_exists_filter("usage"), filters)
         self.assertIn(
             {"range": {"@timestamp": {"gte": "2024-03-25T10:00:00Z"}}},
             filters,
         )
 
-    @patch.object(DatabaseClient, "query")
-    def test_read_returns_selected_fields(self, mock_query):
-        mock_query.return_value = QueryResultSet(
-            _search_response(
-                {
-                    "@timestamp": "2024-03-25T12:00:00Z",
-                    "measurement": "cpu",
-                    "tags": {"host": "server1"},
-                    "fields": {"usage": 10, "load": 2},
-                }
-            )
-        )
+    @patch.object(DatabaseClient, "_get_paginated_hits")
+    def test_read_returns_selected_fields(self, mock_get_hits):
+        mock_get_hits.return_value = _search_response(
+            {
+                "@timestamp": "2024-03-25T12:00:00Z",
+                "measurement": "cpu",
+                "tags": {"host": "server1"},
+                "fields": {"usage": 10, "load": 2},
+            }
+        )["hits"]["hits"]
         points = self.timeseries_db.read("cpu", "usage", {"host": "server1"})
         self.assertEqual(points, [{"time": 1711368000, "usage": 10}])
 
-    @patch.object(DatabaseClient, "query")
-    def test_read_filters_by_unselected_field(self, mock_query):
-        mock_query.return_value = QueryResultSet(
-            _search_response(
-                {
-                    "@timestamp": "2024-03-25T12:00:00Z",
-                    "measurement": "load",
-                    "fields": {"value": 10, "related": 100},
-                }
-            )
-        )
+    @patch.object(DatabaseClient, "_get_paginated_hits")
+    def test_read_filters_by_unselected_field(self, mock_get_hits):
+        mock_get_hits.return_value = _search_response(
+            {
+                "@timestamp": "2024-03-25T12:00:00Z",
+                "measurement": "load",
+                "fields": {"value": 10, "related": 100},
+            }
+        )["hits"]["hits"]
         points = self.timeseries_db.read(
             "load",
             "value",
@@ -781,24 +931,24 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         )
         self.assertEqual(points, [{"time": 1711368000, "value": 10}])
 
-    @patch.object(DatabaseClient, "query")
-    def test_read_deduplicates_same_timestamp_before_where_filtering(self, mock_query):
-        mock_query.return_value = QueryResultSet(
-            _search_response(
-                {
-                    "@timestamp": "2024-03-25T12:00:00Z",
-                    "measurement": "ping",
-                    "tags": {"object_id": "1"},
-                    "fields": {"reachable": 0},
-                },
-                {
-                    "@timestamp": "2024-03-25T12:00:00Z",
-                    "measurement": "ping",
-                    "tags": {"object_id": "1"},
-                    "fields": {"reachable": 1},
-                },
-            )
-        )
+    @patch.object(DatabaseClient, "_get_paginated_hits")
+    def test_read_deduplicates_same_timestamp_before_where_filtering(
+        self, mock_get_hits
+    ):
+        mock_get_hits.return_value = _search_response(
+            {
+                "@timestamp": "2024-03-25T12:00:00Z",
+                "measurement": "ping",
+                "tags": {"object_id": "1"},
+                "fields": {"reachable": 0},
+            },
+            {
+                "@timestamp": "2024-03-25T12:00:00Z",
+                "measurement": "ping",
+                "tags": {"object_id": "1"},
+                "fields": {"reachable": 1},
+            },
+        )["hits"]["hits"]
         points = self.timeseries_db.read(
             "ping",
             "reachable",
@@ -807,19 +957,134 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         )
         self.assertEqual(points, [])
 
-    @patch.object(DatabaseClient, "query")
-    def test_read_supports_wildcard_extra_fields(self, mock_query):
-        mock_query.return_value = QueryResultSet(
-            _search_response(
-                {
-                    "@timestamp": "2024-03-25T12:00:00Z",
-                    "measurement": "cpu",
-                    "fields": {"usage": 10, "load": 2},
-                }
-            )
+    @patch.object(DatabaseClient, "_get_paginated_hits")
+    def test_read_keeps_measurements_and_tag_series_separate(self, mock_get_hits):
+        timestamp = "2024-03-25T12:00:00Z"
+        mock_get_hits.return_value = _search_response(
+            {
+                "@timestamp": timestamp,
+                "measurement": "cpu",
+                "tags": {"host": "router1", "ifname": "eth0"},
+                "fields": {"usage": 72},
+            },
+            {
+                "@timestamp": timestamp,
+                "measurement": "cpu",
+                "tags": {"ifname": "eth0", "host": "router1"},
+                "fields": {"load": 1},
+            },
+            {
+                "@timestamp": timestamp,
+                "measurement": "memory",
+                "tags": {"host": "router1", "ifname": "eth0"},
+                "fields": {"usage": 91},
+            },
+            {
+                "@timestamp": timestamp,
+                "measurement": "cpu",
+                "tags": {"host": "router2", "ifname": "eth0"},
+                "fields": {"usage": 55},
+            },
+        )["hits"]["hits"]
+
+        self.assertEqual(
+            self.timeseries_db.read(
+                "cpu,memory",
+                ["usage", "load"],
+                {},
+            ),
+            [
+                {"time": 1711368000, "usage": 72, "load": 1},
+                {"time": 1711368000, "usage": 91},
+                {"time": 1711368000, "usage": 55},
+            ],
         )
+
+    @patch.object(DatabaseClient, "_get_paginated_hits")
+    def test_read_supports_wildcard_extra_fields(self, mock_get_hits):
+        mock_get_hits.return_value = _search_response(
+            {
+                "@timestamp": "2024-03-25T12:00:00Z",
+                "measurement": "cpu",
+                "fields": {"usage": 10, "load": 2},
+            }
+        )["hits"]["hits"]
         points = self.timeseries_db.read("cpu", "usage", {}, extra_fields="*")
         self.assertEqual(points, [{"time": 1711368000, "usage": 10, "load": 2}])
+
+    @patch.dict(
+        "openwisp_monitoring.db.backends.elasticsearch.client.TIMESERIES_DB",
+        {"OPTIONS": {"read_size": 2}},
+    )
+    def test_read_paginates_until_where_limit_after_timestamp_merge(self):
+        mock_db = self._mock_db()
+        mock_db.open_point_in_time.return_value = {"id": "pit-1"}
+        first_timestamp = "2024-03-25T10:00:00Z"
+        matching_timestamp = "2024-03-25T11:00:00Z"
+        last_timestamp = "2024-03-25T12:00:00Z"
+        mock_db.search.side_effect = [
+            _paginated_search_response(
+                "pit-2",
+                _search_hit(
+                    {
+                        "@timestamp": first_timestamp,
+                        "measurement": "load",
+                        "fields": {"value": 10, "related": 0},
+                    },
+                    [first_timestamp, 0, 0],
+                ),
+                _search_hit(
+                    {
+                        "@timestamp": matching_timestamp,
+                        "measurement": "load",
+                        "fields": {"value": 20},
+                    },
+                    [matching_timestamp, 1, 1],
+                ),
+            ),
+            _paginated_search_response(
+                "pit-3",
+                _search_hit(
+                    {
+                        "@timestamp": matching_timestamp,
+                        "measurement": "load",
+                        "fields": {"related": 100},
+                    },
+                    [matching_timestamp, 2, 2],
+                ),
+                _search_hit(
+                    {
+                        "@timestamp": last_timestamp,
+                        "measurement": "load",
+                        "fields": {"value": 30, "related": 0},
+                    },
+                    [last_timestamp, 3, 3],
+                ),
+            ),
+        ]
+
+        points = self.timeseries_db.read(
+            "load",
+            "value",
+            {},
+            where=[("related", ">", 50)],
+            limit=1,
+        )
+
+        self.assertEqual(points, [{"time": 1711364400, "value": 20}])
+        mock_db.open_point_in_time.assert_called_once_with(
+            index="openwisp2",
+            keep_alive="1m",
+        )
+        self.assertEqual(mock_db.search.call_count, 2)
+        first_body = mock_db.search.call_args_list[0].kwargs["body"]
+        second_body = mock_db.search.call_args_list[1].kwargs["body"]
+        self.assertEqual(first_body["pit"]["id"], "pit-1")
+        self.assertEqual(first_body["sort"][-1], {"_shard_doc": "asc"})
+        self.assertNotIn("search_after", first_body)
+        self.assertEqual(second_body["pit"]["id"], "pit-2")
+        self.assertEqual(second_body["search_after"], [matching_timestamp, 1, 1])
+        mock_db.close_point_in_time.assert_called_once_with(id="pit-3")
 
     @patch.object(DatabaseClient, "query")
     def test_read_count_distinct_single_field(self, mock_query):
@@ -837,7 +1102,7 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         query = mock_query.call_args.args[0]
         self.assertEqual(
             query["aggs"],
-            {"count": {"cardinality": {"field": "fields.clients"}}},
+            {"count": {"cardinality": {"field": "indexed_fields.keyword.clients"}}},
         )
 
     def test_read_count_distinct_unsupported_shape(self):
@@ -896,22 +1161,27 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         self.assertEqual(
             query["aggs"]["timeseries"]["aggs"]["uptime"],
             {
-                "filter": {"exists": {"field": "fields.reachable"}},
-                "aggs": {"value": {"avg": {"field": "fields.reachable"}}},
+                "filter": {"exists": {"field": "indexed_fields.numeric.reachable"}},
+                "aggs": {
+                    "value": {"avg": {"field": "indexed_fields.numeric.reachable"}}
+                },
             },
         )
         self.assertEqual(query["__openwisp_metrics"][0]["scale"], 100)
 
     def test_build_metric_aggregation(self):
         cases = (
-            ("avg", {"avg": {"field": "fields.value"}}),
-            ("sum", {"sum": {"field": "fields.value"}}),
+            ("avg", {"avg": {"field": "indexed_fields.numeric.value"}}),
+            ("sum", {"sum": {"field": "indexed_fields.numeric.value"}}),
             (
                 "cardinality",
-                {"cardinality": {"field": "fields.value"}},
+                {"cardinality": {"field": "indexed_fields.keyword.value"}},
             ),
-            ("mode", {"terms": {"field": "fields.value", "size": 1}}),
-            ("unknown", {"avg": {"field": "fields.value"}}),
+            (
+                "mode",
+                {"terms": {"field": "indexed_fields.numeric.value", "size": 1}},
+            ),
+            ("unknown", {"avg": {"field": "indexed_fields.numeric.value"}}),
         )
         for aggregation, expected in cases:
             with self.subTest(aggregation=aggregation):
@@ -934,15 +1204,19 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         self.assertEqual(
             query["aggs"]["upload"],
             {
-                "filter": {"exists": {"field": "fields.tx_bytes"}},
-                "aggs": {"value": {"sum": {"field": "fields.tx_bytes"}}},
+                "filter": {"exists": {"field": "indexed_fields.numeric.tx_bytes"}},
+                "aggs": {
+                    "value": {"sum": {"field": "indexed_fields.numeric.tx_bytes"}}
+                },
             },
         )
         self.assertEqual(
             query["aggs"]["download"],
             {
-                "filter": {"exists": {"field": "fields.rx_bytes"}},
-                "aggs": {"value": {"sum": {"field": "fields.rx_bytes"}}},
+                "filter": {"exists": {"field": "indexed_fields.numeric.rx_bytes"}},
+                "aggs": {
+                    "value": {"sum": {"field": "indexed_fields.numeric.rx_bytes"}}
+                },
             },
         )
 
@@ -962,12 +1236,47 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             {
                 "bool": {
                     "should": [
-                        {"exists": {"field": "fields.usage"}},
-                        {"exists": {"field": "fields.load"}},
+                        _field_exists_filter("usage"),
+                        _field_exists_filter("load"),
                     ],
                     "minimum_should_match": 1,
                 }
             },
+        )
+
+    def test_get_query_builds_custom_raw_and_dynamic_chart_queries(self):
+        raw_query = self.timeseries_db.get_query(
+            chart_type="line",
+            params={"key": "cpu", "field_name": "usage"},
+            time="1h",
+            group_map={"1h": "5m"},
+            query={
+                "__openwisp_query_type": "raw_chart",
+                "aggregate": False,
+                "fields": ["{field_name}", "load"],
+            },
+        )
+        self.assertEqual(raw_query["__openwisp_fields"], ["usage", "load"])
+
+        aggregate_query = self.timeseries_db.get_query(
+            chart_type="histogram",
+            params={"key": "cpu", "field_name": "usage"},
+            time="1h",
+            group_map={"1h": "5m"},
+            fields=["usage", "load"],
+            query={
+                "__openwisp_query_type": "chart",
+                "aggregate": True,
+                "metrics": [],
+                "dynamic_metric": {"agg": "sum"},
+            },
+        )
+        self.assertEqual(
+            aggregate_query["__openwisp_metrics"],
+            [
+                {"name": "usage", "field": "usage", "agg": "sum"},
+                {"name": "load", "field": "load", "agg": "sum"},
+            ],
         )
 
     def test_query_bundle_matches_backend_contract(self):
@@ -1084,6 +1393,39 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         self.assertEqual(self.timeseries_db.get_list_query(query), [])
 
     @patch.object(DatabaseClient, "query")
+    def test_get_list_query_keeps_zero_for_empty_cardinality_bucket(self, mock_query):
+        query = self.timeseries_db.get_query(
+            chart_type="bar",
+            params={"key": "wifi_clients", "field_name": "clients"},
+            time="1d",
+            group_map={"1d": "10m"},
+            query=chart_query["wifi_clients"]["elasticsearch"],
+        )
+        mock_query.return_value = QueryResultSet(
+            {
+                "hits": {"hits": []},
+                "aggregations": {
+                    "timeseries": {
+                        "buckets": [
+                            {
+                                "key": 1711368000000,
+                                "doc_count": 0,
+                                "wifi_clients": {
+                                    "doc_count": 0,
+                                    "value": {"value": 0},
+                                },
+                            }
+                        ]
+                    }
+                },
+            }
+        )
+        self.assertEqual(
+            self.timeseries_db.get_list_query(query),
+            [{"time": 1711368000, "wifi_clients": 0}],
+        )
+
+    @patch.object(DatabaseClient, "query")
     def test_get_list_query_omits_empty_chart_summary(self, mock_query):
         query = self.timeseries_db.get_query(
             chart_type="bar",
@@ -1103,7 +1445,7 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
 
     def test_grouped_chart_truncation_logs_once(self):
         query = {
-            "__openwisp_metric": {"name": "value", "field": "clients"},
+            "__openwisp_metric": {"name": "clients", "field": "clients"},
             "__openwisp_group_by": "organization_id",
             "__openwisp_summary": False,
         }
@@ -1155,31 +1497,29 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         self.assertIn('tag "organization_id"', captured.output[0])
         self.assertIn("6 document(s)", captured.output[0])
 
-    @patch.object(DatabaseClient, "query")
-    def test_get_list_query_converts_raw_hits(self, mock_query):
+    @patch.object(DatabaseClient, "_get_paginated_hits")
+    def test_get_list_query_converts_raw_hits(self, mock_get_hits):
         query = self.timeseries_db.get_query(
             chart_type="line",
             params={"key": "cpu", "field_name": "usage"},
             time="1h",
             group_map={"1h": "5m"},
         )
-        mock_query.return_value = QueryResultSet(
-            _search_response(
-                {
-                    "@timestamp": "2024-03-25T12:00:00Z",
-                    "measurement": "cpu",
-                    "tags": {"host": "server1"},
-                    "fields": {"usage": 10, "load": 2},
-                }
-            )
-        )
+        mock_get_hits.return_value = _search_response(
+            {
+                "@timestamp": "2024-03-25T12:00:00Z",
+                "measurement": "cpu",
+                "tags": {"host": "server1"},
+                "fields": {"usage": 10, "load": 2},
+            }
+        )["hits"]["hits"]
         self.assertEqual(
             self.timeseries_db.get_list_query(query),
             [{"time": 1711368000, "usage": 10}],
         )
 
-    @patch.object(DatabaseClient, "query")
-    def test_get_list_query_merges_raw_hits_by_time(self, mock_query):
+    @patch.object(DatabaseClient, "_get_paginated_hits")
+    def test_get_list_query_merges_raw_hits_by_time(self, mock_get_hits):
         query = self.timeseries_db.get_query(
             chart_type="line",
             params={"key": "traffic", "field_name": "download"},
@@ -1187,24 +1527,100 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             group_map={"1h": "5m"},
             fields=["download", "upload"],
         )
-        mock_query.return_value = QueryResultSet(
-            _search_response(
-                {
-                    "@timestamp": "2024-03-25T12:00:00Z",
-                    "measurement": "traffic",
-                    "fields": {"download": 10},
-                },
-                {
-                    "@timestamp": "2024-03-25T12:00:00Z",
-                    "measurement": "traffic",
-                    "fields": {"upload": 20},
-                },
-            )
-        )
+        mock_get_hits.return_value = _search_response(
+            {
+                "@timestamp": "2024-03-25T12:00:00Z",
+                "measurement": "traffic",
+                "fields": {"download": 10},
+            },
+            {
+                "@timestamp": "2024-03-25T12:00:00Z",
+                "measurement": "traffic",
+                "fields": {"upload": 20},
+            },
+        )["hits"]["hits"]
         self.assertEqual(
             self.timeseries_db.get_list_query(query),
             [{"time": 1711368000, "download": 10, "upload": 20}],
         )
+
+    @patch.dict(
+        "openwisp_monitoring.db.backends.elasticsearch.client.TIMESERIES_DB",
+        {"OPTIONS": {"read_size": 2}},
+    )
+    def test_get_list_query_paginates_raw_chart_hits(self):
+        mock_db = self._mock_db()
+        mock_db.open_point_in_time.return_value = {"id": "pit-1"}
+        first_timestamp = "2024-03-25T12:00:00Z"
+        second_timestamp = "2024-03-25T13:00:00Z"
+        third_timestamp = "2024-03-25T14:00:00Z"
+        mock_db.search.side_effect = [
+            _paginated_search_response(
+                "pit-2",
+                _search_hit(
+                    {
+                        "@timestamp": first_timestamp,
+                        "measurement": "traffic",
+                        "fields": {"download": 10},
+                    },
+                    [first_timestamp, 0],
+                ),
+                _search_hit(
+                    {
+                        "@timestamp": second_timestamp,
+                        "measurement": "traffic",
+                        "fields": {"download": 20},
+                    },
+                    [second_timestamp, 1],
+                ),
+            ),
+            _paginated_search_response(
+                "pit-3",
+                _search_hit(
+                    {
+                        "@timestamp": second_timestamp,
+                        "measurement": "traffic",
+                        "fields": {"upload": 30},
+                    },
+                    [second_timestamp, 2],
+                ),
+                _search_hit(
+                    {
+                        "@timestamp": third_timestamp,
+                        "measurement": "traffic",
+                        "fields": {"download": 40},
+                    },
+                    [third_timestamp, 3],
+                ),
+            ),
+            _paginated_search_response("pit-4"),
+        ]
+        query = self.timeseries_db.get_query(
+            chart_type="line",
+            params={"key": "traffic", "field_name": "download"},
+            time="1h",
+            group_map={"1h": "5m"},
+            fields=["download", "upload"],
+        )
+
+        self.assertEqual(
+            self.timeseries_db.get_list_query(query),
+            [
+                {"time": 1711368000, "download": 10, "upload": None},
+                {"time": 1711371600, "download": 20, "upload": 30},
+                {"time": 1711375200, "download": 40, "upload": None},
+            ],
+        )
+        self.assertEqual(mock_db.search.call_count, 3)
+        self.assertEqual(
+            mock_db.search.call_args_list[1].kwargs["body"]["search_after"],
+            [second_timestamp, 1],
+        )
+        self.assertEqual(
+            mock_db.search.call_args_list[2].kwargs["body"]["search_after"],
+            [third_timestamp, 3],
+        )
+        mock_db.close_point_in_time.assert_called_once_with(id="pit-4")
 
     @patch.object(DatabaseClient, "read", return_value=[{"time": 1, "data": {}}])
     def test_get_device_data_query_is_consumed_by_get_list_query(self, mock_read):
@@ -1239,18 +1655,30 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
     def test_validate_query_uses_elasticsearch_validate_api(self):
         mock_db = self._mock_db()
         mock_db.indices.validate_query.return_value = {"valid": True}
-        aggregate = self.timeseries_db.validate_query(
-            {
-                "query": {"match_all": {}},
-                "aggs": {"usage": {"avg": {"field": "fields.usage"}}},
-            }
-        )
-        self.assertTrue(aggregate)
+        aggregate = self.timeseries_db.validate_query({"query": {"match_all": {}}})
+        self.assertFalse(aggregate)
         mock_db.indices.validate_query.assert_called_once_with(
             index="openwisp2",
             body={"query": {"match_all": {}}},
             explain=True,
         )
+
+    def test_validate_query_rejects_native_aggregations(self):
+        for aggregation_key in ("aggs", "aggregations"):
+            with self.subTest(
+                aggregation_key=aggregation_key
+            ), self.assertRaisesMessage(
+                ValidationError,
+                "Native Elasticsearch aggregations are not supported in chart queries",
+            ):
+                self.timeseries_db.validate_query(
+                    {
+                        "query": {"match_all": {}},
+                        aggregation_key: {
+                            "usage": {"avg": {"field": "indexed_fields.numeric.usage"}}
+                        },
+                    }
+                )
 
     def test_validate_query_raises_validation_error_for_invalid_query(self):
         mock_db = self._mock_db()
@@ -1362,6 +1790,246 @@ class TestElasticsearchClientIntegration(
         points = self._read_metric(metric)
         self.assertEqual(len(points), 1)
         self.assertEqual(points[0][metric.field_name], 50)
+
+    @patch.dict(
+        "openwisp_monitoring.db.backends.elasticsearch.client.TIMESERIES_DB",
+        {"OPTIONS": {"read_size": 2}},
+    )
+    def test_paginated_read_and_raw_chart_round_trip(self):
+        measurement = "paginated_round_trip"
+        tags = {"object_id": "paginated-round-trip"}
+        first_timestamp = now().replace(microsecond=0) - timedelta(minutes=3)
+        second_timestamp = first_timestamp + timedelta(minutes=1)
+        third_timestamp = second_timestamp + timedelta(minutes=1)
+        timeseries_db.write(
+            measurement,
+            {"value": 10, "related": 0},
+            tags=tags,
+            timestamp=first_timestamp,
+        )
+        timeseries_db.write(
+            measurement,
+            {"value": 20},
+            tags=tags,
+            timestamp=second_timestamp,
+        )
+        timeseries_db.write(
+            measurement,
+            {"related": 100},
+            tags=tags,
+            timestamp=second_timestamp,
+        )
+        timeseries_db.write(
+            measurement,
+            {"value": 30, "related": 0},
+            tags=tags,
+            timestamp=third_timestamp,
+        )
+
+        self.assertEqual(
+            timeseries_db.read(
+                measurement,
+                "value",
+                tags,
+                where=[("related", ">", 50)],
+                limit=1,
+            ),
+            [{"time": int(second_timestamp.timestamp()), "value": 20}],
+        )
+        query = {
+            "size": 2,
+            "query": timeseries_db._build_base_query(
+                key=measurement,
+                tags=tags,
+            ),
+            "sort": [{"@timestamp": {"order": "asc"}}],
+            "__index": timeseries_db.db_name,
+            "__openwisp_query_type": "raw_chart",
+            "__openwisp_fields": ["value", "related"],
+        }
+        self.assertEqual(
+            timeseries_db.get_list_query(query),
+            [
+                {
+                    "time": int(first_timestamp.timestamp()),
+                    "value": 10,
+                    "related": 0,
+                },
+                {
+                    "time": int(second_timestamp.timestamp()),
+                    "value": 20,
+                    "related": 100,
+                },
+                {
+                    "time": int(third_timestamp.timestamp()),
+                    "value": 30,
+                    "related": 0,
+                },
+            ],
+        )
+
+    def test_sparse_raw_chart_keeps_traces_aligned(self):
+        chart = self._create_chart(test_data=False, configuration="multiple_test")
+        first_metric = chart.metric
+        second_metric = self._create_object_metric(
+            name="test metric 2",
+            key=first_metric.key,
+            field_name="value2",
+            content_object=first_metric.content_object,
+        )
+        timestamp = now().replace(microsecond=0)
+        first_metric.write(1, time=timestamp - timedelta(minutes=2), check=False)
+        second_metric.write(2, time=timestamp - timedelta(minutes=1), check=False)
+
+        data = self._read_chart(chart)
+        traces = dict(data["traces"])
+        self.assertEqual(traces[first_metric.field_name], [1, None])
+        self.assertEqual(traces[second_metric.field_name], [None, 2])
+        for trace in traces.values():
+            self.assertEqual(len(trace), len(data["x"]))
+
+    def test_read_keeps_same_timestamp_series_separate(self):
+        timestamp = now().replace(microsecond=0)
+        timeseries_db.batch_write(
+            [
+                {
+                    "name": "series_cpu",
+                    "values": {"usage": 72},
+                    "tags": {"host": "router1", "ifname": "eth0"},
+                    "timestamp": timestamp,
+                },
+                {
+                    "name": "series_cpu",
+                    "values": {"load": 1},
+                    "tags": {"ifname": "eth0", "host": "router1"},
+                    "timestamp": timestamp,
+                },
+                {
+                    "name": "series_memory",
+                    "values": {"usage": 91},
+                    "tags": {"host": "router1", "ifname": "eth0"},
+                    "timestamp": timestamp,
+                },
+                {
+                    "name": "series_cpu",
+                    "values": {"usage": 55},
+                    "tags": {"host": "router2", "ifname": "eth0"},
+                    "timestamp": timestamp,
+                },
+            ]
+        )
+
+        self.assertEqual(
+            timeseries_db.read(
+                "series_cpu,series_memory",
+                ["usage", "load"],
+                {},
+            ),
+            [
+                {"time": int(timestamp.timestamp()), "usage": 72, "load": 1},
+                {"time": int(timestamp.timestamp()), "usage": 91},
+                {"time": int(timestamp.timestamp()), "usage": 55},
+            ],
+        )
+
+    def test_retried_writes_are_idempotent(self):
+        timestamp = now()
+        tags = {"object_id": "idempotent-write-test"}
+        write_kwargs = {
+            "tags": tags,
+            "timestamp": timestamp,
+            "operation_id": "single-operation",
+        }
+        timeseries_db.write("single_retry", {"value": 1}, **write_kwargs)
+        timeseries_db.write("single_retry", {"value": 1}, **write_kwargs)
+        single_count = timeseries_db.db.count(
+            index=timeseries_db.db_name,
+            query={"term": {"measurement": "single_retry"}},
+        )["count"]
+        self.assertEqual(single_count, 1)
+
+        batch_item = {
+            "name": "batch_retry",
+            "values": {"value": 1},
+            "tags": tags,
+            "timestamp": timestamp,
+            "operation_id": "batch-operation-1",
+        }
+        retry_batch = [
+            batch_item,
+            {**batch_item, "operation_id": "batch-operation-2"},
+        ]
+        timeseries_db.batch_write([batch_item])
+        timeseries_db.batch_write(retry_batch)
+        timeseries_db.batch_write(retry_batch)
+        batch_count = timeseries_db.db.count(
+            index=timeseries_db.db_name,
+            query={"term": {"measurement": "batch_retry"}},
+        )["count"]
+        self.assertEqual(batch_count, 2)
+
+    def test_field_types_are_stable_across_measurements(self):
+        timestamp = now()
+        tags = {"object_id": "field-type-test"}
+        samples = (
+            ("wifi_clients", "00:11:22:33:44:55"),
+            ("wifi_clients_max", 3),
+        )
+        for order in ("keyword-first", "numeric-first"):
+            with self.subTest(order=order):
+                client = DatabaseClient(
+                    db_name=f"{timeseries_db.db_name}-field-types-{order}"
+                )
+                client.create_database()
+                try:
+                    write_order = samples if order == "keyword-first" else samples[::-1]
+                    for measurement, value in write_order:
+                        client.write(
+                            measurement,
+                            {"clients": value},
+                            tags=tags,
+                            timestamp=timestamp,
+                        )
+                    response = client.db.search(
+                        index=client.db_name,
+                        query={"match_all": {}},
+                    )
+                    for hit in response["hits"]["hits"]:
+                        self.assertIn("fields", hit["_source"])
+                        self.assertNotIn("indexed_fields", hit["_source"])
+                    wifi_clients = client.read(
+                        "wifi_clients",
+                        ["clients"],
+                        tags,
+                        limit=None,
+                    )
+                    self.assertEqual(
+                        wifi_clients[0]["clients"],
+                        "00:11:22:33:44:55",
+                    )
+                    healthy_points = client.read(
+                        "wifi_clients_max",
+                        ["clients"],
+                        tags,
+                        where=[("clients", "<", 10)],
+                        limit=None,
+                    )
+                    self.assertEqual(
+                        healthy_points[0]["clients"],
+                        3,
+                    )
+                    self.assertEqual(
+                        client.read(
+                            "wifi_clients_max",
+                            ["clients"],
+                            tags,
+                            where=[("clients", ">", 10)],
+                            limit=None,
+                        ),
+                        [],
+                    )
+                finally:
+                    client.drop_database()
 
     def test_large_device_data_snapshot_round_trip(self):
         device_id = "large-device-data"

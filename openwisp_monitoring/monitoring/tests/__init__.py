@@ -70,6 +70,29 @@ class RequireTimeseriesBackendMixin:
         super().setUpClass()
 
 
+def _elasticsearch_metric(name, field, aggregation="avg"):
+    return {"name": name, "field": field, "agg": aggregation}
+
+
+def _elasticsearch_chart(*metrics, dynamic_aggregation=None):
+    query = {
+        "__openwisp_query_type": "chart",
+        "aggregate": True,
+        "metrics": list(metrics),
+    }
+    if dynamic_aggregation:
+        query["dynamic_metric"] = {"agg": dynamic_aggregation}
+    return query
+
+
+def _elasticsearch_raw_chart(*fields):
+    return {
+        "__openwisp_query_type": "raw_chart",
+        "aggregate": False,
+        "fields": list(fields),
+    }
+
+
 # these custom metric configurations are used for automated testing purposes
 metrics = {
     "test_metric": {
@@ -125,6 +148,7 @@ charts = {
                 " |> sum()"
                 " |> map(fn: (r) => ({{r with _value: float(v: r._value)}}))"
             ),
+            "elasticsearch": _elasticsearch_chart(dynamic_aggregation="sum"),
         },
     },
     "dummy": {
@@ -141,7 +165,16 @@ charts = {
         "description": "Bugged chart for testing purposes.",
         "unit": "bugs",
         "order": 999,
-        "query": {"influxdb": "BAD", "influxdb2": "BAD"},
+        "query": {
+            "influxdb": "BAD",
+            "influxdb2": "BAD",
+            "elasticsearch": {
+                "size": 0,
+                "aggs": {
+                    "value": {"avg": {"field": "indexed_fields.numeric.{field_name}"}}
+                },
+            },
+        },
     },
     "default": {
         "type": "line",
@@ -159,6 +192,7 @@ charts = {
                 '|> filter(fn: (r) => r._measurement == "{key}")'
                 "{content_type_filter}{object_id_filter}{field_filter}"
             ),
+            "elasticsearch": _elasticsearch_raw_chart("{field_name}"),
         },
     },
     "multiple_test": {
@@ -178,6 +212,7 @@ charts = {
                 "{content_type_filter}{object_id_filter}"
                 ' |> filter(fn: (r) => r._field == "{field_name}" or r._field == "value2")'
             ),
+            "elasticsearch": _elasticsearch_raw_chart("{field_name}", "value2"),
         },
     },
     "group_by_tag": {
@@ -199,6 +234,13 @@ charts = {
                 " |> aggregateWindow(every: {window}, fn: sum, createEmpty: false)"
                 " |> cumulativeSum()"
             ),
+            "elasticsearch": {
+                "__openwisp_query_type": "grouped_chart",
+                "aggregate": True,
+                "metric": _elasticsearch_metric("{field_name}", "{field_name}", "sum"),
+                "group_by": "metric_num",
+                "cumulative": True,
+            },
         },
         "summary_query": {
             "influxdb": (
@@ -212,6 +254,12 @@ charts = {
                 ' |> group(columns: ["metric_num"])'
                 " |> sum()"
             ),
+            "elasticsearch": {
+                "__openwisp_query_type": "grouped_chart",
+                "aggregate": True,
+                "metric": _elasticsearch_metric("{field_name}", "{field_name}", "sum"),
+                "group_by": "metric_num",
+            },
         },
     },
     "mean_test": {
@@ -231,6 +279,9 @@ charts = {
                 "{content_type_filter}{object_id_filter}{field_filter}"
                 " |> mean()"
                 ' |> duplicate(column: "_stop", as: "_time")'
+            ),
+            "elasticsearch": _elasticsearch_chart(
+                _elasticsearch_metric("{field_name}", "{field_name}")
             ),
         },
     },
@@ -252,6 +303,9 @@ charts = {
                 " |> sum()"
                 ' |> duplicate(column: "_stop", as: "_time")'
             ),
+            "elasticsearch": _elasticsearch_chart(
+                _elasticsearch_metric("{field_name}", "{field_name}", "sum")
+            ),
         },
     },
     "top_fields_mean": {
@@ -272,6 +326,7 @@ charts = {
                 "{content_type_filter}{object_id_filter}{field_filter}"
                 " |> mean()"
             ),
+            "elasticsearch": _elasticsearch_chart(dynamic_aggregation="avg"),
         },
     },
 }
