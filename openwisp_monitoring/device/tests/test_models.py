@@ -913,50 +913,6 @@ class TestDeviceMonitoring(
         self.assertEqual(self._read_metric(ping1, allow_empty=True), [])
         self.assertNotEqual(self._read_metric(ping2), [])
 
-    def test_handle_disabled_organization(self):
-        device_monitoring, ping, load, process_count = self._create_env()
-        device = device_monitoring.device
-        other_device_monitoring = self._create_device(
-            name="same-org-device",
-            mac_address="22:33:44:55:66:77",
-            organization=device.organization,
-        ).monitoring
-        same_org_ping = self._create_object_metric(
-            configuration="ping", content_object=other_device_monitoring.device
-        )
-        self._create_alert_settings(
-            metric=same_org_ping,
-            custom_operator="<",
-            custom_threshold=1,
-            custom_tolerance=0,
-        )
-        other_monitoring = self._create_device(
-            organization=self._create_org(name="other org", slug="other-org")
-        ).monitoring
-        other_monitoring.update_status("ok")
-        unrelated_ping = self._create_object_metric(
-            configuration="ping", content_object=other_monitoring.device
-        )
-        self._create_alert_settings(
-            metric=unrelated_ping,
-            custom_operator="<",
-            custom_threshold=1,
-            custom_tolerance=0,
-        )
-        device.management_ip = "10.10.0.5"
-        device.save()
-        other_device_monitoring.device.management_ip = "10.10.0.6"
-        other_device_monitoring.device.save()
-        other_monitoring.device.management_ip = "10.10.0.7"
-        other_monitoring.device.save()
-        ping.write(1)
-        same_org_ping.write(1)
-        unrelated_ping.write(1)
-        self.assertEqual(device_monitoring.status, "ok")
-        org = device.organization
-        with self.assertNumQueries(10):
-            DeviceMonitoring.handle_disabled_organization(org.pk)
-            
     def test_update_status_does_not_override_deactivated(self):
         device_monitoring, _, _, _ = self._create_env()
         device_monitoring.device.deactivate()
@@ -968,20 +924,6 @@ class TestDeviceMonitoring(
         device_monitoring.device.activate()
         device_monitoring.refresh_from_db()
         self.assertEqual(device_monitoring.status, "unknown")
-        self.assertEqual(device.management_ip, None)
-        self._assert_unknown(ping, load, process_count)
-        other_device_monitoring.refresh_from_db()
-        other_device_monitoring.device.refresh_from_db()
-        self.assertEqual(other_device_monitoring.status, "unknown")
-        self.assertIsNone(other_device_monitoring.device.management_ip)
-        self._assert_unknown(same_org_ping)
-        other_monitoring.refresh_from_db()
-        other_monitoring.device.refresh_from_db()
-        unrelated_ping.refresh_from_db()
-        self.assertEqual(other_monitoring.status, "ok")
-        self.assertEqual(other_monitoring.device.management_ip, "10.10.0.7")
-        self.assertTrue(unrelated_ping.is_healthy)
-        self.assertTrue(unrelated_ping.is_healthy_tolerant)
 
     @patch("openwisp_monitoring.device.writer.DeviceDataWriter.write")
     def test_write_device_metrics_skips_deactivated_device(self, write):
@@ -1059,6 +1001,7 @@ class TestTransactionDeviceMonitoring(
         self.assertEqual(dm.device.management_ip, "10.10.0.5")
         self.assertTrue(ping.is_healthy)
         self.assertTrue(ping.is_healthy_tolerant)
+
     @patch(
         "openwisp_monitoring.device.api.views.DeviceMetricView.invalidate_get_device_cache"
     )

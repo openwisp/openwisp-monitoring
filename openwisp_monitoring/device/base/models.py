@@ -375,6 +375,10 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
                 transaction, even when the status is already set to ``value``.
         """
         with transaction.atomic():
+            monitoring = self.__class__.objects.select_for_update().get(pk=self.pk)
+            if monitoring.status == "deactivated":
+                self.status = monitoring.status
+                return
             # If the status is being set to "unknown" reset the related metrics
             # to "factory default". This allows the system to easily recalculate
             # the status if the device is reactivated.
@@ -387,11 +391,14 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
                 self.device.management_ip = ""
                 self.device.save(update_fields=["management_ip"])
             # don't trigger save nor emit signal if status is not changing
-            if self.status == value:
+            if monitoring.status == value:
+                self.status = monitoring.status
                 return
+            monitoring.status = value
+            monitoring.full_clean()
+            # Save the freshly locked row, not the potentially stale self instance.
+            monitoring.save()
             self.status = value
-            self.full_clean()
-            self.save()
 
         transaction.on_commit(
             lambda: health_status_changed.send(
