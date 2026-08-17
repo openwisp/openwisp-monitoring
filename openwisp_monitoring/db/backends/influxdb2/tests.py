@@ -71,21 +71,6 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
     def test_backend_name(self):
         self.assertEqual(self.timeseries_db.backend_name, "influxdb2")
 
-    def test_normalize_chart_window(self):
-        cases = (
-            ("1d", {"1d": "10m"}, "10m"),
-            (5, None, "5m"),
-            (0, None, "1m"),
-            ("5", None, "5m"),
-            ("10m", None, "10m"),
-        )
-        for time_value, group_map, expected in cases:
-            with self.subTest(time_value=time_value, group_map=group_map):
-                self.assertEqual(
-                    self.timeseries_db._normalize_chart_window(time_value, group_map),
-                    expected,
-                )
-
     def test_forbidden_queries(self):
         """Test that forbidden words are rejected in Flux queries."""
         queries = [

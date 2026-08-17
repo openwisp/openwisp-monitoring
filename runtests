@@ -24,26 +24,16 @@ if [ "$TSDB" = "elasticsearch" ] && [ -n "$UDP" ]; then
     exit 1
 fi
 
-TEST_ARGS=("$@")
-if [ "$TSDB" = "elasticsearch" ] && [ "$#" -eq 0 ]; then
-    TEST_ARGS=(
-        openwisp_monitoring.db.backends.elasticsearch.tests
-        openwisp_monitoring.db.backends.tests
-        openwisp_monitoring.monitoring.tests.test_db_creation
-        openwisp_monitoring.monitoring.tests.test_charts.TestCharts
-    )
-fi
-
 if [ -z "$UDP" ]; then
-    TIMESERIES_BACKEND="$TSDB" coverage run runtests.py "${TEST_ARGS[@]}"
+    TIMESERIES_BACKEND="$TSDB" coverage run runtests.py "$@"
     # test extensibility only on the default TSDB
     if [ "$TSDB" = "influxdb" ]; then
         SAMPLE_APP=1 TIMESERIES_BACKEND="$TSDB" coverage run runtests.py \
-            "${TEST_ARGS[@]}" --exclude-tag=selenium_tests
+            "$@" --exclude-tag=selenium_tests
     fi
 else
     TIMESERIES_UDP=1 TIMESERIES_BACKEND="$TSDB" coverage run runtests.py \
-        "${TEST_ARGS[@]}" --exclude-tag=selenium_tests
+        "$@" --exclude-tag=selenium_tests
 fi
 
 coverage combine

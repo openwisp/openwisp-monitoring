@@ -1,3 +1,4 @@
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -108,6 +109,15 @@ class BaseTimeseriesClient(ABC):
 
     def validate_chart_config(self, chart_config: Mapping[str, Any]) -> None:
         pass
+
+    def _normalize_chart_window(self, time_value, group_map=None):
+        if group_map and time_value in group_map:
+            return group_map[time_value]
+        if isinstance(time_value, (int, float)):
+            return f"{max(int(time_value), 1)}m"
+        if isinstance(time_value, str) and re.fullmatch(r"\d+", time_value):
+            return f"{max(int(time_value), 1)}m"
+        return time_value
 
     def get_default_chart_query(self, has_object_scope: bool = False) -> str:
         default_query = self.queries.default_chart_query

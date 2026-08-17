@@ -42,6 +42,7 @@ from openwisp_monitoring.monitoring.tests import (
     RequireTimeseriesBackendMixin,
     TestMonitoringMixin,
 )
+from openwisp_monitoring.settings import MONITORING_TIMESERIES_RETRY_OPTIONS
 from openwisp_utils.tests import capture_stderr
 
 from ... import timeseries_db
@@ -120,21 +121,6 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
     def test_backend_name(self):
         self.assertEqual(self.timeseries_db.backend_name, "elasticsearch")
         self.assertFalse(self.timeseries_db.use_udp)
-
-    def test_normalize_chart_window(self):
-        cases = (
-            ("1d", {"1d": "10m"}, "10m"),
-            (5, None, "5m"),
-            (0, None, "1m"),
-            ("5", None, "5m"),
-            ("10m", None, "10m"),
-        )
-        for time_value, group_map, expected in cases:
-            with self.subTest(time_value=time_value, group_map=group_map):
-                self.assertEqual(
-                    self.timeseries_db._normalize_chart_window(time_value, group_map),
-                    expected,
-                )
 
     def test_validate_settings_accepts_supported_connection_options(self):
         for config in (
@@ -281,11 +267,53 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             basic_auth=("openwisp", "secret"),
         )
 
+    @patch("openwisp_monitoring.db.backends.elasticsearch.client.Elasticsearch")
+    def test_insecure_http_warning_only_with_credentials(self, mock_client):
+        cases = (
+            ({"API_KEY": "api-key"}, True),
+            ({"BEARER_AUTH": "bearer"}, True),
+            ({"USER": "openwisp", "PASSWORD": "secret"}, True),
+            # loopback is not exempted: credentials over HTTP always warn
+            ({"URL": "http://127.0.0.1:9200", "API_KEY": "api-key"}, True),
+            # unauthenticated HTTP is supported for local development
+            ({}, False),
+            # HTTPS and cloud IDs are secure transports
+            ({"URL": "https://es.example.org:9200", "API_KEY": "api-key"}, False),
+            ({"URL": "", "CLOUD_ID": "cluster:cloud-id", "API_KEY": "key"}, False),
+        )
+        for config, expected in cases:
+            with self.subTest(config=config):
+                with patch.dict(
+                    "openwisp_monitoring.db.backends.elasticsearch.client."
+                    "TIMESERIES_DB",
+                    {**self.base_config, **config},
+                    clear=True,
+                ):
+                    with patch("logging.Logger.warning") as mocked_warning:
+                        DatabaseClient().db
+                    self.assertEqual(mocked_warning.called, expected)
+                    if expected:
+                        self.assertIn("insecure HTTP", mocked_warning.call_args.args[0])
+
     def test_reset_clears_cached_state(self):
         client = DatabaseClient(db_name="initial-db")
         client.__dict__["db"] = object()
         client.reset(db_name="reset-db")
         self.assertEqual(client.db_name, "reset-db")
+        self.assertNotIn("db", client.__dict__)
+
+    def test_reset_and_close_close_cached_client(self):
+        for method in ("reset", "close"):
+            with self.subTest(method=method):
+                client = DatabaseClient(db_name="initial-db")
+                mock_client = MagicMock()
+                client.__dict__["db"] = mock_client
+                getattr(client, method)()
+                mock_client.close.assert_called_once_with()
+                self.assertNotIn("db", client.__dict__)
+        # closing is not attempted when the client was never instantiated
+        client = DatabaseClient(db_name="initial-db")
+        client.close()
         self.assertNotIn("db", client.__dict__)
 
     def test_build_index_template_uses_data_stream_settings(self):
@@ -1086,11 +1114,12 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         self.assertEqual(second_body["search_after"], [matching_timestamp, 1, 1])
         mock_db.close_point_in_time.assert_called_once_with(id="pit-3")
 
-    @patch.object(DatabaseClient, "query")
-    def test_read_count_distinct_single_field(self, mock_query):
-        mock_query.return_value = QueryResultSet(
-            {"hits": {"hits": []}, "aggregations": {"count": {"value": 3}}}
-        )
+    def test_read_count_distinct_single_field(self):
+        mock_db = self._mock_db()
+        mock_db.open_point_in_time.return_value = {"id": "pit-1"}
+        mock_db.search.return_value = {
+            "aggregations": {"distinct": {"buckets": [{"key": {"value": "a"}}] * 3}}
+        }
         points = self.timeseries_db.read(
             "wifi_clients",
             ["clients"],
@@ -1099,11 +1128,60 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             count_fields=["clients"],
         )
         self.assertEqual(points, [{"count": 3, "time": None}])
-        query = mock_query.call_args.args[0]
+        body = mock_db.search.call_args.kwargs["body"]
+        self.assertEqual(body["size"], 0)
         self.assertEqual(
-            query["aggs"],
-            {"count": {"cardinality": {"field": "indexed_fields.keyword.clients"}}},
+            body["aggs"],
+            {
+                "distinct": {
+                    "composite": {
+                        "size": DatabaseClient._DISTINCT_PAGE_SIZE,
+                        "sources": [
+                            {
+                                "value": {
+                                    "terms": {"field": "indexed_fields.keyword.clients"}
+                                }
+                            }
+                        ],
+                    }
+                }
+            },
         )
+        mock_db.close_point_in_time.assert_called_once_with(id="pit-1")
+
+    def test_read_count_distinct_pages_until_exhausted(self):
+        page_size = DatabaseClient._DISTINCT_PAGE_SIZE
+        mock_db = self._mock_db()
+        mock_db.open_point_in_time.return_value = {"id": "pit-1"}
+        mock_db.search.side_effect = [
+            {
+                "aggregations": {
+                    "distinct": {
+                        "buckets": [{"key": {"value": "a"}}] * page_size,
+                        "after_key": {"value": "a"},
+                    }
+                }
+            },
+            {"aggregations": {"distinct": {"buckets": [{"key": {"value": "b"}}] * 5}}},
+        ]
+        points = self.timeseries_db.read(
+            "wifi_clients",
+            ["clients"],
+            {"content_type": "config.device"},
+            distinct_fields=["clients"],
+            count_fields=["clients"],
+        )
+        self.assertEqual(points, [{"count": page_size + 5, "time": None}])
+        self.assertEqual(mock_db.search.call_count, 2)
+        first_composite = mock_db.search.call_args_list[0].kwargs["body"]["aggs"][
+            "distinct"
+        ]["composite"]
+        second_composite = mock_db.search.call_args_list[1].kwargs["body"]["aggs"][
+            "distinct"
+        ]["composite"]
+        self.assertNotIn("after", first_composite)
+        self.assertEqual(second_composite["after"], {"value": "a"})
+        mock_db.close_point_in_time.assert_called_once_with(id="pit-1")
 
     def test_read_count_distinct_unsupported_shape(self):
         with self.assertRaises(NotImplementedError):
@@ -1414,7 +1492,15 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
                                     "doc_count": 0,
                                     "value": {"value": 0},
                                 },
-                            }
+                            },
+                            {
+                                "key": 1711368600000,
+                                "doc_count": 2,
+                                "wifi_clients": {
+                                    "doc_count": 2,
+                                    "value": {"value": 2},
+                                },
+                            },
                         ]
                     }
                 },
@@ -1422,8 +1508,51 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         )
         self.assertEqual(
             self.timeseries_db.get_list_query(query),
-            [{"time": 1711368000, "wifi_clients": 0}],
+            [
+                {"time": 1711368000, "wifi_clients": 0},
+                {"time": 1711368600, "wifi_clients": 2},
+            ],
         )
+
+    @patch.object(DatabaseClient, "query")
+    def test_get_list_query_omits_chart_without_any_cardinality_document(
+        self, mock_query
+    ):
+        query = self.timeseries_db.get_query(
+            chart_type="bar",
+            params={"key": "wifi_clients", "field_name": "clients"},
+            time="1d",
+            group_map={"1d": "10m"},
+            query=chart_query["wifi_clients"]["elasticsearch"],
+        )
+        mock_query.return_value = QueryResultSet(
+            {
+                "hits": {"hits": []},
+                "aggregations": {
+                    "timeseries": {
+                        "buckets": [
+                            {
+                                "key": 1711368000000,
+                                "doc_count": 0,
+                                "wifi_clients": {
+                                    "doc_count": 0,
+                                    "value": {"value": 0},
+                                },
+                            },
+                            {
+                                "key": 1711368600000,
+                                "doc_count": 0,
+                                "wifi_clients": {
+                                    "doc_count": 0,
+                                    "value": {"value": 0},
+                                },
+                            },
+                        ]
+                    }
+                },
+            }
+        )
+        self.assertEqual(self.timeseries_db.get_list_query(query), [])
 
     @patch.object(DatabaseClient, "query")
     def test_get_list_query_omits_empty_chart_summary(self, mock_query):
@@ -1712,6 +1841,31 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         self.assertIn({"term": {"tags.host": "server1"}}, filters)
         self.assertTrue(first_call.kwargs["refresh"])
         mock_indices.assert_called_once()
+
+    @patch("openwisp_monitoring.utils.sleep")
+    @patch.object(DatabaseClient, "_get_data_stream_names", return_value=["openwisp2"])
+    @patch.object(DatabaseClient, "_get_index_names", return_value=[])
+    def test_delete_metric_data_raises_on_incomplete_deletion(
+        self, mock_indices, mock_streams, mock_sleep
+    ):
+        for response in (
+            {"timed_out": True},
+            {"failures": [{"cause": {"type": "version_conflict_engine_exception"}}]},
+            {"version_conflicts": 2},
+        ):
+            with self.subTest(response=response):
+                mock_db = self._mock_db()
+                mock_db.delete_by_query.return_value = response
+                with self.assertRaises(TimeseriesWriteException):
+                    self.timeseries_db.delete_metric_data(key="cpu")
+                self.assertEqual(
+                    mock_db.delete_by_query.call_count,
+                    MONITORING_TIMESERIES_RETRY_OPTIONS.get("max_retries"),
+                )
+        mock_db = self._mock_db()
+        mock_db.delete_by_query.return_value = {"timed_out": False, "deleted": 1}
+        self.timeseries_db.delete_metric_data(key="cpu")
+        self.assertEqual(mock_db.delete_by_query.call_count, 1)
 
     @patch.object(DatabaseClient, "_get_data_stream_names")
     @patch.object(DatabaseClient, "_get_index_names")
@@ -2614,6 +2768,40 @@ class TestElasticsearchCheckIntegration(
             points = self._read_metric(metric, limit=None)
             self.assertEqual(len(points), 1)
             self.assertEqual(points[0]["clients"], 3)
+
+    def test_wifi_clients_check_counts_distinct_clients_exactly(self):
+        # more than the default precision_threshold of the cardinality
+        # aggregation, which would return an approximate result
+        clients_count = 4000
+        device = self._create_device()
+        timestamp = now()
+        timeseries_db.batch_write(
+            [
+                {
+                    "name": "wifi_clients",
+                    "values": {
+                        "clients": (f"00:00:00:00:{index // 256:02x}:{index % 256:02x}")
+                    },
+                    "tags": {
+                        "content_type": Device._meta.label_lower,
+                        "object_id": str(device.pk),
+                    },
+                    "timestamp": timestamp,
+                }
+                for index in range(clients_count)
+            ]
+        )
+        check = Check.objects.get(
+            name="WiFi Clients",
+            check_type=self._WIFI_CLIENTS,
+            content_type=ContentType.objects.get_for_model(Device),
+            object_id=device.pk,
+        )
+        result = check.perform_check()
+        self.assertEqual(
+            result,
+            {"wifi_clients_min": clients_count, "wifi_clients_max": clients_count},
+        )
 
     def test_data_collected_check_round_trip(self):
         device = self._create_device()

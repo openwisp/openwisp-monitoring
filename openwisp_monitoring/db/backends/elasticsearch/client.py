@@ -5,6 +5,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from itertools import count
 from typing import Any
+from urllib.parse import urlparse
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
@@ -205,6 +206,7 @@ class DatabaseClient(BaseTimeseriesClient):
     _DURATION_PART_PATTERN = re.compile(r"(\d+)([smhdw])")
     _DEFAULT_ROLLOVER_SECONDS = 30 * 24 * 60 * 60
     _PIT_KEEP_ALIVE = "1m"
+    _DISTINCT_PAGE_SIZE = 1000
     # Wins over broad external templates that may also match OpenWISP streams.
     _OPENWISP_INDEX_TEMPLATE_PRIORITY = 500
     _RESOURCE_METADATA_KEY = "openwisp_monitoring"
@@ -257,12 +259,25 @@ class DatabaseClient(BaseTimeseriesClient):
         )
         self._write_sequence = count()
 
+    def _close_cached_client(self) -> None:
+        client = self.__dict__.get("db")
+        close = getattr(client, "close", None)
+        try:
+            if callable(close):
+                close()
+        except Exception as exception:
+            logger.debug("Error while closing Elasticsearch client: %s", exception)
+
     def reset(self, db_name: str | None = None) -> None:
         if db_name is not None:
             self._validate_data_stream_name(db_name)
+        self._close_cached_client()
         super().reset(db_name=db_name)
         self.__dict__.pop("db", None)
         self._write_sequence = count()
+
+    def close(self) -> None:
+        self.reset()
 
     @property
     def use_udp(self) -> bool:
@@ -282,6 +297,7 @@ class DatabaseClient(BaseTimeseriesClient):
 
     def _get_client_kwargs(self) -> dict[str, Any]:
         kwargs = {}
+        url = None
         if TIMESERIES_DB.get("CLOUD_ID"):
             kwargs["cloud_id"] = TIMESERIES_DB["CLOUD_ID"]
         else:
@@ -297,6 +313,14 @@ class DatabaseClient(BaseTimeseriesClient):
             kwargs["basic_auth"] = (
                 TIMESERIES_DB["USER"],
                 TIMESERIES_DB["PASSWORD"],
+            )
+        credentials = kwargs.keys() & {"api_key", "bearer_auth", "basic_auth"}
+        if credentials and url and urlparse(url).scheme == "http":
+            logger.warning(
+                'Sending Elasticsearch credentials over insecure HTTP at "%s". '
+                'Consider switching TIMESERIES_DATABASE["URL"] to https:// when '
+                "running outside local development.",
+                url,
             )
         for setting_name, kwarg_name in (
             ("CA_CERTS", "ca_certs"),
@@ -909,6 +933,59 @@ class DatabaseClient(BaseTimeseriesClient):
                     )
         return hits
 
+    @retry
+    def _count_distinct_values(self, query, field_path) -> int:
+        """Count unique values by paging a composite aggregation."""
+        index, query = self._prepare_search_query(query)
+        query["size"] = 0
+        query["aggs"] = {
+            "distinct": {
+                "composite": {
+                    "size": self._DISTINCT_PAGE_SIZE,
+                    "sources": [{"value": {"terms": {"field": field_path}}}],
+                }
+            }
+        }
+        pit_id = None
+        count = 0
+        after_key = None
+        try:
+            response = self.db.open_point_in_time(
+                index=index,
+                keep_alive=self._PIT_KEEP_ALIVE,
+            )
+            pit_id = self._response_body(response)["id"]
+            while True:
+                body = deepcopy(query)
+                body["pit"] = {
+                    "id": pit_id,
+                    "keep_alive": self._PIT_KEEP_ALIVE,
+                }
+                if after_key is not None:
+                    body["aggs"]["distinct"]["composite"]["after"] = after_key
+                response = self._response_body(self.db.search(body=body))
+                pit_id = response.get("pit_id", pit_id)
+                aggregation = response.get("aggregations", {}).get("distinct", {})
+                buckets = aggregation.get("buckets", [])
+                count += len(buckets)
+                after_key = aggregation.get("after_key")
+                if after_key is None or len(buckets) < self._DISTINCT_PAGE_SIZE:
+                    break
+        except Exception as exception:
+            if self._is_not_found(exception):
+                return 0
+            logger.warning("Error querying Elasticsearch: %s", exception)
+            raise
+        finally:
+            if pit_id is not None:
+                try:
+                    self.db.close_point_in_time(id=pit_id)
+                except Exception as exception:
+                    logger.warning(
+                        "Error closing Elasticsearch point in time: %s", exception
+                    )
+        return count
+
     def _normalize_fields(self, fields, extra_fields=None):
         if isinstance(fields, str):
             fields = [fields]
@@ -1081,24 +1158,15 @@ class DatabaseClient(BaseTimeseriesClient):
         limit=None,
         precision="s",
     ) -> list[TimeseriesPoint]:
-        response = self.query(
+        value = self._count_distinct_values(
             {
-                "size": 0,
                 "query": self._build_base_query(
                     key=key, tags=tags, since=since, where=where
                 ),
-                "aggs": {
-                    "count": {
-                        "cardinality": {
-                            "field": self._get_indexed_field_path(field, "keyword")
-                        }
-                    }
-                },
                 "__retention_policy": retention_policy,
             },
-            precision=precision,
+            self._get_indexed_field_path(field, "keyword"),
         )
-        value = response.get("aggregations", {}).get("count", {}).get("value", 0)
         points = [{"count": value, "time": None}]
         return points[: int(limit)] if limit else points
 
@@ -1272,15 +1340,6 @@ class DatabaseClient(BaseTimeseriesClient):
         if not filters:
             return {"match_all": {}}
         return {"bool": {"filter": filters}}
-
-    def _normalize_chart_window(self, time_value, group_map=None):
-        if group_map and time_value in group_map:
-            return group_map[time_value]
-        if isinstance(time_value, (int, float)):
-            return f"{max(int(time_value), 1)}m"
-        if isinstance(time_value, str) and re.fullmatch(r"\d+", time_value):
-            return f"{max(int(time_value), 1)}m"
-        return time_value
 
     def _format_chart_metrics(self, query, params, fields=None):
         format_params = {**params}
@@ -1611,7 +1670,7 @@ class DatabaseClient(BaseTimeseriesClient):
         metric_aggregation = aggregation.get(metric["name"], {})
         if "doc_count" in metric_aggregation:
             if metric_aggregation["doc_count"] == 0:
-                return 0 if metric.get("agg") == "cardinality" else None
+                return None
             metric_aggregation = metric_aggregation.get("value", {})
         if metric.get("agg") == "mode":
             buckets = metric_aggregation.get("buckets", [])
@@ -1643,6 +1702,20 @@ class DatabaseClient(BaseTimeseriesClient):
             for metric_name in metric_names
         )
 
+    @staticmethod
+    def _fill_empty_cardinality_values(points, metrics):
+        # COUNT(DISTINCT) reports 0 for empty buckets on the InfluxDB backends.
+        # This is only applied to charts which have data, so that charts without
+        # any data are left empty instead of being rendered as a flat zero line.
+        metric_names = [
+            metric["name"] for metric in metrics if metric.get("agg") == "cardinality"
+        ]
+        for point in points:
+            for metric_name in metric_names:
+                if point.get(metric_name) is None:
+                    point[metric_name] = 0
+        return points
+
     def _format_histogram_time(self, bucket, precision):
         if "key" not in bucket:
             return None
@@ -1656,7 +1729,7 @@ class DatabaseClient(BaseTimeseriesClient):
             point = self._build_chart_point(aggregations, metrics)
             if not self._has_chart_values([point], metrics):
                 return []
-            return [point]
+            return self._fill_empty_cardinality_values([point], metrics)
         buckets = aggregations.get("timeseries", {}).get("buckets", [])
         points = [
             self._build_chart_point(
@@ -1668,7 +1741,7 @@ class DatabaseClient(BaseTimeseriesClient):
         ]
         if not self._has_chart_values(points, metrics):
             return []
-        return points
+        return self._fill_empty_cardinality_values(points, metrics)
 
     def _extract_grouped_chart_value(self, bucket, metric):
         return self._extract_chart_metric_value(
@@ -1823,7 +1896,7 @@ class DatabaseClient(BaseTimeseriesClient):
             refresh = True
         for stream_name in self._get_data_stream_names() + self._get_index_names():
             try:
-                self.db.delete_by_query(
+                response = self.db.delete_by_query(
                     index=stream_name,
                     body={"query": query},
                     conflicts="proceed",
@@ -1832,6 +1905,18 @@ class DatabaseClient(BaseTimeseriesClient):
             except Exception as exception:
                 if not self._is_not_found(exception):
                     raise
+                continue
+            body = self._response_body(response)
+            if not isinstance(body, Mapping):
+                continue
+            if (
+                body.get("timed_out")
+                or body.get("failures")
+                or body.get("version_conflicts")
+            ):
+                raise TimeseriesWriteException(
+                    f'Incomplete deletion on "{stream_name}": {body}'
+                )
 
     def delete_series(
         self, key: str | None = None, tags: TimeseriesTags | None = None

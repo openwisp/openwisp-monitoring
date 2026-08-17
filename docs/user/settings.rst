@@ -69,6 +69,23 @@ Alternative ``influxdb2`` backend configuration:
         },
     }
 
+Alternative ``elasticsearch`` backend configuration:
+
+.. code-block:: python
+
+    TIMESERIES_DATABASE = {
+        "BACKEND": "openwisp_monitoring.db.backends.elasticsearch",
+        "NAME": "openwisp2",
+        "URL": "https://localhost:9200",
+        "API_KEY": "openwisp-api-key",
+        "CA_CERTS": "/etc/elasticsearch/certs/http_ca.crt",
+        "OPTIONS": {
+            "refresh": "wait_for",
+            "read_size": 10000,
+            "terms_size": 1000,
+        },
+    }
+
 The following table describes the keys available in the
 ``TIMESERIES_DATABASE`` setting:
 
@@ -88,6 +105,39 @@ The following table describes the keys available in the
              :ref:`timeseries_backend_options` for available options
 ============ =============================================================
 
+The ``elasticsearch`` backend uses ``URL``, or ``HOST`` and ``PORT``, to
+connect to the cluster, and ``NAME`` as the name of the data streams
+created by OpenWISP. It also supports the following additional keys:
+
+========================== ==============================================
+**Key**                    ``Description``
+``CLOUD_ID``               Elastic Cloud identifier, used instead of
+                           ``URL`` or ``HOST`` and ``PORT``
+``API_KEY``                Elasticsearch API key
+``BEARER_AUTH``            Elasticsearch bearer token
+``CA_CERTS``               Path to the CA certificate used to verify the
+                           TLS certificate of Elasticsearch
+``SSL_ASSERT_FINGERPRINT`` SHA-256 fingerprint of the TLS certificate of
+                           Elasticsearch, which can be used instead of
+                           ``CA_CERTS``
+``VERIFY_CERTS``           Boolean, passed to the Elasticsearch client
+                           only when configured, otherwise the default of
+                           the client is used
+========================== ==============================================
+
+``API_KEY``, ``BEARER_AUTH``, and ``USER`` with ``PASSWORD`` are
+alternative authentication methods, which are used in this order when more
+than one is configured. ``USER`` and ``PASSWORD`` must be configured
+together.
+
+.. important::
+
+    Use an ``https://`` URL whenever Elasticsearch credentials are
+    configured: API keys, bearer tokens, and passwords sent over
+    ``http://`` can be read by anyone with access to the network. The
+    backend logs a warning when credentials are configured on an
+    ``http://`` URL.
+
 .. _timeseries_backend_options:
 
 Timeseries Database Options
@@ -104,6 +154,15 @@ Timeseries Database Options
 ``udp_port``   Timeseries database port for writing data using UDP on the
                ``influxdb`` backend, or Telegraf listener port for the
                ``influxdb2`` backend
+``refresh``    Refresh policy applied to writes and deletions. Available
+               only for the ``elasticsearch`` backend. Defaults to
+               ``wait_for``
+``read_size``  Number of documents read from Elasticsearch in a single
+               request. Available only for the ``elasticsearch`` backend.
+               Defaults to ``10000``
+``terms_size`` Maximum number of groups returned by charts which group
+               data by tag. Available only for the ``elasticsearch``
+               backend. Defaults to ``1000``
 ============== ===========================================================
 
 The ``influxdb2`` backend supports UDP writes only through Telegraf.
@@ -181,6 +240,12 @@ forwards the data to InfluxDB 2.x over HTTP.
           bucket = "openwisp2"
           bucket_tag = "bucket"
           exclude_bucket_tag = true
+
+The ``elasticsearch`` backend writes over HTTP only and does not support
+UDP writes. It also accepts the ``http_compress``, ``max_retries``,
+``request_timeout``, and ``retry_on_timeout`` options, which are passed to
+the Elasticsearch client unchanged: when these are not configured, the
+defaults of the client are used.
 
 .. _openwisp_monitoring_default_retention_policy:
 

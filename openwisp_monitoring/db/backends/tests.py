@@ -128,6 +128,22 @@ class TestBackendContract(SimpleTestCase):
         },
     }
 
+    def test_normalize_chart_window(self):
+        client = DummyTimeseriesClient()
+        cases = (
+            ("1d", {"1d": "10m"}, "10m"),
+            (5, None, "5m"),
+            (0, None, "1m"),
+            ("5", None, "5m"),
+            ("10m", None, "10m"),
+        )
+        for time_value, group_map, expected in cases:
+            with self.subTest(time_value=time_value, group_map=group_map):
+                self.assertEqual(
+                    client._normalize_chart_window(time_value, group_map),
+                    expected,
+                )
+
     def test_backends_implement_contract(self):
         required_chart_keys = _get_chart_keys_from_configuration()
         for backend_path, config in self.backend_configs.items():
