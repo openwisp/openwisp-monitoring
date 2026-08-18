@@ -6,7 +6,11 @@ from swapper import load_model
 
 from openwisp_utils.admin import TimeReadonlyAdminMixin
 
-from ..admin import DisabledOrgReadOnlyInlineMixin, DisabledOrgReadOnlyMixin
+from ..admin import (
+    DisabledOrgReadOnlyInlineMixin,
+    DisabledOrgReadOnlyMixin,
+    MonitoringBlockedObjectFormMixin,
+)
 
 Chart = load_model("monitoring", "Chart")
 Metric = load_model("monitoring", "Metric")
@@ -27,6 +31,10 @@ class AlertSettingsForm(ModelForm):
         super().__init__(*args, **kwargs)
 
 
+class MetricForm(MonitoringBlockedObjectFormMixin, ModelForm):
+    pass
+
+
 class AlertSettingsInline(
     DisabledOrgReadOnlyInlineMixin, TimeReadonlyAdminMixin, admin.StackedInline
 ):
@@ -44,6 +52,7 @@ class ChartInline(DisabledOrgReadOnlyInlineMixin, admin.StackedInline):
 
 @admin.register(Metric)
 class MetricAdmin(DisabledOrgReadOnlyMixin, TimeReadonlyAdminMixin, VersionAdmin):
+    form = MetricForm
     list_display = ["__str__", "created", "modified"]
     readonly_fields = ["is_healthy"]
     search_fields = ["name"]

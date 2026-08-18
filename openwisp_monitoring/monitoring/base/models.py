@@ -426,6 +426,8 @@ class AbstractMetric(TimeStampedEditableModel):
         write=True,
     ):
         """write timeseries data"""
+        if is_monitoring_blocked(self.content_object):
+            return
         values = {self.field_name: value}
         if extra_values and isinstance(extra_values, dict):
             for key in extra_values.keys():
@@ -484,11 +486,14 @@ class AbstractMetric(TimeStampedEditableModel):
         error_dict = {}
         write_data = []
         for metric, kwargs in raw_data:
+            if is_monitoring_blocked(metric.content_object):
+                continue
             try:
                 write_data.append(metric.write(**kwargs, write=False))
             except ValueError as error:
                 error_dict[metric.key] = str(error)
-        _timeseries_batch_write(write_data)
+        if write_data:
+            _timeseries_batch_write(write_data)
         if error_dict:
             raise ValueError(error_dict)
 

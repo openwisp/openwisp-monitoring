@@ -55,6 +55,9 @@ def run_checks(checks=None):
         .values("id")
         .iterator()
     )
+    # Checks have a generic foreign key, so filtering blocked targets here
+    # would add coupling in this module. The check type class is reponsible
+    # for verifying if the target is blocked and skipping the check if needed.
     for check in iterator:
         perform_check.delay(check["id"])
 

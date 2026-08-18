@@ -6,43 +6,57 @@ from openwisp_utils.tasks import OpenwispCeleryTask
 
 from ..db import timeseries_db
 from ..db.exceptions import TimeseriesWriteException
+from ..utils import is_monitoring_blocked
 from .settings import RETRY_OPTIONS
 from .signals import post_metric_write
+
+
+def _get_metric(metric):
+    if not metric:
+        return None
+    Metric = load_model("monitoring", "Metric")
+    if isinstance(metric, Metric):
+        return metric
+    try:
+        return Metric.objects.select_related("alertsettings").get(pk=metric)
+    except ObjectDoesNotExist:
+        return None
 
 
 def _metric_post_write(name, values, metric, check_threshold_kwargs=None, **kwargs):
     if not metric or not check_threshold_kwargs:
         return
-    try:
-        Metric = load_model("monitoring", "Metric")
-        if not isinstance(metric, Metric):
-            metric = Metric.objects.select_related("alertsettings").get(pk=metric)
-    except ObjectDoesNotExist:
+    metric = _get_metric(metric)
+    if metric is None:
         # The metric can be deleted by the time threshold is being checked.
         # This can happen as the task is being run async.
-        pass
-    else:
-        metric.check_threshold(**check_threshold_kwargs)
-        signal_kwargs = dict(
-            sender=metric.__class__,
-            metric=metric,
-            values=values,
-            time=kwargs.get("timestamp"),
-            current=kwargs.get("current", "False"),
-        )
-        post_metric_write.send(**signal_kwargs)
+        return
+    if is_monitoring_blocked(metric.content_object):
+        return
+    metric.check_threshold(**check_threshold_kwargs)
+    signal_kwargs = dict(
+        sender=metric.__class__,
+        metric=metric,
+        values=values,
+        time=kwargs.get("timestamp"),
+        current=kwargs.get("current", "False"),
+    )
+    post_metric_write.send(**signal_kwargs)
 
 
 @shared_task(
     base=OpenwispCeleryTask,
     bind=True,
     autoretry_for=(TimeseriesWriteException,),
-    **RETRY_OPTIONS
+    **RETRY_OPTIONS,
 )
 def timeseries_write(
     self, name, values, metric=None, check_threshold_kwargs=None, **kwargs
 ):
     """Writes and retries with exponential backoff on failures."""
+    metric = _get_metric(metric)
+    if metric is not None and is_monitoring_blocked(metric.content_object):
+        return
     timeseries_db.write(name, values, **kwargs)
     _metric_post_write(name, values, metric, check_threshold_kwargs, **kwargs)
 
@@ -59,7 +73,7 @@ def _timeseries_write(name, values, metric=None, check_threshold_kwargs=None, **
         values=values,
         metric=metric,
         check_threshold_kwargs=check_threshold_kwargs,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -67,7 +81,7 @@ def _timeseries_write(name, values, metric=None, check_threshold_kwargs=None, **
     base=OpenwispCeleryTask,
     bind=True,
     autoretry_for=(TimeseriesWriteException,),
-    **RETRY_OPTIONS
+    **RETRY_OPTIONS,
 )
 def timeseries_batch_write(self, data):
     """Writes data in batches.
@@ -75,6 +89,16 @@ def timeseries_batch_write(self, data):
     Similar to timeseries_write function above, but operates on list of
     metric data (batch operation)
     """
+    data = [
+        metric_data
+        for metric_data in data
+        if not (
+            (metric := _get_metric(metric_data.get("metric")))
+            and is_monitoring_blocked(metric.content_object)
+        )
+    ]
+    if not data:
+        return
     timeseries_db.batch_write(data)
     for metric_data in data:
         _metric_post_write(**metric_data)

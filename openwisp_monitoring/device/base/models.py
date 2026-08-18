@@ -493,15 +493,14 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         Clears the management IP of all devices belonging to a disabled
         organization.
 
-        Don't update the device's monitoring status here because it will
-        be automatically updated when the device is deactivated.
-
         Parameters: - organization_id (int): The ID of the disabled
         organization.
 
         Returns: - None
         """
-        monitoring = cls.objects.filter(device__organization_id=organization_id)
+        monitoring = cls.objects.filter(
+            device__organization_id=organization_id
+        ).exclude(status="deactivated")
         # Preserve the bulk update for large organizations: disabling an
         # organization is not a health-status change and has its own signal.
         monitoring.update(status="unknown")

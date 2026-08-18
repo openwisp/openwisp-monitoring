@@ -976,6 +976,37 @@ class TestDeviceMonitoring(
 class TestTransactionDeviceMonitoring(
     CreateConnectionsMixin, MonitoringTestMixin, DeviceMonitoringTransactionTestcase
 ):
+    def test_disabled_organization_statuses(self):
+        for status in ("problem", "critical"):
+            with self.subTest(status=status):
+                device_monitoring, _, _, _ = self._create_env()
+                device_monitoring.update_status(status)
+                DeviceMonitoring.handle_disabled_organization(
+                    device_monitoring.device.organization_id
+                )
+                device_monitoring.refresh_from_db()
+                self.assertEqual(device_monitoring.status, "unknown")
+
+        with self.subTest("Deactivated device remains deactivated"):
+            device_monitoring, _, _, _ = self._create_env()
+            device_monitoring.device.deactivate()
+            DeviceMonitoring.handle_disabled_organization(
+                device_monitoring.device.organization_id
+            )
+            device_monitoring.refresh_from_db()
+            self.assertEqual(device_monitoring.status, "deactivated")
+
+        with self.subTest(
+            "Deactivation after organization handling remains deactivated"
+        ):
+            device_monitoring, _, _, _ = self._create_env()
+            DeviceMonitoring.handle_disabled_organization(
+                device_monitoring.device.organization_id
+            )
+            device_monitoring.device.deactivate()
+            device_monitoring.refresh_from_db()
+            self.assertEqual(device_monitoring.status, "deactivated")
+
     def test_unknown_status_rollback(self):
         dm, ping, load, process_count = self._create_env()
         with transaction.atomic():
