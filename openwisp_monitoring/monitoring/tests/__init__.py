@@ -74,11 +74,12 @@ def _elasticsearch_metric(name, field, aggregation="avg"):
     return {"name": name, "field": field, "agg": aggregation}
 
 
-def _elasticsearch_chart(*metrics, dynamic_aggregation=None):
+def _elasticsearch_chart(*metrics, dynamic_aggregation=None, end_date=True):
     query = {
         "__openwisp_query_type": "chart",
         "aggregate": True,
         "metrics": list(metrics),
+        "end_date": end_date,
     }
     if dynamic_aggregation:
         query["dynamic_metric"] = {"agg": dynamic_aggregation}
@@ -148,7 +149,9 @@ charts = {
                 " |> sum()"
                 " |> map(fn: (r) => ({{r with _value: float(v: r._value)}}))"
             ),
-            "elasticsearch": _elasticsearch_chart(dynamic_aggregation="sum"),
+            "elasticsearch": _elasticsearch_chart(
+                dynamic_aggregation="sum", end_date=False
+            ),
         },
     },
     "dummy": {
@@ -326,7 +329,9 @@ charts = {
                 "{content_type_filter}{object_id_filter}{field_filter}"
                 " |> mean()"
             ),
-            "elasticsearch": _elasticsearch_chart(dynamic_aggregation="avg"),
+            "elasticsearch": _elasticsearch_chart(
+                dynamic_aggregation="avg", end_date=False
+            ),
         },
     },
 }

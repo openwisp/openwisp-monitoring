@@ -29,12 +29,13 @@ def _metric(name, field, agg="avg", scale=None, round_value=False):
     return metric
 
 
-def _chart(*metrics):
+def _chart(*metrics, end_date=True):
     return ElasticsearchQuery(
         {
             "__openwisp_query_type": "chart",
             "aggregate": True,
             "metrics": list(metrics),
+            "end_date": end_date,
         }
     )
 

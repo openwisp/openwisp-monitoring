@@ -1128,9 +1128,12 @@ class DatabaseClient(BaseTimeseriesClient):
         if not fields or fields == ["*"]:
             point.update(values)
         else:
+            tags = document.get("tags") or {}
             for field in fields:
                 if field in values:
                     point[field] = values[field]
+                elif field in tags:
+                    point[field] = tags[field]
         point.update(
             {
                 "__openwisp_time_key": timestamp,
@@ -1317,7 +1320,7 @@ class DatabaseClient(BaseTimeseriesClient):
             return {"terms": {tag_field: values}}
         return {"term": {tag_field: str(value)}}
 
-    def _build_chart_base_query(self, params, timezone_name=None):
+    def _build_chart_base_query(self, params, timezone_name=None, end_date=True):
         filters = []
         measurement_filter = self._build_measurement_filter(params.get("key"))
         if measurement_filter:
@@ -1327,7 +1330,7 @@ class DatabaseClient(BaseTimeseriesClient):
             time_filter["gte"] = self._get_timestamp(
                 params["time"], timezone_name=timezone_name
             )
-        if params.get("end_date"):
+        if end_date and params.get("end_date"):
             time_filter["lte"] = self._get_timestamp(
                 params["end_date"], timezone_name=timezone_name
             )
@@ -1397,7 +1400,11 @@ class DatabaseClient(BaseTimeseriesClient):
         metrics = self._format_chart_metrics(query, params, fields=fields)
         body = {
             "size": 0,
-            "query": self._build_chart_base_query(params, timezone_name=timezone),
+            "query": self._build_chart_base_query(
+                params,
+                timezone_name=timezone,
+                end_date=query.get("end_date", True),
+            ),
             "__index": self._get_stream_name(params.get("retention_policy")),
             "__openwisp_query_type": "chart",
             "__openwisp_metrics": metrics,
