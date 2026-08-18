@@ -250,6 +250,7 @@ class TestCharts(TestMonitoringMixin, TestCase):
         c = self._create_chart(test_data=False)
         self.assertEqual(c.description, "Dummy chart for testing purposes.")
 
+    @tag("flaky_with_udp_writes")
     def test_wifi_hostapd(self):
         m = self._create_object_metric(
             name="wifi associations",
