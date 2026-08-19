@@ -2,7 +2,7 @@ import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Self, TypedDict
+from typing import Any, TypedDict
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db import DatabaseError
@@ -34,7 +34,7 @@ class BackendQueryBundle:
     device_data_query: str
     summary_query: Mapping[str, Mapping[str, str]] | None = None
 
-    def validate(self, backend_name: str) -> Self:
+    def validate(self, backend_name: str) -> "BackendQueryBundle":
         if not isinstance(self.chart_query, Mapping):
             raise ImproperlyConfigured(
                 "Backend query bundle must define chart_query as a mapping."
@@ -99,7 +99,7 @@ class BaseTimeseriesClient(ABC):
                 )
         return config
 
-    def attach_queries(self, queries: BackendQueryBundle) -> Self:
+    def attach_queries(self, queries: BackendQueryBundle) -> "BaseTimeseriesClient":
         self.queries = queries
         return self
 
