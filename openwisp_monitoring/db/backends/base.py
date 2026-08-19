@@ -197,7 +197,10 @@ class BaseTimeseriesClient(ABC):
 
     @abstractmethod
     def delete_metric_data(
-        self, key: str | None = None, tags: TimeseriesTags | None = None
+        self,
+        key: str | None = None,
+        tags: TimeseriesTags | None = None,
+        timestamp: Any = None,
     ) -> None:
         pass
 

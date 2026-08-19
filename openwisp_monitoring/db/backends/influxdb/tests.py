@@ -232,6 +232,42 @@ class TestDatabaseClient(RequireTimeseriesBackendMixin, TestMonitoringMixin, Tes
         self.assertEqual(m.read(), [])
         self.assertEqual(om.read(), [])
 
+    def test_delete_metric_data_at_timestamp(self):
+        m = self._create_general_metric(name="test_metric")
+        first = now() - timedelta(days=2)
+        second = now() - timedelta(days=1)
+        m.write(100, time=first)
+        m.write(200, time=second)
+        self.assertEqual(
+            sorted(point["value"] for point in m.read()),
+            [100, 200],
+        )
+        timeseries_db.delete_metric_data(key=m.key, timestamp=second)
+        self.assertEqual([point["value"] for point in m.read()], [100])
+
+    def test_delete_metric_data_at_timestamp_with_tags(self):
+        m = self._create_object_metric(name="dummy")
+        timestamp = now() - timedelta(days=1)
+        m.write(100, time=timestamp)
+        self.assertEqual([point["value"] for point in m.read()], [100])
+        timeseries_db.delete_metric_data(key=m.key, tags=m.tags, timestamp=timestamp)
+        self.assertEqual(m.read(), [])
+
+    def test_delete_metric_data_at_timestamp_escapes_tags(self):
+        timestamp = make_aware(datetime(2026, 8, 19, 10, 30))
+        with patch.object(timeseries_db, "query") as mocked_query:
+            timeseries_db.delete_metric_data(
+                key="radius_acc",
+                tags={"calling_station_id": "aa'bb"},
+                timestamp=timestamp,
+            )
+        self.assertEqual(
+            mocked_query.call_args[0][0],
+            'DELETE FROM "radius_acc" WHERE '
+            f"time = '{timestamp.isoformat(sep='T', timespec='microseconds')}' "
+            "AND \"calling_station_id\" = 'aa\\'bb'",
+        )
+
     def test_get_query_1d(self):
         c = self._create_chart(test_data=None, configuration="uptime")
         q = c.get_query(time="1d")

@@ -733,6 +733,38 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             datetime(2262, 4, 11, 23, 47, 16, 854775, tzinfo=timezone.utc),
         )
 
+    @patch.object(DatabaseClient, "_delete_api")
+    def test_delete_metric_data_at_timestamp(self, mock_delete_api):
+        timestamp = datetime(2026, 8, 19, 10, 30, tzinfo=timezone.utc)
+        self.timeseries_db.delete_metric_data(key="cpu", timestamp=timestamp)
+        start, stop, predicate = mock_delete_api.delete.call_args[0][:3]
+        self.assertEqual(start, timestamp)
+        # the stop of the range is exclusive
+        self.assertEqual(stop, timestamp + timedelta(milliseconds=1))
+        self.assertIn('_measurement="cpu"', predicate)
+
+    @patch.object(DatabaseClient, "_delete_api")
+    def test_delete_metric_data_at_naive_timestamp(self, mock_delete_api):
+        self.timeseries_db.delete_metric_data(
+            key="cpu", timestamp=datetime(2026, 8, 19, 10, 30)
+        )
+        start = mock_delete_api.delete.call_args[0][0]
+        self.assertEqual(start, datetime(2026, 8, 19, 10, 30, tzinfo=timezone.utc))
+
+    @patch.object(DatabaseClient, "_delete_api")
+    def test_delete_metric_data_at_string_timestamp(self, mock_delete_api):
+        self.timeseries_db.delete_metric_data(
+            key="cpu", timestamp="2026-08-19T10:30:00+00:00"
+        )
+        start = mock_delete_api.delete.call_args[0][0]
+        self.assertEqual(start, datetime(2026, 8, 19, 10, 30, tzinfo=timezone.utc))
+
+    def test_delete_metric_data_rejects_invalid_timestamp(self):
+        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
+            with self.assertRaises(ValueError):
+                self.timeseries_db.delete_metric_data(key="cpu", timestamp="invalid")
+        mock_delete_api.delete.assert_not_called()
+
     def test_delete_metric_data_rejects_unsafe_tag_keys(self):
         with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
             with self.assertRaises(ValueError):
@@ -838,7 +870,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         )
         flux_query = mock_query.call_args[0][0]
         self.assertIn(
-            'contains(value: r.organization_id, set: ["org1", "org2"])',
+            'contains(value: r.organization_id, set: ["__all__", "org1", "org2"])',
             flux_query,
         )
         self.assertIn(
@@ -849,7 +881,6 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             'contains(value: r.floorplan_id, set: ["fp1", "fp2"])',
             flux_query,
         )
-        self.assertNotIn("__all__", flux_query)
 
     def test_get_top_fields_empty_result(self):
         """Test top field selection returns empty list when no data is found."""
@@ -1375,7 +1406,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             fields=["rx_bytes", "tx_bytes"],
         )
         self.assertIn(
-            'contains(value: r.organization_id, set: ["org1", "org2"])',
+            'contains(value: r.organization_id, set: ["__all__", "org1", "org2"])',
             query,
         )
         self.assertIn('contains(value: r.location_id, set: ["loc1", "loc2"])', query)
@@ -1383,7 +1414,6 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             'contains(value: r.floorplan_id, set: ["fp1", "fp2"])',
             query,
         )
-        self.assertNotIn("__all__", query)
 
     def test_get_query_wifi_clients_count_distinct(self):
         """Test Flux query for wifi_clients using distinct() + count()."""

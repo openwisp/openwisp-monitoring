@@ -1253,11 +1253,33 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             ("sum", {"sum": {"field": "indexed_fields.numeric.value"}}),
             (
                 "cardinality",
-                {"cardinality": {"field": "indexed_fields.keyword.value"}},
+                {
+                    "cardinality": {
+                        "field": "indexed_fields.keyword.value",
+                        "precision_threshold": 40000,
+                    }
+                },
             ),
             (
                 "mode",
                 {"terms": {"field": "indexed_fields.numeric.value", "size": 1}},
+            ),
+            (
+                "last",
+                {
+                    "top_metrics": {
+                        "metrics": {"field": "indexed_fields.numeric.value"},
+                        "sort": [
+                            {"@timestamp": "desc"},
+                            {
+                                "openwisp_write_sequence": {
+                                    "order": "desc",
+                                    "unmapped_type": "long",
+                                }
+                            },
+                        ],
+                    }
+                },
             ),
             ("unknown", {"avg": {"field": "indexed_fields.numeric.value"}}),
         )
@@ -1572,6 +1594,118 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         )
         self.assertEqual(self.timeseries_db.get_list_query(query), [])
 
+    _GROUPED_CHART_QUERY = {
+        "__openwisp_query_type": "grouped_chart",
+        "aggregate": True,
+        "group_by": "method",
+        "metric": {"name": "count", "field": "count", "agg": "sum"},
+    }
+
+    def _build_grouped_query(self, **overrides):
+        params = {
+            "key": "radius_acc",
+            "content_type": "config.device",
+            "object_id": "device-1",
+            "method": "mobile_phone",
+        }
+        params.update(overrides.pop("params", {}))
+        return self.timeseries_db.get_query(
+            chart_type="stackedbar+lines",
+            params=params,
+            time="30d",
+            group_map={"30d": "1d"},
+            query={**self._GROUPED_CHART_QUERY, **overrides},
+        )
+
+    def test_grouped_chart_query_keeps_object_scope(self):
+        query = self._build_grouped_query()
+        filters = query["query"]["bool"]["filter"]
+        self.assertIn({"term": {"tags.content_type": "config.device"}}, filters)
+        self.assertIn({"term": {"tags.object_id": "device-1"}}, filters)
+        self.assertEqual(
+            query["aggs"]["timeseries"]["aggs"]["groups"]["terms"]["field"],
+            "tags.method",
+        )
+
+    def test_grouped_chart_last_aggregation(self):
+        query = self._build_grouped_query(
+            metric={"name": "count", "field": "count", "agg": "last"}
+        )
+        aggregation = query["aggs"]["timeseries"]["aggs"]["groups"]["aggs"]["value"]
+        self.assertEqual(
+            aggregation["aggs"]["value"]["top_metrics"]["metrics"],
+            {"field": "indexed_fields.numeric.count"},
+        )
+        response = {
+            "aggregations": {
+                "timeseries": {
+                    "buckets": [
+                        {
+                            "key": 1711368000000,
+                            "groups": {
+                                "buckets": [
+                                    {
+                                        "key": "mobile_phone",
+                                        "value": {
+                                            "doc_count": 2,
+                                            "value": {
+                                                "top": [
+                                                    {
+                                                        "metrics": {
+                                                            "indexed_fields."
+                                                            "numeric.count": 7
+                                                        }
+                                                    }
+                                                ]
+                                            },
+                                        },
+                                    }
+                                ]
+                            },
+                        }
+                    ]
+                }
+            }
+        }
+        points = self.timeseries_db._get_grouped_chart_points(response, query)
+        self.assertEqual(points, [{"time": 1711368000, "mobile_phone": 7}])
+
+    def test_grouped_chart_fill_previous(self):
+        query = self._build_grouped_query(
+            metric={"name": "count", "field": "count", "agg": "sum"},
+            fill="previous",
+        )
+        self.assertEqual(query["__openwisp_fill"], "previous")
+
+        def bucket(key, value=None):
+            groups = {"buckets": []}
+            if value is not None:
+                groups["buckets"].append(
+                    {"key": "mobile_phone", "value": {"doc_count": 1, "value": value}}
+                )
+            return {"key": key, "groups": groups}
+
+        response = {
+            "aggregations": {
+                "timeseries": {
+                    "buckets": [
+                        bucket(1711368000000, {"value": 3}),
+                        bucket(1711454400000),
+                        bucket(1711540800000, {"value": 5}),
+                    ]
+                }
+            }
+        }
+        points = self.timeseries_db._get_grouped_chart_points(response, query)
+        self.assertEqual(
+            points,
+            [
+                {"time": 1711368000, "mobile_phone": 3},
+                {"time": 1711454400, "mobile_phone": 3},
+                {"time": 1711540800, "mobile_phone": 5},
+            ],
+        )
+
     def test_grouped_chart_truncation_logs_once(self):
         query = {
             "__openwisp_metric": {"name": "clients", "field": "clients"},
@@ -1841,6 +1975,33 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         self.assertIn({"term": {"tags.host": "server1"}}, filters)
         self.assertTrue(first_call.kwargs["refresh"])
         mock_indices.assert_called_once()
+
+    @patch.object(DatabaseClient, "_get_data_stream_names", return_value=["openwisp2"])
+    @patch.object(DatabaseClient, "_get_index_names", return_value=[])
+    def test_delete_metric_data_at_timestamp(self, mock_indices, mock_streams):
+        mock_db = self._mock_db()
+        timestamp = datetime(2026, 8, 19, 10, 30, tzinfo=timezone.utc)
+        self.timeseries_db.delete_metric_data(
+            key="radius_acc",
+            tags={"organization_id": "org"},
+            timestamp=timestamp,
+        )
+        filters = mock_db.delete_by_query.call_args.kwargs["body"]["query"]["bool"][
+            "filter"
+        ]
+        serialized_timestamp = self.timeseries_db._get_timestamp(timestamp)
+        self.assertIn(
+            {
+                "range": {
+                    "@timestamp": {
+                        "gte": serialized_timestamp,
+                        "lte": serialized_timestamp,
+                    }
+                }
+            },
+            filters,
+        )
+        self.assertIn({"term": {"tags.organization_id": "org"}}, filters)
 
     @patch("openwisp_monitoring.utils.sleep")
     @patch.object(DatabaseClient, "_get_data_stream_names", return_value=["openwisp2"])
@@ -2643,6 +2804,52 @@ class TestElasticsearchClientIntegration(
             if value is not None
         ]
         self.assertEqual(non_null_points, [local_midnight.strftime("%Y-%m-%d %H:%M")])
+
+    def test_grouped_chart_counts_distinct_values_per_tag(self):
+        timestamp = now()
+        device = {"content_type": "config.device", "object_id": "device-1"}
+        other_device = {"content_type": "config.device", "object_id": "device-2"}
+        sessions = (
+            ({**device, "method": "mobile_phone"}, "user1"),
+            ({**device, "method": "mobile_phone"}, "user2"),
+            ({**device, "method": "mobile_phone"}, "user2"),
+            ({**device, "method": "email"}, "user3"),
+            ({**other_device, "method": "email"}, "user4"),
+        )
+        for tags, username in sessions:
+            timeseries_db.write(
+                "radius_acc",
+                {"username": username},
+                tags=tags,
+                timestamp=timestamp,
+            )
+        query = timeseries_db.get_query(
+            chart_type="stackedbar+lines",
+            params={
+                "key": "radius_acc",
+                "time": timestamp - timedelta(days=1),
+                **device,
+            },
+            time="30d",
+            group_map={"30d": "1d"},
+            query={
+                "__openwisp_query_type": "grouped_chart",
+                "aggregate": True,
+                "group_by": "method",
+                "metric": {
+                    "name": "sessions",
+                    "field": "username",
+                    "agg": "cardinality",
+                },
+            },
+        )
+        values = {}
+        for point in timeseries_db.get_list_query(query):
+            for key, value in point.items():
+                if key != "time" and value:
+                    values[key] = value
+        # user2 is counted once and the session of device-2 is not counted
+        self.assertEqual(values, {"mobile_phone": 2, "email": 1})
 
     def test_delete_metric_data_and_delete_series_round_trip(self):
         general_metric = self._create_general_metric(name="delete-general")

@@ -207,6 +207,9 @@ class DatabaseClient(BaseTimeseriesClient):
     _DEFAULT_ROLLOVER_SECONDS = 30 * 24 * 60 * 60
     _PIT_KEEP_ALIVE = "1m"
     _DISTINCT_PAGE_SIZE = 1000
+    # highest precision supported by the cardinality aggregation,
+    # counts below this threshold are exact
+    _CARDINALITY_PRECISION = 40000
     # Wins over broad external templates that may also match OpenWISP streams.
     _OPENWISP_INDEX_TEMPLATE_PRIORITY = 500
     _RESOURCE_METADATA_KEY = "openwisp_monitoring"
@@ -1094,6 +1097,7 @@ class DatabaseClient(BaseTimeseriesClient):
         tags: TimeseriesTags | None = None,
         since=None,
         where: Sequence[Sequence[Any]] | None = None,
+        timestamp=None,
     ) -> dict[str, Any]:
         filters = []
         measurement_filter = self._build_measurement_filter(key) if key else None
@@ -1102,6 +1106,18 @@ class DatabaseClient(BaseTimeseriesClient):
         if since:
             filters.append(
                 {"range": {"@timestamp": {"gte": self._get_timestamp(since)}}}
+            )
+        if timestamp is not None:
+            serialized_timestamp = self._get_timestamp(timestamp)
+            filters.append(
+                {
+                    "range": {
+                        "@timestamp": {
+                            "gte": serialized_timestamp,
+                            "lte": serialized_timestamp,
+                        }
+                    }
+                }
             )
         if tags:
             for tag_key, tag_value in tags.items():
@@ -1310,11 +1326,11 @@ class DatabaseClient(BaseTimeseriesClient):
         return current_type == query_type
 
     def _build_tag_filter(self, field, value):
-        if value in (None, "", "__all__"):
+        if value in (None, ""):
             return None
         tag_field = f"tags.{field}"
         if isinstance(value, (list, tuple)):
-            values = [str(item) for item in value if item != "__all__"]
+            values = [str(item) for item in value]
             if not values:
                 return None
             return {"terms": {tag_field: values}}
@@ -1367,20 +1383,44 @@ class DatabaseClient(BaseTimeseriesClient):
 
     def _build_metric_aggregation(self, metric):
         aggregation = metric.get("agg", "avg")
-        field_type = "keyword" if aggregation == "cardinality" else "numeric"
-        field = self._get_indexed_field_path(metric["field"], field_type)
+        field = self._get_metric_field_path(metric)
         if aggregation == "sum":
             metric_aggregation = {"sum": {"field": field}}
         elif aggregation == "cardinality":
-            metric_aggregation = {"cardinality": {"field": field}}
+            metric_aggregation = {
+                "cardinality": {
+                    "field": field,
+                    "precision_threshold": self._CARDINALITY_PRECISION,
+                }
+            }
         elif aggregation == "mode":
             metric_aggregation = {"terms": {"field": field, "size": 1}}
+        elif aggregation == "last":
+            metric_aggregation = {
+                "top_metrics": {
+                    "metrics": {"field": field},
+                    "sort": [
+                        {"@timestamp": "desc"},
+                        {
+                            "openwisp_write_sequence": {
+                                "order": "desc",
+                                "unmapped_type": "long",
+                            }
+                        },
+                    ],
+                }
+            }
         else:
             metric_aggregation = {"avg": {"field": field}}
         return {
             "filter": {"exists": {"field": field}},
             "aggs": {"value": metric_aggregation},
         }
+
+    @classmethod
+    def _get_metric_field_path(cls, metric):
+        field_type = "keyword" if metric.get("agg") == "cardinality" else "numeric"
+        return cls._get_indexed_field_path(metric["field"], field_type)
 
     def _build_metric_aggregations(self, metrics):
         return {
@@ -1448,11 +1488,7 @@ class DatabaseClient(BaseTimeseriesClient):
     ):
         metric = self._format_query_mapping(query["metric"], params)
         group_by = query["group_by"]
-        base_params = {
-            key: value
-            for key, value in params.items()
-            if key not in ("content_type", "object_id", group_by)
-        }
+        base_params = {key: value for key, value in params.items() if key != group_by}
         body = {
             "size": 0,
             "query": self._build_chart_base_query(base_params, timezone_name=timezone),
@@ -1462,6 +1498,7 @@ class DatabaseClient(BaseTimeseriesClient):
             "__openwisp_group_by": group_by,
             "__openwisp_summary": summary,
             "__openwisp_cumulative": bool(query.get("cumulative")),
+            "__openwisp_fill": query.get("fill"),
             "__openwisp_aggregate": True,
         }
         group_aggs = {
@@ -1682,6 +1719,13 @@ class DatabaseClient(BaseTimeseriesClient):
         if metric.get("agg") == "mode":
             buckets = metric_aggregation.get("buckets", [])
             value = buckets[0]["key"] if buckets else None
+        elif metric.get("agg") == "last":
+            rows = metric_aggregation.get("top", [])
+            value = (
+                rows[0].get("metrics", {}).get(self._get_metric_field_path(metric))
+                if rows
+                else None
+            )
         else:
             value = metric_aggregation.get("value")
         if value is None:
@@ -1786,6 +1830,8 @@ class DatabaseClient(BaseTimeseriesClient):
                 point[bucket["key"]] = self._extract_grouped_chart_value(bucket, metric)
             return [point]
         totals = {}
+        previous_values = {}
+        fill_previous = query.get("__openwisp_fill") == "previous"
         points = []
         for bucket in aggregations.get("timeseries", {}).get("buckets", []):
             point = {"time": self._format_histogram_time(bucket, precision)}
@@ -1796,6 +1842,13 @@ class DatabaseClient(BaseTimeseriesClient):
                     totals[key] = totals.get(key, 0) + (value or 0)
                     value = totals[key]
                 point[key] = value
+            if fill_previous:
+                for key, value in point.items():
+                    if key != "time" and value is not None:
+                        previous_values[key] = value
+                for key, value in previous_values.items():
+                    if point.get(key) is None:
+                        point[key] = value
             if len(point) > 1:
                 points.append(point)
         return points
@@ -1933,6 +1986,16 @@ class DatabaseClient(BaseTimeseriesClient):
         self._delete_by_query(self._build_base_query(key=key, tags=tags))
 
     def delete_metric_data(
-        self, key: str | None = None, tags: TimeseriesTags | None = None
+        self,
+        key: str | None = None,
+        tags: TimeseriesTags | None = None,
+        timestamp: Any = None,
     ) -> None:
-        self._delete_by_query(self._build_base_query(key=key, tags=tags))
+        """Deletes metric data based on measurement and tags.
+
+        If ``timestamp`` is passed, only the data written at that specific
+        time is deleted.
+        """
+        self._delete_by_query(
+            self._build_base_query(key=key, tags=tags, timestamp=timestamp)
+        )
