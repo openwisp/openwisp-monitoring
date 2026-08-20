@@ -1488,7 +1488,12 @@ class DatabaseClient(BaseTimeseriesClient):
     ):
         metric = self._format_query_mapping(query["metric"], params)
         group_by = query["group_by"]
-        base_params = {key: value for key, value in params.items() if key != group_by}
+        excluded_params = {group_by}
+        if not query.get("object_scope", True):
+            excluded_params.update(("content_type", "object_id"))
+        base_params = {
+            key: value for key, value in params.items() if key not in excluded_params
+        }
         body = {
             "size": 0,
             "query": self._build_chart_base_query(base_params, timezone_name=timezone),

@@ -1627,6 +1627,16 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             "tags.method",
         )
 
+    def test_grouped_chart_query_can_opt_out_of_object_scope(self):
+        query = self._build_grouped_query(object_scope=False)
+        filters = query["query"]["bool"]["filter"]
+        self.assertNotIn({"term": {"tags.content_type": "config.device"}}, filters)
+        self.assertNotIn({"term": {"tags.object_id": "device-1"}}, filters)
+        self.assertEqual(
+            query["aggs"]["timeseries"]["aggs"]["groups"]["terms"]["field"],
+            "tags.method",
+        )
+
     def test_grouped_chart_last_aggregation(self):
         query = self._build_grouped_query(
             metric={"name": "count", "field": "count", "agg": "last"}

@@ -243,6 +243,7 @@ charts = {
                 "metric": _elasticsearch_metric("{field_name}", "{field_name}", "sum"),
                 "group_by": "metric_num",
                 "cumulative": True,
+                "object_scope": False,
             },
         },
         "summary_query": {
@@ -262,6 +263,7 @@ charts = {
                 "aggregate": True,
                 "metric": _elasticsearch_metric("{field_name}", "{field_name}", "sum"),
                 "group_by": "metric_num",
+                "object_scope": False,
             },
         },
     },
