@@ -121,7 +121,28 @@ class TestBackendContract(SimpleTestCase):
             "HOST": "localhost",
             "PORT": "8086",
         },
+        "openwisp_monitoring.db.backends.elasticsearch": {
+            "BACKEND": "openwisp_monitoring.db.backends.elasticsearch",
+            "NAME": "openwisp2",
+            "URL": "http://localhost:9200",
+        },
     }
+
+    def test_normalize_chart_window(self):
+        client = DummyTimeseriesClient()
+        cases = (
+            ("1d", {"1d": "10m"}, "10m"),
+            (5, None, "5m"),
+            (0, None, "1m"),
+            ("5", None, "5m"),
+            ("10m", None, "10m"),
+        )
+        for time_value, group_map, expected in cases:
+            with self.subTest(time_value=time_value, group_map=group_map):
+                self.assertEqual(
+                    client._normalize_chart_window(time_value, group_map),
+                    expected,
+                )
 
     def test_backends_implement_contract(self):
         required_chart_keys = _get_chart_keys_from_configuration()
@@ -159,6 +180,7 @@ class TestBackendContract(SimpleTestCase):
                 "_delete_api",
                 "use_udp",
             ),
+            "openwisp_monitoring.db.backends.elasticsearch": ("db",),
         }
         for backend_path, attrs in backend_cached_attrs.items():
             with self.subTest(backend=backend_path):

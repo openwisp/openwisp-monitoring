@@ -2,7 +2,7 @@ import logging
 import re
 import socket
 from collections.abc import Iterator, Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
@@ -184,7 +184,18 @@ class QueryResultSet:
 class DatabaseClient(BaseTimeseriesClient):
     """InfluxDB 2.0 client for timeseries database operations."""
 
-    _AGGREGATE = ["mean", "sum", "count", "max", "min", "mode", "stddev"]
+    _AGGREGATE = [
+        "mean",
+        "sum",
+        "count",
+        "max",
+        "min",
+        "mode",
+        "stddev",
+        "last",
+        "first",
+        "distinct",
+    ]
     backend_name = "influxdb2"
     client_error = InfluxDBError
     required_settings = ("BACKEND", "USER", "PASSWORD", "NAME")
@@ -507,15 +518,6 @@ class DatabaseClient(BaseTimeseriesClient):
                     value = value.replace(tzinfo=timezone.utc)
             return f'time(v: "{self._serialize_flux_time(value)}")'
         return value
-
-    def _normalize_chart_window(self, time_value, group_map=None):
-        if group_map and time_value in group_map:
-            return group_map[time_value]
-        if isinstance(time_value, (int, float)):
-            return f"{max(int(time_value), 1)}m"
-        if isinstance(time_value, str) and re.fullmatch(r"\d+", time_value):
-            return f"{max(int(time_value), 1)}m"
-        return time_value
 
     def _normalize_chart_start_range(self, time_value, timezone_name=None):
         if isinstance(time_value, (int, float)):
@@ -1061,11 +1063,33 @@ class DatabaseClient(BaseTimeseriesClient):
                 predicates.append(f"{tag_key}={self._format_flux_string(tag_value)}")
         return " AND ".join(predicates)
 
+    def _get_delete_range(self, timestamp=None):
+        """Returns the time range used by the delete API.
+
+        The stop of the range is exclusive, hence a minimal range is used to
+        delete the data of a single point.
+        """
+        if timestamp is None:
+            return OPEN_RANGE_START, OPEN_RANGE_STOP
+        if not isinstance(timestamp, datetime):
+            timestamp, _value = self._parse_flux_time(str(timestamp))
+            if timestamp is None:
+                raise ValueError(f'Invalid timestamp: "{_value}"')
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
+        return timestamp, timestamp + timedelta(milliseconds=1)
+
     @retry
-    def _delete_range(self, predicate: str = "", bucket: str | None = None) -> None:
+    def _delete_range(
+        self,
+        predicate: str = "",
+        bucket: str | None = None,
+        start: datetime = OPEN_RANGE_START,
+        stop: datetime = OPEN_RANGE_STOP,
+    ) -> None:
         self._delete_api.delete(
-            OPEN_RANGE_START,
-            OPEN_RANGE_STOP,
+            start,
+            stop,
             predicate,
             bucket=bucket or self.db_name,
             org=self.user,
@@ -1087,13 +1111,23 @@ class DatabaseClient(BaseTimeseriesClient):
             self._delete_range(predicate, bucket=bucket)
 
     def delete_metric_data(
-        self, key: str | None = None, tags: TimeseriesTags | None = None
+        self,
+        key: str | None = None,
+        tags: TimeseriesTags | None = None,
+        timestamp: Any = None,
     ) -> None:
-        """Deletes metric data based on measurement and tags."""
+        """Deletes metric data based on measurement and tags.
+
+        If ``timestamp`` is passed, only the data written at that specific
+        time is deleted.
+        """
         predicate = self._build_delete_predicate(key=key, tags=tags)
+        start, stop = self._get_delete_range(timestamp)
         for bucket in self._get_known_bucket_names():
-            self._delete_range(predicate, bucket=bucket)
-        logger.debug(f"Deleted metric data: key={key}, tags={tags}")
+            self._delete_range(predicate, bucket=bucket, start=start, stop=stop)
+        logger.debug(
+            f"Deleted metric data: key={key}, tags={tags}, timestamp={timestamp}"
+        )
 
     def get_list_query(self, query: str, precision: str = "s") -> list[TimeseriesPoint]:
         """Execute a query and flatten GROUP BY TAG results for chart rendering.
@@ -1239,13 +1273,15 @@ class DatabaseClient(BaseTimeseriesClient):
         return flux_query
 
     def _format_filter(self, field, value):
-        if value in (None, "", "__all__"):
+        # "__all__" is not a wildcard: charts which declare "__all__" are read
+        # from a series tagged with that value, consistently with the InfluxDB 1
+        # backend, see its _get_where_query().
+        if value in (None, ""):
             return ""
         if isinstance(value, (list, tuple)):
-            items = [item for item in value if item != "__all__"]
-            if not items:
+            if not value:
                 return ""
-            values = ", ".join([self._format_flux_string(item) for item in items])
+            values = ", ".join([self._format_flux_string(item) for item in value])
             return f" |> filter(fn: (r) => contains(value: r.{field}, set: [{values}]))"
         return (
             " |> filter(fn: (r) => " f"r.{field} == {self._format_flux_string(value)})"
