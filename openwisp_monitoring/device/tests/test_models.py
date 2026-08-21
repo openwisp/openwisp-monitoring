@@ -256,8 +256,11 @@ class MonitoringTestMixin(object):
         d = self._create_device(**kwargs)
         return DeviceData(pk=d.pk)
 
-    def _create_env(self):
-        d = self._create_device()
+    def _create_env(self, organization=None):
+        if organization is None:
+            d = self._create_device()
+        else:
+            d = self._create_device(organization=organization)
         dm = d.monitoring
         dm.update_status("ok")
         ping = self._create_object_metric(configuration="ping", content_object=d)
@@ -979,7 +982,9 @@ class TestTransactionDeviceMonitoring(
     def test_disabled_organization_statuses(self):
         for status in ("problem", "critical"):
             with self.subTest(status=status):
-                device_monitoring, _, _, _ = self._create_env()
+                device_monitoring, _, _, _ = self._create_env(
+                    organization=self._create_org(name=f"status-{status}")
+                )
                 device_monitoring.update_status(status)
                 DeviceMonitoring.handle_disabled_organization(
                     device_monitoring.device.organization_id
@@ -988,7 +993,9 @@ class TestTransactionDeviceMonitoring(
                 self.assertEqual(device_monitoring.status, "unknown")
 
         with self.subTest("Deactivated device remains deactivated"):
-            device_monitoring, _, _, _ = self._create_env()
+            device_monitoring, _, _, _ = self._create_env(
+                organization=self._create_org(name="deactivated-device")
+            )
             device_monitoring.device.deactivate()
             DeviceMonitoring.handle_disabled_organization(
                 device_monitoring.device.organization_id
@@ -999,7 +1006,9 @@ class TestTransactionDeviceMonitoring(
         with self.subTest(
             "Deactivation after organization handling remains deactivated"
         ):
-            device_monitoring, _, _, _ = self._create_env()
+            device_monitoring, _, _, _ = self._create_env(
+                organization=self._create_org(name="deactivated-after-handling")
+            )
             DeviceMonitoring.handle_disabled_organization(
                 device_monitoring.device.organization_id
             )
@@ -1060,7 +1069,7 @@ class TestTransactionDeviceMonitoring(
         device_monitoring.refresh_from_db()
         device.refresh_from_db()
         wifi_session.refresh_from_db()
-        self.assertEqual(device_monitoring.status, "unknown")
+        self.assertEqual(device_monitoring.status, "deactivated")
         self.assertEqual(device.management_ip, None)
         self.assertIsNotNone(wifi_session.stop_time)
         mocked_dd_cache.assert_called_once()

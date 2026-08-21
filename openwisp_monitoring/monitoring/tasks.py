@@ -31,8 +31,6 @@ def _metric_post_write(name, values, metric, check_threshold_kwargs=None, **kwar
         # The metric can be deleted by the time threshold is being checked.
         # This can happen as the task is being run async.
         return
-    if is_monitoring_blocked(metric.content_object):
-        return
     metric.check_threshold(**check_threshold_kwargs)
     signal_kwargs = dict(
         sender=metric.__class__,
@@ -77,6 +75,35 @@ def _timeseries_write(name, values, metric=None, check_threshold_kwargs=None, **
     )
 
 
+def _filter_blocked_batch_data(data):
+    """Drops entries whose target is blocked, checking each unique target once."""
+    Metric = load_model("monitoring", "Metric")
+    pks_to_fetch = {
+        metric_data["metric"]
+        for metric_data in data
+        if metric_data.get("metric") and not isinstance(metric_data["metric"], Metric)
+    }
+    fetched_metrics = Metric.objects.in_bulk(pks_to_fetch) if pks_to_fetch else {}
+    blocked_targets = {}
+    filtered_data = []
+    for metric_data in data:
+        raw_metric = metric_data.get("metric")
+        metric = (
+            raw_metric
+            if isinstance(raw_metric, Metric)
+            else fetched_metrics.get(raw_metric)
+        )
+        if metric is None:
+            filtered_data.append(metric_data)
+            continue
+        target_key = (metric.content_type_id, metric.object_id)
+        if target_key not in blocked_targets:
+            blocked_targets[target_key] = is_monitoring_blocked(metric.content_object)
+        if not blocked_targets[target_key]:
+            filtered_data.append(metric_data)
+    return filtered_data
+
+
 @shared_task(
     base=OpenwispCeleryTask,
     bind=True,
@@ -89,14 +116,9 @@ def timeseries_batch_write(self, data):
     Similar to timeseries_write function above, but operates on list of
     metric data (batch operation)
     """
-    data = [
-        metric_data
-        for metric_data in data
-        if not (
-            (metric := _get_metric(metric_data.get("metric")))
-            and is_monitoring_blocked(metric.content_object)
-        )
-    ]
+    if not data:
+        return
+    data = _filter_blocked_batch_data(data)
     if not data:
         return
     timeseries_db.batch_write(data)

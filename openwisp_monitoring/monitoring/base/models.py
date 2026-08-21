@@ -486,12 +486,13 @@ class AbstractMetric(TimeStampedEditableModel):
         error_dict = {}
         write_data = []
         for metric, kwargs in raw_data:
-            if is_monitoring_blocked(metric.content_object):
-                continue
             try:
-                write_data.append(metric.write(**kwargs, write=False))
+                result = metric.write(**kwargs, write=False)
             except ValueError as error:
                 error_dict[metric.key] = str(error)
+                continue
+            if result is not None:
+                write_data.append(result)
         if write_data:
             _timeseries_batch_write(write_data)
         if error_dict:
@@ -506,8 +507,6 @@ class AbstractMetric(TimeStampedEditableModel):
     def _notify_users(self, notification_type, alert_settings):
         """creates notifications for users"""
         content_object = self.content_object
-        if is_monitoring_blocked(content_object):
-            return
         opts = dict(
             sender=self,
             type=notification_type,

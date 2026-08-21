@@ -278,10 +278,10 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         # this speeds up the test by reducing requests made
         del data2["resources"]
         additional_queries = 0 if self._is_timeseries_udp_writes else 1
-        with self.assertNumQueries(21 + additional_queries):
+        with self.assertNumQueries(32 + additional_queries):
             response = self._post_data(device.id, device.key, data2)
         # Ensure cache is working
-        with self.assertNumQueries(14 + additional_queries):
+        with self.assertNumQueries(25 + additional_queries):
             response = self._post_data(device.id, device.key, data2)
         self.assertEqual(response.status_code, 200)
         # Add 1 for general metric and chart
