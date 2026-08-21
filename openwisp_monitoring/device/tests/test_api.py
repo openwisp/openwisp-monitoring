@@ -167,7 +167,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(self.metric_queryset.count(), 0)
         self.assertEqual(self.chart_queryset.count(), 0)
         data = {"type": "DeviceMonitoring"}
-        with self.assertNumQueries(2):
+        with self.assertNumQueries(3):
             r = self._post_data(d.id, d.key, data)
         self.assertEqual(r.status_code, 200)
         # Add 1 for general metric and chart
@@ -278,10 +278,10 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         # this speeds up the test by reducing requests made
         del data2["resources"]
         additional_queries = 0 if self._is_timeseries_udp_writes else 1
-        with self.assertNumQueries(21 + additional_queries):
+        with self.assertNumQueries(32 + additional_queries):
             response = self._post_data(device.id, device.key, data2)
         # Ensure cache is working
-        with self.assertNumQueries(13 + additional_queries):
+        with self.assertNumQueries(25 + additional_queries):
             response = self._post_data(device.id, device.key, data2)
         self.assertEqual(response.status_code, 200)
         # Add 1 for general metric and chart
@@ -363,6 +363,29 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(self.metric_queryset.count(), 0)
         self.assertEqual(self.chart_queryset.count(), 0)
 
+    def test_404_disabled_organization_with_cached_device(self):
+        organization = self._create_org()
+        device = self._create_device(organization=organization)
+        self.assertEqual(
+            self._post_data(device.id, device.key, self._data()).status_code, 200
+        )
+        organization.is_active = False
+        with self.captureOnCommitCallbacks(execute=True):
+            organization.save()
+        response = self._post_data(device.id, device.key, self._data())
+        self.assertEqual(response.status_code, 404)
+
+    def test_disabled_organization_read_api_allowed(self):
+        org = self._create_org(is_active=False)
+        device = self._create_device(organization=org)
+        device_list_url = reverse("monitoring:api_monitoring_device_list")
+        response = self.client.get(device_list_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 1)
+        metric_list_url = reverse("monitoring:api_device_metric_list", args=[device.pk])
+        response = self.client.get(metric_list_url)
+        self.assertEqual(response.status_code, 200)
+
     def test_device_activate_deactivate(self):
         # "self.create_test_data" creates a device and makes
         # a POST request to DeviceMetricView ensuring that
@@ -370,7 +393,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.create_test_data(no_resources=True)
         device = self.device_model.objects.first()
         data = {"type": "DeviceMonitoring"}
-        with self.assertNumQueries(2):
+        with self.assertNumQueries(3):
             response = self._post_data(device.id, device.key, data)
 
         # Deactivating the device will invalidate the cache.
@@ -418,9 +441,9 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
     def test_get_device_metrics_200(self):
         dd = self.create_test_data()
         d = self.device_model.objects.get(pk=dd.pk)
-        with self.assertNumQueries(17):
-            r = self.client.get(self._url(d.pk, d.key))
         with self.assertNumQueries(16):
+            r = self.client.get(self._url(d.pk, d.key))
+        with self.assertNumQueries(15):
             r = self.client.get(self._url(d.pk, d.key))
         self.assertEqual(r.status_code, 200)
 
@@ -1411,7 +1434,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             name="CPU usage", configuration="cpu", object_id=d.id
         )
         values = {"cpu_usage": 0.0, "load_1": 0.0, "load_5": 0.0, "load_15": 0.0}
-        time = start_time.strftime("%d-%m-%Y_%H:%M:%S.%f")
+        signal_time = timezone.now()
+        time = signal_time.strftime("%d-%m-%Y_%H:%M:%S.%f")
         with catch_signal(post_metric_write) as handler:
             self._post_data(d.id, d.key, data, time=time)
         signal_calls = handler.call_args_list
@@ -1424,7 +1448,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             signal=post_metric_write,
             sender=Metric,
             values=values,
-            time=start_time.isoformat(),
+            time=signal_time.isoformat(),
             current=False,
         )
         self.assertEqual(signal_calls[0][1], expected_arguments)
@@ -2034,6 +2058,20 @@ class TestWifiSessionApi(
         serializer_dict = self._serialize_wifi_session(ws, list_single=True)
         self.assertEqual(len(response.data["results"]), 1)
         self.assertEqual(response.data["results"][0], serializer_dict)
+
+    def test_wifi_session_read_allowed_disabled_organization(self):
+        org = self._create_org(is_active=False)
+        device = self._create_device(organization=org)
+        wifi_session = self._create_wifi_session(device=device)
+        self._login_admin()
+        list_response = self.client.get(reverse("monitoring:api_wifi_session_list"))
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(list_response.data["count"], 1)
+        self.assertEqual(list_response.data["results"][0]["id"], str(wifi_session.id))
+        detail_response = self.client.get(
+            reverse("monitoring:api_wifi_session_detail", args=[wifi_session.id])
+        )
+        self.assertEqual(detail_response.status_code, 200)
 
     def test_wifi_session_list_unauthorized(self):
         device = self._create_device()

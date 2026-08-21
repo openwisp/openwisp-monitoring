@@ -29,6 +29,7 @@ from openwisp_controller.geo.admin import DeviceLocationInline
 from openwisp_users.multitenancy import MultitenantAdminMixin
 from openwisp_utils.admin import ReadOnlyAdmin
 
+from ..admin import DisabledOrgReadOnlyInlineMixin
 from ..monitoring.admin import MetricAdmin
 from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from . import settings as app_settings
@@ -120,10 +121,6 @@ class DeactivatedDeviceReadOnlyInlinePermissionMixin(
         perm = super().has_change_permission(request, obj)
         return self._has_permission(request, obj, perm)
 
-    def has_view_permission(self, request, obj=None):
-        perm = super().has_view_permission(request, obj)
-        return self._has_permission(request, obj, perm)
-
     def has_delete_permission(self, request, obj=None):
         perm = super().has_delete_permission(request, obj)
         return self._has_permission(request, obj, perm)
@@ -188,7 +185,9 @@ class AlertSettingsForm(ModelForm):
         return super().save(commit)
 
 
-class AlertSettingsInline(InlinePermissionMixin, NestedStackedInline):
+class AlertSettingsInline(
+    DisabledOrgReadOnlyInlineMixin, InlinePermissionMixin, NestedStackedInline
+):
     model = AlertSettings
     extra = 1
     max_num = 1
@@ -430,7 +429,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
         for inline in inlines:
             if not hasattr(inline, "sortable_options"):
                 inline.sortable_options = {"disabled": True}
-        if not obj or obj._state.adding or obj.organization.is_active is False:
+        if not obj or obj._state.adding:
             inlines.remove(CheckInline)
             inlines.remove(MetricInline)
         return inlines

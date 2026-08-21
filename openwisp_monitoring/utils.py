@@ -33,3 +33,20 @@ def retry(method):
                     raise err
 
     return wrapper
+
+
+def is_monitoring_blocked(obj):
+    """
+    Whether monitoring operations must be skipped for a related object.
+
+    Duck-typed so it works across generic relations: a deactivated
+    device or a device belonging to a disabled organization blocks
+    monitoring, everything else (None, non-device content objects) does
+    not.
+    """
+    if obj is None:
+        return False
+    if hasattr(obj, "is_deactivated") and obj.is_deactivated():
+        return True
+    organization = getattr(obj, "organization", None)
+    return organization is not None and not organization.is_active
