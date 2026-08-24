@@ -1090,7 +1090,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         )
         self.assertIn(f'from(bucket: "{self.timeseries_db.db_name}")', query)
         self.assertIn('start: time(v: "2024-03-25T00:00:00Z")', query)
-        self.assertIn('stop: time(v: "2024-03-26T00:00:00Z")', query)
+        self.assertIn('stop: time(v: "2024-03-26T00:00:00.000001Z")', query)
         self.assertIn('r.content_type == "config.device"', query)
         self.assertIn('r.object_id == "device-id"', query)
         self.assertIn('r._field == "cpu_usage"', query)
@@ -1119,7 +1119,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         )
 
         self.assertIn('start: time(v: "2024-03-25T04:30:00Z")', query)
-        self.assertIn('stop: time(v: "2024-03-25T05:30:00Z")', query)
+        self.assertIn('stop: time(v: "2024-03-25T05:30:00.000001Z")', query)
 
     def test_generated_query_converts_naive_chart_range_from_timezone_to_utc(self):
         query = self.timeseries_db.get_query(
@@ -1135,7 +1135,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             timezone="Asia/Kolkata",
         )
         self.assertIn('range(start: time(v: "2024-03-25T04:30:00Z")', query)
-        self.assertIn('stop: time(v: "2024-03-25T05:30:00Z"))', query)
+        self.assertIn('stop: time(v: "2024-03-25T05:30:00.000001Z"))', query)
 
     def test_get_query_escapes_default_chart_filters(self):
         query = self.timeseries_db.get_query(
@@ -1180,6 +1180,32 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             self.timeseries_db._format_flux_time("2024-03-26"),
             'time(v: "2024-03-26T00:00:00Z")',
         )
+
+    def test_get_query_includes_the_end_date(self):
+        """The stop of a Flux range is exclusive, unlike InfluxDB 1."""
+        params = {
+            "key": "cpu",
+            "field_name": "cpu_usage",
+            "time": "2024-03-25 00:00:00",
+            "end_date": "2024-03-26 00:00:00",
+        }
+        templated_query = self.timeseries_db.get_query(
+            chart_type="scatter",
+            params=params,
+            time="1d",
+            group_map={"1d": "10m"},
+            query=chart_query["cpu"]["influxdb2"],
+            timezone="UTC",
+        )
+        default_query = self.timeseries_db.get_query(
+            chart_type="scatter",
+            params=params,
+            time="1d",
+            group_map={"1d": "10m"},
+            timezone="UTC",
+        )
+        for query in (templated_query, default_query):
+            self.assertIn('stop: time(v: "2024-03-26T00:00:00.000001Z")', query)
 
     def test_get_query_does_not_interpolate_unsafe_end_date(self):
         """Prevent end-date injection from appending malicious Flux stages."""

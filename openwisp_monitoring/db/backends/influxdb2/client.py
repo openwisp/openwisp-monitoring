@@ -493,6 +493,9 @@ class DatabaseClient(BaseTimeseriesClient):
     def _serialize_flux_time(self, value):
         return value.isoformat().replace("+00:00", "Z")
 
+    # smallest representable interval added to the stop of a range
+    _RANGE_STOP_EPSILON = timedelta(microseconds=1)
+
     def _format_flux_time(self, value, timezone_name=None):
         if isinstance(value, datetime):
             if value.tzinfo is None:
@@ -518,6 +521,20 @@ class DatabaseClient(BaseTimeseriesClient):
                     value = value.replace(tzinfo=timezone.utc)
             return f'time(v: "{self._serialize_flux_time(value)}")'
         return value
+
+    def _format_flux_range_stop(self, value, timezone_name=None):
+        """Returns the stop of a range which includes the given end date.
+
+        The stop of a Flux range is exclusive, while the InfluxDB 1 backend
+        includes the points which match the end date exactly.
+        """
+        if isinstance(value, str):
+            parsed_value, _ = self._parse_flux_time(value)
+            if parsed_value is not None:
+                value = parsed_value
+        if isinstance(value, datetime):
+            value += self._RANGE_STOP_EPSILON
+        return self._format_flux_time(value, timezone_name=timezone_name)
 
     def _normalize_chart_start_range(self, time_value, timezone_name=None):
         if isinstance(time_value, (int, float)):
@@ -1239,7 +1256,7 @@ class DatabaseClient(BaseTimeseriesClient):
             time_val = self._normalize_chart_window(time)
             start_range = f"-{time_val}"
         if params.get("end_date"):
-            end_range = self._format_flux_time(
+            end_range = self._format_flux_range_stop(
                 params["end_date"], timezone_name=timezone_name
             )
             flux_query += f" |> range(start: {start_range}, stop: {end_range})"
@@ -1328,7 +1345,7 @@ class DatabaseClient(BaseTimeseriesClient):
             time_start = f"-{time_val}"
         end_range = ""
         if params.get("end_date"):
-            formatted_end = self._format_flux_time(
+            formatted_end = self._format_flux_range_stop(
                 params["end_date"], timezone_name=timezone_name
             )
             end_range = f", stop: {formatted_end}"
