@@ -4,7 +4,7 @@
   const loadingOverlay = $("#dashboard-map-overlay .ow-loading-spinner");
   const localStorageKey = "ow-map-shown";
   const mapContainer = $("#device-map-container");
-  const statuses = ["critical", "problem", "ok", "unknown", "deactivated"];
+  const healthStatuses = ["critical", "problem", "ok", "unknown"];
   window._owGeoMapConfig.STATUS_COLORS = {
     ok: "#267126",
     problem: "#ffb442",
@@ -27,34 +27,27 @@
     div.textContent = text;
     return div.innerHTML;
   };
-  const getColor = function (data) {
-    let deviceCount = data.device_count,
-      findResult = function (func) {
-        for (let i in statuses) {
-          let status = statuses[i],
-            statusCount = data[status + "_count"];
-          if (statusCount === 0) {
-            continue;
-          }
-          return func(status, statusCount);
-        }
-      };
-    // if one status has absolute majority, it's the winner
-    let majority = findResult(function (status, statusCount) {
-      if (statusCount > deviceCount / 2) {
-        return STATUS_COLORS[status];
-      }
-    });
-    if (majority) {
-      return majority;
+  const getStatus = function (data) {
+    const counts = healthStatuses.map((status) => ({
+      status,
+      count: data[status + "_count"] || 0,
+    }));
+    const highestCount = Math.max(...counts.map(({ count }) => count));
+    if (highestCount === 0) {
+      return data.deactivated_count ? "deactivated" : "unknown";
     }
-    // otherwise simply return the color based on the priority
-    return findResult(function (status, statusCount) {
-      // if one status has absolute majority, it's the winner
-      if (statusCount) {
-        return STATUS_COLORS[status];
-      }
-    });
+    const highestStatuses = counts
+      .filter(({ count }) => count === highestCount)
+      .map(({ status }) => status);
+    if (highestStatuses.length === 1) {
+      return highestStatuses[0];
+    }
+    return highestStatuses.some((status) => ["ok", "problem"].includes(status))
+      ? "problem"
+      : "critical";
+  };
+  const getColor = function (data) {
+    return STATUS_COLORS[getStatus(data)];
   };
 
   async function loadPopUpContent(nodeData) {
@@ -407,13 +400,7 @@
         if (Array.isArray(items)) {
           items.forEach((el) => {
             const props = el.properties || {};
-            let status = props.status?.toLowerCase();
-            if (!status) {
-              const color = getColor(props);
-              status =
-                Object.keys(STATUS_COLORS).find((k) => STATUS_COLORS[k] === color) ||
-                "unknown";
-            }
+            const status = props.status?.toLowerCase() || getStatus(props);
             props.status = status;
             props.category = status;
             el.category = status;
