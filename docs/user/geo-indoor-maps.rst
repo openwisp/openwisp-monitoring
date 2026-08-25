@@ -14,6 +14,26 @@ devices in real time.
     :depth: 1
     :local:
 
+.. _monitoring_dashboard_map:
+
+Dashboard Map
+-------------
+
+The dashboard map shows locations with installed devices and provides a
+visual overview of their monitoring status. It is controlled by the boolean
+``OPENWISP_MONITORING_DASHBOARD_MAP`` setting, which defaults to ``True``.
+
+The dashboard map requires ``OPENWISP_ADMIN_DASHBOARD_ENABLED`` from
+:ref:`openwisp-utils <utils_admin_dashboard_enabled>` to be set to ``True``.
+Set ``OPENWISP_MONITORING_DASHBOARD_MAP`` to ``False`` to disable the map if
+you do not use OpenWISP geographic features.
+
+When a location contains multiple devices, its marker reflects the most
+common active health status. Deactivated devices are excluded from this
+calculation. If the most common statuses are tied, a tie including ``ok`` or
+``problem`` is shown as ``problem``; a tie between ``critical`` and
+``unknown`` is shown as ``critical``.
+
 Indoor Map View with Floor Navigation
 -------------------------------------
 

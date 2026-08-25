@@ -302,30 +302,7 @@ This setting is independent of celery retry settings.
 ``OPENWISP_MONITORING_DASHBOARD_MAP``
 -------------------------------------
 
-============ ========
-**type**:    ``bool``
-**default**: ``True``
-============ ========
-
-Whether the geographic map in the dashboard is enabled or not. This
-feature provides a geographic map which shows the locations which have
-devices installed in and provides a visual representation of the
-monitoring status of the devices, this allows to get an overview of the
-network at glance.
-
-When a location contains multiple devices, its marker reflects the most
-common active health status. Deactivated devices are excluded from this
-calculation. If the most common statuses are tied, a tie including ``ok`` or
-``problem`` is shown as ``problem``; a tie between ``critical`` and
-``unknown`` is shown as ``critical``.
-
-This feature is enabled by default and depends on the setting
-``OPENWISP_ADMIN_DASHBOARD_ENABLED`` from :ref:`openwisp-utils
-<utils_admin_dashboard_enabled>` being set to ``True`` (which is the
-default).
-
-You can turn this off if you do not use the geographic features of
-OpenWISP.
+See :ref:`the dashboard map documentation <monitoring_dashboard_map>`.
 
 .. _openwisp_monitoring_dashboard_traffic_chart:
 
