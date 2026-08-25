@@ -302,7 +302,8 @@ This setting is independent of celery retry settings.
 ``OPENWISP_MONITORING_DASHBOARD_MAP``
 -------------------------------------
 
-See :ref:`the dashboard map documentation <monitoring_dashboard_map>`.
+Whether the :ref:`geographic map in the dashboard <monitoring_dashboard_map>`
+is enabled or not.
 
 .. _openwisp_monitoring_dashboard_traffic_chart:
 

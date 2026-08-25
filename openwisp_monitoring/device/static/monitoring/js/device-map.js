@@ -28,6 +28,8 @@
     return div.innerHTML;
   };
   const getStatus = function (data) {
+    // Choose the most common active status. Deactivated devices are ignored
+    // unless all devices are deactivated; ties prefer problem, then critical.
     const counts = healthStatuses.map((status) => ({
       status,
       count: data[status + "_count"] || 0,
