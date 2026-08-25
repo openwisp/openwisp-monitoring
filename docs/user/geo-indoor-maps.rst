@@ -1,38 +1,46 @@
 Geographic & Indoor Maps
 ========================
 
-.. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.3/intro.gif
-    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.3/intro.gif
-    :alt: Intro
-
-OpenWISP provides a unified web interface to monitor network status across
-all scales: start with a global geographic overview, drill down into
-specific buildings via indoor maps, and switch between floors to track
-devices in real time.
-
 .. contents:: **Table of contents**:
     :depth: 1
     :local:
 
-.. _monitoring_dashboard_map:
+.. _openwisp_monitoring_geographic_map:
 
-Dashboard Map
--------------
+.. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.3/intro.gif
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.3/intro.gif
+    :alt: Intro
 
-The dashboard map shows locations with installed devices and provides a
-visual overview of their monitoring status. It is controlled by the boolean
-``OPENWISP_MONITORING_DASHBOARD_MAP`` setting, which defaults to ``True``.
+OpenWISP provides a unified geographic map to monitor network status
+across all scales: start with a global geographic overview, drill down
+into specific buildings via indoor maps, and switch between floors to
+track devices in real time.
 
-The dashboard map requires ``OPENWISP_ADMIN_DASHBOARD_ENABLED`` from
-:ref:`openwisp-utils <utils_admin_dashboard_enabled>` to be set to ``True``.
-Set ``OPENWISP_MONITORING_DASHBOARD_MAP`` to ``False`` to disable the map if
-you do not use OpenWISP geographic features.
+The global map overview shows locations with installed devices and
+provides a visual overview of their monitoring status.
 
 When a location contains multiple devices, its marker reflects the most
-common active health status. Deactivated devices are excluded from this
-calculation. If the most common statuses are tied, a tie including ``ok`` or
-``problem`` is shown as ``problem``; a tie between ``critical`` and
-``unknown`` is shown as ``critical``.
+common active health status.
+
+.. note::
+
+    When a location contains multiple devices and the most common statuses
+    are tied, any tied set including ``ok`` or ``problem`` is shown as
+    ``problem``. A tie limited to ``critical`` and ``unknown`` is shown as
+    ``critical``.
+
+    Deactivated devices are generally excluded from these calculations. If
+    all devices at a location are deactivated, its marker is shown in the
+    deactivated color.
+
+.. seealso::
+
+    The geographic map dashboard is built on top of the :doc:`OpenWISP
+    Utils Dashboard </utils/developer/dashboard>`.
+
+    It is enabled by default and can be disabled with the boolean
+    ``OPENWISP_MONITORING_DASHBOARD_MAP`` setting. See
+    :ref:`openwisp_monitoring_dashboard_map`.
 
 Indoor Map View with Floor Navigation
 -------------------------------------

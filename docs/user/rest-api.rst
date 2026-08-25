@@ -87,9 +87,9 @@ List Locations as GeoJSON
 
     GET /api/v1/monitoring/geojson/
 
-Returns locations with devices as GeoJSON features. Each feature includes the
-total device count and counts for the ``ok``, ``problem``, ``critical``,
-``unknown``, and ``deactivated`` monitoring statuses.
+Returns locations with devices as GeoJSON features. Each feature includes
+the total device count and counts for the ``ok``, ``problem``,
+``critical``, ``unknown``, and ``deactivated`` monitoring statuses.
 
 Retrieve Device Charts and Device Status Data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -302,8 +302,19 @@ This setting is independent of celery retry settings.
 ``OPENWISP_MONITORING_DASHBOARD_MAP``
 -------------------------------------
 
-Whether the :ref:`geographic map in the dashboard <monitoring_dashboard_map>`
-is enabled or not.
+============ ========
+**type**:    ``bool``
+**default**: ``True``
+============ ========
+
+Whether the :ref:`geographic map in the dashboard
+<openwisp_monitoring_geographic_map>` is enabled or not.
+
+Set it to ``False`` if you do not use geographic features of OpenWISP.
+
+This feature also depends on the ``OPENWISP_ADMIN_DASHBOARD_ENABLED``
+setting from :ref:`openwisp-utils <utils_admin_dashboard_enabled>` being
+set to ``True``, which is the default.
 
 .. _openwisp_monitoring_dashboard_traffic_chart:
 
