@@ -228,6 +228,12 @@ class MonitoringGeoJsonLocationList(GeoJsonLocationList):
                 "devicelocation",
                 filter=Q(devicelocation__content_object__monitoring__status="unknown"),
             ),
+            deactivated_count=Count(
+                "devicelocation",
+                filter=Q(
+                    devicelocation__content_object__monitoring__status="deactivated"
+                ),
+            ),
         )
         .order_by("-created")
     )

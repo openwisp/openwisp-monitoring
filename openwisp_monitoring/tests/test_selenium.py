@@ -372,6 +372,60 @@ class TestDashboardMap(
             print(self.get_browser_logs())
             self.fail(f"Popup table did not finish loading within {timeout}s: {e}")
 
+    def test_dashboard_map_location_health_status(self):
+        """Ensures markers use active status counts and the defined tie rules."""
+        org = self._get_org()
+        cases = {
+            "Predominantly healthy": ({"ok": 6, "unknown": 5, "critical": 2}, "ok"),
+            "Tied healthy and critical": ({"ok": 1, "critical": 1}, "problem"),
+            "Tied problem and critical": ({"problem": 1, "critical": 1}, "problem"),
+            "Tied critical and unknown": ({"critical": 1, "unknown": 1}, "critical"),
+            "Only deactivated": ({"deactivated": 2}, "deactivated"),
+            "Deactivated devices ignored": (
+                {"ok": 2, "critical": 1, "deactivated": 10},
+                "ok",
+            ),
+        }
+        for location_index, (name, (counts, _)) in enumerate(cases.items()):
+            location = self._create_location(
+                type="outdoor",
+                name=name,
+                organization=org,
+                geometry=Point(12.5 + location_index / 100, 41.9),
+            )
+            device_index = 0
+            for status, count in counts.items():
+                for _ in range(count):
+                    device = self._create_device(
+                        name=f"device-{location_index}-{device_index}",
+                        mac_address=(
+                            f"00:00:00:{location_index:02x}:{device_index:02x}:00"
+                        ),
+                        organization=org,
+                    )
+                    device.monitoring.update_status(status)
+                    self._create_object_location(
+                        content_object=device,
+                        location=location,
+                        organization=org,
+                    )
+                    device_index += 1
+        self.login()
+        try:
+            statuses = WebDriverWait(self.web_driver, 5).until(
+                lambda d: d.execute_script("""
+                    const nodes = window._owGeoMap?.data?.nodes;
+                    if (!nodes || nodes.length !== 6) return false;
+                    return Object.fromEntries(nodes.map(node => [node.label, node.category]));
+                """)
+            )
+        except TimeoutException:
+            self.fail("Failed to retrieve dashboard map location statuses")
+        self.assertDictEqual(
+            statuses,
+            {name: status for name, (_, status) in cases.items()},
+        )
+
     def test_features_on_device_popup(self):
         org = self._get_org()
         d1 = self._create_device(
