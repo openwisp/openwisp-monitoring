@@ -373,6 +373,7 @@ class TestDashboardMap(
             self.fail(f"Popup table did not finish loading within {timeout}s: {e}")
 
     def test_dashboard_map_location_health_status(self):
+        """Ensures markers use active status counts and the defined tie rules."""
         org = self._get_org()
         cases = {
             "Predominantly healthy": ({"ok": 6, "unknown": 5, "critical": 2}, "ok"),
