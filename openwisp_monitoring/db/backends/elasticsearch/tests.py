@@ -1269,15 +1269,7 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
                 {
                     "top_metrics": {
                         "metrics": {"field": "indexed_fields.numeric.value"},
-                        "sort": [
-                            {"@timestamp": "desc"},
-                            {
-                                "openwisp_write_sequence": {
-                                    "order": "desc",
-                                    "unmapped_type": "long",
-                                }
-                            },
-                        ],
+                        "sort": {"@timestamp": "desc"},
                     }
                 },
             ),

@@ -1399,15 +1399,7 @@ class DatabaseClient(BaseTimeseriesClient):
             metric_aggregation = {
                 "top_metrics": {
                     "metrics": {"field": field},
-                    "sort": [
-                        {"@timestamp": "desc"},
-                        {
-                            "openwisp_write_sequence": {
-                                "order": "desc",
-                                "unmapped_type": "long",
-                            }
-                        },
-                    ],
+                    "sort": {"@timestamp": "desc"},
                 }
             }
         else:
