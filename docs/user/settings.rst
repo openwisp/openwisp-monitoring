@@ -313,6 +313,12 @@ devices installed in and provides a visual representation of the
 monitoring status of the devices, this allows to get an overview of the
 network at glance.
 
+When a location contains multiple devices, its marker reflects the most
+common active health status. Deactivated devices are excluded from this
+calculation. If the most common statuses are tied, a tie including ``ok`` or
+``problem`` is shown as ``problem``; a tie between ``critical`` and
+``unknown`` is shown as ``critical``.
+
 This feature is enabled by default and depends on the setting
 ``OPENWISP_ADMIN_DASHBOARD_ENABLED`` from :ref:`openwisp-utils
 <utils_admin_dashboard_enabled>` being set to ``True`` (which is the

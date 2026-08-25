@@ -377,6 +377,7 @@ class TestDashboardMap(
         cases = {
             "Predominantly healthy": ({"ok": 6, "unknown": 5, "critical": 2}, "ok"),
             "Tied healthy and critical": ({"ok": 1, "critical": 1}, "problem"),
+            "Tied problem and critical": ({"problem": 1, "critical": 1}, "problem"),
             "Tied critical and unknown": ({"critical": 1, "unknown": 1}, "critical"),
             "Only deactivated": ({"deactivated": 2}, "deactivated"),
             "Deactivated devices ignored": (
@@ -414,7 +415,7 @@ class TestDashboardMap(
                 lambda d: d.execute_script(
                     """
                     const nodes = window._owGeoMap?.data?.nodes;
-                    if (!nodes || nodes.length !== 5) return false;
+                    if (!nodes || nodes.length !== 6) return false;
                     return Object.fromEntries(nodes.map(node => [node.label, node.category]));
                 """
                 )

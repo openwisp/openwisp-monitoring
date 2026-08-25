@@ -80,6 +80,17 @@ multi-tenancy and allows filtering monitoring data by
     The ``start`` and ``end`` parameters should be in the format
     ``YYYY-MM-DD H:M:S``, otherwise 400 Bad Response will be returned.
 
+List Locations as GeoJSON
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: text
+
+    GET /api/v1/monitoring/geojson/
+
+Returns locations with devices as GeoJSON features. Each feature includes the
+total device count and counts for the ``ok``, ``problem``, ``critical``,
+``unknown``, and ``deactivated`` monitoring statuses.
+
 Retrieve Device Charts and Device Status Data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
