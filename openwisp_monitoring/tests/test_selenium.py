@@ -236,8 +236,7 @@ class TestDashboardCharts(
         self.wait_for_visibility(
             By.CSS_SELECTOR, "#chart-0 .js-plotly-plot", timeout=10
         )
-        self.web_driver.execute_script(
-            """
+        self.web_driver.execute_script("""
             window.dashboardChartRequests = 0;
             const originalAjax = django.jQuery.ajax;
             django.jQuery.ajax = function () {
@@ -248,8 +247,7 @@ class TestDashboardCharts(
               'plotly_relayout',
               { autosize: true },
             );
-        """
-        )
+        """)
         self.assertEqual(
             self.web_driver.execute_script("return window.dashboardChartRequests;"), 0
         )
@@ -415,13 +413,11 @@ class TestDashboardMap(
         self.login()
         try:
             statuses = WebDriverWait(self.web_driver, 5).until(
-                lambda d: d.execute_script(
-                    """
+                lambda d: d.execute_script("""
                     const nodes = window._owGeoMap?.data?.nodes;
                     if (!nodes || nodes.length !== 6) return false;
                     return Object.fromEntries(nodes.map(node => [node.label, node.category]));
-                """
-                )
+                """)
             )
         except TimeoutException:
             self.fail("Failed to retrieve dashboard map location statuses")
@@ -779,8 +775,7 @@ class TestDashboardMap(
                 == second_map_id
             )
         except TimeoutException:
-            floorplan_state = self.web_driver.execute_script(
-                """
+            floorplan_state = self.web_driver.execute_script("""
                 const state = django.jQuery("#floorplan-overlay").data("floorplanState");
                 return {
                   activeMapId: window._owIndoorMap?.config?.bookmarkableActions?.id,
@@ -788,8 +783,7 @@ class TestDashboardMap(
                   hash: window.location.hash,
                   locationId: state?.state?.locationId,
                 };
-                """
-            )
+                """)
             self.fail(
                 f"Hash change did not activate {second_map_id}; "
                 f"state is {floorplan_state}; logs are {self.get_browser_logs()}"
@@ -928,46 +922,32 @@ class TestDashboardMap(
         self.find_element(
             By.CSS_SELECTOR, "#floorplan-navigation .floor-btn[data-floor='2']"
         ).click()
-        WebDriverWait(self.web_driver, 2).until(
-            lambda d: d.execute_script(
-                """
+        WebDriverWait(self.web_driver, 2).until(lambda d: d.execute_script("""
                 const state = django.jQuery("#floorplan-overlay").data("floorplanState");
                 return (
                   state?.state?.currentFloor === 1 &&
                   !state.allResults[2] &&
                   !state.floorRequests[2]
                 );
-                """
-            )
-        )
+                """))
         self.find_element(
             By.CSS_SELECTOR, "#floorplan-navigation .floor-btn[data-floor='2']"
         ).click()
-        WebDriverWait(self.web_driver, 2).until(
-            lambda d: d.execute_script(
-                """
+        WebDriverWait(self.web_driver, 2).until(lambda d: d.execute_script("""
                 const state = django.jQuery("#floorplan-overlay").data("floorplanState");
                 return state?.allResults[2]?.length === 51;
-                """
-            )
-        )
-        self.web_driver.execute_script(
-            """
+                """))
+        self.web_driver.execute_script("""
             const floorButton = document.querySelector(
               "#floorplan-navigation .floor-btn[data-floor='3']",
             );
             floorButton.click();
             floorButton.click();
-            """
-        )
-        WebDriverWait(self.web_driver, 2).until(
-            lambda d: d.execute_script(
-                """
+            """)
+        WebDriverWait(self.web_driver, 2).until(lambda d: d.execute_script("""
                 const state = django.jQuery("#floorplan-overlay").data("floorplanState");
                 return state?.allResults[3]?.length === 51;
-                """
-            )
-        )
+                """))
 
     def test_switching_floorplan_in_fullscreen_mode(self):
         org = self._get_org()
@@ -1186,8 +1166,7 @@ class TestDashboardMap(
         location.save()
         try:
             series_value = WebDriverWait(self.web_driver, 5).until(
-                lambda d: d.execute_script(
-                    """
+                lambda d: d.execute_script("""
                     const options = window._owGeoMap.echarts.getOption();
                     const series = options.series.find(
                         (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -1195,8 +1174,7 @@ class TestDashboardMap(
                     const item = series.data.find(d => d.name === "Test-Location");
                     if (!item) return false;
                     return item.value;
-                """
-                )
+                """)
             )
         except TimeoutException:
             self.fail("Failed to retrieve mobile location data")
@@ -1210,8 +1188,7 @@ class TestDashboardMap(
             location.save()
             try:
                 series_value = WebDriverWait(self.web_driver, 5).until(
-                    lambda d: d.execute_script(
-                        """
+                    lambda d: d.execute_script("""
                         const options = window._owGeoMap.echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -1219,8 +1196,7 @@ class TestDashboardMap(
                         const item = series.data.find(d => d.name === "Test-Location");
                         if (!item) return false;
                         return item.value;
-                    """
-                    )
+                    """)
                 )
             except TimeoutException:
                 self.fail("Failed to retrieve updated mobile location data")
@@ -1273,8 +1249,7 @@ class TestDashboardMap(
             sleep(0.3)  # Wait for JS animation
             try:
                 series_locations = WebDriverWait(self.web_driver, 5).until(
-                    lambda d: d.execute_script(
-                        """
+                    lambda d: d.execute_script("""
                         const options = window._owGeoMap.echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -1283,8 +1258,7 @@ class TestDashboardMap(
                         const org2_location = series.data.find(l => l.name === "Org2-Location")
                         if (!org1_location || !org2_location) return false;
                         return {org1_location, org2_location}
-                    """
-                    )
+                    """)
                 )
             except TimeoutException:
                 self.fail("Failed to retrieve org location data from superuser")
@@ -1312,8 +1286,7 @@ class TestDashboardMap(
             sleep(0.3)  # Wait for JS animation
             try:
                 series_locations = WebDriverWait(org1_driver, 5).until(
-                    lambda d: d.execute_script(
-                        """
+                    lambda d: d.execute_script("""
                         const options = window._owGeoMap.echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -1323,8 +1296,7 @@ class TestDashboardMap(
                         if (!org1_location) return false;
                         if (org2_location !== undefined) return false;
                         return {org1_location, org2_location}
-                    """
-                    )
+                    """)
                 )
             except TimeoutException:
                 self.fail("Failed to retrieve org1 location data from org1 user")
@@ -1351,8 +1323,7 @@ class TestDashboardMap(
             sleep(0.3)  # Wait for JS animation
             try:
                 series_locations = WebDriverWait(org2_driver, 5).until(
-                    lambda d: d.execute_script(
-                        """
+                    lambda d: d.execute_script("""
                         const options = window._owGeoMap.echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -1362,8 +1333,7 @@ class TestDashboardMap(
                         if (org1_location !== undefined) return false;
                         if (!org2_location) return false;
                         return {org1_location, org2_location}
-                    """
-                    )
+                    """)
                 )
             except TimeoutException:
                 self.fail("Failed to retrieve org2 location data from org2 user")
