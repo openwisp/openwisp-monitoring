@@ -310,7 +310,7 @@ This setting is independent of celery retry settings.
 Whether the :ref:`geographic map in the dashboard
 <openwisp_monitoring_geographic_map>` is enabled or not.
 
-Set it to ``False`` if you do not use geographic features of OpenWISP.
+Set it to ``False`` if you do not use the geographic features of OpenWISP.
 
 This feature also depends on the ``OPENWISP_ADMIN_DASHBOARD_ENABLED``
 setting from :ref:`openwisp-utils <utils_admin_dashboard_enabled>` being
