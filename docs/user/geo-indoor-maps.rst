@@ -3,13 +3,17 @@
 Geographic & Indoor Maps
 ========================
 
+.. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.3/intro.gif
+    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.3/intro.gif
+    :alt: Intro
+
+
 .. contents:: **Table of contents**:
     :depth: 1
     :local:
 
-.. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.3/intro.gif
-    :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.3/intro.gif
-    :alt: Intro
+General Geographic Map
+----------------------
 
 OpenWISP provides a unified geographic map to monitor network status
 across all scales: start with a global geographic overview, drill down
