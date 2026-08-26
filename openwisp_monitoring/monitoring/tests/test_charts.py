@@ -233,7 +233,11 @@ class TestCharts(TestMonitoringMixin, TestCase):
         try:
             c = self._create_chart(configuration="trace_order_test")
             data = json.loads(c.json())
-            self.assertEqual(data["trace_order"], ["first", "second"])
+            self.assertEqual(
+                data["trace_order"],
+                ["first", "second"],
+                "Configured trace_order must be preserved in chart JSON",
+            )
         finally:
             unregister_chart("trace_order_test")
 
