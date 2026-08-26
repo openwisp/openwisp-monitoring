@@ -1720,17 +1720,27 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
     def test_api_location_geojson(self):
         device_location = self._create_object_location()
         device_location.device.monitoring.update_status("ok")
+        deactivated_device = self._create_device(
+            organization=device_location.location.organization
+        )
+        deactivated_device.monitoring.update_status("deactivated")
+        self._create_object_location(
+            content_object=deactivated_device,
+            location=device_location.location,
+            organization=device_location.location.organization,
+        )
         self._login_admin()
         url = reverse("monitoring:api_location_geojson")
         response = self.client.get(url)
         data = response.data
         self.assertEqual(data["count"], 1)
         self.assertEqual(len(data["features"]), 1)
-        self.assertEqual(data["features"][0]["properties"]["device_count"], 1)
+        self.assertEqual(data["features"][0]["properties"]["device_count"], 2)
         self.assertEqual(data["features"][0]["properties"]["ok_count"], 1)
         self.assertEqual(data["features"][0]["properties"]["problem_count"], 0)
         self.assertEqual(data["features"][0]["properties"]["critical_count"], 0)
         self.assertEqual(data["features"][0]["properties"]["unknown_count"], 0)
+        self.assertEqual(data["features"][0]["properties"]["deactivated_count"], 1)
 
     def test_api_location_device_list(self):
         org = self._get_org()

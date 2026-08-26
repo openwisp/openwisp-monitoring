@@ -131,6 +131,7 @@ class MonitoringGeoJsonLocationSerializer(GeoJsonLocationSerializer):
     problem_count = serializers.IntegerField()
     critical_count = serializers.IntegerField()
     unknown_count = serializers.IntegerField()
+    deactivated_count = serializers.IntegerField()
 
 
 class WifiClientSerializer(serializers.ModelSerializer):
