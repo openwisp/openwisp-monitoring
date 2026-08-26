@@ -1242,6 +1242,12 @@ class TestDashboardMap(
                         const org1_location = series.data.find(l => l.name === "Org1-Location")
                         const org2_location = series.data.find(l => l.name === "Org2-Location")
                         if (!org1_location || !org2_location) return false;
+                        if (
+                            org1_location.value[0] !== 12.515124
+                            || org1_location.value[1] !== 41.898903
+                            || org2_location.value[0] !== 12.515124
+                            || org2_location.value[1] !== 41.899603
+                        ) return false;
                         return {org1_location, org2_location}
                     """,
                     timeout=5,
@@ -1282,6 +1288,10 @@ class TestDashboardMap(
                         const org2_location = series.data.find(l => l.name === "Org2-Location")
                         if (!org1_location) return false;
                         if (org2_location !== undefined) return false;
+                        if (
+                            org1_location.value[0] !== 12.517124
+                            || org1_location.value[1] !== 41.898903
+                        ) return false;
                         return {org1_location, org2_location}
                     """,
                     timeout=5,
@@ -1322,6 +1332,10 @@ class TestDashboardMap(
                         const org2_location = series.data.find(l => l.name === "Org2-Location")
                         if (org1_location !== undefined) return false;
                         if (!org2_location) return false;
+                        if (
+                            org2_location.value[0] !== 12.517124
+                            || org2_location.value[1] !== 41.899603
+                        ) return false;
                         return {org1_location, org2_location}
                     """,
                     timeout=5,
