@@ -1,4 +1,3 @@
-from time import sleep
 from unittest.mock import patch
 from urllib.parse import quote_plus
 
@@ -132,7 +131,10 @@ class TestDeviceConnectionInlineAdmin(
         ).click()
         try:
             self.wait_until(
-                EC.url_to_be(f"{self.live_server_url}/admin/config/device/"),
+                EC.url_to_be(
+                    f"{self.live_server_url}"
+                    f"{reverse(f'admin:{self.config_app_label}_device_changelist')}"
+                ),
             )
         except TimeoutException:
             self.fail("Failed saving device")
@@ -142,9 +144,7 @@ class TestDeviceConnectionInlineAdmin(
         self.open(
             reverse(f"admin:{self.config_app_label}_device_delete", args=[device.id])
         )
-        self.find_element(
-            By.CSS_SELECTOR, '#content form input[type="submit"]'
-        ).click()
+        self.find_element(By.CSS_SELECTOR, '#content form input[type="submit"]').click()
         self.assertEqual(Device.objects.count(), 0)
         self.assertEqual(DeviceConnection.objects.count(), 0)
         self.assertEqual(Check.objects.count(), 0)
@@ -163,7 +163,10 @@ class TestDeviceConnectionInlineAdmin(
         ).click()
         try:
             self.wait_until(
-                EC.url_to_be(f"{self.live_server_url}/admin/config/device/"),
+                EC.url_to_be(
+                    f"{self.live_server_url}"
+                    f"{reverse(f'admin:{self.config_app_label}_device_changelist')}"
+                ),
             )
         except TimeoutException:
             self.fail("Deleted device was not restored")
@@ -194,9 +197,7 @@ class TestDashboardCharts(
     @patch.dict(DEFAULT_DASHBOARD_TRAFFIC_CHART, {"__all__": ["wlan0", "wlan1"]})
     def test_dashboard_timeseries_charts(self):
         self.login()
-        self.wait_for_visibility(
-            By.CSS_SELECTOR, "#ow-chart-inner-container"
-        )
+        self.wait_for_visibility(By.CSS_SELECTOR, "#ow-chart-inner-container")
         self.wait_for_visibility(By.CSS_SELECTOR, "#ow-chart-utils")
         self.wait_for_visibility(By.CSS_SELECTOR, "#ow-chart-fallback")
         self.assertIn(
@@ -232,9 +233,7 @@ class TestDashboardCharts(
     def test_chart_resize_does_not_reload_dashboard(self):
         self.create_test_data()
         self.login()
-        self.wait_for_visibility(
-            By.CSS_SELECTOR, "#chart-0 .js-plotly-plot", timeout=5
-        )
+        self.wait_for_visibility(By.CSS_SELECTOR, "#chart-0 .js-plotly-plot", timeout=5)
         self.web_driver.execute_script("""
             window.dashboardChartRequests = 0;
             const originalAjax = django.jQuery.ajax;
@@ -650,9 +649,7 @@ class TestDashboardMap(
                 By.CSS_SELECTOR,
                 ".map-detail .floorplan-btn",
             ).click()
-            canvases = self.find_elements(
-                By.CSS_SELECTOR, "#floor-content-1 canvas"
-            )
+            canvases = self.find_elements(By.CSS_SELECTOR, "#floor-content-1 canvas")
             self.assertGreater(len(canvases), 0)
 
         with self.subTest("Test floorplan navigation"):
@@ -662,9 +659,7 @@ class TestDashboardMap(
             right_arrow.click()
             floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
             self.assertIn("2nd floor", floor_heading.text.lower())
-            canvases = self.find_elements(
-                By.CSS_SELECTOR, "#floor-content-2 canvas"
-            )
+            canvases = self.find_elements(By.CSS_SELECTOR, "#floor-content-2 canvas")
             self.assertGreater(len(canvases), 0)
 
             left_arrow = self.find_element(
@@ -673,9 +668,7 @@ class TestDashboardMap(
             left_arrow.click()
             floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
             self.assertIn("1st floor", floor_heading.text.lower())
-            canvases = self.find_elements(
-                By.CSS_SELECTOR, "#floor-content-1 canvas"
-            )
+            canvases = self.find_elements(By.CSS_SELECTOR, "#floor-content-1 canvas")
             self.assertGreater(len(canvases), 0)
 
             second_floor_btn = self.find_element(
@@ -684,9 +677,7 @@ class TestDashboardMap(
             second_floor_btn.click()
             floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
             self.assertIn("2nd floor", floor_heading.text.lower())
-            canvases = self.find_elements(
-                By.CSS_SELECTOR, "#floor-content-2 canvas"
-            )
+            canvases = self.find_elements(By.CSS_SELECTOR, "#floor-content-2 canvas")
             self.assertGreater(len(canvases), 0)
 
         with self.subTest("Test redirecting to device page from indoor map"):
@@ -983,9 +974,7 @@ class TestDashboardMap(
         self.wait_for(
             "element_to_be_clickable", By.CSS_SELECTOR, ".map-detail .floorplan-btn"
         ).click()
-        canvases = self.find_elements(
-            By.CSS_SELECTOR, "#floor-content-1 canvas"
-        )
+        canvases = self.find_elements(By.CSS_SELECTOR, "#floor-content-1 canvas")
         self.assertGreater(len(canvases), 0)
         self.wait_for(
             "element_to_be_clickable",
@@ -1015,9 +1004,7 @@ class TestDashboardMap(
         self.assertNotIn("leaflet-fullscreen-on", container.get_attribute("class"))
         floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
         self.assertIn("2nd floor", floor_heading.text.lower())
-        canvases = self.find_elements(
-            By.CSS_SELECTOR, "#floor-content-2 canvas"
-        )
+        canvases = self.find_elements(By.CSS_SELECTOR, "#floor-content-2 canvas")
         self.assertGreater(len(canvases), 0)
 
     def test_url_fragment_actions_on_indoor_map(self):
@@ -1038,9 +1025,7 @@ class TestDashboardMap(
             By.CSS_SELECTOR,
             ".map-detail .floorplan-btn",
         ).click()
-        canvases = self.find_elements(
-            By.CSS_SELECTOR, "#floor-content-1 canvas"
-        )
+        canvases = self.find_elements(By.CSS_SELECTOR, "#floor-content-1 canvas")
         try:
             self.wait_for_script(
                 "return window._owIndoorMap != null",
@@ -1080,9 +1065,7 @@ class TestDashboardMap(
             tabs = self.web_driver.window_handles
             self.web_driver.switch_to.window(tabs[1])
             self.web_driver.get(current_url)
-            popup = self.wait_for_visibility(
-                By.CSS_SELECTOR, ".njg-tooltip-inner"
-            )
+            popup = self.wait_for_visibility(By.CSS_SELECTOR, ".njg-tooltip-inner")
             self.assertTrue(popup.is_displayed())
             self.assertIn(device.name, popup.get_attribute("innerHTML"))
             self.web_driver.close()
@@ -1109,13 +1092,9 @@ class TestDashboardMap(
             tabs = self.web_driver.window_handles
             self.web_driver.switch_to.window(tabs[1])
             self.web_driver.get(incorrect_floor_url)
-            floor_heading = self.find_element(
-                By.CSS_SELECTOR, "#floorplan-title"
-            )
+            floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
             self.assertIn("1st floor", floor_heading.text.lower())
-            canvases = self.find_elements(
-                By.CSS_SELECTOR, "#floor-content-1 canvas"
-            )
+            canvases = self.find_elements(By.CSS_SELECTOR, "#floor-content-1 canvas")
             self.assertGreater(len(canvases), 0)
             self.assertIn(
                 f"id={location.id}_{floorplan.floor}",
@@ -1250,11 +1229,12 @@ class TestDashboardMap(
             org2_location.geometry = Point(12.515124, 41.899603, srid=4326)
             org2_location.full_clean()
             org2_location.save()
-            sleep(0.3)  # Wait for JS animation
             try:
                 series_locations = self.wait_for_script(
                     """
-                        const options = window._owGeoMap.echarts.getOption();
+                        const echarts = window._owGeoMap?.echarts;
+                        if (!echarts) return false;
+                        const options = echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
                         );
@@ -1288,11 +1268,12 @@ class TestDashboardMap(
             org1_location.geometry = Point(12.517124, 41.898903, srid=4326)
             org1_location.full_clean()
             org1_location.save()
-            sleep(0.3)  # Wait for JS animation
             try:
                 series_locations = self.wait_for_script(
                     """
-                        const options = window._owGeoMap.echarts.getOption();
+                        const echarts = window._owGeoMap?.echarts;
+                        if (!echarts) return false;
+                        const options = echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
                         );
@@ -1327,11 +1308,12 @@ class TestDashboardMap(
             org2_location.geometry = Point(12.517124, 41.899603, srid=4326)
             org2_location.full_clean()
             org2_location.save()
-            sleep(0.3)  # Wait for JS animation
             try:
                 series_locations = self.wait_for_script(
                     """
-                        const options = window._owGeoMap.echarts.getOption();
+                        const echarts = window._owGeoMap?.echarts;
+                        if (!echarts) return false;
+                        const options = echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
                         );
@@ -1420,9 +1402,7 @@ class TestDashboardMap(
             floorplan_overlay = self.wait_for_visibility(
                 By.CSS_SELECTOR, "#floorplan-overlay"
             )
-            popup = self.wait_for_visibility(
-                By.CSS_SELECTOR, ".njg-tooltip-inner"
-            )
+            popup = self.wait_for_visibility(By.CSS_SELECTOR, ".njg-tooltip-inner")
             try:
                 self.wait_for_script(
                     f"""
@@ -1644,9 +1624,7 @@ class TestDashboardMap(
             self.web_driver.get(current_url)
             floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
             self.assertIn("2nd floor", floor_heading.text.lower())
-            canvases = self.find_elements(
-                By.CSS_SELECTOR, "#floor-content-2 canvas"
-            )
+            canvases = self.find_elements(By.CSS_SELECTOR, "#floor-content-2 canvas")
             self.assertGreater(len(canvases), 0)
             popup_not_displayed = self.wait_for_invisibility(
                 By.CSS_SELECTOR,
