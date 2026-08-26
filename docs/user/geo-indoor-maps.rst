@@ -1,11 +1,11 @@
+.. _openwisp_monitoring_geographic_map:
+
 Geographic & Indoor Maps
 ========================
 
 .. contents:: **Table of contents**:
     :depth: 1
     :local:
-
-.. _openwisp_monitoring_geographic_map:
 
 .. image:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.3/intro.gif
     :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.3/intro.gif
