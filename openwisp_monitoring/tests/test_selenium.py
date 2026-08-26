@@ -14,7 +14,6 @@ from reversion.models import Version
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 from swapper import load_model
 
 from openwisp_controller.connection.tests.utils import CreateConnectionsMixin
@@ -132,8 +131,8 @@ class TestDeviceConnectionInlineAdmin(
             '//*[@id="device_form"]/div/div[1]/input[1]',
         ).click()
         try:
-            WebDriverWait(self.web_driver, 5).until(
-                EC.url_to_be(f"{self.live_server_url}/admin/config/device/")
+            self.wait_until(
+                EC.url_to_be(f"{self.live_server_url}/admin/config/device/"),
             )
         except TimeoutException:
             self.fail("Failed saving device")
@@ -144,7 +143,7 @@ class TestDeviceConnectionInlineAdmin(
             reverse(f"admin:{self.config_app_label}_device_delete", args=[device.id])
         )
         self.find_element(
-            By.CSS_SELECTOR, '#content form input[type="submit"]', timeout=5
+            By.CSS_SELECTOR, '#content form input[type="submit"]'
         ).click()
         self.assertEqual(Device.objects.count(), 0)
         self.assertEqual(DeviceConnection.objects.count(), 0)
@@ -163,8 +162,8 @@ class TestDeviceConnectionInlineAdmin(
             By.XPATH, '//*[@id="device_form"]/div/div[1]/input[1]'
         ).click()
         try:
-            WebDriverWait(self.web_driver, 5).until(
-                EC.url_to_be(f"{self.live_server_url}/admin/config/device/")
+            self.wait_until(
+                EC.url_to_be(f"{self.live_server_url}/admin/config/device/"),
             )
         except TimeoutException:
             self.fail("Deleted device was not restored")
@@ -196,10 +195,10 @@ class TestDashboardCharts(
     def test_dashboard_timeseries_charts(self):
         self.login()
         self.wait_for_visibility(
-            By.CSS_SELECTOR, "#ow-chart-inner-container", timeout=5
+            By.CSS_SELECTOR, "#ow-chart-inner-container"
         )
-        self.wait_for_visibility(By.CSS_SELECTOR, "#ow-chart-utils", timeout=5)
-        self.wait_for_visibility(By.CSS_SELECTOR, "#ow-chart-fallback", timeout=5)
+        self.wait_for_visibility(By.CSS_SELECTOR, "#ow-chart-utils")
+        self.wait_for_visibility(By.CSS_SELECTOR, "#ow-chart-fallback")
         self.assertIn(
             "Insufficient data for selected time period.",
             self.find_element(By.CSS_SELECTOR, "#ow-chart-fallback").get_attribute(
@@ -208,9 +207,9 @@ class TestDashboardCharts(
         )
         self.create_test_data()
         self.web_driver.refresh()
-        self.wait_for_visibility(By.CSS_SELECTOR, "#ow-chart-contents", timeout=10)
-        self.wait_for_visibility(By.CSS_SELECTOR, "#chart-0", timeout=10)
-        self.wait_for_visibility(By.CSS_SELECTOR, "#chart-1", timeout=10)
+        self.wait_for_visibility(By.CSS_SELECTOR, "#ow-chart-contents", timeout=5)
+        self.wait_for_visibility(By.CSS_SELECTOR, "#chart-0", timeout=5)
+        self.wait_for_visibility(By.CSS_SELECTOR, "#chart-1", timeout=5)
         self.assertIn(
             "General WiFi Clients",
             self.find_element(By.CSS_SELECTOR, "#chart-0 > h3").get_attribute(
@@ -234,7 +233,7 @@ class TestDashboardCharts(
         self.create_test_data()
         self.login()
         self.wait_for_visibility(
-            By.CSS_SELECTOR, "#chart-0 .js-plotly-plot", timeout=10
+            By.CSS_SELECTOR, "#chart-0 .js-plotly-plot", timeout=5
         )
         self.web_driver.execute_script("""
             window.dashboardChartRequests = 0;
@@ -356,7 +355,7 @@ class TestDashboardMap(
         # these loading-state classes are the most reliable signal that row
         # updates have finished.
         try:
-            WebDriverWait(self.web_driver, timeout).until(
+            self.wait_until(
                 lambda d: all(
                     cls
                     not in (
@@ -366,7 +365,8 @@ class TestDashboardMap(
                         or ""
                     )
                     for cls in ("is-loading", "is-loading-append")
-                )
+                ),
+                timeout=timeout,
             )
         except TimeoutException as e:
             print(self.get_browser_logs())
@@ -412,12 +412,12 @@ class TestDashboardMap(
                     device_index += 1
         self.login()
         try:
-            statuses = WebDriverWait(self.web_driver, 5).until(
-                lambda d: d.execute_script("""
+            statuses = self.wait_for_script(
+                """
                     const nodes = window._owGeoMap?.data?.nodes;
-                    if (!nodes || nodes.length !== 6) return false;
-                    return Object.fromEntries(nodes.map(node => [node.label, node.category]));
-                """)
+                if (!nodes || nodes.length !== 6) return false;
+                return Object.fromEntries(nodes.map(node => [node.label, node.category]));
+                """,
             )
         except TimeoutException:
             self.fail("Failed to retrieve dashboard map location statuses")
@@ -449,9 +449,9 @@ class TestDashboardMap(
             organization=org,
         )
         self.login()
-        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container", timeout=5)
+        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
         self._open_popup("_owGeoMap", location.id)
-        self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail", timeout=5)
+        self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail")
         table_entries = self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
         self.assertEqual(len(table_entries), 2)
 
@@ -539,7 +539,7 @@ class TestDashboardMap(
         self.login()
         self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
         self._open_popup("_owGeoMap", location.id)
-        self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail", timeout=5)
+        self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail")
         table_container = self.find_element(
             By.CSS_SELECTOR, ".map-detail .table-container"
         )
@@ -552,7 +552,7 @@ class TestDashboardMap(
             """,
             table_container,
         )
-        table_entries = WebDriverWait(self.web_driver, 2).until(
+        table_entries = self.wait_until(
             lambda d: (
                 entries
                 if len(
@@ -560,7 +560,7 @@ class TestDashboardMap(
                 )
                 == 20
                 else False
-            )
+            ),
         )
         self.assertEqual(len(table_entries), 20)
 
@@ -574,11 +574,12 @@ class TestDashboardMap(
         with self.subTest("Test setting url fragments on click event of node"):
             self._open_popup("_owGeoMap", location.id)
             try:
-                WebDriverWait(self.web_driver, 5).until(
-                    lambda d: f"nodeId={location.id}"
-                    in d.execute_script(
-                        "return decodeURIComponent(window.location.hash);"
-                    )
+                self.wait_for_script(
+                    f"""
+                    return decodeURIComponent(window.location.hash).includes(
+                        "nodeId={location.id}",
+                    );
+                    """,
                 )
             except TimeoutException:
                 self.fail("URL fragment was not updated after opening geo map popup")
@@ -594,7 +595,7 @@ class TestDashboardMap(
             tabs = self.web_driver.window_handles
             self.web_driver.switch_to.window(tabs[1])
             self.web_driver.get(current_url)
-            popup = self.find_element(By.CSS_SELECTOR, ".map-detail", timeout=5)
+            popup = self.find_element(By.CSS_SELECTOR, ".map-detail")
             device_link = self.find_element(
                 By.XPATH, f".//td[@class='col-name']/a[text()='{device.name}']"
             )
@@ -611,7 +612,7 @@ class TestDashboardMap(
             tabs = self.web_driver.window_handles
             self.web_driver.switch_to.window(tabs[1])
             self.web_driver.get(incorrect_url)
-            self.wait_for_invisibility(By.CSS_SELECTOR, ".map-detail", timeout=5)
+            self.wait_for_invisibility(By.CSS_SELECTOR, ".map-detail")
             self.web_driver.close()
             self.web_driver.switch_to.window(tabs[0])
 
@@ -648,33 +649,32 @@ class TestDashboardMap(
                 "element_to_be_clickable",
                 By.CSS_SELECTOR,
                 ".map-detail .floorplan-btn",
-                timeout=5,
             ).click()
             canvases = self.find_elements(
-                By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
+                By.CSS_SELECTOR, "#floor-content-1 canvas"
             )
             self.assertGreater(len(canvases), 0)
 
         with self.subTest("Test floorplan navigation"):
             right_arrow = self.find_element(
-                By.CSS_SELECTOR, "#floorplan-navigation .right-arrow", timeout=5
+                By.CSS_SELECTOR, "#floorplan-navigation .right-arrow"
             )
             right_arrow.click()
             floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
             self.assertIn("2nd floor", floor_heading.text.lower())
             canvases = self.find_elements(
-                By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
+                By.CSS_SELECTOR, "#floor-content-2 canvas"
             )
             self.assertGreater(len(canvases), 0)
 
             left_arrow = self.find_element(
-                By.CSS_SELECTOR, "#floorplan-navigation .left-arrow", timeout=5
+                By.CSS_SELECTOR, "#floorplan-navigation .left-arrow"
             )
             left_arrow.click()
             floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
             self.assertIn("1st floor", floor_heading.text.lower())
             canvases = self.find_elements(
-                By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
+                By.CSS_SELECTOR, "#floor-content-1 canvas"
             )
             self.assertGreater(len(canvases), 0)
 
@@ -685,14 +685,14 @@ class TestDashboardMap(
             floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
             self.assertIn("2nd floor", floor_heading.text.lower())
             canvases = self.find_elements(
-                By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
+                By.CSS_SELECTOR, "#floor-content-2 canvas"
             )
             self.assertGreater(len(canvases), 0)
 
         with self.subTest("Test redirecting to device page from indoor map"):
             try:
-                WebDriverWait(self.web_driver, 5).until(
-                    lambda d: d.execute_script("return window._owIndoorMap != null")
+                self.wait_for_script(
+                    "return window._owIndoorMap != null",
                 )
             except TimeoutException:
                 self.fail("Indoor map was not initialized")
@@ -700,14 +700,13 @@ class TestDashboardMap(
             open_device_btn = self.find_element(
                 By.CSS_SELECTOR,
                 ".open-device-btn-container .open-device-btn",
-                timeout=5,
             )
             open_device_btn.click()
             try:
-                WebDriverWait(self.web_driver, 5).until(
+                self.wait_until(
                     EC.url_to_be(
                         f"{self.live_server_url}/admin/config/device/{device2.id}/change/"
-                    )
+                    ),
                 )
             except TimeoutException:
                 self.fail("Failed to redirect to device change page")
@@ -758,21 +757,19 @@ class TestDashboardMap(
             """,
             str(first_location.id),
         )
-        WebDriverWait(self.web_driver, 2).until(
-            lambda d: d.execute_script(
-                "return window._owIndoorMap?.config?.bookmarkableActions?.id;"
-            )
-            == first_map_id
+        self.wait_for_script(
+            f"""
+            return window._owIndoorMap?.config?.bookmarkableActions?.id === "{first_map_id}";
+            """,
         )
         self.web_driver.execute_script(
             "window.location.hash = arguments[0];", second_fragment
         )
         try:
-            WebDriverWait(self.web_driver, 2).until(
-                lambda d: d.execute_script(
-                    "return window._owIndoorMap?.config?.bookmarkableActions?.id;"
-                )
-                == second_map_id
+            self.wait_for_script(
+                f"""
+                return window._owIndoorMap?.config?.bookmarkableActions?.id === "{second_map_id}";
+                """,
             )
         except TimeoutException:
             floorplan_state = self.web_driver.execute_script("""
@@ -792,15 +789,14 @@ class TestDashboardMap(
         self.web_driver.execute_script(
             "window.location.hash = arguments[0];", f"id={second_location.id}_999"
         )
-        WebDriverWait(self.web_driver, 2).until(
-            lambda d: f"id={second_map_id}"
-            in d.execute_script("return decodeURIComponent(window.location.hash);")
+        self.wait_for_script(
+            f"""
+            return decodeURIComponent(window.location.hash).includes("id={second_map_id}");
+            """,
         )
         self.web_driver.execute_script("window.location.hash = '%';")
-        WebDriverWait(self.web_driver, 2).until(
-            lambda d: not d.execute_script(
-                "return Boolean(document.getElementById('floorplan-overlay'));"
-            )
+        self.wait_for_script(
+            "return !Boolean(document.getElementById('floorplan-overlay'));",
         )
         self.assertTrue(
             self.web_driver.execute_script(
@@ -840,9 +836,12 @@ class TestDashboardMap(
         self.login()
         self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
         self._open_popup("_owGeoMap", location.id)
-        WebDriverWait(self.web_driver, 2).until(
-            lambda d: f"id=dashboard-geo-map&nodeId={location.id}"
-            in d.execute_script("return decodeURIComponent(window.location.hash);")
+        self.wait_for_script(
+            f"""
+            return decodeURIComponent(window.location.hash).includes(
+                "id=dashboard-geo-map&nodeId={location.id}",
+            );
+            """,
         )
         history_length = self.web_driver.execute_script("return window.history.length;")
         self.web_driver.execute_script(
@@ -913,30 +912,33 @@ class TestDashboardMap(
             str(location.id),
         )
         floor1_map_id = f"{location.id}_{floorplans[1].floor}"
-        WebDriverWait(self.web_driver, 2).until(
-            lambda d: d.execute_script(
-                "return window._owIndoorMap?.config?.bookmarkableActions?.id;"
-            )
-            == floor1_map_id
+        self.wait_for_script(
+            f"""
+            return window._owIndoorMap?.config?.bookmarkableActions?.id === "{floor1_map_id}";
+            """,
         )
         self.find_element(
             By.CSS_SELECTOR, "#floorplan-navigation .floor-btn[data-floor='2']"
         ).click()
-        WebDriverWait(self.web_driver, 2).until(lambda d: d.execute_script("""
-                const state = django.jQuery("#floorplan-overlay").data("floorplanState");
-                return (
-                  state?.state?.currentFloor === 1 &&
-                  !state.allResults[2] &&
-                  !state.floorRequests[2]
-                );
-                """))
+        self.wait_for_script(
+            """
+            const state = django.jQuery("#floorplan-overlay").data("floorplanState");
+            return (
+              state?.state?.currentFloor === 1 &&
+                !state.allResults[2] &&
+                !state.floorRequests[2]
+            );
+            """,
+        )
         self.find_element(
             By.CSS_SELECTOR, "#floorplan-navigation .floor-btn[data-floor='2']"
         ).click()
-        WebDriverWait(self.web_driver, 2).until(lambda d: d.execute_script("""
-                const state = django.jQuery("#floorplan-overlay").data("floorplanState");
-                return state?.allResults[2]?.length === 51;
-                """))
+        self.wait_for_script(
+            """
+            const state = django.jQuery("#floorplan-overlay").data("floorplanState");
+            return state?.allResults[2]?.length === 51;
+            """,
+        )
         self.web_driver.execute_script("""
             const floorButton = document.querySelector(
               "#floorplan-navigation .floor-btn[data-floor='3']",
@@ -944,10 +946,12 @@ class TestDashboardMap(
             floorButton.click();
             floorButton.click();
             """)
-        WebDriverWait(self.web_driver, 2).until(lambda d: d.execute_script("""
-                const state = django.jQuery("#floorplan-overlay").data("floorplanState");
-                return state?.allResults[3]?.length === 51;
-                """))
+        self.wait_for_script(
+            """
+            const state = django.jQuery("#floorplan-overlay").data("floorplanState");
+            return state?.allResults[3]?.length === 51;
+            """,
+        )
 
     def test_switching_floorplan_in_fullscreen_mode(self):
         org = self._get_org()
@@ -980,14 +984,13 @@ class TestDashboardMap(
             "element_to_be_clickable", By.CSS_SELECTOR, ".map-detail .floorplan-btn"
         ).click()
         canvases = self.find_elements(
-            By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
+            By.CSS_SELECTOR, "#floor-content-1 canvas"
         )
         self.assertGreater(len(canvases), 0)
         self.wait_for(
             "element_to_be_clickable",
             By.CSS_SELECTOR,
             "#floor-content-1 .leaflet-control-fullscreen-button",
-            timeout=5,
         ).click()
         container = self.find_element(
             By.CSS_SELECTOR, "#floor-content-1 .leaflet-container"
@@ -997,15 +1000,14 @@ class TestDashboardMap(
             "element_to_be_clickable",
             By.CSS_SELECTOR,
             "#floorplan-navigation .right-arrow",
-            timeout=5,
         ).click()
         # Switching floors exits fullscreen on the previous floor. Wait until
         # the class is removed before asserting.
-        WebDriverWait(self.web_driver, 5).until(
+        self.wait_until(
             lambda driver: "leaflet-fullscreen-on"
             not in driver.find_element(
                 By.CSS_SELECTOR, "#floor-content-1 .leaflet-container"
-            ).get_attribute("class")
+            ).get_attribute("class"),
         )
         container = self.find_element(
             By.CSS_SELECTOR, "#floor-content-1 .leaflet-container", wait_for="presence"
@@ -1014,7 +1016,7 @@ class TestDashboardMap(
         floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
         self.assertIn("2nd floor", floor_heading.text.lower())
         canvases = self.find_elements(
-            By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
+            By.CSS_SELECTOR, "#floor-content-2 canvas"
         )
         self.assertGreater(len(canvases), 0)
 
@@ -1035,14 +1037,13 @@ class TestDashboardMap(
             "element_to_be_clickable",
             By.CSS_SELECTOR,
             ".map-detail .floorplan-btn",
-            timeout=5,
         ).click()
         canvases = self.find_elements(
-            By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
+            By.CSS_SELECTOR, "#floor-content-1 canvas"
         )
         try:
-            WebDriverWait(self.web_driver, 5).until(
-                lambda d: d.execute_script("return window._owIndoorMap != null")
+            self.wait_for_script(
+                "return window._owIndoorMap != null",
             )
         except TimeoutException:
             self.fail("Indoor map was not initialized")
@@ -1053,11 +1054,12 @@ class TestDashboardMap(
         with self.subTest("Test setting url fragments on click event of node"):
             self._open_popup("_owIndoorMap", device.id)
             try:
-                WebDriverWait(self.web_driver, 5).until(
-                    lambda d: f"id={quote_plus(indoorMapId)}&nodeId={device_location.id}"
-                    in d.execute_script(
-                        "return decodeURIComponent(window.location.hash);"
-                    )
+                self.wait_for_script(
+                    f"""
+                    return decodeURIComponent(window.location.hash).includes(
+                        "id={quote_plus(indoorMapId)}&nodeId={device_location.id}",
+                    );
+                    """,
                 )
             except TimeoutException:
                 self.fail(
@@ -1079,7 +1081,7 @@ class TestDashboardMap(
             self.web_driver.switch_to.window(tabs[1])
             self.web_driver.get(current_url)
             popup = self.wait_for_visibility(
-                By.CSS_SELECTOR, ".njg-tooltip-inner", timeout=5
+                By.CSS_SELECTOR, ".njg-tooltip-inner"
             )
             self.assertTrue(popup.is_displayed())
             self.assertIn(device.name, popup.get_attribute("innerHTML"))
@@ -1108,11 +1110,11 @@ class TestDashboardMap(
             self.web_driver.switch_to.window(tabs[1])
             self.web_driver.get(incorrect_floor_url)
             floor_heading = self.find_element(
-                By.CSS_SELECTOR, "#floorplan-title", timeout=5
+                By.CSS_SELECTOR, "#floorplan-title"
             )
             self.assertIn("1st floor", floor_heading.text.lower())
             canvases = self.find_elements(
-                By.CSS_SELECTOR, "#floor-content-1 canvas", timeout=5
+                By.CSS_SELECTOR, "#floor-content-1 canvas"
             )
             self.assertGreater(len(canvases), 0)
             self.assertIn(
@@ -1165,8 +1167,8 @@ class TestDashboardMap(
         location.full_clean()
         location.save()
         try:
-            series_value = WebDriverWait(self.web_driver, 5).until(
-                lambda d: d.execute_script("""
+            series_value = self.wait_for_script(
+                """
                     const options = window._owGeoMap.echarts.getOption();
                     const series = options.series.find(
                         (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -1174,7 +1176,8 @@ class TestDashboardMap(
                     const item = series.data.find(d => d.name === "Test-Location");
                     if (!item) return false;
                     return item.value;
-                """)
+                """,
+                timeout=5,
             )
         except TimeoutException:
             self.fail("Failed to retrieve mobile location data")
@@ -1182,13 +1185,13 @@ class TestDashboardMap(
 
         with self.subTest("Test mobile location with open device list popup"):
             self._open_popup("_owGeoMap", location.id)
-            self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail", timeout=5)
+            self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail")
             location.geometry = Point(12.511124, 41.898903)
             location.full_clean()
             location.save()
             try:
-                series_value = WebDriverWait(self.web_driver, 5).until(
-                    lambda d: d.execute_script("""
+                series_value = self.wait_for_script(
+                    """
                         const options = window._owGeoMap.echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -1196,7 +1199,8 @@ class TestDashboardMap(
                         const item = series.data.find(d => d.name === "Test-Location");
                         if (!item) return false;
                         return item.value;
-                    """)
+                    """,
+                    timeout=5,
                 )
             except TimeoutException:
                 self.fail("Failed to retrieve updated mobile location data")
@@ -1248,8 +1252,8 @@ class TestDashboardMap(
             org2_location.save()
             sleep(0.3)  # Wait for JS animation
             try:
-                series_locations = WebDriverWait(self.web_driver, 5).until(
-                    lambda d: d.execute_script("""
+                series_locations = self.wait_for_script(
+                    """
                         const options = window._owGeoMap.echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -1258,7 +1262,8 @@ class TestDashboardMap(
                         const org2_location = series.data.find(l => l.name === "Org2-Location")
                         if (!org1_location || !org2_location) return false;
                         return {org1_location, org2_location}
-                    """)
+                    """,
+                    timeout=5,
                 )
             except TimeoutException:
                 self.fail("Failed to retrieve org location data from superuser")
@@ -1285,8 +1290,8 @@ class TestDashboardMap(
             org1_location.save()
             sleep(0.3)  # Wait for JS animation
             try:
-                series_locations = WebDriverWait(org1_driver, 5).until(
-                    lambda d: d.execute_script("""
+                series_locations = self.wait_for_script(
+                    """
                         const options = window._owGeoMap.echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -1296,7 +1301,9 @@ class TestDashboardMap(
                         if (!org1_location) return false;
                         if (org2_location !== undefined) return false;
                         return {org1_location, org2_location}
-                    """)
+                    """,
+                    timeout=5,
+                    driver=org1_driver,
                 )
             except TimeoutException:
                 self.fail("Failed to retrieve org1 location data from org1 user")
@@ -1322,8 +1329,8 @@ class TestDashboardMap(
             org2_location.save()
             sleep(0.3)  # Wait for JS animation
             try:
-                series_locations = WebDriverWait(org2_driver, 5).until(
-                    lambda d: d.execute_script("""
+                series_locations = self.wait_for_script(
+                    """
                         const options = window._owGeoMap.echarts.getOption();
                         const series = options.series.find(
                             (s) => s.type === "scatter" || s.type === "effectScatter",
@@ -1333,7 +1340,9 @@ class TestDashboardMap(
                         if (org1_location !== undefined) return false;
                         if (!org2_location) return false;
                         return {org1_location, org2_location}
-                    """)
+                    """,
+                    timeout=5,
+                    driver=org2_driver,
                 )
             except TimeoutException:
                 self.fail("Failed to retrieve org2 location data from org2 user")
@@ -1368,18 +1377,15 @@ class TestDashboardMap(
             self.wait_for_invisibility(
                 By.CSS_SELECTOR,
                 "#loading-overlay",
-                timeout=5,
             )
             self.wait_for(
                 "element_to_be_clickable",
                 By.CSS_SELECTOR,
                 "#open-location-btn",
-                timeout=5,
             ).click()
             try:
-                WebDriverWait(self.web_driver, 5).until(
-                    lambda d: f"nodeId={location.id}"
-                    in d.execute_script("return window.location.hash;")
+                self.wait_for_script(
+                    f'return window.location.hash.includes("nodeId={location.id}");',
                 )
             except TimeoutException:
                 self.fail(
@@ -1390,7 +1396,7 @@ class TestDashboardMap(
             )
             expected_hash = f"id={mapId}&nodeId={location.id}"
             self.assertIn(expected_hash, current_hash)
-            popup = self.find_element(By.CSS_SELECTOR, ".map-detail", timeout=5)
+            popup = self.find_element(By.CSS_SELECTOR, ".map-detail")
             device_link = self.find_element(
                 By.XPATH, f".//td[@class='col-name']/a[text()='{device.name}']"
             )
@@ -1405,26 +1411,25 @@ class TestDashboardMap(
             self.wait_for_invisibility(
                 By.CSS_SELECTOR,
                 "#loading-overlay",
-                timeout=5,
             )
             self.wait_for(
                 "element_to_be_clickable",
                 By.CSS_SELECTOR,
                 "#open-indoor-device-btn",
-                timeout=5,
             ).click()
             floorplan_overlay = self.wait_for_visibility(
-                By.CSS_SELECTOR, "#floorplan-overlay", timeout=5
+                By.CSS_SELECTOR, "#floorplan-overlay"
             )
             popup = self.wait_for_visibility(
-                By.CSS_SELECTOR, ".njg-tooltip-inner", timeout=5
+                By.CSS_SELECTOR, ".njg-tooltip-inner"
             )
             try:
-                WebDriverWait(self.web_driver, 5).until(
-                    lambda d: f"nodeId={device_location.id}"
-                    in d.execute_script(
-                        "return decodeURIComponent(window.location.hash);"
-                    )
+                self.wait_for_script(
+                    f"""
+                    return decodeURIComponent(window.location.hash).includes(
+                        "nodeId={device_location.id}",
+                    );
+                    """,
                 )
             except TimeoutException:
                 self.fail(
@@ -1476,14 +1481,14 @@ class TestDashboardMap(
                 "element_to_be_clickable",
                 By.CSS_SELECTOR,
                 ".map-detail .floorplan-btn",
-                timeout=5,
             ).click()
             try:
-                WebDriverWait(self.web_driver, 5).until(
-                    lambda d: f"id={quote_plus(indoorMapId1)}"
-                    in d.execute_script(
-                        "return decodeURIComponent(window.location.hash);"
-                    )
+                self.wait_for_script(
+                    f"""
+                    return decodeURIComponent(window.location.hash).includes(
+                        "id={quote_plus(indoorMapId1)}",
+                    );
+                    """,
                 )
             except TimeoutException:
                 self.fail(
@@ -1501,18 +1506,19 @@ class TestDashboardMap(
             "Test nodeId param added on indoor map popup open and removed on close"
         ):
             try:
-                WebDriverWait(self.web_driver, 5).until(
-                    lambda d: d.execute_script("return window._owIndoorMap != null")
+                self.wait_for_script(
+                    "return window._owIndoorMap != null",
                 )
             except TimeoutException:
                 self.fail("Indoor map was not initialized")
             self._open_popup("_owIndoorMap", device1.id)
             try:
-                WebDriverWait(self.web_driver, 5).until(
-                    lambda d: f"nodeId={device_location1.id}"
-                    in d.execute_script(
-                        "return decodeURIComponent(window.location.hash);"
-                    )
+                self.wait_for_script(
+                    f"""
+                    return decodeURIComponent(window.location.hash).includes(
+                        "nodeId={device_location1.id}",
+                    );
+                    """,
                 )
             except TimeoutException:
                 self.fail(
@@ -1530,14 +1536,14 @@ class TestDashboardMap(
                 "element_to_be_clickable",
                 By.CSS_SELECTOR,
                 "#floorplan-container .leaflet-popup-close-button",
-                timeout=5,
             ).click()
             try:
-                WebDriverWait(self.web_driver, 5).until(
-                    lambda d: f"id={quote_plus(indoorMapId1)}"
-                    in d.execute_script(
-                        "return decodeURIComponent(window.location.hash);"
-                    )
+                self.wait_for_script(
+                    f"""
+                    return decodeURIComponent(window.location.hash).includes(
+                        "id={quote_plus(indoorMapId1)}",
+                    );
+                    """,
                 )
             except TimeoutException:
                 self.fail(
@@ -1558,14 +1564,14 @@ class TestDashboardMap(
                 "element_to_be_clickable",
                 By.CSS_SELECTOR,
                 "#floorplan-navigation .right-arrow",
-                timeout=5,
             ).click()
             try:
-                WebDriverWait(self.web_driver, 5).until(
-                    lambda d: f"id={quote_plus(indoorMapId2)}"
-                    in d.execute_script(
-                        "return decodeURIComponent(window.location.hash);"
-                    )
+                self.wait_for_script(
+                    f"""
+                    return decodeURIComponent(window.location.hash).includes(
+                        "id={quote_plus(indoorMapId2)}",
+                    );
+                    """,
                 )
             except TimeoutException:
                 self.fail("URL fragment was not updated after switching to floor 2")
@@ -1577,18 +1583,19 @@ class TestDashboardMap(
             )
             self.assertIn(expected_hash, current_hash)
             try:
-                WebDriverWait(self.web_driver, 5).until(
-                    lambda d: d.execute_script("return window._owIndoorMap != null")
+                self.wait_for_script(
+                    "return window._owIndoorMap != null",
                 )
             except TimeoutException:
                 self.fail("Indoor map was not initialized after opening floorplan")
             self._open_popup("_owIndoorMap", device2.id)
             try:
-                WebDriverWait(self.web_driver, 5).until(
-                    lambda d: f"nodeId={device_location2.id}"
-                    in d.execute_script(
-                        "return decodeURIComponent(window.location.hash);"
-                    )
+                self.wait_for_script(
+                    f"""
+                    return decodeURIComponent(window.location.hash).includes(
+                        "nodeId={device_location2.id}",
+                    );
+                    """,
                 )
             except TimeoutException:
                 self.fail(
@@ -1606,14 +1613,14 @@ class TestDashboardMap(
                 "element_to_be_clickable",
                 By.CSS_SELECTOR,
                 "#floorplan-container .leaflet-popup-close-button",
-                timeout=5,
             ).click()
             try:
-                WebDriverWait(self.web_driver, 5).until(
-                    lambda d: f"id={quote_plus(indoorMapId2)}"
-                    in d.execute_script(
-                        "return decodeURIComponent(window.location.hash);"
-                    )
+                self.wait_for_script(
+                    f"""
+                    return decodeURIComponent(window.location.hash).includes(
+                        "id={quote_plus(indoorMapId2)}",
+                    );
+                    """,
                 )
             except TimeoutException:
                 self.fail(
@@ -1638,7 +1645,7 @@ class TestDashboardMap(
             floor_heading = self.find_element(By.CSS_SELECTOR, "#floorplan-title")
             self.assertIn("2nd floor", floor_heading.text.lower())
             canvases = self.find_elements(
-                By.CSS_SELECTOR, "#floor-content-2 canvas", timeout=5
+                By.CSS_SELECTOR, "#floor-content-2 canvas"
             )
             self.assertGreater(len(canvases), 0)
             popup_not_displayed = self.wait_for_invisibility(
@@ -1691,7 +1698,6 @@ class TestDeviceAdmin(
             self.wait_for_visibility(
                 By.CSS_SELECTOR,
                 ".device-issues-accordion.expanded .issues-content li",
-                timeout=5,
             )
             content = row.find_element(By.CSS_SELECTOR, ".issues-content")
             self.assertIn("Disk usage", content.text)
@@ -1701,7 +1707,7 @@ class TestDeviceAdmin(
             self.assertEqual(toggle.text, "hide issues")
             toggle.click()
             self.wait_for_invisibility(
-                By.CSS_SELECTOR, ".device-issues-accordion.expanded", timeout=5
+                By.CSS_SELECTOR, ".device-issues-accordion.expanded"
             )
 
         with self.subTest("re-expand accordion with cached DOM content"):
@@ -1711,7 +1717,6 @@ class TestDeviceAdmin(
             self.wait_for_visibility(
                 By.CSS_SELECTOR,
                 ".device-issues-accordion.expanded .issues-content li",
-                timeout=5,
             )
             content = row.find_element(By.CSS_SELECTOR, ".issues-content")
             self.assertIn("Disk usage", content.text)
@@ -1770,7 +1775,7 @@ class TestDeviceAdmin(
         self.login()
         url = reverse(f"admin:{self.config_app_label}_device_changelist")
         self.open(url)
-        self.wait_for_visibility(By.CSS_SELECTOR, "#result_list", timeout=5)
+        self.wait_for_visibility(By.CSS_SELECTOR, "#result_list")
 
         with self.subTest("apply health status filter to problem"):
             self.find_element(By.CSS_SELECTOR, "#health-status > div").click()
@@ -1778,7 +1783,7 @@ class TestDeviceAdmin(
                 By.CSS_SELECTOR, '#choices-health-status a[title="problem"]'
             ).click()
             self.find_element(By.CSS_SELECTOR, "#ow-apply-filter").click()
-            self.wait_for_visibility(By.CSS_SELECTOR, "#result_list", timeout=5)
+            self.wait_for_visibility(By.CSS_SELECTOR, "#result_list")
             rows = self.find_elements(By.CSS_SELECTOR, "#result_list tbody tr")
             row_texts = " ".join(row.text for row in rows)
             self.assertIn("disk-problem-device", row_texts)
@@ -1787,7 +1792,7 @@ class TestDeviceAdmin(
 
         with self.subTest("apply disk usage sub-filter"):
             self.wait_for_visibility(
-                By.CSS_SELECTOR, "#problematic-metric:not(.hidden)", timeout=5
+                By.CSS_SELECTOR, "#problematic-metric:not(.hidden)"
             )
             self.find_element(By.CSS_SELECTOR, "#problematic-metric > div").click()
             self.find_element(
@@ -1795,7 +1800,7 @@ class TestDeviceAdmin(
                 '#choices-problematic-metric a[title="Disk usage"]',
             ).click()
             self.find_element(By.CSS_SELECTOR, "#ow-apply-filter").click()
-            self.wait_for_visibility(By.CSS_SELECTOR, "#result_list", timeout=10)
+            self.wait_for_visibility(By.CSS_SELECTOR, "#result_list")
             rows = self.find_elements(By.CSS_SELECTOR, "#result_list tbody tr")
             row_texts = " ".join(row.text for row in rows)
             self.assertIn("disk-problem-device", row_texts)
