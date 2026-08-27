@@ -7,7 +7,6 @@ Geographic & Indoor Maps
     :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.3/intro.gif
     :alt: Intro
 
-
 .. contents:: **Table of contents**:
     :depth: 1
     :local:
