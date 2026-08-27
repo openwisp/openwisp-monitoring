@@ -845,12 +845,13 @@ class AbstractChart(TimeStampedEditableModel):
                 {
                     "unit": self.unit,
                     "trace_type": self.trace_type,
-                    "trace_order": self.trace_order,
                     "calculate_total": self.calculate_total,
                     "connect_points": self.connect_points,
                     "colors": self.colors,
                 }
             )
+            if self.trace_order:
+                data["trace_order"] = self.trace_order
             return json.dumps(data, **kwargs, default=str)
         except KeyError as e:
             logger.warning(f"Got KeyError in Chart.json method: {e}")
