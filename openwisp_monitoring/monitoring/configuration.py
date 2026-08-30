@@ -572,7 +572,7 @@ DEFAULT_METRICS = {
                 "type": "scatter",
                 "fill": "none",
                 "yaxis": {"zeroline": False},
-                "title": _("Signal Strength (RSSI)"),
+                "title": _("Signal Strength (RSSI): {ifname}"),
                 "colors": (DEFAULT_COLORS[3], DEFAULT_COLORS[0]),
                 "description": _(
                     "Signal Strength (RSSI) and Signal Power (RSRP), measured in dBm."
@@ -598,7 +598,7 @@ DEFAULT_METRICS = {
                 "type": "scatter",
                 "fill": "none",
                 "yaxis": {"zeroline": False},
-                "title": _("Signal Quality (RSRQ)"),
+                "title": _("Signal Quality (RSRQ): {ifname}"),
                 "colors": (DEFAULT_COLORS[3], DEFAULT_COLORS[0]),
                 "description": _(
                     _(
@@ -623,7 +623,7 @@ DEFAULT_METRICS = {
         "charts": {
             "access_tech": {
                 "type": "bar",
-                "title": _("Access Technology"),
+                "title": _("Access Technology: {ifname}"),
                 "description": _(
                     _(
                         "Shows the access technology (LTE, UTMS, CDMA1x, etc.) "
