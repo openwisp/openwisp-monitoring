@@ -230,6 +230,40 @@ class TestDashboardCharts(
                 By.CSS_SELECTOR, "#chart-0-quick-link-container"
             ).get_attribute("innerHTML"),
         )
+        with self.subTest("Plotly chart rendering"):
+            self.wait_for_visibility(By.CSS_SELECTOR, "#chart-1 .main-svg")
+
+        with self.subTest("Date range picker initialization"):
+            self.assertTrue(
+                self.web_driver.execute_script("""
+                    return django.jQuery("#daterangepicker-widget")
+                      .data("daterangepicker") !== undefined;
+                    """),
+                "The date range picker was not initialized",
+            )
+
+        with self.subTest("Percircle summary rendering"):
+            self.assertGreater(
+                len(
+                    self.web_driver.find_elements(
+                        By.CSS_SELECTOR, "#chart-1 .percircle"
+                    )
+                ),
+                0,
+                "The chart summary circles were not rendered",
+            )
+
+        with self.subTest("Date range selection"):
+            self.find_element(By.CSS_SELECTOR, "#daterangepicker-widget").click()
+            self.wait_for(
+                "element_to_be_clickable",
+                By.CSS_SELECTOR,
+                ".daterangepicker .ranges li[data-time='7d']",
+            ).click()
+            self.wait_for_script("""
+                return localStorage.getItem("ow2-chart-time-range") === "7d" &&
+                  document.querySelector("#chart-1 .main-svg") !== null;
+                """)
 
     def test_chart_resize_does_not_reload_dashboard(self):
         self.create_test_data()
