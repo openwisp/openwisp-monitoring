@@ -1026,6 +1026,21 @@ class TestDashboardMap(
             By.CSS_SELECTOR, "#floor-content-1 .leaflet-container"
         )
         self.assertIn("leaflet-fullscreen-on", container.get_attribute("class"))
+        switcher_z_index = self.web_driver.execute_script(
+            "return window.getComputedStyle("
+            "document.getElementById('floorplan-navigation')).zIndex;"
+        )
+        self.assertEqual(switcher_z_index, "1001")
+        switcher_is_on_top = self.web_driver.execute_script("""
+            const navigation = document.getElementById("floorplan-navigation");
+            const bounds = navigation.getBoundingClientRect();
+            const element = document.elementFromPoint(
+              bounds.left + bounds.width / 2,
+              bounds.top + bounds.height / 2,
+            );
+            return navigation === element || navigation.contains(element);
+            """)
+        self.assertTrue(switcher_is_on_top)
         self.wait_for(
             "element_to_be_clickable",
             By.CSS_SELECTOR,
