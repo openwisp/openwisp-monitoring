@@ -254,6 +254,10 @@ class TestDashboardCharts(
             )
 
         with self.subTest("Date range selection"):
+            self.web_driver.execute_script("""
+                document.querySelector("#chart-1 .main-svg").dataset.testMarker =
+                  "before-date-range-selection";
+                """)
             self.find_element(By.CSS_SELECTOR, "#daterangepicker-widget").click()
             self.wait_for(
                 "element_to_be_clickable",
@@ -262,7 +266,8 @@ class TestDashboardCharts(
             ).click()
             self.wait_for_script("""
                 return localStorage.getItem("ow2-chart-time-range") === "7d" &&
-                  document.querySelector("#chart-1 .main-svg") !== null;
+                  document.querySelector("#chart-1 .main-svg")?.dataset.testMarker !==
+                    "before-date-range-selection";
                 """)
 
     def test_chart_resize_does_not_reload_dashboard(self):
