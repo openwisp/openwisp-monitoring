@@ -98,8 +98,6 @@ class TestAdmin(
 
     def _get_inline_admin_heading(self, heading):
         """
-        TODO: Remove this when dropping support for Django 4.2
-
         Django 5.1 introduced a new way to render inline headings with IDs and classes.
         For versions before 5.1, we use the old-style heading format except for "Alert Settings"
         which is already handled differently by django-nested-admin==4.1.0.
@@ -756,7 +754,6 @@ class TestAdmin(
                 '<img src="/static/admin/img/icon-yes.svg" alt="True">',
                 html=True,
             )
-            # TODO: Remove when dropping support for Django 4.2
             self.assertContains(
                 response,
                 (
@@ -1478,7 +1475,6 @@ class TestWifiSessionAdmin(
                 html=True,
             )
 
-    # TODO: Remove override_setting when dropping support for Django 4.2
     # The DATETIME_FORMAT for en-gb locale changed for Django 5.1+,
     # thus we override the project setting here to have consistent
     # result with tests.
