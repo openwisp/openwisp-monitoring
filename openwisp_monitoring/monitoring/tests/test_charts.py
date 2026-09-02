@@ -212,13 +212,34 @@ class TestCharts(TestMonitoringMixin, TestCase):
             {
                 "unit": c.unit,
                 "trace_type": c.trace_type,
-                "trace_order": c.trace_order,
                 "calculate_total": False,
                 "connect_points": c.connect_points,
                 "colors": c.colors,
             }
         )
         self.assertDictEqual(json.loads(c.json()), data)
+
+    def test_json_trace_order(self):
+        chart_config = {
+            "type": "line",
+            "title": "Trace order chart",
+            "description": "Chart with trace order.",
+            "unit": "candies",
+            "order": 999,
+            "trace_order": ["first", "second"],
+            "query": None,
+        }
+        register_chart("trace_order_test", chart_config)
+        try:
+            c = self._create_chart(configuration="trace_order_test")
+            data = json.loads(c.json())
+            self.assertEqual(
+                data["trace_order"],
+                ["first", "second"],
+                "Configured trace_order must be preserved in chart JSON",
+            )
+        finally:
+            unregister_chart("trace_order_test")
 
     def test_read_bad_query(self):
         try:
