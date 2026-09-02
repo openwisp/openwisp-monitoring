@@ -59,7 +59,7 @@ jobs:
           sudo dpkg-reconfigure man-db
 
       - name: Set up and Cache Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
@@ -81,7 +81,7 @@ jobs:
             libsqlite3-mod-spatialite
           pip install -U pip wheel setuptools
           pip install -r requirements-test.txt
-          pip install -U -I -e .
+          pip install -U -e .
           pip install -U ${{ matrix.django-version }}
           sudo npm install -g prettier
 

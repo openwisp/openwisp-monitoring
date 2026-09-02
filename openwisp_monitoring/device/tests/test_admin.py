@@ -994,8 +994,7 @@ class TestAdmin(
         org = self._create_org()
         device = self._create_device(organization=org, name="test-device")
         dm = device.monitoring
-        dm.status = "ok"
-        dm.save()
+        dm.update_status("ok")
         url = reverse(f"admin:{self.config_app_label}_device_changelist")
         with self.subTest("filter hidden when monitoring__status is not set"):
             response = self.client.get(url)
@@ -1027,16 +1026,14 @@ class TestAdmin(
         org = self._get_org()
         device_ping = self._create_device(organization=org, name="ping-problem-device")
         dm_ping = device_ping.monitoring
-        dm_ping.status = "problem"
-        dm_ping.save()
+        dm_ping.update_status("problem")
         device_memory = self._create_device(
             organization=org,
             name="memory-problem-device",
             mac_address="00:11:22:33:44:57",
         )
         dm_memory = device_memory.monitoring
-        dm_memory.status = "problem"
-        dm_memory.save()
+        dm_memory.update_status("problem")
         device_ct = ContentType.objects.get_for_model(Device)
         Metric.objects.create(
             content_type=device_ct,
@@ -1072,8 +1069,7 @@ class TestAdmin(
             mac_address="00:11:22:33:44:57",
         )
         dm = device.monitoring
-        dm.status = "ok"
-        dm.save()
+        dm.update_status("ok")
         device_ct = ContentType.objects.get_for_model(Device)
         Metric.objects.create(
             content_type=device_ct,
@@ -1118,7 +1114,8 @@ class TestAdmin(
             configuration="ping",
             is_healthy=False,
         )
-        DeviceMonitoring.objects.update(status="problem")
+        for monitoring in DeviceMonitoring.objects.iterator():
+            monitoring.update_status("problem")
         operator = self._create_operator(organizations=[org1])
         self.client.force_login(operator)
         url = reverse(f"admin:{self.config_app_label}_device_changelist")
@@ -1133,8 +1130,7 @@ class TestAdmin(
         org = self._create_org()
         device = self._create_device(organization=org, name="problem-device")
         dm = device.monitoring
-        dm.status = "problem"
-        dm.save()
+        dm.update_status("problem")
         url = reverse(f"admin:{self.config_app_label}_device_changelist")
         response = self.client.get(url)
         self.assertContains(
@@ -1151,8 +1147,7 @@ class TestAdmin(
         org = self._create_org()
         device = self._create_device(organization=org, name="ok-device")
         dm = device.monitoring
-        dm.status = "ok"
-        dm.save()
+        dm.update_status("ok")
         url = reverse(f"admin:{self.config_app_label}_device_changelist")
         response = self.client.get(url)
         self.assertContains(
@@ -1166,8 +1161,7 @@ class TestAdmin(
         org = self._create_org()
         device = self._create_device(organization=org, name="unknown-device")
         dm = device.monitoring
-        dm.status = "unknown"
-        dm.save()
+        dm.update_status("unknown")
         url = reverse(f"admin:{self.config_app_label}_device_changelist")
         response = self.client.get(url)
         self.assertNotContains(response, "issues-toggle")
@@ -1176,8 +1170,7 @@ class TestAdmin(
         org = self._create_org()
         device = self._create_device(organization=org, name="deactivated-device")
         dm = device.monitoring
-        dm.status = "deactivated"
-        dm.save()
+        dm.update_status("deactivated")
         url = reverse(f"admin:{self.config_app_label}_device_changelist")
         response = self.client.get(url)
         self.assertNotContains(response, "issues-toggle")
@@ -1186,8 +1179,7 @@ class TestAdmin(
         org = self._create_org()
         device = self._create_device(organization=org, name="critical-device")
         dm = device.monitoring
-        dm.status = "critical"
-        dm.save()
+        dm.update_status("critical")
         url = reverse(f"admin:{self.config_app_label}_device_changelist")
         response = self.client.get(url)
         self.assertNotContains(response, "issues-toggle")

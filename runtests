@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+coverage erase
+
 coverage run runtests.py
 
 # the next test runs focus on specific backend features, therefore

@@ -10,8 +10,8 @@ The possible values for the health status field
 Whenever a new device is created it will have ``UNKNOWN`` as it's default
 Heath Status.
 
-It implies that the system doesn't know whether the device is reachable
-yet.
+It implies that the current health of the device and its related metrics
+is unknown.
 
 ``OK``
 ------

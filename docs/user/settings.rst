@@ -307,19 +307,14 @@ This setting is independent of celery retry settings.
 **default**: ``True``
 ============ ========
 
-Whether the geographic map in the dashboard is enabled or not. This
-feature provides a geographic map which shows the locations which have
-devices installed in and provides a visual representation of the
-monitoring status of the devices, this allows to get an overview of the
-network at glance.
+Whether the :ref:`geographic map in the dashboard
+<openwisp_monitoring_geographic_map>` is enabled or not.
 
-This feature is enabled by default and depends on the setting
-``OPENWISP_ADMIN_DASHBOARD_ENABLED`` from :ref:`openwisp-utils
-<utils_admin_dashboard_enabled>` being set to ``True`` (which is the
-default).
+Set it to ``False`` if you do not use the geographic features of OpenWISP.
 
-You can turn this off if you do not use the geographic features of
-OpenWISP.
+This feature also depends on the ``OPENWISP_ADMIN_DASHBOARD_ENABLED``
+setting from :ref:`openwisp-utils <utils_admin_dashboard_enabled>` being
+set to ``True``, which is the default.
 
 .. _openwisp_monitoring_dashboard_traffic_chart:
 
