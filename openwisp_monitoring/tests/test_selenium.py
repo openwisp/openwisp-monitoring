@@ -265,9 +265,10 @@ class TestDashboardCharts(
                 ".daterangepicker .ranges li[data-time='7d']",
             ).click()
             self.wait_for_script("""
+                const chart = document.querySelector("#chart-1 .main-svg");
                 return localStorage.getItem("ow2-chart-time-range") === "7d" &&
-                  document.querySelector("#chart-1 .main-svg")?.dataset.testMarker !==
-                    "before-date-range-selection";
+                  chart !== null &&
+                  chart.dataset.testMarker !== "before-date-range-selection";
                 """)
 
     def test_chart_resize_does_not_reload_dashboard(self):
