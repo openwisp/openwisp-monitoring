@@ -1411,7 +1411,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             name="CPU usage", configuration="cpu", object_id=d.id
         )
         values = {"cpu_usage": 0.0, "load_1": 0.0, "load_5": 0.0, "load_15": 0.0}
-        time = start_time.strftime("%d-%m-%Y_%H:%M:%S.%f")
+        timestamp = timezone.now()
+        time = timestamp.strftime("%d-%m-%Y_%H:%M:%S.%f")
         with catch_signal(post_metric_write) as handler:
             self._post_data(d.id, d.key, data, time=time)
         signal_calls = handler.call_args_list
@@ -1424,7 +1425,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             signal=post_metric_write,
             sender=Metric,
             values=values,
-            time=start_time.isoformat(),
+            time=timestamp.isoformat(),
             current=False,
         )
         self.assertEqual(signal_calls[0][1], expected_arguments)

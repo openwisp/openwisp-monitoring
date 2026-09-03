@@ -335,18 +335,31 @@ class TestModels(TestMonitoringMixin, TestCase):
                 current=False,
             )
 
-    def test_metric_post_write_signals_emitted(self):
+    @freeze_time(start_time)
+    def test_metric_post_write_signal(self):
         om = self._create_object_metric()
-        with catch_signal(post_metric_write) as handler:
-            om.write(3, current=True, time=start_time)
+        time = timezone.now()
+        with self.subTest("fresh data"):
+            with catch_signal(post_metric_write) as handler:
+                om.write(3, current=True, time=time)
             handler.assert_called_once_with(
                 sender=Metric,
                 metric=om,
                 values={om.field_name: 3},
                 signal=post_metric_write,
-                time=start_time.isoformat(),
+                time=time.isoformat(),
                 current=True,
             )
+
+        with self.subTest("historical data"):
+            with catch_signal(post_metric_write) as handler:
+                om.write(3, time=time - timedelta(minutes=6))
+            handler.assert_not_called()
+
+        with self.subTest("disabled threshold checks"):
+            with catch_signal(post_metric_write) as handler:
+                om.write(3, check=False)
+            handler.assert_not_called()
 
     def test_clean_default_threshold_values(self):
         m = self._create_general_metric(configuration="ping")
