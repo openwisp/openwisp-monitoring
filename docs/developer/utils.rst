@@ -399,8 +399,9 @@ to the timeseries database.
 - ``current``: whether the data has just been collected or was collected
   previously and sent now due to network connectivity issues
 
-This signal is emitted for every metric after the write operation is
-successfully executed in the background.
+This signal is emitted after a metric write has successfully executed in
+the background and its threshold is evaluated. It is not emitted for
+historical data or when threshold checks are disabled.
 
 Exceptions
 ----------
