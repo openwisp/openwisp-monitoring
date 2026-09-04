@@ -372,10 +372,11 @@ class DeviceMonitoringConfig(AppConfig):
                 config={
                     "template": "admin/map/base_map.html",
                     "css": (
+                        "monitoring/css/netjsongraph.css",
                         "monitoring/css/device-map.css",
                         "leaflet/leaflet.css",
                         "monitoring/css/leaflet.fullscreen.css",
-                        "monitoring/css/netjsongraph.css",
+                        "monitoring/css/netjsongraph-monitoring.css",
                     ),
                     "js": (
                         "monitoring/js/lib/netjsongraph.min.js",

@@ -19,8 +19,20 @@ class TestStaticFiles(SimpleTestCase):
                 "monitoring/js/lib/leaflet.fullscreen.min.js",
             ),
             (
+                app_dir / "device/static/monitoring/js/lib/netjsongraph.min.js",
+                "monitoring/js/lib/netjsongraph.min.js",
+            ),
+            (
                 app_dir / "device/static/monitoring/js/lib/moment.min.js",
                 "monitoring/js/lib/moment.min.js",
+            ),
+            (
+                app_dir / "device/static/monitoring/css/netjsongraph.css",
+                "monitoring/css/netjsongraph.css",
+            ),
+            (
+                app_dir / "device/static/monitoring/css/loading.gif",
+                "monitoring/css/loading.gif",
             ),
             (
                 app_dir / "monitoring/static/monitoring/js/lib/plotly-cartesian.min.js",
