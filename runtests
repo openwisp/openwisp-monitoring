@@ -7,14 +7,20 @@ TSDB="${TSDB:-influxdb}"
 UDP="${TIMESERIES_UDP:-}"
 
 # Treat only explicit truthy values as UDP, so TIMESERIES_UDP=0 uses HTTP.
-case "${UDP,,}" in
+UDP_NORMALIZED=$(printf '%s' "$UDP" | tr '[:upper:]' '[:lower:]')
+case "$UDP_NORMALIZED" in
     1|true|yes|on) UDP=1 ;;
     *) UDP="" ;;
 esac
 
-if [ "$TSDB" != "influxdb" ] && [ "$TSDB" != "influxdb2" ]; then
+if [ "$TSDB" != "influxdb" ] && [ "$TSDB" != "influxdb2" ] && [ "$TSDB" != "elasticsearch" ]; then
     echo "Unsupported TSDB: $TSDB" >&2
-    echo "Supported values: influxdb, influxdb2" >&2
+    echo "Supported values: influxdb, influxdb2, elasticsearch" >&2
+    exit 1
+fi
+
+if [ "$TSDB" = "elasticsearch" ] && [ -n "$UDP" ]; then
+    echo "Elasticsearch does not support UDP writes." >&2
     exit 1
 fi
 

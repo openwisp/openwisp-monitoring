@@ -1,7 +1,8 @@
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Self, TypedDict
+from typing import Any, TypedDict
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db import DatabaseError
@@ -16,6 +17,7 @@ ChartQueryParams = dict[str, Any]
 class BatchWritePayload(TypedDict, total=False):
     name: str
     values: TimeseriesFields
+    operation_id: str
     tags: TimeseriesTags
     timestamp: Any
     database: str | None
@@ -32,7 +34,7 @@ class BackendQueryBundle:
     device_data_query: str
     summary_query: Mapping[str, Mapping[str, str]] | None = None
 
-    def validate(self, backend_name: str) -> Self:
+    def validate(self, backend_name: str) -> "BackendQueryBundle":
         if not isinstance(self.chart_query, Mapping):
             raise ImproperlyConfigured(
                 "Backend query bundle must define chart_query as a mapping."
@@ -83,6 +85,7 @@ class BaseTimeseriesClient(ABC):
     backend_name = None
     client_error = Exception
     required_settings = ("BACKEND", "NAME")
+    requires_write_operation_id = False
     queries: BackendQueryBundle | None = None
 
     @classmethod
@@ -96,7 +99,7 @@ class BaseTimeseriesClient(ABC):
                 )
         return config
 
-    def attach_queries(self, queries: BackendQueryBundle) -> Self:
+    def attach_queries(self, queries: BackendQueryBundle) -> "BaseTimeseriesClient":
         self.queries = queries
         return self
 
@@ -106,6 +109,15 @@ class BaseTimeseriesClient(ABC):
 
     def validate_chart_config(self, chart_config: Mapping[str, Any]) -> None:
         pass
+
+    def _normalize_chart_window(self, time_value, group_map=None):
+        if group_map and time_value in group_map:
+            return group_map[time_value]
+        if isinstance(time_value, (int, float)):
+            return f"{max(int(time_value), 1)}m"
+        if isinstance(time_value, str) and re.fullmatch(r"\d+", time_value):
+            return f"{max(int(time_value), 1)}m"
+        return time_value
 
     def get_default_chart_query(self, has_object_scope: bool = False) -> str:
         default_query = self.queries.default_chart_query
@@ -185,7 +197,10 @@ class BaseTimeseriesClient(ABC):
 
     @abstractmethod
     def delete_metric_data(
-        self, key: str | None = None, tags: TimeseriesTags | None = None
+        self,
+        key: str | None = None,
+        tags: TimeseriesTags | None = None,
+        timestamp: Any = None,
     ) -> None:
         pass
 

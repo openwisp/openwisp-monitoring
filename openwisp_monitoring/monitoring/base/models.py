@@ -638,7 +638,9 @@ class AbstractChart(TimeStampedEditableModel):
     def summary_query(self):
         query = self.config_dict.get("summary_query", None)
         if query:
-            return query[timeseries_db.backend_name]
+            # backends which derive the summary from the chart query
+            # do not need to define a summary query
+            return query.get(timeseries_db.backend_name)
 
     @property
     def top_fields(self):
