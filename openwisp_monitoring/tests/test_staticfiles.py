@@ -31,6 +31,10 @@ class TestStaticFiles(SimpleTestCase):
                 "monitoring/css/netjsongraph.css",
             ),
             (
+                app_dir / "device/static/monitoring/css/loading.gif",
+                "monitoring/css/loading.gif",
+            ),
+            (
                 app_dir / "monitoring/static/monitoring/js/lib/plotly-cartesian.min.js",
                 "monitoring/js/lib/plotly-cartesian.min.js",
             ),
