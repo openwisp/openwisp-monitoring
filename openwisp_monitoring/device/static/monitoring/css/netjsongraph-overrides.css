@@ -1,0 +1,64 @@
+/*
+ * OpenWISP specific overrides for netjsongraph.js.
+ *
+ * This file is loaded after the vendored monitoring/css/netjsongraph.css,
+ * which must be kept identical to the stylesheet shipped by netjsongraph.js
+ * so that it can be replaced as is on every upgrade.
+ */
+
+.njg-container {
+  position: relative;
+  left: 0;
+  right: 0;
+  background: #fbfbfb;
+  border-radius: 2px;
+  border: 1px solid #ccc;
+  color: #6d6357;
+  line-height: 20px;
+  min-width: 200px;
+  width: 100%;
+}
+.njg-container #graphChartContainer {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+}
+/* the sidebar of the library is not used by OpenWISP */
+.njg-container .njg-sideBar {
+  display: none;
+}
+/* fullscreen control, not provided by netjsongraph.js */
+.njg-container .leaflet-control-fullscreen {
+  top: 5px;
+}
+.njg-container .leaflet-control-fullscreen-button {
+  border-radius: 5px !important;
+}
+/* health status colors of the map clusters */
+.njg-container .marker-cluster div {
+  color: #fff;
+  background-color: rgba(53, 60, 68, 0.8) !important;
+}
+.njg-container .ok div {
+  background-color: rgba(38, 113, 38, 0.8) !important;
+}
+.njg-container .problem div {
+  background-color: rgba(255, 180, 66, 0.8) !important;
+}
+.njg-container .critical div {
+  background-color: rgba(167, 45, 29, 0.8) !important;
+}
+.njg-container .unknown div {
+  background-color: rgba(53, 60, 68, 0.8) !important;
+}
+.njg-container .njg-tooltip {
+  background: #fff !important;
+  border: none !important;
+}
+.njg-container .njg-tooltip-key {
+  color: #000;
+}
+.njg-container .njg-tooltip-value {
+  color: #000;
+}

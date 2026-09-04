@@ -21,10 +21,11 @@ class TestApps(TestCase):
         self.assertEqual(
             template_config[0].get("css"),
             (
+                "monitoring/css/netjsongraph.css",
                 "monitoring/css/device-map.css",
                 "leaflet/leaflet.css",
                 "monitoring/css/leaflet.fullscreen.css",
-                "monitoring/css/netjsongraph.css",
+                "monitoring/css/netjsongraph-overrides.css",
             ),
         )
         self.assertEqual(

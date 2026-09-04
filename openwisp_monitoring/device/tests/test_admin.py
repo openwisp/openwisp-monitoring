@@ -1203,6 +1203,7 @@ class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
             "monitoring/css/device-map.css",
             "monitoring/css/leaflet.fullscreen.css",
             "monitoring/css/netjsongraph.css",
+            "monitoring/css/netjsongraph-overrides.css",
             "leaflet/leaflet.css",
             "monitoring/js/lib/netjsongraph.min.js",
             "monitoring/js/lib/leaflet.fullscreen.min.js",
@@ -1578,6 +1579,7 @@ class TestMapPageAdmin(TestGeoMixin, DeviceMonitoringTestCase):
             "leaflet/leaflet.css",
             "monitoring/css/leaflet.fullscreen.css",
             "monitoring/css/netjsongraph.css",
+            "monitoring/css/netjsongraph-overrides.css",
             "monitoring/js/device-map.js",
             "monitoring/js/floorplan.js",
         ]
