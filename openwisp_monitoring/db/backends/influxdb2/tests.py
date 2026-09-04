@@ -740,7 +740,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         start, stop, predicate = mock_delete_api.delete.call_args[0][:3]
         self.assertEqual(start, timestamp)
         # the stop of the range is exclusive
-        self.assertEqual(stop, timestamp + timedelta(milliseconds=1))
+        self.assertEqual(stop, "2026-08-19T10:30:00.000000001Z")
         self.assertIn('_measurement="cpu"', predicate)
 
     @patch.object(DatabaseClient, "_delete_api")
@@ -749,7 +749,9 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             key="cpu", timestamp=datetime(2026, 8, 19, 10, 30)
         )
         start = mock_delete_api.delete.call_args[0][0]
+        stop = mock_delete_api.delete.call_args[0][1]
         self.assertEqual(start, datetime(2026, 8, 19, 10, 30, tzinfo=timezone.utc))
+        self.assertEqual(stop, "2026-08-19T10:30:00.000000001Z")
 
     @patch.object(DatabaseClient, "_delete_api")
     def test_delete_metric_data_at_string_timestamp(self, mock_delete_api):
@@ -757,7 +759,9 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             key="cpu", timestamp="2026-08-19T10:30:00+00:00"
         )
         start = mock_delete_api.delete.call_args[0][0]
+        stop = mock_delete_api.delete.call_args[0][1]
         self.assertEqual(start, datetime(2026, 8, 19, 10, 30, tzinfo=timezone.utc))
+        self.assertEqual(stop, "2026-08-19T10:30:00.000000001Z")
 
     def test_delete_metric_data_rejects_invalid_timestamp(self):
         with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
@@ -2143,6 +2147,21 @@ class TestInfluxDb2ClientIntegration(
         self.assertEqual(self._read_metric(general_metric), [])
         timeseries_db.delete_metric_data(key=short_metric.key)
         self.assertEqual(self._read_metric(short_metric, retention_policy=SHORT_RP), [])
+
+    def test_delete_metric_data_at_timestamp_preserves_neighboring_point(self):
+        metric = self._create_general_metric(name="delete-neighboring-point")
+        timestamp = datetime(2026, 8, 19, 10, 30, tzinfo=timezone.utc)
+        self._write_metric(metric, 100, time=timestamp, check=False)
+        self._write_metric(
+            metric,
+            200,
+            time=timestamp + timedelta(microseconds=1),
+            check=False,
+        )
+        timeseries_db.delete_metric_data(key=metric.key, timestamp=timestamp)
+        points = self._read_metric(metric)
+        self.assertEqual(len(points), 1)
+        self.assertEqual(points[0]["value"], 200)
 
     def test_delete_metric_data_without_filters_clears_default_and_short_buckets(self):
         general_metric = self._create_general_metric(name="delete-all-general")

@@ -16,7 +16,7 @@ class ElasticsearchQuery(dict):
 
         return ElasticsearchQuery(replace_value(query))
 
-    def resolve(self):
+    def resolve(self, has_object_scope=False):
         return ElasticsearchQuery(deepcopy(self))
 
 

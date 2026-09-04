@@ -420,13 +420,9 @@ class DatabaseClient(BaseTimeseriesClient):
     def _delete_point(self, key=None, tags=None, timestamp=None):
         conditions = [f"time = '{self._get_timestamp(timestamp)}'"]
         for tag_key, tag_value in (tags or {}).items():
-            conditions.append(f"\"{tag_key}\" = '{self._escape_tag_value(tag_value)}'")
+            conditions.append(f'"{tag_key}" = {self._format_string_value(tag_value)}')
         measurement = f'FROM "{key}" ' if key else ""
         self.query(f'DELETE {measurement}WHERE {" AND ".join(conditions)}')
-
-    @staticmethod
-    def _escape_tag_value(value):
-        return str(value).replace("'", r"\'")
 
     @retry
     def delete_series(self, key=None, tags=None):

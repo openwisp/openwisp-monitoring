@@ -289,12 +289,12 @@ Run the docker container:
 
 .. code-block:: shell
 
-    docker compose up
+    docker compose up monitoring
 
 By default, the Docker setup uses InfluxDB 1.8. To use another supported
 backend instead, run one of the following:
 
 .. code-block:: shell
 
-    TIMESERIES_BACKEND=influxdb2 docker compose up
-    TIMESERIES_BACKEND=elasticsearch docker compose up
+    TIMESERIES_BACKEND=influxdb2 docker compose up monitoring
+    TIMESERIES_BACKEND=elasticsearch docker compose up monitoring

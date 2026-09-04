@@ -156,7 +156,10 @@ Timeseries Database Options
                ``influxdb2`` backend
 ``refresh``    Refresh policy applied to writes and deletions. Available
                only for the ``elasticsearch`` backend. Defaults to
-               ``wait_for``
+               ``wait_for``, which keeps alert tolerance queries
+               consistent by waiting until new points are searchable.
+               Overriding it can improve write throughput, but may delay
+               or miss alert transitions
 ``read_size``  Number of documents read from Elasticsearch in a single
                request. Available only for the ``elasticsearch`` backend.
                Defaults to ``10000``

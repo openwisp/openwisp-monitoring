@@ -63,6 +63,13 @@ _POINT_IDENTITY_FIELDS = (
 )
 
 
+def _redact_url_userinfo(url):
+    parsed_url = urlparse(url)
+    if not parsed_url.username and not parsed_url.password:
+        return url
+    return parsed_url._replace(netloc=parsed_url.netloc.rsplit("@", 1)[-1]).geturl()
+
+
 def _normalize_datetime(value: datetime, precision="s"):
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
@@ -207,8 +214,8 @@ class DatabaseClient(BaseTimeseriesClient):
     _DEFAULT_ROLLOVER_SECONDS = 30 * 24 * 60 * 60
     _PIT_KEEP_ALIVE = "1m"
     _DISTINCT_PAGE_SIZE = 1000
-    # highest precision supported by the cardinality aggregation,
-    # counts below this threshold are exact
+    # highest precision supported by the cardinality aggregation;
+    # cardinality counts remain approximate even below this threshold
     _CARDINALITY_PRECISION = 40000
     # Wins over broad external templates that may also match OpenWISP streams.
     _OPENWISP_INDEX_TEMPLATE_PRIORITY = 500
@@ -317,13 +324,19 @@ class DatabaseClient(BaseTimeseriesClient):
                 TIMESERIES_DB["USER"],
                 TIMESERIES_DB["PASSWORD"],
             )
-        credentials = kwargs.keys() & {"api_key", "bearer_auth", "basic_auth"}
-        if credentials and url and urlparse(url).scheme == "http":
+        parsed_url = urlparse(url) if url else None
+        has_url_credentials = parsed_url and (
+            parsed_url.username or parsed_url.password
+        )
+        credentials = (
+            kwargs.keys() & {"api_key", "bearer_auth", "basic_auth"}
+        ) or has_url_credentials
+        if credentials and parsed_url and parsed_url.scheme == "http":
             logger.warning(
                 'Sending Elasticsearch credentials over insecure HTTP at "%s". '
                 'Consider switching TIMESERIES_DATABASE["URL"] to https:// when '
                 "running outside local development.",
-                url,
+                _redact_url_userinfo(url),
             )
         for setting_name, kwarg_name in (
             ("CA_CERTS", "ca_certs"),
@@ -500,7 +513,7 @@ class DatabaseClient(BaseTimeseriesClient):
                         },
                     ],
                     "properties": {
-                        "@timestamp": {"type": "date"},
+                        "@timestamp": {"type": "date_nanos"},
                         "measurement": {"type": "keyword"},
                         "openwisp_write_sequence": {
                             "type": "long",
@@ -700,6 +713,12 @@ class DatabaseClient(BaseTimeseriesClient):
             return ZoneInfo(str(timezone_name))
         except Exception:
             return timezone.utc
+
+    def _resolve_timezone_name(self, timezone_name=None):
+        if not timezone_name:
+            return None
+        timezone_obj = self._get_timezone(timezone_name)
+        return getattr(timezone_obj, "key", "UTC")
 
     def _parse_timestamp(self, timestamp):
         if isinstance(timestamp, datetime):
@@ -1602,6 +1621,7 @@ class DatabaseClient(BaseTimeseriesClient):
             query = self.get_default_chart_query(
                 has_object_scope=bool(params.get("object_id"))
             )
+        timezone = self._resolve_timezone_name(timezone)
         if self._is_openwisp_query(query, "chart"):
             return self._build_chart_query(
                 query,

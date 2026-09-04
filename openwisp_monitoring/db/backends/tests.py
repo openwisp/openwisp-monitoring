@@ -193,6 +193,21 @@ class TestBackendContract(SimpleTestCase):
                 for attr in attrs:
                     self.assertNotIn(attr, client.__dict__)
 
+    def test_get_default_chart_query_forwards_object_scope_to_resolver(self):
+        resolver = MagicMock(return_value="SELECT value FROM cpu")
+        client = DummyTimeseriesClient().attach_queries(
+            BackendQueryBundle(
+                chart_query={"cpu": {"dummy": "SELECT * FROM cpu"}},
+                default_chart_query=SimpleNamespace(resolve=resolver),
+                device_data_query="SELECT data FROM {measurement}",
+            )
+        )
+        self.assertEqual(
+            client.get_default_chart_query(has_object_scope=True),
+            "SELECT value FROM cpu",
+        )
+        resolver.assert_called_once_with(has_object_scope=True)
+
 
 class TestBackendLoader(SimpleTestCase):
     def _build_valid_backend(self):

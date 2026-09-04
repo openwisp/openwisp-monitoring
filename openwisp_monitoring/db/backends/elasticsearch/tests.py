@@ -270,18 +270,43 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
     @patch("openwisp_monitoring.db.backends.elasticsearch.client.Elasticsearch")
     def test_insecure_http_warning_only_with_credentials(self, mock_client):
         cases = (
-            ({"API_KEY": "api-key"}, True),
-            ({"BEARER_AUTH": "bearer"}, True),
-            ({"USER": "openwisp", "PASSWORD": "secret"}, True),
+            ({"API_KEY": "api-key"}, True, "http://localhost:9200"),
+            ({"BEARER_AUTH": "bearer"}, True, "http://localhost:9200"),
+            ({"USER": "openwisp", "PASSWORD": "secret"}, True, "http://localhost:9200"),
             # loopback is not exempted: credentials over HTTP always warn
-            ({"URL": "http://127.0.0.1:9200", "API_KEY": "api-key"}, True),
+            (
+                {"URL": "http://127.0.0.1:9200", "API_KEY": "api-key"},
+                True,
+                "http://127.0.0.1:9200",
+            ),
+            (
+                {"URL": "http://openwisp:secret@es.example.org:9200"},
+                True,
+                "http://es.example.org:9200",
+            ),
+            (
+                {
+                    "URL": "http://openwisp:secret@es.example.org:9200",
+                    "API_KEY": "api-key",
+                },
+                True,
+                "http://es.example.org:9200",
+            ),
             # unauthenticated HTTP is supported for local development
-            ({}, False),
+            ({}, False, None),
             # HTTPS and cloud IDs are secure transports
-            ({"URL": "https://es.example.org:9200", "API_KEY": "api-key"}, False),
-            ({"URL": "", "CLOUD_ID": "cluster:cloud-id", "API_KEY": "key"}, False),
+            (
+                {"URL": "https://es.example.org:9200", "API_KEY": "api-key"},
+                False,
+                None,
+            ),
+            (
+                {"URL": "", "CLOUD_ID": "cluster:cloud-id", "API_KEY": "key"},
+                False,
+                None,
+            ),
         )
-        for config, expected in cases:
+        for config, expected, endpoint in cases:
             with self.subTest(config=config):
                 with patch.dict(
                     "openwisp_monitoring.db.backends.elasticsearch.client."
@@ -294,6 +319,8 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
                     self.assertEqual(mocked_warning.called, expected)
                     if expected:
                         self.assertIn("insecure HTTP", mocked_warning.call_args.args[0])
+                        self.assertEqual(mocked_warning.call_args.args[1], endpoint)
+                        self.assertNotIn("secret", mocked_warning.call_args.args[1])
 
     def test_reset_clears_cached_state(self):
         client = DatabaseClient(db_name="initial-db")
@@ -336,7 +363,7 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             _resource_metadata(),
         )
         mappings = body["template"]["mappings"]["properties"]
-        self.assertEqual(mappings["@timestamp"], {"type": "date"})
+        self.assertEqual(mappings["@timestamp"], {"type": "date_nanos"})
         self.assertEqual(mappings["measurement"], {"type": "keyword"})
         self.assertNotIn("openwisp_series_id", mappings)
         self.assertNotIn("openwisp_doc_count", mappings)
@@ -1247,6 +1274,71 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         )
         self.assertEqual(query["__openwisp_metrics"][0]["scale"], 100)
 
+    def test_get_query_resolves_invalid_timezone_to_utc(self):
+        params = {
+            "key": "ping",
+            "field_name": "reachable",
+            "time": "2024-03-25 10:00:00",
+            "end_date": "2024-03-25 11:00:00",
+            "content_type": "config.device",
+            "object_id": "device-id",
+        }
+        expected_range_filter = {
+            "range": {
+                "@timestamp": {
+                    "gte": "2024-03-25T10:00:00Z",
+                    "lte": "2024-03-25T11:00:00Z",
+                }
+            }
+        }
+        query = self.timeseries_db.get_query(
+            chart_type="bar",
+            params=params,
+            time="1d",
+            group_map={"1d": "10m"},
+            query=chart_query["uptime"]["elasticsearch"],
+            timezone="Invalid/Timezone",
+        )
+        histogram = query["aggs"]["timeseries"]["date_histogram"]
+        self.assertEqual(histogram["time_zone"], "UTC")
+        self.assertEqual(
+            histogram["extended_bounds"],
+            {
+                "min": "2024-03-25T10:00:00Z",
+                "max": "2024-03-25T11:00:00Z",
+            },
+        )
+        self.assertIn(expected_range_filter, query["query"]["bool"]["filter"])
+
+        query = self._build_grouped_query(
+            params={
+                **params,
+                "key": "radius_acc",
+                "method": "mobile_phone",
+            },
+            timezone="Invalid/Timezone",
+        )
+        histogram = query["aggs"]["timeseries"]["date_histogram"]
+        self.assertEqual(histogram["time_zone"], "UTC")
+        self.assertIn(expected_range_filter, query["query"]["bool"]["filter"])
+
+        query = self.timeseries_db.get_query(
+            chart_type="line",
+            params=params,
+            time="1h",
+            group_map={"1h": "5m"},
+            fields=["reachable"],
+            query={
+                "__openwisp_query_type": "raw_chart",
+                "aggregate": False,
+                "fields": ["{field_name}"],
+            },
+            timezone="Invalid/Timezone",
+        )
+        self.assertEqual(query["__openwisp_query_type"], "raw_chart")
+        self.assertNotIn("aggs", query)
+        self.assertIn(expected_range_filter, query["query"]["bool"]["filter"])
+
     def test_build_metric_aggregation(self):
         cases = (
             ("avg", {"avg": {"field": "indexed_fields.numeric.value"}}),
@@ -1393,7 +1485,7 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         default_query = self.timeseries_db.queries.default_chart_query
         self.assertIsInstance(default_query, ElasticsearchQuery)
         query = self.timeseries_db.get_default_chart_query(has_object_scope=True)
-        mock_resolve.assert_called_once_with(default_query)
+        mock_resolve.assert_called_once_with(default_query, has_object_scope=True)
         self.assertNotIn("filters", query)
         self.assertIsNot(query, default_query)
 
@@ -1593,7 +1685,7 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         "metric": {"name": "count", "field": "count", "agg": "sum"},
     }
 
-    def _build_grouped_query(self, **overrides):
+    def _build_grouped_query(self, timezone=settings.TIME_ZONE, **overrides):
         params = {
             "key": "radius_acc",
             "content_type": "config.device",
@@ -1607,6 +1699,7 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             time="30d",
             group_map={"30d": "1d"},
             query={**self._GROUPED_CHART_QUERY, **overrides},
+            timezone=timezone,
         )
 
     def test_grouped_chart_query_keeps_object_scope(self):
@@ -2877,6 +2970,49 @@ class TestElasticsearchClientIntegration(
         self.assertEqual(self._read_metric(general_metric), [])
         timeseries_db.delete_metric_data(key=short_metric.key)
         self.assertEqual(self._read_metric(short_metric, retention_policy=SHORT_RP), [])
+
+    def test_delete_metric_data_at_same_millisecond_preserves_other_points(self):
+        def to_microseconds(timestamp):
+            return int(timestamp.timestamp()) * 1000000 + timestamp.microsecond
+
+        client = DatabaseClient(db_name="delete-same-millisecond-db").attach_queries(
+            timeseries_db.queries
+        )
+        client.drop_database()
+        client.create_database()
+        self.addCleanup(client.drop_database)
+        measurement = "delete-same-millisecond"
+        tags = {"object_id": "same-millisecond"}
+        first_timestamp = datetime(2026, 8, 19, 10, 30, 0, 100, tzinfo=timezone.utc)
+        second_timestamp = datetime(2026, 8, 19, 10, 30, 0, 900, tzinfo=timezone.utc)
+        client.write(
+            measurement,
+            {"value": 10},
+            tags=tags,
+            timestamp=first_timestamp,
+        )
+        client.write(
+            measurement,
+            {"value": 20},
+            tags=tags,
+            timestamp=second_timestamp,
+        )
+        self.assertEqual(
+            client.read(measurement, "value", tags, precision="u"),
+            [
+                {"time": to_microseconds(first_timestamp), "value": 10},
+                {"time": to_microseconds(second_timestamp), "value": 20},
+            ],
+        )
+        client.delete_metric_data(
+            key=measurement,
+            tags=tags,
+            timestamp=first_timestamp,
+        )
+        self.assertEqual(
+            client.read(measurement, "value", tags, precision="u"),
+            [{"time": to_microseconds(second_timestamp), "value": 20}],
+        )
 
     def test_delete_metric_data_without_filters_clears_default_and_short_streams(self):
         general_metric = self._create_general_metric(name="delete-all-general")

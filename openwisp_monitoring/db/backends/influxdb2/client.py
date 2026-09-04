@@ -493,6 +493,10 @@ class DatabaseClient(BaseTimeseriesClient):
     def _serialize_flux_time(self, value):
         return value.isoformat().replace("+00:00", "Z")
 
+    def _serialize_delete_stop(self, value):
+        value = value.astimezone(timezone.utc)
+        return f'{value.strftime("%Y-%m-%dT%H:%M:%S")}.{value.microsecond:06d}001Z'
+
     # smallest representable interval added to the stop of a range
     _RANGE_STOP_EPSILON = timedelta(microseconds=1)
 
@@ -1094,7 +1098,7 @@ class DatabaseClient(BaseTimeseriesClient):
                 raise ValueError(f'Invalid timestamp: "{_value}"')
         if timestamp.tzinfo is None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
-        return timestamp, timestamp + timedelta(milliseconds=1)
+        return timestamp, self._serialize_delete_stop(timestamp)
 
     @retry
     def _delete_range(

@@ -255,17 +255,22 @@ class TestDatabaseClient(RequireTimeseriesBackendMixin, TestMonitoringMixin, Tes
 
     def test_delete_metric_data_at_timestamp_escapes_tags(self):
         timestamp = make_aware(datetime(2026, 8, 19, 10, 30))
+        tag_value = r"aa\'bb"
+        expected_tag = "'{}'".format(
+            tag_value.replace("\\", "\\\\").replace("'", "\\'")
+        )
+        self.assertEqual(expected_tag, r"'aa\\\'bb'")
         with patch.object(timeseries_db, "query") as mocked_query:
             timeseries_db.delete_metric_data(
                 key="radius_acc",
-                tags={"calling_station_id": "aa'bb"},
+                tags={"calling_station_id": tag_value},
                 timestamp=timestamp,
             )
         self.assertEqual(
             mocked_query.call_args[0][0],
             'DELETE FROM "radius_acc" WHERE '
             f"time = '{timestamp.isoformat(sep='T', timespec='microseconds')}' "
-            "AND \"calling_station_id\" = 'aa\\'bb'",
+            f'AND "calling_station_id" = {expected_tag}',
         )
 
     def test_get_query_1d(self):
