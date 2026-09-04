@@ -652,7 +652,7 @@ class MapPageAdmin(MultitenantAdminMixin, admin.ModelAdmin):
                 "monitoring/css/device-map.css",
                 "leaflet/leaflet.css",
                 "monitoring/css/leaflet.fullscreen.css",
-                "monitoring/css/netjsongraph-overrides.css",
+                "monitoring/css/netjsongraph-monitoring.css",
                 "monitoring/css/monitoring.css",
             ]
         }

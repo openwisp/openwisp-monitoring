@@ -25,7 +25,7 @@ class TestApps(TestCase):
                 "monitoring/css/device-map.css",
                 "leaflet/leaflet.css",
                 "monitoring/css/leaflet.fullscreen.css",
-                "monitoring/css/netjsongraph-overrides.css",
+                "monitoring/css/netjsongraph-monitoring.css",
             ),
         )
         self.assertEqual(

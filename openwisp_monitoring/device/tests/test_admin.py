@@ -1203,7 +1203,7 @@ class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
             "monitoring/css/device-map.css",
             "monitoring/css/leaflet.fullscreen.css",
             "monitoring/css/netjsongraph.css",
-            "monitoring/css/netjsongraph-overrides.css",
+            "monitoring/css/netjsongraph-monitoring.css",
             "leaflet/leaflet.css",
             "monitoring/js/lib/netjsongraph.min.js",
             "monitoring/js/lib/leaflet.fullscreen.min.js",
@@ -1579,9 +1579,23 @@ class TestMapPageAdmin(TestGeoMixin, DeviceMonitoringTestCase):
             "leaflet/leaflet.css",
             "monitoring/css/leaflet.fullscreen.css",
             "monitoring/css/netjsongraph.css",
-            "monitoring/css/netjsongraph-overrides.css",
+            "monitoring/css/netjsongraph-monitoring.css",
             "monitoring/js/device-map.js",
             "monitoring/js/floorplan.js",
         ]
         for static_file in static_files:
             self.assertContains(response, static_file)
+        css_files = (
+            "monitoring/css/netjsongraph.css",
+            "monitoring/css/device-map.css",
+            "leaflet/leaflet.css",
+            "monitoring/css/leaflet.fullscreen.css",
+            "monitoring/css/netjsongraph-monitoring.css",
+        )
+        content = response.content.decode()
+        for first, second in zip(css_files, css_files[1:]):
+            self.assertLess(
+                content.index(first),
+                content.index(second),
+                f"{first} must load before {second}",
+            )

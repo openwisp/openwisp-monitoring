@@ -376,7 +376,7 @@ class DeviceMonitoringConfig(AppConfig):
                         "monitoring/css/device-map.css",
                         "leaflet/leaflet.css",
                         "monitoring/css/leaflet.fullscreen.css",
-                        "monitoring/css/netjsongraph-overrides.css",
+                        "monitoring/css/netjsongraph-monitoring.css",
                     ),
                     "js": (
                         "monitoring/js/lib/netjsongraph.min.js",
