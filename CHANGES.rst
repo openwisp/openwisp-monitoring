@@ -1,10 +1,81 @@
 Changelog
 =========
 
-Version 1.3.0 [unreleased]
+Version 1.3.0 [2026-09-04]
 --------------------------
 
-Work in progress.
+Features
+~~~~~~~~
+
+- Added `indoor maps
+  <https://github.com/openwisp/openwisp-monitoring/issues/564>`_, allowing
+  users to drill down from the geographic map to floor plans, retrieve
+  indoor device information through the REST API, and filter locations by
+  device status.
+- Added a `dedicated geographic map page
+  <https://github.com/openwisp/openwisp-monitoring/issues/561>`_ with
+  links from device pages and `bookmarkable map actions
+  <https://github.com/openwisp/openwisp-monitoring/issues/562>`_ for
+  sharing specific map views.
+- Allowed `moving devices to update their position in real time
+  <https://github.com/openwisp/openwisp-monitoring/issues/664>`_ on the
+  dashboard map.
+- Allowed `opening indoor floor maps directly from their URL
+  <https://github.com/openwisp/openwisp-monitoring/issues/749>`_,
+  including navigation between floors without first selecting a device.
+- Added `inspection and filtering of problematic metrics from the device
+  list <https://github.com/openwisp/openwisp-monitoring/issues/774>`_,
+  making it easier to identify unhealthy devices without leaving the list
+  page.
+
+Changes
+~~~~~~~
+
+Other changes
++++++++++++++
+
+- Improved `location health status on the geographic map
+  <https://github.com/openwisp/openwisp-monitoring/issues/849>`_. Location
+  markers now represent the predominant active-device health status while
+  handling deactivated devices separately.
+- Added `5G signal information and support for partial mobile signal
+  metrics <https://github.com/openwisp/openwisp-monitoring/issues/779>`_,
+  including 5G RSSI and additional signal information in the device admin
+  status tab.
+- Simplified `map world wrapping
+  <https://github.com/openwisp/openwisp-monitoring/issues/719>`_ using the
+  functionality provided by ``netjsongraph.js``.
+- Replaced the third-party ``JSONField`` implementation with `Django's
+  built-in JSONField
+  <https://github.com/openwisp/openwisp-monitoring/issues/673>`_, while
+  preserving existing PostgreSQL data correctly during upgrades.
+
+Dependencies
+++++++++++++
+
+- Bumped ``openwisp-controller`` from ``~=1.2.0`` to `~=1.3.0
+  <https://github.com/openwisp/openwisp-controller/blob/master/CHANGES.rst>`_.
+- Bumped ``django-nested-admin`` from ``~=4.1.4`` to `~=4.1.6
+  <https://github.com/theatlantic/django-nested-admin/blob/master/CHANGELOG.rst>`_.
+- Bumped ``python-dateutil`` from ``>=2.7.0,<3.0.0`` to
+  `>=2.9.0.post0,<3.0.0
+  <https://dateutil.readthedocs.io/en/stable/changelog.html>`_.
+- Upgraded netjsongraph.js to `0.4.0
+  <https://github.com/openwisp/netjsongraph.js/releases/tag/0.4.0>`_.
+- Updated the bundled Plotly.js, Moment.js, and Leaflet Fullscreen
+  libraries.
+- Dropped support for Django ``4.2``.
+- Dropped support for Python ``3.9``.
+
+Bugfixes
+~~~~~~~~
+
+- Fixed `broken charts on metric admin pages
+  <https://github.com/openwisp/openwisp-monitoring/issues/846>`_.
+- Fixed `incorrect metric health after a device became unknown
+  <https://github.com/openwisp/openwisp-monitoring/issues/841>`_, ensuring
+  the correct health status is shown if the device is later reactivated.
+- Fixed mobile signal attributes with zero values not being displayed.
 
 Version 1.2.1 [2026-04-09]
 --------------------------
