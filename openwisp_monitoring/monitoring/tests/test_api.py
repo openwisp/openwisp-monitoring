@@ -7,6 +7,7 @@ from swapper import load_model
 
 from openwisp_controller.config.tests.utils import CreateConfigTemplateMixin
 from openwisp_controller.geo.tests.utils import TestGeoMixin
+from openwisp_utils.tests import AssertNumQueriesSubTestMixin
 
 from ..configuration import DEFAULT_DASHBOARD_TRAFFIC_CHART
 from . import TestMonitoringMixin
@@ -26,7 +27,11 @@ Device = load_model("config", "Device")
 @tag("flaky_with_udp_writes")
 @patch.dict(DEFAULT_DASHBOARD_TRAFFIC_CHART, {"__all__": ["wan"]})
 class TestDashboardTimeseriesView(
-    CreateConfigTemplateMixin, TestMonitoringMixin, TestGeoMixin, TestCase
+    AssertNumQueriesSubTestMixin,
+    CreateConfigTemplateMixin,
+    TestMonitoringMixin,
+    TestGeoMixin,
+    TestCase,
 ):
     location_model = Location
     floorplan_model = FloorPlan
