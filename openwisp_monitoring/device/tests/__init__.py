@@ -7,6 +7,7 @@ from django.utils.timezone import now
 from swapper import load_model
 
 from openwisp_controller.config.tests.utils import CreateConfigTemplateMixin
+from openwisp_utils.tests import AssertNumQueriesSubTestMixin
 
 from ...monitoring.tests import TestMonitoringMixin
 from ..utils import manage_short_retention_policy
@@ -20,7 +21,9 @@ Config = load_model("config", "Config")
 Device = load_model("config", "Device")
 
 
-class TestDeviceMonitoringMixin(CreateConfigTemplateMixin, TestMonitoringMixin):
+class TestDeviceMonitoringMixin(
+    AssertNumQueriesSubTestMixin, CreateConfigTemplateMixin, TestMonitoringMixin
+):
     device_model = Device
     config_model = Config
     _PING = "openwisp_monitoring.check.classes.Ping"
