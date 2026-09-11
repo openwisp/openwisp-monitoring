@@ -1434,8 +1434,8 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             name="CPU usage", configuration="cpu", object_id=d.id
         )
         values = {"cpu_usage": 0.0, "load_1": 0.0, "load_5": 0.0, "load_15": 0.0}
-        signal_time = timezone.now()
-        time = signal_time.strftime("%d-%m-%Y_%H:%M:%S.%f")
+        timestamp = timezone.now()
+        time = timestamp.strftime("%d-%m-%Y_%H:%M:%S.%f")
         with catch_signal(post_metric_write) as handler:
             self._post_data(d.id, d.key, data, time=time)
         signal_calls = handler.call_args_list
@@ -1448,7 +1448,7 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             signal=post_metric_write,
             sender=Metric,
             values=values,
-            time=signal_time.isoformat(),
+            time=timestamp.isoformat(),
             current=False,
         )
         self.assertEqual(signal_calls[0][1], expected_arguments)
@@ -1744,17 +1744,27 @@ class TestGeoApi(TestGeoMixin, AuthenticationMixin, DeviceMonitoringTestCase):
     def test_api_location_geojson(self):
         device_location = self._create_object_location()
         device_location.device.monitoring.update_status("ok")
+        deactivated_device = self._create_device(
+            organization=device_location.location.organization
+        )
+        deactivated_device.monitoring.update_status("deactivated")
+        self._create_object_location(
+            content_object=deactivated_device,
+            location=device_location.location,
+            organization=device_location.location.organization,
+        )
         self._login_admin()
         url = reverse("monitoring:api_location_geojson")
         response = self.client.get(url)
         data = response.data
         self.assertEqual(data["count"], 1)
         self.assertEqual(len(data["features"]), 1)
-        self.assertEqual(data["features"][0]["properties"]["device_count"], 1)
+        self.assertEqual(data["features"][0]["properties"]["device_count"], 2)
         self.assertEqual(data["features"][0]["properties"]["ok_count"], 1)
         self.assertEqual(data["features"][0]["properties"]["problem_count"], 0)
         self.assertEqual(data["features"][0]["properties"]["critical_count"], 0)
         self.assertEqual(data["features"][0]["properties"]["unknown_count"], 0)
+        self.assertEqual(data["features"][0]["properties"]["deactivated_count"], 1)
 
     def test_api_location_device_list(self):
         org = self._get_org()

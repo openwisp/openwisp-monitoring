@@ -44,6 +44,17 @@ Since the detailed explanation is contained in the
 provide just a list of the available endpoints, for further information
 please open the URL of the endpoint in your browser.
 
+List Locations as GeoJSON
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: text
+
+    GET /api/v1/monitoring/geojson/
+
+Returns locations with devices as GeoJSON features. Each feature includes
+the total device count and counts for the ``ok``, ``problem``,
+``critical``, ``unknown``, and ``deactivated`` monitoring statuses.
+
 Retrieve General Monitoring Charts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

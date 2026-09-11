@@ -102,8 +102,6 @@ class TestAdmin(
 
     def _get_inline_admin_heading(self, heading):
         """
-        TODO: Remove this when dropping support for Django 4.2
-
         Django 5.1 introduced a new way to render inline headings with IDs and classes.
         For versions before 5.1, we use the old-style heading format except for "Alert Settings"
         which is already handled differently by django-nested-admin==4.1.0.
@@ -808,7 +806,6 @@ class TestAdmin(
                 '<img src="/static/admin/img/icon-yes.svg" alt="True">',
                 html=True,
             )
-            # TODO: Remove when dropping support for Django 4.2
             self.assertContains(
                 response,
                 (
@@ -1258,6 +1255,7 @@ class TestAdminDashboard(TestGeoMixin, DeviceMonitoringTestCase):
             "monitoring/css/device-map.css",
             "monitoring/css/leaflet.fullscreen.css",
             "monitoring/css/netjsongraph.css",
+            "monitoring/css/netjsongraph-monitoring.css",
             "leaflet/leaflet.css",
             "monitoring/js/lib/netjsongraph.min.js",
             "monitoring/js/lib/leaflet.fullscreen.min.js",
@@ -1530,7 +1528,6 @@ class TestWifiSessionAdmin(
                 html=True,
             )
 
-    # TODO: Remove override_setting when dropping support for Django 4.2
     # The DATETIME_FORMAT for en-gb locale changed for Django 5.1+,
     # thus we override the project setting here to have consistent
     # result with tests.
@@ -1634,8 +1631,23 @@ class TestMapPageAdmin(TestGeoMixin, DeviceMonitoringTestCase):
             "leaflet/leaflet.css",
             "monitoring/css/leaflet.fullscreen.css",
             "monitoring/css/netjsongraph.css",
+            "monitoring/css/netjsongraph-monitoring.css",
             "monitoring/js/device-map.js",
             "monitoring/js/floorplan.js",
         ]
         for static_file in static_files:
             self.assertContains(response, static_file)
+        css_files = (
+            "monitoring/css/netjsongraph.css",
+            "monitoring/css/device-map.css",
+            "leaflet/leaflet.css",
+            "monitoring/css/leaflet.fullscreen.css",
+            "monitoring/css/netjsongraph-monitoring.css",
+        )
+        content = response.content.decode()
+        for first, second in zip(css_files, css_files[1:]):
+            self.assertLess(
+                content.index(first),
+                content.index(second),
+                f"{first} must load before {second}",
+            )
