@@ -50,3 +50,16 @@ class TestDatabaseInfluxDb2(TestDatabaseRetryMixin):
     )
     def test_check_retry(self, mock, sleep_mock):
         self._assert_check_retry(mock, sleep_mock)
+
+
+@tag("elasticsearch")
+class TestDatabaseElasticsearch(TestDatabaseRetryMixin):
+    expected_backend = "elasticsearch"
+
+    @patch("openwisp_monitoring.utils.sleep")
+    @patch(
+        "openwisp_monitoring.db.backends.elasticsearch.client.DatabaseClient._ensure_data_stream_resources",
+        side_effect=ConnectionError(),
+    )
+    def test_check_retry(self, mock, sleep_mock):
+        self._assert_check_retry(mock, sleep_mock)

@@ -3,6 +3,7 @@ import sys
 from datetime import timedelta
 
 from celery.schedules import crontab
+from django.core.exceptions import ImproperlyConfigured
 
 TESTING = "test" in sys.argv
 SHELL = "shell" in sys.argv or "shell_plus" in sys.argv
@@ -30,6 +31,7 @@ if TESTING and "--exclude-tag=selenium_tests" not in sys.argv:
 
 TIMESERIES_BACKEND = os.getenv("TIMESERIES_BACKEND", "influxdb")
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
+FALSEY_ENV_VALUES = {"0", "false", "no", "off"}
 if TIMESERIES_BACKEND == "influxdb":
     TIMESERIES_DATABASE = {
         "BACKEND": "openwisp_monitoring.db.backends.influxdb",
@@ -61,6 +63,46 @@ elif TIMESERIES_BACKEND == "influxdb2":
         # Telegraf, so the influxdb2 backend needs separate listener settings.
         "OPTIONS": {"udp_writes": False, "udp_port": 8089},
     }
+elif TIMESERIES_BACKEND == "elasticsearch":
+    # These defaults mirror the elasticsearch and redis containers defined in
+    # the repository docker-compose.yml, so most local development setups only
+    # need to export TIMESERIES_BACKEND=elasticsearch.
+    TIMESERIES_DATABASE = {
+        "BACKEND": "openwisp_monitoring.db.backends.elasticsearch",
+        "NAME": os.getenv(
+            "ELASTICSEARCH_NAME", os.getenv("TIMESERIES_DB", "openwisp2")
+        ),
+    }
+    if os.getenv("ELASTICSEARCH_CLOUD_ID"):
+        TIMESERIES_DATABASE["CLOUD_ID"] = os.getenv("ELASTICSEARCH_CLOUD_ID")
+    else:
+        TIMESERIES_DATABASE["URL"] = os.getenv(
+            "ELASTICSEARCH_URL",
+            "http://{host}:{port}".format(
+                host=os.getenv("ELASTICSEARCH_HOST", "localhost"),
+                port=os.getenv("ELASTICSEARCH_PORT", "9200"),
+            ),
+        )
+    if os.getenv("ELASTICSEARCH_API_KEY"):
+        TIMESERIES_DATABASE["API_KEY"] = os.getenv("ELASTICSEARCH_API_KEY")
+    elif os.getenv("ELASTICSEARCH_BEARER_AUTH"):
+        TIMESERIES_DATABASE["BEARER_AUTH"] = os.getenv("ELASTICSEARCH_BEARER_AUTH")
+    elif os.getenv("ELASTICSEARCH_USER") or os.getenv("ELASTICSEARCH_PASSWORD"):
+        TIMESERIES_DATABASE["USER"] = os.getenv("ELASTICSEARCH_USER")
+        TIMESERIES_DATABASE["PASSWORD"] = os.getenv("ELASTICSEARCH_PASSWORD")
+    for env_var, setting in (
+        ("ELASTICSEARCH_CA_CERTS", "CA_CERTS"),
+        ("ELASTICSEARCH_SSL_ASSERT_FINGERPRINT", "SSL_ASSERT_FINGERPRINT"),
+    ):
+        if os.getenv(env_var):
+            TIMESERIES_DATABASE[setting] = os.getenv(env_var)
+    if os.getenv("ELASTICSEARCH_VERIFY_CERTS"):
+        verify_certs = os.getenv("ELASTICSEARCH_VERIFY_CERTS").strip().lower()
+        if verify_certs not in TRUTHY_ENV_VALUES | FALSEY_ENV_VALUES:
+            raise ImproperlyConfigured(
+                '"ELASTICSEARCH_VERIFY_CERTS" must be a boolean value.'
+            )
+        TIMESERIES_DATABASE["VERIFY_CERTS"] = verify_certs in TRUTHY_ENV_VALUES
 else:
     raise ValueError(f'Unsupported TIMESERIES_BACKEND "{TIMESERIES_BACKEND}"')
 if TESTING:
@@ -75,6 +117,8 @@ if TESTING:
             "udp_host": os.getenv("INFLUXDB2_UDP_HOST", "localhost"),
             "udp_port": int(os.getenv("INFLUXDB2_UDP_PORT", 8091)),
         }
+    elif TIMESERIES_BACKEND == "elasticsearch":
+        udp_options = TIMESERIES_DATABASE.get("OPTIONS", {})
     TIMESERIES_DATABASE["OPTIONS"] = udp_options
 
 SECRET_KEY = "fn)t*+$)ugeyip6-#txyy$5wf2ervc0d2n#h)qb)y5@ly$t*@w"

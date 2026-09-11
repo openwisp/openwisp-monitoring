@@ -6,7 +6,7 @@ from django.core.exceptions import ImproperlyConfigured
 
 from .base import BackendQueryBundle, BaseTimeseriesClient
 
-BUILTIN_BACKENDS = ["influxdb", "influxdb2"]
+BUILTIN_BACKENDS = ["influxdb", "influxdb2", "elasticsearch"]
 
 
 def get_timeseries_database():

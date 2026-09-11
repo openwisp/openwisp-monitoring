@@ -338,14 +338,15 @@ class TestModels(TestMonitoringMixin, TestCase):
     @tag("flaky_with_udp_writes")
     def test_metric_post_write_signals_emitted(self):
         om = self._create_object_metric()
+        write_time = timezone.now()
         with catch_signal(post_metric_write) as handler:
-            om.write(3, current=True, time=start_time)
+            om.write(3, current=True, time=write_time)
             handler.assert_called_once_with(
                 sender=Metric,
                 metric=om,
                 values={om.field_name: 3},
                 signal=post_metric_write,
-                time=start_time.isoformat(),
+                time=write_time.isoformat(),
                 current=True,
             )
 

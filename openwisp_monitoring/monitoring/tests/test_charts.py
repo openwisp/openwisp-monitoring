@@ -365,7 +365,8 @@ class TestChartsBackendMixin(
             extra_tags={"ifname": "wlan0"},
         )
         c = self._create_chart(metric=m, test_data=False, configuration="wifi_clients")
-        m.write("00:14:5c:00:00:00")
+        # UDP writes are not synchronous, _write_metric waits for the point
+        self._write_metric(m, "00:14:5c:00:00:00")
         c.save()
         return c
 
