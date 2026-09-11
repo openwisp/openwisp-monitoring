@@ -733,6 +733,42 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             datetime(2262, 4, 11, 23, 47, 16, 854775, tzinfo=timezone.utc),
         )
 
+    @patch.object(DatabaseClient, "_delete_api")
+    def test_delete_metric_data_at_timestamp(self, mock_delete_api):
+        timestamp = datetime(2026, 8, 19, 10, 30, tzinfo=timezone.utc)
+        self.timeseries_db.delete_metric_data(key="cpu", timestamp=timestamp)
+        start, stop, predicate = mock_delete_api.delete.call_args[0][:3]
+        self.assertEqual(start, timestamp)
+        # the stop of the range is exclusive
+        self.assertEqual(stop, "2026-08-19T10:30:00.000000001Z")
+        self.assertIn('_measurement="cpu"', predicate)
+
+    @patch.object(DatabaseClient, "_delete_api")
+    def test_delete_metric_data_at_naive_timestamp(self, mock_delete_api):
+        self.timeseries_db.delete_metric_data(
+            key="cpu", timestamp=datetime(2026, 8, 19, 10, 30)
+        )
+        start = mock_delete_api.delete.call_args[0][0]
+        stop = mock_delete_api.delete.call_args[0][1]
+        self.assertEqual(start, datetime(2026, 8, 19, 10, 30, tzinfo=timezone.utc))
+        self.assertEqual(stop, "2026-08-19T10:30:00.000000001Z")
+
+    @patch.object(DatabaseClient, "_delete_api")
+    def test_delete_metric_data_at_string_timestamp(self, mock_delete_api):
+        self.timeseries_db.delete_metric_data(
+            key="cpu", timestamp="2026-08-19T10:30:00+00:00"
+        )
+        start = mock_delete_api.delete.call_args[0][0]
+        stop = mock_delete_api.delete.call_args[0][1]
+        self.assertEqual(start, datetime(2026, 8, 19, 10, 30, tzinfo=timezone.utc))
+        self.assertEqual(stop, "2026-08-19T10:30:00.000000001Z")
+
+    def test_delete_metric_data_rejects_invalid_timestamp(self):
+        with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
+            with self.assertRaises(ValueError):
+                self.timeseries_db.delete_metric_data(key="cpu", timestamp="invalid")
+        mock_delete_api.delete.assert_not_called()
+
     def test_delete_metric_data_rejects_unsafe_tag_keys(self):
         with patch.object(self.timeseries_db, "_delete_api") as mock_delete_api:
             with self.assertRaises(ValueError):
@@ -838,7 +874,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         )
         flux_query = mock_query.call_args[0][0]
         self.assertIn(
-            'contains(value: r.organization_id, set: ["org1", "org2"])',
+            'contains(value: r.organization_id, set: ["__all__", "org1", "org2"])',
             flux_query,
         )
         self.assertIn(
@@ -849,7 +885,6 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             'contains(value: r.floorplan_id, set: ["fp1", "fp2"])',
             flux_query,
         )
-        self.assertNotIn("__all__", flux_query)
 
     def test_get_top_fields_empty_result(self):
         """Test top field selection returns empty list when no data is found."""
@@ -1059,7 +1094,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         )
         self.assertIn(f'from(bucket: "{self.timeseries_db.db_name}")', query)
         self.assertIn('start: time(v: "2024-03-25T00:00:00Z")', query)
-        self.assertIn('stop: time(v: "2024-03-26T00:00:00Z")', query)
+        self.assertIn('stop: time(v: "2024-03-26T00:00:00.000001Z")', query)
         self.assertIn('r.content_type == "config.device"', query)
         self.assertIn('r.object_id == "device-id"', query)
         self.assertIn('r._field == "cpu_usage"', query)
@@ -1088,7 +1123,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         )
 
         self.assertIn('start: time(v: "2024-03-25T04:30:00Z")', query)
-        self.assertIn('stop: time(v: "2024-03-25T05:30:00Z")', query)
+        self.assertIn('stop: time(v: "2024-03-25T05:30:00.000001Z")', query)
 
     def test_generated_query_converts_naive_chart_range_from_timezone_to_utc(self):
         query = self.timeseries_db.get_query(
@@ -1104,7 +1139,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             timezone="Asia/Kolkata",
         )
         self.assertIn('range(start: time(v: "2024-03-25T04:30:00Z")', query)
-        self.assertIn('stop: time(v: "2024-03-25T05:30:00Z"))', query)
+        self.assertIn('stop: time(v: "2024-03-25T05:30:00.000001Z"))', query)
 
     def test_get_query_escapes_default_chart_filters(self):
         query = self.timeseries_db.get_query(
@@ -1149,6 +1184,32 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             self.timeseries_db._format_flux_time("2024-03-26"),
             'time(v: "2024-03-26T00:00:00Z")',
         )
+
+    def test_get_query_includes_the_end_date(self):
+        """The stop of a Flux range is exclusive, unlike InfluxDB 1."""
+        params = {
+            "key": "cpu",
+            "field_name": "cpu_usage",
+            "time": "2024-03-25 00:00:00",
+            "end_date": "2024-03-26 00:00:00",
+        }
+        templated_query = self.timeseries_db.get_query(
+            chart_type="scatter",
+            params=params,
+            time="1d",
+            group_map={"1d": "10m"},
+            query=chart_query["cpu"]["influxdb2"],
+            timezone="UTC",
+        )
+        default_query = self.timeseries_db.get_query(
+            chart_type="scatter",
+            params=params,
+            time="1d",
+            group_map={"1d": "10m"},
+            timezone="UTC",
+        )
+        for query in (templated_query, default_query):
+            self.assertIn('stop: time(v: "2024-03-26T00:00:00.000001Z")', query)
 
     def test_get_query_does_not_interpolate_unsafe_end_date(self):
         """Prevent end-date injection from appending malicious Flux stages."""
@@ -1375,7 +1436,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             fields=["rx_bytes", "tx_bytes"],
         )
         self.assertIn(
-            'contains(value: r.organization_id, set: ["org1", "org2"])',
+            'contains(value: r.organization_id, set: ["__all__", "org1", "org2"])',
             query,
         )
         self.assertIn('contains(value: r.location_id, set: ["loc1", "loc2"])', query)
@@ -1383,7 +1444,6 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             'contains(value: r.floorplan_id, set: ["fp1", "fp2"])',
             query,
         )
-        self.assertNotIn("__all__", query)
 
     def test_get_query_wifi_clients_count_distinct(self):
         """Test Flux query for wifi_clients using distinct() + count()."""
@@ -2087,6 +2147,21 @@ class TestInfluxDb2ClientIntegration(
         self.assertEqual(self._read_metric(general_metric), [])
         timeseries_db.delete_metric_data(key=short_metric.key)
         self.assertEqual(self._read_metric(short_metric, retention_policy=SHORT_RP), [])
+
+    def test_delete_metric_data_at_timestamp_preserves_neighboring_point(self):
+        metric = self._create_general_metric(name="delete-neighboring-point")
+        timestamp = datetime(2026, 8, 19, 10, 30, tzinfo=timezone.utc)
+        self._write_metric(metric, 100, time=timestamp, check=False)
+        self._write_metric(
+            metric,
+            200,
+            time=timestamp + timedelta(microseconds=1),
+            check=False,
+        )
+        timeseries_db.delete_metric_data(key=metric.key, timestamp=timestamp)
+        points = self._read_metric(metric)
+        self.assertEqual(len(points), 1)
+        self.assertEqual(points[0]["value"], 200)
 
     def test_delete_metric_data_without_filters_clears_default_and_short_buckets(self):
         general_metric = self._create_general_metric(name="delete-all-general")

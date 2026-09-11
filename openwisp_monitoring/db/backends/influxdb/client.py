@@ -402,22 +402,31 @@ class DatabaseClient(BaseTimeseriesClient):
             pk=self._format_string_value(pk),
         )
 
-    def delete_metric_data(self, key=None, tags=None):
+    def delete_metric_data(self, key=None, tags=None, timestamp=None):
         """Deletes a specific metric.
 
         Deletes a metric based on the key and tags provided, you may also
-        choose to delete all metrics.
+        choose to delete all metrics. If ``timestamp`` is passed, only the
+        data written at that specific time is deleted.
         """
-        if not key and not tags:
+        if timestamp is not None:
+            self._delete_point(key=key, tags=tags, timestamp=timestamp)
+        elif not key and not tags:
             self.query("DROP SERIES FROM /.*/")
         else:
             self.delete_series(key, tags)
 
     @retry
+    def _delete_point(self, key=None, tags=None, timestamp=None):
+        conditions = [f"time = '{self._get_timestamp(timestamp)}'"]
+        for tag_key, tag_value in (tags or {}).items():
+            conditions.append(f'"{tag_key}" = {self._format_string_value(tag_value)}')
+        measurement = f'FROM "{key}" ' if key else ""
+        self.query(f'DELETE {measurement}WHERE {" AND ".join(conditions)}')
+
+    @retry
     def delete_series(self, key=None, tags=None):
         self.db.delete_series(measurement=key, tags=tags)
-
-    # Chart related functions below
 
     def validate_query(self, query):
         for word in self._FORBIDDEN:
