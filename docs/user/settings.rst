@@ -381,9 +381,9 @@ documentation regarding automatic retries for known errors
 .. note::
 
     The retry mechanism does not work when using ``UDP`` for writing data
-    to the timeseries database on the ``influxdb`` or ``influxdb2`` backend.
-    This is due to the nature of the ``UDP`` protocol, which does not
-    acknowledge receipt of data packets.
+    to the timeseries database on the ``influxdb`` or ``influxdb2``
+    backend. This is due to the nature of the ``UDP`` protocol, which does
+    not acknowledge receipt of data packets.
 
 .. _openwisp_monitoring_timeseries_retry_options:
 
