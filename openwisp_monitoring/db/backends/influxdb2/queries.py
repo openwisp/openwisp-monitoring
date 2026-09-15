@@ -276,7 +276,7 @@ default_chart_query = [
 ]
 
 device_data_query = (
-    "from(bucket: {bucket}) |> range(start: -24h) "
+    "from(bucket: {bucket}) |> range(start: 0) "
     "|> filter(fn: (r) => r._measurement == {measurement} and r.pk == {pk}) "
     "|> last()"
 )
