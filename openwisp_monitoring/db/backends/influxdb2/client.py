@@ -442,7 +442,7 @@ class DatabaseClient(BaseTimeseriesClient):
                 'Invalid operator "%(operator)s" passed.\n'
                 "Valid operators are: %(operators)s"
             ) % {"operator": op, "operators": ", ".join(self._OPERATORS)}
-            raise self.client_error(message)
+            raise self.client_error(message=message)
         return "==" if op == "=" else op
 
     @classmethod
@@ -923,7 +923,7 @@ class DatabaseClient(BaseTimeseriesClient):
                     'You may pass "time" / "-time" to get result sorted '
                     "in ascending /descending order respectively."
                 ) % {"order": order}
-                raise self.client_error(message)
+                raise self.client_error(message=message)
         else:
             flux_query += ' |> sort(columns: ["_time"])'
         limit = kwargs.get("limit")

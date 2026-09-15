@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, call, patch
 
 from django.core.exceptions import ImproperlyConfigured
+from django.db import DatabaseError
 from django.test import SimpleTestCase
 
 from openwisp_monitoring.db.backends import load_backend, load_backend_module
@@ -143,6 +144,65 @@ class TestBackendContract(SimpleTestCase):
                     client._normalize_chart_window(time_value, group_map),
                     expected,
                 )
+
+    def test_query_bundle_validation_errors(self):
+        cases = (
+            (
+                BackendQueryBundle(
+                    chart_query=[],
+                    default_chart_query="query",
+                    device_data_query="query",
+                ),
+                "chart_query as a mapping",
+            ),
+            (
+                BackendQueryBundle(
+                    chart_query={},
+                    summary_query={"cpu": {"other": "query"}},
+                    default_chart_query="query",
+                    device_data_query="query",
+                ),
+                "missing the 'dummy' summary key for: cpu",
+            ),
+            (
+                BackendQueryBundle(
+                    chart_query={},
+                    default_chart_query=None,
+                    device_data_query="query",
+                ),
+                "must define default_chart_query",
+            ),
+        )
+        for bundle, message in cases:
+            with self.subTest(message=message), self.assertRaisesMessage(
+                ImproperlyConfigured, message
+            ):
+                bundle.validate("dummy")
+
+    def test_base_settings_validation_rejects_missing_configuration(self):
+        with self.assertRaisesMessage(
+            DatabaseError, "No TIMESERIES_DATABASE specified in settings"
+        ):
+            DummyTimeseriesClient.validate_settings(None)
+
+    def test_get_default_chart_query_supports_string_and_rejects_unknown_type(self):
+        client = DummyTimeseriesClient().attach_queries(
+            BackendQueryBundle(
+                chart_query={},
+                default_chart_query="SELECT value FROM cpu",
+                device_data_query="query",
+            )
+        )
+        self.assertEqual(client.get_default_chart_query(), "SELECT value FROM cpu")
+        client.queries = BackendQueryBundle(
+            chart_query={},
+            default_chart_query=object(),
+            device_data_query="query",
+        )
+        with self.assertRaisesMessage(
+            ImproperlyConfigured, "Unsupported default_chart_query descriptor"
+        ):
+            client.get_default_chart_query()
 
     def test_backends_implement_contract(self):
         required_chart_keys = _get_chart_keys_from_configuration()

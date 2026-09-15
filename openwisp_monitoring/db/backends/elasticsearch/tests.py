@@ -14,6 +14,8 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.test import TestCase, TransactionTestCase, tag
 from django.urls import reverse
 from django.utils.timezone import now
+from elastic_transport import ApiResponseMeta, HttpHeaders, NodeConfig
+from elasticsearch import ApiError
 from freezegun import freeze_time
 from swapper import load_model
 
@@ -93,6 +95,17 @@ def _resource_metadata(database="openwisp2"):
         "description": "OpenWISP Monitoring Elasticsearch data stream data",
         "openwisp_monitoring": {"database": database},
     }
+
+
+def _api_error(status, body):
+    meta = ApiResponseMeta(
+        status=status,
+        http_version="1.1",
+        headers=HttpHeaders(),
+        duration=0,
+        node=NodeConfig("http", "localhost", 9200),
+    )
+    return ApiError("Elasticsearch API error", meta=meta, body=body)
 
 
 @tag("timeseries_client", "elasticsearch")
@@ -267,6 +280,21 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             basic_auth=("openwisp", "secret"),
         )
 
+    @patch.dict(
+        "openwisp_monitoring.db.backends.elasticsearch.client.TIMESERIES_DB",
+        {
+            **base_config,
+            "URL": "",
+            "HOST": "elasticsearch",
+            "PORT": 9201,
+        },
+        clear=True,
+    )
+    @patch("openwisp_monitoring.db.backends.elasticsearch.client.Elasticsearch")
+    def test_client_kwargs_build_url_from_host_and_port(self, mock_client):
+        DatabaseClient().db
+        mock_client.assert_called_once_with(hosts=["http://elasticsearch:9201"])
+
     @patch("openwisp_monitoring.db.backends.elasticsearch.client.Elasticsearch")
     def test_insecure_http_warning_only_with_credentials(self, mock_client):
         cases = (
@@ -341,6 +369,18 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         # closing is not attempted when the client was never instantiated
         client = DatabaseClient(db_name="initial-db")
         client.close()
+        self.assertNotIn("db", client.__dict__)
+
+    @patch("openwisp_monitoring.db.backends.elasticsearch.client.logger.debug")
+    def test_reset_ignores_client_close_errors(self, mocked_debug):
+        client = DatabaseClient(db_name="initial-db")
+        mock_client = MagicMock()
+        mock_client.close.side_effect = RuntimeError("close failed")
+        client.__dict__["db"] = mock_client
+
+        client.reset()
+
+        mocked_debug.assert_called_once()
         self.assertNotIn("db", client.__dict__)
 
     def test_build_index_template_uses_data_stream_settings(self):
@@ -431,6 +471,92 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         with self.assertRaisesMessage(TypeError, "invalid index template"):
             self.timeseries_db._put_index_template()
         self.assertEqual(mock_db.indices.put_index_template.call_count, 1)
+
+    def test_resource_error_classification(self):
+        cases = (
+            (RuntimeError("failure"), False),
+            (_api_error(409, {}), False),
+            (_api_error(400, {"error": {"type": "other"}}), False),
+            (
+                _api_error(
+                    400,
+                    {"error": {"type": "resource_already_exists_exception"}},
+                ),
+                True,
+            ),
+            (
+                _api_error(400, {"error": "resource_already_exists_exception"}),
+                True,
+            ),
+        )
+        for exception, expected in cases:
+            with self.subTest(exception=exception):
+                self.assertEqual(
+                    self.timeseries_db._is_resource_exists(exception), expected
+                )
+
+    def test_resource_lookups_handle_not_found_and_other_errors(self):
+        mock_db = self._mock_db()
+        cases = (
+            (
+                "_data_stream_exists",
+                mock_db.indices.get_data_stream,
+                ("openwisp2",),
+                False,
+            ),
+            ("_get_data_stream_names", mock_db.indices.get_data_stream, (), []),
+            ("_get_index_names", mock_db.indices.get, (), []),
+            ("_get_index_templates", mock_db.indices.get_index_template, (), {}),
+            ("_get_lifecycle_policies", mock_db.ilm.get_lifecycle, (), {}),
+        )
+        for method_name, api_method, args, expected in cases:
+            with self.subTest(method=method_name, error="not_found"):
+                api_method.side_effect = _api_error(404, {"error": "missing"})
+                self.assertEqual(
+                    getattr(self.timeseries_db, method_name)(*args), expected
+                )
+            with self.subTest(method=method_name, error="unexpected"):
+                api_method.side_effect = RuntimeError("lookup failed")
+                with self.assertRaisesMessage(RuntimeError, "lookup failed"):
+                    getattr(self.timeseries_db, method_name)(*args)
+            api_method.side_effect = None
+
+    def test_resource_deletions_handle_not_found_and_other_errors(self):
+        mock_db = self._mock_db()
+        cases = (
+            (
+                "_delete_indices",
+                "_get_index_names",
+                mock_db.indices.delete,
+                "openwisp2-index",
+            ),
+            (
+                "_delete_index_templates",
+                "_get_index_template_names",
+                mock_db.indices.delete_index_template,
+                "openwisp2-template",
+            ),
+            (
+                "_delete_lifecycle_policies",
+                "_get_lifecycle_policy_names",
+                mock_db.ilm.delete_lifecycle,
+                "openwisp2-autogen-ilm",
+            ),
+        )
+        for method_name, getter_name, api_method, resource_name in cases:
+            setattr(
+                self.timeseries_db,
+                getter_name,
+                MagicMock(return_value=[resource_name]),
+            )
+            with self.subTest(method=method_name, error="not_found"):
+                api_method.side_effect = _api_error(404, {"error": "missing"})
+                getattr(self.timeseries_db, method_name)()
+            with self.subTest(method=method_name, error="unexpected"):
+                api_method.side_effect = RuntimeError("delete failed")
+                with self.assertRaisesMessage(RuntimeError, "delete failed"):
+                    getattr(self.timeseries_db, method_name)()
+            api_method.side_effect = None
 
     @patch.object(DatabaseClient, "_data_stream_exists", side_effect=[False, True])
     def test_ensure_data_stream_resources_creates_policy_template_and_stream(
@@ -712,6 +838,18 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         self.assertEqual(mock_exists.call_count, 2)
         mock_resource_exists.assert_called_once()
 
+    @patch.object(DatabaseClient, "_is_resource_exists", return_value=False)
+    @patch.object(DatabaseClient, "_data_stream_exists", return_value=False)
+    def test_ensure_data_stream_resources_raises_create_error(
+        self, mock_exists, mock_resource_exists
+    ):
+        mock_db = self._mock_db()
+        mock_db.indices.create_data_stream.side_effect = RuntimeError("create failed")
+        with self.assertRaisesMessage(RuntimeError, "create failed"):
+            self.timeseries_db._ensure_data_stream_resources()
+        mock_exists.assert_called_once_with("openwisp2")
+        mock_resource_exists.assert_called_once()
+
     @patch.object(DatabaseClient, "_ensure_data_stream_resources")
     def test_write_single_point(self, mock_ensure):
         mock_db = self._mock_db()
@@ -851,6 +989,11 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             self.timeseries_db.batch_write([{"name": "cpu", "values": {"usage": 10}}])
         mock_bulk.assert_called_once()
 
+    @patch("openwisp_monitoring.db.backends.elasticsearch.client.bulk")
+    def test_batch_write_ignores_empty_payload(self, mock_bulk):
+        self.timeseries_db.batch_write([])
+        mock_bulk.assert_not_called()
+
     @patch.object(DatabaseClient, "_ensure_data_stream_resources")
     def test_write_failure_raises_timeseries_exception(self, mock_ensure):
         mock_db = self._mock_db()
@@ -891,6 +1034,36 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
         self.assertEqual(items[0][0], ("cpu", {"host": "server1"}))
         self.assertEqual(list(items[0][1]), cpu_points)
 
+    def test_query_result_set_edge_cases(self):
+        resultset = QueryResultSet(
+            _search_response(
+                {
+                    "@timestamp": datetime(2024, 3, 25, 12, 0),
+                    "measurement": "cpu",
+                    "tags": {"host": "server1"},
+                    "fields": {},
+                },
+                {
+                    "@timestamp": 123,
+                    "measurement": "memory",
+                    "fields": {"used": 20},
+                },
+            )
+        )
+
+        points = list(resultset)
+
+        self.assertEqual(points[0]["time"], 1711368000)
+        self.assertNotIn("_field", points[0])
+        self.assertEqual(points[1]["time"], 123)
+        self.assertIs(resultset._build_points(), resultset._points)
+        self.assertEqual(
+            list(resultset.get_points(tags={"host": "server1"})), [points[0]]
+        )
+        self.assertEqual(list(resultset.get_points(tags={"host": "missing"})), [])
+        self.assertEqual(list(resultset.get_points(measurement="missing")), [])
+        self.assertIn("ResultSet", repr(resultset))
+
     def test_query_result_set_precision(self):
         response = _search_response(
             {
@@ -923,6 +1096,85 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             index="openwisp2-short",
             body={"query": {"match_all": {}}},
         )
+
+    @patch("openwisp_monitoring.db.backends.elasticsearch.client.logger.warning")
+    def test_query_handles_invalid_input_and_search_errors(self, mocked_warning):
+        mock_db = self._mock_db()
+        with self.assertRaisesMessage(
+            self.timeseries_db.client_error,
+            "Elasticsearch queries must be dictionaries.",
+        ):
+            self.timeseries_db._prepare_search_query("invalid")
+
+        mock_db.search.side_effect = _api_error(404, {"error": "missing"})
+        result = self.timeseries_db.query.__wrapped__(
+            self.timeseries_db, {"query": {"match_all": {}}}
+        )
+        self.assertEqual(list(result), [])
+
+        mock_db.search.side_effect = RuntimeError("search failed")
+        with self.assertRaisesMessage(RuntimeError, "search failed"):
+            self.timeseries_db.query.__wrapped__(
+                self.timeseries_db, {"query": {"match_all": {}}}
+            )
+        mocked_warning.assert_called_once()
+
+    @patch("openwisp_monitoring.db.backends.elasticsearch.client.logger.warning")
+    def test_paginated_search_handles_edge_cases(self, mocked_warning):
+        mock_db = self._mock_db()
+        paginated_search = self.timeseries_db._get_paginated_hits.__wrapped__
+        self.assertEqual(paginated_search(self.timeseries_db, {"size": 0}), [])
+
+        mock_db.open_point_in_time.side_effect = _api_error(404, {"error": "missing"})
+        self.assertEqual(
+            paginated_search(self.timeseries_db, {"query": {"match_all": {}}}),
+            [],
+        )
+
+        mock_db.open_point_in_time.side_effect = None
+        mock_db.open_point_in_time.return_value = {"id": "pit-1"}
+        mock_db.search.return_value = _paginated_search_response(
+            "pit-2", {"_source": {}}
+        )
+        with self.assertRaisesMessage(
+            self.timeseries_db.client_error,
+            "Elasticsearch paginated search response is missing sort values.",
+        ):
+            paginated_search(self.timeseries_db, {"size": 1})
+        mock_db.close_point_in_time.assert_called_once_with(id="pit-2")
+
+        mock_db.reset_mock()
+        mock_db.open_point_in_time.return_value = {"id": "pit-3"}
+        mock_db.search.return_value = _paginated_search_response("pit-3")
+        mock_db.close_point_in_time.side_effect = RuntimeError("close failed")
+        self.assertEqual(paginated_search(self.timeseries_db, {}), [])
+        self.assertGreaterEqual(mocked_warning.call_count, 2)
+
+    @patch("openwisp_monitoring.db.backends.elasticsearch.client.logger.warning")
+    def test_distinct_search_handles_errors_and_close_failure(self, mocked_warning):
+        mock_db = self._mock_db()
+        count_distinct = self.timeseries_db._count_distinct_values.__wrapped__
+        query = {"query": {"match_all": {}}}
+
+        mock_db.open_point_in_time.side_effect = _api_error(404, {"error": "missing"})
+        self.assertEqual(
+            count_distinct(self.timeseries_db, query, "indexed_fields.keyword.client"),
+            0,
+        )
+
+        mock_db.open_point_in_time.side_effect = RuntimeError("search failed")
+        with self.assertRaisesMessage(RuntimeError, "search failed"):
+            count_distinct(self.timeseries_db, query, "indexed_fields.keyword.client")
+
+        mock_db.open_point_in_time.side_effect = None
+        mock_db.open_point_in_time.return_value = {"id": "pit-1"}
+        mock_db.search.return_value = {"aggregations": {"distinct": {"buckets": []}}}
+        mock_db.close_point_in_time.side_effect = RuntimeError("close failed")
+        self.assertEqual(
+            count_distinct(self.timeseries_db, query, "indexed_fields.keyword.client"),
+            0,
+        )
+        self.assertGreaterEqual(mocked_warning.call_count, 2)
 
     @patch.object(DatabaseClient, "_get_paginated_hits", return_value=[])
     def test_read_builds_search_body(self, mock_get_hits):
@@ -1220,6 +1472,108 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
                 count_fields=[],
             )
 
+    def test_read_query_helpers_support_all_filter_operators(self):
+        self.assertEqual(
+            self.timeseries_db._normalize_fields(["usage"], "load"),
+            ["usage", "load"],
+        )
+        self.assertIsNone(self.timeseries_db._build_measurement_filter(" , "))
+        self.assertIsNone(self.timeseries_db._build_field_exists_filter(["*", "*"]))
+        self.assertEqual(
+            self.timeseries_db._add_filter(
+                {"match_all": {}}, {"term": {"measurement": "cpu"}}
+            ),
+            {"bool": {"filter": [{"term": {"measurement": "cpu"}}]}},
+        )
+        self.assertEqual(
+            self.timeseries_db._build_base_query(
+                where=[
+                    ("usage", "=", 10),
+                    ("status", "!=", "down"),
+                    ("load", ">", 1),
+                    ("load", ">=", 2),
+                    ("load", "<", 3),
+                    ("load", "<=", 4),
+                ]
+            )["bool"]["filter"],
+            [
+                {"term": {"indexed_fields.numeric.usage": 10}},
+                {
+                    "bool": {
+                        "must_not": [
+                            {"term": {"indexed_fields.keyword.status": "down"}}
+                        ]
+                    }
+                },
+                {"range": {"indexed_fields.numeric.load": {"gt": 1}}},
+                {"range": {"indexed_fields.numeric.load": {"gte": 2}}},
+                {"range": {"indexed_fields.numeric.load": {"lt": 3}}},
+                {"range": {"indexed_fields.numeric.load": {"lte": 4}}},
+            ],
+        )
+        with self.assertRaisesMessage(
+            self.timeseries_db.client_error, 'Invalid operator "contains" passed.'
+        ):
+            self.timeseries_db._build_field_filter("status", "contains", "up")
+        self.assertFalse(
+            self.timeseries_db._matches_where({"usage": 10}, [("usage", "=", 11)])
+        )
+        self.assertFalse(
+            self.timeseries_db._matches_where({"usage": 10}, [("usage", "!=", 10)])
+        )
+
+    def test_timestamp_and_point_conversion_edge_cases(self):
+        self.assertEqual(self.timeseries_db._get_timezone(), timezone.utc)
+        self.assertIsNone(self.timeseries_db._resolve_timezone_name())
+        self.assertEqual(
+            self.timeseries_db._parse_timestamp("2024-03-25 12:00:00"),
+            datetime(2024, 3, 25, 12, 0),
+        )
+        self.assertIsNone(self.timeseries_db._parse_timestamp("not-a-date"))
+        self.assertEqual(self.timeseries_db._get_timestamp("not-a-date"), "not-a-date")
+        self.assertEqual(self.timeseries_db._get_indexed_field_type(True), "boolean")
+        point = self.timeseries_db._document_to_point(
+            {
+                "@timestamp": "2024-03-25T12:00:00Z",
+                "measurement": "cpu",
+                "tags": {"host": "server1"},
+                "fields": {"usage": 10},
+            }
+        )
+        self.assertEqual(point["host"], "server1")
+        resultset = QueryResultSet(_search_response())
+        self.assertEqual(self.timeseries_db._get_hits(resultset), [])
+
+    @patch(
+        "openwisp_monitoring.db.backends.elasticsearch.client.parse_datetime",
+        side_effect=[None, datetime(2024, 3, 25, 12, 0)],
+    )
+    def test_parse_timestamp_retries_space_separated_value(self, mock_parse):
+        self.assertEqual(
+            self.timeseries_db._parse_timestamp("2024-03-25 12:00:00"),
+            datetime(2024, 3, 25, 12, 0),
+        )
+        self.assertEqual(
+            mock_parse.call_args_list,
+            [
+                call("2024-03-25 12:00:00"),
+                call("2024-03-25T12:00:00"),
+            ],
+        )
+
+    @patch.object(DatabaseClient, "_get_paginated_hits", return_value=[])
+    def test_read_rejects_invalid_order_and_handles_unbounded_limit(
+        self, mock_get_hits
+    ):
+        with self.assertRaisesMessage(
+            self.timeseries_db.client_error, 'Invalid order "value" passed.'
+        ):
+            self.timeseries_db.read("cpu", "usage", {}, order="value")
+
+        self.timeseries_db.read("cpu", "usage", {}, limit=-1)
+        should_stop = mock_get_hits.call_args.kwargs["should_stop"]
+        self.assertFalse(should_stop([]))
+
     def test_get_query_builds_aggregate_chart_query(self):
         query = self.timeseries_db.get_query(
             chart_type="bar",
@@ -1462,6 +1816,97 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
                 {"name": "load", "field": "load", "agg": "sum"},
             ],
         )
+
+    def test_chart_query_builder_handles_empty_filters_and_field_selection(self):
+        self.assertEqual(
+            ElasticsearchQuery({"value": 1}).replace("old", "new"), {"value": 1}
+        )
+        self.assertFalse(self.timeseries_db._is_openwisp_query("query"))
+        self.assertEqual(
+            self.timeseries_db._build_chart_base_query({"key": ""}),
+            {"match_all": {}},
+        )
+        self.assertEqual(
+            self.timeseries_db._format_chart_metrics(
+                {
+                    "metrics": [
+                        {"name": "usage", "field": "usage"},
+                        {"name": "load", "field": "load"},
+                    ]
+                },
+                {},
+                fields=["load"],
+            ),
+            [{"name": "load", "field": "load"}],
+        )
+        self.assertEqual(self.timeseries_db._normalize_raw_chart_fields({}, {}), ["*"])
+        self.assertEqual(self.timeseries_db._format_histogram_time({}, "s"), None)
+        points = [{"time": 1, "usage": 10}, {"time": 2, "load": 20}]
+        self.assertIs(
+            self.timeseries_db._backfill_raw_chart_fields(points, None), points
+        )
+        self.assertEqual(
+            self.timeseries_db._backfill_raw_chart_fields(points, ["*"]),
+            [
+                {"time": 1, "usage": 10, "load": None},
+                {"time": 2, "load": 20, "usage": None},
+            ],
+        )
+
+    def test_get_query_formats_native_query_mapping(self):
+        query = self.timeseries_db.get_query(
+            chart_type="line",
+            params={"object_id": "device-1", "retention_policy": SHORT_RP},
+            time="1h",
+            group_map={"1h": "5m"},
+            fields=["usage", "load"],
+            query={
+                "query": {"term": {"tags.object_id": "{object_id}"}},
+                "window": "{window}",
+                "unknown": "{unknown}",
+            },
+            timezone=None,
+        )
+        self.assertEqual(
+            query,
+            {
+                "query": {"term": {"tags.object_id": "device-1"}},
+                "window": "5m",
+                "unknown": "{unknown}",
+                "__index": "openwisp2-short",
+            },
+        )
+
+    @patch.object(DatabaseClient, "query")
+    def test_get_list_query_converts_native_search_results(self, mock_query):
+        mock_query.return_value = QueryResultSet(
+            _search_response(
+                {
+                    "@timestamp": "2024-03-25T12:00:00Z",
+                    "measurement": "cpu",
+                    "fields": {"usage": 10},
+                }
+            )
+        )
+        self.assertEqual(
+            self.timeseries_db.get_list_query({"query": {"match_all": {}}}),
+            [{"time": 1711368000, "usage": 10}],
+        )
+
+    @patch.object(DatabaseClient, "query")
+    def test_get_top_fields_ignores_non_positive_limit(self, mock_query):
+        self.assertEqual(
+            self.timeseries_db._get_top_fields(
+                query=None,
+                params={},
+                chart_type="histogram",
+                group_map={},
+                number=0,
+                time="1d",
+            ),
+            [],
+        )
+        mock_query.assert_not_called()
 
     def test_query_bundle_matches_backend_contract(self):
         self.timeseries_db.queries.validate(self.timeseries_db.backend_name)
@@ -2048,6 +2493,19 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             self.timeseries_db.validate_query({"query": {"bad": {}}})
         self.assertIn("bad query", context.exception.message_dict["configuration"])
 
+    def test_validate_query_handles_empty_and_missing_index(self):
+        self.assertFalse(self.timeseries_db.validate_query({}))
+        mock_db = self._mock_db()
+        mock_db.indices.validate_query.side_effect = _api_error(
+            404, {"error": "missing"}
+        )
+        self.assertFalse(
+            self.timeseries_db.validate_query({"query": {"match_all": {}}})
+        )
+        mock_db.indices.validate_query.side_effect = RuntimeError("validation failed")
+        with self.assertRaisesMessage(RuntimeError, "validation failed"):
+            self.timeseries_db.validate_query({"query": {"match_all": {}}})
+
     @patch.object(
         DatabaseClient,
         "_get_data_stream_names",
@@ -2130,6 +2588,22 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
             self.timeseries_db.delete_series()
         mock_streams.assert_not_called()
         mock_indices.assert_not_called()
+
+    @patch.object(DatabaseClient, "_get_data_stream_names", return_value=["openwisp2"])
+    @patch.object(DatabaseClient, "_get_index_names", return_value=[])
+    def test_delete_by_query_handles_missing_and_other_errors(
+        self, mock_indices, mock_streams
+    ):
+        mock_db = self._mock_db()
+        delete_by_query = self.timeseries_db._delete_by_query.__wrapped__
+        mock_db.delete_by_query.side_effect = _api_error(404, {"error": "missing"})
+        delete_by_query(self.timeseries_db, {"match_all": {}})
+
+        mock_db.delete_by_query.side_effect = RuntimeError("delete failed")
+        with self.assertRaisesMessage(RuntimeError, "delete failed"):
+            delete_by_query(self.timeseries_db, {"match_all": {}})
+        mock_indices.assert_called()
+        mock_streams.assert_called()
 
 
 class ElasticsearchIntegrationMixin:

@@ -71,6 +71,35 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
     def test_backend_name(self):
         self.assertEqual(self.timeseries_db.backend_name, "influxdb2")
 
+    def test_validate_settings_rejects_missing_configuration(self):
+        with self.assertRaisesMessage(
+            ImproperlyConfigured, "No TIMESERIES_DATABASE specified in settings"
+        ):
+            DatabaseClient.validate_settings(None)
+        config = {
+            "BACKEND": "openwisp_monitoring.db.backends.influxdb2",
+            "USER": "openwisp",
+            "PASSWORD": "token",
+            "URL": "http://localhost:8086",
+        }
+        with self.assertRaisesMessage(
+            ImproperlyConfigured,
+            '"NAME" field is not declared in TIMESERIES_DATABASE',
+        ):
+            DatabaseClient.validate_settings(config)
+
+    @patch("openwisp_monitoring.db.backends.influxdb2.client.logger.debug")
+    def test_reset_ignores_client_close_errors(self, mocked_debug):
+        client = DatabaseClient()
+        mock_client = MagicMock()
+        mock_client.close.side_effect = RuntimeError("close failed")
+        client.__dict__["db"] = mock_client
+
+        client.reset()
+
+        mocked_debug.assert_called_once()
+        self.assertNotIn("db", client.__dict__)
+
     def test_forbidden_queries(self):
         """Test that forbidden words are rejected in Flux queries."""
         queries = [
@@ -127,6 +156,9 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
 
     def test_validate_chart_config_builtin_ok(self):
         self.timeseries_db.validate_chart_config({"query": chart_query["cpu"]})
+
+    def test_validate_chart_config_ignores_non_mapping_query(self):
+        self.assertIsNone(self.timeseries_db.validate_chart_config({"query": "query"}))
 
     def test_validate_chart_config_builtin_missing_bundle_summary(self):
         queries = replace(
@@ -212,6 +244,46 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         for duration_str, expected_seconds in test_cases:
             result = self.timeseries_db._duration_to_seconds(duration_str)
             self.assertEqual(result, expected_seconds)
+
+    def test_scalar_helpers_reject_invalid_values_and_preserve_types(self):
+        with self.assertRaisesMessage(ValueError, 'Invalid duration "invalid"'):
+            self.timeseries_db._duration_to_seconds("invalid")
+        with self.assertRaisesMessage(
+            self.timeseries_db.client_error, 'Invalid operator "contains" passed.'
+        ):
+            self.timeseries_db._clean_operator("contains")
+        timestamp = datetime(2024, 3, 25, 12, 0, tzinfo=timezone.utc)
+        self.assertEqual(
+            self.timeseries_db._format_flux_value(timestamp),
+            '"2024-03-25T12:00:00+00:00"',
+        )
+        self.assertEqual(self.timeseries_db._format_flux_value(True), "true")
+        self.assertEqual(self.timeseries_db._format_flux_value(10), 10)
+        self.assertEqual(self.timeseries_db._format_flux_time(10), 10)
+        self.assertEqual(self.timeseries_db._normalize_chart_start_range(5), "-5m")
+
+    def test_record_time_normalization_supports_all_precisions(self):
+        timestamp = datetime(2024, 3, 25, 12, 0, tzinfo=timezone.utc)
+        cases = (
+            ("unchanged", "s", "unchanged"),
+            (timestamp, None, "2024-03-25T12:00:00Z"),
+            (timestamp, "ms", 1711368000000),
+            (timestamp, "u", 1711368000000000),
+            (timestamp, "ns", 1711368000000000000),
+            (timestamp, "minutes", 1711368000.0),
+        )
+        for value, precision, expected in cases:
+            with self.subTest(precision=precision):
+                self.assertEqual(
+                    self.timeseries_db._normalize_record_time(value, precision),
+                    expected,
+                )
+
+    def test_bucket_name_and_retention_defaults(self):
+        self.assertEqual(
+            self.timeseries_db._get_retention_policy_name("external"), "external"
+        )
+        self.assertEqual(self.timeseries_db._get_bucket_retention_duration(None), "0s")
 
     def test_timestamp_format_datetime(self):
         """Test ISO format timestamp generation from datetime."""
@@ -357,6 +429,15 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             ],
         )
 
+    @patch.object(DatabaseClient, "_write")
+    @patch("openwisp_monitoring.db.backends.influxdb2.client.logger.warning")
+    def test_batch_write_warns_for_different_database(self, mocked_warning, mock_write):
+        self.timeseries_db.batch_write(
+            [{"name": "cpu", "values": {"usage": 10}, "database": "other"}]
+        )
+        mocked_warning.assert_called_once()
+        mock_write.assert_called_once()
+
     def test_query_result_set_get_points(self):
         """Test QueryResultSet.get_points() generator."""
         points = [
@@ -440,6 +521,19 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         # Generator should be iterable
         generated_points = list(points_gen)
         self.assertEqual(len(generated_points), 1)
+
+    def test_query_result_set_tag_filter_and_repr(self):
+        point = {
+            "_measurement": "cpu",
+            "_field": "usage",
+            "_value": 50,
+            "time": "2024-03-25T12:00:00Z",
+            "host": "server1",
+        }
+        resultset = QueryResultSet([point])
+        self.assertEqual(list(resultset.get_points(tags={"host": "server1"})), [point])
+        self.assertEqual(list(resultset.get_points(tags={"host": "missing"})), [])
+        self.assertIn("ResultSet", repr(resultset))
 
     def test_query_does_not_catch_result_processing_errors(self):
         record = MagicMock()
@@ -623,6 +717,114 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         self.assertEqual(
             str(context.exception), "None is not a valid Flux filter value"
         )
+
+    def test_where_filter_helpers_reject_mismatches_and_support_wildcards(self):
+        point = {"value": 10}
+        cases = (
+            ([("missing", "==", 10)], False),
+            ([("value", "!=", 10)], False),
+            ([("value", ">", 10)], False),
+            ([("value", ">=", 11)], False),
+            ([("value", "<", 10)], False),
+            ([("value", "<=", 9)], False),
+            ([("value", "==", 10)], True),
+        )
+        for where, expected in cases:
+            with self.subTest(where=where):
+                self.assertEqual(
+                    self.timeseries_db._matches_where(point, where), expected
+                )
+        points = [{"time": 1, "value": 10}]
+        self.assertEqual(
+            self.timeseries_db._filter_normalized_read_points(
+                points, ["*"], [("value", "==", 10)]
+            ),
+            points,
+        )
+
+    @patch.object(DatabaseClient, "query", return_value=QueryResultSet([]))
+    def test_read_supports_string_extra_field_and_rejects_invalid_order(
+        self, mock_query
+    ):
+        self.timeseries_db.read("cpu", "usage", {}, extra_fields="load")
+        flux_query = mock_query.call_args.args[0]
+        self.assertIn('r._field == "usage"', flux_query)
+        self.assertIn('r._field == "load"', flux_query)
+        with self.assertRaisesMessage(
+            self.timeseries_db.client_error, 'Invalid order "value" passed.'
+        ):
+            self.timeseries_db.read("cpu", "usage", {}, order="value")
+
+    def test_result_normalization_and_field_extraction_edge_cases(self):
+        raw_time = datetime(2024, 3, 25, 12, 0, tzinfo=timezone.utc)
+        points = [
+            {"_measurement": "cpu", "time": 1},
+            {
+                "_measurement": "cpu",
+                "_field": "usage",
+                "_value": 1,
+                "time": 1,
+                "__raw_time": raw_time,
+            },
+            {
+                "_measurement": "cpu",
+                "_field": "usage",
+                "_value": 2,
+                "time": 1,
+                "__raw_time": raw_time,
+            },
+        ]
+        self.assertEqual(
+            self.timeseries_db._normalize_read_points(points, include_tags=False),
+            [{"time": 1, "usage": 3}],
+        )
+        self.assertEqual(
+            self.timeseries_db._extract_expected_fields(
+                'filter(fn: (r) => r._field in ("usage", "load"))'
+            ),
+            ["usage", "load"],
+        )
+        self.assertEqual(
+            self.timeseries_db._extract_expected_fields(
+                "filter(fn: (r) => r._field =~ /^(usage|load)$/)"
+            ),
+            ["usage", "load"],
+        )
+
+    def test_access_tech_window_range_validation_and_naive_times(self):
+        query_template = (
+            'r._field == "access_tech" '
+            '|> range(start: time(v: "{start}"), stop: time(v: "{stop}")) '
+            "|> window(every: {window})"
+        )
+        self.assertIsNone(
+            self.timeseries_db._get_access_tech_window_range(
+                query_template.format(
+                    start="2024-03-25T12:00:00",
+                    stop="2024-03-25T13:00:00",
+                    window="invalid",
+                )
+            )
+        )
+        self.assertIsNone(
+            self.timeseries_db._get_access_tech_window_range(
+                query_template.format(
+                    start="2024-03-25T13:00:00",
+                    stop="2024-03-25T12:00:00",
+                    window="10m",
+                )
+            )
+        )
+        start, stop, window = self.timeseries_db._get_access_tech_window_range(
+            query_template.format(
+                start="2024-03-25T12:00:00",
+                stop="2024-03-25T13:00:00",
+                window="10m",
+            )
+        )
+        self.assertEqual(start.tzinfo, timezone.utc)
+        self.assertEqual(stop.tzinfo, timezone.utc)
+        self.assertEqual(window, 600)
 
     @patch.object(DatabaseClient, "query", return_value=QueryResultSet([]))
     def test_read_escapes_mixed_flux_string_edge_cases(self, mock_query):
@@ -958,6 +1160,11 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         self.assertEqual(policies[0]["replication"], 1)
 
     @patch("influxdb_client.InfluxDBClient.buckets_api")
+    def test_get_list_retention_policies_skips_missing_buckets(self, mock_buckets_api):
+        mock_buckets_api.return_value.find_bucket_by_name.return_value = None
+        self.assertEqual(self.timeseries_db.get_list_retention_policies(), [])
+
+    @patch("influxdb_client.InfluxDBClient.buckets_api")
     def test_create_or_alter_retention_policy_creates_short_bucket(
         self, mock_buckets_api
     ):
@@ -1028,6 +1235,53 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         self.assertIn('from(bucket: "', query)
         self.assertIn("range(start: -1h)", query)
         self.assertIn('_measurement == "cpu"', query)
+
+    def test_chart_query_helpers_apply_scope_and_handle_invalid_window(self):
+        query = self.timeseries_db._build_chart_base_query(
+            {
+                "key": "cpu",
+                "content_type": "config.device",
+                "object_id": "device-1",
+            },
+            "1h",
+            {"1h": "5m"},
+        )
+        self.assertIn('r.content_type == "config.device"', query)
+        self.assertIn('r.object_id == "device-1"', query)
+        formatted = self.timeseries_db._format_chart_query(
+            "{window_timezone}",
+            {},
+            "invalid",
+            {},
+            False,
+            None,
+            "Asia/Kolkata",
+        )
+        self.assertEqual(formatted, "")
+
+        with patch.object(
+            self.timeseries_db,
+            "queries",
+            replace(self.timeseries_db.queries, summary_query={}),
+        ):
+            self.assertEqual(
+                self.timeseries_db._get_summary_chart_query("query"), "query"
+            )
+
+    @patch.object(DatabaseClient, "query")
+    def test_get_top_fields_ignores_non_positive_limit(self, mock_query):
+        self.assertEqual(
+            self.timeseries_db._get_top_fields(
+                query=None,
+                params={},
+                chart_type="histogram",
+                group_map={},
+                number=0,
+                time="1d",
+            ),
+            [],
+        )
+        mock_query.assert_not_called()
 
     def test_get_query_keeps_chart_range_separate_from_window(self):
         query = self.timeseries_db.get_query(
@@ -1623,6 +1877,26 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
                 }
             ],
         )
+
+    @patch.object(DatabaseClient, "query")
+    def test_get_list_query_ignores_grouped_points_without_time(self, mock_query):
+        mock_query.return_value = QueryResultSet(
+            [
+                {
+                    "_measurement": "radius_acc",
+                    "_field": "count",
+                    "_value": 1,
+                    "time": None,
+                    "method": "mobile_phone",
+                }
+            ]
+        )
+        query = (
+            'from(bucket: "openwisp2") '
+            '|> group(columns: ["method"]) '
+            '|> filter(fn: (r) => r._field == "count")'
+        )
+        self.assertEqual(self.timeseries_db.get_list_query(query), [])
 
 
 @tag("influxdb2")
