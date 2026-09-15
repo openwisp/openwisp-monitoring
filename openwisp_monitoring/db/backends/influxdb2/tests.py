@@ -1605,6 +1605,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
         self.assertNotIn(f'from(bucket: "{SHORT_RP}")', query)
         self.assertIn('r._measurement == "device_data"', query)
         self.assertIn('r.pk == "device-id"', query)
+        self.assertIn("|> range(start: 0)", query)
 
     def test_device_data_query_escapes_flux_string_literals(self):
         with patch.object(timeseries_db, "db_name", 'open"wisp\\bucket'):

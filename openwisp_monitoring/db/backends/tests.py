@@ -56,7 +56,7 @@ class DummyTimeseriesClient(BaseTimeseriesClient):
     def get_device_data_query(self, retention_policy, measurement, pk):
         return f"{retention_policy}:{measurement}:{pk}"
 
-    def delete_metric_data(self, key=None, tags=None):
+    def delete_metric_data(self, key=None, tags=None, timestamp=None):
         return None
 
     def delete_series(self, key=None, tags=None):

@@ -26,8 +26,8 @@ fi
 
 if [ -z "$UDP" ]; then
     TIMESERIES_BACKEND="$TSDB" coverage run runtests.py "$@"
-    # test extensibility only on the default TSDB
-    if [ "$TSDB" = "influxdb" ]; then
+    # Test the sample application with both InfluxDB backends.
+    if [ "$TSDB" = "influxdb" ] || [ "$TSDB" = "influxdb2" ]; then
         SAMPLE_APP=1 TIMESERIES_BACKEND="$TSDB" coverage run runtests.py \
             "$@" --exclude-tag=selenium_tests
     fi

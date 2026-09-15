@@ -12,6 +12,9 @@ on:
       - "1.2"
       - gsoc26-add-more-tsdb
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: "${{ matrix.tsdb }}${{ matrix.udp && ' UDP' || '' }} | Python==${{ matrix.python-version }} | ${{ matrix.django-version }}"

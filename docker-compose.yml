@@ -77,6 +77,7 @@ services:
 
   # for UDP support on InfluxDB 2.x
   telegraf:
+    profiles: [influxdb2]
     image: telegraf:1.31-alpine
     depends_on:
       - influxdb2

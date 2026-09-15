@@ -96,8 +96,9 @@ The following table describes the keys available in the
 ``USER``     Username or organization, depending on the selected backend
 ``PASSWORD`` Password or API token, depending on the selected backend
 ``NAME``     Name of the timeseries database
-``URL``      Connection URL supported by the ``influxdb2`` backend;
-             required when ``HOST`` and ``PORT`` are not configured
+``URL``      Connection URL supported by the ``influxdb2`` and
+             ``elasticsearch`` backends; required when ``HOST`` and
+             ``PORT`` are not configured
 ``HOST``     IP address/hostname of machine where the timeseries database
              is running
 ``PORT``     Port for connecting to the timeseries database
@@ -380,9 +381,9 @@ documentation regarding automatic retries for known errors
 .. note::
 
     The retry mechanism does not work when using ``UDP`` for writing data
-    to the timeseries database on the ``influxdb`` backend. This is due to
-    the nature of the ``UDP`` protocol, which does not acknowledge receipt
-    of data packets.
+    to the timeseries database on the ``influxdb`` or ``influxdb2`` backend.
+    This is due to the nature of the ``UDP`` protocol, which does not
+    acknowledge receipt of data packets.
 
 .. _openwisp_monitoring_timeseries_retry_options:
 
