@@ -515,6 +515,7 @@ class TestElasticsearchClient(RequireTimeseriesBackendMixin, TestCase):
                 self.assertEqual(
                     getattr(self.timeseries_db, method_name)(*args), expected
                 )
+
             with self.subTest(method=method_name, error="unexpected"):
                 api_method.side_effect = RuntimeError("lookup failed")
                 with self.assertRaisesMessage(RuntimeError, "lookup failed"):

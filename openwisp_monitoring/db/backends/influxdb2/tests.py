@@ -337,6 +337,7 @@ class TestInfluxDb2Client(RequireTimeseriesBackendMixin, TestCase):
             self.timeseries_db.write("test_measurement", {"field1": 10}, timestamp=0)
             point = mocked_write.call_args[1]["points"]
             self.assertEqual(point["time"], 0)
+
         with self.subTest("batch_write"):
             mocked_write.reset_mock()
             self.timeseries_db.batch_write(
