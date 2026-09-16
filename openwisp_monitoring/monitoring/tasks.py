@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from celery import shared_task
 from django.core.exceptions import ObjectDoesNotExist
 from swapper import load_model
@@ -49,6 +51,8 @@ def timeseries_write(
 
 def _timeseries_write(name, values, metric=None, check_threshold_kwargs=None, **kwargs):
     """Handles writes synchronously when using UDP mode."""
+    if timeseries_db.requires_write_operation_id:
+        kwargs.setdefault("operation_id", uuid4().hex)
     if timeseries_db.use_udp:
         func = timeseries_write
     else:
@@ -82,6 +86,9 @@ def timeseries_batch_write(self, data):
 
 def _timeseries_batch_write(data):
     """If the timeseries database is using UDP to write data, then write data synchronously."""
+    if timeseries_db.requires_write_operation_id:
+        for item in data:
+            item.setdefault("operation_id", uuid4().hex)
     if timeseries_db.use_udp:
         timeseries_batch_write(data=data)
     else:
@@ -104,6 +111,11 @@ def migrate_timeseries_database():
 
     To be removed in a future release.
     """
+    # Historical timeseries migrations 0006 and 0012 only apply to the
+    # InfluxDB1 layout, so InfluxDB2 must skip this task entirely.
+    if timeseries_db.backend_name != "influxdb":
+        return
+
     from .migrations.influxdb.influxdb_alter_structure_0006 import (
         migrate_influxdb_structure,
     )

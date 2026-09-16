@@ -27,8 +27,8 @@ the OpenWISP architecture.
 Dependencies
 ------------
 
-- Python >= 3.8
-- InfluxDB 1.8
+- Python >= 3.11
+- InfluxDB 1.x, InfluxDB 2.x, or Elasticsearch 9.x
 - fping
 - OpenSSL
 
@@ -65,8 +65,27 @@ Start Redis and InfluxDB using Docker:
 
     docker compose up -d redis influxdb
 
+If you want to use InfluxDB 2.x instead, start ``influxdb2``:
+
+.. code-block:: shell
+
+    docker compose up -d redis influxdb2
+
+If you want to test InfluxDB 2.x with UDP writes, start ``telegraf`` as
+well:
+
+.. code-block:: shell
+
+    docker compose up -d redis influxdb2 telegraf
+
 Setup and activate a virtual-environment. (we'll be using `virtualenv
 <https://pypi.org/project/virtualenv/>`_)
+
+If you want to use Elasticsearch 9.x instead, start ``elasticsearch``:
+
+.. code-block:: shell
+
+    docker compose up -d redis elasticsearch
 
 .. code-block:: shell
 
@@ -87,6 +106,105 @@ Install development dependencies:
     pip install -e .
     pip install -r requirements-test.txt
     npm install -g prettier
+
+If you are using InfluxDB 2.0, export the following environment variable
+before running migrations, celery, or the development server:
+
+.. code-block:: shell
+
+    export TIMESERIES_BACKEND=influxdb2
+
+If you are using the ``influxdb2`` and ``redis`` containers provided in
+this repository's ``docker-compose.yml``, no additional variables are
+needed because the default values in ``tests/openwisp2/settings.py``
+already match that setup.
+
+If you are not using the provided containers, or if you changed ports or
+credentials, you can override the defaults with:
+
+.. code-block:: shell
+
+    # Optional overrides for non-default setups
+    export INFLUXDB2_URL=http://localhost:8087
+    export INFLUXDB2_ORG=openwisp
+    export INFLUXDB2_TOKEN=openwisp-token
+    export INFLUXDB2_BUCKET=openwisp2
+    export REDIS_HOST=localhost
+
+If you are using Elasticsearch 9.x, the only required environment variable
+for local development is:
+
+.. code-block:: shell
+
+    export TIMESERIES_BACKEND=elasticsearch
+
+If you are using the ``elasticsearch`` and ``redis`` containers provided
+in this repository's ``docker-compose.yml``, no additional variables are
+needed because the default values in ``tests/openwisp2/settings.py``
+already match that setup.
+
+Optional Elasticsearch connection overrides are:
+
+.. code-block:: shell
+
+    # Defaults to openwisp2
+    export ELASTICSEARCH_NAME=openwisp2
+
+    # Defaults to localhost and 9200
+    export ELASTICSEARCH_HOST=localhost
+    export ELASTICSEARCH_PORT=9200
+
+    # Defaults to http://<ELASTICSEARCH_HOST>:<ELASTICSEARCH_PORT>
+    export ELASTICSEARCH_URL=http://localhost:9200
+
+If ``ELASTICSEARCH_CLOUD_ID`` is set, it is used instead of
+``ELASTICSEARCH_URL`` or ``ELASTICSEARCH_HOST``/``ELASTICSEARCH_PORT``:
+
+.. code-block:: shell
+
+    export ELASTICSEARCH_CLOUD_ID=<cloud-id>
+
+Advanced authentication and TLS settings are unset by default. If your
+cluster requires authentication, use one of these methods:
+
+.. code-block:: shell
+
+    # API key authentication
+    export ELASTICSEARCH_API_KEY=<api-key>
+
+    # Bearer token authentication
+    export ELASTICSEARCH_BEARER_AUTH=<bearer-token>
+
+    # Username and password authentication
+    export ELASTICSEARCH_USER=elastic
+    export ELASTICSEARCH_PASSWORD=<password>
+
+``ELASTICSEARCH_USER`` and ``ELASTICSEARCH_PASSWORD`` must be configured
+together.
+
+When multiple authentication methods are configured, the backend uses them
+in this order: ``ELASTICSEARCH_API_KEY``, ``ELASTICSEARCH_BEARER_AUTH``,
+then ``ELASTICSEARCH_USER``/``ELASTICSEARCH_PASSWORD``.
+
+For self-managed TLS-enabled clusters, configure an HTTPS endpoint and the
+required certificate options:
+
+.. code-block:: shell
+
+    export ELASTICSEARCH_URL=https://<host>:<port>
+    export ELASTICSEARCH_CA_CERTS=/path/to/http_ca.crt
+    export ELASTICSEARCH_SSL_ASSERT_FINGERPRINT=<fingerprint>
+    export ELASTICSEARCH_VERIFY_CERTS=true
+
+``ELASTICSEARCH_VERIFY_CERTS`` is passed to the Elasticsearch client only
+when explicitly set; otherwise the client default is used. Elastic Cloud
+deployments can use ``ELASTICSEARCH_CLOUD_ID`` instead of configuring the
+URL.
+
+Elasticsearch index templates, refresh behavior, retry policy, and
+lifecycle settings are managed by the backend.
+
+Elasticsearch uses HTTP/TCP only, so no UDP or Telegraf service is needed.
 
 Install WebDriver for Chromium for your browser version from
 https://chromedriver.chromium.org/home and extract ``chromedriver`` to one
@@ -122,7 +240,19 @@ Run tests with (make sure you have the :ref:`selenium dependencies
 
 .. code-block:: shell
 
-    ./runtests  # using --parallel is not supported in this module
+    ./runtests  # default: runs tests with InfluxDB 1.x over HTTP
+    TIMESERIES_UDP=1 ./runtests  # InfluxDB 1.x over UDP
+    TSDB=influxdb2 ./runtests  # InfluxDB 2.x over HTTP
+    TSDB=influxdb2 TIMESERIES_UDP=1 ./runtests  # InfluxDB 2.x over UDP (via Telegraf)
+    TSDB=elasticsearch ./runtests  # Elasticsearch over HTTP
+
+The ``./runtests`` script is the main test entry point. By default it runs
+the InfluxDB test flow. Set ``TSDB=influxdb2`` or ``TSDB=elasticsearch``
+to run the corresponding backend test flow instead. Set
+``TIMESERIES_UDP=1`` to run the UDP flow for an InfluxDB backend. When
+using ``TSDB=influxdb2 TIMESERIES_UDP=1``, Telegraf must be running
+because InfluxDB 2.x does not support UDP natively. Using ``--parallel``
+is not supported in this module.
 
 Run quality assurance tests with:
 
@@ -176,4 +306,12 @@ Run the docker container:
 
 .. code-block:: shell
 
-    docker compose up
+    docker compose up monitoring
+
+By default, the Docker setup uses InfluxDB 1.8. To use another supported
+backend instead, run one of the following:
+
+.. code-block:: shell
+
+    TIMESERIES_BACKEND=influxdb2 docker compose up monitoring
+    TIMESERIES_BACKEND=elasticsearch docker compose up monitoring

@@ -3,12 +3,38 @@ set -e
 
 coverage erase
 
-coverage run runtests.py
+TSDB="${TSDB:-influxdb}"
+UDP="${TIMESERIES_UDP:-}"
 
-# the next test runs focus on specific backend features, therefore
-# we can skip selenium tests to improve speed and test consistency
-SAMPLE_APP=1 coverage run runtests.py --exclude-tag=selenium_tests
-TIMESERIES_UDP=1 coverage run runtests.py --exclude-tag=selenium_tests
+# Treat only explicit truthy values as UDP, so TIMESERIES_UDP=0 uses HTTP.
+UDP_NORMALIZED=$(printf '%s' "$UDP" | tr '[:upper:]' '[:lower:]')
+case "$UDP_NORMALIZED" in
+    1|true|yes|on) UDP=1 ;;
+    *) UDP="" ;;
+esac
+
+if [ "$TSDB" != "influxdb" ] && [ "$TSDB" != "influxdb2" ] && [ "$TSDB" != "elasticsearch" ]; then
+    echo "Unsupported TSDB: $TSDB" >&2
+    echo "Supported values: influxdb, influxdb2, elasticsearch" >&2
+    exit 1
+fi
+
+if [ "$TSDB" = "elasticsearch" ] && [ -n "$UDP" ]; then
+    echo "Elasticsearch does not support UDP writes." >&2
+    exit 1
+fi
+
+if [ -z "$UDP" ]; then
+    TIMESERIES_BACKEND="$TSDB" coverage run runtests.py "$@"
+    # Test the sample application with both InfluxDB backends.
+    if [ "$TSDB" = "influxdb" ] || [ "$TSDB" = "influxdb2" ]; then
+        SAMPLE_APP=1 TIMESERIES_BACKEND="$TSDB" coverage run runtests.py \
+            "$@" --exclude-tag=selenium_tests
+    fi
+else
+    TIMESERIES_UDP=1 TIMESERIES_BACKEND="$TSDB" coverage run runtests.py \
+        "$@" --exclude-tag=selenium_tests
+fi
 
 coverage combine
 coverage xml
