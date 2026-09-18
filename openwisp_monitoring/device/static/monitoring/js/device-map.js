@@ -179,6 +179,41 @@
     return rows;
   }
 
+  function resizePopupToFitStatusFilters(popupInstance, map) {
+    let popup = $(popupInstance.getElement());
+    let mapDetail = popup.find(".map-detail");
+    let labelContainer = popup.find(".label-container");
+
+    if (!mapDetail.length || !labelContainer.length) return;
+
+    const originalFlexWrap = labelContainer.css("flex-wrap");
+
+    labelContainer.css("flex-wrap", "nowrap");
+
+    const requiredWidth = labelContainer.get(0).scrollWidth;
+    const mapWidth = $(map.getContainer()).width();
+    const maxWidth = mapWidth * 0.6;
+
+    labelContainer.css("flex-wrap", originalFlexWrap);
+
+    const width = Math.min(Math.max(410, requiredWidth), maxWidth);
+
+    // Leaflet's popup has a hardcoded maxWidth by default, which overrides inner sizes.
+    popupInstance.options.maxWidth = Math.max(
+      popupInstance.options.maxWidth || 0,
+      width + 50,
+    );
+
+    // Leaflet rebuilds the DOM during update(), wiping out inline styles.
+    popupInstance.update();
+
+    // Re-query the newly built DOM to safely apply the width
+    popup = $(popupInstance.getElement());
+    popup.find(".leaflet-popup-content").css("width", `${width + 1}px`);
+    mapDetail = popup.find(".map-detail");
+    mapDetail.css("width", `${width}px`);
+  }
+
   function bindPopupEventListener() {
     const netjsongraphInstance = this;
     const currentPopup = netjsongraphInstance?.leaflet?.currentPopup;
@@ -186,6 +221,7 @@
       console.error("Popup not found, can't bind event listeners");
       return;
     }
+    resizePopupToFitStatusFilters(currentPopup, currentPopup._map);
     let { devices, nextUrl, url, locationId } =
       netjsongraphInstance?.leaflet?._popupState;
     const el = $(currentPopup.getElement());
