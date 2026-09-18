@@ -680,6 +680,8 @@ want to use ``online`` instead of ``ok`` and ``offline`` instead of
         "critical": "offline",
     }
 
+Note: The dashboard geographic map popup dynamically adjusts its width to accommodate longer customized labels up to 60% of the map's width.
+
 .. _openwisp_monitoring_wifi_sessions_enabled:
 
 ``OPENWISP_MONITORING_WIFI_SESSIONS_ENABLED``
