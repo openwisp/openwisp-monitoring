@@ -196,16 +196,20 @@
 
     labelContainer.css("flex-wrap", originalFlexWrap);
 
-    const width = Math.max(410, Math.min(requiredWidth, maxWidth));
+    const width = Math.min(Math.max(410, requiredWidth), maxWidth);
 
     // Leaflet's popup has a hardcoded maxWidth by default, which overrides inner sizes.
-    popupInstance.options.maxWidth = Math.max(popupInstance.options.maxWidth || 0, width + 50);
-    
+    popupInstance.options.maxWidth = Math.max(
+      popupInstance.options.maxWidth || 0,
+      width + 50,
+    );
+
     // Leaflet rebuilds the DOM during update(), wiping out inline styles.
     popupInstance.update();
 
     // Re-query the newly built DOM to safely apply the width
     popup = $(popupInstance.getElement());
+    popup.find(".leaflet-popup-content").css("width", `${width + 1}px`);
     mapDetail = popup.find(".map-detail");
     mapDetail.css("width", `${width}px`);
   }
