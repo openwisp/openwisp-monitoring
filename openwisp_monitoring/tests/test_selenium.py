@@ -6,12 +6,13 @@ from channels.testing import ChannelsLiveServerTestCase
 from django.conf import settings
 from django.contrib.auth import get_permission_codename
 from django.contrib.auth.models import Permission
-from django.contrib.gis.geos import Point
+from django.contrib.gis.geos import MultiPolygon, Point, Polygon
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.test import override_settings, tag
 from django.urls import reverse
 from reversion.models import Version
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from swapper import load_model
@@ -563,6 +564,268 @@ class TestDashboardMap(
                 By.CSS_SELECTOR, ".map-detail .floorplan-btn"
             )
             self.assertTrue(button_displayed)
+
+    def test_clicking_location_shape_opens_device_popup(self):
+        org = self._get_org()
+
+        def box(west, south, east, north):
+            return Polygon(
+                (
+                    (west, south),
+                    (east, south),
+                    (east, north),
+                    (west, north),
+                    (west, south),
+                )
+            )
+
+        # The two parts of the MultiPolygon are separated by a gap,
+        # hence the center of its bounding box is not part of the shape.
+        locations = {
+            "Polygon": (box(12.40, 41.86, 12.48, 41.92), ("ok", "critical")),
+            "MultiPolygon": (
+                MultiPolygon(
+                    box(12.56, 41.86, 12.60, 41.92), box(12.66, 41.86, 12.70, 41.92)
+                ),
+                ("problem", "unknown"),
+            ),
+            "Point": (Point(12.52, 41.96), ("ok", "unknown")),
+        }
+        for index, (name, (geometry, statuses)) in enumerate(locations.items()):
+            location = self._create_location(
+                type="outdoor",
+                name=f"{name}-Location",
+                organization=org,
+                geometry=geometry,
+            )
+            for status_index, status in enumerate(statuses):
+                device = self._create_device(
+                    name=f"{name}-{status}-device",
+                    mac_address=f"00:00:00:00:{index:02x}:{status_index:02x}",
+                    organization=org,
+                )
+                device.monitoring.update_status(status)
+                self._create_object_location(
+                    content_object=device, location=location, organization=org
+                )
+        polygon = locations["Polygon"][0]
+        multipolygon = locations["MultiPolygon"][0]
+        point = locations["Point"][0]
+        # Clicking point locations already worked before shapes were supported:
+        # the point is included to verify the same expectations hold for shapes.
+        cases = (
+            ("Polygon", "Polygon", polygon.centroid),
+            ("MultiPolygon, first part", "MultiPolygon", multipolygon[0].centroid),
+            ("MultiPolygon, second part", "MultiPolygon", multipolygon[1].centroid),
+            ("Point", "Point", point),
+        )
+
+        def get_rows():
+            self._wait_for_popup_table_ready()
+            return [
+                row.text
+                for row in self.find_elements(By.CSS_SELECTOR, ".map-detail tbody tr")
+            ]
+
+        def click_location(name, target):
+            positions = []
+
+            def get_stable_position(driver):
+                """Returns the offset of the target once the map stops moving."""
+                position = driver.execute_script(
+                    """
+                    const map = window._owGeoMap?.leaflet;
+                    if (!map) return null;
+                    const container = map.getContainer();
+                    container.scrollIntoView({ block: "center" });
+                    const rect = container.getBoundingClientRect();
+                    const point = map.latLngToContainerPoint(
+                      [arguments[1], arguments[0]],
+                    );
+                    const element = document.elementFromPoint(
+                      rect.left + point.x,
+                      rect.top + point.y,
+                    );
+                    return {
+                      x: Math.round(point.x - rect.width / 2),
+                      y: Math.round(point.y - rect.height / 2),
+                      onShape: Boolean(
+                        element?.matches("path.leaflet-interactive"),
+                      ),
+                      onMap: Boolean(element && container.contains(element)),
+                    };
+                    """,
+                    target.x,
+                    target.y,
+                )
+                positions.append(position)
+                return (
+                    position
+                    and position["onMap"]
+                    and positions[-2:] == [position, position]
+                    and position
+                )
+
+            try:
+                position = self.wait_until(get_stable_position, timeout=10)
+            except TimeoutException:
+                self.fail(f"The map did not settle, positions: {positions[-2:]}")
+            if name != "Point":
+                self.assertTrue(
+                    position["onShape"],
+                    f"The {name} shape is not drawn at the position to click",
+                )
+            ActionChains(self.web_driver).move_to_element_with_offset(
+                self.find_element(
+                    By.CSS_SELECTOR, "#device-map-container .leaflet-container"
+                ),
+                position["x"],
+                position["y"],
+            ).click().perform()
+
+        self.login()
+        for label, name, target in cases:
+            geometry, statuses = locations[name]
+            devices = [f"{name}-{status}-device" for status in statuses]
+            with self.subTest(label):
+                # Reloading closes any open popup and resets the map view,
+                # so that popups and auto-panning of previous cases
+                # can not interfere with the position of the click.
+                self.open(reverse("admin:index"))
+                self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+                click_location(name, target)
+                try:
+                    self.wait_until(
+                        EC.visibility_of_element_located(
+                            (By.CSS_SELECTOR, ".map-detail")
+                        ),
+                        timeout=5,
+                    )
+                except TimeoutException:
+                    self.fail(
+                        f"Clicking the {label} location on the map did not "
+                        "open the location details overlay"
+                    )
+                self.assertEqual(
+                    self.find_element(By.CSS_SELECTOR, ".map-detail h2").text,
+                    f"{name}-Location (2)",
+                )
+                self.assertCountEqual(
+                    [row.split()[0] for row in get_rows()],
+                    devices,
+                    "The overlay must list only the devices of the clicked location",
+                )
+                anchor = self.web_driver.execute_script(
+                    """
+                    const map = window._owGeoMap.leaflet;
+                    const popup = document
+                      .querySelector(".map-detail")
+                      .closest(".leaflet-popup");
+                    if (!popup) return null;
+                    const rect = popup.getBoundingClientRect();
+                    const container = map.getContainer().getBoundingClientRect();
+                    const [west, south, east, north] = arguments[0];
+                    const topLeft = map.latLngToContainerPoint([north, west]);
+                    const bottomRight = map.latLngToContainerPoint([south, east]);
+                    return {
+                      x: rect.left + rect.width / 2,
+                      y: rect.bottom,
+                      left: container.left + topLeft.x,
+                      top: container.top + topLeft.y,
+                      right: container.left + bottomRight.x,
+                      bottom: container.top + bottomRight.y,
+                    };
+                    """,
+                    geometry.extent,
+                )
+                self.assertIsNotNone(anchor, "The overlay is not a map popup")
+                # Tolerates the offset between the tip of a popup and its anchor
+                tolerance = 20
+                self.assertTrue(
+                    anchor["left"] - tolerance
+                    <= anchor["x"]
+                    <= anchor["right"] + tolerance
+                    and anchor["top"] - tolerance
+                    <= anchor["y"]
+                    <= anchor["bottom"] + tolerance,
+                    f"The overlay is not anchored within the {name} location: {anchor}",
+                )
+                first, second = (
+                    self.find_element(By.CSS_SELECTOR, f".map-detail .health-{status}")
+                    for status in statuses
+                )
+                first.click()
+                rows = get_rows()
+                self.assertEqual(len(rows), 1, rows)
+                self.assertIn(devices[0], rows[0])
+                second.click()
+                self.assertCountEqual([row.split()[0] for row in get_rows()], devices)
+                first.click()
+                rows = get_rows()
+                self.assertEqual(len(rows), 1, rows)
+                self.assertIn(devices[1], rows[0])
+                second.click()
+                self.assertEqual(len(get_rows()), 2)
+
+        with self.subTest("Polygon click removes the bookmarked point from the URL"):
+            self.open(reverse("admin:index"))
+            self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+            click_location("Point", point)
+            try:
+                self.wait_until(lambda driver: "nodeId=" in driver.current_url)
+            except TimeoutException:
+                self.fail("Clicking the point did not add its id to the URL")
+            # The map pans to fit the overlay of the point, which leaves
+            # only the northern part of the polygon in sight.
+            click_location(
+                "Polygon", Point(polygon.centroid.x, polygon.extent[3] - 0.01)
+            )
+            try:
+                self.wait_until(
+                    EC.text_to_be_present_in_element(
+                        (By.CSS_SELECTOR, ".map-detail h2"), "Polygon-Location"
+                    ),
+                    timeout=5,
+                )
+            except TimeoutException:
+                self.fail("Clicking the polygon did not replace the point overlay")
+            self.assertNotIn(
+                "nodeId=",
+                self.web_driver.current_url,
+                "The URL still points to the location of the replaced overlay",
+            )
+
+        with self.subTest("Polygon overlay stays open when its location is updated"):
+            self.open(reverse("admin:index"))
+            self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+            click_location("Polygon", polygon.centroid)
+            self.wait_for_visibility(By.CSS_SELECTOR, ".map-detail")
+            Location.objects.get(name="Polygon-Location").save()
+            # Updates are received in order: once the point has moved,
+            # the update of the polygon has been processed too.
+            point_location = Location.objects.get(name="Point-Location")
+            point_location.geometry = Point(12.53, 41.96)
+            point_location.save()
+            try:
+                self.wait_for_script(
+                    """
+                    const options = window._owGeoMap.echarts.getOption();
+                    const series = options.series.find(
+                        (s) => s.type === "scatter" || s.type === "effectScatter",
+                    );
+                    const item = series.data.find((d) => d.name === "Point-Location");
+                    return item?.value[0] === 12.53;
+                    """,
+                    timeout=5,
+                )
+            except TimeoutException:
+                self.fail("The update of the point location was not received")
+            self.assertTrue(
+                self.find_element(
+                    By.CSS_SELECTOR, ".leaflet-popup", wait_for="presence"
+                ).is_displayed(),
+                "Updating a polygon location hid its open overlay",
+            )
 
     def test_infinite_scroll_on_popup(self):
         location = self._create_location(type="indoor", name="Test-Location")
