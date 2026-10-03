@@ -26,7 +26,7 @@ from openwisp_controller.config.validators import mac_address_validator
 from openwisp_utils.base import TimeStampedEditableModel
 
 from ...check import settings as check_settings
-from ...db import device_data_query, timeseries_db
+from ...db import timeseries_db
 from ...monitoring.signals import threshold_crossed
 from ...monitoring.tasks import _timeseries_write
 from ...settings import CACHE_TIMEOUT
@@ -152,7 +152,7 @@ class AbstractDeviceData(object):
         """Retrieves last data snapshot from Timeseries Database."""
         if self.__data:
             return self.__data
-        q = device_data_query.format(SHORT_RP, self.__key, self.pk)
+        q = timeseries_db.get_device_data_query(SHORT_RP, self.__key, self.pk)
         cache_key = get_device_cache_key(device=self, context="current-data")
         points = cache.get(cache_key)
         if not points:

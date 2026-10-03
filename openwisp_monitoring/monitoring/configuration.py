@@ -8,7 +8,7 @@ from openwisp_notifications.types import (
     unregister_notification_type,
 )
 
-from openwisp_monitoring.db import chart_query
+from openwisp_monitoring.db import chart_query, timeseries_db
 from openwisp_monitoring.monitoring.utils import clean_timeseries_data_key
 from openwisp_utils.utils import deep_merge_dicts
 
@@ -797,6 +797,7 @@ def _validate_chart_configuration(chart_config):
         assert "min" in chart_config["colorscale"]
         assert "label" in chart_config["colorscale"]
         assert "scale" in chart_config["colorscale"]
+    timeseries_db.validate_chart_config(chart_config)
 
 
 def register_metric_notifications(metric_name, metric_config):

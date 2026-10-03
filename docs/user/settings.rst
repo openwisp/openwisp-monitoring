@@ -34,6 +34,10 @@ To ensure consistent alerting behavior, this value should match the
 **default**: see below
 ============ =========
 
+Example configurations:
+
+Default ``influxdb`` backend configuration:
+
 .. code-block:: python
 
     TIMESERIES_DATABASE = {
@@ -49,48 +53,138 @@ To ensure consistent alerting behavior, this value should match the
         },
     }
 
-The following table describes all keys available in
+Alternative ``influxdb2`` backend configuration:
+
+.. code-block:: python
+
+    TIMESERIES_DATABASE = {
+        "BACKEND": "openwisp_monitoring.db.backends.influxdb2",
+        "NAME": "openwisp2",
+        "USER": "openwisp",  # InfluxDB organization
+        "PASSWORD": "openwisp-token",  # InfluxDB API token
+        "URL": "http://localhost:8087",
+        "OPTIONS": {
+            "udp_writes": False,
+            "udp_port": 8089,
+        },
+    }
+
+Alternative ``elasticsearch`` backend configuration:
+
+.. code-block:: python
+
+    TIMESERIES_DATABASE = {
+        "BACKEND": "openwisp_monitoring.db.backends.elasticsearch",
+        "NAME": "openwisp2",
+        "URL": "https://localhost:9200",
+        "API_KEY": "openwisp-api-key",
+        "CA_CERTS": "/etc/elasticsearch/certs/http_ca.crt",
+        "OPTIONS": {
+            "refresh": "wait_for",
+            "read_size": 10000,
+            "terms_size": 1000,
+        },
+    }
+
+The following table describes the keys available in the
 ``TIMESERIES_DATABASE`` setting:
 
 ============ =============================================================
 **Key**      ``Description``
-``BACKEND``  The timeseries database backend to use. You can select one of
-             the backends located in ``openwisp_monitoring.db.backends``
-``USER``     User for logging into the timeseries database
-``PASSWORD`` Password of the timeseries database user
+``BACKEND``  The Python path of the timeseries backend to use, as shown in
+             the examples above
+``USER``     Username or organization, depending on the selected backend
+``PASSWORD`` Password or API token, depending on the selected backend
 ``NAME``     Name of the timeseries database
+``URL``      Connection URL supported by the ``influxdb2`` and
+             ``elasticsearch`` backends; required when ``HOST`` and
+             ``PORT`` are not configured
 ``HOST``     IP address/hostname of machine where the timeseries database
              is running
 ``PORT``     Port for connecting to the timeseries database
-``OPTIONS``  These settings depends on the timeseries backend. Refer the
-             :ref:`timeseries_backend_options` table below for available
-             options
+``OPTIONS``  These settings depend on the timeseries backend. Refer to
+             :ref:`timeseries_backend_options` for available options
 ============ =============================================================
+
+The ``elasticsearch`` backend uses ``URL``, or ``HOST`` and ``PORT``, to
+connect to the cluster, and ``NAME`` as the name of the data streams
+created by OpenWISP. It also supports the following additional keys:
+
+========================== ==============================================
+**Key**                    ``Description``
+``CLOUD_ID``               Elastic Cloud identifier, used instead of
+                           ``URL`` or ``HOST`` and ``PORT``
+``API_KEY``                Elasticsearch API key
+``BEARER_AUTH``            Elasticsearch bearer token
+``CA_CERTS``               Path to the CA certificate used to verify the
+                           TLS certificate of Elasticsearch
+``SSL_ASSERT_FINGERPRINT`` SHA-256 fingerprint of the TLS certificate of
+                           Elasticsearch, which can be used instead of
+                           ``CA_CERTS``
+``VERIFY_CERTS``           Boolean, passed to the Elasticsearch client
+                           only when configured, otherwise the default of
+                           the client is used
+========================== ==============================================
+
+``API_KEY``, ``BEARER_AUTH``, and ``USER`` with ``PASSWORD`` are
+alternative authentication methods, which are used in this order when more
+than one is configured. ``USER`` and ``PASSWORD`` must be configured
+together.
+
+.. important::
+
+    Use an ``https://`` URL whenever Elasticsearch credentials are
+    configured: API keys, bearer tokens, and passwords sent over
+    ``http://`` can be read by anyone with access to the network. The
+    backend logs a warning when credentials are configured on an
+    ``http://`` URL.
 
 .. _timeseries_backend_options:
 
 Timeseries Database Options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-============== =====================================================
+============== ===========================================================
 ``udp_writes`` Whether to use UDP for writing data to the timeseries
-               database
-``udp_port``   Timeseries database port for writing data using UDP
-============== =====================================================
+               database. The ``influxdb2`` backend requires Telegraf as a
+               UDP listener because InfluxDB 2.x does not support UDP
+               natively
+``udp_host``   Optional Telegraf UDP listener hostname. Available only for
+               the ``influxdb2`` backend. Defaults to ``HOST`` when
+               configured, otherwise ``localhost``
+``udp_port``   Timeseries database port for writing data using UDP on the
+               ``influxdb`` backend, or Telegraf listener port for the
+               ``influxdb2`` backend
+``refresh``    Refresh policy applied to writes and deletions. Available
+               only for the ``elasticsearch`` backend. Defaults to
+               ``wait_for``, which keeps alert tolerance queries
+               consistent by waiting until new points are searchable.
+               Overriding it can improve write throughput, but may delay
+               or miss alert transitions
+``read_size``  Number of documents read from Elasticsearch in a single
+               request. Available only for the ``elasticsearch`` backend.
+               Defaults to ``10000``
+``terms_size`` Maximum number of groups returned by charts which group
+               data by tag. Available only for the ``elasticsearch``
+               backend. Defaults to ``1000``
+============== ===========================================================
+
+The ``influxdb2`` backend supports UDP writes only through Telegraf.
+OpenWISP sends Influx line protocol to Telegraf over UDP, then Telegraf
+forwards the data to InfluxDB 2.x over HTTP.
 
 .. important::
 
-    UDP packets can have a maximum size of 64KB. When using UDP for
-    writing timeseries data, if the size of the data exceeds 64KB, TCP
-    mode will be used instead.
+    UDP packets can have a maximum size of 64KB. When using UDP writes, if
+    the size of the data exceeds 64KB, TCP mode will be used instead.
 
 .. note::
 
-    If you want to use the ``openwisp_monitoring.db.backends.influxdb``
-    backend with UDP writes enabled, then you need to enable two different
-    ports for UDP (each for different retention policy) in your InfluxDB
-    configuration. The UDP configuration section of your InfluxDB should
-    look similar to the following:
+    If you want to use the ``influxdb`` backend with UDP writes enabled,
+    then you need to enable two different ports for UDP (each for a
+    different retention policy) in your InfluxDB configuration. The UDP
+    configuration section of your InfluxDB should look similar to the
+    following:
 
     .. code-block:: text
 
@@ -114,6 +208,48 @@ Timeseries Database Options
     the `ansible-ow-influxdb's
     <https://github.com/openwisp/ansible-ow-influxdb#role-variables>`_ (a
     dependency of ansible-openwisp2) documentation to learn more.
+
+    If you want to use the ``influxdb2`` backend with UDP writes enabled,
+    then you need a Telegraf UDP listener. The UDP listener on
+    ``udp_port`` writes to the main InfluxDB 2.x bucket, while the next
+    UDP port writes to the bucket mapped to the ``short`` retention
+    policy. The Telegraf configuration should look similar to the
+    following:
+
+    .. code-block:: toml
+
+        [agent]
+          # Disable Telegraf's automatic hostname tag. If enabled on an
+          # existing OpenWISP bucket, it creates different series from the
+          # historical data, making charts look empty as if the timeseries
+          # database had been reset.
+          omit_hostname = true
+
+        [[inputs.socket_listener]]
+          service_address = "udp://:8089"
+          data_format = "influx"
+          [inputs.socket_listener.tags]
+            bucket = "openwisp2"
+
+        [[inputs.socket_listener]]
+          service_address = "udp://:8090"
+          data_format = "influx"
+          [inputs.socket_listener.tags]
+            bucket = "openwisp2_short"
+
+        [[outputs.influxdb_v2]]
+          urls = ["http://influxdb2:8086"]
+          token = "openwisp-token"
+          organization = "openwisp"
+          bucket = "openwisp2"
+          bucket_tag = "bucket"
+          exclude_bucket_tag = true
+
+The ``elasticsearch`` backend writes over HTTP only and does not support
+UDP writes. It also accepts the ``http_compress``, ``max_retries``,
+``request_timeout``, and ``retry_on_timeout`` options, which are passed to
+the Elasticsearch client unchanged: when these are not configured, the
+defaults of the client are used.
 
 .. _openwisp_monitoring_default_retention_policy:
 
@@ -245,8 +381,9 @@ documentation regarding automatic retries for known errors
 .. note::
 
     The retry mechanism does not work when using ``UDP`` for writing data
-    to the timeseries database. It is due to the nature of ``UDP``
-    protocol which does not acknowledge receipt of data packets.
+    to the timeseries database on the ``influxdb`` or ``influxdb2``
+    backend. This is due to the nature of the ``UDP`` protocol, which does
+    not acknowledge receipt of data packets.
 
 .. _openwisp_monitoring_timeseries_retry_options:
 

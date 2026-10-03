@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from celery.exceptions import Retry
 from django.core.exceptions import ImproperlyConfigured, ValidationError
@@ -21,7 +21,10 @@ from openwisp_monitoring.device.utils import (
     manage_default_retention_policy,
     manage_short_retention_policy,
 )
-from openwisp_monitoring.monitoring.tests import TestMonitoringMixin
+from openwisp_monitoring.monitoring.tests import (
+    RequireTimeseriesBackendMixin,
+    TestMonitoringMixin,
+)
 from openwisp_monitoring.settings import MONITORING_TIMESERIES_RETRY_OPTIONS
 from openwisp_utils.tests import capture_stderr
 
@@ -32,8 +35,10 @@ Chart = load_model("monitoring", "Chart")
 Notification = load_model("openwisp_notifications", "Notification")
 
 
-@tag("timeseries_client")
-class TestDatabaseClient(TestMonitoringMixin, TestCase):
+@tag("timeseries_client", "influxdb1")
+class TestDatabaseClient(RequireTimeseriesBackendMixin, TestMonitoringMixin, TestCase):
+    expected_backend = "influxdb"
+
     def test_timeseries_database_setting_is_required(self):
         with self.settings(TIMESERIES_DATABASE=None):
             with self.assertRaisesRegex(
@@ -93,6 +98,34 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         )
         self.assertEqual(c.query, q)
 
+    def test_get_device_data_query(self):
+        query = timeseries_db.get_device_data_query(
+            SHORT_RP,
+            "device_data",
+            "device'id",
+        )
+        self.assertEqual(
+            query,
+            "SELECT data FROM short.device_data WHERE pk = 'device\\'id' "
+            "ORDER BY time DESC LIMIT 1",
+        )
+
+    def test_read_escapes_string_literals(self):
+        result = MagicMock()
+        result.get_points.return_value = []
+        with patch.object(timeseries_db, "query", return_value=result) as mocked_query:
+            timeseries_db.read(
+                "device_data",
+                fields="data",
+                tags={"hostname": "ap'01"},
+                where=[("status", "=", "warn'ing")],
+            )
+        mocked_query.assert_called_once_with(
+            "SELECT data FROM device_data WHERE status = 'warn\\'ing' "
+            "AND hostname = 'ap\\'01'",
+            precision="s",
+        )
+
     def test_write(self):
         timeseries_db.write("test_write", dict(value=2), database=self.TEST_DB)
         measurement = list(
@@ -101,6 +134,21 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
             ).get_points()
         )[0]
         self.assertEqual(measurement["value"], 2)
+
+    @patch.object(timeseries_db, "_write")
+    def test_write_preserves_zero_timestamp(self, mocked_write):
+        with self.subTest("write"):
+            timeseries_db.write("test_write", {"value": 2}, timestamp=0)
+            point = mocked_write.call_args[1]["points"][0]
+            self.assertEqual(point["time"], 0)
+
+        with self.subTest("batch_write"):
+            mocked_write.reset_mock()
+            timeseries_db.batch_write(
+                [{"name": "test_write", "values": {"value": 2}, "timestamp": 0}]
+            )
+            point = mocked_write.call_args[1]["points"][0]
+            self.assertEqual(point["time"], 0)
 
     def test_general_write(self):
         m = self._create_general_metric(name="Sync test")
@@ -183,6 +231,47 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         timeseries_db.delete_metric_data()
         self.assertEqual(m.read(), [])
         self.assertEqual(om.read(), [])
+
+    def test_delete_metric_data_at_timestamp(self):
+        m = self._create_general_metric(name="test_metric")
+        first = now() - timedelta(days=2)
+        second = now() - timedelta(days=1)
+        m.write(100, time=first)
+        m.write(200, time=second)
+        self.assertEqual(
+            sorted(point["value"] for point in m.read()),
+            [100, 200],
+        )
+        timeseries_db.delete_metric_data(key=m.key, timestamp=second)
+        self.assertEqual([point["value"] for point in m.read()], [100])
+
+    def test_delete_metric_data_at_timestamp_with_tags(self):
+        m = self._create_object_metric(name="dummy")
+        timestamp = now() - timedelta(days=1)
+        m.write(100, time=timestamp)
+        self.assertEqual([point["value"] for point in m.read()], [100])
+        timeseries_db.delete_metric_data(key=m.key, tags=m.tags, timestamp=timestamp)
+        self.assertEqual(m.read(), [])
+
+    def test_delete_metric_data_at_timestamp_escapes_tags(self):
+        timestamp = make_aware(datetime(2026, 8, 19, 10, 30))
+        tag_value = r"aa\'bb"
+        expected_tag = "'{}'".format(
+            tag_value.replace("\\", "\\\\").replace("'", "\\'")
+        )
+        self.assertEqual(expected_tag, r"'aa\\\'bb'")
+        with patch.object(timeseries_db, "query") as mocked_query:
+            timeseries_db.delete_metric_data(
+                key="radius_acc",
+                tags={"calling_station_id": tag_value},
+                timestamp=timestamp,
+            )
+        self.assertEqual(
+            mocked_query.call_args[0][0],
+            'DELETE FROM "radius_acc" WHERE '
+            f"time = '{timestamp.isoformat(sep='T', timespec='microseconds')}' "
+            f'AND "calling_station_id" = {expected_tag}',
+        )
 
     def test_get_query_1d(self):
         c = self._create_chart(test_data=None, configuration="uptime")
@@ -412,7 +501,12 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
             )
 
 
-class TestDatabaseClientUdp(TestMonitoringMixin, TestCase):
+@tag("timeseries_client", "influxdb1")
+class TestDatabaseClientUdp(
+    RequireTimeseriesBackendMixin, TestMonitoringMixin, TestCase
+):
+    expected_backend = "influxdb"
+
     def test_exceed_udp_packet_limit(self):
         # When using UDP to write data to InfluxDB, writing
         # huge data that exceeds UDP packet limit should not raise
