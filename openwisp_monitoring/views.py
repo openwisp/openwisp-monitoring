@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from swapper import load_model
 
 from .monitoring.exceptions import InvalidChartConfigException
+from .utils import normalize_timezone
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,11 @@ class MonitoringApiViewMixin:
             tz(timezone)
         except UnknownTimeZoneError:
             raise ValidationError("Unkown Time Zone")
+        # Normalize deprecated timezone aliases (e.g. Asia/Calcutta -> Asia/Kolkata)
+        # before passing to the timeseries backend.  InfluxDB's Go runtime may not
+        # include legacy IANA entries that pytz still accepts, which would produce
+        # an "unable to find time zone" error.
+        timezone = normalize_timezone(timezone)
         # if custom dates are provided then validate custom dates
         if start_date and end_date:
             start_datetime, end_datetime = self._validate_custom_date(
