@@ -423,9 +423,27 @@
             fillOpacity: 0.7,
           };
         },
+        // Polygon and MultiPolygon locations are not converted to nodes,
+        // hence they never reach nodePopup: open the same popup manually,
+        // anchored where the user clicked (always inside the shape).
+        onEachFeature: function (feature, layer) {
+          layer.on("click", function (e) {
+            const properties = feature.properties || {};
+            // Polygons cannot be bookmarked: drop the node left in the URL
+            // by a previously open popup, which would otherwise be stale.
+            map.utils.removeUrlFragment(map.config.bookmarkableActions.id, "nodeId");
+            map.gui.loadNodePopup({
+              id: properties.id,
+              label: properties.name,
+              location: { lat: e.latlng.lat, lng: e.latlng.lng },
+              properties,
+            });
+          });
+        },
       },
-      // Popup handling is delegated to nodePopup.content,
-      // so disable the default onClickElement popup behavior.
+      // Popup handling is delegated to nodePopup.content (points) and
+      // geoOptions.onEachFeature (polygons), so disable the default
+      // onClickElement popup behavior.
       onClickElement: function () {},
       onReady: function () {
         const map = this;
@@ -547,6 +565,10 @@
       ws = new ReconnectingWebSocket(protocol + "://" + host + "/ws/loci/location/");
     ws.onmessage = function (e) {
       const data = JSON.parse(e.data);
+      // Only point locations are drawn as nodes which can be moved.
+      if (data.geometry.type !== "Point") {
+        return;
+      }
       const [lng, lat] = data.geometry.coordinates;
       const currentPopup = window._owGeoMap?.leaflet?.currentPopup;
       const currentPopupLocationId = window._owGeoMap?.leaflet?._popupState?.locationId;
