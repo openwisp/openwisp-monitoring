@@ -65,6 +65,12 @@ Shareable Geographic Map URLs
 Interactions with location or device nodes on the geographic map update
 the URL, which can be bookmarked or shared.
 
+.. note::
+
+    Only locations shown as markers are bookmarkable. Opening the overlay
+    of a location drawn as an area (polygon or multipolygon) does not add
+    it to the URL, and removes any location previously bookmarked in it.
+
 Shareable Indoor Map URLs
 -------------------------
 
