@@ -21,6 +21,36 @@ class TestAdmin(TestMonitoringMixin, TestCase):
         r = self.client.get(url)
         self.assertEqual(r.status_code, 200)
 
+    def test_device_chart_on_global_metric(self):
+        metric = self._create_general_metric()
+        url = reverse(f"admin:{self.app_label}_metric_change", args=[metric.pk])
+        self._login_admin()
+        for configuration in ("access_tech", "bandwidth", "signal_quality"):
+            with self.subTest(configuration=configuration):
+                response = self.client.post(
+                    url,
+                    {
+                        "name": metric.name,
+                        "configuration": metric.configuration,
+                        "key": metric.key,
+                        "field_name": metric.field_name,
+                        "chart_set-TOTAL_FORMS": 1,
+                        "chart_set-INITIAL_FORMS": 0,
+                        "chart_set-0-configuration": configuration,
+                        "alertsettings-TOTAL_FORMS": 0,
+                        "alertsettings-INITIAL_FORMS": 0,
+                        "_save": "Save",
+                    },
+                )
+                self.assertEqual(response.status_code, 200)
+                formset = response.context["inline_admin_formsets"][0].formset
+                self.assertFormError(
+                    formset.forms[0],
+                    "configuration",
+                    "This chart requires a metric linked to an object.",
+                )
+                self.assertFalse(metric.chart_set.exists())
+
     def test_alert_settings_inline(self):
         m = self._create_general_metric(configuration="ping")
         alert_s = self._create_alert_settings(metric=m)
