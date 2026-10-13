@@ -45,13 +45,16 @@ Install system packages:
     sudo apt install -y sqlite3 libsqlite3-dev openssl libssl-dev
     sudo apt install -y gdal-bin libproj-dev libgeos-dev libspatialite-dev libsqlite3-mod-spatialite
     sudo apt install -y fping
-    sudo apt install -y chromium
+    # For running E2E Selenium tests (Firefox is the default browser)
+    sudo apt install firefox chromium
 
-Fork and clone the forked repository:
+Fork the `openwisp-monitoring repository
+<https://github.com/openwisp/openwisp-monitoring>`_ on GitHub, then clone
+your fork. Replace ``YOUR_GITHUB_USERNAME`` with your GitHub username:
 
 .. code-block:: shell
 
-    git clone git://github.com/<your_fork>/openwisp-monitoring
+    git clone git@github.com:YOUR_GITHUB_USERNAME/openwisp-monitoring.git
 
 Navigate into the cloned repository:
 
@@ -151,11 +154,11 @@ To install the latest development version tarball via HTTPs:
 
     pip install https://github.com/openwisp/openwisp-monitoring/tarball/master
 
-Alternatively you can use the git protocol:
+Alternatively you can install the latest development version from Git:
 
 .. code-block:: shell
 
-    pip install -e git+git://github.com/openwisp/openwisp-monitoring#egg=openwisp_monitoring
+    pip install -e git+https://github.com/openwisp/openwisp-monitoring#egg=openwisp_monitoring
 
 Install and Run on Docker
 -------------------------
