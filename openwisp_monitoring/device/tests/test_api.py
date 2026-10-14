@@ -196,6 +196,24 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertEqual(r.status_code, 200)
         mocked_task.assert_called_once()
 
+    def test_device_get_response_schema(self):
+        response = self.client.get("/api/v1/docs.json")
+        self.assertEqual(response.status_code, 200)
+
+        document = response.json()
+
+        response_schema = document["paths"]["/monitoring/device/{id}/"]["get"][
+            "responses"
+        ]["200"]["schema"]
+
+        definition_name = response_schema["$ref"].rsplit("/", 1)[-1]
+
+        properties = document["definitions"][definition_name]["properties"]
+
+        self.assertIn("name", properties)
+        self.assertIn("id", properties)
+        self.assertIn("monitoring", properties)
+
     @tag("flaky_with_udp_writes")
     def test_200_traffic_counter_incremented(self):
         dd = self.create_test_data(no_resources=True)
