@@ -126,6 +126,55 @@ class MonitoringDeviceDetailSerializer(MonitoringDeviceListSerializer):
     monitoring = DeviceMonitoringSerializer(read_only=True)
 
 
+class ChartResponseField(serializers.JSONField):
+    class Meta:
+        swagger_schema_fields = {
+            "type": "object",
+            "additional_properties": True,
+        }
+
+
+class DeviceSnapshotField(serializers.JSONField):
+    class Meta:
+        swagger_schema_fields = {
+            "type": "object",
+            "additional_properties": True,
+            "x_nullable": True,
+        }
+
+
+class DeviceMetricResponseSerializer(MonitoringDeviceDetailSerializer):
+    charts = serializers.ListField(
+        child=ChartResponseField(),
+        read_only=True,
+    )
+
+    x = serializers.ListField(
+        child=serializers.CharField(),
+        read_only=True,
+        required=False,
+        help_text="Shared time axis, when available. Format: YYYY-MM-DD HH:MM.",
+    )
+
+    class Meta(MonitoringDeviceDetailSerializer.Meta):
+        fields = (
+            *MonitoringDeviceDetailSerializer.Meta.fields,
+            "charts",
+            "x",
+            "data",
+        )
+
+    data = DeviceSnapshotField(
+        read_only=True,
+        required=False,
+        allow_null=True,
+        help_text=(
+            "Latest device data snapshot, included when the status query "
+            "parameter is non-empty. Null when no snapshot is available."
+        ),
+    )
+
+
 class MonitoringGeoJsonLocationSerializer(GeoJsonLocationSerializer):
     ok_count = serializers.IntegerField()
     problem_count = serializers.IntegerField()

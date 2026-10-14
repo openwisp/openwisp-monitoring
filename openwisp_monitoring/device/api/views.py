@@ -11,6 +11,7 @@ from django.http import Http404
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from pytz import UTC
 from rest_framework import serializers, status
@@ -49,6 +50,7 @@ from .filters import (
     WifiSessionFilter,
 )
 from .serializers import (
+    DeviceMetricResponseSerializer,
     DeviceMetricSerializer,
     MonitoringDeviceDetailSerializer,
     MonitoringDeviceListSerializer,
@@ -139,7 +141,42 @@ class DeviceMetricView(
             pk = instance.metric.object_id
         cls._get_charts.invalidate(None, None, pk)
 
-    @swagger_auto_schema(responses={200: MonitoringDeviceDetailSerializer()})
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                "csv",
+                openapi.IN_QUERY,
+                description=(
+                    "Any non-empty value selects CSV export instead of JSON. "
+                    "Returns text/csv as an attachment named data.csv."
+                ),
+                type=openapi.TYPE_STRING,
+                required=False,
+            ),
+            openapi.Parameter(
+                "status",
+                openapi.IN_QUERY,
+                description=(
+                    "Any non-empty value includes the latest device data snapshot "
+                    "in the JSON response. Ignored for CSV export."
+                ),
+                type=openapi.TYPE_STRING,
+                required=False,
+            ),
+        ],
+        responses={
+            200: openapi.Response(
+                description=(
+                    "By default, returns JSON matching the schema below. "
+                    "When csv is non-empty, returns a text/csv attachment instead; "
+                    "the JSON schema does not apply to that response. "
+                    "OpenAPI 2.0 cannot express separate response schemas for "
+                    "these media types under the same status code."
+                ),
+                schema=DeviceMetricResponseSerializer(),
+            ),
+        },
+    )
     def get(self, request, pk):
         self.instance = self.get_object(pk)
         response = super().get(request, pk)

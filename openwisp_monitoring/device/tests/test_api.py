@@ -213,6 +213,53 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         self.assertIn("name", properties)
         self.assertIn("id", properties)
         self.assertIn("monitoring", properties)
+        self.assertEqual(properties["charts"]["type"], "array")
+        self.assertEqual(properties["charts"]["items"]["type"], "object")
+        self.assertIs(properties["charts"]["items"]["additionalProperties"], True)
+        self.assertEqual(properties["x"]["type"], "array")
+        self.assertEqual(properties["x"]["items"]["type"], "string")
+        self.assertEqual(properties["data"]["type"], "object")
+        self.assertIs(properties["data"]["x-nullable"], True)
+
+        definition = document["definitions"][definition_name]
+        required_fields = definition.get("required", [])
+        self.assertNotIn("x", required_fields)
+        self.assertNotIn("data", required_fields)
+
+        get_operation = document["paths"]["/monitoring/device/{id}/"]["get"]
+        query_parameters = {
+            parameter["name"]: parameter
+            for parameter in get_operation["parameters"]
+            if parameter["in"] == "query"
+        }
+
+        for name in ("csv", "status"):
+            self.assertIn(name, query_parameters)
+            self.assertEqual(query_parameters[name]["type"], "string")
+            self.assertFalse(query_parameters[name]["required"])
+
+        self.assertIn(
+            "text/csv",
+            get_operation["responses"]["200"]["description"],
+        )
+
+        post_operation = document["paths"]["/monitoring/device/{id}/"]["post"]
+
+        body_parameters = [
+            parameter
+            for parameter in post_operation["parameters"]
+            if parameter["in"] == "body"
+        ]
+
+        self.assertEqual(len(body_parameters), 1)
+        self.assertEqual(
+            body_parameters[0]["schema"],
+            {"type": "object", "properties": {}},
+        )
+        self.assertEqual(
+            post_operation["responses"]["201"]["schema"],
+            {"type": "object", "properties": {}},
+        )
 
     @tag("flaky_with_udp_writes")
     def test_200_traffic_counter_incremented(self):
