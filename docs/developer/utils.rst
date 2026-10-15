@@ -245,6 +245,45 @@ If you don't need to register a new chart but need to change a specific
 key of an existing chart configuration, you can use
 :ref:`OPENWISP_MONITORING_CHARTS <openwisp_monitoring_charts>`.
 
+InfluxDB2 Custom Flux Chart Timezone Alignment
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When defining custom InfluxDB2 Flux chart queries, include
+``{timezone_import}`` and ``{window_timezone}`` if the query uses Flux
+``aggregateWindow``, ``window`` or ``date.truncate``.
+
+These placeholders are filled by the InfluxDB2 backend. They keep daily
+and weekly buckets aligned to the request timezone. If they are omitted,
+the query will still use the right time range, but ``24h`` and ``7d``
+buckets may be aligned to UTC instead of the timezone selected by the
+user.
+
+Example:
+
+.. code-block:: python
+
+    chart_config = {
+        "type": "line",
+        "title": "CPU usage",
+        "description": "CPU usage",
+        "order": 10,
+        "query": {
+            "influxdb2": (
+                'import "date"\n'
+                "{timezone_import}"
+                'from(bucket: "{bucket}")'
+                " |> range(start: {time_start}{end_range})"
+                ' |> filter(fn: (r) => r._measurement == "{key}")'
+                ' |> filter(fn: (r) => r._field == "{field_name}")'
+                " |> aggregateWindow(every: {window}, fn: mean, "
+                'timeSrc: "_start"{window_timezone})'
+                " |> map(fn: (r) => "
+                "({{r with _time: date.truncate(t: r._time, "
+                "unit: {window}{window_timezone})}}))"
+            )
+        },
+    }
+
 ``unregister_chart``
 ~~~~~~~~~~~~~~~~~~~~
 

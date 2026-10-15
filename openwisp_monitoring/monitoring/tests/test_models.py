@@ -335,6 +335,7 @@ class TestModels(TestMonitoringMixin, TestCase):
                 current=False,
             )
 
+    @tag("flaky_with_udp_writes")
     @freeze_time(start_time)
     def test_metric_post_write_signal(self):
         om = self._create_object_metric()
