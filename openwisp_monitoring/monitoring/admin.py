@@ -18,11 +18,16 @@ class AlertSettingsForm(ModelForm):
         instance = kwargs.get("instance")
         if instance:
             kwargs["initial"] = {
-                "custom_tolerance": instance.tolerance,
-                "custom_threshold": instance.threshold,
                 "custom_operator": instance.operator,
             }
         super().__init__(*args, **kwargs)
+        if instance:
+            self.fields["custom_threshold"].widget.attrs["placeholder"] = (
+                instance.config_dict["threshold"]
+            )
+            self.fields["custom_tolerance"].widget.attrs["placeholder"] = (
+                instance.config_dict["tolerance"]
+            )
 
 
 class AlertSettingsInline(TimeReadonlyAdminMixin, admin.StackedInline):

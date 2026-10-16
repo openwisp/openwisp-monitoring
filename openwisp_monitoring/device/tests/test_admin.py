@@ -770,9 +770,19 @@ class TestAdmin(
             )
             self.assertContains(
                 response,
+                "metric-content_type-object_id-0-alertsettings-0-custom_threshold",
+            )
+            self.assertContains(response, 'placeholder="1"')
+            self.assertNotContains(
+                response,
                 'metric-content_type-object_id-0-alertsettings-0-custom_threshold" value="1"',
             )
             self.assertContains(
+                response,
+                "metric-content_type-object_id-0-alertsettings-0-custom_tolerance",
+            )
+            self.assertContains(response, 'placeholder="30"')
+            self.assertNotContains(
                 response,
                 'metric-content_type-object_id-0-alertsettings-0-custom_tolerance" value="30"',
             )
