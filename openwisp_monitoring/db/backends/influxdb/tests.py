@@ -26,7 +26,7 @@ from openwisp_monitoring.settings import MONITORING_TIMESERIES_RETRY_OPTIONS
 from openwisp_utils.tests import capture_stderr
 
 from ...exceptions import TimeseriesWriteException
-from .. import get_timeseries_database, timeseries_db
+from .. import TIMESERIES_DB, get_timeseries_database, timeseries_db
 
 Chart = load_model("monitoring", "Chart")
 Notification = load_model("openwisp_notifications", "Notification")
@@ -388,24 +388,28 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
         default_client.write_points.assert_not_called()
         short_client.write_points.assert_not_called()
 
-    @patch.object(
-        InfluxDBClient,
-        "write",
-        side_effect=InfluxDBClientError(content='{"error":"bad request"}', code=400),
-    )
-    @capture_stderr()
-    def test_batch_write_acknowledged_propagates_client_errors(self, mock_write):
-        with self.assertRaises(TimeseriesWriteException):
-            timeseries_db.batch_write(
-                [
-                    {
-                        "name": "test_write",
-                        "values": {"value": 1},
-                        "tags": {},
-                    }
-                ],
-                acknowledged=True,
-            )
+    def test_batch_write_acknowledged_propagates_client_errors(self):
+        client_error = InfluxDBClientError(content='{"error":"bad request"}', code=400)
+        http_client = MagicMock()
+        http_client.write_points.side_effect = client_error
+        with patch.object(
+            timeseries_db,
+            "dbs",
+            {"default": MagicMock(), "short": MagicMock(), "__all__": http_client},
+        ):
+            with self.assertRaises(TimeseriesWriteException) as context:
+                timeseries_db.batch_write(
+                    [
+                        {
+                            "name": "test_write",
+                            "values": {"value": 1},
+                            "tags": {},
+                        }
+                    ],
+                    acknowledged=True,
+                )
+        self.assertEqual(str(context.exception), str(client_error))
+        self.assertIs(context.exception.__cause__, client_error)
 
     def test_batch_write_acknowledged_requires_successful_response(self):
         http_client = MagicMock()
@@ -426,6 +430,12 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
                     ],
                     acknowledged=True,
                 )
+
+    @patch("openwisp_monitoring.db.backends.influxdb.client.InfluxDBClient")
+    def test_client_timeout(self, mock_client):
+        with patch.dict(TIMESERIES_DB["OPTIONS"], {"timeout": 5}, clear=True):
+            timeseries_db.__class__().dbs
+        self.assertEqual(mock_client.call_args.kwargs["timeout"], 5)
 
     @patch.object(
         InfluxDBClient, "write", side_effect=InfluxDBServerError("Server error")

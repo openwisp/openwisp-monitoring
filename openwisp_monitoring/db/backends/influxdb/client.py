@@ -91,6 +91,8 @@ class DatabaseClient(object):
 
     @cached_property
     def dbs(self):
+        options = TIMESERIES_DB.get("OPTIONS", {})
+        timeout = options.get("timeout", 5)
         dbs = {
             "default": InfluxDBClient(
                 TIMESERIES_DB["HOST"],
@@ -98,11 +100,12 @@ class DatabaseClient(object):
                 TIMESERIES_DB["USER"],
                 TIMESERIES_DB["PASSWORD"],
                 self.db_name,
-                use_udp=TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False),
-                udp_port=TIMESERIES_DB.get("OPTIONS", {}).get("udp_port", 8089),
+                use_udp=options.get("udp_writes", False),
+                udp_port=options.get("udp_port", 8089),
+                timeout=timeout,
             ),
         }
-        if TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False):
+        if options.get("udp_writes", False):
             # When using UDP, InfluxDB allows only using one retention policy
             # per port. Therefore, we need to have different instances of
             # InfluxDBClient.
@@ -112,8 +115,9 @@ class DatabaseClient(object):
                 TIMESERIES_DB["USER"],
                 TIMESERIES_DB["PASSWORD"],
                 self.db_name,
-                use_udp=TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False),
-                udp_port=TIMESERIES_DB.get("OPTIONS", {}).get("udp_port", 8089) + 1,
+                use_udp=options.get("udp_writes", False),
+                udp_port=options.get("udp_port", 8089) + 1,
+                timeout=timeout,
             )
             dbs["__all__"] = InfluxDBClient(
                 TIMESERIES_DB["HOST"],
@@ -121,6 +125,7 @@ class DatabaseClient(object):
                 TIMESERIES_DB["USER"],
                 TIMESERIES_DB["PASSWORD"],
                 self.db_name,
+                timeout=timeout,
             )
         else:
             dbs["short"] = dbs["default"]
@@ -218,6 +223,8 @@ class DatabaseClient(object):
                 # do not retry any request which returns 400
                 if exception_code == 400 and not acknowledged:
                     return
+                if exception_code == 400:
+                    raise TimeseriesWriteException(str(exception)) from exception
             raise TimeseriesWriteException
 
     def _get_timestamp(self, timestamp=None):

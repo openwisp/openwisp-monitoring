@@ -273,9 +273,10 @@ An example usage is shown below.
 Acknowledged Metric Batch Writes
 --------------------------------
 
-``Metric.batch_write`` normally queues writes for asynchronous processing.
-Pass ``acknowledged=True`` when the caller must wait for InfluxDB to
-accept the complete batch:
+``Metric.batch_write`` queues HTTP writes for asynchronous processing and
+writes synchronously when UDP ingestion is enabled. Pass
+``acknowledged=True`` when the caller must wait for InfluxDB to accept the
+complete batch:
 
 .. code-block:: python
 
@@ -284,8 +285,9 @@ accept the complete batch:
 Acknowledged writes use HTTP, including when UDP ingestion is enabled, and
 raise ``TimeseriesWriteException`` when any batch write is rejected or
 does not receive a successful response. Batches are not transactional: an
-error can occur after an earlier group has been stored. Retrying with
-stable metric tags and timestamps overwrites those points safely.
+error can occur after an earlier group has been stored. To retry safely,
+reuse the same measurement, metric tags, explicit timestamp, and complete
+field set for each point.
 
 Monitoring Notifications
 ------------------------
