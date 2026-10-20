@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from celery.exceptions import Retry
 from django.core.exceptions import ImproperlyConfigured, ValidationError
@@ -363,6 +363,69 @@ class TestDatabaseClient(TestMonitoringMixin, TestCase):
                 "Writing metric should not be retried when data "
                 "points crosses retention policy"
             )
+
+    def test_batch_write_acknowledged_uses_http_client(self):
+        default_client = MagicMock()
+        short_client = MagicMock()
+        http_client = MagicMock()
+        http_client.write_points.return_value = True
+        with patch.object(
+            timeseries_db,
+            "dbs",
+            {"default": default_client, "short": short_client, "__all__": http_client},
+        ):
+            timeseries_db.batch_write(
+                [
+                    {
+                        "name": "test_write",
+                        "values": {"value": 1},
+                        "tags": {},
+                    }
+                ],
+                acknowledged=True,
+            )
+        http_client.write_points.assert_called_once()
+        default_client.write_points.assert_not_called()
+        short_client.write_points.assert_not_called()
+
+    @patch.object(
+        InfluxDBClient,
+        "write",
+        side_effect=InfluxDBClientError(content='{"error":"bad request"}', code=400),
+    )
+    @capture_stderr()
+    def test_batch_write_acknowledged_propagates_client_errors(self, mock_write):
+        with self.assertRaises(TimeseriesWriteException):
+            timeseries_db.batch_write(
+                [
+                    {
+                        "name": "test_write",
+                        "values": {"value": 1},
+                        "tags": {},
+                    }
+                ],
+                acknowledged=True,
+            )
+
+    def test_batch_write_acknowledged_requires_successful_response(self):
+        http_client = MagicMock()
+        http_client.write_points.return_value = False
+        with patch.object(
+            timeseries_db,
+            "dbs",
+            {"default": MagicMock(), "short": MagicMock(), "__all__": http_client},
+        ):
+            with self.assertRaises(TimeseriesWriteException):
+                timeseries_db.batch_write(
+                    [
+                        {
+                            "name": "test_write",
+                            "values": {"value": 1},
+                            "tags": {},
+                        }
+                    ],
+                    acknowledged=True,
+                )
 
     @patch.object(
         InfluxDBClient, "write", side_effect=InfluxDBServerError("Server error")

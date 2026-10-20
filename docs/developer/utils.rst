@@ -270,6 +270,23 @@ An example usage is shown below.
     It will raise ``ImproperlyConfigured`` exception if the concerned
     chart configuration is not registered.
 
+Acknowledged Metric Batch Writes
+--------------------------------
+
+``Metric.batch_write`` normally queues writes for asynchronous processing.
+Pass ``acknowledged=True`` when the caller must wait for InfluxDB to
+accept the complete batch:
+
+.. code-block:: python
+
+    Metric.batch_write(metric_data, acknowledged=True)
+
+Acknowledged writes use HTTP, including when UDP ingestion is enabled, and
+raise ``TimeseriesWriteException`` when any batch write is rejected or
+does not receive a successful response. Batches are not transactional: an
+error can occur after an earlier group has been stored. Retrying with
+stable metric tags and timestamps overwrites those points safely.
+
 Monitoring Notifications
 ------------------------
 

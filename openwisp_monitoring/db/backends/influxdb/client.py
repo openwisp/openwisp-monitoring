@@ -172,7 +172,7 @@ class DatabaseClient(object):
             database=database,
         )
 
-    def _write(self, points, database, retention_policy):
+    def _write(self, points, database, retention_policy, acknowledged=False):
         """
         Write data points in the specified database.
 
@@ -190,7 +190,11 @@ class DatabaseClient(object):
         Raises:
             TimeseriesWriteException: If there is an error while writing the data points.
         """
-        db = self.dbs["short"] if retention_policy else self.dbs["default"]
+        db = (
+            self.dbs["__all__"]
+            if acknowledged
+            else self.dbs["short"] if retention_policy else self.dbs["default"]
+        )
         # If the size of data exceeds the limit of the UDP packet, then
         # fallback to use TCP connection for writing data.
         lines = make_lines({"points": points})
@@ -198,18 +202,21 @@ class DatabaseClient(object):
             # Size exceeds UDP limit, write using TCP.
             db = self.dbs["__all__"]
         try:
-            return db.write_points(
+            result = db.write_points(
                 points=lines.split("\n")[:-1],
                 database=database,
                 retention_policy=retention_policy,
                 protocol="line",
             )
+            if acknowledged and result is not True:
+                raise TimeseriesWriteException
+            return result
         except Exception as exception:
             logger.warning(f"got exception while writing to tsdb: {exception}")
             if isinstance(exception, self.client_error):
                 exception_code = getattr(exception, "code", None)
                 # do not retry any request which returns 400
-                if exception_code == 400:
+                if exception_code == 400 and not acknowledged:
                     return
             raise TimeseriesWriteException
 
@@ -233,7 +240,7 @@ class DatabaseClient(object):
             retention_policy=kwargs.get("retention_policy"),
         )
 
-    def batch_write(self, metric_data):
+    def batch_write(self, metric_data, acknowledged=False):
         data_points = {}
         for data in metric_data:
             org = data.get("database") or self.db_name
@@ -257,6 +264,7 @@ class DatabaseClient(object):
                     points=data_points[database][rp],
                     database=database,
                     retention_policy=rp,
+                    acknowledged=acknowledged,
                 )
 
     def read(self, key, fields, tags, **kwargs):
