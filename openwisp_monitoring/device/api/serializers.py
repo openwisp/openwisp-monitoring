@@ -139,14 +139,14 @@ class DeviceMetricResponseSerializer(MonitoringDeviceDetailSerializer):
         ),
     )
     charts = serializers.ListField(
-        child=serializers.DictField(),
+        child=serializers.JSONField(),
         read_only=True,
         help_text=_(
             "Charts with data, each one contains title, description, type, unit, "
             "traces, summary and display options"
         ),
     )
-    data = serializers.DictField(
+    data = serializers.JSONField(
         read_only=True,
         required=False,
         allow_null=True,

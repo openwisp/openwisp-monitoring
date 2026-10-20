@@ -468,11 +468,18 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         get_schema = operations["get"]["responses"]["200"]["schema"]
         self.assertIn("$ref", get_schema, "GET response has no documented model")
         name = get_schema["$ref"].rsplit("/", 1)[-1]
-        properties = schema["definitions"][name]["properties"]
+        definition = schema["definitions"][name]
         for key in self._RESPONSE_KEYS + ["data"]:
             self.assertIn(
-                key, properties, f"{key} missing from the documented GET response"
+                key,
+                definition["properties"],
+                f"{key} missing from the documented GET response",
             )
+        self.assertNotIn(
+            "data",
+            definition.get("required", []),
+            "data is only returned with ?status and must not be required",
+        )
         # POST accepts free-form device data and must not inherit the GET schema
         self.assertNotIn(name, json.dumps(operations["post"]))
 
