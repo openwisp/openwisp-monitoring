@@ -11,6 +11,7 @@ from django.http import Http404
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_yasg.utils import swagger_auto_schema
 from pytz import UTC
 from rest_framework import serializers, status
 from rest_framework.generics import (
@@ -48,6 +49,7 @@ from .filters import (
     WifiSessionFilter,
 )
 from .serializers import (
+    DeviceMetricResponseSerializer,
     DeviceMetricSerializer,
     MonitoringDeviceDetailSerializer,
     MonitoringDeviceListSerializer,
@@ -138,6 +140,8 @@ class DeviceMetricView(
             pk = instance.metric.object_id
         cls._get_charts.invalidate(None, None, pk)
 
+    # serializer_class is left empty because POST accepts free-form device data
+    @swagger_auto_schema(responses={200: DeviceMetricResponseSerializer})
     def get(self, request, pk):
         self.instance = self.get_object(pk)
         response = super().get(request, pk)
