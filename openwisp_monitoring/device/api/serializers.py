@@ -1,3 +1,4 @@
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from swapper import load_model
 
@@ -124,6 +125,39 @@ class MonitoringDeviceListSerializer(DeviceListSerializer):
 
 class MonitoringDeviceDetailSerializer(MonitoringDeviceListSerializer):
     monitoring = DeviceMonitoringSerializer(read_only=True)
+
+
+class DeviceMetricResponseSerializer(MonitoringDeviceDetailSerializer):
+    """Documents the response of ``DeviceMetricView.get``, not used to serialize."""
+
+    x = serializers.ListField(
+        child=serializers.CharField(),
+        read_only=True,
+        help_text=_(
+            "Timestamps (YYYY-MM-DD HH:MM) shared by the traces of the charts, "
+            "omitted when there is no chart data"
+        ),
+    )
+    charts = serializers.ListField(
+        child=serializers.JSONField(),
+        read_only=True,
+        help_text=_(
+            "Charts with data, each one contains title, description, type, unit, "
+            "traces, summary and display options"
+        ),
+    )
+    data = serializers.JSONField(
+        read_only=True,
+        required=False,
+        allow_null=True,
+        help_text=_(
+            "Latest data received from the device (null if none), "
+            "only present when the ``status`` query parameter is set"
+        ),
+    )
+
+    class Meta(MonitoringDeviceDetailSerializer.Meta):
+        fields = MonitoringDeviceDetailSerializer.Meta.fields + ["charts", "x", "data"]
 
 
 class MonitoringGeoJsonLocationSerializer(GeoJsonLocationSerializer):
