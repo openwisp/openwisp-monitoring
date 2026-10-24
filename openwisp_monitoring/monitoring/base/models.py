@@ -467,7 +467,7 @@ class AbstractMetric(TimeStampedEditableModel):
         return {"name": self.key, "values": values, **options}
 
     @classmethod
-    def batch_write(cls, raw_data):
+    def batch_write(cls, raw_data, acknowledged=False):
         error_dict = {}
         write_data = []
         for metric, kwargs in raw_data:
@@ -475,7 +475,10 @@ class AbstractMetric(TimeStampedEditableModel):
                 write_data.append(metric.write(**kwargs, write=False))
             except ValueError as error:
                 error_dict[metric.key] = str(error)
-        _timeseries_batch_write(write_data)
+        if acknowledged:
+            _timeseries_batch_write(write_data, acknowledged=True)
+        else:
+            _timeseries_batch_write(write_data)
         if error_dict:
             raise ValueError(error_dict)
 

@@ -46,6 +46,7 @@ To ensure consistent alerting behavior, this value should match the
         "OPTIONS": {
             "udp_writes": False,
             "udp_port": 8089,
+            "timeout": 5,
         },
     }
 
@@ -76,6 +77,7 @@ Timeseries Database Options
 ``udp_writes`` Whether to use UDP for writing data to the timeseries
                database
 ``udp_port``   Timeseries database port for writing data using UDP
+``timeout``    HTTP request timeout in seconds. Defaults to ``5``.
 ============== =====================================================
 
 .. important::
