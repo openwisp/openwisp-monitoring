@@ -12,17 +12,22 @@ on:
       - "[0-9]+.[0-9]+"
       - gsoc26-add-more-tsdb
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.repository }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     name: Python==${{ matrix.python-version }} | ${{ matrix.django-version }}
     runs-on: ubuntu-24.04
-
     services:
       redis:
-        image: redis
+        image: redis@sha256:13ad9044b4b2fd2abe4c5aad8c384b0504a71006fa33f023fc68998453a2eeca # latest
         ports:
           - 6379:6379
-
     strategy:
       fail-fast: false
       matrix:
@@ -34,35 +39,33 @@ jobs:
         django-version:
           - django~=5.1.0
           - django~=5.2.0
-
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-
+          persist-credentials: false
       - name: Cache APT packages
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: /var/cache/apt/archives
           key: apt-${{ runner.os }}-${{ hashFiles('.github/workflows/ci.yml') }}
           restore-keys: |
             apt-${{ runner.os }}-
-
       - name: Disable man page auto-update
         run: |
           echo 'set man-db/auto-update false' | sudo debconf-communicate >/dev/null
           sudo dpkg-reconfigure man-db
-
       - name: Set up and Cache Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
           cache-dependency-path: |
             **/requirements*.txt
-
       - name: Install Dependencies
         id: deps
+        env:
+          DJANGO_VERSION: ${{ matrix.django-version }}
         run: |
           sudo apt update -qq
           sudo apt -qq install \
@@ -77,34 +80,26 @@ jobs:
           pip install -U pip wheel setuptools
           pip install -r requirements-test.txt
           pip install -U -e .
-          pip install -U ${{ matrix.django-version }}
+          pip install -U "$DJANGO_VERSION"
           sudo npm install -g prettier
-
       - name: Start InfluxDB
         if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
         run: docker compose up -d influxdb
-
       - name: QA checks
-        run: |
-          ./run-qa-checks
-
+        run: ./run-qa-checks
       - name: Tests
         if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
-        run: |
-          ./runtests
+        run: ./runtests
         env:
           SELENIUM_HEADLESS: 1
           GECKO_LOG: 1
-
       - name: Show gecko web driver log on failures
         if: ${{ failure() }}
         run: |
-          [ -f geckodriver.log ] && cat geckodriver.log \
-          || echo "There is no gecko web driver log to show."
-
+          [ -f geckodriver.log ] && cat geckodriver.log || echo "There is no gecko web driver log to show."
       - name: Upload Coverage
         if: ${{ success() }}
-        uses: coverallsapp/github-action@v2
+        uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2
         with:
           parallel: true
           format: cobertura
@@ -114,33 +109,36 @@ jobs:
 
   deploy:
     name: Deploy Docker Image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: build
     runs-on: ubuntu-24.04
-    needs:
-      - build
-
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+    environment: docker-hub
+    permissions:
+      contents: read
+    concurrency:
+      group: docker-hub-${{ github.repository }}
+      cancel-in-progress: false
     steps:
-      - uses: actions/checkout@master
-
-      # the following action is equivalent to
-      # echo "$DOCKER_HUB_SECRET" | docker login --username "$DOCKER_HUB_USERNAME" --password-stdin
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       - name: Login to Docker Hub
-        uses: docker/login-action@v4
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_SECRET }}
-
       - name: Push to Docker
         run: |
           docker build . -t openwisp/openwisp-monitoring:develop
           docker push openwisp/openwisp-monitoring:develop
 
   coveralls:
+    name: Finalize Coveralls report
     needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Coveralls Finished
-        uses: coverallsapp/github-action@v2
+        uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2
         with:
           parallel-finished: true
           fail-on-error: false
