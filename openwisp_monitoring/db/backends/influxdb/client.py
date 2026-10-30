@@ -91,6 +91,8 @@ class DatabaseClient(object):
 
     @cached_property
     def dbs(self):
+        options = TIMESERIES_DB.get("OPTIONS", {})
+        timeout = options.get("timeout", 5)
         dbs = {
             "default": InfluxDBClient(
                 TIMESERIES_DB["HOST"],
@@ -98,11 +100,12 @@ class DatabaseClient(object):
                 TIMESERIES_DB["USER"],
                 TIMESERIES_DB["PASSWORD"],
                 self.db_name,
-                use_udp=TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False),
-                udp_port=TIMESERIES_DB.get("OPTIONS", {}).get("udp_port", 8089),
+                use_udp=options.get("udp_writes", False),
+                udp_port=options.get("udp_port", 8089),
+                timeout=timeout,
             ),
         }
-        if TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False):
+        if options.get("udp_writes", False):
             # When using UDP, InfluxDB allows only using one retention policy
             # per port. Therefore, we need to have different instances of
             # InfluxDBClient.
@@ -112,8 +115,9 @@ class DatabaseClient(object):
                 TIMESERIES_DB["USER"],
                 TIMESERIES_DB["PASSWORD"],
                 self.db_name,
-                use_udp=TIMESERIES_DB.get("OPTIONS", {}).get("udp_writes", False),
-                udp_port=TIMESERIES_DB.get("OPTIONS", {}).get("udp_port", 8089) + 1,
+                use_udp=options.get("udp_writes", False),
+                udp_port=options.get("udp_port", 8089) + 1,
+                timeout=timeout,
             )
             dbs["__all__"] = InfluxDBClient(
                 TIMESERIES_DB["HOST"],
@@ -121,6 +125,7 @@ class DatabaseClient(object):
                 TIMESERIES_DB["USER"],
                 TIMESERIES_DB["PASSWORD"],
                 self.db_name,
+                timeout=timeout,
             )
         else:
             dbs["short"] = dbs["default"]
@@ -172,7 +177,7 @@ class DatabaseClient(object):
             database=database,
         )
 
-    def _write(self, points, database, retention_policy):
+    def _write(self, points, database, retention_policy, acknowledged=False):
         """
         Write data points in the specified database.
 
@@ -190,7 +195,11 @@ class DatabaseClient(object):
         Raises:
             TimeseriesWriteException: If there is an error while writing the data points.
         """
-        db = self.dbs["short"] if retention_policy else self.dbs["default"]
+        db = (
+            self.dbs["__all__"]
+            if acknowledged
+            else self.dbs["short"] if retention_policy else self.dbs["default"]
+        )
         # If the size of data exceeds the limit of the UDP packet, then
         # fallback to use TCP connection for writing data.
         lines = make_lines({"points": points})
@@ -198,19 +207,24 @@ class DatabaseClient(object):
             # Size exceeds UDP limit, write using TCP.
             db = self.dbs["__all__"]
         try:
-            return db.write_points(
+            result = db.write_points(
                 points=lines.split("\n")[:-1],
                 database=database,
                 retention_policy=retention_policy,
                 protocol="line",
             )
+            if acknowledged and result is not True:
+                raise TimeseriesWriteException
+            return result
         except Exception as exception:
             logger.warning(f"got exception while writing to tsdb: {exception}")
             if isinstance(exception, self.client_error):
                 exception_code = getattr(exception, "code", None)
                 # do not retry any request which returns 400
-                if exception_code == 400:
+                if exception_code == 400 and not acknowledged:
                     return
+                if exception_code == 400:
+                    raise TimeseriesWriteException(str(exception)) from exception
             raise TimeseriesWriteException
 
     def _get_timestamp(self, timestamp=None):
@@ -233,7 +247,7 @@ class DatabaseClient(object):
             retention_policy=kwargs.get("retention_policy"),
         )
 
-    def batch_write(self, metric_data):
+    def batch_write(self, metric_data, acknowledged=False):
         data_points = {}
         for data in metric_data:
             org = data.get("database") or self.db_name
@@ -257,6 +271,7 @@ class DatabaseClient(object):
                     points=data_points[database][rp],
                     database=database,
                     retention_policy=rp,
+                    acknowledged=acknowledged,
                 )
 
     def read(self, key, fields, tags, **kwargs):
