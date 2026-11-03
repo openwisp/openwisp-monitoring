@@ -17,8 +17,14 @@ The following example shows how to use the
 bandwidth** has been less than **10Mbit/s** for more than **2 days**.
 
 1. By default, :ref:`Iperf3 checks <iperf3_check>` come with default alert
-settings, but it is easy to customize alert settings through the device
-page as shown below:
+   settings, but it is easy to customize alert settings through the device
+   page as shown below:
+
+   When alert setting values are not customized, the input fields are left
+   empty and display the inherited default values (from global settings)
+   as placeholders. Entering custom values will override the default for
+   that specific metric or device, and clearing the fields will restore
+   the inherited defaults.
 
 .. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/device-inline-alertsettings.png
     :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/device-inline-alertsettings.png

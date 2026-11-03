@@ -6,7 +6,6 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericStackedInline
 from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
 from django.contrib.contenttypes.models import ContentType
-from django.forms import ModelForm
 from django.templatetags.static import static
 from django.urls import resolve, reverse
 from django.utils import timezone
@@ -29,6 +28,7 @@ from openwisp_controller.geo.admin import DeviceLocationInline
 from openwisp_users.multitenancy import MultitenantAdminMixin
 from openwisp_utils.admin import ReadOnlyAdmin
 
+from ..monitoring.admin import AlertSettingsForm as BaseAlertSettingsForm
 from ..monitoring.admin import MetricAdmin
 from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from . import settings as app_settings
@@ -154,17 +154,7 @@ class CheckInline(DeactivatedDeviceReadOnlyInlinePermissionMixin, GenericStacked
         return super().get_readonly_fields(request, obj)
 
 
-class AlertSettingsForm(ModelForm):
-    def __init__(self, *args, **kwargs):
-        instance = kwargs.get("instance")
-        if instance:
-            kwargs["initial"] = {
-                "custom_tolerance": instance.tolerance,
-                "custom_operator": instance.operator,
-                "custom_threshold": instance.threshold,
-            }
-        super().__init__(*args, **kwargs)
-
+class AlertSettingsForm(BaseAlertSettingsForm):
     def _post_clean(self):
         self.instance._delete_instance = False
         if all(
