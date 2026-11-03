@@ -31,6 +31,11 @@ setting includes:
     :ref:`openwisp_monitoring_metrics` setting, or on a per-device basis
     as explained in the :doc:`device-checks-and-alert-settings` section.
 
+.. important::
+
+    Alert notifications are not sent for devices belonging to disabled
+    organizations or for deactivated devices.
+
 The built-in alerts are explained below.
 
 .. _ping_alert:

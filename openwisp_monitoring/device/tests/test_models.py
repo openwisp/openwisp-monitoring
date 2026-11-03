@@ -18,7 +18,11 @@ from ...db import timeseries_db
 from ...monitoring import settings as monitoring_settings
 from .. import settings as app_settings
 from ..signals import health_status_changed
-from ..tasks import delete_wifi_clients_and_sessions, trigger_device_critical_checks
+from ..tasks import (
+    delete_wifi_clients_and_sessions,
+    trigger_device_critical_checks,
+    write_device_metrics,
+)
 from ..utils import get_device_cache_key
 from . import (
     DeviceMonitoringTestCase,
@@ -252,8 +256,11 @@ class MonitoringTestMixin(object):
         d = self._create_device(**kwargs)
         return DeviceData(pk=d.pk)
 
-    def _create_env(self):
-        d = self._create_device()
+    def _create_env(self, organization=None):
+        if organization is None:
+            d = self._create_device()
+        else:
+            d = self._create_device(organization=organization)
         dm = d.monitoring
         dm.update_status("ok")
         ping = self._create_object_metric(configuration="ping", content_object=d)
@@ -909,66 +916,34 @@ class TestDeviceMonitoring(
         self.assertEqual(self._read_metric(ping1, allow_empty=True), [])
         self.assertNotEqual(self._read_metric(ping2), [])
 
-    def test_handle_disabled_organization(self):
-        device_monitoring, ping, load, process_count = self._create_env()
-        device = device_monitoring.device
-        other_device_monitoring = self._create_device(
-            name="same-org-device",
-            mac_address="22:33:44:55:66:77",
-            organization=device.organization,
-        ).monitoring
-        same_org_ping = self._create_object_metric(
-            configuration="ping", content_object=other_device_monitoring.device
-        )
-        self._create_alert_settings(
-            metric=same_org_ping,
-            custom_operator="<",
-            custom_threshold=1,
-            custom_tolerance=0,
-        )
-        other_monitoring = self._create_device(
-            organization=self._create_org(name="other org", slug="other-org")
-        ).monitoring
-        other_monitoring.update_status("ok")
-        unrelated_ping = self._create_object_metric(
-            configuration="ping", content_object=other_monitoring.device
-        )
-        self._create_alert_settings(
-            metric=unrelated_ping,
-            custom_operator="<",
-            custom_threshold=1,
-            custom_tolerance=0,
-        )
-        device.management_ip = "10.10.0.5"
-        device.save()
-        other_device_monitoring.device.management_ip = "10.10.0.6"
-        other_device_monitoring.device.save()
-        other_monitoring.device.management_ip = "10.10.0.7"
-        other_monitoring.device.save()
-        ping.write(1)
-        same_org_ping.write(1)
-        unrelated_ping.write(1)
-        self.assertEqual(device_monitoring.status, "ok")
-        org = device.organization
-        with self.assertNumQueries(10):
-            DeviceMonitoring.handle_disabled_organization(org.pk)
+    def test_update_status_does_not_override_deactivated(self):
+        device_monitoring, _, _, _ = self._create_env()
+        device_monitoring.device.deactivate()
+        for status in ("critical", "ok", "unknown"):
+            with self.subTest(status=status):
+                device_monitoring.update_status(status)
+                device_monitoring.refresh_from_db()
+                self.assertEqual(device_monitoring.status, "deactivated")
+        device_monitoring.device.activate()
         device_monitoring.refresh_from_db()
-        device.refresh_from_db()
         self.assertEqual(device_monitoring.status, "unknown")
-        self.assertEqual(device.management_ip, None)
-        self._assert_unknown(ping, load, process_count)
-        other_device_monitoring.refresh_from_db()
-        other_device_monitoring.device.refresh_from_db()
-        self.assertEqual(other_device_monitoring.status, "unknown")
-        self.assertIsNone(other_device_monitoring.device.management_ip)
-        self._assert_unknown(same_org_ping)
-        other_monitoring.refresh_from_db()
-        other_monitoring.device.refresh_from_db()
-        unrelated_ping.refresh_from_db()
-        self.assertEqual(other_monitoring.status, "ok")
-        self.assertEqual(other_monitoring.device.management_ip, "10.10.0.7")
-        self.assertTrue(unrelated_ping.is_healthy)
-        self.assertTrue(unrelated_ping.is_healthy_tolerant)
+
+    @patch("openwisp_monitoring.device.writer.DeviceDataWriter.write")
+    def test_write_device_metrics_skips_deactivated_device(self, write):
+        device = self._create_device(organization=self._create_org())
+        DeviceData.get_devicedata(str(device.pk))
+        device.deactivate()
+        write_device_metrics(str(device.pk), self._sample_data)
+        write.assert_not_called()
+
+    @patch("openwisp_monitoring.device.writer.DeviceDataWriter.write")
+    def test_write_device_metrics_skips_disabled_organization(self, write):
+        device = self._create_device(organization=self._create_org())
+        DeviceData.get_devicedata(str(device.pk))
+        device.organization.is_active = False
+        device.organization.save()
+        write_device_metrics(str(device.pk), self._sample_data)
+        write.assert_not_called()
 
     def test_handle_deactivate_activate_device(self):
         device_monitoring, ping, load, process_count = self._create_env()
@@ -1004,6 +979,43 @@ class TestDeviceMonitoring(
 class TestTransactionDeviceMonitoring(
     CreateConnectionsMixin, MonitoringTestMixin, DeviceMonitoringTransactionTestcase
 ):
+    def test_disabled_organization_statuses(self):
+        for status in ("problem", "critical"):
+            with self.subTest(status=status):
+                device_monitoring, _, _, _ = self._create_env(
+                    organization=self._create_org(name=f"status-{status}")
+                )
+                device_monitoring.update_status(status)
+                DeviceMonitoring.handle_disabled_organization(
+                    device_monitoring.device.organization_id
+                )
+                device_monitoring.refresh_from_db()
+                self.assertEqual(device_monitoring.status, "unknown")
+
+        with self.subTest("Deactivated device remains deactivated"):
+            device_monitoring, _, _, _ = self._create_env(
+                organization=self._create_org(name="deactivated-device")
+            )
+            device_monitoring.device.deactivate()
+            DeviceMonitoring.handle_disabled_organization(
+                device_monitoring.device.organization_id
+            )
+            device_monitoring.refresh_from_db()
+            self.assertEqual(device_monitoring.status, "deactivated")
+
+        with self.subTest(
+            "Deactivation after organization handling remains deactivated"
+        ):
+            device_monitoring, _, _, _ = self._create_env(
+                organization=self._create_org(name="deactivated-after-handling")
+            )
+            DeviceMonitoring.handle_disabled_organization(
+                device_monitoring.device.organization_id
+            )
+            device_monitoring.device.deactivate()
+            device_monitoring.refresh_from_db()
+            self.assertEqual(device_monitoring.status, "deactivated")
+
     def test_unknown_status_rollback(self):
         dm, ping, load, process_count = self._create_env()
         with transaction.atomic():
@@ -1029,6 +1041,41 @@ class TestTransactionDeviceMonitoring(
         self.assertEqual(dm.device.management_ip, "10.10.0.5")
         self.assertTrue(ping.is_healthy)
         self.assertTrue(ping.is_healthy_tolerant)
+
+    @patch(
+        "openwisp_monitoring.device.api.views.DeviceMetricView.invalidate_get_device_cache"
+    )
+    @patch("openwisp_monitoring.device.base.models.AbstractDeviceData.invalidate_cache")
+    def test_handle_disabled_organization(self, mocked_dd_cache, mocked_view_cache):
+        device_monitoring, _, _, _ = self._create_env()
+        device = device_monitoring.device
+        device.management_ip = "10.10.0.5"
+        device.save()
+        self.assertEqual(device_monitoring.status, "ok")
+        wifi_client = WifiClient(mac_address="22:33:44:55:66:77")
+        wifi_client.full_clean()
+        wifi_client.save()
+        wifi_session = WifiSession(
+            device=device,
+            wifi_client=wifi_client,
+            ssid="Free Public WiFi",
+            interface_name="wlan0",
+        )
+        wifi_session.full_clean()
+        wifi_session.save()
+        org = device.organization
+        org.is_active = False
+        org.save(update_fields=["is_active"])
+        device_monitoring.refresh_from_db()
+        device.refresh_from_db()
+        wifi_session.refresh_from_db()
+        self.assertEqual(device_monitoring.status, "deactivated")
+        self.assertEqual(device.management_ip, None)
+        self.assertIsNotNone(wifi_session.stop_time)
+        mocked_dd_cache.assert_called_once()
+        self.assertEqual(mocked_dd_cache.call_args.args[0].pk, device.pk)
+        mocked_view_cache.assert_called_once()
+        self.assertEqual(mocked_view_cache.call_args.args[0].pk, device.pk)
 
     @patch("openwisp_monitoring.device.tasks.perform_check.delay")
     def test_stuck_problem_regression(self, mocked):
@@ -1109,6 +1156,20 @@ class TestWifiClientSession(TestWifiClientSessionMixin, TestCase):
     def tearDown(self):
         super().tearDown()
         cache.clear()
+
+    def test_no_wifi_session_created_for_disabled_organization(self):
+        org = self._create_org(is_active=False)
+        device = self._create_device(organization=org)
+        write_device_metrics(str(device.pk), self._sample_data)
+        self.assertEqual(WifiSession.objects.count(), 0)
+        self.assertEqual(WifiClient.objects.count(), 0)
+
+    def test_no_wifi_session_created_for_deactivated_device(self):
+        device = self._create_device(organization=self._create_org())
+        device.deactivate()
+        write_device_metrics(str(device.pk), self._sample_data)
+        self.assertEqual(WifiSession.objects.count(), 0)
+        self.assertEqual(WifiClient.objects.count(), 0)
 
     def test_wifi_client_session_created(self):
         data = self._sample_data

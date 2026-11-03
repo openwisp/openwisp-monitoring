@@ -8,7 +8,7 @@ from django.utils.translation import gettext_lazy as _
 
 from openwisp_utils.base import TimeStampedEditableModel
 
-from ...utils import transaction_on_commit
+from ...utils import is_monitoring_blocked, transaction_on_commit
 from .. import settings as app_settings
 from ..tasks import auto_create_check
 
@@ -91,13 +91,7 @@ class AbstractCheck(TimeStampedEditableModel):
 
     def perform_check(self, store=True):
         """Initializes check instance and calls the check method."""
-        if (
-            hasattr(self.content_object, "is_deactivated")
-            and self.content_object.is_deactivated()
-        ) or (
-            hasattr(self.content_object, "organization_id")
-            and self.content_object.organization.is_active is False
-        ):
+        if is_monitoring_blocked(self.content_object):
             return
         return self.check_instance.timed_check(store=True)
 
@@ -114,6 +108,8 @@ class AbstractCheck(TimeStampedEditableModel):
 
 
 def _auto_check_receiver(sender, instance, **kwargs):
+    if is_monitoring_blocked(instance):
+        return
     model = sender.__name__.lower()
     app_label = sender._meta.app_label
     object_id = str(instance.pk)

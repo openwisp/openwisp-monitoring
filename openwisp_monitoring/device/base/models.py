@@ -62,10 +62,13 @@ class AbstractDeviceData(object):
     @cache_memoize(CACHE_TIMEOUT)
     def get_devicedata(cls, pk):
         obj = (
-            cls.objects.select_related("devicelocation")
+            cls.objects.select_related("devicelocation", "organization")
             .only(
                 "id",
                 "organization_id",
+                "organization__id",
+                "organization__is_active",
+                "_is_deactivated",
                 "devicelocation__location_id",
                 "devicelocation__floorplan_id",
             )
@@ -362,7 +365,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
     class Meta:
         abstract = True
 
-    def update_status(self, value, clear_management_ip=False):
+    def update_status(self, value, clear_management_ip=False, allow_deactivated=False):
         """Updates the device health status and related state.
 
         Args:
@@ -370,8 +373,14 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
                 health states.
             clear_management_ip: Clears the device management IP in the same
                 transaction, even when the status is already set to ``value``.
+            allow_deactivated: Allows the activation handler to reset a
+                deactivated status.
         """
         with transaction.atomic():
+            monitoring = self.__class__.objects.select_for_update().get(pk=self.pk)
+            if monitoring.status == "deactivated" and not allow_deactivated:
+                self.status = monitoring.status
+                return
             # If the status is being set to "unknown" reset the related metrics
             # to "factory default". This allows the system to easily recalculate
             # the status if the device is reactivated.
@@ -384,11 +393,14 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
                 self.device.management_ip = ""
                 self.device.save(update_fields=["management_ip"])
             # don't trigger save nor emit signal if status is not changing
-            if self.status == value:
+            if monitoring.status == value:
+                self.status = monitoring.status
                 return
+            monitoring.status = value
+            monitoring.full_clean()
+            # Save the freshly locked row, not the potentially stale self instance.
+            monitoring.save()
             self.status = value
-            self.full_clean()
-            self.save()
 
         transaction.on_commit(
             lambda: health_status_changed.send(
@@ -479,14 +491,16 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         """Handles the disabling of an organization.
 
         Clears the management IP of all devices belonging to a disabled
-        organization and set their monitoring status to 'unknown'.
+        organization.
 
         Parameters: - organization_id (int): The ID of the disabled
         organization.
 
         Returns: - None
         """
-        monitoring = cls.objects.filter(device__organization_id=organization_id)
+        monitoring = cls.objects.filter(
+            device__organization_id=organization_id
+        ).exclude(status="deactivated")
         # Preserve the bulk update for large organizations: disabling an
         # organization is not a health-status change and has its own signal.
         monitoring.update(status="unknown")
@@ -517,7 +531,7 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
 
         Returns: - None
         """
-        instance.monitoring.update_status("unknown")
+        instance.monitoring.update_status("unknown", allow_deactivated=True)
 
     @classmethod
     def _get_critical_metric_keys(cls):
@@ -626,3 +640,10 @@ class AbstractWifiSession(TimeStampedEditableModel):
             and AbstractDeviceMonitoring.is_metric_critical(metric)
         ):
             tasks.offline_device_close_session.delay(device_id=target.pk)
+
+    @classmethod
+    def close_organization_sessions(cls, organization_id):
+        """Closes the open sessions of a disabled organization's devices."""
+        cls.objects.filter(
+            device__organization_id=organization_id, stop_time__isnull=True
+        ).update(stop_time=now())

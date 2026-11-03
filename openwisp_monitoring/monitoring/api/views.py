@@ -167,7 +167,7 @@ class DashboardTimeseriesView(ProtectedAPIMixin, MonitoringApiViewMixin, APIView
     def _get_user_managed_orgs(self, request):
         """Return list of dictionary containing organization name and slug in select2 compatible format."""
         orgs = []
-        qs = Organization.objects.only("slug", "name")
+        qs = Organization.objects.only("slug", "name", "is_active")
         if not request.user.is_superuser:
             if len(request.user.organizations_managed) > 1:
                 qs = qs.filter(pk__in=request.user.organizations_managed)
