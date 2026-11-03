@@ -460,6 +460,29 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
             self.assertEqual(charts[5]["title"], "CPU Load")
             self.assertEqual(charts[6]["title"], "Disk Usage")
 
+    def test_get_device_metrics_api_docs(self):
+        response = self.client.get(reverse("schema-json", kwargs={"format": ".json"}))
+        self.assertEqual(response.status_code, 200)
+        schema = response.json()
+        operations = schema["paths"]["/monitoring/device/{id}/"]
+        get_schema = operations["get"]["responses"]["200"]["schema"]
+        self.assertIn("$ref", get_schema, "GET response has no documented model")
+        name = get_schema["$ref"].rsplit("/", 1)[-1]
+        definition = schema["definitions"][name]
+        for key in self._RESPONSE_KEYS + ["data"]:
+            self.assertIn(
+                key,
+                definition["properties"],
+                f"{key} missing from the documented GET response",
+            )
+        self.assertNotIn(
+            "data",
+            definition.get("required", []),
+            "data is only returned with ?status and must not be required",
+        )
+        # POST accepts free-form device data and must not inherit the GET schema
+        self.assertNotIn(name, json.dumps(operations["post"]))
+
     def test_get_device_metrics_list_200(self):
         dd1 = self.create_test_data()
         url = reverse("monitoring:api_monitoring_device_list")
