@@ -1,6 +1,5 @@
 from copy import deepcopy
 
-import django
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -102,13 +101,10 @@ class TestAdmin(
 
     def _get_inline_admin_heading(self, heading):
         """
-        Django 5.1 introduced a new way to render inline headings with IDs and classes.
-        For versions before 5.1, we use the old-style heading format except for "Alert Settings"
-        which is already handled differently by django-nested-admin==4.1.0.
-        This method helps us generate the appropriate HTML heading format
-        based on the Django version being used.
+        Returns the HTML heading of an inline, except for "Alert Settings"
+        which is handled differently by django-nested-admin==4.1.0.
         """
-        if django.VERSION < (5, 1) or heading in ["Alert Settings"]:
+        if heading in ["Alert Settings"]:
             return f"<h2>{heading}</h2>"
         heading_map = {
             "Checks": f"{Check._meta.app_label}-check-content_type-object_id-heading",
@@ -808,9 +804,7 @@ class TestAdmin(
             )
             self.assertContains(
                 response,
-                (
-                    '<h{heading_level} class="fieldset-heading">Advanced options</h{heading_level}>'
-                ).format(heading_level=2 if django.VERSION < (5, 1) else 4),
+                '<h4 class="fieldset-heading">Advanced options</h4>',
                 html=True,
             )
             self.assertContains(
@@ -1335,9 +1329,7 @@ class TestWifiSessionAdmin(
         def _assert_org2_wifi_session_in_response(
             response, org1_interface_data, org2_interface_data
         ):
-            self.assertContains(
-                response, '<p class="paginator">\n\n1 WiFi Session\n\n\n</p>'
-            )
+            self.assertEqual(response.context["cl"].result_count, 1)
             self.assertContains(
                 response,
                 '<td class="field-ssid">{}</td>'.format(
@@ -1359,9 +1351,7 @@ class TestWifiSessionAdmin(
 
         with self.subTest("Test without filters"):
             response = self.client.get(url)
-            self.assertContains(
-                response, '<p class="paginator">\n\n2 WiFi Sessions\n\n\n</p>'
-            )
+            self.assertEqual(response.context["cl"].result_count, 2)
 
         with self.subTest("Test start_time filter"):
             response = self.client.get(
@@ -1494,34 +1484,34 @@ class TestWifiSessionAdmin(
             self.assertContains(
                 response,
                 """
-                    <div class="form-row field-he">
-                        <div>
-                            <div class="flex-container">
-                                <label>WiFi 6 (802.11ax):</label>
-                                    <div class="readonly">
-                                        <img src="/static/admin/img/icon-unknown.svg">
-                                    </div>
-                            </div>
+                    <div class="flex-container">
+                        <label>WiFi 6 (802.11ax):</label>
+                        <div class="readonly">
+                            <img src="/static/admin/img/icon-unknown.svg">
                         </div>
                     </div>
-                    <div class="form-row field-vht">
-                        <div>
-                            <div class="flex-container">
-                                <label>WiFi 5 (802.11ac):</label>
-                                <div class="readonly">
-                                    <img src="/static/admin/img/icon-unknown.svg">
-                                </div>
-                            </div>
+                """,
+                html=True,
+            )
+            self.assertContains(
+                response,
+                """
+                    <div class="flex-container">
+                        <label>WiFi 5 (802.11ac):</label>
+                        <div class="readonly">
+                            <img src="/static/admin/img/icon-unknown.svg">
                         </div>
                     </div>
-                    <div class="form-row field-ht">
-                        <div>
-                            <div class="flex-container">
-                                <label>WiFi 4 (802.11n):</label>
-                                <div class="readonly">
-                                    <img src="/static/admin/img/icon-unknown.svg">
-                                </div>
-                            </div>
+                """,
+                html=True,
+            )
+            self.assertContains(
+                response,
+                """
+                    <div class="flex-container">
+                        <label>WiFi 4 (802.11n):</label>
+                        <div class="readonly">
+                            <img src="/static/admin/img/icon-unknown.svg">
                         </div>
                     </div>
                 """,
