@@ -20,6 +20,7 @@ from .. import settings as app_settings
 from ..signals import health_status_changed
 from ..tasks import (
     delete_wifi_clients_and_sessions,
+    handle_disabled_organization,
     trigger_device_critical_checks,
     write_device_metrics,
 )
@@ -992,29 +993,72 @@ class TestTransactionDeviceMonitoring(
                 device_monitoring.refresh_from_db()
                 self.assertEqual(device_monitoring.status, "unknown")
 
-        with self.subTest("Deactivated device remains deactivated"):
+        with self.subTest(
+            "Organization handling after deactivation clears management IP"
+        ):
             device_monitoring, _, _, _ = self._create_env(
                 organization=self._create_org(name="deactivated-device")
             )
-            device_monitoring.device.deactivate()
-            DeviceMonitoring.handle_disabled_organization(
-                device_monitoring.device.organization_id
+            device = device_monitoring.device
+            config = self._create_config(
+                device=device, config={"general": {"description": "nonempty"}}
             )
+            device.management_ip = "10.10.0.5"
+            device.save()
+            device.deactivate()
+            config.refresh_from_db()
+            device.refresh_from_db()
+            self.assertEqual(config.status, "deactivating")
+            self.assertEqual(device.management_ip, "10.10.0.5")
+            DeviceMonitoring.handle_disabled_organization(device.organization_id)
             device_monitoring.refresh_from_db()
+            device.refresh_from_db()
             self.assertEqual(device_monitoring.status, "deactivated")
+            self.assertEqual(device.management_ip, None)
 
-        with self.subTest(
-            "Deactivation after organization handling remains deactivated"
-        ):
+        with self.subTest("Deactivation after organization handling keeps IP cleared"):
             device_monitoring, _, _, _ = self._create_env(
                 organization=self._create_org(name="deactivated-after-handling")
             )
-            DeviceMonitoring.handle_disabled_organization(
-                device_monitoring.device.organization_id
+            device = device_monitoring.device
+            config = self._create_config(
+                device=device, config={"general": {"description": "nonempty"}}
             )
-            device_monitoring.device.deactivate()
+            device.management_ip = "10.10.0.5"
+            device.save()
+            DeviceMonitoring.handle_disabled_organization(device.organization_id)
+            device.refresh_from_db()
+            self.assertEqual(device.management_ip, None)
+            device.deactivate()
+            config.refresh_from_db()
             device_monitoring.refresh_from_db()
+            device.refresh_from_db()
+            self.assertEqual(config.status, "deactivating")
             self.assertEqual(device_monitoring.status, "deactivated")
+            self.assertEqual(device.management_ip, None)
+
+        with self.subTest(
+            "Explicit cleanup of deactivated row preserves metric health"
+        ):
+            device_monitoring, ping, _, _ = self._create_env(
+                organization=self._create_org(name="deactivated-explicit-cleanup")
+            )
+            device = device_monitoring.device
+            self._create_config(
+                device=device, config={"general": {"description": "nonempty"}}
+            )
+            device.management_ip = "10.10.0.5"
+            device.save()
+            device.deactivate()
+            ping.is_healthy = True
+            ping.save(update_fields=["is_healthy"])
+            device_monitoring.update_status("unknown", clear_management_ip=True)
+            device_monitoring.refresh_from_db()
+            device.refresh_from_db()
+            ping.refresh_from_db()
+            self.assertEqual(device_monitoring.status, "deactivated")
+            self.assertEqual(device.management_ip, None)
+            self.assertEqual(ping.is_healthy, True)
 
     def test_unknown_status_rollback(self):
         dm, ping, load, process_count = self._create_env()
@@ -1072,6 +1116,55 @@ class TestTransactionDeviceMonitoring(
         self.assertEqual(device_monitoring.status, "deactivated")
         self.assertEqual(device.management_ip, None)
         self.assertIsNotNone(wifi_session.stop_time)
+        mocked_dd_cache.assert_called_once()
+        self.assertEqual(mocked_dd_cache.call_args.args[0].pk, device.pk)
+        mocked_view_cache.assert_called_once()
+        self.assertEqual(mocked_view_cache.call_args.args[0].pk, device.pk)
+
+    @patch(
+        "openwisp_monitoring.device.api.views.DeviceMetricView.invalidate_get_device_cache"
+    )
+    @patch("openwisp_monitoring.device.base.models.AbstractDeviceData.invalidate_cache")
+    def test_handle_disabled_organization_after_reenable(
+        self, mocked_dd_cache, mocked_view_cache
+    ):
+        device_monitoring, ping, _, _ = self._create_env()
+        device = device_monitoring.device
+        device.management_ip = "10.10.0.5"
+        device.save()
+        wifi_client = WifiClient(mac_address="22:33:44:55:66:77")
+        wifi_client.full_clean()
+        wifi_client.save()
+        wifi_session = WifiSession(
+            device=device,
+            wifi_client=wifi_client,
+            ssid="Free Public WiFi",
+            interface_name="wlan0",
+        )
+        wifi_session.full_clean()
+        wifi_session.save()
+        organization = device.organization
+        with (
+            patch(
+                "openwisp_monitoring.device.tasks.handle_disabled_organization.delay"
+            ) as mocked_delay,
+            patch.object(device.__class__, "deactivate"),
+        ):
+            organization.is_active = False
+            organization.save(update_fields=["is_active"])
+            organization.is_active = True
+            organization.save(update_fields=["is_active"])
+        mocked_delay.assert_called_once_with(str(organization.pk))
+        handle_disabled_organization(str(organization.pk))
+        device_monitoring.refresh_from_db()
+        device.refresh_from_db()
+        ping.refresh_from_db()
+        wifi_session.refresh_from_db()
+        self.assertEqual(device.is_deactivated(), False)
+        self.assertEqual(device_monitoring.status, "ok")
+        self.assertEqual(device.management_ip, "10.10.0.5")
+        self.assertEqual(ping.is_healthy, True)
+        self.assertEqual(wifi_session.stop_time, None)
         mocked_dd_cache.assert_called_once()
         self.assertEqual(mocked_dd_cache.call_args.args[0].pk, device.pk)
         mocked_view_cache.assert_called_once()

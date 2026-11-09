@@ -427,17 +427,30 @@ class TestAdmin(
             active_metric_inline.has_change_permission(request, active_device)
         )
 
-    def test_device_alertsettings_inline_readonly_for_deactivated_device(self):
-        device = self._create_device(organization=self._create_org())
-        metric = self._create_object_metric(content_object=device)
-        self._create_alert_settings(metric=metric)
-        device.deactivate()
+    def test_device_alertsettings_inline_readonly(self):
         request = RequestFactory().get("/")
         request.user = self._get_admin()
         inline = AlertSettingsInline(Metric, admin.site)
-        self.assertFalse(inline.has_add_permission(request, metric))
-        self.assertFalse(inline.has_change_permission(request, metric))
-        self.assertTrue(inline.has_delete_permission(request, metric))
+        with self.subTest("Deactivated device"):
+            device = self._create_device(organization=self._create_org())
+            metric = self._create_object_metric(content_object=device)
+            self._create_alert_settings(metric=metric)
+            device.deactivate()
+            self.assertEqual(inline.has_add_permission(request, metric), False)
+            self.assertEqual(inline.has_change_permission(request, metric), False)
+            self.assertEqual(inline.has_delete_permission(request, metric), True)
+
+        with self.subTest("Disabled organization with active device"):
+            organization = self._create_org(name="disabled-organization")
+            device = self._create_device(organization=organization)
+            metric = self._create_object_metric(content_object=device)
+            self._create_alert_settings(metric=metric)
+            organization.is_active = False
+            organization.save(update_fields=["is_active"])
+            self.assertEqual(device.is_deactivated(), False)
+            self.assertEqual(inline.has_add_permission(request, metric), False)
+            self.assertEqual(inline.has_change_permission(request, metric), False)
+            self.assertEqual(inline.has_delete_permission(request, metric), True)
 
     def test_remove_invalid_interface(self):
         d = self._create_device(organization=self._create_org())

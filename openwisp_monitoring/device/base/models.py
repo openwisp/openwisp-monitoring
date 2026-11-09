@@ -372,13 +372,16 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
             value: Target health status. ``unknown`` resets all related metric
                 health states.
             clear_management_ip: Clears the device management IP in the same
-                transaction, even when the status is already set to ``value``.
+                transaction, even if the status is unchanged or deactivated.
             allow_deactivated: Allows the activation handler to reset a
                 deactivated status.
         """
         with transaction.atomic():
             monitoring = self.__class__.objects.select_for_update().get(pk=self.pk)
             if monitoring.status == "deactivated" and not allow_deactivated:
+                if clear_management_ip:
+                    self.device.management_ip = ""
+                    self.device.save(update_fields=["management_ip"])
                 self.status = monitoring.status
                 return
             # If the status is being set to "unknown" reset the related metrics
@@ -491,19 +494,18 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
         """Handles the disabling of an organization.
 
         Clears the management IP of all devices belonging to a disabled
-        organization.
+        organization, including deactivated devices. Other devices are reset
+        to unknown.
 
         Parameters: - organization_id (int): The ID of the disabled
         organization.
 
         Returns: - None
         """
-        monitoring = cls.objects.filter(
-            device__organization_id=organization_id
-        ).exclude(status="deactivated")
+        monitoring = cls.objects.filter(device__organization_id=organization_id)
         # Preserve the bulk update for large organizations: disabling an
         # organization is not a health-status change and has its own signal.
-        monitoring.update(status="unknown")
+        monitoring.exclude(status="deactivated").update(status="unknown")
         for instance in monitoring.select_related("device").iterator():
             instance.update_status("unknown", clear_management_ip=True)
 

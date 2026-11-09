@@ -93,14 +93,23 @@ class TestAdmin(TestDeviceMonitoringMixin, TestCase):
 
     def test_metric_admin_form_allows_active_device(self):
         device = self._create_device(organization=self._create_org())
-        metric = self._create_object_metric(content_object=device)
         self._login_admin()
-        response = self._post_metric(device, metric)
-        self.assertEqual(
-            response.status_code,
-            302,
-            response.content.decode(),
-        )
+
+        with self.subTest("Add form"):
+            device_metrics = Metric.objects.filter(
+                object_id=device.pk, configuration="test_metric"
+            )
+            metric_count = device_metrics.count()
+            response = self._post_metric(device)
+            self.assertEqual(response.status_code, 302, response.content.decode())
+            self.assertEqual(device_metrics.count(), metric_count + 1)
+
+        with self.subTest("Change form"):
+            metric = self._create_object_metric(
+                name="existing metric", content_object=device
+            )
+            response = self._post_metric(device, metric)
+            self.assertEqual(response.status_code, 302, response.content.decode())
 
     def test_metric_admin(self):
         m = self._create_general_metric()

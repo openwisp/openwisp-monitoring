@@ -473,7 +473,15 @@ class AbstractMetric(TimeStampedEditableModel):
     def batch_write(cls, raw_data):
         error_dict = {}
         write_data = []
+        # GenericForeignKey caches targets per metric, not across metrics.
+        # Reuse each target and its organization to avoid repeated queries.
+        targets = {}
         for metric, kwargs in raw_data:
+            target_key = (metric.content_type_id, metric.object_id)
+            if target_key not in targets:
+                targets[target_key] = metric.content_object
+            # Seed Django's GenericForeignKey cache without changing the relation.
+            cls.content_object.set_cached_value(metric, targets[target_key])
             try:
                 result = metric.write(**kwargs, write=False)
             except ValueError as error:

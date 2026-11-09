@@ -278,10 +278,10 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         # this speeds up the test by reducing requests made
         del data2["resources"]
         additional_queries = 0 if self._is_timeseries_udp_writes else 1
-        with self.assertNumQueries(32 + additional_queries):
+        with self.assertNumQueries(26 + additional_queries):
             response = self._post_data(device.id, device.key, data2)
         # Ensure cache is working
-        with self.assertNumQueries(25 + additional_queries):
+        with self.assertNumQueries(19 + additional_queries):
             response = self._post_data(device.id, device.key, data2)
         self.assertEqual(response.status_code, 200)
         # Add 1 for general metric and chart
@@ -372,19 +372,33 @@ class TestDeviceApi(AuthenticationMixin, TestGeoMixin, DeviceMonitoringTestCase)
         organization.is_active = False
         with self.captureOnCommitCallbacks(execute=True):
             organization.save()
-        response = self._post_data(device.id, device.key, self._data())
+        with patch(
+            "openwisp_monitoring.device.api.views.write_device_metrics.delay"
+        ) as mocked_write, patch(
+            "openwisp_monitoring.device.api.views.device_metrics_received.send"
+        ) as mocked_signal:
+            response = self._post_data(device.id, device.key, self._data())
         self.assertEqual(response.status_code, 404)
+        mocked_write.assert_not_called()
+        mocked_signal.assert_not_called()
 
     def test_disabled_organization_read_api_allowed(self):
-        org = self._create_org(is_active=False)
-        device = self._create_device(organization=org)
+        organization = self._create_org()
+        device = self._create_device(organization=organization)
+        metric = self._create_object_metric(content_object=device)
+        organization.is_active = False
+        organization.save()
         device_list_url = reverse("monitoring:api_monitoring_device_list")
         response = self.client.get(device_list_url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["id"], str(device.pk))
         metric_list_url = reverse("monitoring:api_device_metric_list", args=[device.pk])
         response = self.client.get(metric_list_url)
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["name"], metric.name)
+        self.assertEqual(response.data[0]["key"], metric.key)
 
     def test_device_activate_deactivate(self):
         # "self.create_test_data" creates a device and makes

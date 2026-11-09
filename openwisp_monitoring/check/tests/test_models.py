@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.test import TransactionTestCase, tag
 from django.utils.timezone import now
 from freezegun import freeze_time
@@ -183,14 +184,33 @@ class TestModels(AutoWifiClientCheck, TestDeviceMonitoringMixin, TransactionTest
             self.assertEqual(self._DATA_COLLECTED, c1.check_type)
 
     def test_auto_check_not_created_for_disabled_organization(self):
-        self.assertEqual(Check.objects.count(), 0)
-        self._create_device(organization=self._create_org())
-        self.assertEqual(Check.objects.count(), 5)
-        disabled_org = self._create_org(
-            name="disabled org", slug="disabled-org", is_active=False
-        )
-        self._create_device(organization=disabled_org)
-        self.assertEqual(Check.objects.count(), 5)
+        with self.subTest("Device created in disabled organization"):
+            self.assertEqual(Check.objects.count(), 0)
+            self._create_device(organization=self._create_org())
+            self.assertEqual(Check.objects.count(), 5)
+            disabled_org = self._create_org(
+                name="disabled org", slug="disabled-org", is_active=False
+            )
+            self._create_device(organization=disabled_org)
+            self.assertEqual(Check.objects.count(), 5)
+
+        with self.subTest("Organization disabled after scheduling"):
+            organization = self._create_org(name="disabled-after-scheduling")
+            device = self._create_device(organization=organization)
+            Check.objects.filter(object_id=device.pk).delete()
+            with transaction.atomic():
+                organization.is_active = False
+                organization.save(update_fields=["is_active"])
+                self.assertEqual(device.is_deactivated(), False)
+                content_type = ContentType.objects.get_for_model(Device)
+                auto_create_check(
+                    model=content_type.model,
+                    app_label=content_type.app_label,
+                    object_id=str(device.pk),
+                    check_type=self._PING,
+                    check_name="Ping",
+                )
+                self.assertEqual(Check.objects.filter(object_id=device.pk).count(), 0)
 
     def test_auto_check_not_created_for_deactivated_device(self):
         device = self._create_device(organization=self._create_org())

@@ -527,6 +527,68 @@ class TestBlockedMetricWrites(DeviceMonitoringTestCase):
         self.assertEqual(len(mocked_write.call_args.args[0]), 1)
         self.assertEqual(mocked_write.call_args.args[0][0]["metric"], active_metric)
 
+    @patch("openwisp_monitoring.monitoring.base.models._timeseries_batch_write")
+    def test_batch_write_reuses_target(self, mocked_write):
+        device = self._create_device(organization=self._create_org())
+        metrics = [
+            self._create_object_metric(
+                name=f"metric-{metric_index}", content_object=device
+            )
+            for metric_index in range(5)
+        ]
+        metrics = list(Metric.objects.filter(pk__in=[metric.pk for metric in metrics]))
+        with self.assertNumQueries(2):
+            Metric.batch_write([(metric, {"value": 1}) for metric in metrics])
+        mocked_write.assert_called_once()
+        self.assertEqual(len(mocked_write.call_args.args[0]), 5)
+
+    @patch("openwisp_monitoring.monitoring.base.models._timeseries_batch_write")
+    @patch("openwisp_monitoring.monitoring.base.models._timeseries_write")
+    @patch("openwisp_monitoring.monitoring.base.models.pre_metric_write.send")
+    def test_disabled_org_metric_writes(
+        self, mocked_signal, mocked_write, mocked_batch_write
+    ):
+        org = self._create_org()
+        device = self._create_device(organization=org)
+        blocked_metric = self._create_object_metric(content_object=device)
+        org.is_active = False
+        org.save(update_fields=["is_active"])
+        self.assertEqual(device.is_deactivated(), False)
+        blocked_metric.is_healthy = True
+        blocked_metric.is_healthy_tolerant = True
+        blocked_metric.save(update_fields=["is_healthy", "is_healthy_tolerant"])
+        blocked_metric = Metric.objects.get(pk=blocked_metric.pk)
+
+        with self.subTest(
+            "Direct write for an active device in a disabled organization"
+        ):
+            self.assertEqual(blocked_metric.write(1), None)
+            mocked_signal.assert_not_called()
+            mocked_write.assert_not_called()
+
+        with self.subTest("Batch write retains metrics from an active organization"):
+            active_metric = self._create_object_metric(
+                content_object=self._create_device(
+                    name="active-device",
+                    mac_address="00:11:22:33:44:66",
+                    organization=self._create_org(name="active-organization"),
+                )
+            )
+            Metric.batch_write(
+                [(blocked_metric, {"value": 1}), (active_metric, {"value": 1})]
+            )
+            mocked_batch_write.assert_called_once()
+            self.assertEqual(
+                [data["metric"] for data in mocked_batch_write.call_args.args[0]],
+                [active_metric],
+            )
+            mocked_signal.assert_called_once()
+            self.assertEqual(mocked_signal.call_args.kwargs["metric"], active_metric)
+            mocked_write.assert_not_called()
+        blocked_metric.refresh_from_db()
+        self.assertEqual(blocked_metric.is_healthy, True)
+        self.assertEqual(blocked_metric.is_healthy_tolerant, True)
+
     @patch("openwisp_monitoring.monitoring.tasks.post_metric_write.send")
     @patch("openwisp_monitoring.monitoring.tasks.timeseries_db.write")
     def test_queued_metric_write_revalidates_target(self, mocked_write, mocked_signal):
