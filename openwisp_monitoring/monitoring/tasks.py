@@ -83,7 +83,13 @@ def _filter_blocked_batch_data(data):
         for metric_data in data
         if metric_data.get("metric") and not isinstance(metric_data["metric"], Metric)
     }
-    fetched_metrics = Metric.objects.in_bulk(pks_to_fetch) if pks_to_fetch else {}
+    fetched_metrics = (
+        Metric.objects.filter(pk__in=pks_to_fetch)
+        .prefetch_related("content_object")
+        .in_bulk()
+        if pks_to_fetch
+        else {}
+    )
     blocked_targets = {}
     filtered_data = []
     for metric_data in data:
