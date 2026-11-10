@@ -541,6 +541,8 @@ class TestBlockedMetricWrites(DeviceMonitoringTestCase):
             Metric.batch_write([(metric, {"value": 1}) for metric in metrics])
         mocked_write.assert_called_once()
         self.assertEqual(len(mocked_write.call_args.args[0]), 5)
+        self.assertEqual(metrics[0].content_object, device)
+        self.assertEqual(metrics[1].content_object is metrics[0].content_object, True)
 
     @patch("openwisp_monitoring.monitoring.base.models._timeseries_batch_write")
     @patch("openwisp_monitoring.monitoring.base.models._timeseries_write")
