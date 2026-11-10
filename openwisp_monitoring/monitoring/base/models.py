@@ -517,7 +517,22 @@ class AbstractChart(TimeStampedEditableModel):
     def _clean_query(self):
         try:
             timeseries_db.validate_query(self.query)
-            timeseries_db.query(self.get_query())
+            try:
+                query = self.get_query()
+            except KeyError as e:
+                if self.metric.object_id or e.args not in (
+                    ("content_type",),
+                    ("object_id",),
+                ):
+                    raise
+                raise ValidationError(
+                    {
+                        "configuration": _(
+                            "This chart requires a metric linked to an object."
+                        )
+                    }
+                ) from e
+            timeseries_db.query(query)
         except timeseries_db.client_error as e:
             raise ValidationError({"configuration": e}) from e
         except InvalidChartConfigException as e:
