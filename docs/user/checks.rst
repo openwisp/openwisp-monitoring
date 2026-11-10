@@ -14,6 +14,11 @@ Active checks are periodic background tasks executed by `Celery workers
 These workers perform the enabled checks and store their results in the
 time series database.
 
+.. important::
+
+    Checks are not created or executed for devices in disabled
+    organizations or for deactivated devices.
+
 The built-in checks and the related django settings available in OpenWISP
 Monitoring are described below.
 

@@ -9,6 +9,7 @@ from swapper import load_model
 from openwisp_utils.tasks import OpenwispCeleryTask
 
 from ..check.tasks import perform_check
+from . import settings as app_settings
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +26,13 @@ def trigger_device_critical_checks(pk, recovery=True):
     """
     DeviceData = load_model("device_monitoring", "DeviceData")
     try:
-        device = DeviceData.objects.select_related("monitoring").get(pk=pk)
+        device = DeviceData.objects.select_related("monitoring", "organization").get(
+            pk=pk
+        )
     except ObjectDoesNotExist:
         logger.warning(f"The device with uuid {pk} has been deleted")
+        return
+    if not device.is_operational():
         return
     check_ids = list(
         device.checks.filter(
@@ -84,13 +89,32 @@ def offline_device_close_session(device_id):
 def write_device_metrics(pk, data, time=None, current=False):
     DeviceData = load_model("device_monitoring", "DeviceData")
     try:
-        device_data = DeviceData.get_devicedata(str(pk))
+        device_data = DeviceData.objects.select_related(
+            "organization", "devicelocation"
+        ).get(pk=pk)
     except DeviceData.DoesNotExist:
+        return
+    if not device_data.is_operational():
         return
     device_data.writer.write(data, time, current)
 
 
 @shared_task(base=OpenwispCeleryTask)
 def handle_disabled_organization(organization_id):
+    from .api.views import DeviceMetricView
+
+    Device = load_model("config", "Device")
+    DeviceData = load_model("device_monitoring", "DeviceData")
     DeviceMonitoring = load_model("device_monitoring", "DeviceMonitoring")
-    DeviceMonitoring.handle_disabled_organization(organization_id)
+    Organization = load_model("openwisp_users", "Organization")
+    # The organization may have been re-enabled while this task was queued.
+    if Organization.objects.filter(pk=organization_id, is_active=False).exists():
+        DeviceMonitoring.handle_disabled_organization(organization_id)
+        if app_settings.WIFI_SESSIONS_ENABLED:
+            WifiSession = load_model("device_monitoring", "WifiSession")
+            WifiSession.close_organization_sessions(organization_id)
+    for device in (
+        Device.objects.filter(organization_id=organization_id).only("id").iterator()
+    ):
+        DeviceData.invalidate_cache(device)
+        DeviceMetricView.invalidate_get_device_cache(device)

@@ -21,6 +21,16 @@ You can disable this feature by configuring
 :ref:`OPENWISP_MONITORING_WIFI_SESSIONS_ENABLED
 <openwisp_monitoring_wifi_sessions_enabled>` setting.
 
+.. important::
+
+    When an **organization is disabled**, no new WiFi sessions are
+    recorded for its devices and, if
+    :ref:`OPENWISP_MONITORING_WIFI_SESSIONS_ENABLED
+    <openwisp_monitoring_wifi_sessions_enabled>` is enabled, its open WiFi
+    sessions are closed.
+
+    No new WiFi sessions are recorded for **deactivated devices**.
+
 You can also view open WiFi sessions of a device directly from the
 device's change admin under the "WiFi Sessions" tab.
 

@@ -16,6 +16,7 @@ from openwisp_controller.config.signals import (
 )
 from openwisp_controller.connection import settings as connection_settings
 from openwisp_controller.connection.signals import is_working_changed
+from openwisp_users.signals import organization_disabled
 from openwisp_utils.admin_theme import (
     register_dashboard_chart,
     register_dashboard_template,
@@ -82,7 +83,6 @@ class DeviceMonitoringConfig(AppConfig):
         DeviceLocation = load_model("geo", "DeviceLocation")
         Metric = load_model("monitoring", "Metric")
         Chart = load_model("monitoring", "Chart")
-        Organization = load_model("openwisp_users", "Organization")
 
         post_save.connect(
             self.device_post_save_receiver,
@@ -144,10 +144,9 @@ class DeviceMonitoringConfig(AppConfig):
             sender=DeviceLocation,
             dispatch_uid="post_delete_devicelocation_invalidate_devicedata_cache",
         )
-        post_save.connect(
-            self.organization_post_save_receiver,
-            sender=Organization,
-            dispatch_uid="post_save_organization_disabled_monitoring",
+        organization_disabled.connect(
+            self.organization_disabled_receiver,
+            dispatch_uid="monitoring_organization_disabled",
         )
         device_deactivated.connect(
             DeviceMonitoring.handle_deactivated_device,
@@ -184,11 +183,10 @@ class DeviceMonitoringConfig(AppConfig):
         instance.metrics.all().delete()
 
     @classmethod
-    def organization_post_save_receiver(cls, instance, *args, **kwargs):
-        if instance.is_active is False:
-            from .tasks import handle_disabled_organization
+    def organization_disabled_receiver(cls, instance, **kwargs):
+        from .tasks import handle_disabled_organization
 
-            handle_disabled_organization.delay(str(instance.id))
+        handle_disabled_organization.delay(str(instance.pk))
 
     def device_recovery_detection(self):
         if not app_settings.DEVICE_RECOVERY_DETECTION:
@@ -247,6 +245,8 @@ class DeviceMonitoringConfig(AppConfig):
 
         Check = load_model("check", "Check")
         device = instance.device
+        if not device.is_operational():
+            return
         device_monitoring = device.monitoring
         # if old_is_working is None, it's a new device connection which wasn't
         # ever used yet, so nothing is really changing and we don't need to do anything
