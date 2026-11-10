@@ -6,6 +6,7 @@ from django.urls import reverse
 from swapper import load_model
 
 from ...device.tests import TestDeviceMonitoringMixin
+from ..admin import AlertSettingsInline, ChartInline
 
 Metric = load_model("monitoring", "Metric")
 
@@ -65,11 +66,16 @@ class TestAdmin(TestDeviceMonitoringMixin, TestCase):
         )
         device.deactivate()
         self._login_admin()
-        for instance in (None, metric):
-            with self.subTest(instance=instance is not None):
-                response = self._post_metric(device, metric=instance)
-                self.assertEqual(response.status_code, 200)
-                self.assertContains(response, "Monitoring is blocked")
+
+        with self.subTest("Add form"):
+            response = self._post_metric(device)
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "Monitoring is blocked")
+
+        with self.subTest("Change form"):
+            response = self._post_metric(device, metric=metric)
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "Monitoring is blocked")
 
     def test_metric_admin_form_blocks_disabled_organization(self):
         source_device = self._create_device(
@@ -85,11 +91,16 @@ class TestAdmin(TestDeviceMonitoringMixin, TestCase):
         organization.is_active = False
         organization.save()
         self._login_admin()
-        for instance in (None, metric):
-            with self.subTest(instance=instance is not None):
-                response = self._post_metric(device, metric=instance)
-                self.assertEqual(response.status_code, 200)
-                self.assertContains(response, "Monitoring is blocked")
+
+        with self.subTest("Add form"):
+            response = self._post_metric(device)
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "Monitoring is blocked")
+
+        with self.subTest("Change form"):
+            response = self._post_metric(device, metric=metric)
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "Monitoring is blocked")
 
     def test_metric_admin_form_allows_active_device(self):
         device = self._create_device(organization=self._create_org())
@@ -139,14 +150,19 @@ class TestAdmin(TestDeviceMonitoringMixin, TestCase):
         request = RequestFactory().get("/")
         request.user = self._get_admin()
         metric_admin = admin.site._registry[Metric]
-        self.assertFalse(metric_admin.has_change_permission(request, metric))
-        self.assertTrue(metric_admin.has_delete_permission(request, metric))
-        for inline_class in metric_admin.inlines:
-            with self.subTest(inline=inline_class.__name__):
-                inline = inline_class(Metric, admin.site)
-                self.assertFalse(inline.has_add_permission(request, metric))
-                self.assertFalse(inline.has_change_permission(request, metric))
-                self.assertTrue(inline.has_delete_permission(request, metric))
+        self.assertEqual(metric_admin.has_change_permission(request, metric), False)
+        self.assertEqual(metric_admin.has_delete_permission(request, metric), True)
+        with self.subTest("Chart inline is read-only and deletable"):
+            inline = ChartInline(Metric, admin.site)
+            self.assertEqual(inline.has_add_permission(request, metric), False)
+            self.assertEqual(inline.has_change_permission(request, metric), False)
+            self.assertEqual(inline.has_delete_permission(request, metric), True)
+
+        with self.subTest("Alert settings inline is read-only and deletable"):
+            inline = AlertSettingsInline(Metric, admin.site)
+            self.assertEqual(inline.has_add_permission(request, metric), False)
+            self.assertEqual(inline.has_change_permission(request, metric), False)
+            self.assertEqual(inline.has_delete_permission(request, metric), True)
 
     def test_metric_admin_deactivated_device_read_only(self):
         device = self._create_device(organization=self._create_org())
@@ -156,14 +172,19 @@ class TestAdmin(TestDeviceMonitoringMixin, TestCase):
         request = RequestFactory().get("/")
         request.user = self._get_admin()
         metric_admin = admin.site._registry[Metric]
-        self.assertFalse(metric_admin.has_change_permission(request, metric))
-        self.assertTrue(metric_admin.has_delete_permission(request, metric))
-        for inline_class in metric_admin.inlines:
-            with self.subTest(inline=inline_class.__name__):
-                inline = inline_class(Metric, admin.site)
-                self.assertFalse(inline.has_add_permission(request, metric))
-                self.assertFalse(inline.has_change_permission(request, metric))
-                self.assertTrue(inline.has_delete_permission(request, metric))
+        self.assertEqual(metric_admin.has_change_permission(request, metric), False)
+        self.assertEqual(metric_admin.has_delete_permission(request, metric), True)
+        with self.subTest("Chart inline is read-only and deletable"):
+            inline = ChartInline(Metric, admin.site)
+            self.assertEqual(inline.has_add_permission(request, metric), False)
+            self.assertEqual(inline.has_change_permission(request, metric), False)
+            self.assertEqual(inline.has_delete_permission(request, metric), True)
+
+        with self.subTest("Alert settings inline is read-only and deletable"):
+            inline = AlertSettingsInline(Metric, admin.site)
+            self.assertEqual(inline.has_add_permission(request, metric), False)
+            self.assertEqual(inline.has_change_permission(request, metric), False)
+            self.assertEqual(inline.has_delete_permission(request, metric), True)
 
     def test_admin_menu_groups(self):
         # Test menu group (openwisp-utils menu group) for Metric and Check models

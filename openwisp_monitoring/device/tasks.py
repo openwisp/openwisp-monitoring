@@ -9,7 +9,6 @@ from swapper import load_model
 from openwisp_utils.tasks import OpenwispCeleryTask
 
 from ..check.tasks import perform_check
-from ..utils import is_monitoring_blocked
 from . import settings as app_settings
 
 logger = logging.getLogger(__name__)
@@ -33,7 +32,7 @@ def trigger_device_critical_checks(pk, recovery=True):
     except ObjectDoesNotExist:
         logger.warning(f"The device with uuid {pk} has been deleted")
         return
-    if device.is_deactivated() or not device.organization.is_active:
+    if not device.is_operational():
         return
     check_ids = list(
         device.checks.filter(
@@ -95,7 +94,7 @@ def write_device_metrics(pk, data, time=None, current=False):
         ).get(pk=pk)
     except DeviceData.DoesNotExist:
         return
-    if is_monitoring_blocked(device_data):
+    if not device_data.is_operational():
         return
     device_data.writer.write(data, time, current)
 

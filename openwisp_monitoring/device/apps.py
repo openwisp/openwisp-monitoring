@@ -245,7 +245,7 @@ class DeviceMonitoringConfig(AppConfig):
 
         Check = load_model("check", "Check")
         device = instance.device
-        if device.is_deactivated() or not device.organization.is_active:
+        if not device.is_operational():
             return
         device_monitoring = device.monitoring
         # if old_is_working is None, it's a new device connection which wasn't
@@ -324,24 +324,10 @@ class DeviceMonitoringConfig(AppConfig):
         from ..check.tasks import perform_check
 
         DeviceData = load_model("device_monitoring", "DeviceData")
-
-        def perform_config_applied_check():
-            device = DeviceData.objects.filter(
-                config=instance,
-                _is_deactivated=False,
-                organization__is_active=True,
-            ).first()
-            if device is None:
-                return
-            check = device.checks.filter(check_type__contains="ConfigApplied").first()
-            if check is None:
-                return
-            perform_check.delay(check.pk)
-
-        # openwisp-controller sends this signal synchronously inside
-        # Config.save(), so we defer the lookup and enqueue until the
-        # transaction commits to avoid acting on uncommitted state.
-        transaction_on_commit(perform_config_applied_check)
+        device = DeviceData.objects.get(config=instance)
+        check = device.checks.filter(check_type__contains="ConfigApplied").first()
+        if check:
+            transaction_on_commit(lambda: perform_check.delay(check.pk))
 
     def set_update_config_model(self):
         if not getattr(settings, "OPENWISP_UPDATE_CONFIG_MODEL", None):

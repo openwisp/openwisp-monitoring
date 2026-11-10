@@ -920,11 +920,22 @@ class TestDeviceMonitoring(
     def test_update_status_does_not_override_deactivated(self):
         device_monitoring, _, _, _ = self._create_env()
         device_monitoring.device.deactivate()
-        for status in ("critical", "ok", "unknown"):
-            with self.subTest(status=status):
-                device_monitoring.update_status(status)
-                device_monitoring.refresh_from_db()
-                self.assertEqual(device_monitoring.status, "deactivated")
+
+        with self.subTest("Critical status does not replace deactivated"):
+            device_monitoring.update_status("critical")
+            device_monitoring.refresh_from_db()
+            self.assertEqual(device_monitoring.status, "deactivated")
+
+        with self.subTest("OK status does not replace deactivated"):
+            device_monitoring.update_status("ok")
+            device_monitoring.refresh_from_db()
+            self.assertEqual(device_monitoring.status, "deactivated")
+
+        with self.subTest("Unknown status does not replace deactivated"):
+            device_monitoring.update_status("unknown")
+            device_monitoring.refresh_from_db()
+            self.assertEqual(device_monitoring.status, "deactivated")
+
         device_monitoring.device.activate()
         device_monitoring.refresh_from_db()
         self.assertEqual(device_monitoring.status, "unknown")
@@ -981,17 +992,27 @@ class TestTransactionDeviceMonitoring(
     CreateConnectionsMixin, MonitoringTestMixin, DeviceMonitoringTransactionTestcase
 ):
     def test_disabled_organization_statuses(self):
-        for status in ("problem", "critical"):
-            with self.subTest(status=status):
-                device_monitoring, _, _, _ = self._create_env(
-                    organization=self._create_org(name=f"status-{status}")
-                )
-                device_monitoring.update_status(status)
-                DeviceMonitoring.handle_disabled_organization(
-                    device_monitoring.device.organization_id
-                )
-                device_monitoring.refresh_from_db()
-                self.assertEqual(device_monitoring.status, "unknown")
+        with self.subTest("Problem status is reset to unknown"):
+            device_monitoring, _, _, _ = self._create_env(
+                organization=self._create_org(name="status-problem")
+            )
+            device_monitoring.update_status("problem")
+            DeviceMonitoring.handle_disabled_organization(
+                device_monitoring.device.organization_id
+            )
+            device_monitoring.refresh_from_db()
+            self.assertEqual(device_monitoring.status, "unknown")
+
+        with self.subTest("Critical status is reset to unknown"):
+            device_monitoring, _, _, _ = self._create_env(
+                organization=self._create_org(name="status-critical")
+            )
+            device_monitoring.update_status("critical")
+            DeviceMonitoring.handle_disabled_organization(
+                device_monitoring.device.organization_id
+            )
+            device_monitoring.refresh_from_db()
+            self.assertEqual(device_monitoring.status, "unknown")
 
         with self.subTest(
             "Organization handling after deactivation clears management IP"
@@ -1143,19 +1164,19 @@ class TestTransactionDeviceMonitoring(
         )
         wifi_session.full_clean()
         wifi_session.save()
-        organization = device.organization
+        org = device.organization
         with (
             patch(
                 "openwisp_monitoring.device.tasks.handle_disabled_organization.delay"
             ) as mocked_delay,
             patch.object(device.__class__, "deactivate"),
         ):
-            organization.is_active = False
-            organization.save(update_fields=["is_active"])
-            organization.is_active = True
-            organization.save(update_fields=["is_active"])
-        mocked_delay.assert_called_once_with(str(organization.pk))
-        handle_disabled_organization(str(organization.pk))
+            org.is_active = False
+            org.save(update_fields=["is_active"])
+            org.is_active = True
+            org.save(update_fields=["is_active"])
+        mocked_delay.assert_called_once_with(str(org.pk))
+        handle_disabled_organization(str(org.pk))
         device_monitoring.refresh_from_db()
         device.refresh_from_db()
         ping.refresh_from_db()

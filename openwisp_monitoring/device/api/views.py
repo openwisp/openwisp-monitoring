@@ -37,7 +37,6 @@ from openwisp_users.api.permissions import DjangoModelPermissions, IsOrganizatio
 from openwisp_utils.api.pagination import OpenWispPagination
 
 from ...settings import CACHE_TIMEOUT
-from ...utils import is_monitoring_blocked
 from ...views import MonitoringApiViewMixin
 from ..schema import schema
 from ..signals import device_metrics_received
@@ -166,7 +165,7 @@ class DeviceMetricView(
 
     def post(self, request, pk):
         self.instance = self.get_object(pk)
-        if is_monitoring_blocked(self.instance):
+        if not self.instance.is_operational():
             raise Http404
         self.instance.data = request.data
         # validate incoming data

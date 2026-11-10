@@ -503,7 +503,7 @@ class TestBlockedMetricWrites(DeviceMonitoringTestCase):
         metric.is_healthy = True
         metric.is_healthy_tolerant = True
         metric.save(update_fields=["is_healthy", "is_healthy_tolerant"])
-        self.assertIsNone(metric.write(1))
+        self.assertEqual(metric.write(1), None)
         metric.refresh_from_db()
         self.assertEqual(metric.is_healthy, True)
         self.assertEqual(metric.is_healthy_tolerant, True)

@@ -47,11 +47,16 @@ class TestAdmin(TestDeviceMonitoringMixin, TransactionTestCase):
         )
         device.deactivate()
         self.client.force_login(self._get_admin())
-        for instance in (None, check):
-            with self.subTest(instance=instance is not None):
-                response = self._post_check(device, check=instance)
-                self.assertEqual(response.status_code, 200)
-                self.assertContains(response, "Monitoring is blocked")
+
+        with self.subTest("Add form"):
+            response = self._post_check(device)
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "Monitoring is blocked")
+
+        with self.subTest("Change form"):
+            response = self._post_check(device, check=check)
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "Monitoring is blocked")
 
     def test_check_admin_form_blocks_disabled_organization(self):
         source_device = self._create_device(
@@ -67,11 +72,16 @@ class TestAdmin(TestDeviceMonitoringMixin, TransactionTestCase):
         organization.is_active = False
         organization.save()
         self.client.force_login(self._get_admin())
-        for instance in (None, check):
-            with self.subTest(instance=instance is not None):
-                response = self._post_check(device, check=instance)
-                self.assertEqual(response.status_code, 200)
-                self.assertContains(response, "Monitoring is blocked")
+
+        with self.subTest("Add form"):
+            response = self._post_check(device)
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "Monitoring is blocked")
+
+        with self.subTest("Change form"):
+            response = self._post_check(device, check=check)
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "Monitoring is blocked")
 
     def test_check_admin_form_allows_active_device(self):
         device = self._create_device(organization=self._create_org())
@@ -83,31 +93,31 @@ class TestAdmin(TestDeviceMonitoringMixin, TransactionTestCase):
         )
 
     def test_check_admin_change_permission(self):
-        d = self._create_device(organization=self._create_org())
-        check = Check.objects.filter(object_id=d.pk).first()
+        device = self._create_device(organization=self._create_org())
+        check = Check.objects.filter(object_id=device.pk).first()
         request = RequestFactory().get("/")
         request.user = self._get_admin()
         check_admin = admin.site._registry[Check]
-        self.assertTrue(check_admin.has_change_permission(request, check))
+        self.assertEqual(check_admin.has_change_permission(request, check), True)
 
     def test_check_admin_disabled_organization_read_only(self):
         org = self._create_org()
-        d = self._create_device(organization=org)
-        check = Check.objects.filter(object_id=d.pk).first()
+        device = self._create_device(organization=org)
+        check = Check.objects.filter(object_id=device.pk).first()
         org.is_active = False
         org.save()
         request = RequestFactory().get("/")
         request.user = self._get_admin()
         check_admin = admin.site._registry[Check]
-        self.assertFalse(check_admin.has_change_permission(request, check))
-        self.assertTrue(check_admin.has_delete_permission(request, check))
+        self.assertEqual(check_admin.has_change_permission(request, check), False)
+        self.assertEqual(check_admin.has_delete_permission(request, check), True)
 
     def test_check_admin_deactivated_device_read_only(self):
-        d = self._create_device(organization=self._create_org())
-        check = Check.objects.filter(object_id=d.pk).first()
-        d.deactivate()
+        device = self._create_device(organization=self._create_org())
+        check = Check.objects.filter(object_id=device.pk).first()
+        device.deactivate()
         request = RequestFactory().get("/")
         request.user = self._get_admin()
         check_admin = admin.site._registry[Check]
-        self.assertFalse(check_admin.has_change_permission(request, check))
-        self.assertTrue(check_admin.has_delete_permission(request, check))
+        self.assertEqual(check_admin.has_change_permission(request, check), False)
+        self.assertEqual(check_admin.has_delete_permission(request, check), True)

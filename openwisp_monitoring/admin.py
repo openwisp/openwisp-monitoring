@@ -32,7 +32,7 @@ class DisabledOrgReadOnlyMixin:
     """
 
     def _get_related_object(self, obj):
-        """Walks ``content_object``/``metric`` down to the leaf object."""
+        """Find the target of a check, metric, chart, or alert settings object."""
         if obj is None:
             return None
         content_object = getattr(obj, "content_object", None)
@@ -49,7 +49,10 @@ class DisabledOrgReadOnlyMixin:
 
 
 class DisabledOrgReadOnlyInlineMixin(DisabledOrgReadOnlyMixin):
-    """Inline flavour: ``has_add_permission`` also receives the parent object."""
+    """Prevent adding inlines to blocked monitoring targets.
+
+    Django passes the parent object to inline add permission checks.
+    """
 
     def has_add_permission(self, request, obj=None):
         perm = super().has_add_permission(request, obj)

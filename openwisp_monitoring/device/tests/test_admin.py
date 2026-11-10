@@ -410,22 +410,30 @@ class TestAdmin(
             inline_models=(CheckInline,),
             user=request.user,
         )
-        metric_inline = next(
-            inline
-            for inline in device_admin.get_inline_instances(request, device)
-            if isinstance(inline, MetricInline)
-        )
-        self.assertFalse(metric_inline.has_add_permission(request, device))
-        self.assertFalse(metric_inline.has_change_permission(request, device))
-        self.assertFalse(metric_inline.has_delete_permission(request, device))
-        active_metric_inline = next(
-            inline
-            for inline in device_admin.get_inline_instances(request, active_device)
-            if isinstance(inline, MetricInline)
-        )
-        self.assertTrue(
-            active_metric_inline.has_change_permission(request, active_device)
-        )
+
+        with self.subTest("Device in disabled organization"):
+            metric_inline = next(
+                inline
+                for inline in device_admin.get_inline_instances(request, device)
+                if isinstance(inline, MetricInline)
+            )
+            self.assertEqual(metric_inline.has_add_permission(request, device), False)
+            self.assertEqual(
+                metric_inline.has_change_permission(request, device), False
+            )
+            self.assertEqual(
+                metric_inline.has_delete_permission(request, device), False
+            )
+
+        with self.subTest("Device in active organization"):
+            metric_inline = next(
+                inline
+                for inline in device_admin.get_inline_instances(request, active_device)
+                if isinstance(inline, MetricInline)
+            )
+            self.assertEqual(
+                metric_inline.has_change_permission(request, active_device), True
+            )
 
     def test_device_alertsettings_inline_readonly(self):
         request = RequestFactory().get("/")
