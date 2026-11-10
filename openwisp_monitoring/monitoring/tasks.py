@@ -75,19 +75,28 @@ def timeseries_batch_write(self, data):
     Similar to timeseries_write function above, but operates on list of
     metric data (batch operation)
     """
-    timeseries_db.batch_write(data)
+    _write_batch(data)
+
+
+def _write_batch(data, acknowledged=False):
+    if acknowledged:
+        timeseries_db.batch_write(data, acknowledged=True)
+    else:
+        timeseries_db.batch_write(data)
     for metric_data in data:
         _metric_post_write(**metric_data)
 
 
-def _timeseries_batch_write(data):
+def _timeseries_batch_write(data, acknowledged=False):
     """If the timeseries database is using UDP to write data, then write data synchronously."""
+    if acknowledged:
+        return _write_batch(data, acknowledged=True)
     if timeseries_db.use_udp:
-        timeseries_batch_write(data=data)
+        return timeseries_batch_write(data=data)
     else:
         for item in data:
             item["metric"] = item["metric"].pk
-        timeseries_batch_write.delay(data=data)
+        return timeseries_batch_write.delay(data=data)
 
 
 @shared_task(base=OpenwispCeleryTask)
