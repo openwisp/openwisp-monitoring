@@ -22,8 +22,10 @@ bandwidth** has been less than **10Mbit/s** for more than **2 days**.
 
    When the threshold and tolerance are not customized, their input fields
    are empty and display the inherited defaults from global settings as
-   placeholders. The operator remains selected. Entering custom values
-   overrides the corresponding defaults for that metric.
+   placeholders. The operator remains selected. Entering values different
+   from the defaults overrides them for that metric. On saving, values
+   equal to the current defaults are not kept as overrides, so they follow
+   future changes to those defaults.
 
    To restore the inherited threshold and tolerance, clear those two
    fields, leave an operator selected, and save. The selected operator
