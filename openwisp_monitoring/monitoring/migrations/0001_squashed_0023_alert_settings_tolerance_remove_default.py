@@ -2,7 +2,6 @@
 
 import uuid
 
-import django
 import django.core.validators
 import django.db.migrations.operations.special
 import django.db.models.deletion
@@ -14,8 +13,6 @@ from django.db import migrations, models
 from swapper import split
 
 from ..configuration import (
-    CHART_CONFIGURATION_CHOICES,
-    METRIC_CONFIGURATION_CHOICES,
     get_chart_configuration_choices,
     get_metric_configuration_choices,
 )
@@ -65,11 +62,7 @@ class Migration(migrations.Migration):
                 (
                     "configuration",
                     models.CharField(
-                        choices=(
-                            METRIC_CONFIGURATION_CHOICES
-                            if django.VERSION < (5, 0)
-                            else get_metric_configuration_choices
-                        ),
+                        choices=get_metric_configuration_choices,
                         max_length=16,
                         null=True,
                     ),
@@ -140,11 +133,7 @@ class Migration(migrations.Migration):
                 (
                     "configuration",
                     models.CharField(
-                        choices=(
-                            CHART_CONFIGURATION_CHOICES
-                            if django.VERSION < (5, 0)
-                            else get_chart_configuration_choices
-                        ),
+                        choices=get_chart_configuration_choices,
                         max_length=16,
                         null=True,
                     ),
