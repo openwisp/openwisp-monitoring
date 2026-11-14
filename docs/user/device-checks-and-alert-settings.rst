@@ -20,11 +20,18 @@ bandwidth** has been less than **10Mbit/s** for more than **2 days**.
    settings, but it is easy to customize alert settings through the device
    page as shown below:
 
-   When alert setting values are not customized, the input fields are left
-   empty and display the inherited default values (from global settings)
-   as placeholders. Entering custom values will override the default for
-   that specific metric or device, and clearing the fields will restore
-   the inherited defaults.
+   When the threshold and tolerance are not customized, their input
+   fields are empty and display the inherited defaults from global
+   settings as placeholders. The operator remains selected. Entering
+   custom values overrides the corresponding defaults for that metric.
+
+   To restore the inherited threshold and tolerance, clear those two
+   fields, leave an operator selected, and save. The selected operator
+   still applies. To restore all defaults, also select the default
+   operator.
+
+   On the device page, clearing the operator, threshold, and tolerance
+   and saving deletes the alert settings rather than restoring defaults.
 
 .. figure:: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/device-inline-alertsettings.png
     :target: https://raw.githubusercontent.com/openwisp/openwisp-monitoring/docs/docs/1.1/device-inline-alertsettings.png
