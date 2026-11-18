@@ -18,6 +18,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from swapper import load_model
 
 from openwisp_controller.connection.tests.utils import CreateConnectionsMixin
+from openwisp_controller.geo.api.views import GeoJsonLocationListPagination
 from openwisp_controller.geo.tests.utils import TestGeoMixin
 from openwisp_monitoring.device.tests import (
     TestDeviceMonitoringMixin,
@@ -565,6 +566,9 @@ class TestDashboardMap(
             )
             self.assertTrue(button_displayed)
 
+    # Locations are listed newest first, hence the shapes are only loaded
+    # with the pages following the first one.
+    @patch.object(GeoJsonLocationListPagination, "page_size", 1)
     def test_clicking_location_shape_opens_device_popup(self):
         org = self._get_org()
 
@@ -611,8 +615,7 @@ class TestDashboardMap(
         polygon = locations["Polygon"][0]
         multipolygon = locations["MultiPolygon"][0]
         point = locations["Point"][0]
-        # Clicking point locations already worked before shapes were supported:
-        # the point is included to verify the same expectations hold for shapes.
+        # The point checks that shapes behave the same way as points.
         cases = (
             ("Polygon", "Polygon", polygon.centroid),
             ("MultiPolygon, first part", "MultiPolygon", multipolygon[0].centroid),
@@ -767,7 +770,10 @@ class TestDashboardMap(
                 second.click()
                 self.assertEqual(len(get_rows()), 2)
 
-        with self.subTest("Polygon click removes the bookmarked point from the URL"):
+        with self.subTest("Polygon click bookmarks the polygon in the URL"):
+            # netjsongraph prefixes the ids of polygons, which could
+            # otherwise clash with the ids of points.
+            polygon_id = f"polygon_{Location.objects.get(name='Polygon-Location').pk}"
             self.open(reverse("admin:index"))
             self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
             click_location("Point", point)
@@ -782,18 +788,26 @@ class TestDashboardMap(
             )
             try:
                 self.wait_until(
-                    EC.text_to_be_present_in_element(
-                        (By.CSS_SELECTOR, ".map-detail h2"), "Polygon-Location"
-                    ),
+                    lambda driver: f"nodeId={polygon_id}" in driver.current_url,
                     timeout=5,
                 )
             except TimeoutException:
-                self.fail("Clicking the polygon did not replace the point overlay")
-            self.assertNotIn(
-                "nodeId=",
-                self.web_driver.current_url,
-                "The URL still points to the location of the replaced overlay",
-            )
+                self.fail(
+                    "Clicking the polygon did not set its id in the URL: "
+                    f"{self.web_driver.current_url}"
+                )
+            bookmark = self.web_driver.current_url
+            self.web_driver.get("about:blank")
+            self.web_driver.get(bookmark)
+            try:
+                self.wait_until(
+                    EC.text_to_be_present_in_element(
+                        (By.CSS_SELECTOR, ".map-detail h2"), "Polygon-Location"
+                    ),
+                    timeout=10,
+                )
+            except TimeoutException:
+                self.fail("Opening the bookmarked URL did not reopen the polygon")
 
         with self.subTest("Polygon overlay stays open when its location is updated"):
             self.open(reverse("admin:index"))
