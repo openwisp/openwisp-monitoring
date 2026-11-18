@@ -250,6 +250,56 @@ class TestCharts(TestMonitoringMixin, TestCase):
         else:
             self.fail("ValidationError not raised")
 
+    def test_device_chart_on_global_metric(self):
+        metric = self._create_general_metric()
+        for configuration in ("access_tech", "bandwidth", "signal_quality"):
+            with self.subTest(configuration=configuration):
+                chart = Chart(metric=metric, configuration=configuration)
+                with self.assertRaises(ValidationError) as error:
+                    chart.full_clean()
+                self.assertEqual(
+                    error.exception.message_dict,
+                    {
+                        "configuration": [
+                            "This chart requires a metric linked to an object."
+                        ]
+                    },
+                )
+        self._create_chart(metric=metric, test_data=False)
+
+    def test_device_chart_on_object_metric(self):
+        metric = self._create_object_metric()
+        for configuration in ("access_tech", "bandwidth", "signal_quality"):
+            with self.subTest(configuration=configuration):
+                self._create_chart(
+                    metric=metric, test_data=False, configuration=configuration
+                )
+
+    def test_unexpected_query_key_error(self):
+        for metric in (self._create_general_metric(), self._create_object_metric()):
+            for args in (("content_type",), ("object_id",), ("custom_param",), ()):
+                if not metric.object_id and args in (("content_type",), ("object_id",)):
+                    continue
+                with self.subTest(metric=metric, args=args):
+                    chart = Chart(metric=metric, configuration="dummy")
+                    with patch.object(chart, "get_query", side_effect=KeyError(*args)):
+                        with self.assertRaises(KeyError) as error:
+                            chart.full_clean()
+                        self.assertEqual(error.exception.args, args)
+
+    def test_backend_key_error(self):
+        metric = self._create_general_metric()
+        chart = Chart(metric=metric, configuration="dummy")
+        for method in ("validate_query", "query"):
+            with self.subTest(method=method):
+                with patch(
+                    f"openwisp_monitoring.monitoring.base.models.timeseries_db.{method}",
+                    side_effect=KeyError("content_type"),
+                ):
+                    with self.assertRaises(KeyError) as error:
+                        chart.full_clean()
+                    self.assertEqual(error.exception.args, ("content_type",))
+
     def test_get_query(self):
         c = self._create_chart(test_data=False)
         m = c.metric
