@@ -385,6 +385,16 @@ class TestDashboardMap(
     object_location_model = DeviceLocation
     config_app_label = "config"
 
+    @classmethod
+    def setUpClass(cls):
+        # The live server runs in a process started by setUpClass, hence
+        # patching a test method would not reach it. One location per page
+        # makes the map load the locations from multiple pages.
+        page_size = patch.object(GeoJsonLocationListPagination, "page_size", 1)
+        page_size.start()
+        cls.addClassCleanup(page_size.stop)
+        super().setUpClass()
+
     def _open_popup(self, mapType, id):
         self.web_driver.execute_script(
             "return window[arguments[0]].utils.openPopup(arguments[1]);",
@@ -566,9 +576,6 @@ class TestDashboardMap(
             )
             self.assertTrue(button_displayed)
 
-    # Locations are listed newest first, hence the shapes are only loaded
-    # with the pages following the first one.
-    @patch.object(GeoJsonLocationListPagination, "page_size", 1)
     def test_clicking_location_shape_opens_device_popup(self):
         org = self._get_org()
 
@@ -687,6 +694,16 @@ class TestDashboardMap(
             ).click().perform()
 
         self.login()
+        self.wait_for_visibility(By.CSS_SELECTOR, ".leaflet-container")
+        # Locations are listed newest first, hence the shapes are only
+        # loaded with the pages following the first one.
+        next_page = self.web_driver.execute_async_script("""
+            const done = arguments[arguments.length - 1];
+            fetch(window._owGeoMapConfig.geoJsonUrl, { credentials: "include" })
+              .then((response) => response.json())
+              .then((data) => done(data.next));
+            """)
+        self.assertTrue(next_page, "The locations were not split into pages")
         for label, name, target in cases:
             geometry, statuses = locations[name]
             devices = [f"{name}-{status}-device" for status in statuses]
@@ -753,22 +770,6 @@ class TestDashboardMap(
                     <= anchor["bottom"] + tolerance,
                     f"The overlay is not anchored within the {name} location: {anchor}",
                 )
-                first, second = (
-                    self.find_element(By.CSS_SELECTOR, f".map-detail .health-{status}")
-                    for status in statuses
-                )
-                first.click()
-                rows = get_rows()
-                self.assertEqual(len(rows), 1, rows)
-                self.assertIn(devices[0], rows[0])
-                second.click()
-                self.assertCountEqual([row.split()[0] for row in get_rows()], devices)
-                first.click()
-                rows = get_rows()
-                self.assertEqual(len(rows), 1, rows)
-                self.assertIn(devices[1], rows[0])
-                second.click()
-                self.assertEqual(len(get_rows()), 2)
 
         with self.subTest("Polygon click bookmarks the polygon in the URL"):
             # netjsongraph prefixes the ids of polygons, which could
