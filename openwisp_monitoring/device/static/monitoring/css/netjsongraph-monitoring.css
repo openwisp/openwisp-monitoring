@@ -37,7 +37,7 @@
 }
 /* health status colors of the map clusters */
 .njg-container .marker-cluster div {
-  color: #fff;
+  color: var(--ow-color-white);
   background-color: rgba(53, 60, 68, 0.8) !important;
 }
 .njg-container .ok div {
@@ -53,12 +53,12 @@
   background-color: rgba(53, 60, 68, 0.8) !important;
 }
 .njg-container .njg-tooltip {
-  background: #fff !important;
+  background: var(--ow-color-white) !important;
   border: none !important;
 }
 .njg-container .njg-tooltip-key {
-  color: #000;
+  color: var(--ow-color-black);
 }
 .njg-container .njg-tooltip-value {
-  color: #000;
+  color: var(--ow-color-black);
 }
