@@ -657,8 +657,8 @@ class AbstractChart(TimeStampedEditableModel):
         # custom grouping between 8 to 27 days
         elif days > 7 and days < 28:
             group = str(round(days / 7)) + "h"
-        # custom grouping between 1 month to 7 month
-        elif days >= 30 and days <= 210:
+        # custom grouping between 4 weeks to 7 months
+        elif days >= 28 and days <= 210:
             group = "1d"
         # custom grouping between 7 month to 1 year
         elif days > 210 and days <= 365:

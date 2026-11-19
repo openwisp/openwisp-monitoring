@@ -302,6 +302,17 @@ class TestCharts(TestMonitoringMixin, TestCase):
         self.assertIn(str(now() - timedelta(days=1))[0:10], c._get_time("1d"))
         self.assertIn(str(now() - timedelta(days=3))[0:10], c._get_time("3d"))
 
+    def test_get_group_map(self):
+        for days, expected_group in (
+            ("27d", "4h"),
+            ("28d", "1d"),
+            ("29d", "1d"),
+            ("210d", "1d"),
+            ("211d", "7d"),
+        ):
+            with self.subTest(days=days):
+                self.assertEqual(Chart._get_group_map(days)[days], expected_group)
+
     def test_get_top_fields(self):
         m = self._create_object_metric(name="test", configuration="get_top_fields")
         c = self._create_chart(metric=m, test_data=None, configuration="histogram")
