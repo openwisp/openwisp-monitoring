@@ -441,19 +441,21 @@ Other Base Classes that can be Inherited and Extended
 **The following steps are not required and are intended for more advanced
 customization.**
 
-``DeviceMetricView``
-~~~~~~~~~~~~~~~~~~~~
+Partial API View Overrides
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This view is responsible for displaying ``Charts`` and ``Status``
-primarily.
+API URL configurations can be customized partially without replacing the
+complete set of API routes.
 
-The full python path is:
-``openwisp_monitoring.device.api.views.DeviceMetricView``.
+The ``openwisp_monitoring.urls.get_urls`` helper accepts separate optional
+modules for device-monitoring and general-monitoring API views. When a
+custom module provides a view, that view is used for the corresponding
+URL. Views which are not provided continue to use the default
+implementation.
 
-If you want to extend this view, you will have to perform the additional
-steps below.
+For example, to customize only ``DeviceMetricView``:
 
-Step 1. Import and extend view:
+Step 1. Import and extend the view:
 
 .. code-block:: python
 
@@ -467,28 +469,42 @@ Step 1. Import and extend view:
         # add your customizations here ...
         pass
 
-Step 2: remove the following line from your root ``urls.py`` file:
 
-.. code-block:: python
+    device_metric = DeviceMetricView.as_view()
 
-    re_path(
-        "api/v1/monitoring/device/(?P<pk>[^/]+)/$",
-        views.device_metric,
-        name="api_device_metric",
-    ),
-
-Step 3: add an URL route pointing to your custom view in ``urls.py`` file:
+Step 2. Use the custom API views module in your root ``urls.py``:
 
 .. code-block:: python
 
     # urls.py
-    from mydevice.api.views import DeviceMetricView
+    from mydevice.api import views as device_api_views
+    from openwisp_monitoring.urls import get_urls
 
-    urlpatterns = [
-        # ... other URLs
-        re_path(
-            r"^(?P<path>.*)$",
-            DeviceMetricView.as_view(),
-            name="api_device_metric",
-        ),
-    ]
+    urlpatterns = get_urls(device_api_views=device_api_views)
+
+Only the ``api_device_metric`` route is overridden. All other
+device-monitoring API routes continue to use their standard views.
+
+General-monitoring API views can be customized independently by supplying
+a separate module through ``monitoring_api_views``:
+
+.. code-block:: python
+
+    # urls.py
+    from mymonitoring.api import views as monitoring_api_views
+    from openwisp_monitoring.urls import get_urls
+
+    urlpatterns = get_urls(monitoring_api_views=monitoring_api_views)
+
+Both modules can also be supplied together:
+
+.. code-block:: python
+
+    urlpatterns = get_urls(
+        device_api_views=device_api_views,
+        monitoring_api_views=monitoring_api_views,
+    )
+
+Any view not defined in the supplied custom module falls back to the
+corresponding standard view, while the existing URL paths, names and
+namespaces are preserved.
