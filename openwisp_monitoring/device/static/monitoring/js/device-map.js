@@ -547,6 +547,10 @@
       ws = new ReconnectingWebSocket(protocol + "://" + host + "/ws/loci/location/");
     ws.onmessage = function (e) {
       const data = JSON.parse(e.data);
+      // Only points can be moved: polygons are redrawn on page reload.
+      if (data.geometry.type !== "Point") {
+        return;
+      }
       const [lng, lat] = data.geometry.coordinates;
       const currentPopup = window._owGeoMap?.leaflet?.currentPopup;
       const currentPopupLocationId = window._owGeoMap?.leaflet?._popupState?.locationId;
