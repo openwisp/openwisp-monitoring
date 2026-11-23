@@ -67,7 +67,8 @@
 #device-map-container .leaflet-popup-content {
   display: flex;
   min-width: fit-content;
-  margin: 15px 20px !important;
+  margin: 0;
+  padding: 16px 21px;
 }
 .leaflet-popup-close-button {
   top: 14px !important;
@@ -365,7 +366,8 @@
 }
 #floorplan-container .leaflet-popup-content {
   display: flex;
-  margin: 18px 20px 14px 20px !important;
+  margin: 0;
+  padding: 19px 21px 15px;
 }
 #floorplan-container .leaflet-popup-close-button {
   top: 4px !important;

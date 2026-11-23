@@ -515,7 +515,6 @@
               closeOnClick: false,
               autoPan: true,
               autoPanPadding: [25, 25],
-              offset: null,
             },
           },
         },
