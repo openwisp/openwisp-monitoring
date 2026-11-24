@@ -136,8 +136,14 @@
     if (data.colors) {
       layout.colorway = data.colors;
     }
+    var hasColorMap =
+      data.colorscale &&
+      Array.isArray(data.colorscale.map) &&
+      data.colorscale.map.length > 0;
+    var hasFixedValue =
+      hasColorMap && Number.isFinite(data.colorscale.fixed_value);
     // hide yaxis in fixed value charts
-    if (data.colorscale && typeof data.colorscale.fixed_value !== undefined) {
+    if (hasFixedValue) {
       layout.yaxis = { visible: false };
       // if using %, we'll make sure the minimum y axis range is 0-100
     } else if (unit === "%") {
@@ -260,10 +266,10 @@
           desc = label,
           hovertemplate;
         // if colorscale and map are supplied
-        if (data.colorscale && map) {
+        if (hasColorMap) {
           mapped = findInColorMap(val);
           // same bar length feature
-          if (typeof fixedValue !== undefined && val !== null) {
+          if (hasFixedValue && val !== null) {
             val = fixedValue;
           }
           options.marker.color.push(mapped.color);
