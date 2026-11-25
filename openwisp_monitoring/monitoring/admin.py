@@ -18,14 +18,27 @@ class AlertSettingsForm(ModelForm):
         instance = kwargs.get("instance")
         if instance:
             kwargs["initial"] = {
-                "custom_tolerance": instance.tolerance,
-                "custom_threshold": instance.threshold,
                 "custom_operator": instance.operator,
             }
         super().__init__(*args, **kwargs)
+        if instance:
+            self.fields["custom_threshold"].widget.attrs["placeholder"] = (
+                instance.config_dict["threshold"]
+            )
+            self.fields["custom_tolerance"].widget.attrs["placeholder"] = (
+                instance.config_dict["tolerance"]
+            )
 
 
-class AlertSettingsInline(TimeReadonlyAdminMixin, admin.StackedInline):
+class AlertSettingsQuerysetMixin:
+    def get_queryset(self, request):
+        # The form reads metric defaults for placeholders even when values are customized.
+        return super().get_queryset(request).select_related("metric")
+
+
+class AlertSettingsInline(
+    AlertSettingsQuerysetMixin, TimeReadonlyAdminMixin, admin.StackedInline
+):
     model = AlertSettings
     form = AlertSettingsForm
     extra = 0
