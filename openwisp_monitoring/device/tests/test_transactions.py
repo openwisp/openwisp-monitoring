@@ -9,6 +9,8 @@ from openwisp_controller.connection.tests.base import CreateConnectionsMixin
 from openwisp_utils.tests import catch_signal
 
 from ...check.classes import Ping
+from ...check.classes.config_applied import ConfigApplied
+from ...check.tasks import perform_check as perform_check_task
 from ...check.tests import _FPING_REACHABLE, _FPING_UNREACHABLE
 from ..tasks import trigger_device_critical_checks
 from . import DeviceMonitoringTransactionTestcase
@@ -35,6 +37,109 @@ class TestTransactions(CreateConnectionsMixin, DeviceMonitoringTransactionTestca
             handler.assert_called_once()
         self.assertEqual(c.status, "modified")
         self.assertEqual(mock_method.call_count, 1)
+
+    @patch("openwisp_monitoring.device.tasks.handle_disabled_organization.delay")
+    def test_organization_disabled_signal_dispatch(self, mocked_task):
+        with self.subTest("creating a disabled organization sends no signal"):
+            org = self._create_org(is_active=False)
+            mocked_task.assert_not_called()
+        with self.subTest("disabling an active organization dispatches once"):
+            org.is_active = True
+            org.save()
+            org.is_active = False
+            org.save()
+            mocked_task.assert_called_once_with(str(org.pk))
+        with self.subTest("re-saving an already disabled organization is a no-op"):
+            mocked_task.reset_mock()
+            org.save()
+            mocked_task.assert_not_called()
+        with self.subTest("re-enabling an organization does not dispatch"):
+            org.is_active = True
+            org.save()
+            mocked_task.assert_not_called()
+
+    @patch("openwisp_monitoring.check.tasks.perform_check.delay")
+    def test_config_status_changed_receiver_disabled_organization(self, mock_method):
+        org = self._create_org()
+        config = self._create_config(status="applied", organization=org)
+        org.__class__.objects.filter(pk=org.pk).update(is_active=False)
+        config.config = {"general": {"description": "test"}}
+        config.full_clean()
+        mock_method.reset_mock()
+        with catch_signal(config_status_changed) as handler:
+            config.save()
+            handler.assert_called_once()
+        self.assertEqual(config.status, "modified")
+        mock_method.assert_called_once()
+        with patch.object(ConfigApplied, "timed_check") as timed_check:
+            perform_check_task(mock_method.call_args.args[0])
+        timed_check.assert_not_called()
+
+    @patch("openwisp_monitoring.check.tasks.perform_check.delay")
+    def test_config_status_changed_receiver_deactivated_device(self, mock_method):
+        config = self._create_config(status="applied", organization=self._create_org())
+        config.device.deactivate()
+        config.config = {"general": {"description": "test"}}
+        config.full_clean()
+        mock_method.reset_mock()
+        with catch_signal(config_status_changed) as handler:
+            config.save()
+            handler.assert_called_once()
+        self.assertEqual(config.status, "modified")
+        mock_method.assert_called_once()
+        with patch.object(ConfigApplied, "timed_check") as timed_check:
+            perform_check_task(mock_method.call_args.args[0])
+        timed_check.assert_not_called()
+
+    @patch.object(Check, "perform_check")
+    def test_is_working_changed_disabled_organization(self, perform_check):
+        org = self._create_org()
+        device = self._create_device(organization=org)
+        monitoring = device.monitoring
+        monitoring.status = "ok"
+        monitoring.save()
+        self._delete_non_ping_checks()
+        org.is_active = False
+        org.save()
+        credentials = Credentials.objects.create()
+        connection = DeviceConnection.objects.create(
+            credentials=credentials, device=device
+        )
+        connection.is_working = False
+        connection.save()
+        perform_check.assert_not_called()
+
+    @patch.object(Check, "perform_check")
+    def test_is_working_changed_deactivated_device(self, perform_check):
+        device = self._create_device(organization=self._create_org())
+        monitoring = device.monitoring
+        monitoring.status = "ok"
+        monitoring.save()
+        self._delete_non_ping_checks()
+        device.deactivate()
+        credentials = Credentials.objects.create()
+        connection = DeviceConnection.objects.create(
+            credentials=credentials, device=device
+        )
+        connection.is_working = False
+        connection.save()
+        perform_check.assert_not_called()
+
+    @patch.object(Check, "perform_check")
+    def test_trigger_device_critical_checks_disabled_organization(self, perform_check):
+        monitoring = self._create_device_monitoring()
+        org = monitoring.device.organization
+        org.is_active = False
+        org.save()
+        trigger_device_critical_checks.delay(monitoring.device.pk)
+        perform_check.assert_not_called()
+
+    @patch.object(Check, "perform_check")
+    def test_trigger_device_critical_checks_deactivated_device(self, perform_check):
+        monitoring = self._create_device_monitoring()
+        monitoring.device.deactivate()
+        trigger_device_critical_checks.delay(monitoring.device.pk)
+        perform_check.assert_not_called()
 
     @patch.object(Ping, "_command", return_value=_FPING_REACHABLE)
     def test_trigger_device_recovery_task(self, mocked_method):

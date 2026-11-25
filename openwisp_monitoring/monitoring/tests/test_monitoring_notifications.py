@@ -505,6 +505,39 @@ class TestMonitoringNotifications(DeviceMonitoringTestCase):
         self.assertEqual(d.monitoring.status, "problem")
         self.assertEqual(Notification.objects.count(), 0)
 
+    def test_alerts_disabled_organization(self):
+        self._create_admin()
+        device = self._create_device(organization=self._create_org(is_active=False))
+        metric = self._create_general_metric(name="load", content_object=device)
+        self._create_alert_settings(
+            metric=metric, custom_operator=">", custom_threshold=90, custom_tolerance=1
+        )
+        with freeze_time(start_time):
+            metric.write(99)
+        with freeze_time(ten_minutes_after):
+            metric.write(99)
+        metric.refresh_from_db()
+        self.assertEqual(metric.is_healthy, True)
+        self.assertEqual(metric.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
+
+    def test_alerts_deactivated_device(self):
+        self._create_admin()
+        device = self._create_device(organization=self._create_org())
+        device.deactivate()
+        metric = self._create_general_metric(name="load", content_object=device)
+        self._create_alert_settings(
+            metric=metric, custom_operator=">", custom_threshold=90, custom_tolerance=1
+        )
+        with freeze_time(start_time):
+            metric.write(99)
+        with freeze_time(ten_minutes_after):
+            metric.write(99)
+        metric.refresh_from_db()
+        self.assertEqual(metric.is_healthy, True)
+        self.assertEqual(metric.is_healthy_tolerant, True)
+        self.assertEqual(Notification.objects.count(), 0)
+
     def test_alert_field(self):
         admin = self._create_admin()
 
