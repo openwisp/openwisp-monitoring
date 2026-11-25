@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
@@ -13,6 +13,7 @@ from swapper import load_model
 
 from openwisp_utils.tests import catch_signal
 
+from ...db.exceptions import TimeseriesWriteException
 from .. import settings as app_settings
 from ..exceptions import InvalidChartConfigException, InvalidMetricConfigException
 from ..signals import post_metric_write, pre_metric_write, threshold_crossed
@@ -190,6 +191,30 @@ class TestModels(TestMonitoringMixin, TestCase):
             error.exception.args[0]["ping"],
             '"reachable" not defined in metric configuration',
         )
+
+    @patch("openwisp_monitoring.monitoring.base.models._timeseries_batch_write")
+    def test_batch_metric_write_acknowledged(self, batch_write):
+        metric = self._create_general_metric(name="load")
+        Metric.batch_write([(metric, {"value": 1})], acknowledged=True)
+        batch_write.assert_called_once_with([ANY], acknowledged=True)
+
+    @patch("openwisp_monitoring.monitoring.base.models._timeseries_batch_write")
+    def test_batch_metric_write_default_dispatch(self, batch_write):
+        metric = self._create_general_metric(name="load")
+        Metric.batch_write([(metric, {"value": 1})])
+        batch_write.assert_called_once_with([ANY])
+
+    @patch(
+        "openwisp_monitoring.monitoring.tasks.timeseries_db.batch_write",
+        side_effect=TimeseriesWriteException,
+    )
+    def test_batch_metric_write_acknowledged_failure(self, batch_write):
+        metric = self._create_general_metric(name="load")
+        with catch_signal(post_metric_write) as handler:
+            with self.assertRaises(TimeseriesWriteException):
+                Metric.batch_write([(metric, {"value": 1})], acknowledged=True)
+        batch_write.assert_called_once_with(ANY, acknowledged=True)
+        handler.assert_not_called()
 
     def test_batch_write_historical_data(self):
         m = self._create_general_metric(name="load")
