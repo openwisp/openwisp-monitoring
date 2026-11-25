@@ -1,17 +1,21 @@
+from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.forms import modelform_factory
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from swapper import load_model
 
-from ..admin import AlertSettingsForm
+from openwisp_utils.tests import AssertNumQueriesSubTestMixin
+
+from ...device.admin import AlertSettingsInline as DeviceAlertSettingsInline
+from ..admin import AlertSettingsForm, AlertSettingsInline
 from . import TestMonitoringMixin
 
 Metric = load_model("monitoring", "Metric")
 AlertSettings = load_model("monitoring", "AlertSettings")
 
 
-class TestAdmin(TestMonitoringMixin, TestCase):
+class TestAdmin(AssertNumQueriesSubTestMixin, TestMonitoringMixin, TestCase):
     app_label = "monitoring"
     check_app_label = "check"
 
@@ -71,6 +75,38 @@ class TestAdmin(TestMonitoringMixin, TestCase):
                     r, f'name="alertsettings-0-custom_tolerance" value="{tolerance}"'
                 )
                 self.assertContains(r, 'placeholder="30"')
+
+    def test_alert_settings_inline_queries(self):
+        metrics = [
+            self._create_general_metric(name=f"ping-{i}", configuration="ping")
+            for i in range(3)
+        ]
+        for metric in metrics:
+            self._create_alert_settings(
+                metric=metric,
+                custom_operator=">",
+                custom_threshold=0.5,
+                custom_tolerance=15,
+            )
+        request = RequestFactory().get(
+            reverse(f"admin:{self.app_label}_metric_change", args=[metrics[0].pk])
+        )
+        request.user = get_user_model()(is_staff=True, is_superuser=True)
+        for inline_class in (AlertSettingsInline, DeviceAlertSettingsInline):
+            with self.subTest(inline=inline_class.__module__):
+                inline = inline_class(Metric, admin.site)
+                formsets = [
+                    inline.get_formset(request, metric)(
+                        instance=metric, queryset=inline.get_queryset(request)
+                    )
+                    for metric in metrics
+                ]
+                # Each metric has its own inline formset and needs only one query.
+                with self.assertNumQueries(len(metrics)):
+                    forms = [formset.initial_forms[0] for formset in formsets]
+                for form in forms:
+                    self.assertIn('placeholder="1"', str(form["custom_threshold"]))
+                    self.assertIn('placeholder="30"', str(form["custom_tolerance"]))
 
     def test_alert_settings_invalid_input(self):
         alert_s = AlertSettings(metric=Metric(configuration="ping"))

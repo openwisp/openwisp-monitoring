@@ -29,7 +29,7 @@ from openwisp_users.multitenancy import MultitenantAdminMixin
 from openwisp_utils.admin import ReadOnlyAdmin
 
 from ..monitoring.admin import AlertSettingsForm as BaseAlertSettingsForm
-from ..monitoring.admin import MetricAdmin
+from ..monitoring.admin import AlertSettingsQuerysetMixin, MetricAdmin
 from ..settings import MONITORING_API_BASEURL, MONITORING_API_URLCONF
 from . import settings as app_settings
 from .exportable import DeviceMonitoringResource
@@ -178,7 +178,9 @@ class AlertSettingsForm(BaseAlertSettingsForm):
         return super().save(commit)
 
 
-class AlertSettingsInline(InlinePermissionMixin, NestedStackedInline):
+class AlertSettingsInline(
+    AlertSettingsQuerysetMixin, InlinePermissionMixin, NestedStackedInline
+):
     model = AlertSettings
     extra = 1
     max_num = 1
