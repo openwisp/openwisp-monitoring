@@ -35,7 +35,8 @@ class TestCiEntrypoint(unittest.TestCase):
         for label, sample in (
             ("openwisp_monitoring.check.tests.test_models", ""),
             (
-                "openwisp_monitoring.db.backends.influxdb.tests.TestDatabaseClient.test_forbidden_queries",
+                "openwisp_monitoring.db.backends.influxdb.tests."
+                "TestDatabaseClient.test_forbidden_queries",
                 "",
             ),
             ("openwisp2.sample_monitoring.tests", "1"),
