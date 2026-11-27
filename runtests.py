@@ -31,7 +31,10 @@ def run_focused_tests(arguments):
             "openwisp_monitoring.device.tests",
             "openwisp_monitoring.monitoring.tests",
         ),
-        exact_modules=sample_modules,
+        exact_modules=(
+            *sample_modules,
+            "openwisp_monitoring.db.backends.influxdb.tests",
+        ),
     )
     try:
         labels, flags = parse_test_arguments(
