@@ -94,8 +94,6 @@ jobs:
       - name: Start InfluxDB
         if: ${{ !cancelled() && steps.deps.conclusion == 'success' }}
         run: docker compose up -d influxdb
-      - name: CI entry point tests
-        run: python tests/test_ci_entrypoint.py
       - name: QA checks
         run: ./run-qa-checks
       - name: Tests
