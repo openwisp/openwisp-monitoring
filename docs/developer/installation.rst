@@ -127,6 +127,16 @@ Run tests with (make sure you have the :ref:`selenium dependencies
 
     ./runtests  # using --parallel is not supported in this module
 
+To run a focused test, pass the dotted path of a test module, class, or
+method:
+
+.. code-block:: shell
+
+    ./runtests openwisp_monitoring.check.tests.test_models
+
+Run sample app tests separately because they use a different Django
+configuration.
+
 Run quality assurance tests with:
 
 .. code-block:: shell
