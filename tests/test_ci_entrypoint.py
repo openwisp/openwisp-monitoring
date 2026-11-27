@@ -1,12 +1,12 @@
 """Check the focused CI entry point rejects unsupported arguments."""
 
-import json
 import os
-import shutil
+import runpy
 import subprocess
-import tempfile
+import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -31,71 +31,25 @@ class TestCiEntrypoint(unittest.TestCase):
                 self.assertIn("Unsupported test argument", result.stderr)
 
     def test_focused_labels_select_their_configuration(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            shutil.copy2(ROOT / "runtests", root / "runtests")
-            shutil.copy2(ROOT / "runtests.py", root / "runtests.py")
-            (root / "django" / "core").mkdir(parents=True)
-            (root / "openwisp_monitoring" / "tests").mkdir(parents=True)
-            (root / "openwisp_monitoring" / "db" / "backends" / "influxdb").mkdir(
-                parents=True
-            )
-            (root / "tests" / "openwisp2" / "sample_monitoring").mkdir(parents=True)
-            for package in (
-                root / "django",
-                root / "django" / "core",
-                root / "openwisp_monitoring",
-                root / "openwisp_monitoring" / "tests",
-                root / "openwisp_monitoring" / "db",
-                root / "openwisp_monitoring" / "db" / "backends",
-                root / "openwisp_monitoring" / "db" / "backends" / "influxdb",
-                root / "tests" / "openwisp2",
-                root / "tests" / "openwisp2" / "sample_monitoring",
+        runner = runpy.run_path(str(ROOT / "runtests.py"))["run_focused_tests"]
+        for label, sample in (
+            ("openwisp_monitoring.check.tests.test_models", ""),
+            (
+                "openwisp_monitoring.db.backends.influxdb.tests.TestDatabaseClient.test_forbidden_queries",
+                "",
+            ),
+            ("openwisp2.sample_monitoring.tests", "1"),
+        ):
+            with self.subTest(label=label), patch.dict(
+                os.environ, {"SAMPLE_APP": ""}
+            ), patch.object(sys, "argv", ["runtests.py"]), patch(
+                "django.setup"
+            ), patch.dict(
+                runner.__globals__, {"validate_test_labels": lambda labels: None}
             ):
-                (package / "__init__.py").touch()
-            (root / "django" / "__init__.py").write_text("def setup(): pass\n")
-            (root / "django" / "core" / "management.py").write_text(
-                "import json, os\n"
-                "def execute_from_command_line(args):\n"
-                '    print(json.dumps({"sample": os.environ.get("SAMPLE_APP"), '
-                '"args": args[1:]}))\n'
-            )
-            for module in (
-                root / "openwisp_monitoring" / "tests" / "test_probe.py",
-                root
-                / "openwisp_monitoring"
-                / "db"
-                / "backends"
-                / "influxdb"
-                / "tests.py",
-                root / "tests" / "openwisp2" / "sample_monitoring" / "tests.py",
-            ):
-                module.write_text(
-                    "import unittest\n"
-                    "class TestProbe(unittest.TestCase):\n"
-                    "    def test_ok(self): pass\n"
-                )
-            for label, sample in (
-                ("openwisp_monitoring.tests.test_probe.TestProbe.test_ok", ""),
-                (
-                    "openwisp_monitoring.db.backends.influxdb.tests.TestProbe.test_ok",
-                    "",
-                ),
-                ("openwisp2.sample_monitoring.tests.TestProbe.test_ok", "1"),
-            ):
-                with self.subTest(label=label):
-                    result = subprocess.run(
-                        [str(root / "runtests"), label, "--noinput"],
-                        cwd=root,
-                        env={**os.environ, "SAMPLE_APP": ""},
-                        capture_output=True,
-                        text=True,
-                    )
-                    self.assertEqual(result.returncode, 0, result.stderr)
-                    self.assertEqual(
-                        json.loads(result.stdout),
-                        {"sample": sample, "args": ["test", label, "--noinput"]},
-                    )
+                runner([label, "--noinput"])
+                self.assertEqual(os.environ["SAMPLE_APP"], sample)
+                self.assertEqual(sys.argv[1:], ["test", label, "--noinput"])
 
 
 if __name__ == "__main__":
