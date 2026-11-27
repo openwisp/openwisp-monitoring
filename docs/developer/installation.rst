@@ -120,8 +120,9 @@ Launch development server:
 
 You can access the admin interface at ``http://127.0.0.1:8000/admin/``.
 
-Run tests with (make sure you have the :ref:`selenium dependencies
-<selenium_dependencies>` installed locally first):
+From the repository root, run tests with (make sure you have the
+:ref:`selenium dependencies <selenium_dependencies>` installed locally
+first):
 
 .. code-block:: shell
 
